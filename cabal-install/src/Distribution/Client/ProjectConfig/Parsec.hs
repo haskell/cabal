@@ -209,7 +209,7 @@ startOfSection defaultPos [] = defaultPos
 startOfSection _ (cond : _) = sectionArgAnn cond
 
 knownProgramNames :: ProgramDb -> [String]
-knownProgramNames programDb = (programName . fst) <$> knownPrograms programDb
+knownProgramNames programDb = programName . fst <$> knownPrograms programDb
 
 -- | Monad in which sections are parsed
 type SectionParser src = StateT SectionS (ParseResult src)
@@ -274,7 +274,7 @@ parseSection programDb (MkSection (Name pos name) args secFields)
     warnInvalidSubsection pos' name' = lift $ parseWarning pos' PWTInvalidSubsection $ "Invalid subsection " ++ show name'
     programNames = knownProgramNames programDb
     verifyNullSubsections = unless (null sections) (warnInvalidSubsection pos name)
-    verifyNullSectionArgs = unless (null args) (lift $ parseFailure pos $ "The section '" <> (show name) <> "' takes no arguments")
+    verifyNullSectionArgs = unless (null args) (lift $ parseFailure pos $ "The section '" <> show name <> "' takes no arguments")
     parsePackageConfig = do
       packageCfg <- lift $ parseFieldGrammar cabalSpec fields (packageConfigFieldGrammar programNames)
       args' <- lift $ parseProgramArgs programDb fields
@@ -372,7 +372,7 @@ parseProgramPaths programDb fields = foldM parseField mempty (filter hasLocation
 
 -- | Parse all arguments to a single program in program-options stanza.
 -- By processing '[NamelessField Position]', we support multiple occurrences of the field, concatenating the arguments.
-parseProgramArgsField :: [NamelessField Position] -> ParseResult src ([String])
+parseProgramArgsField :: [NamelessField Position] -> ParseResult src [String]
 parseProgramArgsField fieldLines =
   concat <$> mapM (\(MkNamelessField _ lines') -> parseProgramArgsFieldLines lines') fieldLines
 
@@ -387,14 +387,14 @@ type FieldSuffix = String
 -- | Extract the program name of a <progname> field, allow it to have a suffix such as '-options' and check whether the 'ProgramDB' contains it.
 readProgramName :: FieldSuffix -> ProgramDb -> FieldName -> Maybe String
 readProgramName suffix programDb fieldName =
-  (parseProgramName suffix fieldName >>= ((flip lookupKnownProgram) programDb)) <&> programName
+  (parseProgramName suffix fieldName >>= (`lookupKnownProgram` programDb)) <&> programName
 
 parseProgramName :: FieldSuffix -> FieldName -> Maybe String
 parseProgramName suffix fieldName = case runParsecParser parser "<parseProgramName>" fieldNameStream of
   Left _ -> Nothing
   Right str -> Just str
   where
-    parser = P.manyTill P.anyChar (P.try ((P.string suffix)) <* P.eof)
+    parser = P.manyTill P.anyChar (P.try (P.string suffix) <* P.eof)
     fieldNameStream = fieldLineStreamFromBS fieldName
 
 -- | Issue a 'PWTUnknownField' warning at all occurrences of a field.

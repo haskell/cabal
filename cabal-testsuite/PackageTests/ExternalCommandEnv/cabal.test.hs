@@ -15,7 +15,7 @@ main =
     res <- cabalWithStdin "v2-build" ["all"] ""
     exe_path <- withPlan $ planExePath "setup-test" "cabal-aaaa"
     env <- getTestEnv
-    let new_env = (("OTHER_VAR", Just "is set") : (testEnvironment env))
+    let new_env = ("OTHER_VAR", Just "is set") : testEnvironment env
     withEnv new_env $ addToPath (takeDirectory exe_path) $ do
       res <- cabal_raw_action ["aaaa"] (\h -> void (Process.waitForProcess h))
       assertOutputContains "cabal-install" res

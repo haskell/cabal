@@ -53,7 +53,7 @@ data FileInfo
 -- | A list of files that should be documented in the manual page.
 files :: [FileInfo]
 files =
-  [ (FileInfo "~/.config/cabal/config" "The defaults that can be overridden with command-line options.")
+  [ FileInfo "~/.config/cabal/config" "The defaults that can be overridden with command-line options."
   ]
 
 manpageCmd :: String -> [CommandSpec a] -> ManpageFlags -> IO ()
@@ -154,7 +154,7 @@ manpage pname commands =
 
 commandSynopsisLines :: String -> CommandSpec action -> [String]
 commandSynopsisLines pname (CommandSpec ui _ NormalCommand) =
-  [ ".B " ++ pname ++ " " ++ (commandName ui)
+  [ ".B " ++ pname ++ " " ++ commandName ui
   , "- " ++ commandSynopsis ui
   , ".br"
   ]
@@ -162,7 +162,7 @@ commandSynopsisLines _ (CommandSpec _ _ HiddenCommand) = []
 
 commandDetailsLines :: String -> CommandSpec action -> [String]
 commandDetailsLines pname (CommandSpec ui _ NormalCommand) =
-  [ ".B " ++ pname ++ " " ++ (commandName ui)
+  [ ".B " ++ pname ++ " " ++ commandName ui
   , ""
   , commandUsage ui pname
   , ""

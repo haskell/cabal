@@ -809,7 +809,7 @@ reportTargetSelectorProblems verbosity problems = do
         $ map
           ( \(rendering, matches) ->
               ( showTargetString rendering
-              , (map (\match -> showTargetSelector match ++ " (" ++ showTargetSelectorKind match ++ ")") matches)
+              , map (\match -> showTargetSelector match ++ " (" ++ showTargetSelectorKind match ++ ")") matches
               )
           )
           renderingsAndMatches
@@ -836,7 +836,7 @@ reportTargetSelectorProblems verbosity problems = do
           map
             ( \(target, amb) ->
                 ( showTargetString target
-                , (map (\(ut, bt) -> (showTargetString ut, showTargetSelectorKind bt)) amb)
+                , map (\(ut, bt) -> (showTargetString ut, showTargetSelectorKind bt)) amb
                 )
             )
             targets

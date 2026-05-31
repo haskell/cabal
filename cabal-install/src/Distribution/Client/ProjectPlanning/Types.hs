@@ -163,13 +163,12 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
         }
       where
         herald =
-          ( hsep
-              [ text (InstallPlan.showPlanPackageTag pkg)
-              , InstallPlan.foldPlanPackage (const mempty) in_mem pkg
-              , pretty (packageId pkg)
-              , parens (pretty (nodeKey pkg))
-              ]
-          )
+          hsep
+            [ text (InstallPlan.showPlanPackageTag pkg)
+            , InstallPlan.foldPlanPackage (const mempty) in_mem pkg
+            , pretty (packageId pkg)
+            , parens (pretty (nodeKey pkg))
+            ]
 
         in_mem elab = case elabBuildStyle elab of
           BuildInplaceOnly InMemory -> parens (text "In Memory")

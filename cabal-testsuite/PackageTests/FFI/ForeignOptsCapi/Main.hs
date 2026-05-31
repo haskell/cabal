@@ -10,6 +10,6 @@ foreign import capi "clib.h myplus"
 main :: IO ()
 main = do
     result <- myplus 5 6
-    if (result == 11)
+    if result == 11
         then putStrLn ("The result is " ++ show result)
         else error ("Expected value 11, got " ++ show result)

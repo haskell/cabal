@@ -322,7 +322,7 @@ sectionLayoutOrBraces ilevel =
       closeBrace
       return elems
   )
-    <|> (elements ilevel)
+    <|> elements ilevel
 
 -- The body of a field, using either inline style or braces.
 --

@@ -423,7 +423,7 @@ reportBuildTargetProblems verbosity problems = do
           map
             ( \(target, amb) ->
                 ( showUserBuildTarget target
-                , (map (\(ut, bt) -> (showUserBuildTarget ut, showBuildTargetKind bt)) amb)
+                , map (\(ut, bt) -> (showUserBuildTarget ut, showBuildTargetKind bt)) amb
                 )
             )
             targets

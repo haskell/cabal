@@ -663,7 +663,7 @@ dependencyClosure
   :: InstalledPackageIndex
   -> [UnitId]
   -> Either
-      (InstalledPackageIndex)
+      InstalledPackageIndex
       [(IPI.InstalledPackageInfo, [UnitId])]
 dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
   (completed, []) -> Left completed

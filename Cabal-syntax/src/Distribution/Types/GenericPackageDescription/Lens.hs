@@ -52,23 +52,23 @@ condLibrary :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar Library)
 condLibrary f s = fmap (\x -> s{T.condLibrary = x}) (f (T.condLibrary s))
 {-# INLINE condLibrary #-}
 
-condSubLibraries :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar Library))]
+condSubLibraries :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar Library)]
 condSubLibraries f s = fmap (\x -> s{T.condSubLibraries = x}) (f (T.condSubLibraries s))
 {-# INLINE condSubLibraries #-}
 
-condForeignLibs :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar ForeignLib))]
+condForeignLibs :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar ForeignLib)]
 condForeignLibs f s = fmap (\x -> s{T.condForeignLibs = x}) (f (T.condForeignLibs s))
 {-# INLINE condForeignLibs #-}
 
-condExecutables :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar Executable))]
+condExecutables :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar Executable)]
 condExecutables f s = fmap (\x -> s{T.condExecutables = x}) (f (T.condExecutables s))
 {-# INLINE condExecutables #-}
 
-condTestSuites :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar TestSuite))]
+condTestSuites :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar TestSuite)]
 condTestSuites f s = fmap (\x -> s{T.condTestSuites = x}) (f (T.condTestSuites s))
 {-# INLINE condTestSuites #-}
 
-condBenchmarks :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar Benchmark))]
+condBenchmarks :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar Benchmark)]
 condBenchmarks f s = fmap (\x -> s{T.condBenchmarks = x}) (f (T.condBenchmarks s))
 {-# INLINE condBenchmarks #-}
 

@@ -445,7 +445,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
 -- | Link the executable resulting from building this component, be it an
 -- executable, test, or benchmark component.
 linkExecutable
-  :: (GhcOptions)
+  :: GhcOptions
   -- ^ The linker-specific GHC options
   -> (BuildWay, BuildWay -> GhcOptions)
   -- ^ The wanted build ways and corresponding GhcOptions that were
@@ -481,7 +481,7 @@ linkFLib
   :: ForeignLib
   -> BuildInfo
   -> LocalBuildInfo
-  -> (GhcOptions)
+  -> GhcOptions
   -- ^ The linker-specific GHC options
   -> (BuildWay, BuildWay -> GhcOptions)
   -- ^ The wanted build ways and corresponding GhcOptions that were
@@ -527,7 +527,7 @@ linkFLib flib bi lbi linkerOpts (way, buildOpts) targetDir runGhcProg = do
     linkOpts :: GhcOptions
     linkOpts = case foreignLibType flib of
       ForeignLibNativeShared ->
-        (buildOpts way)
+        buildOpts way
           `mappend` linkerOpts
           `mappend` rtsLinkOpts
           `mappend` mempty

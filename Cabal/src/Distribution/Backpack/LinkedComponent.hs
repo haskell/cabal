@@ -298,7 +298,7 @@ toLinkedComponent
                   (text "Problem with module re-exports:")
                   2
                   (vcat [hang (text "-") 2 l | l <- ls])
-    reexports_list <- hdl . (flip map) src_reexports $ \reex@(ModuleReexport mb_pn from to) -> do
+    reexports_list <- hdl . flip map src_reexports $ \reex@(ModuleReexport mb_pn from to) -> do
       case Map.lookup from (modScopeProvides linked_shape) of
         Just cands@(x0 : xs0) -> do
           -- Make sure there is at least one candidate
@@ -339,7 +339,7 @@ toLinkedComponent
         -- TODO: doublecheck we have checked for
         -- src_provs duplicates already!
         -- These are normal module exports.
-        [(mod_name, (OpenModule this_uid mod_name)) | mod_name <- src_provs]
+        [(mod_name, OpenModule this_uid mod_name) | mod_name <- src_provs]
           ++
           -- These are reexports, which we managed to resolve to something in an external package.
           [(mn_new, om) | (mn_new, Just om) <- reexports_list]

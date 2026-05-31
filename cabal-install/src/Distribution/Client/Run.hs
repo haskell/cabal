@@ -89,7 +89,7 @@ splitRunArgs verbosity lbi args =
     whichExecutable = case (enabledExes, args) of
       ([], _) -> Left "Couldn't find any enabled executables."
       ([exe], []) -> return (False, exe, [])
-      ([exe], (x : xs))
+      ([exe], x : xs)
         | x == unUnqualComponentName (exeName exe) -> return (True, exe, xs)
         | otherwise -> return (False, exe, args)
       (_, []) ->
@@ -97,7 +97,7 @@ splitRunArgs verbosity lbi args =
           "This package contains multiple executables. "
             ++ "You must pass the executable name as the first argument "
             ++ "to 'cabal run'."
-      (_, (x : xs)) ->
+      (_, x : xs) ->
         case find (\exe -> unUnqualComponentName (exeName exe) == x) enabledExes of
           Nothing -> Left $ "No executable named '" ++ x ++ "'."
           Just exe -> return (True, exe, xs)

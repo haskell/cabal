@@ -152,7 +152,7 @@ promptDefault
   -- ^ pretty-printer
   -> String
   -- ^ prompt message
-  -> (DefaultPrompt t)
+  -> DefaultPrompt t
   -- ^ optional default value
   -> m t
 promptDefault parse pprint msg def = do

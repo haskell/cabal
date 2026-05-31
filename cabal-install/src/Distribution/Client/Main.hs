@@ -520,7 +520,7 @@ regularCmd
   -> (flags -> [String] -> action)
   -> CommandSpec action
 regularCmd ui action =
-  CommandSpec ui ((flip commandAddAction) action) NormalCommand
+  CommandSpec ui (`commandAddAction` action) NormalCommand
 
 hiddenCmd
   :: CommandUI flags
@@ -1047,7 +1047,7 @@ componentNamesFromLBI verbosity mbWorkDir distPref targetsDescr compPred = do
               ++ targetsDescr
               ++ "."
           exitSuccess -- See #3215.
-        else return $! (ComponentNames names)
+        else return $! ComponentNames names
 
 benchmarkAction
   :: (BuildFlags, BenchmarkFlags)
@@ -1553,7 +1553,7 @@ userConfigAction ucflags extraArgs globalFlags = do
     ("init" : _) -> do
       path <- getConfigFilePath verbosity (globalConfigFile globalFlags)
       fileExists <- doesFileExist path
-      if (not fileExists || (fileExists && frc))
+      if not fileExists || (fileExists && frc)
         then void $ createDefaultConfigFile verbosity extraLines path
         else dieWithException verbosity $ UserConfigAction path
     ("diff" : _) -> traverse_ putStrLn =<< userConfigDiff verbosity globalFlags extraLines

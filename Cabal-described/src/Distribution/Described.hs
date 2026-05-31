@@ -426,7 +426,7 @@ instance Described IncludeRenaming where
         mr = describe (Proxy :: Proxy ModuleRenaming)
 
 instance Described Language where
-    describe _ = REUnion $ (REString . show) <$> reverse knownLanguages
+    describe _ = REUnion $ REString . show <$> reverse knownLanguages
 
 instance Described LegacyExeDependency where
     describe _ = RETodo

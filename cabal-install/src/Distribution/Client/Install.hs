@@ -930,7 +930,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
 
     showPkg (pkg, _) =
       prettyShow (packageId pkg)
-        ++ showLatest (pkg)
+        ++ showLatest pkg
 
     showPkgAndReason (ReadyPackage pkg', pr) =
       unwords
@@ -955,7 +955,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showLatest pkg = case mLatestVersion of
       Just latestVersion ->
         if packageVersion pkg < latestVersion
-          then ("(latest: " ++ prettyShow latestVersion ++ ")")
+          then "(latest: " ++ prettyShow latestVersion ++ ")"
           else ""
       Nothing -> ""
       where
@@ -1432,7 +1432,7 @@ performInstallations
     )
   installedPkgIndex
   installPlan = do
-    info verbosity $ "Number of threads used: " ++ (show numJobs) ++ "."
+    info verbosity $ "Number of threads used: " ++ show numJobs ++ "."
 
     jobControl <-
       if parallelInstall
@@ -1875,7 +1875,7 @@ installUnpackedPackage
           filterConfigureFlags
             configFlags'
               { configCommonFlags =
-                  (configCommonFlags (configFlags'))
+                  (configCommonFlags configFlags')
                     { setupVerbosity = toFlag $ verbosityFlags verbosity'
                     }
               }

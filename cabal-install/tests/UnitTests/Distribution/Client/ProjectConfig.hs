@@ -445,9 +445,8 @@ instance Arbitrary ProjectConfig where
         , projectConfigProvenance = x6'
         , projectConfigLocalPackages = x7'
         , projectConfigSpecificPackage =
-            ( MapMappend
-                (fmap getNonMEmpty x8')
-            )
+            MapMappend
+              (fmap getNonMEmpty x8')
         , projectConfigAllPackages = x9'
         }
       | ((x0', x1', x2', x3'), (x4', x5', x6', x7', x8', x9')) <-
@@ -771,7 +770,7 @@ instance Arbitrary PackageConfig where
       arbitraryProgramName =
         elements
           [ programName prog
-          | (prog, _) <- knownPrograms (defaultProgramDb)
+          | (prog, _) <- knownPrograms defaultProgramDb
           ]
 
   shrink

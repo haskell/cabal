@@ -1050,7 +1050,7 @@ compatWithCreateProcess verbosity cp action =
     -- of 'withCreateProcess_', but with special logic to avoid closing the
     -- verbosity handles.
     create =
-      (Process.createProcess_ "createProcess" cp)
+      Process.createProcess_ "createProcess" cp
         `Exception.finally` do
           maybeClose (Process.std_in cp)
           maybeClose (Process.std_out cp)
@@ -1737,7 +1737,7 @@ installExecutableFile verbosity src dest = withFrozenCallStack $ do
 installMaybeExecutableFile :: Verbosity -> FilePath -> FilePath -> IO ()
 installMaybeExecutableFile verbosity src dest = withFrozenCallStack $ do
   perms <- getPermissions src
-  if (executable perms) -- only checks user x bit
+  if executable perms -- only checks user x bit
     then installExecutableFile verbosity src dest
     else installOrdinaryFile verbosity src dest
 

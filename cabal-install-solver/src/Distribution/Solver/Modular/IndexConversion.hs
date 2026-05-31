@@ -341,7 +341,7 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
              -- of the tree.
              mergeSimpleDeps $
                  [ D.Simple singleDep comp
-                 | dep <- L.view (L.targetBuildDepends) (getInfo info)
+                 | dep <- L.view L.targetBuildDepends (getInfo info)
                  , singleDep <- convLibDeps dr dep ]  -- unconditional package dependencies
 
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies

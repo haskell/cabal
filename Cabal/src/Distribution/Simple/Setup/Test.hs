@@ -238,7 +238,7 @@ testOptions' showOrParseArgs =
     , option
         []
         ["fail-when-no-test-suites"]
-        ("Exit with failure when no test suites are found.")
+        "Exit with failure when no test suites are found."
         testFailWhenNoTestSuites
         (\v flags -> flags{testFailWhenNoTestSuites = v})
         trueArg

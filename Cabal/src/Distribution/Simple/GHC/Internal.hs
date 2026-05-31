@@ -183,7 +183,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
     findProg progName extraPath v searchpath =
       findProgramOnSearchPath v searchpath' progName
       where
-        searchpath' = (map ProgramSearchPathDir extraPath) ++ searchpath
+        searchpath' = map ProgramSearchPathDir extraPath ++ searchpath
 
     -- Read tool locations from the 'ghc --info' output. Useful when
     -- cross-compiling.
@@ -466,7 +466,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
    in (linkGhcOptions verbosity lbi bi clbi)
         { ghcOptSourcePath =
             toNubListR $
-              (hsSourceDirs bi)
+              hsSourceDirs bi
                 ++ [coerceSymbolicPath odir]
                 ++ [autogenComponentModulesDir lbi clbi]
                 ++ [autogenPackageModulesDir lbi]
@@ -541,7 +541,7 @@ linkGhcOptions verbosity lbi bi clbi =
         , ghcOptLanguage = toFlag (fromMaybe Haskell98 (defaultLanguage bi))
         , -- Unsupported extensions have already been checked by configure
           ghcOptExtensions = toNubListR $ usedExtensions bi
-        , ghcOptExtensionMap = Map.fromList . compilerExtensions $ (compiler lbi)
+        , ghcOptExtensionMap = Map.fromList . compilerExtensions $ compiler lbi
         , -- Use -pgmc to ensure that Cabal always passes cc-options, ld-options to GHC (#4435, #9801)
           -- We can only do this on GHC >= 9.4, as we need https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6949
           -- Without that GHC MR, this change would cause GHC to never pass -no-pie when linking,

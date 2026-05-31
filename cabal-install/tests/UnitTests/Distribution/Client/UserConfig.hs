@@ -59,7 +59,7 @@ canUpdateConfig = bracketTest $ \configFile -> do
   userConfigUpdate (mkVerbosity defaultVerbosityHandles silent) (globalFlags configFile) []
   -- Load it again.
   updated <- loadConfig (mkVerbosity defaultVerbosityHandles silent) (Flag configFile)
-  assertBool ("Field 'tests' should be True") $
+  assertBool "Field 'tests' should be True" $
     fromFlag (configTests $ savedConfigureFlags updated)
 
 doubleUpdateConfig :: Assertion
@@ -71,11 +71,11 @@ doubleUpdateConfig = bracketTest $ \configFile -> do
   -- Load it again.
   updated <- loadConfig (mkVerbosity defaultVerbosityHandles silent) (Flag configFile)
 
-  assertBool ("Field 'remote-repo' doesn't contain duplicates") $
+  assertBool "Field 'remote-repo' doesn't contain duplicates" $
     listUnique (map show . fromNubList . globalRemoteRepos $ savedGlobalFlags updated)
-  assertBool ("Field 'extra-prog-path' doesn't contain duplicates") $
+  assertBool "Field 'extra-prog-path' doesn't contain duplicates" $
     listUnique (map show . fromNubList . configProgramPathExtra $ savedConfigureFlags updated)
-  assertBool ("Field 'build-summary' doesn't contain duplicates") $
+  assertBool "Field 'build-summary' doesn't contain duplicates" $
     listUnique (map show . fromNubList . installSummaryFile $ savedInstallFlags updated)
 
 newDefaultConfig :: Assertion

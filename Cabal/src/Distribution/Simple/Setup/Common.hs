@@ -142,8 +142,7 @@ commonSetupOptions showOrParseArgs =
   , option
       ""
       ["keep-temp-files"]
-      ( "Keep temporary files."
-      )
+      "Keep temporary files."
       setupKeepTempFiles
       (\keepTempFiles flags -> flags{setupKeepTempFiles = keepTempFiles})
       trueArg

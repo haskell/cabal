@@ -245,7 +245,7 @@ checkGenericPackageDescription
       -- Targets should be present...
       let condAllLibraries =
             maybeToList condLibrary_
-              ++ (map snd condSubLibraries_)
+              ++ map snd condSubLibraries_
       checkP
         ( and
             [ null condExecutables_

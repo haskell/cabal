@@ -379,7 +379,7 @@ prop_parse_disp3 vr =
 prop_parse_disp4 :: VersionRange -> Property
 prop_parse_disp4 vr =
   let a = Just vr
-      b = (simpleParsec (prettyShow vr))
+      b = simpleParsec (prettyShow vr)
   in
    counterexample ("Expected: " ++ show a) $
    counterexample ("But got: " ++ show b) $

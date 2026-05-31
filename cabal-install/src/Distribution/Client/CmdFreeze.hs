@@ -157,7 +157,7 @@ freezeAction flags extraArgs globalFlags = do
     else do
       writeProjectLocalFreezeConfig distDirLayout freezeConfig
       notice verbosity $
-        "Wrote freeze file: " ++ (distProjectFile distDirLayout "freeze")
+        "Wrote freeze file: " ++ distProjectFile distDirLayout "freeze"
   where
     verbosity = cfgVerbosity normal flags
     cliConfig =

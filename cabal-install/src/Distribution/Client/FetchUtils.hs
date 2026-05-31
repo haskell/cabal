@@ -160,11 +160,10 @@ verifyFetchedTarballs
   -> Repo
   -> [PackageId]
   -> IO
-      ( [ Either
-            (Repo, PackageId) -- Verified
-            (Repo, PackageId) -- unverified)
-        ]
-      )
+      [ Either
+          (Repo, PackageId) -- Verified
+          (Repo, PackageId) -- unverified)
+      ]
 verifyFetchedTarballs verbosity repoCtxt repo pkgids =
   -- Establish the context once per repo (see #10110), this codepath is important
   -- to be fast as it can happen when no other building happens.

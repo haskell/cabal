@@ -300,7 +300,7 @@ sessionState = PromptIO ask
 
 runPromptIO :: PromptIO a -> IO a
 runPromptIO (PromptIO pio) =
-  (Data.IORef.newIORef newSessionState) >>= (runReaderT pio)
+  Data.IORef.newIORef newSessionState >>= runReaderT pio
 
 type Inputs = NonEmpty String
 
@@ -371,10 +371,10 @@ class Monad m => Interactive m where
 
   -- session state functions
   getLastChosenLanguage :: m (Maybe String)
-  setLastChosenLanguage :: (Maybe String) -> m ()
+  setLastChosenLanguage :: Maybe String -> m ()
 
 newtype SessionState = SessionState
-  { lastChosenLanguage :: (Maybe String)
+  { lastChosenLanguage :: Maybe String
   }
 
 newSessionState :: SessionState

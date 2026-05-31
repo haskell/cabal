@@ -323,7 +323,7 @@ showResult verbosity outdatedDeps simpleOutput =
         pkgGroups =
           Map.fromListWith
             (Map.unionWith (++))
-            [ (pkg, (Map.singleton comp [d]))
+            [ (pkg, Map.singleton comp [d])
             | (pkg, comp, d) <- pkgCompDeps
             ]
        in
@@ -496,7 +496,7 @@ listOutdated deps sourceDb (ListOutdatedSettings ignorePred minorPred) =
 selectPackageTargetsForOutdated
   :: TargetSelector
   -> [AvailableTarget k]
-  -> Either (TargetProblem') [k]
+  -> Either TargetProblem' [k]
 selectPackageTargetsForOutdated targetSelector targets
   -- No targets available at all is an error
   | null targets = Left (TargetProblemNoTargets targetSelector)
@@ -508,7 +508,7 @@ selectPackageTargetsForOutdated targetSelector targets
 selectComponentTargetForOutdated
   :: SubComponentTarget
   -> AvailableTarget k
-  -> Either (TargetProblem') k
+  -> Either TargetProblem' k
 selectComponentTargetForOutdated subtarget target =
   selectComponentTargetBasic subtarget target
 

@@ -360,7 +360,7 @@ resolveGlobalTarget flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetString
       sourcePackage =
         fakeProjectSourcePackage projectRoot
           & ( (lSrcpkgDescription . L.condLibrary)
-                ?~ (CondNode library [])
+                ?~ CondNode library []
             )
       library = emptyLibrary{libBuildInfo = lBuildInfo}
       lBuildInfo =
@@ -551,7 +551,7 @@ targetedRepl
         -- Find what the unit files are, and start a repl based on all the response
         -- files which have been created in the directory.
         -- unit files for components
-        unit_files <- (filter (/= "paths")) <$> listDirectory dir
+        unit_files <- filter (/= "paths") <$> listDirectory dir
 
         -- Order the unit files so that the find target becomes the active unit
         let active_unit_fp :: Maybe FilePath

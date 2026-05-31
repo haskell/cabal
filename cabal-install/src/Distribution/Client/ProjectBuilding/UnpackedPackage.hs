@@ -469,7 +469,7 @@ buildAndRegisterUnpackedPackage
                       (commonFlags [])
                       pkgConfDest
             setup
-              (Cabal.registerCommand)
+              Cabal.registerCommand
               Cabal.registerCommonFlags
               (return . registerFlags)
               (const [])
@@ -964,7 +964,7 @@ copyPkgFiles verbosity pkgshared pkg runCopy tmpDir = do
   where
     listFilesRecursive :: FilePath -> IO [FilePath]
     listFilesRecursive path = do
-      files <- fmap (path </>) <$> (listDirectory path)
+      files <- fmap (path </>) <$> listDirectory path
       allFiles <- for files $ \file -> do
         isDir <- doesDirectoryExist file
         if isDir
