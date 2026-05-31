@@ -4,6 +4,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -228,6 +229,7 @@ import Control.Monad (mapM_, sequence)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State as State (State, execState, runState, state)
 import Data.Foldable (fold)
+import Data.Functor ((<&>))
 import Data.List (deleteBy, groupBy)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
@@ -569,13 +571,13 @@ configureCompiler
         )
         $ do
           liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-          progdb <-
-            liftIO $
-              -- Add paths in the global config
-              prependProgramSearchPath verbosity (fromNubList projectConfigProgPathExtra) [] defaultProgramDb
-                -- Add paths in the local config
-                >>= prependProgramSearchPath verbosity (fromNubList packageConfigProgramPathExtra) []
-                >>= pure . userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
+          progdb <- liftIO $ do
+            -- Add paths in the global config then paths in the local config
+            let addPaths pathList = prependProgramSearchPath verbosity (fromNubList pathList) []
+            let globalPaths :: IO ProgramDb = addPaths projectConfigProgPathExtra defaultProgramDb
+            let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtra
+            let userPaths :: ProgramDb -> ProgramDb = userSpecifyPaths (Map.toList $ getMapLast packageConfigProgramPaths)
+            (globalPaths >>= localPaths) <&> userPaths
           result@(_, _, progdb') <-
             liftIO $
               Cabal.configCompiler

@@ -71,6 +71,7 @@ module Distribution.Simple.Program.Db
   , updatePathProgDb
   ) where
 
+import Data.Functor ((<&>))
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -422,7 +423,7 @@ configureUnconfiguredProgram verbosity prog progdb = do
   maybeLocation <- case userSpecifiedPath prog progdb of
     Nothing ->
       programFindLocation prog verbosity (progSearchPath progdb)
-        >>= return . fmap (swap . fmap FoundOnSystem . swap)
+        <&> fmap (swap . fmap FoundOnSystem . swap)
     Just path -> do
       absolute <- doesExecutableExist path
       if absolute

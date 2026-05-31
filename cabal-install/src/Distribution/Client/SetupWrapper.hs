@@ -183,6 +183,7 @@ import Data.Type.Equality  ( type (==) )
 import Data.Type.Bool      ( If )
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
+import Data.Functor ((<&>))
 import System.IO (Handle, hPutStr)
 import System.Process (StdStream (..))
 import qualified System.Process as Process
@@ -467,7 +468,7 @@ getSetup verbosity options mpkg allowInLibrary = do
     mbWorkDir = useWorkingDir options
     getPkg =
       (tryFindPackageDesc verbosity mbWorkDir >>= readGenericPackageDescription verbosity mbWorkDir . relativeSymbolicPath)
-        >>= return . packageDescription
+        <&> packageDescription
 
 -- | Decide if we're going to be able to do a direct internal call to the
 -- entry point in the Cabal library or if we're going to have to compile

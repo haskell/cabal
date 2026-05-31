@@ -3,6 +3,7 @@
 
 module Distribution.Fields.ConfVar (parseConditionConfVar, parseConditionConfVarFromClause) where
 
+import Data.Functor ((<&>))
 import Distribution.Compat.CharParsing (char, integral)
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field (Field (..), SectionArg (..), sectionArgAnn)
@@ -73,8 +74,8 @@ sepByNonEmpty p sep = (:|) <$> p <*> many (sep *> p)
 parser :: Parser (Condition ConfVar)
 parser = condOr
   where
-    condOr = sepByNonEmpty condAnd (oper "||") >>= return . foldl1 COr
-    condAnd = sepByNonEmpty cond (oper "&&") >>= return . foldl1 CAnd
+    condOr = sepByNonEmpty condAnd (oper "||") <&> foldl1 COr
+    condAnd = sepByNonEmpty cond (oper "&&") <&> foldl1 CAnd
     cond =
       P.choice
         [boolLiteral, parens condOr, notCond, osCond, archCond, flagCond, implCond]

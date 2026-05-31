@@ -31,6 +31,7 @@ import Distribution.Client.Compat.Prelude hiding (many, readFile, (<|>))
 
 import Distribution.Simple.Setup (fromFlagOrDefault)
 
+import Data.Functor ((<&>))
 import qualified Data.List as L
 import qualified Data.Set as Set
 import Distribution.CabalSpecVersion
@@ -140,10 +141,9 @@ guessSourceDirectories :: Interactive m => InitFlags -> m [FilePath]
 guessSourceDirectories flags = do
   pkgDir <- fromFlagOrDefault getCurrentDirectory $ return <$> packageDir flags
 
-  doesDirectoryExist (pkgDir </> "src")
-    >>= return . \case
-      False -> [defaultSourceDir]
-      True -> ["src"]
+  doesDirectoryExist (pkgDir </> "src") <&> \case
+    False -> [defaultSourceDir]
+    True -> ["src"]
 
 -- | Guess author and email using git configuration options.
 guessAuthorName :: Interactive m => m (Maybe String)
