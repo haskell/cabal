@@ -50,6 +50,7 @@ import Distribution.Verbosity
 
 import Control.Monad.State.Strict (StateT, execStateT, lift)
 import qualified Data.ByteString as BS
+import Data.Functor ((<&>))
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors.Parser (ProjectFileSource (..))
@@ -386,7 +387,7 @@ type FieldSuffix = String
 -- | Extract the program name of a <progname> field, allow it to have a suffix such as '-options' and check whether the 'ProgramDB' contains it.
 readProgramName :: FieldSuffix -> ProgramDb -> FieldName -> Maybe String
 readProgramName suffix programDb fieldName =
-  parseProgramName suffix fieldName >>= ((flip lookupKnownProgram) programDb) >>= pure . programName
+  (parseProgramName suffix fieldName >>= ((flip lookupKnownProgram) programDb)) <&> programName
 
 parseProgramName :: FieldSuffix -> FieldName -> Maybe String
 parseProgramName suffix fieldName = case runParsecParser parser "<parseProgramName>" fieldNameStream of

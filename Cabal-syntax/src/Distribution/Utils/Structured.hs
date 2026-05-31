@@ -72,6 +72,7 @@ module Distribution.Utils.Structured
   , typeName
   ) where
 
+import Data.Functor ((<&>))
 import Data.Int (Int16, Int32, Int64, Int8)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Proxy (Proxy (..))
@@ -271,7 +272,7 @@ structuredDecode lbs = snd (Binary.decode lbs :: (Tag a, a))
 
 structuredDecodeOrFailIO :: (Binary.Binary a, Structured a) => LBS.ByteString -> IO (Either String a)
 structuredDecodeOrFailIO bs =
-  catch (evaluate (structuredDecode bs) >>= return . Right) handler
+  catch (evaluate (structuredDecode bs) <&> Right) handler
   where
     handler (ErrorCall str) = return $ Left str
 

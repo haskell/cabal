@@ -34,6 +34,7 @@ module Distribution.PackageDescription.Configuration
   , simplifyWithSysParams
   ) where
 
+import Data.Functor ((<&>))
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -113,8 +114,8 @@ simplifyWithSysParams os arch cinfo cond = (cond', flags)
 parseCondition :: CabalParsing m => m (Condition ConfVar)
 parseCondition = condOr
   where
-    condOr = sepByNonEmpty condAnd (oper "||") >>= return . foldl1 COr
-    condAnd = sepByNonEmpty cond (oper "&&") >>= return . foldl1 CAnd
+    condOr = sepByNonEmpty condAnd (oper "||") <&> foldl1 COr
+    condAnd = sepByNonEmpty cond (oper "&&") <&> foldl1 CAnd
     -- TODO: try?
     cond =
       sp
@@ -127,11 +128,11 @@ parseCondition = condOr
               <|> implCond
            )
     inparens = between (P.char '(' >> sp) (sp >> P.char ')' >> sp)
-    notCond = P.char '!' >> sp >> cond >>= return . CNot
-    osCond = string "os" >> sp >> inparens osIdent >>= return . Var
-    archCond = string "arch" >> sp >> inparens archIdent >>= return . Var
-    flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var
-    implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
+    notCond = (P.char '!' >> sp >> cond) <&> CNot
+    osCond = (string "os" >> sp >> inparens osIdent) <&> Var
+    archCond = (string "arch" >> sp >> inparens archIdent) <&> Var
+    flagCond = (string "flag" >> sp >> inparens flagIdent) <&> Var
+    implCond = (string "impl" >> sp >> inparens implIdent) <&> Var
     boolLiteral = fmap Lit parsec
     archIdent = fmap Arch parsec
     osIdent = fmap OS parsec
