@@ -9,7 +9,7 @@ import Test.Cabal.Prelude
 -- | Test that source-repository-package works correctly with shallow clones
 -- when multiple packages from the same repository are referenced at different commits.
 --
--- This is a regression test for: https://github.com/haskell/cabal/issues/10249
+-- Regression test for: https://github.com/haskell/cabal/pull/10254#issuecomment-4586318112
 -- Before the fix, Cabal would try to use --reference between shallow clones at
 -- different commits, causing "fatal: reference repository '...' is shallow".
 main :: IO ()
@@ -18,13 +18,16 @@ main = cabalTest $ withShorterPathForNewBuildStore $ recordMode DoNotRecord $ do
   let testDir = testCurrentDir env
       upstreamPath = testDir </> "upstream"
 
-  -- Copy template files from upstream-repo/ to upstream/
-  -- (the test framework copies upstream-repo/ to the temp dir automatically)
+  -- Copy template files from repo-template/ to upstream/
+  -- We need to copy because:
+  --   1. The test framework copies all files to a temp directory
+  --   2. We need to initialize a git repo and make separate commits for pkg-a and pkg-b
+  --   3. Can't initialize git repo in repo-template/ since it's tracked by the outer repo
   liftIO $ do
-    copyFileToDir (testDir </> "upstream-repo/pkg-a/pkg-a.cabal") (upstreamPath </> "pkg-a/pkg-a.cabal")
-    copyFileToDir (testDir </> "upstream-repo/pkg-a/src/PkgA.hs") (upstreamPath </> "pkg-a/src/PkgA.hs")
-    copyFileToDir (testDir </> "upstream-repo/pkg-b/pkg-b.cabal") (upstreamPath </> "pkg-b/pkg-b.cabal")
-    copyFileToDir (testDir </> "upstream-repo/pkg-b/src/PkgB.hs") (upstreamPath </> "pkg-b/src/PkgB.hs")
+    copyFileToDir (testDir </> "repo-template/pkg-a/pkg-a.cabal") (upstreamPath </> "pkg-a/pkg-a.cabal")
+    copyFileToDir (testDir </> "repo-template/pkg-a/src/PkgA.hs") (upstreamPath </> "pkg-a/src/PkgA.hs")
+    copyFileToDir (testDir </> "repo-template/pkg-b/pkg-b.cabal") (upstreamPath </> "pkg-b/pkg-b.cabal")
+    copyFileToDir (testDir </> "repo-template/pkg-b/src/PkgB.hs") (upstreamPath </> "pkg-b/src/PkgB.hs")
 
   -- Initialize git repo with two packages at different commits
   (pkgACommit, pkgBCommit) <- withDirectory "upstream" $ do
@@ -44,7 +47,8 @@ main = cabalTest $ withShorterPathForNewBuildStore $ recordMode DoNotRecord $ do
     
     pure (pkgACommit, pkgBCommit)
 
-  -- Generate cabal.project that references both packages at different commits
+  -- Generate cabal.project dynamically with commit hashes
+  -- (Must use writeSourceFile because commit hashes are determined at runtime)
   writeSourceFile "cabal.project" $
     unlines
       [ "packages: dummy-app"
