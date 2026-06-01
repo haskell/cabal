@@ -58,7 +58,7 @@ withIO k = do
             putStrLn $ "Exception: " ++ displayException e
             exitFailure
         _         -> do
-            putStrLn "Usage cabal run ... source.temeplate.ext target.ext"
+            putStrLn "Usage cabal run ... source.template.ext target.ext"
             exitFailure
 
 main :: IO ()
