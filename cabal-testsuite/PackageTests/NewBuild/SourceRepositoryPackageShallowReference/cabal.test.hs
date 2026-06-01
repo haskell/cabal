@@ -37,7 +37,7 @@ main = cabalTest $ withShorterPathForNewBuildStore $ recordMode DoNotRecord $ do
         , "library"
         , "  exposed-modules: PkgA"
         , "  hs-source-dirs: src"
-        , "  build-depends: base >=4.14 && <5"
+        , "  build-depends: base"
         , "  default-language: Haskell2010"
         ]
     writeSourceFile "pkg-a/src/PkgA.hs" $
@@ -62,7 +62,7 @@ main = cabalTest $ withShorterPathForNewBuildStore $ recordMode DoNotRecord $ do
         , "library"
         , "  exposed-modules: PkgB"
         , "  hs-source-dirs: src"
-        , "  build-depends: base >=4.14 && <5"
+        , "  build-depends: base"
         , "  default-language: Haskell2010"
         ]
     writeSourceFile "pkg-b/src/PkgB.hs" $
@@ -89,7 +89,7 @@ main = cabalTest $ withShorterPathForNewBuildStore $ recordMode DoNotRecord $ do
       , "executable dummy-app"
       , "  main-is: Main.hs"
       , "  hs-source-dirs: app"
-      , "  build-depends: base >=4.14 && <5, pkg-a, pkg-b"
+      , "  build-depends: base, pkg-a, pkg-b"
       , "  default-language: Haskell2010"
       ]
   writeSourceFile "dummy-app/app/Main.hs" $
