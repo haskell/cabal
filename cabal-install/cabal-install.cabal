@@ -299,6 +299,10 @@ library
       build-depends:
         , process >= 1.6.15.0
 
+    if os(darwin)
+      build-depends:
+        , process >= 1.6.29.0
+
     if flag(git-rev)
       build-depends: githash ^>= 0.1.7.0
       cpp-options: -DGIT_REV
