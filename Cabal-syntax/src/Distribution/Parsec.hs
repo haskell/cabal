@@ -11,7 +11,6 @@
 module Distribution.Parsec
   ( Parsec (..)
   , ParsecParser (..)
-  , ParsecParserAnn (..)
   , runParsecParser
   , runParsecParser'
   , simpleParsec
@@ -82,7 +81,7 @@ import Distribution.Parsec.Error (PError (..), PErrorWithSource (..), showPError
 import Distribution.Types.Trivia
 
 import Data.Monoid (Last (..))
-import Distribution.Parsec.FieldLineStream (FlsAnn (..), FlsAnnToken (..), FieldLineStream (..), StreamBody (..), fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
+import Distribution.Parsec.FieldLineStream (FieldLineStream (..), fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
 import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
 import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
@@ -129,18 +128,8 @@ newtype ParsecParser a = PP
       -> Parsec.Parsec FieldLineStream [PWarning] a
   }
 
--- | For the instances that understand comments
-newtype ParsecParserAnn a = PPAnn
-  { unPPAnn
-      :: CabalSpecVersion
-      -> Parsec.Parsec FlsAnn [PWarning] a
-  }
-
 liftParsec :: Parsec.Parsec FieldLineStream [PWarning] a -> ParsecParser a
 liftParsec p = PP $ \_ -> p
-
-liftParsecAnn :: Parsec.Parsec FlsAnn [PWarning] a -> ParsecParserAnn a
-liftParsecAnn p = PPAnn $ \_ -> p
 
 instance Functor ParsecParser where
   fmap f p = PP $ \v -> fmap f (unPP p v)
@@ -203,91 +192,8 @@ instance P.CharParsing ParsecParser where
   anyChar = liftParsec P.anyChar
   string = liftParsec . P.string
 
-instance Functor ParsecParserAnn where
-  fmap f p = PPAnn $ \v -> fmap f (unPPAnn p v)
-  {-# INLINE fmap #-}
-
-  x <$ p = PPAnn $ \v -> x <$ unPPAnn p v
-  {-# INLINE (<$) #-}
-
-instance Applicative ParsecParserAnn where
-  pure = liftParsecAnn . pure
-  {-# INLINE pure #-}
-
-  f <*> x = PPAnn $ \v -> unPPAnn f v <*> unPPAnn x v
-  {-# INLINE (<*>) #-}
-  f *> x = PPAnn $ \v -> unPPAnn f v *> unPPAnn x v
-  {-# INLINE (*>) #-}
-  f <* x = PPAnn $ \v -> unPPAnn f v <* unPPAnn x v
-  {-# INLINE (<*) #-}
-
-instance Alternative ParsecParserAnn where
-  empty = liftParsecAnn empty
-
-  a <|> b = PPAnn $ \v -> unPPAnn a v <|> unPPAnn b v
-  {-# INLINE (<|>) #-}
-
-  many p = PPAnn $ \v -> many (unPPAnn p v)
-  {-# INLINE many #-}
-
-  some p = PPAnn $ \v -> some (unPPAnn p v)
-  {-# INLINE some #-}
-
-instance Monad ParsecParserAnn where
-  return = pure
-
-  m >>= k = PPAnn $ \v -> unPPAnn m v >>= \x -> unPPAnn (k x) v
-  {-# INLINE (>>=) #-}
-  (>>) = (*>)
-  {-# INLINE (>>) #-}
-
-instance MonadPlus ParsecParserAnn where
-  mzero = empty
-  mplus = (<|>)
-
-instance Fail.MonadFail ParsecParserAnn where
-  fail = P.unexpected
-
-instance P.Parsing ParsecParserAnn where
-  try p = PPAnn $ \v -> P.try (unPPAnn p v)
-  p <?> d = PPAnn $ \v -> unPPAnn p v P.<?> d
-  skipMany p = PPAnn $ \v -> P.skipMany (unPPAnn p v)
-  skipSome p = PPAnn $ \v -> P.skipSome (unPPAnn p v)
-  unexpected = liftParsecAnn . P.unexpected
-  eof = liftParsecAnn P.eof
-  notFollowedBy p = PPAnn $ \v -> P.notFollowedBy (unPPAnn p v)
-
-instance P.CharParsing ParsecParserAnn where
-  satisfy = liftParsecAnn . satisfyFieldLine
-
-satisfyFieldLine :: (Parsec.Stream s m FlsAnnToken) => (Char -> Bool) -> Parsec.ParsecT s u m Char
-satisfyFieldLine f           = Parsec.tokenPrim (\c -> show [c])
-                                -- not sure if this really matters
-                                ( \pos tok _cs -> case tok of
-                                    FlsAnnTChar c -> Parsec.Pos.updatePosChar pos c
-                                    _ -> error "this \"satisfy\" shouldn't be used on comments"
-                                )
-                                ( \tok -> case tok of
-                                    FlsAnnTChar c | f c -> Just c
-                                    _ -> Nothing
-                                )
-
 class CommentParsing m where
   parseComment :: m ByteString
-
-instance CommentParsing ParsecParserAnn where
-  parseComment              = PPAnn $ \_ ->
-                                  Parsec.tokenPrim (\cmt -> show cmt)
-                                  -- not sure if this really matters
-                                  ( \pos tok _cs -> case tok of
-                                      -- TODO(leana8959): compute char position properly
-                                      FlsAnnTComment _cmt -> pos
-                                      _ -> error "this \"satisfy\" shouldn't be used on tokens"
-                                  )
-                                  ( \tok -> case tok of
-                                      FlsAnnTComment cmt -> Just cmt
-                                      _ -> Nothing
-                                  )
 
 instance CabalParsing ParsecParser where
   parsecWarning t w = liftParsec $ do
@@ -302,17 +208,6 @@ instance CabalParsing ParsecParser where
     -- Fix up the source position
     -- Override the line due to line jumps, and offset the column due to dropped leading spaced
     pure $ Position realRow (col + colOffset - 1)
-
-instance CabalParsing ParsecParserAnn where
-  parsecWarning t w = liftParsecAnn $ do
-    spos <- Parsec.getPosition
-    Parsec.modifyState
-      (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
-  askCabalSpecVersion = PPAnn pure
-
-  getPosition = liftParsecAnn $
-    -- TODO(leana8959): We fake the position for now
-    pure $ Position 0 0
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a
