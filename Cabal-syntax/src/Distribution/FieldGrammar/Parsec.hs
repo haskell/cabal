@@ -173,6 +173,17 @@ parseFieldGrammarCheckingStanzas v commentedFields grammar sections = do
 fieldGrammarKnownFieldList :: ParsecFieldGrammarWith m s a -> [FieldName]
 fieldGrammarKnownFieldList = Set.toList . fieldGrammarKnownFields
 
+extractCommentsField :: NamelessField (WithComments ann) -> ([Comment ann], NamelessField ann)
+extractCommentsField (MkNamelessField ann fields) =
+  let WithComments cmts ann' = ann
+      (fieldComments, fields') = unzip $ map extractCommentsFieldLine fields
+  in  (cmts ++ concat fieldComments, MkNamelessField ann' fields')
+
+extractCommentsFieldLine :: FieldLine (WithComments ann) -> ([Comment ann], FieldLine ann)
+extractCommentsFieldLine (FieldLine ann bs) =
+  let WithComments cmts ann' = ann
+  in  (cmts, FieldLine ann' bs)
+
 instance Applicative (ParsecFieldGrammarWith m s) where
   pure x = ParsecFG mempty mempty (\_ _ -> pure x)
   {-# INLINE pure #-}
@@ -197,7 +208,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
 
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v (fields :: Fields (WithComments Position)) = case Map.lookup fn fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [x] -> parseOne v x
@@ -205,9 +216,8 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
-      parseOne v (MkNamelessField ann fls) =
-        let pos = unComments ann
-        in  unpack' _pack <$> runFieldParser pos parsec v fls
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) =
+        unpack' _pack <$> runFieldParser pos parsec v fls
 
   uniqueFieldAla' = uniqueFieldAla
 
@@ -221,7 +231,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
-      parseOne v (MkNamelessField (unComments->pos) fls) = runFieldParser pos parsec v fls
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = runFieldParser pos parsec v fls
 
   booleanFieldDef' = booleanFieldDef
 
@@ -235,7 +245,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
-      parseOne v (MkNamelessField (unComments->pos) fls)
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls))
         | null fls = pure Nothing
         | otherwise = Just . unpack' _pack <$> runFieldParser pos parsec v fls
 
@@ -251,7 +261,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
-      parseOne v (MkNamelessField (unComments->pos) fls)
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls))
         | null fls = pure def
         | otherwise = unpack' _pack <$> runFieldParser pos parsec v fls
 
@@ -318,7 +328,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
         Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
 
       parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src b
-      parseOne v (MkNamelessField (unComments->pos) fls) = runFieldParser pos parsec v fls
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = runFieldParser pos parsec v fls
 
   monoidalFieldAla' = monoidalFieldAla
 
@@ -422,7 +432,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
-      parseOne v (MkNamelessField (unComments->pos) fls) =
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) =
         unpack' _pack <$> runFieldParser pos parsec v fls
   booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -433,7 +443,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
-      parseOne v (MkNamelessField (unComments->pos) fls) = runFieldParser pos parsec v fls
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = runFieldParser pos parsec v fls
   optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
@@ -443,7 +453,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
-      parseOne v (MkNamelessField (unComments->pos) fls)
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls))
         | null fls = pure Nothing
         | otherwise = Just . unpack' _pack <$> runFieldParser pos parsec v fls
   optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
@@ -455,7 +465,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
-      parseOne v (MkNamelessField (unComments->pos) fls)
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls))
         | null fls = pure def
         | otherwise = unpack' _pack <$> runFieldParser pos parsec v fls
   freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser
@@ -513,7 +523,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         Nothing -> pure mempty
         Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
       parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src b
-      parseOne v (MkNamelessField (unComments->pos) fls) = runFieldParser pos parsec v fls
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = runFieldParser pos parsec v fls
 
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
     where
@@ -617,7 +627,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
           def' = [Ann IsInserted def]
 
       parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src [Ann Positions Bool]
-      parseOne v (MkNamelessField (unComments->pos) fls) = do
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = do
         (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
         pure . (: []) $ Ann (HasTrivia $ Positions Nothing pos flPos) x
 
@@ -643,7 +653,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         Just xs -> map (\(p, a) -> (p,) $ unpack' _pack a) <$> traverse (parseOne v) xs
 
       parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src (Positions, b)
-      parseOne v (MkNamelessField (unComments->pos) fls) = do
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = do
         (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
         pure (Positions Nothing pos flPos, x)
 
@@ -671,7 +681,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
           NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src (Ann Positions a)
-      parseOne v (MkNamelessField (unComments->pos) fls)
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls))
         | null fls = pure def'
         | otherwise = do
             (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition (parsec @b)) v fls
@@ -705,7 +715,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         where
 
       parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src (Ann Positions a)
-      parseOne v (MkNamelessField (unComments->pos) fls) = do
+      parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = do
         (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition (parsec @b)) v fls
         pure (Ann (HasTrivia $ Positions Nothing pos flPos) (unpack' _pack x))
 
@@ -743,14 +753,14 @@ runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
         go n (_ : ps) = go (n - 1) ps
 
 -- TODO(leana8959): relax the argument to take in comments
-runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine (WithComments Position)] -> ParseResult src a
+runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine Position] -> ParseResult src a
 runFieldParser pp p v ls =
   runFieldParser' poss p v
   $ (\x -> pTrace ("runFieldParser got = " <> show x <> "\n") x) 
   $ fieldLinesToStream ls
   where
     poss :: [Position]
-    poss = map (\(FieldLine ann _) -> unComments ann) ls ++ [pp] -- add "default" position
+    poss = map (\(FieldLine ann _) -> ann) ls ++ [pp] -- add "default" position
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
@@ -812,18 +822,10 @@ mealy f = go
     go _ [] = []
     go s (x : xs) = let ~(s', y) = f s x in y : go s' xs
 
-fieldLinesToStream :: [FieldLine (WithComments Position)] -> FieldLineStream
+fieldLinesToStream :: [FieldLine Position] -> FieldLineStream
 fieldLinesToStream = fieldLinesToStream' (Position 1 1)
 
 -- | Fallback to last position when there's no 'FieldLine'
-fieldLinesToStream' :: Position -> [FieldLine (WithComments Position)] -> FieldLineStream
-fieldLinesToStream' defaultPos [] = FLSLast (SBFieldLine mempty) defaultPos
-fieldLinesToStream' defaultPos (FieldLine ann bs : fs) =
-  let WithComments (cmts :: [Comment Position]) pos = ann
-  in  commentLinesToStream cmts
-      $ FLSCons (SBFieldLine bs) pos
-      $ fieldLinesToStream' defaultPos fs
-
-commentLinesToStream :: [Comment Position] -> FieldLineStream -> FieldLineStream
-commentLinesToStream [] = id
-commentLinesToStream (Comment cmt pos : cmts) = FLSCons (SBComment cmt) pos . commentLinesToStream cmts
+fieldLinesToStream' :: Position -> [FieldLine Position] -> FieldLineStream
+fieldLinesToStream' defaultPos [] = FLSLast mempty defaultPos
+fieldLinesToStream' defaultPos (FieldLine pos bs : fs) = FLSCons bs pos $ fieldLinesToStream' defaultPos fs
