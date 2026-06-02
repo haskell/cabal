@@ -104,6 +104,17 @@ import Debug.Pretty.Simple
 -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
 
 
+extractCommentsFieldLines :: [FieldLine (WithComments ann)] -> ([Comment ann], [FieldLine ann])
+extractCommentsFieldLines fields =
+  let (cmts, fields') = unzip $ map extractCommentsFieldLine $ fields
+  in  (concat cmts, fields')
+
+extractCommentsFieldLine :: FieldLine (WithComments ann) -> ([Comment ann], FieldLine ann)
+extractCommentsFieldLine (FieldLine ann bs) =
+  let WithComments cmts ann' = ann
+  in  (cmts, FieldLine ann' bs)
+
+
 -- TODO(leana8959): this is bad. parse don't validate.
 
 -- | Parses the given file into a 'GenericPackageDescription'.
@@ -342,7 +353,7 @@ parseGenericPackageDescriptionPrim' scannedVer lexWarnings utf8WarnPos fs = do
     Just v -> return v
     Nothing -> case Map.lookup "cabal-version" fields >>= safeLast of
       Nothing -> return CabalSpecV1_0
-      Just (MkNamelessField (unComments->pos) fls) -> do
+      Just (MkNamelessField (unComments->pos) (extractCommentsFieldLines->(_cmts, fls))) -> do
         -- version will be parsed twice, therefore we parse without warnings.
         v <-
           withoutWarnings $
@@ -852,6 +863,7 @@ processImports v fromBuildInfo commonStanzas = go []
     getList' :: List CommaFSep Token String -> [String]
     getList' = Newtype.unpack
 
+    -- TODO(leana8959): make import table hold comments
     go
       :: [CondTree ConfVar (BuildInfoWith mod)]
       -> [Field (WithComments Position)]
@@ -863,7 +875,7 @@ processImports v fromBuildInfo commonStanzas = go []
           parseWarning pos PWTUnknownField "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
           go acc fields
     -- supported:
-    go acc (Field (Name ann name) fls : fields) | name == "import" = do
+    go acc (Field (Name ann name) (extractCommentsFieldLines->(_cmts, fls)) : fields) | name == "import" = do
       let pos = unComments ann
       names <- getList' <$> runFieldParser pos parsec v fls
       names' <- for names $ \commonName ->
@@ -1179,7 +1191,7 @@ parseHookedBuildInfo' lexWarnings fs = do
       :: ([FieldLine Position], [Field Position])
       -> ParseResult src ((UnqualComponentName, Fields Position), Maybe ([FieldLine Position], [Field Position]))
     toExe (fss, fields) = do
-      name <- runFieldParser zeroPos parsec cabalSpecLatest ((map . fmap) (WithComments mempty) fss)
+      name <- runFieldParser zeroPos parsec cabalSpecLatest fss
       let (hdr0, rest) = breakMaybe isExecutableField fields
       hdr <- toFields hdr0
       pure ((name, hdr), rest)
