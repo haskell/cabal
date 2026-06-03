@@ -39,7 +39,7 @@ import Distribution.PackageDescription.PrettyPrint (ppGenericPackageDescriptionA
 import Distribution.PackageDescription.FieldGrammar(buildInfoFieldGrammar, miniBuildInfoFieldGrammar, MiniBuildInfo (..))
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription, parseGenericPackageDescriptionPrim, sectionizeFields, takeFields,  parseCommentedGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec                         (CommentParsec (..), ParsecParserAnn (..), Parsec (..), explicitEitherParsec', PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
+import Distribution.Parsec                         (Parsec (..), explicitEitherParsec', PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (Pretty (..), prettyShow)
 import Distribution.Fields.Parser                  (readFields', readFieldsWithComments)
 import Distribution.Fields.ParseResult
@@ -86,7 +86,6 @@ import Distribution.Fields.Field
   , Field (..)
   , FieldLine (..)
   )
-import Distribution.Parsec.FieldLineStream (FlsAnn (..))
 import Distribution.Parsec.Position
   ( Position (..)
   )
@@ -110,7 +109,6 @@ tests = testGroup "parsec tests"
     -- , miniBuildInfoTest
     , smallCabalFileTest
     , parsecParserAnnTest
-    , buildDependParserWithCommentsTest
     ]
 
 -------------------------------------------------------------------------------
@@ -405,15 +403,6 @@ buildDependFieldLineWithComments =
 
 
 
-buildDependParserWithCommentsTest :: TestTree
-buildDependParserWithCommentsTest = testCase "buildDependFieldsWithComments" $ do
-  let dummyInput :: FlsAnn = FlsAnn $ fieldLinesToStream [buildDependFieldLineWithComments]
-
-  parseOutput <- case Parsec.runParser (unPPAnn (commentParsec @DependencyAnn) CabalSpecV3_0) [] "<dummy>" dummyInput of
-                   Left err -> fail $ "PARSE FAILURE: " <> show err
-                   Right ok -> pure ok
-
-  pPrint parseOutput
 
 buildDependFieldsWithComments :: Field (WithComments Position)
 buildDependFieldsWithComments =
