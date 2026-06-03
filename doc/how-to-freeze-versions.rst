@@ -444,9 +444,10 @@ Therefore, we have effectively "frozen" the dependencies in place.
 .. Tip::
 
     To freeze but also build your project with different versions of GHC; fix
-    the compiler version using ``with-compiler`` field and freeze each project
-    separately using the ``--project-file`` option.
-
+    the compiler version using :cfg-field:`with-compiler` field and freeze each
+    project separately using the :ref:`project-file<cmdoption-project-file>`
+    option.
+    
     .. code-block:: bash
 
         $ cabal freeze --project-file=cabal.ghc-9.10.3.project
