@@ -158,12 +158,11 @@ doctest: ## Run doctests.
 	cd cabal-install-solver && $(DOCTEST)
 	cd cabal-install && $(DOCTEST)
 
-# We don't use the cabal-doctest external command but we install it anyway along
-# with doctest.
-# SEE: https://github.com/haskell/cabal/issues/11493
+# Pinning to doctest-0.25.0 to avoid failures with doctest-0.24.3.
+# SEE: https://github.com/haskell/cabal/issues/11493#issuecomment-4615438425
 .PHONY: doctest-install
 doctest-install: ## Install doctest tool needed for running doctests.
-	cabal install doctest-0.24.3 --overwrite-policy=always --ignore-project --flag cabal-doctest
+	cabal install doctest-0.25.0 --overwrite-policy=always --ignore-project --flag cabal-doctest
 
 # tests
 
