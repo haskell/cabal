@@ -308,13 +308,13 @@ Freezing workflows
 
 For the versions of all dependencies at once:
 
-- To check solver-chosen versions - cold snap
+- To check solver-chosen versions - **cold snap**
 
     With this workflow we freeze, inspect then discard ``cabal.project.freeze``,
     always leaving the solver free to choose other versions.  This is great way
     to see what versions of dependencies are currently being used.
 
-- To update versions of all dependencies - thaw and freeze
+- To update versions of all dependencies - **thaw and freeze**
 
     If you changed the version ranges of any of the dependencies in any of your
     project's package descriptions, in any ``.cabal`` file, then delete the
@@ -329,13 +329,15 @@ For the versions of all dependencies at once:
 
 For the version of a single dependency:
 
-- To pin the version of a new dependency
+.. _freeze-harder:
+
+- To pin the version of a new dependency - **freeze harder**
 
     The steps of this workflow are add the new dependency and freeze. The solver
     is free to choose a version for the new dependency while retaining the
     already pinned versions for the rest of the dependencies.
 
-- To update the version of one dependency
+- To update the version of one dependency - **partial thaw and freeze**
 
     If you want to a pick up a different version of a single dependency, you can
     delete its constraint from ``cabal.project.freeze`` and then run ``cabal
@@ -359,12 +361,12 @@ Ensuring everything is frozen
     ensure that dependencies have version constraints but does not require these
     be equality constraints.
 
-Adding a dependency to one of the packages in a project without freezing harder
-leaves the newly added dependency susceptible to getting updated unexpectedly
-when the solver can find a different version for it.  Running ``cabal freeze``
-will show this vulnerability to a human or an automated check that notices a new
-version equality constraint in the ``.freeze`` file, a constraint for a package
-that wasn't in the ``.freeze`` file before.
+Adding a dependency to one of the packages in a project without :ref:`freezing
+harder<freeze-harder>` leaves the newly added dependency susceptible to getting
+updated unexpectedly when the solver can find a different version for it.
+Running ``cabal freeze`` will show this vulnerability to a human or an automated
+check that notices a new version equality constraint in the ``.freeze`` file, a
+constraint for a package that wasn't in the ``.freeze`` file before.
 
 To automate this check, make it a part of continuous integration or make a
 pre-commit hook for it. A simple check for this might be to compare the md5sum
