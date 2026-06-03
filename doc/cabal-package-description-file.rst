@@ -800,11 +800,6 @@ Library
     components in other packages (public). A package can have no more than one
     unnamed library.
 
-    .. Note::
-
-       The 'cabal' executable provided by the 'cabal-install' package will not
-       accept dependencies on sublibraries of packages with no unnamed library.
-
     This guide refers to an unnamed library as the main library and a named
     library as a sublibrary (such components may be considered as subidiary, or
     ancillary, to the main library). It refers to a private sublibrary as an
