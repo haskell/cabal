@@ -5,7 +5,7 @@
 CABALBUILD := cabal build
 CABALRUN   := cabal run
 
-DOCTEST := cabal repl --with-compiler=doctest --build-depends=QuickCheck --verbose=0 --repl-options='-w -Wdefault -Wno-inconsistent-flags'
+DOCTEST := cabal doctest
 
 # default rules
 
@@ -151,6 +151,7 @@ ghcid-cli: ## Run ghcid for the cabal-install executable.
 
 .PHONY: doctest
 doctest: ## Run doctests.
+	cabal --numeric-version
 	cd Cabal-syntax && $(DOCTEST)
 	cd Cabal-described && $(DOCTEST)
 	cd Cabal && $(DOCTEST)
