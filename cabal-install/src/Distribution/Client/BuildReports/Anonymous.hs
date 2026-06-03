@@ -90,7 +90,7 @@ newBuildReport os' arch' comp pkgid flags deps result =
       Left (BR.BuildFailed _) -> BuildFailed
       Left (BR.TestsFailed _) -> TestsFailed
       Left (BR.InstallFailed _) -> InstallFailed
-      Right (BR.BuildResult _ _ _) -> InstallOk
+      Right BR.BuildResult{} -> InstallOk
     convertDocsOutcome = case result of
       Left _ -> NotTried
       Right (BR.BuildResult BR.DocsNotTried _ _) -> NotTried

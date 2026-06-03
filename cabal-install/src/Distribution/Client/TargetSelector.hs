@@ -2400,8 +2400,8 @@ infixl 3 </>
 --
 -- This operator is associative, has unit 'mzero' and is also commutative.
 matchPlus :: Match a -> Match a -> Match a
-matchPlus a@(Match _ _ _) (NoMatch _ _) = a
-matchPlus (NoMatch _ _) b@(Match _ _ _) = b
+matchPlus a@Match{} NoMatch{} = a
+matchPlus NoMatch{} b@Match{} = b
 matchPlus a@(NoMatch d_a ms_a) b@(NoMatch d_b ms_b)
   | d_a > d_b = a -- We only really make use of the depth in the NoMatch case.
   | d_a < d_b = b

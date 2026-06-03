@@ -489,7 +489,7 @@ readRepoIndex verbosity repoCtxt repo idxState =
         { srcpkgPackageId = pkgid
         , srcpkgDescription = pkgdesc
         , srcpkgSource = case pkgEntry of
-            NormalPackage _ _ _ _ -> RepoTarballPackage repo pkgid Nothing
+            NormalPackage{} -> RepoTarballPackage repo pkgid Nothing
             BuildTreeRef _ _ _ path _ -> LocalUnpackedPackage path
         , srcpkgDescrOverride = case pkgEntry of
             NormalPackage _ _ pkgtxt _ -> Just pkgtxt
