@@ -361,12 +361,16 @@ Ensuring everything is frozen
     ensure that dependencies have version constraints but does not require these
     be equality constraints.
 
-Adding a dependency to one of the packages in a project without :ref:`freezing
-harder<freeze-harder>` leaves the newly added dependency susceptible to getting
-updated unexpectedly when the solver can find a different version for it.
-Running ``cabal freeze`` will show this vulnerability to a human or an automated
-check that notices a new version equality constraint in the ``.freeze`` file, a
-constraint for a package that wasn't in the ``.freeze`` file before.
+When adding a new dependency to a project that utilizes a freeze file
+[#add-new-dep]_, regenerating the freeze file using one of the methods described
+above ensures that the freeze file contains a constraint for the new dependency.
+
+Not :ref:`freezing harder<freeze-harder>` leaves the newly added dependency
+susceptible to getting updated unexpectedly when the solver can find a different
+version for it.  Running ``cabal freeze`` will show this vulnerability to a
+human or an automated check that notices a new version equality constraint in
+the ``.freeze`` file, a constraint for a package that wasn't in the ``.freeze``
+file before.
 
 To automate this check, make it a part of continuous integration or make a
 pre-commit hook for it. A simple check for this might be to compare the md5sum
@@ -381,6 +385,8 @@ versions are frozen.
     cabal freeze || exit 1
     NEW_FREEZE_SUM=$(md5sum cabal.project.freeze)
     exit [[ "$NEW_FREEZE_SUM" == "$OLD_FREEZE_SUM" ]]
+
+.. [#add-new-dep] By adding a dependency to one of the packages in the project.
 
 .. _version-exceptions:
 
