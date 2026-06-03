@@ -441,6 +441,20 @@ Therefore, we have effectively "frozen" the dependencies in place.
 
 ``cabal.project.freeze`` is intended to be committed to version control.
 
+.. Tip::
+
+    To freeze but also build your project with different versions of GHC; fix
+    the compiler version using ``with-compiler`` field and freeze each project
+    separately using the ``--project-file`` option.
+
+    .. code-block:: bash
+
+        $ cabal freeze --project-file=cabal.ghc-9.10.3.project
+        $ cabal freeze --project-file=cabal.ghc-9.12.4.project
+
+    Common configuration can be shared between projects by using project
+    imports.
+
 Project environments
 ^^^^^^^^^^^^^^^^^^^^
 
