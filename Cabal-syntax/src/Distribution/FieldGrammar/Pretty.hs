@@ -224,9 +224,13 @@ instance FieldGrammarWith Conc Pretty PrettyFieldGrammarWith where
 
   -- New methods
 
+  -- TODO(leana8959): Think about how to produce pretty fields with interleaved comments
   monoidalFieldAla' fn _pack l = PrettyFG $ \v s ->
-    let bs = fmap (prettyVersioned v . pack' _pack) <$> aview l s
-     in ppFieldPos fn bs
+    -- let bs = fmap (prettyVersioned v . pack' _pack) <$>
+    --           aview l s
+    --  in   
+     mempty
+      -- ppFieldPos fn bs
 
   booleanFieldDef' fn l _def = PrettyFG $ \_v s ->
     aview l s >>= \(Ann t b) -> case t of

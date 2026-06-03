@@ -643,19 +643,19 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
      . (Parsec b, Newtype a b)
     => FieldName
     -> (a -> b)
-    -> ALens' s [(Positions, a)]
-    -> ParsecFieldGrammarWith Conc s [(Positions, a)]
+    -> ALens' s [([Comment Position], (Positions, a))]
+    -> ParsecFieldGrammarWith Conc s [([Comment Position], (Positions, a))]
   monoidalFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser :: CabalSpecVersion -> Fields (WithComments Position) -> ParseResult src [(Positions, a)]
+      parser :: CabalSpecVersion -> Fields (WithComments Position) -> ParseResult src [([Comment Position], (Positions, a))]
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
-        Just xs -> map (\(p, a) -> (p,) $ unpack' _pack a) <$> traverse (parseOne v) xs
+        Just xs -> map (\(cmts, (p, a)) -> (cmts, (p, unpack' _pack a))) <$> traverse (parseOne v) xs
 
-      parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src (Positions, b)
+      parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src ([Comment Position], (Positions, b))
       parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = do
         (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
-        pure (Positions Nothing pos flPos, x)
+        pure (cmts, (Positions Nothing pos flPos, x))
 
   optionalFieldDefAla'
     :: forall b a s

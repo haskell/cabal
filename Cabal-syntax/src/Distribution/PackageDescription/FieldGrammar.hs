@@ -582,6 +582,7 @@ type BuildInfoConstraint (mod :: ParsingPhase) (c :: Type -> Constraint) (g :: P
   , c (List CommaVCat (Identity Mixin) Mixin)
   , Monoid (MonoidalFieldAla mod [AttachPosition mod (Annotate mod String)])
   , Monoid (MonoidalFieldAla mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg File))])
+  , HsSourceDirsGrammarConstr mod c g
   )
 
 buildInfoFieldGrammar
@@ -703,7 +704,7 @@ buildInfoFieldGrammar = do
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammarWith Abst BuildInfo BuildInfo #-}
 
 data MiniBuildInfo (m :: ParsingPhase) = MiniBuildInfo
-  { miniTargetBuildDepends :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (DependencyWith m))])
+  { miniTargetBuildDepends :: MonoidalFieldAla m [AttachPosition m (Annotate m (DependencyWith m))]
   }
 
 deriving instance Show (MiniBuildInfo Conc)
@@ -712,7 +713,7 @@ deriving instance Show (MiniBuildInfo Abst)
 miniTargetBuildDependsLens
   :: forall mod f
    . Functor f
-  => (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (DependencyWith mod))]) -> f (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (DependencyWith mod))])))
+  => (MonoidalFieldAla mod [AttachPosition mod (Annotate mod (DependencyWith mod))] -> f (MonoidalFieldAla mod [AttachPosition mod (Annotate mod (DependencyWith mod))]))
   -> MiniBuildInfo mod
   -> f (MiniBuildInfo mod)
 miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
@@ -731,11 +732,9 @@ miniBuildInfoFieldGrammar =
     <$> monoidalFieldAla' "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
 
 type HsSourceDirsGrammarConstr (ph :: ParsingPhase) (c :: Type -> Constraint) (g :: ParsingPhase -> Type -> Type -> Type) =
-  ( FieldGrammarWith ph c g
-  , L.HasBuildInfoWith ph (BuildInfoWith ph)
-  , -- is a monoid with or without annotation
+  ( -- is a monoid with or without annotation
     Monoid
-      (PreserveGrouping ph (AttachPositions ph [AttachPosition ph (Annotate ph (SymbolicPath Pkg (Dir Source)))]))
+      (MonoidalFieldAla ph [AttachPosition ph (Annotate ph (SymbolicPath Pkg (Dir Source)))])
   , Newtype
       [AttachPosition ph (Annotate ph (SymbolicPath Pkg (Dir Source)))]
       (ListWith ph FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
@@ -744,7 +743,10 @@ type HsSourceDirsGrammarConstr (ph :: ParsingPhase) (c :: Type -> Constraint) (g
 
 hsSourceDirsGrammar
   :: forall mod c g
-   . HsSourceDirsGrammarConstr mod c g
+   . ( FieldGrammarWith mod c g
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+     , HsSourceDirsGrammarConstr mod c g
+     )
   => g mod (BuildInfoWith mod) (MonoidalFieldAla mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))])
 hsSourceDirsGrammar =
   (<>)

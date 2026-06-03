@@ -8,6 +8,7 @@ module Distribution.Types.Annotation where
 
 import Distribution.Parsec.Position
 import Distribution.Types.Trivia
+import Distribution.Fields.Field
 
 import Data.Data
 import Data.Kind
@@ -34,6 +35,8 @@ type PreserveGrouping (m :: ParsingPhase) (a :: Type) = IfConc m List a
 type AttachWith (t :: Type) (m :: ParsingPhase) (a :: Type) = IfConc m ((,) t) a
 type AttachPositions (m :: ParsingPhase) (a :: Type) = AttachWith Positions m a
 type AttachPosition (m :: ParsingPhase) (a :: Type) = AttachWith Position m a
+type AttachComments (m :: ParsingPhase) (a :: Type) = AttachWith [Comment Position] m a
 
 -- FieldGrammar aliases
-type MonoidalFieldAla (m :: ParsingPhase) (a :: Type) = PreserveGrouping m (AttachPositions m a)
+-- Note: within each group, there is an associated comments list and item list
+type MonoidalFieldAla (m :: ParsingPhase) (a :: Type) = PreserveGrouping m (AttachComments m (AttachPositions m a))
