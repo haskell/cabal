@@ -83,6 +83,7 @@ import Distribution.Verbosity as Verbosity
 import Distribution.Version
 import System.Directory
 import System.FilePath (isAbsolute)
+import System.IO (hPutStrLn)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Text as T
@@ -186,7 +187,10 @@ registerAll verbHandles pkg lbi regFlags ipis =
           ( packageId installedPkgInfo == packageId pkg
               && IPI.sourceLibName installedPkgInfo == LMainLibName
           )
-          $ notice verbosity
+          -- Print the IPID unconditionally: this is explicitly-requested
+          -- machine-readable output (via --print-ipid), not a status
+          -- message, so it must not be silenced at low verbosity (e.g. -v0).
+          $ hPutStrLn (verbosityChosenOutputHandle verbosity)
           $ prettyShow (IPI.installedUnitId installedPkgInfo)
 
     -- Three different modes:
