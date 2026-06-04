@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -8,8 +9,8 @@ module Distribution.Client.DistDirLayout
   ( -- * 'DistDirLayout'
     DistDirLayout (..)
   , DistDirParams (..)
+  , ProjectFileKey (..)
   , defaultDistDirLayout
-  , distProjectFileMain
 
     -- * 'ProjectRoot'
   , ProjectRoot (..)
@@ -71,16 +72,32 @@ data DistDirParams = DistDirParams
   --  Optimization
   }
 
+-- | The principal project file is read and parsed. Its file name was either
+-- provided with the @--project-file@ option, or it had the default name of
+-- @cabal.project@.
+--
+-- Related ``.local`` and ``.freeze`` files are read and parsed separately.
+--
+-- This key datatype distinguishes between the different project files, so that
+-- we can give better error messages, such as encountering an unexpected
+-- extension to the principal project file or when a ``.local`` or ``.freeze``
+-- is itself passed as the principal project file or when either are explicitly
+-- imported. They should only ever be implicitly imported.
+data ProjectFileKey
+  = ProjectFileKeyMain
+  | ProjectFileKeyLocal
+  | ProjectFileKeyFreeze
+  deriving (Eq, Ord, Show)
+
 -- | The layout of the project state directory. Traditionally this has been
 -- called the @dist@ directory.
 data DistDirLayout = DistDirLayout
   { distProjectRootDirectory :: FilePath
   -- ^ The root directory of the project. Many other files are relative to
   -- this location (e.g. the @cabal.project@ file).
-  , distProjectFile :: String -> FilePath
-  -- ^ The @cabal.project@ file and related like @cabal.project.freeze@.
-  -- The parameter is for the extension, like \"freeze\", or \"\" for the
-  -- main file.
+  , distProjectFile :: ProjectFileKey -> FilePath
+  -- ^ Files that are project parsing roots, the main @cabal.project@ file and
+  -- its related freeze file and local file.
   , distDirectory :: FilePath
   -- ^ The \"dist\" directory, which is the root of where cabal keeps all
   -- its state including the build artifacts from each package we build.
@@ -184,8 +201,11 @@ defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir =
     distProjectRootDirectory :: FilePath
     distProjectRootDirectory = projectRootDir
 
-    distProjectFile :: String -> FilePath
-    distProjectFile ext = projectFile <.> ext
+    distProjectFile :: ProjectFileKey -> FilePath
+    distProjectFile = \case
+      ProjectFileKeyMain -> projectFile
+      ProjectFileKeyLocal -> projectFile <.> "local"
+      ProjectFileKeyFreeze -> projectFile <.> "freeze"
 
     distDirectory :: FilePath
     distDirectory =
@@ -317,8 +337,3 @@ mkCabalDirLayout mstoreDir mlogDir = do
   cabalLogsDirectory <-
     maybe defaultLogsDir pure mlogDir
   pure $ CabalDirLayout{..}
-
--- | Given the 'DistDirLayout''s distProjectFile function, returns the
--- main project file (i.e. cabal.project).
-distProjectFileMain :: (String -> FilePath) -> FilePath
-distProjectFileMain f = f ""

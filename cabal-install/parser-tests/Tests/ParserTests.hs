@@ -567,16 +567,14 @@ readConfig testSubDir projectFileName = do
   exists <- liftIO $ doesFileExist projectConfigFp
   assertBool ("projectConfig does not exist: " <> projectConfigFp) exists
   httpTransport <- liftIO $ configureTransport verbosity [] Nothing
-  let extensionName = ""
-      extensionDescription = ""
   parsec <-
     liftIO $
       runRebuild testRootFp $
-        readProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription
+        readProjectFileSkeletonParsec verbosity httpTransport distDirLayout ProjectFileKeyMain
   legacy <-
     liftIO $
       runRebuild testRootFp $
-        readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription
+        readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout ProjectFileKeyMain
   return (parsec, legacy)
 
 assertConfigEquals :: (Eq a, Show a) => a -> ProjectConfigSkeleton -> ProjectConfigSkeleton -> (ProjectConfigSkeleton -> a) -> Assertion
@@ -602,8 +600,7 @@ testDirInfo testSubDir projectFileName = do
   let
     projectRoot = ProjectRootExplicit projectRootDir projectFileName
     distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
-    extensionName = ""
-    projectConfigFp = distProjectFile distDirLayout extensionName
+    projectConfigFp = distProjectFile distDirLayout ProjectFileKeyMain
   return $ TestDir projectRootDir projectConfigFp distDirLayout
 
 -- | Compares two lists element-wise using a comparison function.
