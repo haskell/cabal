@@ -270,7 +270,7 @@ buildExtraSources
                 ProfDynWay -> compileIfNeeded profSharedSrcOpts
 
       -- build any sources
-      if (null sources || componentIsIndefinite clbi)
+      if null sources || componentIsIndefinite clbi
         then return mempty
         else do
           info verbosity ("Building " ++ description ++ "...")

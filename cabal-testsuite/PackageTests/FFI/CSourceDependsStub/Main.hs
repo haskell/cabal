@@ -11,6 +11,6 @@ main :: IO ()
 main = do
     secret <- meaning_of_life_c
     -- The value 11 comes from the exported Lib.hello
-    if (secret == 11)
+    if secret == 11
         then putStrLn ("The secret is " ++ show secret)
         else error ("Expected value 11, got " ++ show secret)

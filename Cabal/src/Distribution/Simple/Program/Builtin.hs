@@ -352,7 +352,7 @@ tarProgram =
             -- Some versions of tar don't support '--help'.
             `catchIO` (\_ -> return "")
         let k = "Supports --format"
-            v = if ("--format" `isInfixOf` tarHelpOutput) then "YES" else "NO"
+            v = if "--format" `isInfixOf` tarHelpOutput then "YES" else "NO"
             m = Map.insert k v (programProperties tarProg)
         return $ tarProg{programProperties = m}
     }

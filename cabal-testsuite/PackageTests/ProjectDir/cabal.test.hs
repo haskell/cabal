@@ -10,7 +10,7 @@ main = cabalTest $ recordMode DoNotRecord $ do
   cabal "v2-build" [ "--project-dir=proj", "all" ]
 
   -- Absolute directory
-  cabal "v2-build" [ "--project-dir", (cwd </> "proj"), "all" ]
+  cabal "v2-build" [ "--project-dir", cwd </> "proj", "all" ]
 
   cabal "v2-clean" [ "--project-dir=proj" ]
 

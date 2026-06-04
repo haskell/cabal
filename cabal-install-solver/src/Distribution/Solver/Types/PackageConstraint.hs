@@ -140,8 +140,8 @@ packageConstraintToDependency :: PackageConstraint -> Maybe PackageVersionConstr
 packageConstraintToDependency (PackageConstraint scope prop) = toDep prop
   where
     toDep (PackagePropertyVersion vr) = Just $ PackageVersionConstraint (scopeToPackageName scope) vr
-    toDep (PackagePropertyInstalled)  = Nothing
+    toDep PackagePropertyInstalled  = Nothing
     toDep (PackagePropertyInstalledSpecificUnitId {}) = Nothing
-    toDep (PackagePropertySource)     = Nothing
+    toDep PackagePropertySource       = Nothing
     toDep (PackagePropertyFlags _)    = Nothing
     toDep (PackagePropertyStanzas _)  = Nothing

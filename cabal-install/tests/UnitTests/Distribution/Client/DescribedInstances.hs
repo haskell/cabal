@@ -92,7 +92,7 @@ instance Described RootedGlob where
 
 instance Described RelaxedDep where
   describe _ =
-    REOpt (describeRelaxDepScope <> ":" <> REOpt ("^"))
+    REOpt (describeRelaxDepScope <> ":" <> REOpt "^")
       <> describe (Proxy :: Proxy RelaxDepSubject)
     where
       describeRelaxDepScope =

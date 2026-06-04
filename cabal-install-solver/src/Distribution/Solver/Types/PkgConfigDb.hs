@@ -109,7 +109,7 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
           -- one package version, so if the returned list is shorter than the
           -- requested one, we fall back to querying one by one.
           do
-            info verbosity ("call to pkg-config --modversion on all packages failed. Falling back to querying pkg-config individually on each package")
+            info verbosity "call to pkg-config --modversion on all packages failed. Falling back to querying pkg-config individually on each package"
             Just . pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
   where
     -- For when pkg-config invocation fails (possibly because of a

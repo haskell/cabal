@@ -234,7 +234,7 @@ instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ map
        in l <> mconcat branches
     processBranch (CondBranch cnd t mf) = case cnd of
       (Lit True) -> [go t]
-      (Lit False) -> maybe ([]) ((: []) . go) mf
+      (Lit False) -> maybe [] ((: []) . go) mf
       _ -> error $ "unable to process condition: " ++ show cnd -- TODO it would be nice if there were a pretty printer
 
 -- | Parses a project from its root config file, typically cabal.project.

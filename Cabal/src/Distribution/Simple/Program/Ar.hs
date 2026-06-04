@@ -142,7 +142,7 @@ createArLibArchive verbosity lbi targetPath files = do
 
         invokeWithResponseFile :: FilePath -> ProgramInvocation
         invokeWithResponseFile atFile =
-          (ar $ simpleArgs ++ extraArgs ++ ['@' : atFile])
+          ar $ simpleArgs ++ extraArgs ++ ['@' : atFile]
 
     if oldVersionManualOverride || responseArgumentsNotSupported
       then

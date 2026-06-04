@@ -185,7 +185,7 @@ ppCondBenchmarks v suites =
 ppCondition :: Condition ConfVar -> Doc
 ppCondition (Var x) = ppConfVar x
 ppCondition (Lit b) = text (show b)
-ppCondition (CNot c) = char '!' <<>> (ppCondition c)
+ppCondition (CNot c) = char '!' <<>> ppCondition c
 ppCondition (COr c1 c2) =
   parens
     ( hsep

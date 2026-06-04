@@ -138,7 +138,7 @@ silentTest = wrapTest silentHelper
           else res
 
 testCase :: String -> Assertion -> TestTree
-testCase desc action = (T.testCase desc action)
+testCase desc action = T.testCase desc action
 
 tests :: ProjectConfig -> [TestTree]
 tests config =
@@ -957,7 +957,7 @@ testTargetProblemsBuild config reportSubCase = do
       CmdBuild.selectPackageTargets
       CmdBuild.selectComponentTarget
       [mkTargetPackage "p-0.1"]
-      [ ("p-0.1-inplace", (CLibName LMainLibName))
+      [ ("p-0.1-inplace", CLibName LMainLibName)
       , ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
       , ("p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
       , ("p-0.1-inplace-an-exe", CExeName "an-exe")
@@ -983,7 +983,7 @@ testTargetProblemsBuild config reportSubCase = do
       CmdBuild.selectPackageTargets
       CmdBuild.selectComponentTarget
       [mkTargetPackage "p-0.1"]
-      [ ("p-0.1-inplace", (CLibName LMainLibName))
+      [ ("p-0.1-inplace", CLibName LMainLibName)
       , ("p-0.1-inplace-an-exe", CExeName "an-exe")
       , ("p-0.1-inplace-libp", CFLibName "libp")
       ]
@@ -1158,7 +1158,7 @@ testTargetProblemsRepl config reportSubCase = do
       (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
       [TargetPackage TargetExplicitNamed ["p-0.1"] Nothing]
-      [("p-0.1-inplace", (CLibName LMainLibName))]
+      [("p-0.1-inplace", CLibName LMainLibName)]
     -- When we select the package with an explicit filter then we get those
     -- components even though we did not explicitly enable tests/benchmarks
     assertProjectDistinctTargets
@@ -1480,7 +1480,7 @@ testTargetProblemsTest config reportSubCase = do
             [ (CTestName "a-testsuite", "TestModule")
             , (CBenchName "a-benchmark", "BenchModule")
             , (CExeName "an-exe", "ExeModule")
-            , ((CLibName LMainLibName), "P")
+            , (CLibName LMainLibName, "P")
             ]
          ]
       ++ [ ( const
@@ -1634,7 +1634,7 @@ testTargetProblemsBench config reportSubCase = do
             [ (CTestName "a-testsuite", "TestModule")
             , (CBenchName "a-benchmark", "BenchModule")
             , (CExeName "an-exe", "ExeModule")
-            , ((CLibName LMainLibName), "P")
+            , (CLibName LMainLibName, "P")
             ]
          ]
       ++ [ ( const
@@ -1711,7 +1711,7 @@ testTargetProblemsHaddock config reportSubCase = do
         (CmdHaddock.selectPackageTargets haddockFlags)
         CmdHaddock.selectComponentTarget
         [mkTargetPackage "p-0.1"]
-        [ ("p-0.1-inplace", (CLibName LMainLibName))
+        [ ("p-0.1-inplace", CLibName LMainLibName)
         , ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
         , ("p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
         , ("p-0.1-inplace-an-exe", CExeName "an-exe")
@@ -1727,7 +1727,7 @@ testTargetProblemsHaddock config reportSubCase = do
         (CmdHaddock.selectPackageTargets haddockFlags)
         CmdHaddock.selectComponentTarget
         [mkTargetPackage "p-0.1"]
-        [("p-0.1-inplace", (CLibName LMainLibName))]
+        [("p-0.1-inplace", CLibName LMainLibName)]
 
   reportSubCase "requested component kinds"
   -- When we selecting the package with an explicit filter then it does not
@@ -2018,7 +2018,7 @@ testRegressionIssue3324 config = when (buildOS /= Windows) $ do
   -- add the missing dep, now it should work
   let qcabal = basedir </> testdir </> "q" </> "q.cabal"
   withFileFinallyRestore qcabal $ do
-    tryFewTimes $ BS.appendFile qcabal ("  build-depends: p\n")
+    tryFewTimes $ BS.appendFile qcabal "  build-depends: p\n"
     (plan2, res2) <- executePlan =<< planProject testdir config
     _ <- expectPackageInstalled plan2 res2 "p-0.1"
     _ <- expectPackageInstalled plan2 res2 "q-0.1"
@@ -2094,7 +2094,7 @@ testProgramOptionsSpecific config0 = do
 
   assertEqual
     "q"
-    (Nothing)
+    Nothing
     (getProgArgs packages "q")
   assertEqual
     "p"

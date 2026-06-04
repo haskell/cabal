@@ -127,7 +127,7 @@ normalizeOutput nenv =
         "\"path\":\"<GHCPATH>\""
         -- Normalize the C compiler path embedded in -pgmc.
         . resub
-          ("\"-pgmc\",\"[^\"]+\"")
+          "\"-pgmc\",\"[^\"]+\""
           "\"-pgmc\",\"<CCPATH>\""
         -- Remove cabal version output from show-build-info output
         . resub
@@ -145,7 +145,7 @@ normalizeOutput nenv =
         -- This makes it impossible to have a stable package id, thus remove it completely.
         -- Check manually in your test-cases if the package-id needs to be verified.
         . resub
-          ("\"-package-id\",\"([^\"]*)\"")
+          "\"-package-id\",\"([^\"]*)\""
           "\"-package-id\",\"<PACKAGEDEP>\""
 
 data NormalizerEnv = NormalizerEnv

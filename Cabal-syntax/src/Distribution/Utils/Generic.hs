@@ -307,7 +307,7 @@ ignoreBOM string = string
 --
 -- Reads lazily using ordinary 'readFile'.
 readUTF8File :: FilePath -> IO String
-readUTF8File f = (ignoreBOM . fromUTF8LBS) <$> LBS.readFile f
+readUTF8File f = ignoreBOM . fromUTF8LBS <$> LBS.readFile f
 
 -- | Reads a UTF8 encoded text file as a Unicode String
 --
@@ -478,7 +478,7 @@ isAscii c = fromEnum c < 0x80
 
 -- | Ascii letters.
 isAsciiAlpha :: Char -> Bool
-isAsciiAlpha c = (isAsciiLower c) || (isAsciiUpper c)
+isAsciiAlpha c = isAsciiLower c || isAsciiUpper c
 
 -- | Ascii letters and digits.
 --
@@ -544,7 +544,7 @@ unfoldrM f = go
       m <- f b
       case m of
         Nothing -> return []
-        Just (a, b') -> (a :) <$> (go b')
+        Just (a, b') -> (a :) <$> go b'
 
 -- | The opposite of 'snoc', which is the reverse of 'cons'
 --

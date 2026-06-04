@@ -230,14 +230,14 @@ parseFields fieldDescrs =
 
 -- | This is a customised version of the functions from Distribution.Deprecated.ParseUtils
 -- that also optionally print default values for empty fields as comments.
-ppFields :: [FieldDescr a] -> (Maybe a) -> a -> Disp.Doc
+ppFields :: [FieldDescr a] -> Maybe a -> a -> Disp.Doc
 ppFields fields def cur =
   Disp.vcat
     [ ppField name (fmap getter def) (getter cur)
     | FieldDescr name getter _ <- fields
     ]
 
-ppField :: String -> (Maybe Disp.Doc) -> Disp.Doc -> Disp.Doc
+ppField :: String -> Maybe Disp.Doc -> Disp.Doc -> Disp.Doc
 ppField name mdef cur
   | Disp.isEmpty cur =
       maybe
@@ -255,13 +255,13 @@ ppField name mdef cur
 --
 -- Since 'ppFields' does not cover subsections you can use this to add them.
 -- Or alternatively use a 'SectionDescr' and use 'ppFieldsAndSections'.
-ppSection :: String -> String -> [FieldDescr a] -> (Maybe a) -> a -> Disp.Doc
+ppSection :: String -> String -> [FieldDescr a] -> Maybe a -> a -> Disp.Doc
 ppSection name arg fields def cur
   | Disp.isEmpty fieldsDoc = Disp.empty
   | otherwise =
       Disp.text name
         <+> argDoc
-        $+$ (Disp.nest 2 fieldsDoc)
+        $+$ Disp.nest 2 fieldsDoc
   where
     fieldsDoc = ppFields fields def cur
     argDoc
@@ -397,7 +397,7 @@ ppSectionAndSubsections name arg fields sections fgSections cur
   | otherwise =
       Disp.text name
         <+> argDoc
-        $+$ (Disp.nest 2 fieldsDoc)
+        $+$ Disp.nest 2 fieldsDoc
   where
     fieldsDoc = showConfig fields sections fgSections cur
     argDoc
@@ -421,7 +421,7 @@ ppFgSection secName arg grammar x
   | otherwise =
       Disp.text secName
         <+> argDoc
-        $+$ (Disp.nest 2 fieldsDoc)
+        $+$ Disp.nest 2 fieldsDoc
   where
     prettyFields = FG.prettyFieldGrammar cabalSpecLatest grammar x
 

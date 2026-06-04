@@ -115,10 +115,9 @@ linkProvision mod_name ret@(prov : provs) (req : reqs) = do
     reqs_doc
       | null reqs = dispModuleSource (getSource req)
       | otherwise =
-          ( text "   "
-              <+> dispModuleSource (getSource req)
-              $$ vcat [text "and" <+> dispModuleSource (getSource r) | r <- reqs]
-          )
+          text "   "
+            <+> dispModuleSource (getSource req)
+            $$ vcat [text "and" <+> dispModuleSource (getSource r) | r <- reqs]
 linkProvision _ _ _ = error "linkProvision"
 
 -----------------------------------------------------------------------

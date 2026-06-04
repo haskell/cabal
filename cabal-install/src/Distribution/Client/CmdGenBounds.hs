@@ -147,7 +147,7 @@ genBoundsAction flags targetStrings globalFlags =
     -- Process each package to find the ones needing bounds
     let boundsActions = concatMap genBoundsActionForPkg localPkgs
 
-    if (any isBoundsNeeded boundsActions)
+    if any isBoundsNeeded boundsActions
       then do
         notice verbosity boundsNeededMsg
         mapM_ (renderBoundsResult verbosity) boundsActions
@@ -200,7 +200,7 @@ getBoundsForComponent tgt pkg pkgVersionMap =
     -- \* the dependency does not have an upper bound
     -- \* the dependency is not the same package as the one we are processing
     boundFilter dep =
-      (not (hasUpperBound (depVerRange dep)))
+      not (hasUpperBound (depVerRange dep))
         && packageName pd /= depPkgName dep
 
     -- The dependencies that need bounds.

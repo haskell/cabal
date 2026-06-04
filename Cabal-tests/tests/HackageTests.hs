@@ -420,7 +420,7 @@ main = join (O.execParser opts)
     indexPredicate :: Maybe Tar.EpochTime -> (k -> Bool) -> (Tar.EpochTime -> k -> Bool)
     indexPredicate Nothing k = const k
     indexPredicate (Just indexDate) k =
-        \e -> if (e <= indexDate) then k else const False
+        \e -> if e <= indexDate then k else const False
 
     mkPredicate :: [String] -> Maybe Tar.EpochTime -> (Tar.EpochTime -> FilePath -> Bool)
     mkPredicate [] idx = indexPredicate idx (const True)

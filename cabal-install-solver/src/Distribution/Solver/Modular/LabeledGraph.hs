@@ -52,7 +52,7 @@ graphFromEdges edges0 =
     sorted_edges = sortBy lt edges0
     edges1       = zip [0..] sorted_edges
 
-    graph        = array bounds0 [(v, (mapMaybe mk_edge ks))
+    graph        = array bounds0 [(v, mapMaybe mk_edge ks)
                                  | (v, (_, _, ks)) <- edges1]
     key_map      = array bounds0 [(v, k                    )
                                  | (v, (_, k, _ )) <- edges1]

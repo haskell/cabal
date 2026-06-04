@@ -414,7 +414,7 @@ exceptionMessageCabalInstall e = case e of
       ++ msg
       ++ "The package index or index cache is probably "
       ++ "corrupt. Running cabal update might fix it."
-  ReadIndexCache paths -> show (paths)
+  ReadIndexCache paths -> show paths
   ConfigStateFileException err -> err
   UploadAction -> "the 'upload' command expects at least one .tar.gz archive."
   UploadActionDocumentation ->

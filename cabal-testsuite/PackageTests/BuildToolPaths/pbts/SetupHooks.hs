@@ -124,7 +124,7 @@ preBuildRules
       let ppMods = catMaybes ppMbMods
       liftIO $ putStrLn $ unlines $
         "pbts: hs-pp modules:"
-        : ( map ( \ m -> "  - " ++ show m ) ppMods )
+        : map ( \ m -> "  - " ++ show m ) ppMods
     -- TODO: declare the corresponding monitored files corresponding to the
     -- above search (it would be nice to be able to use findFileWithExtensionMonitored).
 

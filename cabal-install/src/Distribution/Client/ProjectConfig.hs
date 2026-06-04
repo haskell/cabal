@@ -562,7 +562,7 @@ resolveNumJobsSetting
 resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs =
   if fromFlag projectConfigUseSemaphore
     then UseSem (determineNumJobs projectConfigNumJobs)
-    else case (determineNumJobs projectConfigNumJobs) of
+    else case determineNumJobs projectConfigNumJobs of
       1 -> Serial
       n -> NumJobs (Just n)
 
@@ -864,7 +864,7 @@ readProjectFileSkeletonGen
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
-      extensionFile = (distProjectFile dir) extensionName
+      extensionFile = distProjectFile dir extensionName
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser

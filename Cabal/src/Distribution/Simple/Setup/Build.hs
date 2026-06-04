@@ -146,18 +146,17 @@ buildOptions progDb showOrParseArgs =
     buildCommonFlags
     (\c f -> f{buildCommonFlags = c})
     showOrParseArgs
-    ( [ optionNumJobs
-          buildNumJobs
-          (\v flags -> flags{buildNumJobs = v})
-      , option
-          []
-          ["semaphore"]
-          "Use the specified semaphore so GHC can compile components in parallel"
-          buildUseSemaphore
-          (\v flags -> flags{buildUseSemaphore = v})
-          (reqArg' "SEMAPHORE" Flag flagToList)
-      ]
-    )
+    [ optionNumJobs
+        buildNumJobs
+        (\v flags -> flags{buildNumJobs = v})
+    , option
+        []
+        ["semaphore"]
+        "Use the specified semaphore so GHC can compile components in parallel"
+        buildUseSemaphore
+        (\v flags -> flags{buildUseSemaphore = v})
+        (reqArg' "SEMAPHORE" Flag flagToList)
+    ]
     ++ programDbPaths
       progDb
       showOrParseArgs

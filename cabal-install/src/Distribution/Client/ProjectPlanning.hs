@@ -942,7 +942,7 @@ rebuildInstallPlan
               $ getPackageSourceHashes verbosity withRepoCtx solverPlan
 
           defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
-          let installDirs = fmap Cabal.fromFlag $ (fmap Flag defaultInstallDirs) <> (projectConfigInstallDirs projectConfigShared)
+          let installDirs = fmap Cabal.fromFlag $ fmap Flag defaultInstallDirs <> projectConfigInstallDirs projectConfigShared
           -- Configure the compiler ProgramDb now (once for the entire project),
           -- to avoid repeatedly doing this once per package.
           configuredCompilerProgDb <- liftIO $ configureAllKnownPrograms verbosity compilerProgDb
@@ -1720,10 +1720,9 @@ elaborateInstallPlan
             , not (IPI.indefinite ipkg) =
                 Just
                   ( IPI.installedUnitId ipkg
-                  , ( FullUnitId
-                        (IPI.installedComponentId ipkg)
-                        (Map.fromList (IPI.instantiatedWith ipkg))
-                    )
+                  , FullUnitId
+                      (IPI.installedComponentId ipkg)
+                      (Map.fromList (IPI.instantiatedWith ipkg))
                   )
           f _ = Nothing
 
@@ -2099,7 +2098,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverId
         -> [ElaboratedPlanPackage]
-      elaborateLibSolverId mapDep = filter (matchPlanPkg (== (CLibName LMainLibName))) . mapDep
+      elaborateLibSolverId mapDep = filter (matchPlanPkg (== CLibName LMainLibName)) . mapDep
 
       -- \| Given an 'ElaboratedPlanPackage', return the paths to where the
       -- executables that this package represents would be installed.
@@ -2182,7 +2181,7 @@ elaborateInstallPlan
               maybe
                 emptyModuleShape
                 Ty.elabModuleShape
-                (find (matchElabPkg (== (CLibName LMainLibName))) comps)
+                (find (matchElabPkg (== CLibName LMainLibName)) comps)
 
             pkgInstalledId
               | shouldBuildInplaceOnly pkg =
@@ -2938,10 +2937,9 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
       | Just planpkg <- Map.lookup cid cmap =
           case planpkg of
             InstallPlan.Configured
-              ( elab0@ElaboratedConfiguredPackage
-                  { elabPkgOrComp = ElabComponent comp
-                  }
-                ) -> do
+              elab0@ElaboratedConfiguredPackage
+                { elabPkgOrComp = ElabComponent comp
+                } -> do
                 deps <-
                   traverse (fmap fst . substUnitId insts) (compLinkedLibDependencies comp)
                 let build_style = fold (fmap snd insts)
@@ -3060,7 +3058,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
       | otherwise = error ("indefiniteComponent: " ++ prettyShow cid)
 
     fixupBuildStyle BuildAndInstall elab = elab
-    fixupBuildStyle _ (elab@ElaboratedConfiguredPackage{elabBuildStyle = BuildInplaceOnly{}}) = elab
+    fixupBuildStyle _ elab@ElaboratedConfiguredPackage{elabBuildStyle = BuildInplaceOnly{}} = elab
     fixupBuildStyle t@(BuildInplaceOnly{}) elab =
       elab
         { elabBuildStyle = t
@@ -3325,7 +3323,7 @@ availableSourceTargets elab =
                 compComponentName elabComponent == Just cname
               ElabPackage _ ->
                 case componentName component of
-                  CLibName (LMainLibName) -> True
+                  CLibName LMainLibName -> True
                   CExeName _ -> True
                   -- TODO: what about sub-libs and foreign libs?
                   _ -> False
@@ -3342,7 +3340,7 @@ nubComponentTargets =
   concatMap (wholeComponentOverrides . map snd)
     . groupBy ((==) `on` fst)
     . sortBy (compare `on` fst)
-    . map ((\t@((ComponentTarget cname _, _)) -> (cname, t)) . compatSubComponentTargets)
+    . map ((\t@(ComponentTarget cname _, _) -> (cname, t)) . compatSubComponentTargets)
   where
     -- If we're building the whole component then that the only target all we
     -- need, otherwise we can have several targets within the component.
@@ -3565,7 +3563,7 @@ pruneInstallPlanPass1 pkgs
     add_repl_target ecp
       | elabUnitId ecp `Set.member` all_desired_repl_targets =
           ecp
-            { elabReplTarget = maybeToList (ComponentTarget <$> (elabComponentName ecp) <*> pure WholeComponent)
+            { elabReplTarget = maybeToList (ComponentTarget <$> elabComponentName ecp <*> pure WholeComponent)
             , elabBuildStyle = BuildInplaceOnly InMemory
             }
       | otherwise = ecp
@@ -3808,7 +3806,7 @@ pruneInstallPlanPass2 pkgs =
       where
         -- We initially assume that all the dependencies are external (hence the boolean is always
         -- False) and here we correct the dependencies so the right packages are marked promised.
-        addInternal (cid, _) = (cid, (cid `Set.member` inMemoryTargets))
+        addInternal (cid, _) = (cid, cid `Set.member` inMemoryTargets)
 
         libTargetsRequiredForRevDeps =
           [ c

@@ -26,11 +26,11 @@ v''' = "GNU strip (GNU (Binutils for) Ubuntu 12.04 ) 2.22"
 tests :: [TestTree]
 tests =
     [ testCase "Handles parentheses" $
-      (stripExtractVersion v)    @=? "2.24"
+      stripExtractVersion v    @=? "2.24"
     , testCase "Handles dashes and alphabetic characters" $
-      (stripExtractVersion v')   @=? "2.17"
+      stripExtractVersion v'   @=? "2.17"
     , testCase "Handles single-word parenthetical expressions" $
-      (stripExtractVersion v'')  @=? "2.23"
+      stripExtractVersion v''  @=? "2.23"
     , testCase "Handles nested parentheses" $
-      (stripExtractVersion v''') @=? "2.22"
+      stripExtractVersion v''' @=? "2.22"
     ]

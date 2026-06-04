@@ -154,7 +154,7 @@ parser = condOr
     updatePosition :: P.SourcePos -> SectionArg Position -> [SectionArg Position] -> P.SourcePos
     updatePosition x s _ =
       let Position line col = sectionArgAnn s
-       in P.setSourceLine (P.setSourceColumn x col) (line)
+       in P.setSourceLine (P.setSourceColumn x col) line
     prettySectionArg = show
 
     fromParsec :: Parsec a => Parser a

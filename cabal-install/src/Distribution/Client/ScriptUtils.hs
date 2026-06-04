@@ -385,7 +385,7 @@ withContextAndSelectors verbosity noTargets kind flags@NixStyleFlags{..} targetS
 
           let ctx' = ctx & lProjectConfig %~ (<> projectCfg)
 
-              build_dir = distBuildDirectory (distDirLayout ctx') $ (scriptDistDirParams script) ctx' compiler platform
+              build_dir = distBuildDirectory (distDirLayout ctx') $ scriptDistDirParams script ctx' compiler platform
               exePath = build_dir </> "bin" </> scriptExeFileName script
               exePathRel = makeRelative (normalise projectRoot) exePath
 

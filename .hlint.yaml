@@ -1,11 +1,10 @@
 # Warnings currently triggered by your code
 - ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
 - ignore: {name: "Avoid lambda"} # 54 hints
-- ignore: {name: "Eta reduce"} # 137 hints
+- ignore: {name: "Eta reduce"} # 139 hints
 - ignore: {name: "Hoist not"} # 16 hints
 - ignore: {name: "Move filter"} # 4 hints
 - ignore: {name: "Redundant $!"} # 3 hints
-- ignore: {name: "Redundant bracket"} # 255 hints
 - ignore: {name: "Redundant guard"} # 1 hint
 - ignore: {name: "Redundant if"} # 6 hints
 - ignore: {name: "Redundant lambda"} # 16 hints
@@ -29,6 +28,14 @@
 - ignore: {name: "Functor law", within: [Test.Laws]}
 - ignore: {name: "Monoid law, left identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
 - ignore: {name: "Monoid law, right identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
+# Changing the Z modules will change the "Meta checks" CI job and fail its
+# "Check diff is clean" test. Wait until the 3.18 release before making changes
+# to these modules.
+- ignore:
+    name: "Redundant bracket"
+    within:
+      - Distribution.Simple.Build.PathsModule.Z
+      - Distribution.Simple.Build.Macros.Z
 - ignore: {name: "Replace case with maybe", within: [Distribution.Client.InLibrary]}
 - ignore: {name: "Use fmap", within: [Distribution.Client.HttpUtils, Distribution.Simple.SrcDist]}
 - ignore: {name: "Use fold", within: [Test.Laws]}
