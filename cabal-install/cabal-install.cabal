@@ -388,7 +388,7 @@ test-suite unit-tests
       , tasty-expected-failure
       , tasty-hunit >= 0.10
       , tree-diff
-      , QuickCheck >= 2.14.3 && <2.18
+      , QuickCheck >= 2.14.3 && <2.19
 
 -- Tests for the project file parser
 test-suite parser-tests
@@ -494,5 +494,5 @@ test-suite long-tests
     , tasty-expected-failure
     , tasty-hunit >= 0.10
     , tasty-quickcheck <0.12
-    , QuickCheck >= 2.14 && <2.18
+    , QuickCheck >= 2.14 && <2.19
     , pretty-show >= 1.6.15
