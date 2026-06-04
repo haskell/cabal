@@ -598,7 +598,7 @@ resolveTargetsFromSolver
        -> Either (TargetProblem err) k
      )
   -> ElaboratedInstallPlan
-  -> Maybe (SourcePackageDb)
+  -> Maybe SourcePackageDb
   -> [TargetSelector]
   -> Either [TargetProblem err] TargetsMap
 resolveTargetsFromSolver selectPackageTargets selectComponentTarget installPlan sourceDb targetSelectors =
@@ -682,7 +682,7 @@ resolveTargets
        -> Either (TargetProblem err) k
      )
   -> AvailableTargetIndexes u
-  -> Maybe (SourcePackageDb)
+  -> Maybe SourcePackageDb
   -> [TargetSelector]
   -> Either [TargetProblem err] (TargetsMapX u)
 resolveTargets

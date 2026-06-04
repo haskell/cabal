@@ -56,7 +56,7 @@ parsecNumJobs = ncpus <|> numJobs
 
 newtype URI_NT = URI_NT {getURI_NT :: URI}
 
-instance Newtype (URI) URI_NT
+instance Newtype URI URI_NT
 
 instance Parsec URI_NT where
   parsec = parsecURI_NT

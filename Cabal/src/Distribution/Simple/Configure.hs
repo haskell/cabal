@@ -1744,7 +1744,7 @@ dependencySatisfiable
               else Satisfied
 
       internalDepSatisfiable =
-        let missingLibraries = (NES.toSet sublibs) `Set.difference` packageLibraries
+        let missingLibraries = NES.toSet sublibs `Set.difference` packageLibraries
          in case nonEmpty $ Set.toList missingLibraries of
               Nothing -> Satisfied
               Just missingLibraries' -> Unsatisfied $ MissingLibrary missingLibraries'
@@ -2641,8 +2641,8 @@ ccLdOptionsBuildInfo cflags ldflags ldflags_static =
   let (includeDirs', cflags') = partition ("-I" `isPrefixOf`) cflags
       (extraLibs', ldflags') = partition ("-l" `isPrefixOf`) ldflags
       (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
-      (extraLibsStatic') = filter ("-l" `isPrefixOf`) ldflags_static
-      (extraLibDirsStatic') = filter ("-L" `isPrefixOf`) ldflags_static
+      extraLibsStatic' = filter ("-l" `isPrefixOf`) ldflags_static
+      extraLibDirsStatic' = filter ("-L" `isPrefixOf`) ldflags_static
    in mempty
         { includeDirs = map (makeSymbolicPath . drop 2) includeDirs'
         , extraLibs = map (drop 2) extraLibs'
@@ -3006,7 +3006,7 @@ checkRelocatable verbosity pkg lbi =
     packagePrefixRelative =
       unless (relativeInstallDirs installDirs) $
         dieWithException verbosity $
-          InstallDirsNotPrefixRelative (installDirs)
+          InstallDirsNotPrefixRelative installDirs
       where
         -- NB: should be good enough to check this against the default
         -- component ID, but if we wanted to be strictly correct we'd

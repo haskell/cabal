@@ -94,7 +94,7 @@ liftParseResult f pr = unPR pr emptyPRState initialCtx failure success
       pr' <- f a
       return $ PR $ \s' ctx failure' success' -> unPR pr' (concatPRState s s') ctx failure' success'
     concatPRState (PRState warnings errors version) (PRState warnings' errors' version') =
-      (PRState (warnings ++ warnings') (toList errors ++ errors') (version <|> version'))
+      PRState (warnings ++ warnings') (toList errors ++ errors') (version <|> version')
 
 withSource :: src -> ParseResult src a -> ParseResult src a
 withSource source (PR pr) = PR $ \s ctx failure success ->

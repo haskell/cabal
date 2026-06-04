@@ -836,8 +836,8 @@ testGlobAbsolutePath mtimeChange =
   withFileMonitor $ \root monitor -> do
     root' <- absoluteRoot root
     -- absolute glob, removing a file
-    touchFile root ("dir/good-a")
-    touchFile root ("dir/good-b")
+    touchFile root "dir/good-a"
+    touchFile root "dir/good-b"
     updateMonitor root monitor [monitorFileGlobStr (root' </> "dir/good-*")] () ()
     threadDelay mtimeChange
     removeFile root "dir/good-a"
@@ -846,7 +846,7 @@ testGlobAbsolutePath mtimeChange =
     -- absolute glob, adding a file
     updateMonitor root monitor [monitorFileGlobStr (root' </> "dir/good-*")] () ()
     threadDelay mtimeChange
-    touchFile root ("dir/good-a")
+    touchFile root "dir/good-a"
     reason2 <- expectMonitorChanged root monitor ()
     reason2 @?= MonitoredFileChanged (root' </> "dir" </> "good-a")
     -- absolute glob, changing a file

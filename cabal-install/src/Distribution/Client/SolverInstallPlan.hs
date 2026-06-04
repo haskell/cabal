@@ -154,7 +154,7 @@ remove
   -> SolverInstallPlan
   -> Either
       [SolverPlanProblem]
-      (SolverInstallPlan)
+      SolverInstallPlan
 remove shouldRemove plan =
   new (planIndepGoals plan) newIndex
   where

@@ -369,7 +369,7 @@ haddock_setupHooks
         mons <- preBuildComponent (preBuildHook pbci) verbosity lbi' target
         preprocessComponent pkg_descr component lbi' clbi False verbosity suffixes
         let
-          doExe com = case (compToExe com) of
+          doExe com = case compToExe com of
             Just exe -> do
               exeArgs <-
                 fromExecutable
@@ -445,7 +445,7 @@ haddock_setupHooks
 
             debug verbosity $
               "Registering inplace:\n"
-                ++ (InstalledPackageInfo.showInstalledPackageInfo ipi)
+                ++ InstalledPackageInfo.showInstalledPackageInfo ipi
 
             registerPackage
               verbosity
@@ -1267,11 +1267,10 @@ renderPureArgs version comp platform args =
         []
         ( (: [])
             . ("--title=" ++)
-            . ( bool
-                  id
-                  (++ " (internal documentation)")
-                  (getAny $ argIgnoreExports args)
-              )
+            . bool
+              id
+              (++ " (internal documentation)")
+              (getAny $ argIgnoreExports args)
         )
         . flagToMaybe
         . argTitle

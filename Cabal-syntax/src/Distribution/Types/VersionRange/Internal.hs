@@ -365,25 +365,23 @@ versionRangeParser digitParser csv = expr
       P.spaces
       t <- term
       P.spaces
-      ( do
-          _ <- P.string "||"
-          checkOp
-          P.spaces
-          e <- expr
-          return (unionVersionRanges t e)
-          <|> return t
-        )
+      do
+        _ <- P.string "||"
+        checkOp
+        P.spaces
+        e <- expr
+        return (unionVersionRanges t e)
+        <|> return t
     term = do
       f <- factor
       P.spaces
-      ( do
-          _ <- P.string "&&"
-          checkOp
-          P.spaces
-          t <- term
-          return (intersectVersionRanges f t)
-          <|> return f
-        )
+      do
+        _ <- P.string "&&"
+        checkOp
+        P.spaces
+        t <- term
+        return (intersectVersionRanges f t)
+        <|> return f
     factor = parens expr <|> prim
 
     prim = do
@@ -392,21 +390,19 @@ versionRangeParser digitParser csv = expr
         "-" -> anyVersion <$ P.string "any" <|> P.string "none" *> noVersion'
         "==" -> do
           P.spaces
-          ( do
-              (wild, v) <- verOrWild
-              checkWild wild
-              pure $ (if wild then withinVersion else thisVersion) v
-              <|> (verSet' thisVersion =<< verSet)
-            )
+          do
+            (wild, v) <- verOrWild
+            checkWild wild
+            pure $ (if wild then withinVersion else thisVersion) v
+            <|> (verSet' thisVersion =<< verSet)
         "^>=" -> do
           P.spaces
-          ( do
-              (wild, v) <- verOrWild
-              when wild $
-                P.unexpected "wild-card version after ^>= operator"
-              majorBoundVersion' v
-              <|> (verSet' majorBoundVersion =<< verSet)
-            )
+          do
+            (wild, v) <- verOrWild
+            when wild $
+              P.unexpected "wild-card version after ^>= operator"
+            majorBoundVersion' v
+            <|> (verSet' majorBoundVersion =<< verSet)
         _ -> do
           P.spaces
           (wild, v) <- verOrWild

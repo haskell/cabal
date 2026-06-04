@@ -11,6 +11,6 @@ main :: IO ()
 main = do
   secret <- meaning_of_life_pgmc
   -- The value 66 comes from __TESTOPT_PGMC__ - see cc-wrapper.sh.
-  if (secret == 66)
+  if secret == 66
     then putStrLn ("The secret is " ++ show secret)
     else error ("Expected value 66, got " ++ show secret)

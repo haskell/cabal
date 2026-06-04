@@ -395,7 +395,7 @@ liftOptionL l = liftOption (^# l) (l #~)
 liftOptDescr :: (b -> a) -> (a -> (b -> b)) -> OptDescr a -> OptDescr b
 liftOptDescr get' set' (ChoiceOpt opts) =
   ChoiceOpt
-    [ (d, ff, liftSet get' set' set, (get . get'))
+    [ (d, ff, liftSet get' set' set, get . get')
     | (d, ff, set, get) <- opts
     ]
 liftOptDescr get' set' (OptArg d ff ad set (dv, mkDef) get) =
@@ -594,7 +594,7 @@ commandParseArgs command global args =
     unrecognised opts =
       [ "unrecognized "
         ++ "'"
-        ++ (commandName command)
+        ++ commandName command
         ++ "'"
         ++ " option `"
         ++ opt
@@ -720,7 +720,7 @@ commandsRunWithFallback globalCommand commands defaultCommand args =
         CommandList list -> pure $ CommandList (list ++ commandNames)
         CommandErrors _ -> pure $ CommandHelp globalHelp
         CommandReadyToGo (_, []) -> pure $ CommandHelp globalHelp
-        CommandReadyToGo (_, (name : cmdArgs')) ->
+        CommandReadyToGo (_, name : cmdArgs') ->
           case lookupCommand name of
             [Command _ _ action _] ->
               case action ("--help" : cmdArgs') of

@@ -132,9 +132,9 @@ type NeedleHaystackCompare = String -> String -> Bool
 
 -- | Transformations for the search strings and the text to search in.
 data TxFwdBwd = TxFwdBwd
-  { txBwd :: (String -> String)
+  { txBwd :: String -> String
   -- ^ Reverse conversion for display, applied to the forward converted value.
-  , txFwd :: (String -> String)
+  , txFwd :: String -> String
   -- ^ Forward conversion for comparison.
   }
 

@@ -160,7 +160,7 @@ projectConfigLogsDir :: Lens' ProjectConfigBuildOnly (Flag FilePath)
 projectConfigLogsDir f s = fmap (\x -> s{T.projectConfigLogsDir = x}) (f (T.projectConfigLogsDir s))
 {-# INLINEABLE projectConfigLogsDir #-}
 
-projectConfigClientInstallFlags :: Lens' ProjectConfigBuildOnly (ClientInstallFlags)
+projectConfigClientInstallFlags :: Lens' ProjectConfigBuildOnly ClientInstallFlags
 projectConfigClientInstallFlags f s = fmap (\x -> s{T.projectConfigClientInstallFlags = x}) (f (T.projectConfigClientInstallFlags s))
 {-# INLINEABLE projectConfigClientInstallFlags #-}
 
@@ -316,7 +316,7 @@ packageConfigProgramPathExtra :: Lens' PackageConfig (NubList FilePath)
 packageConfigProgramPathExtra f s = fmap (\x -> s{T.packageConfigProgramPathExtra = x}) (f (T.packageConfigProgramPathExtra s))
 {-# INLINEABLE packageConfigProgramPathExtra #-}
 
-packageConfigFlagAssignment :: Lens' PackageConfig (FlagAssignment)
+packageConfigFlagAssignment :: Lens' PackageConfig FlagAssignment
 packageConfigFlagAssignment f s = fmap (\x -> s{T.packageConfigFlagAssignment = x}) (f (T.packageConfigFlagAssignment s))
 {-# INLINEABLE packageConfigFlagAssignment #-}
 

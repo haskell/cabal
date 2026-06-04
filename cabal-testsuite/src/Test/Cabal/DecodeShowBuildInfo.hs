@@ -94,9 +94,9 @@ instance FromJSON ComponentInfo where
 -- -----------------------------------------------------------
 
 data ComponentAssertion = ComponentAssertion
-  { unitIdPred :: (String -> Bool)
+  { unitIdPred :: String -> Bool
   -- ^ Predicate to apply to a component's unit id.
-  , compilerArgsPred :: ([String] -> Bool)
+  , compilerArgsPred :: [String] -> Bool
   -- ^ Predicate the compilation arguments must satisfy.
   , modules :: [String]
   -- ^ Which modules should a component contain.

@@ -345,7 +345,7 @@ showPackageEnvironment pkgEnv = showPackageEnvironmentWithComments Nothing pkgEn
 -- | Pretty-print the package environment with default values for empty fields
 -- commented out (just like the default Cabal config file).
 showPackageEnvironmentWithComments
-  :: (Maybe PackageEnvironment)
+  :: Maybe PackageEnvironment
   -> PackageEnvironment
   -> String
 showPackageEnvironmentWithComments mdefPkgEnv pkgEnv =

@@ -314,7 +314,7 @@ info
         installedPkgIndex
         sourcePkgIndex
         (NamedPackage name props)
-          | null (selectedInstalledPkgs) && null (selectedSourcePkgs) =
+          | null selectedInstalledPkgs && null selectedSourcePkgs =
               Left $ GatherPkgInfo name (simplifyVersionRange verConstraint)
           | otherwise =
               Right $

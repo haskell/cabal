@@ -142,7 +142,7 @@ summarizeMessages = go 0
 
     -- 'Skip' should always be handled by 'goPSkip' in the case above.
     go !l (Step (Skip conflicts)         ms) = Step (SummarizedMsg $ AtLevel l (EntrySkipping conflicts)) (go l ms)
-    go !l (Step (Success)                ms) = Step (SummarizedMsg $ AtLevel l EntrySuccess) (go l ms)
+    go !l (Step Success                  ms) = Step (SummarizedMsg $ AtLevel l EntrySuccess) (go l ms)
     go !l (Step (Failure c fr)           ms) = Step (SummarizedMsg $ AtLevel l (EntryFailure c fr)) (go l ms)
 
     -- special handler for many subsequent package rejections
@@ -286,12 +286,12 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
 showOptions :: QPN -> [POption] -> String
 showOptions _ [] = "unexpected empty list of versions"
 showOptions q [x] = showOption q x
-showOptions q xs = showQPN q ++ "; " ++ (L.intercalate ", "
+showOptions q xs = showQPN q ++ "; " ++ L.intercalate ", "
   [if isJust linkedTo
     then showOption q x
     else showI i -- Don't show the package, just the version
   | x@(POption i linkedTo) <- xs
-  ])
+  ]
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"

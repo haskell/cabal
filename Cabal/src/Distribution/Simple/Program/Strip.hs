@@ -34,7 +34,7 @@ runStrip verbosity progDb path args =
         -- have the strip program anyway.
         warn verbosity $
           "Unable to strip executable or library '"
-            ++ (takeBaseName path)
+            ++ takeBaseName path
             ++ "' (missing the 'strip' program)"
 
 stripExe :: Verbosity -> Platform -> ProgramDb -> FilePath -> IO ()
@@ -79,7 +79,7 @@ stripLib verbosity (Platform arch os) progdb path = do
                 _ ->
                   warn verbosity $
                     "Unable to strip library '"
-                      ++ (takeBaseName path)
+                      ++ takeBaseName path
                       ++ "' (version of 'strip' too old; "
                       ++ "requires >= 2.18 on 32-bit Linux)"
     _ -> runStrip verbosity progdb path args

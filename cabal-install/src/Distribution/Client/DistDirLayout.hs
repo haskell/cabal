@@ -290,7 +290,7 @@ defaultStoreDirLayout storeRoot =
 
     storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
     storePackageDBStack compiler extraPackageDB =
-      (interpretPackageDbFlags False extraPackageDB)
+      interpretPackageDbFlags False extraPackageDB
         ++ [storePackageDB compiler]
 
     storeIncomingDirectory :: Compiler -> FilePath

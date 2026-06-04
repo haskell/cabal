@@ -69,7 +69,7 @@ pcc (PreConfComponentInputs _lbc pbd _comp) =
               }
         }
   where
-    autogenDir = buildDirPBD pbd </> (unsafeMakeSymbolicPath "NonHs/autogen")
+    autogenDir = buildDirPBD pbd </> unsafeMakeSymbolicPath "NonHs/autogen"
 
 preBuildRules :: PreBuildComponentInputs -> RulesM ()
 preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = lbi, targetInfo = tgt }) = mdo

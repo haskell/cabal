@@ -173,7 +173,7 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
     -- We define the base opts which are shared across different build ways in
     -- 'buildHaskellModules'
     baseOpts way =
-      (Internal.componentGhcOptions (verbosityLevel verbosity) lbi bi clbi buildTargetDir)
+      Internal.componentGhcOptions (verbosityLevel verbosity) lbi bi clbi buildTargetDir
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeMake
           , -- Previously we didn't pass -no-link when building libs,

@@ -790,7 +790,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     platform = hostPlatform lbi
     mbWorkDir = mbWorkDirLBI lbi
     vanillaArgs =
-      (Internal.componentGhcOptions (verbosityLevel verbosity) lbi libBi clbi (componentBuildDir lbi clbi))
+      Internal.componentGhcOptions (verbosityLevel verbosity) lbi libBi clbi (componentBuildDir lbi clbi)
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib
@@ -989,7 +989,7 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
           | l <-
               getHSLibraryName
                 (componentUnitId clbi)
-                : (extraBundledLibs (libBuildInfo lib))
+                : extraBundledLibs (libBuildInfo lib)
           , f <- "" : extraLibFlavours (libBuildInfo lib)
           ]
         whenGHCi $ installOrdinary builtDir targetDir ghciLibName

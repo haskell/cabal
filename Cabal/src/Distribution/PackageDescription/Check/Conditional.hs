@@ -145,7 +145,7 @@ crossAnnotateBranches fs bs = map crossAnnBranch bs
       -> CondBranch ConfVar (TargetAnnotation a)
     updateTargetAnnBranch a (CondBranch k t mt) =
       let updateTargetAnnTree (CondNode ka wbs) =
-            (CondNode (updateTargetAnnotation a ka) wbs)
+            CondNode (updateTargetAnnotation a ka) wbs
        in CondBranch k (updateTargetAnnTree t) (updateTargetAnnTree <$> mt)
 
 -- | A conditional target is a library, exe, benchmark etc., destructured

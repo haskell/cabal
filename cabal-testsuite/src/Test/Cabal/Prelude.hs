@@ -152,7 +152,7 @@ addToPath exe_dir action = do
   env <- getTestEnv
   path <- liftIO $ getEnv "PATH"
   let newpath = exe_dir ++ [searchPathSeparator] ++ path
-  let new_env = (("PATH", Just newpath) : (testEnvironment env))
+  let new_env = ("PATH", Just newpath) : testEnvironment env
   withEnv new_env action
 
 -- HACK please don't use me
@@ -237,7 +237,7 @@ setup'' prefix cmd args = do
           else fail "Using act-as-setup for not 'build-type: Simple' package"
       else do
         if buildType (packageDescription pdesc) == Simple
-          then runM' (Just $ testTmpDir env) (testSetupPath env) (full_args) Nothing
+          then runM' (Just $ testTmpDir env) (testSetupPath env) full_args Nothing
           else -- Run the Custom script!
           do
             r <-
@@ -247,7 +247,7 @@ setup'' prefix cmd args = do
                   (Just $ testTmpDir env)
                   (testEnvironment env)
                   (testRelativeCurrentDir env </> prefix </> "Setup.hs")
-                  (full_args)
+                  full_args
             recordLog r
             requireSuccess r
 
@@ -905,17 +905,17 @@ assertOn isIn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack . 
         unless (needle `isIn` output) $
           assertFailure $
             "expected:\n"
-              ++ (txBwd txNeedle needle)
+              ++ txBwd txNeedle needle
               ++ if displayHaystack
-                then "\nin output:\n" ++ (txBwd txHaystack output)
+                then "\nin output:\n" ++ txBwd txHaystack output
                 else ""
       else
         when (needle `isInfixOf` output) $
           assertFailure $
             "unexpected:\n"
-              ++ (txBwd txNeedle needle)
+              ++ txBwd txNeedle needle
               ++ if displayHaystack
-                then "\nin output:\n" ++ (txBwd txHaystack output)
+                then "\nin output:\n" ++ txBwd txHaystack output
                 else ""
 
 assertOutputMatches :: MonadIO m => WithCallStack (String -> Result -> m ())
@@ -1360,7 +1360,7 @@ delay = do
   liftIO . threadDelay $
     if is_old_ghc
       then 1000000
-      else (testMtimeChangeDelay env)
+      else testMtimeChangeDelay env
 
 -- | Create a symlink for the duration of the provided action. If the symlink
 -- already exists, it is deleted.

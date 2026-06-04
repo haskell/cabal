@@ -37,7 +37,7 @@ stripExtractVersion str =
       filterPar' :: Int -> [String] -> [String]
       filterPar' _ [] = []
       filterPar' n (x : xs)
-        | n >= 0 && "(" `isPrefixOf` x = filterPar' (n + 1) ((safeTail x) : xs)
+        | n >= 0 && "(" `isPrefixOf` x = filterPar' (n + 1) (safeTail x : xs)
         | n > 0 && any (`isSuffixOf` x) closingParentheses = filterPar' (n - 1) xs
         | n > 0 = filterPar' n xs
         | otherwise = x : filterPar' n xs

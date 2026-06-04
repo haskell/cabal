@@ -150,7 +150,7 @@ instance Arbitrary ShortToken where
   arbitrary =
     ShortToken
       <$> ( shortListOf1 5 (choose ('#', '~'))
-              `suchThat` (all (`notElem` "{}"))
+              `suchThat` all (`notElem` "{}")
               `suchThat` (not . ("[]" `isPrefixOf`))
           )
 

@@ -56,10 +56,7 @@ buildTreeSnapshotTypeCode = 'S'
 -- | Is this a type code for a build tree reference?
 isBuildTreeRefTypeCode :: Tar.TypeCode -> Bool
 isBuildTreeRefTypeCode typeCode
-  | ( typeCode == buildTreeRefTypeCode
-        || typeCode == buildTreeSnapshotTypeCode
-    ) =
-      True
+  | typeCode == buildTreeRefTypeCode || typeCode == buildTreeSnapshotTypeCode = True
   | otherwise = False
 
 filterEntries :: (Tar.Entry -> Bool) -> Tar.Entries e -> Tar.Entries e

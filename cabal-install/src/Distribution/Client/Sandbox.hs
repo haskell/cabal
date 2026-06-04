@@ -123,7 +123,7 @@ findSavedDistPref :: SavedConfig -> Flag (SymbolicPath Pkg (Dir Dist)) -> IO (Sy
 findSavedDistPref config flagDistPref = do
   let defDistPref = useDistPref defaultSetupScriptOptions
       flagDistPref' =
-        (setupDistPref (configCommonFlags $ savedConfigureFlags config))
+        setupDistPref (configCommonFlags $ savedConfigureFlags config)
           `mappend` flagDistPref
   findDistPref defDistPref flagDistPref'
 

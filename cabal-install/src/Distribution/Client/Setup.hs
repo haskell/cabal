@@ -1008,7 +1008,7 @@ configureExOptions _showOrParseArgs src =
   , option
       []
       ["allow-older"]
-      ("Ignore lower bounds in all dependencies or DEPS")
+      "Ignore lower bounds in all dependencies or DEPS"
       (fmap unAllowOlder . configAllowOlder)
       (\v flags -> flags{configAllowOlder = fmap AllowOlder v})
       ( optArg
@@ -1020,7 +1020,7 @@ configureExOptions _showOrParseArgs src =
   , option
       []
       ["allow-newer"]
-      ("Ignore upper bounds in all dependencies or DEPS")
+      "Ignore upper bounds in all dependencies or DEPS"
       (fmap unAllowNewer . configAllowNewer)
       (\v flags -> flags{configAllowNewer = fmap AllowNewer v})
       ( optArg
@@ -1074,7 +1074,7 @@ relaxDepsParser = do
           ++ "packages to use newer versions."
     else return . Just . RelaxDepsSome . toList $ rs
 
-relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
+relaxDepsPrinter :: Maybe RelaxDeps -> [Maybe String]
 relaxDepsPrinter Nothing = []
 relaxDepsPrinter (Just RelaxDepsAll) = [Nothing]
 relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . prettyShow) pkgs
@@ -2403,7 +2403,7 @@ installCommand =
           ++ pname
           ++ " v1-install haddock --bindir=$HOME/hask-bin/ --datadir=$HOME/hask-data/\n"
           ++ "  "
-          ++ (map (const ' ') pname)
+          ++ map (const ' ') pname
           ++ "                         "
           ++ "    Change installation destination\n"
     , commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, mempty)
