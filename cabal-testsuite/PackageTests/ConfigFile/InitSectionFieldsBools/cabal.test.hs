@@ -14,5 +14,5 @@ main = cabalTest $ do
       [initLs] = filter ((== "-- full-version: False") . head) sections
       init = unlines initLs
 
-  assertBool "init section of config should contain debug-info: False" ("debug-info: False" `isInfixOf` init)
-  assertBool "init section of config should contain optimization: True" ("optimization: True" `isInfixOf` init)
+  assertBool "init section of config should contain debug-info: 0" ("debug-info: 0" `isInfixOf` init)
+  assertBool "init section of config should contain optimization: 1" ("optimization: 1" `isInfixOf` init)

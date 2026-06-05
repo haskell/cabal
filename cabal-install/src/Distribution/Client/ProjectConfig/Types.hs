@@ -68,8 +68,6 @@ import Distribution.PackageDescription
 import Distribution.Simple.Compiler
   ( Compiler
   , CompilerFlavor
-  , DebugInfoLevel (..)
-  , OptimisationLevel (..)
   , PackageDBCWD
   , ProfDetailLevel
   )
@@ -98,6 +96,8 @@ import Distribution.Version
 
 import qualified Data.Map as Map
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel)
+import Distribution.Types.OptimisationLevel (OptimisationLevel)
 import Distribution.Types.ParStrat
 import Distribution.Verbosity (VerbosityFlags)
 

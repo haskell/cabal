@@ -59,14 +59,19 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Utils
 import Distribution.Types.ComponentId
-import Distribution.Types.DumpBuildInfo
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
+import qualified Distribution.Types.DebugInfoLevel as D
+import Distribution.Types.DumpBuildInfo (DumpBuildInfo (..))
 import Distribution.Types.GivenComponent
 import Distribution.Types.Module
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
+import qualified Distribution.Types.OptimisationLevel as O
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnitId
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
+import Text.Printf (printf)
 
 import qualified Text.PrettyPrint as Disp
 
@@ -567,18 +572,16 @@ configureOptions showOrParseArgs =
           "optimization"
           configOptimization
           (\v flags -> flags{configOptimization = v})
-          [ optArgDef'
+          [ reqArg'
               "n"
-              (show NoOptimisation, Flag . flagToOptimisationLevel)
+              (Flag . fromString)
               ( \case
-                  Flag NoOptimisation -> []
-                  Flag NormalOptimisation -> [Nothing]
-                  Flag MaximumOptimisation -> [Just "2"]
-                  _ -> []
+                  NoFlag -> []
+                  Flag flag -> [O.toString flag]
               )
               "O"
               ["enable-optimization", "enable-optimisation"]
-              "Build with optimization (n is 0--2, default is 1)"
+              (printf "Build with optimization (n is %s--%s, default is %s)" (O.toString minBound) (O.toString maxBound) (O.toString noFlagValue))
           , noArg
               (Flag NoOptimisation)
               []
@@ -589,19 +592,16 @@ configureOptions showOrParseArgs =
           "debug-info"
           configDebugInfo
           (\v flags -> flags{configDebugInfo = v})
-          [ optArg'
+          [ reqArg'
               "n"
-              (Flag . flagToDebugInfoLevel)
+              (Flag . fromString)
               ( \case
-                  Flag NoDebugInfo -> []
-                  Flag MinimalDebugInfo -> [Just "1"]
-                  Flag NormalDebugInfo -> [Nothing]
-                  Flag MaximalDebugInfo -> [Just "3"]
-                  _ -> []
+                  NoFlag -> []
+                  Flag flag -> [D.toString flag]
               )
-              ""
+              "g"
               ["enable-debug-info"]
-              "Emit debug info (n is 0--3, default is 0)"
+              (printf "Emit debug info (n is  %s--%s, default is %s)" (D.toString minBound) (D.toString maxBound) (D.toString noFlagValue))
           , noArg
               (Flag NoDebugInfo)
               []

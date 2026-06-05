@@ -181,17 +181,13 @@ import Distribution.Client.Errors
 import Distribution.Package
 import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.Compiler
-  ( OptimisationLevel (..)
-  , compilerCompatVersion
+  ( compilerCompatVersion
   , compilerId
   , compilerInfo
   , showCompilerId
   )
 import Distribution.Simple.Configure (computeEffectiveProfiling)
-import Distribution.Simple.Flag
-  ( flagToMaybe
-  , fromFlagOrDefault
-  )
+import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, fromNoFlag)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   , pkgComponents
@@ -215,6 +211,7 @@ import Distribution.Types.Flag
   , diffFlagAssignment
   , showFlagAssignment
   )
+import qualified Distribution.Types.OptimisationLevel as OptimisationLevel
 import Distribution.Utils.NubList
   ( fromNubList
   )
@@ -1255,13 +1252,7 @@ printPlan
         "Build profile: "
           ++ unwords
             [ "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared
-            , "-O"
-                ++ ( case globalOptimization <> localOptimization of -- if local is not set, read global
-                      Setup.Flag NoOptimisation -> "0"
-                      Setup.Flag NormalOptimisation -> "1"
-                      Setup.Flag MaximumOptimisation -> "2"
-                      Setup.NoFlag -> "1"
-                   )
+            , "-O" ++ (OptimisationLevel.toString . fromNoFlag) (globalOptimization <> localOptimization)
             ]
           ++ "\n"
 

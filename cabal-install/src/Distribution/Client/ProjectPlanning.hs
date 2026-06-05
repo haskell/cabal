@@ -234,6 +234,8 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors
 import Distribution.Solver.Types.ProjectConfigPath
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import GHC.Stack (HasCallStack)
 import System.Directory (getCurrentDirectory)
 import System.FilePath
@@ -1248,7 +1250,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
         -- the hashes for the packages
         --
         hashesFromRepoMetadata <-
-          Sec.uncheckClientErrors $ -- TODO: [code cleanup] wrap in our own exceptions
+          Sec.uncheckClientErrors $ -- TODO: [code cleanup] wrap in our own exceptions -- TODO: [code cleanup] wrap in our own exceptions
+          -- TODO: [code cleanup] wrap in our own exceptions
             fmap (Map.fromList . concat) $
               sequence
                 -- Reading the repo index is expensive so we group the packages by repo
