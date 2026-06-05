@@ -27,9 +27,7 @@ import Distribution.PackageDescription
   ( FlagAssignment
   )
 import Distribution.Simple.Compiler
-  ( DebugInfoLevel (..)
-  , OptimisationLevel (..)
-  , PackageDBCWD
+  ( PackageDBCWD
   , ProfDetailLevel
   )
 import Distribution.Simple.InstallDirs
@@ -57,6 +55,8 @@ import Distribution.Solver.Types.Settings
   , ReorderGoals (..)
   , StrongFlags (..)
   )
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint
   )
