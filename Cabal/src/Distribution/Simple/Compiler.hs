@@ -48,14 +48,6 @@ module Distribution.Simple.Compiler
   , coercePackageDBStack
   , readPackageDb
 
-    -- * Support for optimisation levels
-  , OptimisationLevel (..)
-  , flagToOptimisationLevel
-
-    -- * Support for debug info levels
-  , DebugInfoLevel (..)
-  , flagToDebugInfoLevel
-
     -- * Support for language extensions
   , CompilerFlag
   , languageToFlags
@@ -92,10 +84,9 @@ module Distribution.Simple.Compiler
   , showProfDetailLevel
   ) where
 
-import Distribution.Compat.CharParsing
 import Distribution.Compat.Prelude
-import Distribution.Parsec
-import Distribution.Pretty
+import Distribution.Parsec (CabalParsing, Parsec (..), parsecToken)
+import Distribution.Pretty (prettyShow)
 import Prelude ()
 
 import Distribution.Compiler
@@ -103,13 +94,22 @@ import Distribution.Package (PackageName, mkPackageName, unPackageName)
 import Distribution.Simple.Utils
 import Distribution.Types.UnitId (UnitId, mkUnitId, unUnitId)
 import Distribution.Utils.Path
-import Distribution.Version
+  ( CWD
+  , FileOrDir (..)
+  , Pkg
+  , PkgDB
+  , SymbolicPath
+  , getSymbolicPath
+  , interpretSymbolicPath
+  , makeSymbolicPath
+  , symbolicPathRelative_maybe
+  )
+import Distribution.Version (Version, mkVersion)
 
 import qualified Text.Read as Read
 
 import Language.Haskell.Extension
 
-import Data.Bool (bool)
 import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
 
@@ -389,77 +389,6 @@ coercePackageDBStack
   :: [PackageDBCWD]
   -> [PackageDBX (SymbolicPath CWD (Dir PkgDB))]
 coercePackageDBStack = map coercePackageDB
-
--- ------------------------------------------------------------
-
--- * Optimisation levels
-
--- ------------------------------------------------------------
-
--- | Some compilers support optimising. Some have different levels.
--- For compilers that do not the level is just capped to the level
--- they do support.
-data OptimisationLevel
-  = NoOptimisation
-  | NormalOptimisation
-  | MaximumOptimisation
-  deriving (Bounded, Enum, Eq, Generic, Read, Show)
-
-instance Binary OptimisationLevel
-instance NFData OptimisationLevel
-instance Structured OptimisationLevel
-
-instance Parsec OptimisationLevel where
-  parsec = parsecOptimisationLevel
-
-parsecOptimisationLevel :: CabalParsing m => m OptimisationLevel
-parsecOptimisationLevel = boolParser <|> intParser
-  where
-    boolParser = bool NoOptimisation NormalOptimisation <$> parsec
-    intParser = intToEnum "optimisation level" <$> integral
-
-flagToOptimisationLevel :: Maybe String -> OptimisationLevel
-flagToOptimisationLevel Nothing = NormalOptimisation
-flagToOptimisationLevel (Just s)
-  | Just i <- readMaybe s = intToEnum "optimisation level" i
-  | Just b <- readMaybe s = if b then NormalOptimisation else NoOptimisation
-  | otherwise = error $ "Can't parse optimisation level: " ++ s
-
--- ------------------------------------------------------------
-
--- * Debug info levels
-
--- ------------------------------------------------------------
-
--- | Some compilers support emitting debug info. Some have different
--- levels.  For compilers that do not the level is just capped to the
--- level they do support.
-data DebugInfoLevel
-  = NoDebugInfo
-  | MinimalDebugInfo
-  | NormalDebugInfo
-  | MaximalDebugInfo
-  deriving (Bounded, Enum, Eq, Generic, Read, Show)
-
-instance Binary DebugInfoLevel
-instance NFData DebugInfoLevel
-instance Structured DebugInfoLevel
-
-instance Parsec DebugInfoLevel where
-  parsec = parsecDebugInfoLevel
-
-parsecDebugInfoLevel :: CabalParsing m => m DebugInfoLevel
-parsecDebugInfoLevel = boolParser <|> intParser
-  where
-    boolParser = bool NoDebugInfo NormalDebugInfo <$> parsec
-    intParser = intToEnum "debug info level" <$> integral
-
-flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
-flagToDebugInfoLevel Nothing = NoDebugInfo
-flagToDebugInfoLevel (Just s)
-  | Just i <- readMaybe s = intToEnum "debug info level" i
-  | Just b <- readMaybe s = if b then NormalDebugInfo else NoDebugInfo
-  | otherwise = error $ "Can't parse debug info level " ++ s
 
 -- ------------------------------------------------------------
 

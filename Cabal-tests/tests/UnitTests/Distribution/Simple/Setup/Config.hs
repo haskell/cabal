@@ -5,7 +5,7 @@ module UnitTests.Distribution.Simple.Setup.Config
 import Control.Monad (forM_)
 import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.Simple.Command (CommandParse (..), commandParseArgs, commandShowOptions)
-import Distribution.Simple.Compiler (DebugInfoLevel (..))
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
 import Distribution.Simple.Flag qualified as Flag
 import Distribution.Simple.Program.Db (emptyProgramDb)
 import Distribution.Simple.Setup
