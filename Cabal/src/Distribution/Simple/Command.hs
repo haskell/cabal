@@ -73,7 +73,6 @@ module Distribution.Simple.Command
   , reqArg'
   , optArg
   , optArg'
-  , optArgDef'
   , noArg
   , boolOpt
   , boolOpt'
@@ -273,15 +272,6 @@ optArg'
   -> MkOptDescr (a -> b) (b -> a -> a) a
 optArg' ad mkflag showflag =
   optArg ad (succeedReadE (mkflag . Just)) ("", mkflag Nothing) showflag
-
-optArgDef'
-  :: Monoid b
-  => ArgPlaceHolder
-  -> (String, Maybe String -> b)
-  -> (b -> [Maybe String])
-  -> MkOptDescr (a -> b) (b -> a -> a) a
-optArgDef' ad (dv, mkflag) showflag =
-  optArg ad (succeedReadE (mkflag . Just)) (dv, mkflag Nothing) showflag
 
 noArg :: Eq b => b -> MkOptDescr (a -> b) (b -> a -> a) a
 noArg flag sf lf d = choiceOpt [(flag, (sf, lf), d)] sf lf d

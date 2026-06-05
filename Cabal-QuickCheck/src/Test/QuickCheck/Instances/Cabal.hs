@@ -40,6 +40,8 @@ import Distribution.Types.VersionRange.Internal
 import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Distribution.Version
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel)
+import Distribution.Types.OptimisationLevel (OptimisationLevel)
 
 import Test.QuickCheck.GenericArbitrary
 
