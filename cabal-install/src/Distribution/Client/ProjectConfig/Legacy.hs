@@ -88,8 +88,6 @@ import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
 import Distribution.Simple.Compiler
   ( Compiler (..)
   , CompilerInfo (..)
-  , DebugInfoLevel (..)
-  , OptimisationLevel (..)
   , compilerInfo
   , interpretPackageDB
   )
@@ -110,8 +108,6 @@ import Distribution.Simple.Setup
   ( BenchmarkFlags (..)
   , CommonSetupFlags (..)
   , ConfigFlags (..)
-  , DumpBuildInfo (DumpBuildInfo, NoDumpBuildInfo)
-  , Flag
   , HaddockFlags (..)
   , TestFlags (..)
   , benchmarkOptions'
@@ -127,13 +123,9 @@ import Distribution.Simple.Setup
   , showPackageDb
   , splitArgs
   , testOptions'
-  , toFlag
-  , pattern Flag
-  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( debug
-  , lowercase
   , noticeDoc
   )
 import Distribution.Types.CondTree
@@ -144,6 +136,7 @@ import Distribution.Types.CondTree
   , mapTreeData
   , traverseCondTreeV
   )
+import qualified Distribution.Types.DumpBuildInfo as DumpBuildInfo
 import Distribution.Types.SourceRepo (RepoType)
 import Distribution.Utils.NubList
   ( fromNubList
@@ -199,6 +192,9 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Functor ((<&>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Distribution.Simple.Flag (Flag, flagElim, toFlag, pattern Flag, pattern NoFlag)
+import qualified Distribution.Types.DebugInfoLevel as DebugInfoLevel
+import qualified Distribution.Types.OptimisationLevel as OptimisationLevel
 import Network.URI (URI (..), nullURIAuth)
 import System.Directory (makeAbsolute)
 import System.FilePath (splitFileName)
@@ -1692,79 +1688,36 @@ legacyPackageConfigFieldDescrs =
         (\v flags -> flags{configHcFlavor = v})
 
     overrideDumpBuildInfo =
-      liftField
-        configDumpBuildInfo
-        (\v flags -> flags{configDumpBuildInfo = v})
-        $ let name = "build-info"
-           in FieldDescr
-                name
-                ( \case
-                    Flag NoDumpBuildInfo -> Disp.text "False"
-                    Flag DumpBuildInfo -> Disp.text "True"
-                    _ -> Disp.empty
-                )
-                ( \line str _ -> case () of
-                    _
-                      | lstr == "false" -> ParseOk [] (Flag NoDumpBuildInfo)
-                      | lstr == "true" -> ParseOk [] (Flag DumpBuildInfo)
-                      | otherwise -> ParseFailed (NoParse name line)
-                      where
-                        lstr = lowercase str
-                )
-
-    -- TODO: [code cleanup] The following is a hack. The "optimization" and
-    -- "debug-info" fields are OptArg, and viewAsFieldDescr fails on that.
-    -- Instead of a hand-written parser and printer, we should handle this case
-    -- properly in the library.
+      liftField configDumpBuildInfo (\v flags -> flags{configDumpBuildInfo = v}) $
+        let name = "build-info"
+         in FieldDescr
+              name
+              (flagElim Disp.empty (Disp.text . DumpBuildInfo.toString))
+              ( \line str _ -> case maybe NoFlag Flag (simpleParsec str) of
+                  NoFlag -> ParseFailed (NoParse name line)
+                  flag -> ParseOk [] flag
+              )
 
     overrideFieldOptimization =
-      liftField
-        configOptimization
-        (\v flags -> flags{configOptimization = v})
-        $ let name = "optimization"
-           in FieldDescr
-                name
-                ( \case
-                    Flag NoOptimisation -> Disp.text "False"
-                    Flag NormalOptimisation -> Disp.text "True"
-                    Flag MaximumOptimisation -> Disp.text "2"
-                    _ -> Disp.empty
-                )
-                ( \line str _ -> case () of
-                    _
-                      | str == "0" -> ParseOk [] (Flag NoOptimisation)
-                      | str == "1" -> ParseOk [] (Flag NormalOptimisation)
-                      | str == "2" -> ParseOk [] (Flag MaximumOptimisation)
-                      | lstr == "false" -> ParseOk [] (Flag NoOptimisation)
-                      | lstr == "true" -> ParseOk [] (Flag NormalOptimisation)
-                      | otherwise -> ParseFailed (NoParse name line)
-                      where
-                        lstr = lowercase str
-                )
+      liftField configOptimization (\v flags -> flags{configOptimization = v}) $
+        let name = "optimization"
+         in FieldDescr
+              name
+              (flagElim Disp.empty (Disp.text . OptimisationLevel.toString))
+              ( \line str _ -> case maybe NoFlag Flag (simpleParsec str) of
+                  NoFlag -> ParseFailed (NoParse name line)
+                  flag -> ParseOk [] flag
+              )
 
     overrideFieldDebugInfo =
       liftField configDebugInfo (\v flags -> flags{configDebugInfo = v}) $
         let name = "debug-info"
          in FieldDescr
               name
-              ( \case
-                  Flag NoDebugInfo -> Disp.text "False"
-                  Flag MinimalDebugInfo -> Disp.text "1"
-                  Flag NormalDebugInfo -> Disp.text "True"
-                  Flag MaximalDebugInfo -> Disp.text "3"
-                  _ -> Disp.empty
-              )
-              ( \line str _ -> case () of
-                  _
-                    | str == "0" -> ParseOk [] (Flag NoDebugInfo)
-                    | str == "1" -> ParseOk [] (Flag MinimalDebugInfo)
-                    | str == "2" -> ParseOk [] (Flag NormalDebugInfo)
-                    | str == "3" -> ParseOk [] (Flag MaximalDebugInfo)
-                    | lstr == "false" -> ParseOk [] (Flag NoDebugInfo)
-                    | lstr == "true" -> ParseOk [] (Flag NormalDebugInfo)
-                    | otherwise -> ParseFailed (NoParse name line)
-                    where
-                      lstr = lowercase str
+              (flagElim Disp.empty (Disp.text . DebugInfoLevel.toString))
+              ( \line str _ -> case maybe NoFlag Flag (simpleParsec str) of
+                  NoFlag -> ParseFailed (NoParse name line)
+                  flag -> ParseOk [] flag
               )
 
     prefixTest name
