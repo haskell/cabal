@@ -172,7 +172,11 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     argumentFilters :: [String] -> [String]
     argumentFilters =
       flagArgumentFilter
-        ["-ghci-script", "-H", "-interactive-print"]
+        [ "-ghci-script"
+        , "-H"
+        , "-interactive-print"
+        , "-fghci-browser-assets-dir"
+        ]
 
     -- \| Remove RTS arguments from a list.
     filterRtsArgs :: [String] -> [String]
