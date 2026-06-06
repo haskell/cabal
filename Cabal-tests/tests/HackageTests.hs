@@ -199,7 +199,7 @@ instance Monoid ParsecResult where
     mappend = (<>)
 
 instance NFData ParsecResult where
-    rnf (ParsecResult _ _ _) = ()
+    rnf ParsecResult{} = ()
 
 -------------------------------------------------------------------------------
 -- Check test

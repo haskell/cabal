@@ -359,9 +359,9 @@ disambiguateBuildTargets pkgid original =
       where
         (amb, unamb) = step ql ts
 
-    userTargetQualLevel (UserBuildTargetSingle _) = QL1
-    userTargetQualLevel (UserBuildTargetDouble _ _) = QL2
-    userTargetQualLevel (UserBuildTargetTriple _ _ _) = QL3
+    userTargetQualLevel UserBuildTargetSingle{} = QL1
+    userTargetQualLevel UserBuildTargetDouble{} = QL2
+    userTargetQualLevel UserBuildTargetTriple{} = QL3
 
     step
       :: QualLevel
