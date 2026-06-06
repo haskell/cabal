@@ -139,9 +139,24 @@ Version constraints can be applied to the project or command line.
 
 .. Warning::
 
-    Version constraints are additive. If I add a constraint it doesn't remove or
-    replace prior constraints on versions. Constraints don't have override
-    semantics.
+    Version constraints accumulate!
+
+    These are often set in a ``.cabal`` file as a version range within the
+    ``build-depends`` stanza.
+
+    There are other ways to supply version constraints on a dependency; in a
+    project file or one of its imports and on the command line. Constraints for
+    the same dependency can be given multiple times in the project or on the
+    command line.
+
+    Adding a constraint via any of these methods does not remove or replace any
+    of the constraints on the same dependency set elsewhere; no method or order
+    of supply has priority and constraints given one way cannot and do not
+    override other constraints.
+
+    Before dependency solving begins, all version constraints for each
+    dependency given by any method are combined with the ``&&`` operator into
+    one effective version range for that dependency.
 
 .. _mandated-versions:
 
