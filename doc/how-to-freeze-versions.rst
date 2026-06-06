@@ -176,10 +176,10 @@ yet having revisions.
     $ curl -s https://www.stackage.org/lts-24.34/cabal.config | grep "with-compiler"
     with-compiler: ghc-9.10.3
 
-If importing directly causes a version conflict, we recommend; downloading
-the package set locally, committing to source control and then commenting
-out conflicting package constraint lines. Each constraint is on its own line
-and can be prefixed with ``--`` to comment it out.
+If importing directly causes a version conflict, we recommend downloading the
+package set locally, committing it to source control, and then commenting out
+conflicting package constraint lines. Each constraint is on its own line and can
+be prefixed with ``--`` to comment it out.
 
 .. _capped-versions:
 
