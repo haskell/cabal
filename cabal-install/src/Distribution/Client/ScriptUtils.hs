@@ -331,7 +331,7 @@ withContextAndSelectors verbosity noTargets kind flags@NixStyleFlags{..} targetS
             | TargetString1 script <- t -> scriptOrError script err
           Left err@(TargetSelectorExpected t _ _ : _)
             | TargetString1 script <- t -> scriptOrError script err
-          Left err@(MatchingInternalError _ _ _ : _) -- Handle ':' in middle of script name.
+          Left err@(MatchingInternalError{} : _) -- Handle ':' in middle of script name.
             | [script] <- targetStrings -> scriptOrError script err
           Left err -> reportTargetSelectorProblems verbosity err
           Right sels -> return (tc, ctx, sels)

@@ -36,9 +36,9 @@ genericLenses
     => proxy a
     -> String
 genericLenses p = case gdatatypeInfo p of
-    Newtype _ _ _                   -> "-- newtype deriving not implemented"
+    Newtype{}                       -> "-- newtype deriving not implemented"
     ADT _ _  (Constructor _ :* Nil) -> "-- fieldnameless deriving not implemented"
-    ADT _ _  (Infix _ _ _ :* Nil)   -> "-- infix constructor deriving not implemented"
+    ADT _ _  (Infix{} :* Nil)       -> "-- infix constructor deriving not implemented"
     ADT _ dn (Record _ fis :* Nil) ->
         unlines $ concatMap replaceTypes $ hcollapse $ hcmap (Proxy :: Proxy Typeable) derive fis
       where
@@ -55,9 +55,9 @@ genericClassyLenses
     => proxy a
     -> String
 genericClassyLenses p = case gdatatypeInfo p of
-    Newtype _ _ _                   -> "-- newtype deriving not implemented"
+    Newtype{}                       -> "-- newtype deriving not implemented"
     ADT _ _  (Constructor _ :* Nil) -> "-- fieldnameless deriving not implemented"
-    ADT _ _  (Infix _ _ _ :* Nil)   -> "-- infix constructor deriving not implemented"
+    ADT _ _  (Infix{} :* Nil)       -> "-- infix constructor deriving not implemented"
     ADT _ dn (Record _ fis :* Nil) ->
         unlines $ concatMap replaceTypes $
             [[ "class Has" ++ dn ++ " a where"
