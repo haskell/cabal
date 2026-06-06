@@ -151,6 +151,9 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
         makeFilter :: String -> String -> Maybe (First ([String] -> [String]))
         makeFilter flag arg = First . filterRest <$> stripPrefix flag arg
           where
+            -- Drop the next argument, whether it comes after a `=` or
+            -- is stand-alone.
+            filterRest :: String -> [String] -> [String]
             filterRest leftOver = case dropEq leftOver of
               [] -> drop 1
               _ -> id
@@ -164,6 +167,8 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
           Just f -> go (f args)
           Nothing -> arg : go args
 
+    -- Options that take parameters and do not modify the generated artifacts
+    -- are filtered out.
     argumentFilters :: [String] -> [String]
     argumentFilters =
       flagArgumentFilter
@@ -173,6 +178,9 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     filterRtsArgs :: [String] -> [String]
     filterRtsArgs = snd . splitRTSArgs
 
+    -- Simple options (i.e. that do not take parameters, or just
+    -- take int parameters) which do *not* change generated artifacts
+    -- are filtered out.
     simpleFilters :: String -> Bool
     simpleFilters =
       not
@@ -183,7 +191,8 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
           , Any . isPrefixOf "-dsuppress-"
           , Any . isPrefixOf "-dno-suppress-"
           , flagIn $ invertibleFlagSet "-" ["ignore-dot-ghci"]
-          , flagIn . invertibleFlagSet "-f" . mconcat $
+          , -- -f-something -f-no-something options.
+            flagIn . invertibleFlagSet "-f" . mconcat $
               [
                 [ "reverse-errors"
                 , "warn-unused-binds"
