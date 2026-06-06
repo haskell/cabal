@@ -750,7 +750,7 @@ checkSourceRepos rs = do
         checkP
           (any isAbsoluteOnAnyPlatform repoSubdir_)
           (PackageDistInexcusable SubdirRelPath)
-        case join . fmap isGoodRelativeDirectoryPath $ repoSubdir_ of
+        case isGoodRelativeDirectoryPath =<< repoSubdir_ of
           Just err ->
             tellP
               (PackageDistInexcusable $ SubdirGoodRelPath err)

@@ -212,8 +212,7 @@ selectComponentTarget
   -> Either TestTargetProblem k
 selectComponentTarget subtarget@WholeComponent t
   | CTestName _ <- availableTargetComponentName t =
-      either Left return $
-        selectComponentTargetBasic subtarget t
+      selectComponentTargetBasic subtarget t
   | otherwise =
       Left
         ( notTestProblem
