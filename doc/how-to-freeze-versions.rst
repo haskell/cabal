@@ -7,8 +7,8 @@ There are various ways and places to limit what versions the solver can pick for
 dependencies. Ways to control versions are:
 
 :ref:`Version ranges <version-ranges>`
-    Within a package description, version ranges for dependencies can be; tight
-    or loose or missing altogether.
+    Within a package description, version ranges for dependencies can be tight,
+    loose, or missing altogether.
 
 :ref:`Version constraints <version-constraints>`
     Within a project, version constraints for dependencies limit the versions
