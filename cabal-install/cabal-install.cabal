@@ -34,11 +34,6 @@ Flag native-dns
   default:      True
   manual:       True
 
-Flag lukko
-  description:  Use @lukko@ for file-locking
-  default:      False
-  manual:       False
-
 flag git-rev
   description: include Git revision hash in version
   default: False
@@ -289,10 +284,6 @@ library
     else
       build-depends:
         , unix >= 2.5 && < 2.8 || >= 2.8.6.0 && < 2.9
-
-    if flag(lukko)
-      build-depends:
-        , lukko >= 0.1 && <0.2
 
     -- pull in process version with fixed waitForProcess error
     if impl(ghc >=8.2)
