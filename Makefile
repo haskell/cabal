@@ -169,7 +169,7 @@ doctest-%: ## Run doctests for a specific package.
 	@echo "Running doctests for $*:" && cd $* && $(CABAL_DOCTEST) $*
 
 doctest-cabal-testsuite: ## Run doctests for a specific package.
-	@echo "Running doctests for cabal-testsuite:" && $(REPL_WITH_DOCTEST) cabal-testsuite
+	@echo "Running doctests for cabal-testsuite:" && $(CABAL_DOCTEST) cabal-testsuite
 
 doctest-PACKAGENAME: ## Run doctests for a single package (replace PACKAGENAME).
 	@echo 'Please use one of the following targets:'
