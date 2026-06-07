@@ -361,8 +361,16 @@ splitCandCxxOptions
   -> GhcOptions
 splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
   CxxProgram ->
-    setCcProgram $ setCcOptions $ sourcesGhcOptions verbosity lbi bi clbi odir filename
+    -- For C++ sources: reset ccOptions for GHC < 8.10, because on those
+    -- old GHCs there's no -optcxx flag — all options go through -optc.
+    -- Without this reset, C-specific flags (ccOptions) would leak into
+    -- C++ compilation via -optc, which is wrong.
+    setGppProgram $ setCcOptions $ sourcesGhcOptions verbosity lbi bi clbi odir filename
   CcProgram ->
+    -- For C sources: reset cxxOptions for GHC < 8.10, because on those
+    -- old GHCs there's no -optcxx flag — all options go through -optc.
+    -- Without this reset, C++-specific flags (cxxOptions) would leak into
+    -- C compilation via -optc, which is wrong.
     setCcProgram $ setCxxOptions $ sourcesGhcOptions verbosity lbi bi clbi odir filename
   where
     setCcOptions xxx =
@@ -405,6 +413,29 @@ splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
           --    protects older GHC versions from this link-time breakage.
           -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgmc
           ghcOptCcProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
+        }
+    setGppProgram xxx =
+      xxx
+        { -- We explicitly pass the C++ compiler via -pgmcxx because GHC >= 9.4
+          -- does not automatically detect it from the toolchain. Without this GHC
+          -- falls back to a gcc as a C++ compiler.
+          -- Related: #11805
+          ghcOptGppProgram =
+            ghcOptionsSince
+              (mkVersion [9, 4])
+              (compiler lbi)
+              (maybeToFlag $ programPath <$> lookupProgram gppProgram (withPrograms lbi))
+        , -- For GHC < 9.4, which does not support -pgmcxx, we fall back to
+          -- passing the C++ compiler via -pgmc. This ensures C++ sources are
+          -- compiled with the correct compiler even on older GHCs.
+          -- Note: we use gppProgram (C++ compiler), NOT gccProgram (C compiler),
+          -- because this path is specifically for C++ source files.
+          -- Related: #11805
+          ghcOptCcProgram =
+            ghcOptionsBefore
+              (mkVersion [9, 4])
+              (compiler lbi)
+              (maybeToFlag $ programPath <$> lookupProgram gppProgram (withPrograms lbi))
         }
 
 sourcesGhcOptions
@@ -451,6 +482,15 @@ ghcOptionsSince ver comp defOptions =
   case compilerCompatVersion GHC comp of
     Just v
       | v >= ver -> defOptions
+      | otherwise -> mempty
+    Nothing -> mempty
+
+-- Applies options only if the GHC version is less than the given one.
+ghcOptionsBefore :: Monoid a => Version -> Compiler -> a -> a
+ghcOptionsBefore ver comp defOptions =
+  case compilerCompatVersion GHC comp of
+    Just v
+      | v < ver -> defOptions
       | otherwise -> mempty
     Nothing -> mempty
 
@@ -552,6 +592,12 @@ linkGhcOptions verbosity lbi bi clbi =
               (mkVersion [9, 4])
               (compiler lbi)
               (maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi))
+        , -- The assumption that the C++ compiler is part of the toolchain is only since ghc-9.4.
+          ghcOptGppProgram =
+            ghcOptionsSince
+              (mkVersion [9, 4])
+              (compiler lbi)
+              (maybeToFlag $ programPath <$> lookupProgram gppProgram (withPrograms lbi))
         }
   where
     exe_paths =
