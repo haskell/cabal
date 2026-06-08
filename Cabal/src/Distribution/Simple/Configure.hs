@@ -459,13 +459,28 @@ findDistPrefOrDefault
 findDistPrefOrDefault = findDistPref defaultDistPref
 
 -- | Perform the \"@.\/setup configure@\" action.
---  Returns the @.setup-config@ file.
+--
+-- Returns the @LocalBuildInfo@, also writing it to the @setup-config@ file.
 configure
   :: (GenericPackageDescription, HookedBuildInfo)
   -> ConfigFlags
   -> IO LocalBuildInfo
-configure p = configure_setupHooks noConfigureHooks p defaultVerbosityHandles
+configure p cfg = do
+  lbi <- configure_setupHooks noConfigureHooks p defaultVerbosityHandles cfg
+  -- Write the 'LocalBuildInfo' to the @setup-config@ file.
+  --
+  -- NB: the shared 'configure_setupHooks'/'configureFinal' functions deliberately
+  -- don't include this logic, as it is the responsibility of each top-level
+  -- configure entry point.
+  let distPref = fromFlag $ configDistPref cfg
+      mbWorkDir = flagToMaybe $ configWorkingDir cfg
+  writePersistBuildConfig mbWorkDir distPref lbi
+  return lbi
 
+-- | Run the @Cabal@ library configure phase.
+--
+-- NB: this function does /not/ persist the resulting 'LocalBuildInfo' to the
+-- @setup-config@ file; that is the responsibility of callers.
 configure_setupHooks
   :: ConfigureHooks
   -> (GenericPackageDescription, HookedBuildInfo)
@@ -546,8 +561,6 @@ configureFinal
     } =
     do
       let verbosity = mkVerbosity verbHandles (fromFlag (configVerbosity cfg))
-          distPref = fromFlag $ configDistPref cfg
-          mbWorkDir = flagToMaybe $ configWorkingDir cfg
 
       -- Apply compiler capability checks to the incoming build options
       -- (idempotent).
@@ -608,10 +621,7 @@ configureFinal
           pkgInfo
           pkgDescr
           enabledComps
-      lbi <- configureComponents verbHandles lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
-      writePersistBuildConfig mbWorkDir distPref lbi
-
-      return lbi
+      configureComponents verbHandles lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
 
 runPreConfPackageHook
   :: ConfigFlags
