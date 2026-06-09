@@ -160,7 +160,8 @@ DOCTEST_PACKAGES := \
   Cabal-syntax \
   cabal-install \
   cabal-install-solver \
-  cabal-testsuite
+  # Can't include cabal-testsuite because of the --keep-temp-files problem
+  # cabal-testsuite
 
 DOCTEST_TARGETS := $(addprefix doctest-, $(DOCTEST_PACKAGES))
 
@@ -168,12 +169,18 @@ doctest-%: ## Run doctests for a specific package.
 	cabal --numeric-version
 	@echo "Running doctests for $*:" && cd $* && $(CABAL_DOCTEST) $*
 
-doctest-cabal-testsuite: ## Run doctests for a specific package.
-	@echo "Running doctests for cabal-testsuite:" && $(CABAL_DOCTEST) cabal-testsuite
-
 doctest-PACKAGENAME: ## Run doctests for a single package (replace PACKAGENAME).
 	@echo 'Please use one of the following targets:'
 	@printf "%s\n" $(DOCTEST_TARGETS)
+
+# TODO: Fix this problem
+# Configuring cabal-testsuite-3...
+# unrecognized 'repl' option `--keep-temp-files'
+# Error: [Cabal-7125]
+# repl failed for cabal-testsuite-3.
+# make: *** [Makefile:172: doctest-cabal-testsuite] Error 1
+doctest-cabal-testsuite: ## Run doctests for a specific package.
+	@echo "Running doctests for cabal-testsuite:" && $(CABAL_DOCTEST) cabal-testsuite
 
 .PHONY: doctest
 doctest: ## Run doctests in all packages.
