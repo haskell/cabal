@@ -81,6 +81,7 @@ import Control.Monad
   , mapM
   )
 import qualified Data.Set as Set
+import qualified GHC.IO.Exception as GHC
 import System.Directory
   ( canonicalizePath
   , doesDirectoryExist
@@ -92,7 +93,8 @@ import System.FilePath
   ( (</>)
   )
 import System.IO.Error
-  ( isPermissionError
+  ( ioeGetErrorType
+  , isPermissionError
   )
 import qualified System.Process as Process
 
@@ -193,7 +195,14 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
                 "attrib -s -h -r " <> distRoot <> "\\*.* /s /d"
         catch
           (removePathForcibly distRoot)
-          (\e -> if isPermissionError e then threadDelay 1000 >> removePathForcibly distRoot else throw e)
+          ( \e ->
+              -- Permission error is usually when some files are (temporarily) locked.
+              -- Unsatisfied constraints (directory is non empty) error happens
+              -- when some files inside the directory were not removed (perhaps because they are locked).
+              if isPermissionError e || ioeGetErrorType e == GHC.UnsatisfiedConstraints
+                then threadDelay 1000 >> removePathForcibly distRoot
+                else throw e
+          )
 
     removeEnvFiles $ distProjectRootDirectory distLayout
 
