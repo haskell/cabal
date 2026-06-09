@@ -58,7 +58,7 @@ tests = testGroup "Distribution.Simple.Program.GHC"
                       })
                   (Platform X86_64 Linux)
                   (mempty { ghcOptNumJobs = Flag (NumJobs (Just 4)) })
-            assertListEquals flags ["-j4", "-clear-package-db"]
+            assertListEquals flags ["-O1", "-g0", "-j4", "-clear-package-db"]
         ]
     ]
 
