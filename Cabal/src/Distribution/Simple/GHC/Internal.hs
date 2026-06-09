@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -32,7 +33,6 @@ module Distribution.Simple.GHC.Internal
   , profDetailLevelFlag
   , ghcOptionsSince
   , linkGhcOptions
-  , optimizationCFlags
   , splitCandCxxOptions
   , SplitSource (..)
 
@@ -76,7 +76,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.BuildInfo
 import Distribution.Types.ComponentLocalBuildInfo
-import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
+import qualified Distribution.Types.DebugInfoLevel as DebugInfoLevel
 import Distribution.Types.GivenComponent
 import qualified Distribution.Types.InstalledPackageInfo as IPI
 import Distribution.Types.Library
@@ -350,6 +350,42 @@ includePaths lbi bi clbi odir =
          | dir <- mapMaybe (symbolicPathRelative_maybe . unsafeCoerceSymbolicPath) $ includeDirs bi
          ]
 
+-- | Select compiler optimisation flags for C/C++/assembler sources.
+--
+-- For source files it is almost beneficial to compile with @-O2@
+-- (normal or maximum optimisation) unless the user explicitly disables
+-- optimisation or requests a different level elsewhere.
+sourceOptimization :: OptimisationLevel -> [String]
+sourceOptimization = \case
+  NoOptimisation -> ["-O0"]
+  NormalOptimisation -> ["-O2"]
+  -- Note: "-O2" is used here instead of "-O3" for two reasons:
+  --
+  -- 1. -O3 can degrade performance — aggressive inlining, loop unrolling
+  --    and vectorisation often cause instruction-cache pressure (code bloat)
+  --    that outweighs any theoretical gain.
+  --
+  -- 2. -O3 relies on more aggressive assumptions about undefined behaviour
+  --    (strict aliasing, uninitialised variables, etc.). Code that happens
+  --    to work at -O0 or -O2 may silently break at -O3, exposing latent UB.
+  MaximumOptimisation -> ["-O2"]
+
+-- | Only the defaults that are /not/ already present are appended, so that the
+-- user’s explicit settings are never overridden or repeated.
+defaultCFlags :: [String] -> LocalBuildInfo -> [String]
+defaultCFlags selectOptions lbi =
+  let
+    -- default flags for C, C++, and assembler source
+    optimizationCFlags = sourceOptimization (withOptimization lbi)
+    debugCFlags = ["-g" ++ DebugInfoLevel.toString (withDebugInfo lbi)]
+    -- deduplication logic
+    optsO = not (any (`elem` selectOptions) ["-O", "-O0", "-O1", "-O2", "-O3"])
+    optsG = not (any (`elem` selectOptions) ["-g", "-g0", "-g1", "-g2", "-g3"])
+   in
+    selectOptions
+      ++ [opt | optsO, opt <- optimizationCFlags]
+      ++ [opt | optsG, opt <- debugCFlags]
+
 data SplitSource = CcProgram | CxxProgram
 
 splitCandCxxOptions
@@ -385,7 +421,7 @@ splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
             ghcOptionsSince
               (mkVersion [8, 10])
               (compiler lbi)
-              (optimizationCFlags lbi ++ ccOptions bi)
+              (defaultCFlags (ccOptions bi) lbi)
         }
     setCxxOptions xxx =
       xxx
@@ -397,7 +433,7 @@ splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
             ghcOptionsSince
               (mkVersion [8, 10])
               (compiler lbi)
-              (optimizationCFlags lbi ++ cxxOptions bi)
+              (defaultCFlags (cxxOptions bi) lbi)
         }
     setCcProgram xxx =
       xxx
@@ -457,26 +493,6 @@ sourcesGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
     }
 
-optimizationCFlags :: LocalBuildInfo -> [String]
-optimizationCFlags lbi =
-  ( case withOptimization lbi of
-      -- see --disable-optimization
-      NoOptimisation -> []
-      -- '*-options: -O[n]' is generally not needed. When building with
-      -- optimisations Cabal automatically adds '-O2' for * code. Setting it
-      -- yourself interferes with the --disable-optimization flag.
-      -- see https://github.com/haskell/cabal/pull/8250
-      NormalOptimisation -> ["-O2"]
-      -- see --enable-optimization
-      MaximumOptimisation -> ["-O2"]
-  )
-    ++ ( case withDebugInfo lbi of
-          NoDebugInfo -> []
-          MinimalDebugInfo -> ["-g1"]
-          NormalDebugInfo -> ["-g"]
-          MaximalDebugInfo -> ["-g3"]
-       )
-
 -- Applies options only if the GHC version is greater than or
 -- equal to the given one.
 ghcOptionsSince :: Monoid a => Version -> Compiler -> a -> a
@@ -533,9 +549,9 @@ linkGhcOptions verbosity lbi bi clbi =
         { -- Respect -v0, but don't crank up verbosity on GHC if
           -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
           ghcOptVerbosity = toFlag (min verbosity Normal)
-        , ghcOptCcOptions = ccOptions bi
-        , ghcOptCxxOptions = cxxOptions bi
-        , ghcOptAsmOptions = asmOptions bi
+        , ghcOptCcOptions = defaultCFlags (ccOptions bi) lbi
+        , ghcOptCxxOptions = defaultCFlags (cxxOptions bi) lbi
+        , ghcOptAsmOptions = defaultCFlags (asmOptions bi) lbi
         , ghcOptLinkOptions = ldOptions bi
         , ghcOptCppOptions = cppOptions bi
         , ghcOptJSppOptions = jsppOptions bi
@@ -577,8 +593,8 @@ linkGhcOptions verbosity lbi bi clbi =
         , ghcOptCppIncludes =
             toNubListR [coerceSymbolicPath (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
         , ghcOptFfiIncludes = toNubListR $ map getSymbolicPath $ includes bi
-        , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
-        , ghcOptDebugInfo = toFlag (withDebugInfo lbi)
+        , ghcOptOptimisation = toFlag $ withOptimization lbi
+        , ghcOptDebugInfo = toFlag $ withDebugInfo lbi
         , ghcOptExtraPath = toNubListR exe_paths
         , ghcOptLanguage = toFlag (fromMaybe Haskell98 (defaultLanguage bi))
         , -- Unsupported extensions have already been checked by configure
@@ -608,11 +624,6 @@ linkGhcOptions verbosity lbi bi clbi =
       , -- TODO: Ugh, localPkgDescr
       Just exe_tgt <- [unitIdTarget' (localPkgDescr lbi) lbi uid]
       ]
-
-toGhcOptimisation :: OptimisationLevel -> Flag GhcOptimisation
-toGhcOptimisation NoOptimisation = mempty -- TODO perhaps override?
-toGhcOptimisation NormalOptimisation = toFlag GhcNormalOptimisation
-toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
 
 -- | Strip out flags that are not supported in ghci
 filterGhciFlags :: [String] -> [String]

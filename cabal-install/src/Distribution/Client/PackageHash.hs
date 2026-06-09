@@ -325,7 +325,7 @@ renderPackageHashInputs
           , opt "split-sections" False prettyShow pkgHashSplitSections
           , opt "stripped-lib" False prettyShow pkgHashStripLibs
           , opt "stripped-exe" True prettyShow pkgHashStripExes
-          , opt "debug-info" NormalDebugInfo (show . fromEnum) pkgHashDebugInfo
+          , opt "debug-info" NoDebugInfo (show . fromEnum) pkgHashDebugInfo
           , opt "extra-lib-dirs" [] unwords pkgHashExtraLibDirs
           , opt "extra-lib-dirs-static" [] unwords pkgHashExtraLibDirsStatic
           , opt "extra-framework-dirs" [] unwords pkgHashExtraFrameworkDirs

@@ -91,6 +91,7 @@ import Control.Monad (msum)
 import Data.Char (isLower)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -1380,7 +1381,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
           `mappend` linkerOpts
           `mappend` mempty
             { ghcOptMode = toFlag GhcModeInteractive
-            , ghcOptOptimisation = toFlag GhcNoOptimisation
+            , ghcOptOptimisation = toFlag NoOptimisation
             }
       commonOpts
         | needProfiling = profOpts
