@@ -93,7 +93,7 @@ import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
 import System.FilePath (makeRelative, normalise, takeDirectory, (<.>), (</>))
-import System.Semaphore (SemaphoreIdentifier)
+import System.Semaphore (SemaphoreName (..))
 
 import Distribution.Client.Errors
 import Distribution.Simple.Flag (fromFlagOrDefault)
@@ -526,7 +526,7 @@ rebuildTarget
   :: Verbosity
   -> DistDirLayout
   -> StoreDirLayout
-  -> Maybe SemaphoreIdentifier
+  -> Maybe SemaphoreName
   -> BuildTimeSettings
   -> AsyncFetchMap
   -> Lock

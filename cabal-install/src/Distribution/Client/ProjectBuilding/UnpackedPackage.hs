@@ -121,7 +121,7 @@ import Data.IORef (newIORef, readIORef, writeIORef)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
-import System.Semaphore (SemaphoreIdentifier)
+import System.Semaphore (SemaphoreName (..))
 
 import GHC.Stack
 import Web.Browser (openBrowser)
@@ -166,7 +166,7 @@ data PackageBuildingPhase r where
 buildAndRegisterUnpackedPackage
   :: Verbosity
   -> DistDirLayout
-  -> Maybe SemaphoreIdentifier
+  -> Maybe SemaphoreName
   -- ^ Whether to pass a semaphore to build process
   -- this is different to BuildTimeSettings because the
   -- name of the semaphore is created freshly each time.
@@ -312,7 +312,7 @@ buildAndRegisterUnpackedPackage
       uid = installedUnitId rpkg
 
       comp_par_strat = case maybe_semaphore of
-        Just sem_ident -> Cabal.toFlag sem_ident
+        Just sem_name -> Cabal.toFlag (getSemaphoreName sem_name)
         _ -> Cabal.NoFlag
 
       whenTest action
@@ -490,7 +490,7 @@ buildAndRegisterUnpackedPackage
 buildInplaceUnpackedPackage
   :: Verbosity
   -> DistDirLayout
-  -> Maybe SemaphoreIdentifier
+  -> Maybe SemaphoreName
   -> BuildTimeSettings
   -> Lock
   -> Lock
@@ -711,7 +711,7 @@ buildAndInstallUnpackedPackage
   :: Verbosity
   -> DistDirLayout
   -> StoreDirLayout
-  -> Maybe SemaphoreIdentifier
+  -> Maybe SemaphoreName
   -- ^ Whether to pass a semaphore to build process
   -- this is different to BuildTimeSettings because the
   -- name of the semaphore is created freshly each time.
