@@ -216,6 +216,7 @@ syn keyword cabalExtension contained
   \ LinearTypes
   \ ListTuplePuns
   \ MagicHash
+  \ Modifiers
   \ MonadComprehensions
   \ MonadFailDesugaring
   \ MonoLocalBinds
@@ -251,6 +252,7 @@ syn keyword cabalExtension contained
   \ PolymorphicComponents
   \ PostfixOperators
   \ QualifiedDo
+  \ QualifiedStrings
   \ QuantifiedConstraints
   \ QuasiQuotes
   \ Rank2Types
@@ -362,6 +364,7 @@ syn keyword cabalExtension contained
   \ NoLiberalTypeSynonyms
   \ NoLinearTypes
   \ NoMagicHash
+  \ NoModifiers
   \ NoMonadComprehensions
   \ NoMonadFailDesugaring
   \ NoMonoLocalBinds
@@ -397,6 +400,7 @@ syn keyword cabalExtension contained
   \ NoPolymorphicComponents
   \ NoPostfixOperators
   \ NoQualifiedDo
+  \ NoQualifiedStrings
   \ NoQuantifiedConstraints
   \ NoQuasiQuotes
   \ NoRank2Types

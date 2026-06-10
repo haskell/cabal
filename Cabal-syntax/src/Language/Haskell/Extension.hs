@@ -562,6 +562,10 @@ data KnownExtension
   | -- | Allow identifiers to be used at different levels than where they’re
     -- defined, using path-based persistence.
     ImplicitStagePersistence
+  | -- | Enable qualified string literals.
+    QualifiedStrings
+  | -- | Enable modifier syntax.
+    Modifiers
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Data)
 
 instance Binary KnownExtension
