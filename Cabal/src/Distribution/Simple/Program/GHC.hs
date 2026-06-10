@@ -149,6 +149,9 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
         makeFilter :: String -> String -> Option' (First' ([String] -> [String]))
         makeFilter flag arg = Option' $ First' . filterRest <$> stripPrefix flag arg
           where
+            -- Drop the next argument, whether it comes after a `=` or
+            -- is stand-alone.
+            filterRest :: String -> [String] -> [String]
             filterRest leftOver = case dropEq leftOver of
               [] -> drop 1
               _ -> id
@@ -162,15 +165,24 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
           Just f -> go (f args)
           Nothing -> arg : go args
 
+    -- Options that take parameters and do not modify the generated artifacts
+    -- are filtered out.
     argumentFilters :: [String] -> [String]
     argumentFilters =
       flagArgumentFilter
-        ["-ghci-script", "-H", "-interactive-print"]
+        [ "-ghci-script"
+        , "-H"
+        , "-interactive-print"
+        , "-fghci-browser-assets-dir"
+        ]
 
     -- \| Remove RTS arguments from a list.
     filterRtsArgs :: [String] -> [String]
     filterRtsArgs = snd . splitRTSArgs
 
+    -- Simple options (i.e. that do not take parameters, or just
+    -- take int parameters) which do *not* change generated artifacts
+    -- are filtered out.
     simpleFilters :: String -> Bool
     simpleFilters =
       not
@@ -181,7 +193,8 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
           , Any . isPrefixOf "-dsuppress-"
           , Any . isPrefixOf "-dno-suppress-"
           , flagIn $ invertibleFlagSet "-" ["ignore-dot-ghci"]
-          , flagIn . invertibleFlagSet "-f" . mconcat $
+          , -- -f-something -f-no-something options.
+            flagIn . invertibleFlagSet "-f" . mconcat $
               [
                 [ "reverse-errors"
                 , "warn-unused-binds"
