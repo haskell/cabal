@@ -67,6 +67,7 @@ import Distribution.Compiler (CompilerFlavor)
 import Distribution.License (License)
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.PrettyCtx
 import Distribution.Types.Annotation
 import Distribution.Types.Trivia
 import Distribution.Utils.Path
@@ -272,11 +273,15 @@ instance (Newtype a b, Sep Conc sep, Pretty b) => Pretty (ListAnn sep b a) where
   -- TODO(leana8959):
   -- Currently we lose the leading spaces because they are dropped by the field lexer / parser.
   -- However, we still have the position information to reconstruct them.
-  --
-  -- For the complete implementation we need to
-  -- - handle comments interleaved between the lines here, they are removed early on.
-  -- - indent each line and then mconcat them to restore exact horizontal spacing. whitespaces are removed at lexer stage.
   pretty = mconcat . map snd . prettySep @Conc (Proxy :: Proxy sep) . (map . fmap . fmap) (pretty . (pack :: a -> b)) . unpack
+
+
+-- TODO(leana8959):
+-- For the complete implementation we need to
+-- - handle comments interleaved between the lines here, they are removed early on.
+-- - indent each line and then mconcat them to restore exact horizontal spacing. whitespaces are removed at lexer stage.
+instance (Newtype a b, Sep Conc sep, Pretty b) => PrettyCtx (ListAnn sep b a)
+
 
 -- | Like 'List', but for 'Set'.
 --
@@ -362,6 +367,8 @@ instance Parsec Token where
 instance Pretty Token where
   pretty = showToken . unpack
 
+instance PrettyCtx Token
+
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' {getToken' :: String}
 
@@ -372,6 +379,8 @@ instance Parsec Token' where
 
 instance Pretty Token' where
   pretty = showToken . unpack
+
+instance PrettyCtx Token'
 
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted {getMQuoted :: a}
@@ -398,6 +407,8 @@ instance Parsec FilePathNT where
 
 instance Pretty FilePathNT where
   pretty = showFilePath . unpack
+
+instance PrettyCtx FilePathNT
 
 -- | Newtype for 'SymbolicPath', with a different 'Parsec' instance
 -- to disallow empty paths.
@@ -530,6 +541,8 @@ instance Pretty SpecVersion where
     | csv >= CabalSpecV1_12 = text (showCabalSpecVersion csv)
     | otherwise = text ">=" <<>> text (showCabalSpecVersion csv)
 
+instance PrettyCtx SpecVersion
+
 -------------------------------------------------------------------------------
 -- SpecLicense
 -------------------------------------------------------------------------------
@@ -550,6 +563,8 @@ instance Parsec SpecLicense where
 instance Pretty SpecLicense where
   pretty = either pretty pretty . unpack
 
+instance PrettyCtx SpecLicense
+
 -------------------------------------------------------------------------------
 -- TestedWith
 -------------------------------------------------------------------------------
@@ -565,6 +580,8 @@ instance Parsec TestedWith where
 instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
+
+instance PrettyCtx TestedWith
 
 parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do

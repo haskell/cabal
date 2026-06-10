@@ -23,6 +23,7 @@ import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField, PrettyFieldWith (..))
 import Distribution.Parsec.Position
 import Distribution.Pretty (Pretty (..), showFreeText, showFreeTextV3)
+import Distribution.PrettyCtx
 import Distribution.Types.Annotation
 import Distribution.Types.Trivia
 import Distribution.Utils.Generic (toUTF8BS)
@@ -149,13 +150,13 @@ instance FieldGrammarWith Abst Pretty PrettyFieldGrammarWith where
   availableSince _ _ = id
   hiddenField _ = PrettyFG (\_ -> mempty)
 
-instance FieldGrammarWith Conc Pretty PrettyFieldGrammarWith where
+instance FieldGrammarWith Conc PrettyCtx PrettyFieldGrammarWith where
   -- Nothing because subgrammar is not directly within a section?
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v -> pp v . aview f)
 
   -- TODO: push out section position from here
   uniqueFieldAla fn _pack l = PrettyFG $ \_v s ->
-    ppFieldFakePos fn (pretty (pack' _pack (aview l s)))
+    ppFieldFakePos fn (prettyCtx (mempty, pack' _pack (aview l s)))
 
   booleanFieldDef fn l def = PrettyFG pp
     where
@@ -169,13 +170,13 @@ instance FieldGrammarWith Conc Pretty PrettyFieldGrammarWith where
     where
       pp v s = case aview l s of
         Nothing -> mempty
-        Just a -> ppFieldFakePos fn (prettyVersioned v (pack' _pack a))
+        Just a -> ppFieldFakePos fn (prettyCtxVersioned v (mempty, pack' _pack a))
 
   optionalFieldDefAla fn _pack l def = PrettyFG pp
     where
       pp v s
         | x == def = mempty
-        | otherwise = ppFieldFakePos fn (prettyVersioned v (pack' _pack x))
+        | otherwise = ppFieldFakePos fn (prettyCtxVersioned v (mempty, pack' _pack x))
         where
           x = aview l s
 
@@ -200,7 +201,7 @@ instance FieldGrammarWith Conc Pretty PrettyFieldGrammarWith where
 
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
-      pp v s = ppFieldFakePos fn (prettyVersioned v (pack' _pack (aview l s)))
+      pp v s = ppFieldFakePos fn (prettyCtxVersioned v (mempty, pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ -> pp . aview l)
     where
@@ -242,7 +243,7 @@ instance FieldGrammarWith Conc Pretty PrettyFieldGrammarWith where
     where
       -- We absorb fields that have no position for the prototype
       pp v s =
-        let Ann t u :: Ann Positions Doc = prettyVersioned v . pack' _pack <$> x
+        let Ann t u :: Ann Positions Doc = (\u -> prettyCtxVersioned v (mempty, pack' _pack u)) <$> x
          in case t of
               IsInserted -> mempty
               HasTrivia pos -> ppFieldPos fn [(pos, u)]
@@ -253,7 +254,7 @@ instance FieldGrammarWith Conc Pretty PrettyFieldGrammarWith where
   uniqueFieldAla'
     :: forall (b :: Type) (s :: Type) (a :: Type)
      . ( Newtype a b
-       , Pretty b
+       , PrettyCtx b
        )
     => FieldName
     -- \^ field name
@@ -265,7 +266,7 @@ instance FieldGrammarWith Conc Pretty PrettyFieldGrammarWith where
   uniqueFieldAla' fn _pack l = PrettyFG pp
     where
       pp v s =
-        let Ann t u :: Ann Positions Doc = prettyVersioned v . pack' _pack <$> x
+        let Ann t u :: Ann Positions Doc = (\u -> prettyCtxVersioned v (mempty, pack' _pack u)) <$> x
          in case t of
               -- We absorb fields that have no position for the prototype
               IsInserted -> mempty

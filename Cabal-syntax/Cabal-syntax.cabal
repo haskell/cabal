@@ -122,6 +122,7 @@ library
     Distribution.Parsec.Warning
     Distribution.Parsec.Source
     Distribution.Pretty
+    Distribution.PrettyCtx
     Distribution.Pretty.ExactDoc
     Distribution.SPDX
     Distribution.SPDX.License

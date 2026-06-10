@@ -56,7 +56,7 @@ class
   , forall s. Applicative (g m s)
   ) =>
   FieldGrammarWith (m :: ParsingPhase) c g
-    | g -> c
+    | g m -> c
   where
   -- | Unfocus, zoom out, /blur/ 'FieldGrammar'.
   blurFieldGrammar :: ALens' a b -> g m b d -> g m a d
