@@ -12,6 +12,7 @@
 -- we cannot "see" easily.
 module Distribution.Client.SourceFiles (needElaboratedConfiguredPackage) where
 
+import Control.Monad ((>=>))
 import Control.Monad.IO.Class
 
 import Distribution.Client.ProjectPlanning.Types
@@ -190,9 +191,11 @@ needBuildInfo pkg_descr bi modules = do
       , map getSymbolicPath $ asmSources bi
       , map getSymbolicPath expandedExtraSrcFiles
       ]
-  for_ (fmap getSymbolicPath $ installIncludes bi) $ \f ->
-    findFileMonitored ("." : fmap getSymbolicPath (includeDirs bi)) f
-      >>= maybe (return ()) need
+  for_
+    (fmap getSymbolicPath $ installIncludes bi)
+    ( findFileMonitored ("." : fmap getSymbolicPath (includeDirs bi))
+        >=> maybe (return ()) need
+    )
   where
     findNeededModules :: [Suffix] -> Rebuild ()
     findNeededModules exts =
