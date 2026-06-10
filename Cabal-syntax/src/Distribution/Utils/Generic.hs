@@ -87,6 +87,7 @@ import Prelude ()
 
 import Control.Concurrent (threadDelay)
 import qualified Control.Exception as Exception
+import Control.Monad ((>=>))
 import Data.Bits (shiftL, (.&.), (.|.))
 import qualified Data.ByteString as SBS
 import qualified Data.ByteString.Lazy as LBS
@@ -161,11 +162,7 @@ wrapLine width = wrap 0 []
 -- The file is read lazily; if it is not fully consumed by the action then an
 -- exception is thrown.
 withFileContents :: FilePath -> (String -> IO a) -> IO a
-withFileContents name action =
-  withFile
-    name
-    ReadMode
-    (\hnd -> hGetContents hnd >>= action)
+withFileContents name action = withFile name ReadMode (hGetContents >=> action)
 
 -- | Writes a file atomically.
 --
@@ -317,7 +314,7 @@ withUTF8FileContents name action =
   withBinaryFile
     name
     ReadMode
-    (\hnd -> LBS.hGetContents hnd >>= action . ignoreBOM . fromUTF8LBS)
+    (LBS.hGetContents >=> action . ignoreBOM . fromUTF8LBS)
 
 -- | Writes a Unicode String as a UTF8 encoded text file.
 --

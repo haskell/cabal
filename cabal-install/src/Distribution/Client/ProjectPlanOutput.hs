@@ -777,8 +777,10 @@ readPackagesUpToDateCacheFile :: DistDirLayout -> IO PackagesUpToDate
 readPackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} =
   handleDoesNotExist Set.empty $
     handleDecodeFailure $
-      withBinaryFile (distProjectCacheFile "up-to-date") ReadMode $ \hnd ->
-        Binary.decodeOrFailIO =<< BS.hGetContents hnd
+      withBinaryFile
+        (distProjectCacheFile "up-to-date")
+        ReadMode
+        (Binary.decodeOrFailIO <=< BS.hGetContents)
   where
     handleDecodeFailure = fmap (fromRight Set.empty)
 
