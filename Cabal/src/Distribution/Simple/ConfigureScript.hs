@@ -23,7 +23,6 @@ import Prelude ()
 
 -- local
 import Distribution.PackageDescription
-import Distribution.Pretty
 import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
@@ -56,8 +55,18 @@ runConfigureScript
   -> ProgramDb
   -> Platform
   -- ^ host platform
+  -> Maybe String
+  -- ^ The GHC target platform triple (e.g. @"x86_64-w64-mingw32"@),
+  -- passed as the autoconf @--host=@ flag.
+  --
+  -- Note: GHC's \"target\" is the platform that compiled Haskell code
+  -- runs on, which corresponds to autoconf's \"host\" (the platform
+  -- where the compiled artifact runs). Autoconf reserves \"target\"
+  -- for compiler toolchains only. See the
+  -- [GHC wiki on cross-compilation](https://gitlab.haskell.org/ghc/ghc/-/wikis/cross-compilation)
+  -- for details on GHC's platform terminology.
   -> IO ()
-runConfigureScript verbHandles cfg flags programDb hp = do
+runConfigureScript verbHandles cfg flags programDb hp targetTriple = do
   let commonCfg = configCommonFlags cfg
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonCfg)
   dist_dir <- findDistPrefOrDefault $ setupDistPref commonCfg
@@ -183,7 +192,15 @@ runConfigureScript verbHandles cfg flags programDb hp = do
           : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
           ++ [("PATH", Just pathEnv) | not (null extraPath)]
           ++ cabalFlagEnv
-      maybeHostFlag = ["--host=" ++ show (pretty hp) | hp /= buildPlatform]
+      maybeHostFlag =
+        case targetTriple of
+          Just host ->
+            [ "--host=" ++ host
+            | -- the hp =/ buildPlatform guard is too restrictive,
+            -- e.g. for glibc -> musl cross-compilation we don't want to omit x86_64-unknown-linux-musl.
+            hp /= buildPlatform
+            ]
+          Nothing -> []
       args' =
         configureFile'
           : args
