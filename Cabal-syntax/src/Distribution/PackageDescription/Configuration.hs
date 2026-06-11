@@ -108,10 +108,17 @@ simplifyWithSysParams os arch cinfo cond = (cond', flags)
     interp (Builder _ _) = Right False
     interp (PackageFlag f) = Left f
 
--- | The version of the Cabal library against which @build(cabal ...)@
+-- | The version of the Cabal library against which @builder(cabal ...)@
 -- conditionals are evaluated. Cabal-syntax is released in lockstep with
--- Cabal, so this library's own version is used. When bootstrapping (no
--- Paths module available), fall back to the latest known spec version.
+-- Cabal, so this library's own version is used.
+--
+-- When bootstrapping (no @Paths_Cabal_syntax@ module available) we cannot read
+-- the real version, so we fall back to the digits of 'cabalSpecLatest'. Because
+-- they are released in lockstep this normally matches, but if 'cabalSpecLatest'
+-- lags the spec version that gates @builder(...)@ (currently 3.18), then during
+-- a bootstrap build a @builder(cabal >= ...)@ guard can evaluate against a
+-- version older than the Cabal actually performing the build. This resolves
+-- once 'cabalSpecLatest' reaches that spec version.
 buildToolVersion :: Version
 #ifdef CURRENT_PACKAGE_KEY
 buildToolVersion = mkVersion' Paths_Cabal_syntax.version
