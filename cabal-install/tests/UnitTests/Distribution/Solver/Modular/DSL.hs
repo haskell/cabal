@@ -34,6 +34,7 @@ module UnitTests.Distribution.Solver.Modular.DSL
   , exTest
   , exExe
   , exFlagged
+  , exBuilder
   , exResolve
   , extractInstallPlan
   , declareFlags
@@ -69,6 +70,7 @@ import qualified Distribution.Package as C hiding
   )
 import qualified Distribution.PackageDescription as C
 import qualified Distribution.PackageDescription.Check as C
+import qualified Distribution.Types.BuildTool as C
 import qualified Distribution.Simple.PackageIndex as C.PackageIndex
 import Distribution.Simple.Setup (BooleanFlag (..))
 import qualified Distribution.System as C
@@ -209,6 +211,8 @@ data ExampleDependency
     ExLegacyBuildToolFix ExamplePkgName ExamplePkgVersion
   | -- | Dependencies indexed by a flag
     ExFlagged ExampleFlagName Dependencies Dependencies
+  | -- | Dependencies indexed by a @builder(<tool> <version range>)@ conditional
+    ExBuilder C.BuildTool C.VersionRange Dependencies Dependencies
   | -- | Dependency on a language extension
     ExExt Extension
   | -- | Dependency on a language version
@@ -247,6 +251,14 @@ exFlagged
   -> [ExampleDependency]
   -> ExampleDependency
 exFlagged n t e = ExFlagged n (dependencies t) (dependencies e)
+
+exBuilder
+  :: C.BuildTool
+  -> C.VersionRange
+  -> [ExampleDependency]
+  -> [ExampleDependency]
+  -> ExampleDependency
+exBuilder t vr a b = ExBuilder t vr (dependencies a) (dependencies b)
 
 data ExConstraint
   = ExVersionConstraint ConstraintScope ExampleVersionRange
@@ -605,6 +617,7 @@ exAvSrcPkg ex =
         go ExLegacyBuildToolAny{} = []
         go ExLegacyBuildToolFix{} = []
         go (ExFlagged f a b) = f : extractFlags a ++ extractFlags b
+        go (ExBuilder _ _ a b) = extractFlags a ++ extractFlags b
         go ExExt{} = []
         go ExLang{} = []
         go ExPkg{} = []
@@ -653,21 +666,21 @@ exAvSrcPkg ex =
               }
        in C.CondNode
             { C.condTreeData = L.set L.targetBuildDepends (map mkDirect directDeps) component
-            , C.condTreeComponents = map (mkFlagged mkComponent) flaggedDeps
+            , C.condTreeComponents = map (mkConditioned mkComponent) flaggedDeps
             }
 
     mkDirect :: (ExamplePkgName, C.LibraryName, C.VersionRange) -> C.Dependency
     mkDirect (dep, name, vr) = C.Dependency (C.mkPackageName dep) vr (NonEmptySet.singleton name)
 
-    mkFlagged
+    mkConditioned
       :: forall a
        . L.HasBuildInfo a
       => (C.LibraryVisibility -> C.BuildInfo -> a)
-      -> (ExampleFlagName, Dependencies, Dependencies)
+      -> (C.Condition C.ConfVar, Dependencies, Dependencies)
       -> DependencyComponent a
-    mkFlagged mkComponent (f, a, b) =
+    mkConditioned mkComponent (cond, a, b) =
       C.CondBranch
-        (C.Var (C.PackageFlag (C.mkFlagName f)))
+        cond
         (mkCondTree mkComponent a)
         (Just (mkCondTree mkComponent b))
 
@@ -679,7 +692,7 @@ exAvSrcPkg ex =
     splitDeps
       :: [ExampleDependency]
       -> ( [(ExamplePkgName, C.LibraryName, C.VersionRange)]
-         , [(ExampleFlagName, Dependencies, Dependencies)]
+         , [(C.Condition C.ConfVar, Dependencies, Dependencies)]
          )
     splitDeps [] =
       ([], [])
@@ -700,7 +713,10 @@ exAvSrcPkg ex =
        in ((p, C.LSubLibName (C.mkUnqualComponentName lib), C.thisVersion $ mkSimpleVersion v) : directDeps, flaggedDeps)
     splitDeps (ExFlagged f a b : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-       in (directDeps, (f, a, b) : flaggedDeps)
+       in (directDeps, (C.Var (C.PackageFlag (C.mkFlagName f)), a, b) : flaggedDeps)
+    splitDeps (ExBuilder t vr a b : deps) =
+      let (directDeps, flaggedDeps) = splitDeps deps
+       in (directDeps, (C.Var (C.Builder t vr), a, b) : flaggedDeps)
     splitDeps (dep : _) = error $ "Unexpected dependency: " ++ show dep
 
     -- custom-setup only supports simple dependencies

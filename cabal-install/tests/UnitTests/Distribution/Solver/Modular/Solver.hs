@@ -16,6 +16,8 @@ import Test.Tasty as TF
 import Test.Tasty.ExpectedFailure
 
 -- Cabal
+import Distribution.PackageDescription.Configuration (buildToolVersion)
+import qualified Distribution.Types.BuildTool as BT
 import Language.Haskell.Extension
   ( Extension (..)
   , KnownExtension (..)
@@ -53,6 +55,18 @@ tests =
       , runTest $ mkTest db22 "unknownPackage2" ["A"] (solverFailure (isInfixOf "unknown package: C"))
       , runTest $ mkTest db23 "unknownPackage3" ["A"] (solverFailure (isInfixOf "unknown package: B"))
       , runTest $ mkTest [] "unknown target" ["A"] (solverFailure (isInfixOf "unknown package: A"))
+      ]
+  , testGroup
+      "Builder conditional dependencies"
+      -- 'convBranch': a builder(...) condition is statically evaluated to pick
+      -- the then- or else-dependencies (it does not introduce a flag choice).
+      [ runTest $ mkTest (dbBuilder BT.Cabal (V.orLaterVersion buildToolVersion)) "builderSatisfiedPicksThen" ["B"] (solverSuccess [("A", 1), ("B", 1)])
+      , runTest $ mkTest (dbBuilder BT.Cabal (V.laterVersion buildToolVersion)) "builderUnsatisfiedPicksElse" ["B"] (solverSuccess [("A", 2), ("B", 1)])
+      , runTest $ mkTest (dbBuilder BT.MCabal V.anyVersion) "builderToolMismatchPicksElse" ["B"] (solverSuccess [("A", 2), ("B", 1)])
+      , -- 'testConditionForComponent': a builder(...) condition gating a
+        -- component's buildability is statically evaluated too.
+        runTest $ mkTest (dbBuilderBuildable BT.Cabal) "builderBuildableLibraryAccepted" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+      , runTest $ mkTest (dbBuilderBuildable BT.MCabal) "builderUnbuildableLibraryRejected" ["A"] (solverFailure (isInfixOf "library is not buildable in the current environment"))
       ]
   , testGroup
       "Flagged dependencies"
@@ -1029,6 +1043,23 @@ db3 =
   , Right $ exAv "B" 1 [exFlagged "flagB" [ExFix "A" 1] [ExFix "A" 2]]
   , Right $ exAv "C" 1 [ExFix "A" 1, ExAny "B"]
   , Right $ exAv "D" 1 [ExFix "A" 2, ExAny "B"]
+  ]
+
+-- | Like 'db3', but the conditional is a @builder(tool vr)@ test rather than a
+-- flag: the then-branch needs @A == 1@, the else-branch needs @A == 2@.
+dbBuilder :: BT.BuildTool -> V.VersionRange -> ExampleDb
+dbBuilder t vr =
+  [ Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 []
+  , Right $ exAv "B" 1 [exBuilder t vr [ExFix "A" 1] [ExFix "A" 2]]
+  ]
+
+-- | A library B that is buildable only when @builder(tool)@ holds (the
+-- else-branch marks it unbuildable), with A depending on B.
+dbBuilderBuildable :: BT.BuildTool -> ExampleDb
+dbBuilderBuildable t =
+  [ Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "B" 1 [ExBuilder t V.anyVersion (dependencies []) unbuildableDependencies]
   ]
 
 -- | Like db3, but the flag picks a different package rather than a
