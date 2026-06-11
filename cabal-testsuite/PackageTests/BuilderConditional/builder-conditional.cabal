@@ -1,0 +1,21 @@
+cabal-version: 3.18
+name:          builder-conditional
+version:       0.1
+build-type:    Simple
+
+library
+  exposed-modules:  Lib
+  build-depends:    base
+  default-language: Haskell2010
+
+  -- Every released Cabal is at least 1.0, so this branch is always taken.
+  if builder(cabal >= 1.0)
+    cpp-options: -DCABAL_AT_LEAST_1
+
+  -- No Cabal is this new, so this branch is never taken.
+  if builder(cabal >= 999999)
+    cpp-options: -DCABAL_FROM_THE_FUTURE
+
+  -- cabal, not mcabal, is the builder here, so this branch is never taken.
+  if builder(mcabal)
+    cpp-options: -DBUILT_WITH_MCABAL
