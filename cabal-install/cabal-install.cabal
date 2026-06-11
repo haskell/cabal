@@ -61,7 +61,7 @@ common warnings
 
 common base-dep
     build-depends:
-      , base >=4.13 && <4.23
+      , base >=4.17 && <4.23
 
 common cabal-dep
     build-depends:

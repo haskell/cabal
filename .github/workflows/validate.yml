@@ -65,43 +65,8 @@ jobs:
             "9.10.3",
             "9.8.4",
             "9.6.7",
-            "9.4.8",
-            "9.2.8",
-            "9.0.2",
-            "8.10.7",
-            "8.8.4",
+            "9.4.8"
           ]
-        exclude:
-          # ghc-pkg.exe starts silently failing for a few hours
-          - sys:
-              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
-            ghc: "9.2.8"
-          # Throws fatal "cabal-tests.exe: fd:8: hGetLine: end of file" exception
-          # even with --io-manager=native
-          - sys:
-              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
-            ghc: "9.0.2"
-          # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
-          - sys:
-              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
-            ghc: "8.10.7"
-          # lot of segfaults caused by ghc bugs
-          - sys:
-              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
-            ghc: "8.8.4"
-          # ghc before 8.10.5 doesn't run on AArch64
-          # 9.0.2 suffers from https://gitlab.haskell.org/ghc/ghc/-/issues/20592
-          # 8.10.7 throws asm errors in hashable's cbits suggesting the runner doesn't
-          # support a CPU extension for hardware SHA; may be fixable with flags
-          - sys:
-              { os: macos-latest, shell: bash }
-            ghc: "9.0.2"
-          - sys:
-              { os: macos-latest, shell: bash }
-            ghc: "8.10.7"
-          - sys:
-              { os: macos-latest, shell: bash }
-            ghc: "8.8.4"
     defaults:
       run:
         shell: ${{ matrix.sys.shell }}
@@ -271,7 +236,7 @@ jobs:
     strategy:
       matrix:
         extra-ghc:
-          ["8.6.5", "8.4.4", "8.2.2", "8.0.2"]
+          ["9.2.8", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4", "8.2.2", "8.0.2"]
           ## GHC 7.10.3 does not install on ubuntu-latest with ghcup.
           ## Older GHCs are not supported by ghcup in the first place.
       fail-fast: false

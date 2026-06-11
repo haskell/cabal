@@ -9,7 +9,7 @@ executable cabal-bootstrap-gen
   main-is:          Main.hs
   build-depends:
     , aeson                  ^>=1.5.2.0  || ^>=2.0.3.0 || ^>=2.1.0.0 || ^>=2.2.0.0
-    , base                    >=4.12.0.0 && < 5
+    , base                    >=4.17.0.0 && < 5
     , bytestring              >=0.10.8.2 && <0.13
     , Cabal                  ^>=3.14.1.0 || ^>=3.16.0.0
     , Cabal-syntax           ^>=3.14.1.0 || ^>=3.16.0.0
