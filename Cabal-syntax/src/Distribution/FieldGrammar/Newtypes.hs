@@ -60,8 +60,10 @@ module Distribution.FieldGrammar.Newtypes
 
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
+import Distribution.Utils.Generic
 import Prelude ()
 
+import Distribution.Fields.Field
 import Distribution.CabalSpecVersion
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.License (License)
@@ -86,6 +88,7 @@ import Distribution.Version
   )
 import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
+import qualified Text.PrettyPrint as PP
 import Data.Kind (Type)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
@@ -276,12 +279,34 @@ instance (Newtype a b, Sep Conc sep, Pretty b) => Pretty (ListAnn sep b a) where
   pretty = mconcat . map snd . prettySep @Conc (Proxy :: Proxy sep) . (map . fmap . fmap) (pretty . (pack :: a -> b)) . unpack
 
 
+-- This is only here because I haven't ported all the usages to proper monoidalFieldAla.
+-- When that's done across the codebase, this can be removed.
+instance (Newtype a b, Sep Abst sep, Pretty b) => PrettyCtx (List sep b a)
+
 -- TODO(leana8959):
 -- For the complete implementation we need to
 -- - handle comments interleaved between the lines here, they are removed early on.
 -- - indent each line and then mconcat them to restore exact horizontal spacing. whitespaces are removed at lexer stage.
-instance (Newtype a b, Sep Abst sep, Pretty b) => PrettyCtx (List sep b a)
-instance (Newtype a b, Sep Conc sep, Pretty b) => PrettyCtx (ListAnn sep b a)
+instance (Newtype a b, Sep Conc sep, Pretty b) => PrettyCtx (ListAnn sep b a) where
+  prettyCtx (cmts, x) =
+    let locatedDocs :: [(Position, Doc)] = prettySep @Conc (Proxy :: Proxy sep) . (map . fmap . fmap) (pretty . (pack :: a -> b)) . unpack $ x
+        withComments = interleaveCommentsWithDocs cmts locatedDocs
+    in  mconcat $ map snd $ withComments
+
+
+commentToLocatedDoc :: Comment Position -> (Position, Doc)
+commentToLocatedDoc (Comment bs pos) = (pos, PP.text (fromUTF8BS bs))
+
+interleaveCommentsWithDocs :: [Comment Position] -> [(Position, Doc)] -> [(Position, Doc)]
+interleaveCommentsWithDocs cmts docs = interleaveLocatedDocs (map commentToLocatedDoc cmts) docs
+
+interleaveLocatedDocs :: [(Position, Doc)] -> [(Position, Doc)] -> [(Position, Doc)]
+interleaveLocatedDocs [] d2 = d2
+interleaveLocatedDocs d1 [] = d1
+interleaveLocatedDocs (d1@(p1, _) : ds1) (d2@(p2, _) : ds2) =
+  if p1 <= p2
+    then d1 : interleaveLocatedDocs ds1 (d2 : ds2)
+    else d2 : interleaveLocatedDocs (d1 : ds1) ds2
 
 
 -- | Like 'List', but for 'Set'.
