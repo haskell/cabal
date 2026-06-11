@@ -15,6 +15,7 @@ module Distribution.FieldGrammar.Pretty
   , prettyFieldGrammar
   ) where
 
+import Distribution.Fields.Field
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
@@ -225,13 +226,13 @@ instance FieldGrammarWith Conc PrettyCtx PrettyFieldGrammarWith where
 
   -- New methods
 
-  -- TODO(leana8959): Think about how to produce pretty fields with interleaved comments
   monoidalFieldAla' fn _pack l = PrettyFG $ \v s ->
-    -- let bs = fmap (prettyVersioned v . pack' _pack) <$>
-    --           aview l s
-    --  in   
-     mempty
-      -- ppFieldPos fn bs
+    let bs =
+          map
+            ( \(cmts, (poss, x)) -> (poss, prettyCtxVersioned v (cmts, pack' _pack x))
+            )
+            (aview l s)
+     in ppFieldPos fn bs
 
   booleanFieldDef' fn l _def = PrettyFG $ \_v s ->
     aview l s >>= \(Ann t b) -> case t of
@@ -247,6 +248,7 @@ instance FieldGrammarWith Conc PrettyCtx PrettyFieldGrammarWith where
          in case t of
               IsInserted -> mempty
               HasTrivia pos -> ppFieldPos fn [(pos, u)]
+              -- TODO(leana8959): there shouldn't be any other cases
               _ -> error "unreachable, bad model"
         where
           x = aview l s
