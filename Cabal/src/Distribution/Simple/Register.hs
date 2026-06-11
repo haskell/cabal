@@ -171,7 +171,7 @@ generateOne verbHandles pkg lib lbi clbi regFlags =
         withPackageDB lbi
           ++ maybeToList (flagToMaybe (regPackageDB regFlags))
     distPref = fromFlag $ setupDistPref common
-    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+    CommonSetupVerbosity verbosity = (verbHandles, common)
     mbWorkDir = flagToMaybe $ setupWorkingDir common
 
 registerAll
@@ -232,7 +232,7 @@ registerAll verbHandles pkg lbi regFlags ipis =
         withPackageDB lbi
           ++ maybeToList (flagToMaybe (regPackageDB regFlags))
     common = registerCommonFlags regFlags
-    verbosity = mkVerbosity verbHandles (fromFlag (setupVerbosity common))
+    CommonSetupVerbosity verbosity = (verbHandles, common)
     mbWorkDir = mbWorkDirLBI lbi
 
     writeRegistrationFileOrDirectory = do
@@ -731,7 +731,7 @@ unregisterWithHandles verbHandles pkg lbi regFlags = do
   let pkgid = packageId pkg
       common = registerCommonFlags regFlags
       genScript = fromFlag (regGenScript regFlags)
-      verbosity = mkVerbosity verbHandles (fromFlag (setupVerbosity common))
+      CommonSetupVerbosity verbosity = (verbHandles, common)
       packageDb =
         fromFlagOrDefault
           (registrationPackageDB (withPackageDB lbi))
