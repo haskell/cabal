@@ -5,7 +5,9 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- /Elaborated: worked out with great care and nicety of detail; executed with great minuteness: elaborate preparations; elaborate care./
@@ -806,6 +808,9 @@ rebuildInstallPlan
         projectConfig@ProjectConfig
           { projectConfigShared
           , projectConfigBuildOnly
+          , projectConfigAllPackages
+          , projectConfigLocalPackages
+          , projectConfigSpecificPackage
           }
         (compiler, platform, progdb)
         localPackages
@@ -874,37 +879,19 @@ rebuildInstallPlan
 
             solverSettings = resolveSolverSettings projectConfig
             logMsg message rest = debugNoWrap verbosity message >> rest
+            perPkgOption = lookupPerPkgOption (const True) projectConfigAllPackages projectConfigLocalPackages (getMapMappend projectConfigSpecificPackage)
 
+            -- TODO: "local" misnomer: we should separate
+            -- builtin/global/inplace/local packages and packages explicitly
+            -- mentioned in the project.
             localPackagesEnabledStanzas =
               Map.fromList
-                [ (pkgname, stanzas)
+                [ (pkgname, Map.fromList $ ((TestStanzas,) <$> tests) ++ ((BenchStanzas,) <$> benches))
                 | pkg <- localPackages
-                , -- TODO: misnomer: we should separate
-                -- builtin/global/inplace/local packages
-                -- and packages explicitly mentioned in the project
-                --
-                let pkgname = pkgSpecifierTarget pkg
-                    testsEnabled =
-                      lookupLocalPackageConfig
-                        packageConfigTests
-                        projectConfig
-                        pkgname
-                    benchmarksEnabled =
-                      lookupLocalPackageConfig
-                        packageConfigBenchmarks
-                        projectConfig
-                        pkgname
-                    isLocal = isJust (shouldBeLocal pkg)
-                    stanzas
-                      | isLocal =
-                          Map.fromList $
-                            [ (TestStanzas, enabled)
-                            | enabled <- flagToList testsEnabled
-                            ]
-                              ++ [ (BenchStanzas, enabled)
-                                 | enabled <- flagToList benchmarksEnabled
-                                 ]
-                      | otherwise = Map.fromList [(TestStanzas, False), (BenchStanzas, False)]
+                , let pkgname = pkgSpecifierTarget pkg
+                , let (tests, benches) = case shouldBeLocal pkg of
+                        Just (fmap flagToList . perPkgOption -> f) -> (f packageConfigTests, f packageConfigBenchmarks)
+                        Nothing -> ([False], [False])
                 ]
 
       -- Elaborate the solver's install plan to get a fully detailed plan. This
@@ -2327,7 +2314,7 @@ elaborateInstallPlan
             elabHaddockTargets = []
 
             elabBuildHaddocks =
-              perPkgOptionFlag pkgid False packageConfigDocumentation
+              perPkgOptionFlag False pkgid packageConfigDocumentation
 
             -- `documentation: true` should imply `-haddock` for GHC
             addHaddockIfDocumentationEnabled :: ConfiguredProgram -> ConfiguredProgram
@@ -2375,35 +2362,35 @@ elaborateInstallPlan
             -- 'elabBuildOptions' accurately reflects what will actually be built.
             elabBuildOptionsRaw =
               LBC.BuildOptions
-                { withVanillaLib = perPkgOptionFlag pkgid True packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
+                { withVanillaLib = perPkgOptionFlag True pkgid packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
                 , withSharedLib = canBuildSharedLibs && pkgid `Set.member` pkgsUseSharedLibrary
-                , withStaticLib = perPkgOptionFlag pkgid False packageConfigStaticLib
+                , withStaticLib = perPkgOptionFlag False pkgid packageConfigStaticLib
                 , withDynExe =
-                    perPkgOptionFlag pkgid False packageConfigDynExe
+                    perPkgOptionFlag False pkgid packageConfigDynExe
                       -- We can't produce a dynamic executable if the user
                       -- wants to enable executable profiling but the
                       -- compiler doesn't support prof+dyn.
                       && (okProfDyn || not profExe)
-                , withFullyStaticExe = perPkgOptionFlag pkgid False packageConfigFullyStaticExe
-                , withGHCiLib = perPkgOptionFlag pkgid False packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
+                , withFullyStaticExe = perPkgOptionFlag False pkgid packageConfigFullyStaticExe
+                , withGHCiLib = perPkgOptionFlag False pkgid packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
                 , withProfExe = profExe
                 , withProfLib = canBuildProfilingLibs && pkgid `Set.member` pkgsUseProfilingLibrary
                 , withProfLibShared = canBuildProfilingSharedLibs && pkgid `Set.member` pkgsUseProfilingLibraryShared
-                , withBytecodeLib = perPkgOptionFlag pkgid False packageConfigBytecodeLib
-                , exeCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
-                , libCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
-                , withOptimization = perPkgOptionFlag pkgid NormalOptimisation packageConfigOptimization
-                , splitObjs = perPkgOptionFlag pkgid False packageConfigSplitObjs
-                , splitSections = perPkgOptionFlag pkgid False packageConfigSplitSections
-                , stripLibs = perPkgOptionFlag pkgid False packageConfigStripLibs
-                , stripExes = perPkgOptionFlag pkgid False packageConfigStripExes
-                , withDebugInfo = perPkgOptionFlag pkgid NoDebugInfo packageConfigDebugInfo
-                , relocatable = perPkgOptionFlag pkgid False packageConfigRelocatable
+                , withBytecodeLib = perPkgOptionFlag False pkgid packageConfigBytecodeLib
+                , exeCoverage = perPkgOptionFlag False pkgid packageConfigCoverage
+                , libCoverage = perPkgOptionFlag False pkgid packageConfigCoverage
+                , withOptimization = perPkgOptionFlag NormalOptimisation pkgid packageConfigOptimization
+                , splitObjs = perPkgOptionFlag False pkgid packageConfigSplitObjs
+                , splitSections = perPkgOptionFlag False pkgid packageConfigSplitSections
+                , stripLibs = perPkgOptionFlag False pkgid packageConfigStripLibs
+                , stripExes = perPkgOptionFlag False pkgid packageConfigStripExes
+                , withDebugInfo = perPkgOptionFlag NoDebugInfo pkgid packageConfigDebugInfo
+                , relocatable = perPkgOptionFlag False pkgid packageConfigRelocatable
                 , withProfLibDetail = elabProfExeDetail
                 , withProfExeDetail = elabProfLibDetail
                 }
             okProfDyn = profilingDynamicSupportedOrUnknown compiler
-            profExe = perPkgOptionFlag pkgid False packageConfigProf
+            profExe = perPkgOptionFlag False pkgid packageConfigProf
 
             elabBuildOptions = Cabal.adjustBuildOptions compiler compilerProgDb elabBuildOptionsRaw
 
@@ -2411,12 +2398,12 @@ elaborateInstallPlan
               , elabProfLibDetail
               ) =
                 perPkgOptionLibExeFlag
-                  pkgid
                   ProfDetailDefault
+                  pkgid
                   packageConfigProfDetail
                   packageConfigProfLibDetail
 
-            elabDumpBuildInfo = perPkgOptionFlag pkgid NoDumpBuildInfo packageConfigDumpBuildInfo
+            elabDumpBuildInfo = perPkgOptionFlag NoDumpBuildInfo pkgid packageConfigDumpBuildInfo
 
             -- Combine the configured compiler prog settings with the user-supplied
             -- config. For the compiler progs any user-supplied config was taken
@@ -2428,7 +2415,8 @@ elaborateInstallPlan
                 [ (programId prog, programPath prog)
                 | prog <- configuredPrograms compilerProgDb
                 ]
-                <> perPkgOptionMapLast pkgid packageConfigProgramPaths
+                <> getMapLast (perPkgOption pkgid packageConfigProgramPaths)
+
             elabProgramArgs =
               -- Workaround for <https://github.com/haskell/cabal/issues/4010>
               --
@@ -2453,8 +2441,9 @@ elaborateInstallPlan
                       , not (null args)
                       ]
                   )
-                  (perPkgOptionMapMappend pkgid packageConfigProgramArgs)
-            elabProgramPathExtra = perPkgOptionNubList pkgid packageConfigProgramPathExtra
+                  (getMapMappend $ perPkgOption pkgid packageConfigProgramArgs)
+
+            elabProgramPathExtra = fromNubList $ perPkgOption pkgid packageConfigProgramPathExtra
             elabConfiguredPrograms = configuredPrograms compilerProgDb
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
@@ -2464,73 +2453,51 @@ elaborateInstallPlan
             elabProgPrefix = perPkgOptionMaybe pkgid packageConfigProgPrefix
             elabProgSuffix = perPkgOptionMaybe pkgid packageConfigProgSuffix
 
-            elabHaddockHoogle = perPkgOptionFlag pkgid False packageConfigHaddockHoogle
-            elabHaddockHtml = perPkgOptionFlag pkgid False packageConfigHaddockHtml
+            elabHaddockHoogle = perPkgOptionFlag False pkgid packageConfigHaddockHoogle
+            elabHaddockHtml = perPkgOptionFlag False pkgid packageConfigHaddockHtml
             elabHaddockHtmlLocation = perPkgOptionMaybe pkgid packageConfigHaddockHtmlLocation
-            elabHaddockForeignLibs = perPkgOptionFlag pkgid False packageConfigHaddockForeignLibs
-            elabHaddockForHackage = perPkgOptionFlag pkgid Cabal.ForDevelopment packageConfigHaddockForHackage
-            elabHaddockExecutables = perPkgOptionFlag pkgid False packageConfigHaddockExecutables
-            elabHaddockTestSuites = perPkgOptionFlag pkgid False packageConfigHaddockTestSuites
-            elabHaddockBenchmarks = perPkgOptionFlag pkgid False packageConfigHaddockBenchmarks
-            elabHaddockInternal = perPkgOptionFlag pkgid False packageConfigHaddockInternal
+            elabHaddockForeignLibs = perPkgOptionFlag False pkgid packageConfigHaddockForeignLibs
+            elabHaddockForHackage = perPkgOptionFlag Cabal.ForDevelopment pkgid packageConfigHaddockForHackage
+            elabHaddockExecutables = perPkgOptionFlag False pkgid packageConfigHaddockExecutables
+            elabHaddockTestSuites = perPkgOptionFlag False pkgid packageConfigHaddockTestSuites
+            elabHaddockBenchmarks = perPkgOptionFlag False pkgid packageConfigHaddockBenchmarks
+            elabHaddockInternal = perPkgOptionFlag False pkgid packageConfigHaddockInternal
             elabHaddockCss = perPkgOptionMaybe pkgid packageConfigHaddockCss
-            elabHaddockLinkedSource = perPkgOptionFlag pkgid False packageConfigHaddockLinkedSource
-            elabHaddockQuickJump = perPkgOptionFlag pkgid False packageConfigHaddockQuickJump
+            elabHaddockLinkedSource = perPkgOptionFlag False pkgid packageConfigHaddockLinkedSource
+            elabHaddockQuickJump = perPkgOptionFlag False pkgid packageConfigHaddockQuickJump
             elabHaddockHscolourCss = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
             elabHaddockContents = perPkgOptionMaybe pkgid packageConfigHaddockContents
             elabHaddockIndex = perPkgOptionMaybe pkgid packageConfigHaddockIndex
             elabHaddockBaseUrl = perPkgOptionMaybe pkgid packageConfigHaddockBaseUrl
             elabHaddockResourcesDir = perPkgOptionMaybe pkgid packageConfigHaddockResourcesDir
             elabHaddockOutputDir = perPkgOptionMaybe pkgid packageConfigHaddockOutputDir
-            elabHaddockUseUnicode = perPkgOptionFlag pkgid False packageConfigHaddockUseUnicode
+            elabHaddockUseUnicode = perPkgOptionFlag False pkgid packageConfigHaddockUseUnicode
 
             elabTestMachineLog = perPkgOptionMaybe pkgid packageConfigTestMachineLog
             elabTestHumanLog = perPkgOptionMaybe pkgid packageConfigTestHumanLog
             elabTestShowDetails = perPkgOptionMaybe pkgid packageConfigTestShowDetails
-            elabTestKeepTix = perPkgOptionFlag pkgid False packageConfigTestKeepTix
+            elabTestKeepTix = perPkgOptionFlag False pkgid packageConfigTestKeepTix
             elabTestWrapper = perPkgOptionMaybe pkgid packageConfigTestWrapper
-            elabTestFailWhenNoTestSuites = perPkgOptionFlag pkgid False packageConfigTestFailWhenNoTestSuites
+            elabTestFailWhenNoTestSuites = perPkgOptionFlag False pkgid packageConfigTestFailWhenNoTestSuites
             elabTestTestOptions = perPkgOptionList pkgid packageConfigTestTestOptions
 
             elabBenchmarkOptions = perPkgOptionList pkgid packageConfigBenchmarkOptions
 
-      perPkgOptionFlag :: PackageId -> a -> (PackageConfig -> Flag a) -> a
+      perPkgOptionFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> a
+      perPkgOptionFlag def = fmap (fromFlagOrDefault def) . perPkgOption
+
       perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
+      perPkgOptionMaybe = fmap flagToMaybe . perPkgOption
+
       perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
+      perPkgOptionList = perPkgOption
 
-      perPkgOptionFlag pkgid def f = fromFlagOrDefault def (lookupPerPkgOption pkgid f)
-      perPkgOptionMaybe pkgid f = flagToMaybe (lookupPerPkgOption pkgid f)
-      perPkgOptionList pkgid f = lookupPerPkgOption pkgid f
-      perPkgOptionNubList pkgid f = fromNubList (lookupPerPkgOption pkgid f)
-      perPkgOptionMapLast pkgid f = getMapLast (lookupPerPkgOption pkgid f)
-      perPkgOptionMapMappend pkgid f = getMapMappend (lookupPerPkgOption pkgid f)
+      perPkgOptionLibExeFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> (PackageConfig -> Flag a) -> (a, a)
+      perPkgOptionLibExeFlag (fromFlagOrDefault -> f) pkgid (perPkgOption pkgid -> both) (perPkgOption pkgid -> lib) =
+        (f both, f (both <> lib))
 
-      perPkgOptionLibExeFlag pkgid def fboth flib = (exe, lib)
-        where
-          exe = fromFlagOrDefault def bothflag
-          lib = fromFlagOrDefault def (bothflag <> libflag)
-
-          bothflag = lookupPerPkgOption pkgid fboth
-          libflag = lookupPerPkgOption pkgid flib
-
-      lookupPerPkgOption
-        :: (Package pkg, Monoid m)
-        => pkg
-        -> (PackageConfig -> m)
-        -> m
-      lookupPerPkgOption pkg f =
-        -- This is where we merge the options from the project config that
-        -- apply to all packages, all project local packages, and to specific
-        -- named packages
-        global `mappend` local `mappend` perpkg
-        where
-          global = f allPackagesConfig
-          local
-            | isLocalToProject pkg =
-                f localPackagesConfig
-            | otherwise =
-                mempty
-          perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
+      perPkgOption :: (Package pkg, Monoid m) => pkg -> (PackageConfig -> m) -> m
+      perPkgOption = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig perPackageConfig
 
       inplacePackageDbs =
         corePackageDbs
@@ -2646,8 +2613,8 @@ elaborateInstallPlan
         fromFlagOrDefault compilerShouldUseProfilingLibByDefault (profBothFlag <> profLibFlag)
         where
           pkgid = packageId pkg
-          profBothFlag = lookupPerPkgOption pkgid packageConfigProf
-          profLibFlag = lookupPerPkgOption pkgid packageConfigProfLib
+          profBothFlag = perPkgOption pkgid packageConfigProf
+          profLibFlag = perPkgOption pkgid packageConfigProfLib
 
       pkgsUseProfilingLibraryShared :: Set PackageId
       pkgsUseProfilingLibraryShared =
@@ -4687,3 +4654,23 @@ determineCoverageFor configuredPkg plan =
 
     isIndefiniteOrInstantiation :: ModuleShape -> Bool
     isIndefiniteOrInstantiation = not . Set.null . modShapeRequires
+
+-- | Look up and merge the options from the project config that apply to all
+-- packages, all project local packages, and to specific named packages.
+lookupPerPkgOption
+  :: (Package pkg, Monoid m)
+  => (pkg -> Bool)
+  -> PackageConfig
+  -> PackageConfig
+  -> Map PackageName PackageConfig
+  -> pkg
+  -> (PackageConfig -> m)
+  -> m
+lookupPerPkgOption isLocalPkg allPackagesConfig localPackagesConfig perPackageConfig pkg f =
+  global `mappend` local `mappend` perpkg
+  where
+    global = f allPackagesConfig
+    local
+      | isLocalPkg pkg = f localPackagesConfig
+      | otherwise = mempty
+    perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)

@@ -4,7 +4,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Handling project configuration.
 module Distribution.Client.ProjectConfig
@@ -59,7 +59,6 @@ module Distribution.Client.ProjectConfig
   , fetchAndReadSourcePackages
 
     -- * Resolving configuration
-  , lookupLocalPackageConfig
   , projectConfigWithBuilderRepoContext
   , projectConfigWithSolverRepoContext
   , SolverSettings (..)
@@ -262,28 +261,6 @@ import Distribution.Solver.Types.ProjectConfigPath
 ----------------------------------------
 -- Resolving configuration to settings
 --
-
--- | Look up a 'PackageConfig' field in the 'ProjectConfig' for a specific
--- 'PackageName'. This returns the configuration that applies to all local
--- packages plus any package-specific configuration for this package.
-lookupLocalPackageConfig
-  :: Monoid a
-  => (PackageConfig -> a)
-  -> ProjectConfig
-  -> PackageName
-  -> a
-lookupLocalPackageConfig
-  field
-  ProjectConfig
-    { projectConfigLocalPackages
-    , projectConfigSpecificPackage
-    }
-  pkgname =
-    field projectConfigLocalPackages
-      <> maybe
-        mempty
-        field
-        (Map.lookup pkgname (getMapMappend projectConfigSpecificPackage))
 
 -- | Use a 'RepoContext' based on the 'BuildTimeSettings'.
 projectConfigWithBuilderRepoContext
@@ -767,7 +744,7 @@ readProjectConfig
   -> Flag FilePath
   -> DistDirLayout
   -> Rebuild ProjectConfigSkeleton
-readProjectConfig verbosity parserOption _ (Flag True) configFileFlag _ = do
+readProjectConfig verbosity _parserOption _ (Flag True) configFileFlag _ = do
   global <- singletonProjectConfigSkeleton <$> readGlobalConfig verbosity configFileFlag
   return (global <> singletonProjectConfigSkeleton defaultImplicitProjectConfig)
 readProjectConfig verbosity parserOption httpTransport _ configFileFlag distDirLayout = do
@@ -839,15 +816,18 @@ readProjectLocalFreezeConfig verbosity parserOption httpTransport distDirLayout 
     "freeze"
     "project freeze file"
 
--- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
--- This function is generic and can be used with the legacy or parsec parser, or a combination of both.
-readProjectFileSkeletonGen :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> (FilePath -> IO ProjectConfigSkeleton) -> Rebuild ProjectConfigSkeleton
+-- | Reads a named extended (with imports and conditionals) config file in the
+-- given project root dir, or returns empty.  This function is generic and can
+-- be used with the legacy or parsec parser, or a combination of both.
 readProjectFileSkeletonGen
-  verbosity
-  httpTransport
-  dir
-  extensionName
-  extensionDescription
+  :: DistDirLayout
+  -> String
+  -- ^ "" for the main project file, or one of "local" or "freeze"
+  -> (FilePath -> IO ProjectConfigSkeleton)
+  -> Rebuild ProjectConfigSkeleton
+readProjectFileSkeletonGen
+  DistDirLayout{distProjectFile, distProjectRootDirectory}
+  extensionName@(distProjectFile -> possiblyRelativeExtensionFile)
   parseConfig =
     do
       exists <- liftIO $ doesFileExist extensionFile
@@ -855,16 +835,55 @@ readProjectFileSkeletonGen
         then do
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
-          monitorFiles
-            [ monitorFileHashed (projectConfigPathRoot path)
-            | (Nothing, path) <- projectSkeletonImports pcs
-            ]
+
+          -- If its the main project then we have the local imports to monitor.
+          -- We need to monitor the project and all of its local imports, We
+          -- can't monitor remote URI imports.
+          --
+          -- We don't allow duplicate import paths but we do allow multiple
+          -- imports of the same file by different paths so we'll want to take
+          -- care to only monitor each file once.  There should only ever be one
+          -- root 'cabal.project' file.
+          --
+          -- In the simple case, if 'cabal.project' imports 'importee-1.config',
+          -- which imports 'importee-2.config', then we get these paths from
+          -- 'projectSkeletonImports':
+          --
+          -- "importee-2.config" :| ["importee-1.config", "cabal.project"]
+          -- "importee-1.config" :| ["cabal.project"]
+          -- "cabal.project" :| []
+          --
+          -- 'currentProjectConfigPath' gives us the head of the path, an
+          -- importee or the root project file.
+          --
+          -- If we have an extensionName of "" it is still possible for the main
+          -- project to import the .local or .freeze explicitly. These aren't
+          -- normally imported but there's nothing stopping the user from
+          -- importing them. They're read separately and we don't want to
+          -- monitor them twice, so we filter them out. We're already monitoring
+          -- the main project file (above), so we filter that out.
+          when (null extensionName) $ do
+            monitorFiles
+              [ monitorFileHashed path
+              | let projFile = makeAbsolute . distProjectFile
+              , path <-
+                  filter (`notElem` [extensionFile, projFile "freeze", projFile "local"]) $
+                    ordNub
+                      [ p
+                      | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- projectSkeletonImports pcs
+                      ]
+              ]
+
           return pcs
         else do
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
-      extensionFile = distProjectFile dir extensionName
+      -- REVIEW: Do we prefer absolute paths for cache monitoring?
+      makeAbsolute f
+        | isAbsolute f = f
+        | otherwise = distProjectRootDirectory </> f
+      extensionFile = makeAbsolute possiblyRelativeExtensionFile
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
@@ -895,7 +914,7 @@ readProjectFileSkeleton option =
 -- | Read a project file using the legacy parser.
 readProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription = do
-  readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
+  readProjectFileSkeletonGen distDirLayout extensionName $ \fp -> do
     debug verbosity "Reading project file using the legacy parser"
     parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription fp
       >>= liftIO . reportParseResult verbosity extensionDescription fp
@@ -903,7 +922,7 @@ readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionNam
 -- | Read a project file using the parsec parser, but if that fails, it falls back to the legacy parser.
 readProjectFileSkeletonFallback :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonFallback verbosity httpTransport distDirLayout extensionName extensionDescription = do
-  readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
+  readProjectFileSkeletonGen distDirLayout extensionName $ \fp -> do
     debug verbosity "Reading project file using the fallback parser"
     (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
     let (_, pres) = runParseResult res
@@ -926,21 +945,21 @@ readProjectFileSkeletonFallback verbosity httpTransport distDirLayout extensionN
 -- | Read a project file using the parsec parser.
 readProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription = do
-  readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
+  readProjectFileSkeletonGen distDirLayout extensionName $ \fp -> do
     debug verbosity "Reading project file using the parsec parser"
     (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
     liftIO $ reportParseResultParsec verbosity fp bs res
 
 readProjectFileSkeletonCompare :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonCompare verbosity httpTransport distDirLayout extensionName extensionDescription = do
-  readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
+  readProjectFileSkeletonGen distDirLayout extensionName $ \fp -> do
     debug verbosity "Reading project file using the comparative parser"
     (pres, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
     lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription fp
     let (_, ppres) = runParseResult pres
     case (lres, ppres) of
       -- 1. Both succeed, compare the results
-      (OldParser.ProjectParseOk lwarns lpcs, Right ppcs) -> do
+      (OldParser.ProjectParseOk _lwarns lpcs, Right ppcs) -> do
         unless (lpcs == ppcs) (dieWithException verbosity $ LegacyAndParsecParseResultsDiffer fp (show lpcs) (show ppcs))
         liftIO $ reportParseResultParsec verbosity fp bs pres
       -- 2. The legacy parser failed, but the parsec parser succeeded.
@@ -963,7 +982,7 @@ reportParseResultParsec
   -> BS.ByteString
   -> Parsec.ParseResult ProjectFileSource a
   -> IO a
-reportParseResultParsec verbosity fpath contents pr = do
+reportParseResultParsec verbosity fpath _contents pr = do
   let (warnings, result) = runParseResult pr
   case result of
     Right x -> do
@@ -976,7 +995,7 @@ reportParseResultParsec verbosity fpath contents pr = do
 
 -- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
 parseProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> FilePath -> IO (OldParser.ProjectParseResult ProjectConfigSkeleton)
-parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription extensionFile = do
+parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout _extName _extDescription extensionFile = do
   bs <- BS.readFile extensionFile
   res <- parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
   case res of
@@ -984,12 +1003,12 @@ parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionNa
     x@OldParser.ProjectParseFailed{} -> pure x
 
 parseProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> FilePath -> IO (Parsec.ParseResult ProjectFileSource ProjectConfigSkeleton, BS.ByteString)
-parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription extensionFile = do
+parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout _extName _extDescription extensionFile = do
   bs <- BS.readFile extensionFile
   res <- Parsec.parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
   case snd $ runParseResult res of
-    x@(Right skeleton) -> reportDuplicateImports verbosity skeleton >> pure (res, bs)
-    x@Left{} -> pure (res, bs)
+    Right skeleton -> reportDuplicateImports verbosity skeleton >> pure (res, bs)
+    Left{} -> pure (res, bs)
 
 -- | Render the 'ProjectConfig' format.
 --
