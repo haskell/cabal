@@ -2593,6 +2593,39 @@ The following tests are currently supported.
 
     -  The version of GHC is earlier than version x.y.z.
 
+:samp:`builder({tool})`
+    Tests for the tool building the package. An optional version constraint
+    may be specified (for example ``builder(cabal >= 3.18)``). If the building
+    tool is of the right type and matches the version constraint, then this
+    evaluates to true, otherwise false. The match is case-insensitive. This
+    test requires ``cabal-version: 3.18`` or later.
+
+    The recognised tools are:
+
+    -  ``cabal``, the Cabal library. The version tested against is the version
+       of the Cabal library performing the build (which is released in lockstep
+       with ``cabal-install``), *not* the ``cabal-install`` version. This lets a
+       package opt into fields or behaviour that only newer Cabal versions
+       understand, for example::
+
+           if builder(cabal >= 3.18)
+             cmm-sources: cbits/fast.cmm
+
+    -  ``mcabal``, the build tool of `MicroHs
+       <https://github.com/augustss/MicroHs>`__.
+
+    Any other tool name is accepted but always evaluates to false, so that a
+    ``builder`` test naming a tool a given builder does not recognise simply
+    selects the ``else`` branch rather than failing to parse. As with ``impl``,
+    a version constraint makes ``builder`` check both the tool name and the
+    version, so ``!builder(cabal >= x.y.z)`` is not equivalent to
+    ``builder(cabal < x.y.z)``.
+
+    Note that the conditional is evaluated against the Cabal version of the tool
+    that actually performs the build. If you solve dependencies with one Cabal
+    version and build with another (for example with ``build-type: Custom`` or
+    ``Hooks``, or via tooling that links its own Cabal), the two may disagree.
+
 :samp:`flag({name})`
     Evaluates to the current assignment of the flag of the given name.
     Flag names are case insensitive. Testing for flags that have not
