@@ -77,6 +77,7 @@ prettyFieldPosition _ = Nothing
 -- prettySectionPosition (PrettySection (pos, _) _ _) = Just pos
 -- prettySectionPosition _ = Nothing
 
+deriving instance Show (PrettyFieldWith Abst)
 deriving instance Show (PrettyFieldWith Conc)
 
 -- | Prettyprint a list of fields.

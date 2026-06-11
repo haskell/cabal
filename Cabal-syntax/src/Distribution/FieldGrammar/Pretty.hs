@@ -1,4 +1,7 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE Strict #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -33,6 +36,7 @@ import qualified Text.PrettyPrint as PP
 import Prelude ()
 
 import Data.Kind
+import Debug.Pretty.Simple
 
 import Distribution.FieldGrammar.Class
 

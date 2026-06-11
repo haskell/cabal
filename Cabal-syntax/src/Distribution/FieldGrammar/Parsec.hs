@@ -105,8 +105,6 @@ import Data.Kind
 
 import Distribution.Types.Annotation
 
-import Debug.Pretty.Simple
-
 -------------------------------------------------------------------------------
 -- Auxiliary types
 -------------------------------------------------------------------------------
@@ -650,7 +648,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
       parser :: CabalSpecVersion -> Fields (WithComments Position) -> ParseResult src [([Comment Position], (Positions, a))]
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
-        Just xs -> map (\(cmts, (p, a)) -> (cmts, (p, unpack' _pack a))) <$> traverse (parseOne v) xs
+        Just xs -> (map . fmap . fmap) (unpack' _pack) <$> traverse (parseOne v) xs
 
       parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src ([Comment Position], (Positions, b))
       parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = do
@@ -754,10 +752,7 @@ runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
 
 -- TODO(leana8959): relax the argument to take in comments
 runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine Position] -> ParseResult src a
-runFieldParser pp p v ls =
-  runFieldParser' poss p v
-  $ (\x -> pTrace ("runFieldParser got = " <> show x <> "\n") x) 
-  $ fieldLinesToStream ls
+runFieldParser pp p v ls = runFieldParser' poss p v $ fieldLinesToStream ls
   where
     poss :: [Position]
     poss = map (\(FieldLine ann _) -> ann) ls ++ [pp] -- add "default" position

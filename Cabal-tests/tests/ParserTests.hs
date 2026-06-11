@@ -75,6 +75,7 @@ import qualified Text.Parsec as Parsec
 
 -- NOTE(leana8959): remove this after demo is done
 import Text.Pretty.Simple
+import Debug.Pretty.Simple
 
 import qualified Distribution.InstalledPackageInfo as IPI
 

@@ -73,6 +73,8 @@ import qualified Distribution.Compat.NonEmptySet as NES
 
 import Distribution.Types.Annotation
 
+import Debug.Pretty.Simple
+
 -- | Writes a .cabal file from a generic package description
 writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> IO ()
 writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPackageDescription pkg)
@@ -235,11 +237,11 @@ ppCondTree2 v grammar = go
       ]
 
 ppCondTree2Ann
-  :: CabalSpecVersion
+  :: Show s => CabalSpecVersion
   -> PrettyFieldGrammarWith' Conc s
   -> CondTree ConfVar s
   -> [PrettyFieldWith Conc]
-ppCondTree2Ann v grammar = go
+ppCondTree2Ann v grammar u = go $ u
   where
     go (CondNode it ifs) =
       -- The fields are not contained within conditions
@@ -284,7 +286,7 @@ ppCondSubLibrariesAnn :: CabalSpecVersion -> [(UnqualComponentName, CondTree Con
 ppCondSubLibrariesAnn v libs =
   [ PrettySection (fromMaybe zeroPos sectionPos_, "library") [pretty n] fields
   | (n, condTree) <- libs
-  , let fields = ppCondTree2Ann v (libraryFieldGrammar $ LSubLibName n) condTree
+  , let fields =  ppCondTree2Ann v (libraryFieldGrammar $ LSubLibName n) condTree
   , let sectionPos_ = sectionPosition $ condTreeData condTree
   ]
 
