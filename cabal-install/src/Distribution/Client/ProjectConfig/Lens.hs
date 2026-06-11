@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Distribution.Client.ProjectConfig.Lens where
 
 import Distribution.Client.BuildReports.Types (ReportLevel (..))
@@ -38,6 +40,9 @@ import Distribution.Simple.Setup
   , Flag
   , HaddockTarget (..)
   , TestShowDetails (..)
+  , flagToMaybe
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource)
 import Distribution.Solver.Types.Settings
@@ -47,7 +52,7 @@ import Distribution.Solver.Types.Settings
   , IndependentGoals (..)
   , MinimizeConflictSet (..)
   , OnlyConstrained (..)
-  , PreferOldest (..)
+  , PreferVersion (..)
   , ReorderGoals (..)
   , StrongFlags (..)
   )
@@ -292,9 +297,24 @@ projectConfigOnlyConstrained :: Lens' ProjectConfigShared (Flag OnlyConstrained)
 projectConfigOnlyConstrained f s = fmap (\x -> s{T.projectConfigOnlyConstrained = x}) (f (T.projectConfigOnlyConstrained s))
 {-# INLINEABLE projectConfigOnlyConstrained #-}
 
-projectConfigPreferOldest :: Lens' ProjectConfigShared (Flag PreferOldest)
-projectConfigPreferOldest f s = fmap (\x -> s{T.projectConfigPreferOldest = x}) (f (T.projectConfigPreferOldest s))
+projectConfigPreferOldest :: Lens' ProjectConfigShared (Flag Bool)
+projectConfigPreferOldest f s = fmap (\x -> s{T.projectConfigPreferVersion = fromBool x}) (f (toBool $ T.projectConfigPreferVersion s))
+  where
+    toBool :: Flag PreferVersion -> Flag Bool
+    toBool mpv = case flagToMaybe mpv of
+      Just PreferOldest -> Flag True
+      Just PreferInstalledOrLatest -> Flag False
+      _ -> NoFlag
+    fromBool :: Flag Bool -> Flag PreferVersion
+    fromBool mpo = case flagToMaybe mpo of
+      Just True -> Flag PreferOldest
+      Just False -> Flag PreferInstalledOrLatest
+      _ -> NoFlag
 {-# INLINEABLE projectConfigPreferOldest #-}
+
+projectConfigPreferVersion :: Lens' ProjectConfigShared (Flag PreferVersion)
+projectConfigPreferVersion f s = fmap (\x -> s{T.projectConfigPreferVersion = x}) (f (T.projectConfigPreferVersion s))
+{-# INLINEABLE projectConfigPreferVersion #-}
 
 projectConfigProgPathExtra :: Lens' ProjectConfigShared (NubList FilePath)
 projectConfigProgPathExtra f s = fmap (\x -> s{T.projectConfigProgPathExtra = x}) (f (T.projectConfigProgPathExtra s))

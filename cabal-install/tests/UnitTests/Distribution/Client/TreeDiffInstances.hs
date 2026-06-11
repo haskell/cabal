@@ -57,7 +57,7 @@ instance ToExpr OverwritePolicy
 instance ToExpr PackageConfig
 instance ToExpr (PackageDBX FilePath)
 instance ToExpr PackageProperty
-instance ToExpr PreferOldest
+instance ToExpr PreferVersion
 instance ToExpr PreSolver
 instance ToExpr ProjectConfig
 instance ToExpr ProjectConfigBuildOnly
