@@ -666,17 +666,27 @@ buildInplaceUnpackedPackage
         case buildStatus of
           BuildStatusConfigure _ -> action
           _ -> do
-            lbi_wo_programs <- Cabal.getPersistBuildConfig (Just srcdir) builddir
-            -- Restore info about unconfigured programs, since it is not serialized
-            -- TODO: copied from Distribution.Simple.getBuildConfig.
-            let lbi =
-                  lbi_wo_programs
-                    { Cabal.withPrograms =
-                        restoreProgramDb
-                          builtinPrograms
-                          (Cabal.withPrograms lbi_wo_programs)
-                    }
-            return $ InLibraryLBI lbi
+            -- We are skipping reconfiguration, so we recover the
+            -- 'LocalBuildInfo' persisted by the previous 'configure'.
+            mbOldLBI <- Cabal.tryGetPersistBuildConfig (Just srcdir) builddir
+            case mbOldLBI of
+              -- #11942: if the previous LocalBuildInfo was written by an
+              -- external Setup.hs with an incompatible Cabal library version,
+              -- then we must continue to use the external setup method.
+              Left Cabal.ConfigStateFileBadVersion{} -> return NotInLibraryNoLBI
+              -- Other errors reflect genuine problems: re-throw them.
+              Left err -> throwIO err
+              Right lbi_wo_programs -> do
+                -- Restore info about unconfigured programs, since it is not serialized
+                -- TODO: copied from Distribution.Simple.getBuildConfig.
+                let lbi =
+                      lbi_wo_programs
+                        { Cabal.withPrograms =
+                            restoreProgramDb
+                              builtinPrograms
+                              (Cabal.withPrograms lbi_wo_programs)
+                        }
+                return $ InLibraryLBI lbi
 
       whenRebuild, whenReRegister :: IO () -> IO ()
       whenRebuild action

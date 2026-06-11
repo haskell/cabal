@@ -1,0 +1,10 @@
+cabal-version: 2.2
+name: T11942
+version: 1
+build-type: Custom
+
+custom-setup
+  setup-depends: base, Cabal
+
+library
+  build-depends: base
