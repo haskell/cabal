@@ -26,6 +26,7 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check.Monad
 import Distribution.System
+import Distribution.Types.BuildTool (BuildTool (..))
 
 import qualified Data.Map as Map
 
@@ -216,6 +217,8 @@ checkCondVars cond =
       tellP (PackageDistInexcusable $ UnknownArch [arch])
     vcheck (Impl (OtherCompiler os) _) =
       tellP (PackageDistInexcusable $ UnknownCompiler [os])
+    vcheck (Builder (OtherBuildTool t) _) =
+      tellP (PackageDistInexcusable $ UnknownBuildTool [t])
     vcheck _ = return ()
 
 -- Checking duplicated modules cannot unfortunately be done in the

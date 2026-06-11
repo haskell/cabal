@@ -255,6 +255,7 @@ data CheckExplanation
   | UnknownOS [String]
   | UnknownArch [String]
   | UnknownCompiler [String]
+  | UnknownBuildTool [String]
   | BaseNoUpperBounds
   | MissingUpperBounds CEType [String]
   | LEUpperBounds CEType [String]
@@ -423,6 +424,7 @@ data CheckExplanationID
   | CIUnknownOS
   | CIUnknownArch
   | CIUnknownCompiler
+  | CIUnknownBuildTool
   | CIBaseNoUpperBounds
   | CIMissingUpperBounds
   | CILEUpperBounds
@@ -570,6 +572,7 @@ checkExplanationId (GlobNoDir{}) = CIGlobNoDir
 checkExplanationId (UnknownOS{}) = CIUnknownOS
 checkExplanationId (UnknownArch{}) = CIUnknownArch
 checkExplanationId (UnknownCompiler{}) = CIUnknownCompiler
+checkExplanationId (UnknownBuildTool{}) = CIUnknownBuildTool
 checkExplanationId (BaseNoUpperBounds{}) = CIBaseNoUpperBounds
 checkExplanationId (MissingUpperBounds{}) = CIMissingUpperBounds
 checkExplanationId (LEUpperBounds{}) = CILEUpperBounds
@@ -724,6 +727,7 @@ ppCheckExplanationId CIGlobNoDir = "glob-missing-dir"
 ppCheckExplanationId CIUnknownOS = "unknown-os"
 ppCheckExplanationId CIUnknownArch = "unknown-arch"
 ppCheckExplanationId CIUnknownCompiler = "unknown-compiler"
+ppCheckExplanationId CIUnknownBuildTool = "unknown-build-tool"
 ppCheckExplanationId CIBaseNoUpperBounds = "missing-bounds-important"
 ppCheckExplanationId CIMissingUpperBounds = "missing-upper-bounds"
 ppCheckExplanationId CILEUpperBounds = "le-upper-bounds"
@@ -1318,6 +1322,8 @@ ppExplanation (UnknownArch unknownArches) =
   "Unknown architecture name " ++ commaSep (map quote unknownArches)
 ppExplanation (UnknownCompiler unknownImpls) =
   "Unknown compiler name " ++ commaSep (map quote unknownImpls)
+ppExplanation (UnknownBuildTool unknownTools) =
+  "Unknown build tool name " ++ commaSep (map quote unknownTools)
 ppExplanation BaseNoUpperBounds =
   "The dependency 'build-depends: base' does not specify an upper "
     ++ "bound on the version number. Each major release of the 'base' "
