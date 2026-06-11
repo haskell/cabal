@@ -24,6 +24,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.PrettyCtx
 import Distribution.Types.Trivia
 import qualified Text.PrettyPrint as Disp
 
@@ -101,6 +102,8 @@ instance Pretty PackageName where
 
 instance Pretty PackageNameAnn where
   pretty (PackageName (Ann t x)) = applyTriviaDoc t $ Disp.text $ fromShortText x
+
+instance PrettyCtx PackageNameAnn
 
 instance Parsec PackageName where
   parsec = mkPackageName <$> parsecUnqualComponentName

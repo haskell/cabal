@@ -280,6 +280,7 @@ instance (Newtype a b, Sep Conc sep, Pretty b) => Pretty (ListAnn sep b a) where
 -- For the complete implementation we need to
 -- - handle comments interleaved between the lines here, they are removed early on.
 -- - indent each line and then mconcat them to restore exact horizontal spacing. whitespaces are removed at lexer stage.
+instance (Newtype a b, Sep Abst sep, Pretty b) => PrettyCtx (List sep b a)
 instance (Newtype a b, Sep Conc sep, Pretty b) => PrettyCtx (ListAnn sep b a)
 
 
@@ -393,6 +394,8 @@ instance Parsec a => Parsec (MQuoted a) where
 instance Pretty a => Pretty (MQuoted a) where
   pretty = pretty . unpack
 
+instance Pretty a => PrettyCtx (MQuoted a)
+
 -- | Filepath are parsed as 'Token'.
 newtype FilePathNT = FilePathNT {getFilePathNT :: String}
 
@@ -444,6 +447,8 @@ instance Parsec (RelativePathNT from to) where
 
 instance Pretty (RelativePathNT from to) where
   pretty = showFilePath . getSymbolicPath . getRelativePathNT
+
+instance PrettyCtx (RelativePathNT from to)
 
 -------------------------------------------------------------------------------
 -- SpecVersion

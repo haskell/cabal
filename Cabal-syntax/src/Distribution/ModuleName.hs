@@ -31,6 +31,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.PrettyCtx
 import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
 import System.FilePath (pathSeparator)
 
@@ -53,6 +54,8 @@ instance NFData ModuleName where
 
 instance Pretty ModuleName where
   pretty = Disp.text . unModuleName
+
+instance PrettyCtx ModuleName
 
 instance Parsec ModuleName where
   parsec = parsecModuleName

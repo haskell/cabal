@@ -30,6 +30,7 @@ import Data.Array (Array, Ix (inRange), accumArray, bounds, (!))
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.PrettyCtx
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -73,6 +74,8 @@ knownLanguages = [Haskell98, Haskell2010, GHC2021, GHC2024]
 instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
   pretty other = Disp.text (show other)
+
+instance PrettyCtx Language
 
 instance Parsec Language where
   parsec = classifyLanguage <$> P.munch1 isAlphaNum

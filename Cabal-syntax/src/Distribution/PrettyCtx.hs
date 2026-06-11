@@ -2,6 +2,8 @@
 {-# LANGUAGE DefaultSignatures #-}
 module Distribution.PrettyCtx where
 
+import Distribution.Compat.Prelude
+import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Pretty
 import Distribution.Fields.Field
@@ -19,3 +21,5 @@ class PrettyCtx a where
   prettyCtxVersioned :: CabalSpecVersion -> ([Comment Position], a) -> PP.Doc
   prettyCtxVersioned csv (_, x) = prettyVersioned csv x
 
+
+instance Pretty a => PrettyCtx (Identity a)

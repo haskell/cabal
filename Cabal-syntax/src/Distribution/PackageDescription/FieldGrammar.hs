@@ -98,6 +98,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
+import Distribution.PrettyCtx
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
@@ -943,6 +944,8 @@ instance Parsec CompatDataDir where
 instance Pretty CompatDataDir where
   pretty = showToken . getSymbolicPath . getCompatDataDir
 
+instance PrettyCtx CompatDataDir 
+
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
 
 instance Newtype [RelativePath Pkg File] CompatLicenseFile
@@ -959,6 +962,8 @@ instance Parsec CompatLicenseFile where
 
 instance Pretty CompatLicenseFile where
   pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
+
+instance PrettyCtx CompatLicenseFile
 
 -------------------------------------------------------------------------------
 -- vim syntax definitions
