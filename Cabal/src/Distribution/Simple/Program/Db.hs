@@ -71,6 +71,7 @@ module Distribution.Simple.Program.Db
   , updatePathProgDb
   ) where
 
+import Control.Monad ((<=<))
 import Data.Functor ((<&>))
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -345,7 +346,7 @@ userSpecifyArgss argss progdb =
 -- | Get the path that has been previously specified for a program, if any.
 userSpecifiedPath :: Program -> ProgramDb -> Maybe FilePath
 userSpecifiedPath prog =
-  join . fmap (\(_, p, _) -> p) . Map.lookup (programName prog) . unconfiguredProgs
+  (\(_, p, _) -> p) <=< (Map.lookup (programName prog) . unconfiguredProgs)
 
 -- | Get any extra args that have been previously specified for a program.
 userSpecifiedArgs :: Program -> ProgramDb -> [ProgArg]
@@ -617,6 +618,5 @@ requireProgramVersion
   -> ProgramDb
   -> IO (ConfiguredProgram, Version, ProgramDb)
 requireProgramVersion verbosity prog range programDb =
-  join $
-    either (dieWithException verbosity) return
-      `fmap` lookupProgramVersion verbosity prog range programDb
+  either (dieWithException verbosity) return
+    =<< lookupProgramVersion verbosity prog range programDb

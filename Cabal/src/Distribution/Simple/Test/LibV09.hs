@@ -322,7 +322,7 @@ stubRunTests tests = do
       return $ GroupLogs (groupName g) logs
     stubRunTests' (ExtraOptions _ t) = stubRunTests' t
     maybeDefaultOption opt =
-      maybe Nothing (\d -> Just (optionName opt, d)) $ optionDefault opt
+      (\d -> Just (optionName opt, d)) =<< optionDefault opt
     defaultOptions testInst = mapMaybe maybeDefaultOption $ options testInst
 
 -- | From a test stub, write the 'TestSuiteLog' to temporary file for the calling

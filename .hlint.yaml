@@ -13,7 +13,6 @@
 - ignore: {name: "Use ++"} # 4 hints
 - ignore: {name: "Use :"} # 30 hints
 - ignore: {name: "Use <$>"} # 83 hints
-- ignore: {name: "Use =<<"} # 7 hints
 - ignore: {name: "Use Down"} # 3 hints
 - ignore: {name: "Use bimap"} # 7 hints
 - ignore: {name: "Use camelCase"} # 92 hints
