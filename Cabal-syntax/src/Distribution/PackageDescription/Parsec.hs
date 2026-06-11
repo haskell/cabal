@@ -496,7 +496,7 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo = go
     parseIfs :: [Section Position] -> ParseResult src [CondBranch ConfVar a]
     parseIfs [] = return []
     parseIfs (MkSection (Name pos name) test fields : sections) | name == "if" = do
-      test' <- parseConditionConfVar (startOfSection (incPos 2 pos) test) test
+      test' <- parseConditionConfVar v (startOfSection (incPos 2 pos) test) test
       fields' <- go fields
       (elseFields, sections') <- parseElseIfs sections
       return (CondBranch test' fields' elseFields : sections')
@@ -518,7 +518,7 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo = go
     parseElseIfs (MkSection (Name pos name) test fields : sections)
       | hasElif == HasElif
       , name == "elif" = do
-          test' <- parseConditionConfVar (startOfSection (incPos 4 pos) test) test
+          test' <- parseConditionConfVar v (startOfSection (incPos 4 pos) test) test
           fields' <- go fields
           (elseFields, sections') <- parseElseIfs sections
           -- we parse an empty 'Fields', to get empty value for a node

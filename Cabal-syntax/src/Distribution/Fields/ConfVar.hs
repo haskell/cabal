@@ -4,6 +4,7 @@
 module Distribution.Fields.ConfVar (parseConditionConfVar, parseConditionConfVarFromClause) where
 
 import Data.Functor ((<&>))
+import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Compat.CharParsing (char, integral)
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field (Field (..), SectionArg (..), sectionArgAnn)
@@ -43,11 +44,15 @@ parseConditionConfVarFromClause x =
 
 -- | Parse @'Condition' 'ConfVar'@ from section arguments provided by parsec
 -- based outline parser.
-parseConditionConfVar :: Position -> [SectionArg Position] -> ParseResult src (Condition ConfVar)
-parseConditionConfVar start_pos args =
+--
+-- The 'CabalSpecVersion' is used to reject conditionals that the package's
+-- @cabal-version@ is too old to use (currently only @builder(...)@, which
+-- requires @cabal-version: 3.18@ or later).
+parseConditionConfVar :: CabalSpecVersion -> Position -> [SectionArg Position] -> ParseResult src (Condition ConfVar)
+parseConditionConfVar spec start_pos args =
   -- The name of the input file is irrelevant, as we reformat the error message.
   case P.runParser (P.setPosition startPos >> parser <* P.eof) () "<condition>" args of
-    Right x -> pure x
+    Right x -> x <$ checkBuilderSupported x
     Left err -> do
       -- Mangle the position to the actual one
       let ppos = P.errorPos err
@@ -64,6 +69,15 @@ parseConditionConfVar start_pos args =
       pure $ Lit True
   where
     startPos = P.newPos "<condition>" (positionRow start_pos) (positionCol start_pos)
+
+    -- @builder(...)@ requires @cabal-version: 3.18@ or later.
+    checkBuilderSupported cond =
+      when (spec < CabalSpecV3_18 && any isBuilder cond) $
+        parseFailure start_pos $
+          "Illegal 'builder(...)' conditional. To use it, specify "
+            ++ "'cabal-version: 3.18' or later."
+    isBuilder (Builder _ _) = True
+    isBuilder _ = False
 
 -- | Parser for 'Condition' 'ConfVar'
 type Parser = P.Parsec [SectionArg Position] ()

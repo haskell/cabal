@@ -146,7 +146,9 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
               (\c pcs e -> CondNode mempty [CondBranch c pcs e])
-                <$> parseConditionConfVar (startOfSection (incPos 2 pos) args) args
+                -- Project config files carry no cabal-version, so conditionals
+                -- are not spec-gated: 'maxBound' permits every conditional.
+                <$> parseConditionConfVar maxBound (startOfSection (incPos 2 pos) args) args
                 <*> subpcs
                 <*> elseClauses
         pure . fmap mconcat . sequence $ [fs, condNode, rest]
@@ -166,7 +168,8 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
               (\c pcs e -> CondNode mempty [CondBranch c pcs e])
-                <$> parseConditionConfVar (startOfSection (incPos 4 pos) args) args
+                -- See note above re: 'maxBound'.
+                <$> parseConditionConfVar maxBound (startOfSection (incPos 4 pos) args) args
                 <*> subpcs
                 <*> elseClauses
         pure (Just <$> condNode, rest)
