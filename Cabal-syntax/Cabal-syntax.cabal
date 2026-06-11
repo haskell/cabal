@@ -29,7 +29,7 @@ library
 
   build-depends:
     , array      >= 0.4.0.1  && < 0.6
-    , base       >= 4.13     && < 5
+    , base       >= 4.17     && < 5
     , binary     >= 0.8.1    && < 0.9
     , bytestring >= 0.10.4.0 && < 0.13
     , containers >= 0.5.2    && < 0.9
