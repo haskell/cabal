@@ -20,6 +20,7 @@ import qualified Distribution.Types.GenericPackageDescription as T
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System (Arch, OS)
 import Distribution.Types.Benchmark (Benchmark)
+import Distribution.Types.BuildTool (BuildTool)
 import Distribution.Types.CondTree (CondTree)
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.Executable (Executable)
@@ -130,3 +131,7 @@ _PackageFlag _ x = pure x
 _Impl :: Traversal' ConfVar (CompilerFlavor, VersionRange)
 _Impl f (Impl cf vr) = uncurry Impl <$> f (cf, vr)
 _Impl _ x = pure x
+
+_Builder :: Traversal' ConfVar (BuildTool, VersionRange)
+_Builder f (Builder bt vr) = uncurry Builder <$> f (bt, vr)
+_Builder _ x = pure x
