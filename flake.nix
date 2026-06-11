@@ -28,7 +28,14 @@
             pkgs.jq
             pkgs.nixfmt
             pkgs.ormolu
+            pkgs.pkg-config
             pkgs.ripgrep
+          ];
+          # zlib is a build input (not just a tool) so that pkg-config can
+          # discover it via PKG_CONFIG_PATH; the zlib Haskell package, a
+          # transitive dependency of cabal-install, needs it to configure.
+          buildInputs = [
+            pkgs.zlib
           ];
         };
       });
