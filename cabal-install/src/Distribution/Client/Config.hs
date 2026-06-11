@@ -138,7 +138,6 @@ import Distribution.Compiler
 import Distribution.Deprecated.ParseUtils
   ( FieldDescr (..)
   , PError (..)
-  , PWarning (..)
   , ParseResult (..)
   , liftField
   , lineNo
@@ -1211,24 +1210,14 @@ configFieldDescriptions src =
                   )
                   ( \line str _ -> case () of
                       _
-                        | str == "False" -> ParseOk [] (Flag NoOptimisation)
-                        | str == "True" -> ParseOk [] (Flag NormalOptimisation)
                         | str == "0" -> ParseOk [] (Flag NoOptimisation)
                         | str == "1" -> ParseOk [] (Flag NormalOptimisation)
                         | str == "2" -> ParseOk [] (Flag MaximumOptimisation)
-                        | lstr == "false" -> ParseOk [caseWarning] (Flag NoOptimisation)
-                        | lstr == "true" ->
-                            ParseOk
-                              [caseWarning]
-                              (Flag NormalOptimisation)
+                        | lstr == "false" -> ParseOk [] (Flag NoOptimisation)
+                        | lstr == "true" -> ParseOk [] (Flag NormalOptimisation)
                         | otherwise -> ParseFailed (NoParse name line)
                         where
                           lstr = lowercase str
-                          caseWarning =
-                            PWarning $
-                              "The '"
-                                ++ name
-                                ++ "' field is case sensitive, use 'True' or 'False'."
                   )
       , liftField configDebugInfo (\v flags -> flags{configDebugInfo = v}) $
           let name = "debug-info"
@@ -1243,22 +1232,15 @@ configFieldDescriptions src =
                 )
                 ( \line str _ -> case () of
                     _
-                      | str == "False" -> ParseOk [] (Flag NoDebugInfo)
-                      | str == "True" -> ParseOk [] (Flag NormalDebugInfo)
                       | str == "0" -> ParseOk [] (Flag NoDebugInfo)
                       | str == "1" -> ParseOk [] (Flag MinimalDebugInfo)
                       | str == "2" -> ParseOk [] (Flag NormalDebugInfo)
                       | str == "3" -> ParseOk [] (Flag MaximalDebugInfo)
-                      | lstr == "false" -> ParseOk [caseWarning] (Flag NoDebugInfo)
-                      | lstr == "true" -> ParseOk [caseWarning] (Flag NormalDebugInfo)
+                      | lstr == "false" -> ParseOk [] (Flag NoDebugInfo)
+                      | lstr == "true" -> ParseOk [] (Flag NormalDebugInfo)
                       | otherwise -> ParseFailed (NoParse name line)
                       where
                         lstr = lowercase str
-                        caseWarning =
-                          PWarning $
-                            "The '"
-                              ++ name
-                              ++ "' field is case sensitive, use 'True' or 'False'."
                 )
       ]
     ++ toSavedConfig

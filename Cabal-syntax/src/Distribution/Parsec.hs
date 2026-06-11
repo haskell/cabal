@@ -60,7 +60,6 @@ module Distribution.Parsec
 
 import Data.ByteString (ByteString)
 import Data.Char (digitToInt, intToDigit)
-import Data.Functor (($>))
 import Data.List (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
@@ -253,15 +252,11 @@ instance Parsec Bool where
   parsec = P.munch1 isAlpha >>= postprocess
     where
       postprocess str
-        | str == "True" = pure True
-        | str == "False" = pure False
-        | lstr == "true" = parsecWarning PWTBoolCase caseWarning $> True
-        | lstr == "false" = parsecWarning PWTBoolCase caseWarning $> False
+        | lstr == "true" = pure True
+        | lstr == "false" = pure False
         | otherwise = fail $ "Not a boolean: " ++ str
         where
           lstr = map toLower str
-          caseWarning =
-            "Boolean values are case sensitive, use 'True' or 'False'."
 
 instance Parsec a => Parsec (Last a) where
   parsec = parsecLast
