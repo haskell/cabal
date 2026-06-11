@@ -203,6 +203,12 @@ library
     Distribution.Version
     Language.Haskell.Extension
 
+  other-modules:
+    Paths_Cabal_syntax
+
+  autogen-modules:
+    Paths_Cabal_syntax
+
   other-extensions:
     BangPatterns
     CPP

@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- -Wno-deprecations for use of Map.foldWithKey
 {-# OPTIONS_GHC -Wno-deprecations #-}
 
@@ -32,6 +34,7 @@ module Distribution.PackageDescription.Configuration
   , transformAllBuildDepends
   , transformAllBuildDependsN
   , simplifyWithSysParams
+  , buildToolVersion
   ) where
 
 import Data.Functor ((<&>))
@@ -46,6 +49,13 @@ import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
 import Distribution.Compat.CharParsing hiding (char)
+
+#ifdef CURRENT_PACKAGE_KEY
+import qualified Paths_Cabal_syntax (version)
+#else
+import Distribution.CabalSpecVersion (cabalSpecLatest, cabalSpecToVersionDigits)
+#endif
+
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Compat.Lens
 import Distribution.Compiler
@@ -91,7 +101,19 @@ simplifyWithSysParams os arch cinfo cond = (cond', flags)
           Just compat -> Right (any matchImpl compat)
       where
         matchImpl (CompilerId c v) = comp == c && v `withinRange` vr
+    interp (Build vr) = Right $ buildToolVersion `withinRange` vr
     interp (PackageFlag f) = Left f
+
+-- | The version of the Cabal library against which @build(cabal ...)@
+-- conditionals are evaluated. Cabal-syntax is released in lockstep with
+-- Cabal, so this library's own version is used. When bootstrapping (no
+-- Paths module available), fall back to the latest known spec version.
+buildToolVersion :: Version
+#ifdef CURRENT_PACKAGE_KEY
+buildToolVersion = mkVersion' Paths_Cabal_syntax.version
+#else
+buildToolVersion = mkVersion (cabalSpecToVersionDigits cabalSpecLatest)
+#endif
 
 -- TODO: Add instances and check
 --
@@ -126,6 +148,7 @@ parseCondition = condOr
               <|> archCond
               <|> flagCond
               <|> implCond
+              <|> buildCond
            )
     inparens = between (P.char '(' >> sp) (sp >> P.char ')' >> sp)
     notCond = (P.char '!' >> sp >> cond) <&> CNot
@@ -133,6 +156,7 @@ parseCondition = condOr
     archCond = (string "arch" >> sp >> inparens archIdent) <&> Var
     flagCond = (string "flag" >> sp >> inparens flagIdent) <&> Var
     implCond = (string "impl" >> sp >> inparens implIdent) <&> Var
+    buildCond = (string "build" >> sp >> inparens buildIdent) <&> Var
     boolLiteral = fmap Lit parsec
     archIdent = fmap Arch parsec
     osIdent = fmap OS parsec
@@ -144,6 +168,10 @@ parseCondition = condOr
       i <- parsec
       vr <- sp >> option anyVersion parsec
       return $ Impl i vr
+    buildIdent = do
+      _ <- string "cabal"
+      vr <- sp >> option anyVersion parsec
+      return $ Build vr
 
 ------------------------------------------------------------------------------
 

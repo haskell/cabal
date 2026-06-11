@@ -19,6 +19,7 @@ data ConfVar
   | Arch Arch
   | PackageFlag FlagName
   | Impl CompilerFlavor VersionRange
+  | Build VersionRange
   deriving (Eq, Show, Data, Generic)
 
 instance Binary ConfVar

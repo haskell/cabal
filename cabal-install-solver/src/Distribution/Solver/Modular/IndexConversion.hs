@@ -284,6 +284,7 @@ testConditionForComponent os arch cinfo constraints p tree =
         | otherwise = Lit False
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
+    go (Var (Build vr)) = Lit (checkVR vr buildToolVersion)
     go (Var (PackageFlag f))
         | Just b <- L.lookup f flagAssignment = Lit b
     go (Var v) = Var v
@@ -514,6 +515,9 @@ convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes (CondBranch 
       | otherwise      = f
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
+    go (Var (Build vr)) t f
+      | checkVR vr buildToolVersion = t
+      | otherwise      = f
 
     addFlagToDependencyReason :: FlagName -> FlagValue -> DependencyReason pn -> DependencyReason pn
     addFlagToDependencyReason fn v (DependencyReason pn' fs ss) =

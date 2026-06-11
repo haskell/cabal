@@ -78,7 +78,7 @@ parser = condOr
     condAnd = sepByNonEmpty cond (oper "&&") <&> foldl1 CAnd
     cond =
       P.choice
-        [boolLiteral, parens condOr, notCond, osCond, archCond, flagCond, implCond]
+        [boolLiteral, parens condOr, notCond, osCond, archCond, flagCond, implCond, buildCond]
 
     notCond = CNot <$ oper "!" <*> cond
 
@@ -91,6 +91,13 @@ parser = condOr
     implCond' =
       Impl
         <$> fromParsec
+        <*> P.option anyVersion versionRange
+
+    buildCond = Var <$ string "build" <*> parens buildCond'
+
+    buildCond' =
+      Build
+        <$ string "cabal"
         <*> P.option anyVersion versionRange
 
     version = fromParsec
