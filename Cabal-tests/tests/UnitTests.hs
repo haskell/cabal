@@ -10,6 +10,7 @@ import Data.Proxy
 import qualified UnitTests.Distribution.Compat.Time
 import qualified UnitTests.Distribution.Compat.Graph
 import qualified UnitTests.Distribution.PackageDescription.Check
+import qualified UnitTests.Distribution.PackageDescription.Configuration
 import qualified UnitTests.Distribution.Simple.Command
 import qualified UnitTests.Distribution.Simple.Glob
 import qualified UnitTests.Distribution.Simple.Program.GHC
@@ -57,6 +58,8 @@ tests =
         UnitTests.Distribution.Utils.Path.tests
     , testGroup "Distribution.PackageDescription.Check"
         UnitTests.Distribution.PackageDescription.Check.tests
+    , testGroup "Distribution.PackageDescription.Configuration"
+        UnitTests.Distribution.PackageDescription.Configuration.tests
     , testGroup "Distribution.Utils.ShortText"
         UnitTests.Distribution.Utils.ShortText.tests
     , testGroup "Distribution.System"
