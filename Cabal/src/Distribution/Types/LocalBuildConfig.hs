@@ -20,25 +20,23 @@ module Distribution.Types.LocalBuildConfig
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.ComponentLocalBuildInfo
-import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.GivenComponent
-import Distribution.Types.PackageDescription
-import Distribution.Types.UnitId
+import Distribution.Types.ComponentLocalBuildInfo (ComponentLocalBuildInfo)
+import Distribution.Types.ComponentRequestedSpec (ComponentRequestedSpec)
+import Distribution.Types.GivenComponent (PromisedComponent)
+import Distribution.Types.PackageDescription (PackageDescription)
+import Distribution.Types.UnitId (UnitId)
 
-import Distribution.PackageDescription
-import Distribution.Simple.Compiler
-import Distribution.Simple.Flag
-import Distribution.Simple.InstallDirs hiding
-  ( absoluteInstallDirs
-  , prefixRelativeInstallDirs
-  , substPathTemplate
-  )
-import Distribution.Simple.PackageIndex
+import Distribution.PackageDescription (ComponentName, FlagAssignment, PackageName)
+import Distribution.Simple.Compiler (Compiler, PackageDBStack, ProfDetailLevel)
+import Distribution.Simple.Flag (toFlag)
+import Distribution.Simple.InstallDirs (InstallDirTemplates)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program.Db (ProgramDb)
-import Distribution.Simple.Setup.Config
-import Distribution.System
-import Distribution.Utils.Path
+import Distribution.Simple.Setup.Config (ConfigFlags (..))
+import Distribution.System (Platform)
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel)
+import Distribution.Types.OptimisationLevel (OptimisationLevel)
+import Distribution.Utils.Path (FileOrDir (..), Pkg, SymbolicPath)
 
 import Distribution.Compat.Graph (Graph)
 

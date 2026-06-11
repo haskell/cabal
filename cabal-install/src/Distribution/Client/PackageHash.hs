@@ -40,8 +40,6 @@ import Distribution.Package
 import Distribution.Simple.Compiler
   ( AbiTag (..)
   , CompilerId
-  , DebugInfoLevel (..)
-  , OptimisationLevel (..)
   , PackageDBCWD
   , ProfDetailLevel (..)
   , showProfDetailLevel
@@ -56,10 +54,12 @@ import Distribution.System
   , Platform
   , buildOS
   )
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
 import Distribution.Types.Flag
   ( FlagAssignment
   , showFlagAssignment
   )
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import Distribution.Types.PkgconfigVersion (PkgconfigVersion)
 
 import qualified Data.ByteString.Lazy.Char8 as LBS

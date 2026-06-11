@@ -45,6 +45,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.MungedPackageId
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version

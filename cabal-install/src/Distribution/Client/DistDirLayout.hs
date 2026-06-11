@@ -43,7 +43,6 @@ import Distribution.Package
   )
 import Distribution.Simple.Compiler
   ( Compiler (..)
-  , OptimisationLevel (..)
   , PackageDBCWD
   , PackageDBStackCWD
   , PackageDBX (..)
@@ -52,6 +51,7 @@ import Distribution.Simple.Configure (interpretPackageDbFlags)
 import Distribution.System
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 
 -- | Information which can be used to construct the path to
 -- the build directory of a build.  This is LESS fine-grained
