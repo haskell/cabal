@@ -382,7 +382,7 @@ smallCabalFileTest = testCase "smallCabalFile" $ do
   let prettyFields = ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd
       prettyFields' = filterFields prettyFields
 
-  pPrint $ prettyFields'
+  -- pPrint $ prettyFields'
   putStrLn $ exactShowFields prettyFields'
   where
     input = "tests" </> "ParserTests" </> fp
