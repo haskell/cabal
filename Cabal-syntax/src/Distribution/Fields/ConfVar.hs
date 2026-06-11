@@ -93,11 +93,11 @@ parser = condOr
         <$> fromParsec
         <*> P.option anyVersion versionRange
 
-    buildCond = Var <$ string "build" <*> parens buildCond'
+    buildCond = Var <$ string "builder" <*> parens buildCond'
 
     buildCond' =
-      Build
-        <$ string "cabal"
+      Builder
+        <$> fromParsec
         <*> P.option anyVersion versionRange
 
     version = fromParsec

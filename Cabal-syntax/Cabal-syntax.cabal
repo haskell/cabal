@@ -126,6 +126,7 @@ library
     Distribution.Types.BenchmarkType
     Distribution.Types.BuildInfo
     Distribution.Types.BuildInfo.Lens
+    Distribution.Types.BuildTool
     Distribution.Types.BuildType
     Distribution.Types.Component
     Distribution.Types.ComponentId

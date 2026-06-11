@@ -10,6 +10,7 @@ import Prelude ()
 
 import Distribution.Compiler
 import Distribution.System
+import Distribution.Types.BuildTool
 import Distribution.Types.Flag
 import Distribution.Types.VersionRange
 
@@ -19,7 +20,7 @@ data ConfVar
   | Arch Arch
   | PackageFlag FlagName
   | Impl CompilerFlavor VersionRange
-  | Build VersionRange
+  | Builder BuildTool VersionRange
   deriving (Eq, Show, Data, Generic)
 
 instance Binary ConfVar

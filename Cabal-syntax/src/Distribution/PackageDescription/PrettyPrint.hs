@@ -207,7 +207,7 @@ ppConfVar (OS os) = text "os" <<>> parens (pretty os)
 ppConfVar (Arch arch) = text "arch" <<>> parens (pretty arch)
 ppConfVar (PackageFlag name) = text "flag" <<>> parens (ppFlagName name)
 ppConfVar (Impl c v) = text "impl" <<>> parens (pretty c <+> pretty v)
-ppConfVar (Build v) = text "build" <<>> parens (text "cabal" <+> pretty v)
+ppConfVar (Builder t v) = text "builder" <<>> parens (pretty t <+> pretty v)
 
 ppFlagName :: FlagName -> Doc
 ppFlagName = text . unFlagName

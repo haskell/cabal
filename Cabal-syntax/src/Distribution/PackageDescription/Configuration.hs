@@ -64,6 +64,7 @@ import Distribution.PackageDescription.Utils
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
+import Distribution.Types.BuildTool (BuildTool (..))
 import Distribution.Types.Component
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.DependencyMap
@@ -101,7 +102,10 @@ simplifyWithSysParams os arch cinfo cond = (cond', flags)
           Just compat -> Right (any matchImpl compat)
       where
         matchImpl (CompilerId c v) = comp == c && v `withinRange` vr
-    interp (Build vr) = Right $ buildToolVersion `withinRange` vr
+    -- We are the Cabal library, so only @builder(cabal ...)@ can match;
+    -- @builder(mcabal ...)@ and unknown tools evaluate to 'False'.
+    interp (Builder Cabal vr) = Right $ buildToolVersion `withinRange` vr
+    interp (Builder _ _) = Right False
     interp (PackageFlag f) = Left f
 
 -- | The version of the Cabal library against which @build(cabal ...)@
@@ -156,7 +160,7 @@ parseCondition = condOr
     archCond = (string "arch" >> sp >> inparens archIdent) <&> Var
     flagCond = (string "flag" >> sp >> inparens flagIdent) <&> Var
     implCond = (string "impl" >> sp >> inparens implIdent) <&> Var
-    buildCond = (string "build" >> sp >> inparens buildIdent) <&> Var
+    buildCond = (string "builder" >> sp >> inparens buildIdent) <&> Var
     boolLiteral = fmap Lit parsec
     archIdent = fmap Arch parsec
     osIdent = fmap OS parsec
@@ -169,9 +173,9 @@ parseCondition = condOr
       vr <- sp >> option anyVersion parsec
       return $ Impl i vr
     buildIdent = do
-      _ <- string "cabal"
+      t <- parsec
       vr <- sp >> option anyVersion parsec
-      return $ Build vr
+      return $ Builder t vr
 
 ------------------------------------------------------------------------------
 

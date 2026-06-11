@@ -14,6 +14,7 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Compiler
 import Distribution.Package                          -- from Cabal
 import Distribution.Simple.BuildToolDepends          -- from Cabal
+import Distribution.Types.BuildTool (BuildTool (..))  -- from Cabal-syntax
 import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
 import Distribution.Types.ComponentName              -- from Cabal
@@ -284,7 +285,8 @@ testConditionForComponent os arch cinfo constraints p tree =
         | otherwise = Lit False
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
-    go (Var (Build vr)) = Lit (checkVR vr buildToolVersion)
+    go (Var (Builder Cabal vr)) = Lit (checkVR vr buildToolVersion)
+    go (Var (Builder _ _)) = Lit False
     go (Var (PackageFlag f))
         | Just b <- L.lookup f flagAssignment = Lit b
     go (Var v) = Var v
@@ -515,9 +517,10 @@ convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes (CondBranch 
       | otherwise      = f
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
-    go (Var (Build vr)) t f
+    go (Var (Builder Cabal vr)) t f
       | checkVR vr buildToolVersion = t
       | otherwise      = f
+    go (Var (Builder _ _)) _ f = f
 
     addFlagToDependencyReason :: FlagName -> FlagValue -> DependencyReason pn -> DependencyReason pn
     addFlagToDependencyReason fn v (DependencyReason pn' fs ss) =
