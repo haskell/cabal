@@ -1,0 +1,10 @@
+cabal-version: 3.16
+name:          builder-spec-version
+version:       0
+
+library
+  default-language: Haskell2010
+
+  -- builder(...) requires cabal-version: 3.18 or later, so this is rejected.
+  if builder(cabal >= 3.18)
+    ghc-options: -O2

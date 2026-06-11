@@ -143,6 +143,7 @@ errorTests = testGroup "errors"
     , errorTest "MiniAgda.cabal"
     , errorTest "big-version.cabal"
     , errorTest "anynone.cabal"
+    , errorTest "builder-spec-version.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -209,6 +210,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "anynone.cabal"
     , regressionTest "monad-param.cabal"
     , regressionTest "hasktorch.cabal"
+    , regressionTest "builder-conditional.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree

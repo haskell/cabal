@@ -1,0 +1,2 @@
+VERSION: Just (mkVersion [3,16])
+builder-spec-version.cabal:9:6: Illegal 'builder(...)' conditional. To use it, specify 'cabal-version: 3.18' or later.
