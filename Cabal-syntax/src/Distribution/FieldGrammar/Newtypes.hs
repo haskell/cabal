@@ -95,6 +95,8 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 
+import Debug.Pretty.Simple
+
 -- | Vertical list with commas. Displayed with 'vcat'
 data CommaVCat = CommaVCat
 
@@ -281,21 +283,23 @@ instance (Newtype a b, Sep Conc sep, Pretty b) => Pretty (ListAnn sep b a) where
 
 -- This is only here because I haven't ported all the usages to proper monoidalFieldAla.
 -- When that's done across the codebase, this can be removed.
-instance (Newtype a b, Sep Abst sep, Pretty b) => PrettyCtx (List sep b a)
+instance (Newtype a b, Sep Abst sep, Pretty b) => PrettyCtx (List sep b a) where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
--- TODO(leana8959):
--- For the complete implementation we need to
--- - handle comments interleaved between the lines here, they are removed early on.
--- - indent each line and then mconcat them to restore exact horizontal spacing. whitespaces are removed at lexer stage.
 instance (Newtype a b, Sep Conc sep, Pretty b) => PrettyCtx (ListAnn sep b a) where
   prettyCtx (cmts, x) =
     let locatedDocs :: [(Position, Doc)] = prettySep @Conc (Proxy :: Proxy sep) . (map . fmap . fmap) (pretty . (pack :: a -> b)) . unpack $ x
         withComments = interleaveCommentsWithDocs cmts locatedDocs
-    in  mconcat $ map snd $ withComments
+    in
+      pTraceShow (show withComments) $
+        mconcat $ map snd $ withComments
 
+  prettyCtxVersioned _ = pTrace "Identity" $ prettyCtx
 
+-- TODO(leana8959): indentation is not exact with the comments we preserve, we need to patch them either at the lexer stage or here
 commentToLocatedDoc :: Comment Position -> (Position, Doc)
-commentToLocatedDoc (Comment bs pos) = (pos, PP.text (fromUTF8BS bs))
+commentToLocatedDoc (Comment bs pos) = (pos, PP.text (dropWhile (== ' ') (fromUTF8BS bs) <> "\n"))
 
 interleaveCommentsWithDocs :: [Comment Position] -> [(Position, Doc)] -> [(Position, Doc)]
 interleaveCommentsWithDocs cmts docs = interleaveLocatedDocs (map commentToLocatedDoc cmts) docs
@@ -393,7 +397,9 @@ instance Parsec Token where
 instance Pretty Token where
   pretty = showToken . unpack
 
-instance PrettyCtx Token
+instance PrettyCtx Token where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' {getToken' :: String}
@@ -406,7 +412,9 @@ instance Parsec Token' where
 instance Pretty Token' where
   pretty = showToken . unpack
 
-instance PrettyCtx Token'
+instance PrettyCtx Token' where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted {getMQuoted :: a}
@@ -419,7 +427,9 @@ instance Parsec a => Parsec (MQuoted a) where
 instance Pretty a => Pretty (MQuoted a) where
   pretty = pretty . unpack
 
-instance Pretty a => PrettyCtx (MQuoted a)
+instance Pretty a => PrettyCtx (MQuoted a) where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 -- | Filepath are parsed as 'Token'.
 newtype FilePathNT = FilePathNT {getFilePathNT :: String}
@@ -436,7 +446,9 @@ instance Parsec FilePathNT where
 instance Pretty FilePathNT where
   pretty = showFilePath . unpack
 
-instance PrettyCtx FilePathNT
+instance PrettyCtx FilePathNT where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 -- | Newtype for 'SymbolicPath', with a different 'Parsec' instance
 -- to disallow empty paths.
@@ -473,7 +485,9 @@ instance Parsec (RelativePathNT from to) where
 instance Pretty (RelativePathNT from to) where
   pretty = showFilePath . getSymbolicPath . getRelativePathNT
 
-instance PrettyCtx (RelativePathNT from to)
+instance PrettyCtx (RelativePathNT from to) where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 -------------------------------------------------------------------------------
 -- SpecVersion
@@ -571,7 +585,9 @@ instance Pretty SpecVersion where
     | csv >= CabalSpecV1_12 = text (showCabalSpecVersion csv)
     | otherwise = text ">=" <<>> text (showCabalSpecVersion csv)
 
-instance PrettyCtx SpecVersion
+instance PrettyCtx SpecVersion where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 -------------------------------------------------------------------------------
 -- SpecLicense
@@ -593,7 +609,9 @@ instance Parsec SpecLicense where
 instance Pretty SpecLicense where
   pretty = either pretty pretty . unpack
 
-instance PrettyCtx SpecLicense
+instance PrettyCtx SpecLicense where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 -------------------------------------------------------------------------------
 -- TestedWith
@@ -611,7 +629,9 @@ instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
 
-instance PrettyCtx TestedWith
+instance PrettyCtx TestedWith where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do

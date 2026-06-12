@@ -11,7 +11,11 @@ library foo
 
 
   build-depends:
+    -- bad comment
     text
-     -- bad comment
      ,
+
+    -- good comment
     base >  4
+
+    -- meow

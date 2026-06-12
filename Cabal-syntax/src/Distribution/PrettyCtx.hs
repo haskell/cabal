@@ -1,6 +1,11 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DefaultSignatures #-}
-module Distribution.PrettyCtx where
+
+module Distribution.PrettyCtx
+  ( PrettyCtx (..)
+  , defaultPrettyCtx
+  , defaultPrettyCtxVersioned
+  )
+  where
 
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -15,17 +20,15 @@ import qualified Text.PrettyPrint as PP
 
 -- | An extended 'Pretty' class that consumes some extra context, allowing it to access associated comments.
 class PrettyCtx a where
-  default prettyCtx :: Pretty a => ([Comment Position], a) -> PP.Doc
   prettyCtx :: ([Comment Position], a) -> PP.Doc
-  prettyCtx (cmt, x) =
-      pTraceShow (show (cmt, pretty x)) $
-        pretty x
-
-  default prettyCtxVersioned :: Pretty a => CabalSpecVersion -> ([Comment Position], a) -> PP.Doc
   prettyCtxVersioned :: CabalSpecVersion -> ([Comment Position], a) -> PP.Doc
-  prettyCtxVersioned csv (cmt, x) =
-      pTraceShow (show (cmt, prettyVersioned csv x)) $
-        prettyVersioned csv x
 
+defaultPrettyCtx :: Pretty a => ([Comment Position], a) -> PP.Doc
+defaultPrettyCtx (_, x) = pretty x
 
-instance Pretty a => PrettyCtx (Identity a)
+defaultPrettyCtxVersioned :: Pretty a => CabalSpecVersion -> ([Comment Position], a) -> PP.Doc
+defaultPrettyCtxVersioned csv (_, x) = prettyVersioned csv x
+
+instance Pretty a => PrettyCtx (Identity a) where
+  prettyCtx = pTrace "Identity" $ defaultPrettyCtx
+  prettyCtxVersioned = pTrace "Identity" $ defaultPrettyCtxVersioned

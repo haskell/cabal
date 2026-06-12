@@ -944,7 +944,9 @@ instance Parsec CompatDataDir where
 instance Pretty CompatDataDir where
   pretty = showToken . getSymbolicPath . getCompatDataDir
 
-instance PrettyCtx CompatDataDir 
+instance PrettyCtx CompatDataDir where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
 
@@ -963,7 +965,9 @@ instance Parsec CompatLicenseFile where
 instance Pretty CompatLicenseFile where
   pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
 
-instance PrettyCtx CompatLicenseFile
+instance PrettyCtx CompatLicenseFile where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 -------------------------------------------------------------------------------
 -- vim syntax definitions

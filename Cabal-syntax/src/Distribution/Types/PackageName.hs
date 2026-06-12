@@ -103,7 +103,9 @@ instance Pretty PackageName where
 instance Pretty PackageNameAnn where
   pretty (PackageName (Ann t x)) = applyTriviaDoc t $ Disp.text $ fromShortText x
 
-instance PrettyCtx PackageNameAnn
+instance PrettyCtx PackageNameAnn where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 instance Parsec PackageName where
   parsec = mkPackageName <$> parsecUnqualComponentName

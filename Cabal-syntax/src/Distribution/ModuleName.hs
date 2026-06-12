@@ -55,7 +55,9 @@ instance NFData ModuleName where
 instance Pretty ModuleName where
   pretty = Disp.text . unModuleName
 
-instance PrettyCtx ModuleName
+instance PrettyCtx ModuleName where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 instance Parsec ModuleName where
   parsec = parsecModuleName

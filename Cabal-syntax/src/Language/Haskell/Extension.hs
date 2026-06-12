@@ -75,7 +75,9 @@ instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
   pretty other = Disp.text (show other)
 
-instance PrettyCtx Language
+instance PrettyCtx Language where
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned
 
 instance Parsec Language where
   parsec = classifyLanguage <$> P.munch1 isAlphaNum
