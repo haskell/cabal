@@ -142,7 +142,7 @@ tokCloseBrace = getToken $ \case CloseBrace -> Just (); _ -> Nothing
 tokFieldLine = getTokenWithPos $ \case L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
 tokComment :: Parser (Comment Position)
-tokComment = getTokenWithPos $ \t -> case t of L pos (TokComment c) -> Just (Comment c pos); _ -> Nothing
+tokComment = getTokenWithPos $ \case L pos (TokComment c) -> Just (Comment c pos); _ -> Nothing
 
 colon, openBrace, closeBrace :: Parser ()
 sectionArg :: Parser (SectionArg Position)
@@ -408,8 +408,8 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
       ls <- many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
       return
         ( case l of
-            Nothing -> (Field (WithComments preCmts <$> name) ls)
-            Just l' -> (Field (WithComments preCmts <$> name) (l' : ls))
+            Nothing -> Field (WithComments preCmts <$> name) ls
+            Just l' -> Field (WithComments preCmts <$> name) (l' : ls)
         )
 
 -- The body of a section, using either layout style or braces style.
