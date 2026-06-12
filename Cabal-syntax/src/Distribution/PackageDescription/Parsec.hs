@@ -42,7 +42,7 @@ import Distribution.Compat.Lens
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec (NamelessField (..))
 import Distribution.Fields.ConfVar (parseConditionConfVar)
-import Distribution.Fields.Field (Comment (..), FieldName, WithComments, getName, sectionArgAnn)
+import Distribution.Fields.Field (Comment (..), FieldName, WithComments (..), getName, sectionArgAnn)
 import Distribution.Fields.LexerMonad (LexWarning, toPWarnings)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser
@@ -58,6 +58,7 @@ import Distribution.Pretty (prettyShow)
 import Distribution.Utils.Generic (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version (Version, mkVersion, versionNumbers)
 
+import qualified Data.Bifunctor as Bi
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Map.Strict as Map
@@ -83,6 +84,14 @@ import qualified Text.Parsec as P
 -- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
 -- TODO: remove the need for deepseq if `deepseq` in fact matters
 -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
+
+-- | Extract comments from fields. Future PRs will make use of the comments properly, currently we just drop them.
+--   This should not be exported, and will likely be removed in future versions.
+extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
+extractComments = Bi.first mconcat . unzip . map extractCommentsStep
+
+extractCommentsStep :: (Foldable f, Functor f) => f (WithComments ann) -> ([Comment ann], f ann)
+extractCommentsStep f = (foldMap justComments f, fmap unComments f)
 
 -- | Parses the given file into a 'GenericPackageDescription'.
 --
