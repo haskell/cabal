@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
@@ -76,6 +77,21 @@ import qualified Text.Parsec as Parsec
 -- NOTE(leana8959): remove this after demo is done
 import Text.Pretty.Simple
 import Debug.Pretty.Simple
+
+-- For the modification demo
+import Distribution.Types.GenericPackageDescription
+import Distribution.Types.UnqualComponentName
+import Distribution.Types.CondTree
+import Distribution.Types.ConfVar
+import Distribution.Types.Library
+import Distribution.Types.BuildInfo
+import Distribution.Types.Trivia
+import Distribution.Types.Dependency
+import Distribution.Types.PackageName
+import Distribution.Types.VersionRange
+import Distribution.Types.Version
+import Distribution.Types.LibraryName
+import qualified Distribution.Compat.NonEmptySet as NES
 
 import qualified Distribution.InstalledPackageInfo as IPI
 
@@ -371,14 +387,65 @@ parsecPrettyTests = testGroup "parsec pretty roundtrip" $
 --   where
 --     input = "tests" </> "ParserTests" </> "miniBuildInfoDemo.cabal"
 
+
+addFakeDepsToGpd :: GenericPackageDescriptionAnn -> GenericPackageDescriptionAnn
+addFakeDepsToGpd gpd = gpd { condSubLibraries = addFakeDepsToSubLibraries (condSubLibraries gpd) }
+
+addFakeDepsToSubLibraries :: [(UnqualComponentName, CondTree ConfVar (LibraryWith Conc))] -> [(UnqualComponentName, CondTree ConfVar (LibraryWith Conc))]
+addFakeDepsToSubLibraries = map addFakeDepsToSubLibraryFoo
+
+addFakeDepsToSubLibraryFoo :: (UnqualComponentName, CondTree ConfVar (LibraryWith Conc)) -> (UnqualComponentName, CondTree ConfVar (LibraryWith Conc))
+addFakeDepsToSubLibraryFoo (name, condTree) | unUnqualComponentName name == "foo" = (name, addFakeDepsToCondTree condTree)
+addFakeDepsToSubLibraryFoo x = x
+
+addFakeDepsToCondTree :: CondTree ConfVar LibraryAnn -> CondTree ConfVar LibraryAnn
+addFakeDepsToCondTree condTree = condTree { condTreeData = addFakeDepsToLibrary (condTreeData condTree) }
+
+addFakeDepsToLibrary :: LibraryAnn -> LibraryAnn
+addFakeDepsToLibrary lib = lib { libBuildInfo = addFakeDepsToBI (libBuildInfo lib) }
+
+addFakeDepsToBI :: BuildInfoAnn -> BuildInfoAnn
+addFakeDepsToBI bi = bi { targetBuildDepends = addFakeDepsToBuildDepends (targetBuildDepends bi) }
+
+mapHead :: (a -> a) -> [a] -> [a]
+mapHead _ [] = []
+mapHead f (x : xs) = f x : xs
+
+addFakeDepsToBuildDepends
+  :: [([Comment Position], (Positions, [(Position, Ann SurroundingText DependencyAnn)]))]
+  -> [([Comment Position], (Positions, [(Position, Ann SurroundingText DependencyAnn)]))]
+addFakeDepsToBuildDepends = mapHead addFakeDepsToBuildDependsFirstGroup
+
+addFakeDepsToBuildDependsFirstGroup
+  :: ([Comment Position], (Positions, [(Position, Ann SurroundingText DependencyAnn)]))
+  -> ([Comment Position], (Positions, [(Position, Ann SurroundingText DependencyAnn)]))
+addFakeDepsToBuildDependsFirstGroup = (fmap . fmap) addFakeDepsToListOfDeps
+
+addFakeDepsToListOfDeps :: [(Position, Ann SurroundingText DependencyAnn)] -> [(Position, Ann SurroundingText DependencyAnn)]
+addFakeDepsToListOfDeps = ((fakePos, fakeDep) :)
+  where
+    fakePos :: Position
+    fakePos = Position 1 1
+
+    fakeDep :: Ann SurroundingText DependencyAnn
+    fakeDep =
+        Ann mempty $
+          Dependency
+            (PackageName $ Ann mempty "fake-package")
+            (ThisVersion $ (mempty, mkVersionAnn mempty [1, 3, 3, 7]))
+            (NES.singleton LMainLibName)
+
+
 smallCabalFileTest :: TestTree
 smallCabalFileTest = testCase "smallCabalFile" $ do
   contents <- BS.readFile input
   let res = withSource (PCabalFile (fp, contents)) $ (parseGenericPackageDescriptionPrim @Conc) contents
   let (_, x) = runParseResult res
-  gpd <- case x of
+  gpd0 <- case x of
       Right ok -> pure ok
       Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+
+  let gpd = addFakeDepsToGpd gpd0
 
   let prettyFields = ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd
       prettyFields' = filterFields prettyFields
