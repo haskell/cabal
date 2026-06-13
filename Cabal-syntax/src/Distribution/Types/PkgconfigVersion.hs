@@ -36,7 +36,7 @@ instance Ord PkgconfigVersion where
 
 instance Binary PkgconfigVersion
 instance Structured PkgconfigVersion
-instance NFData PkgconfigVersion where rnf = genericRnf
+instance NFData PkgconfigVersion
 
 instance Pretty PkgconfigVersion where
   pretty (PkgconfigVersion bs) = PP.text (BS8.unpack bs)

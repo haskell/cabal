@@ -31,7 +31,7 @@ data BenchmarkInterface
 
 instance Binary BenchmarkInterface
 instance Structured BenchmarkInterface
-instance NFData BenchmarkInterface where rnf = genericRnf
+instance NFData BenchmarkInterface
 
 instance Monoid BenchmarkInterface where
   mempty = BenchmarkUnsupported (BenchmarkTypeUnknown mempty nullVersion)

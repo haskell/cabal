@@ -64,7 +64,7 @@ data VersionRange
 
 instance Binary VersionRange
 instance Structured VersionRange
-instance NFData VersionRange where rnf = genericRnf
+instance NFData VersionRange
 
 -- | The version range @-any@. That is, a version range containing all
 -- versions.

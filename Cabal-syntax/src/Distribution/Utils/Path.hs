@@ -231,7 +231,7 @@ instance Binary (SymbolicPathX allowAbsolute from to)
 instance
   (Typeable allowAbsolute, Typeable from, Typeable to)
   => Structured (SymbolicPathX allowAbsolute from to)
-instance NFData (SymbolicPathX allowAbsolute from to) where rnf = genericRnf
+instance NFData (SymbolicPathX allowAbsolute from to)
 
 -- | Extract the 'FilePath' underlying a 'SymbolicPath' or 'RelativePath',
 -- without interpreting it.

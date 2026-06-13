@@ -30,7 +30,7 @@ data LegacyExeDependency
 
 instance Binary LegacyExeDependency
 instance Structured LegacyExeDependency
-instance NFData LegacyExeDependency where rnf = genericRnf
+instance NFData LegacyExeDependency
 
 instance Pretty LegacyExeDependency where
   pretty (LegacyExeDependency name ver) =

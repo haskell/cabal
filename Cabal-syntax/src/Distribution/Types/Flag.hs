@@ -61,7 +61,7 @@ data PackageFlag = MkPackageFlag
 
 instance Binary PackageFlag
 instance Structured PackageFlag
-instance NFData PackageFlag where rnf = genericRnf
+instance NFData PackageFlag
 
 -- | A 'PackageFlag' initialized with default parameters.
 emptyFlag :: FlagName -> PackageFlag
