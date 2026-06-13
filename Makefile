@@ -49,6 +49,15 @@ FORMAT_DIRS_TODO := \
 	cabal-testsuite/static \
 	solver-benchmarks
 
+.PHONY: check
+check:
+	@cd Cabal && cabal check | grep -q "No errors or warnings could be found in the package."
+	@cd cabal-install && cabal check | grep -q "No errors or warnings could be found in the package."
+	@cd Cabal-syntax && cabal check | grep -q "No errors or warnings could be found in the package."
+	@cd Cabal-hooks && cabal check | grep -q "No errors or warnings could be found in the package."
+	@cd hooks-exe && cabal check | grep -q "No errors or warnings could be found in the package."
+	@cd cabal-install-solver && cabal check | grep -q "No errors or warnings could be found in the package."
+
 .PHONY: style-todo
 style-todo: ## Configured for fourmolu, avoiding GHC parser failures.
 	@fourmolu -q $(FORMAT_DIRS_TODO) > /dev/null
