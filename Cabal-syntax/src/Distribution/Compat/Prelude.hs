@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- | This module does two things:
 --
@@ -25,7 +24,6 @@ module Distribution.Compat.Prelude
   , Data
   , Generic
   , NFData (..)
-  , genericRnf
   , Binary (..)
   , Structured
   , Alternative (..)
@@ -235,7 +233,7 @@ import Data.Void (Void, absurd, vacuous)
 import Data.Word (Word, Word16, Word32, Word64, Word8)
 import Distribution.Compat.Binary (Binary (..))
 import Distribution.Compat.Semigroup (gmappend, gmempty)
-import GHC.Generics (Generic (..), K1 (unK1), M1 (unM1), U1 (U1), V1, (:*:) ((:*:)), (:+:) (L1, R1))
+import GHC.Generics (Generic)
 import System.Exit (ExitCode (..), exitFailure, exitSuccess, exitWith)
 import Text.Read (readMaybe)
 
@@ -250,47 +248,6 @@ import qualified Debug.Trace
 -- | New name for 'Text.PrettyPrint.<>'
 (<<>>) :: Disp.Doc -> Disp.Doc -> Disp.Doc
 (<<>>) = (Disp.<>)
-
--- | "GHC.Generics"-based 'rnf' implementation
---
--- This is needed in order to support @deepseq < 1.4@ which didn't
--- have a 'Generic'-based default 'rnf' implementation yet.
---
--- In order to define instances, use e.g.
---
--- > instance NFData MyType where rnf = genericRnf
---
--- The implementation has been taken from @deepseq-1.4.2@'s default
--- 'rnf' implementation.
-genericRnf :: (Generic a, GNFData (Rep a)) => a -> ()
-genericRnf = grnf . from
-
--- | Hidden internal type-class
-class GNFData f where
-  grnf :: f a -> ()
-
-instance GNFData V1 where
-  grnf = error "Control.DeepSeq.rnf: uninhabited type"
-
-instance GNFData U1 where
-  grnf U1 = ()
-
-instance NFData a => GNFData (K1 i a) where
-  grnf = rnf . unK1
-  {-# INLINEABLE grnf #-}
-
-instance GNFData a => GNFData (M1 i c a) where
-  grnf = grnf . unM1
-  {-# INLINEABLE grnf #-}
-
-instance (GNFData a, GNFData b) => GNFData (a :*: b) where
-  grnf (x :*: y) = grnf x `seq` grnf y
-  {-# INLINEABLE grnf #-}
-
-instance (GNFData a, GNFData b) => GNFData (a :+: b) where
-  grnf (L1 x) = grnf x
-  grnf (R1 x) = grnf x
-  {-# INLINEABLE grnf #-}
 
 -- TODO: if we want foldr1/foldl1 to work on more than NonEmpty, we
 -- can define a local typeclass 'Foldable1', e.g.

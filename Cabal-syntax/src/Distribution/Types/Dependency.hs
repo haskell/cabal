@@ -70,7 +70,7 @@ mkDependency pn vr lb = Dependency pn vr (NES.map conv lb)
 
 instance Binary Dependency
 instance Structured Dependency
-instance NFData Dependency where rnf = genericRnf
+instance NFData Dependency
 
 -- |
 --

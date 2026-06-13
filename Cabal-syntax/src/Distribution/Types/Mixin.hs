@@ -36,7 +36,7 @@ data Mixin = Mixin
 instance Binary Mixin
 instance Structured Mixin
 
-instance NFData Mixin where rnf = genericRnf
+instance NFData Mixin
 
 instance Pretty Mixin where
   pretty (Mixin pn LMainLibName incl) = pretty pn <+> pretty incl

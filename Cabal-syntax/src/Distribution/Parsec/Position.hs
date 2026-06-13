@@ -21,7 +21,7 @@ data Position
   deriving (Eq, Ord, Show, Generic)
 
 instance Binary Position
-instance NFData Position where rnf = genericRnf
+instance NFData Position
 
 -- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position

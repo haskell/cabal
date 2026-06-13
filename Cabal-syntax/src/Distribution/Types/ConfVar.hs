@@ -24,4 +24,4 @@ data ConfVar
 instance Binary ConfVar
 instance Structured ConfVar
 
-instance NFData ConfVar where rnf = genericRnf
+instance NFData ConfVar
