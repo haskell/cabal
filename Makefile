@@ -49,6 +49,15 @@ FORMAT_DIRS_TODO := \
 	cabal-testsuite/static \
 	solver-benchmarks
 
+.PHONY: check
+check:
+	cd Cabal && cabal check
+	cd cabal-install && cabal check
+	cd Cabal-syntax && cabal check
+	cd Cabal-hooks && cabal check
+	cd hooks-exe && cabal check
+	cd cabal-install-solver && cabal check
+
 .PHONY: style-todo
 style-todo: ## Configured for fourmolu, avoiding GHC parser failures.
 	@fourmolu -q $(FORMAT_DIRS_TODO) > /dev/null
