@@ -188,6 +188,9 @@ jobs:
           fi
           echo "FLAGS=$FLAGS" >> "$GITHUB_ENV"
 
+      - name: Run cabal check
+        run: make check
+
       - name: Validate build
         run: sh validate.sh $FLAGS -s build
 
