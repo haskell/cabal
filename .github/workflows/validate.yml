@@ -106,11 +106,6 @@ jobs:
       run:
         shell: ${{ matrix.sys.shell }}
     steps:
-      - name: Run cabal check
-        run: |
-          for name in Cabal cabal-install Cabal-syntax Cabal-hooks hooks-exe cabal-install-solver; do
-            (cd "$name" && cabal check) || exit 1
-          done
       - name: Work around XDG directories existence (haskell-actions/setup#62)
         if: runner.os == 'macOS'
         run: |
@@ -123,6 +118,12 @@ jobs:
            echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v6
+
+      - name: Run cabal check
+        run: |
+          for name in Cabal cabal-install Cabal-syntax Cabal-hooks hooks-exe cabal-install-solver; do
+            (cd "$name" && cabal check) || exit 1
+          done
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
       - name: Add manually supplied allow-newer
