@@ -49,6 +49,37 @@ FORMAT_DIRS_TODO := \
 	cabal-testsuite/static \
 	solver-benchmarks
 
+.PHONY: outdated
+outdated:
+	# To temporarily disable strict checks for a package, only comment out
+	# `--exit-code`, so that you still get the informational output.
+	#
+	# Example:
+	#
+	# To "disable" strict checks for the `Cabal` package, change
+	#
+	#     cd Cabal && cabal outdated --exit-code
+	#
+	# to
+	#
+	#     cd Cabal && cabal outdated # --exit-code
+	#
+	# If you temporarily disable strict checks for a package:
+	#
+	# - on `master`, then open a corresponding issue to re-enable it:
+	#
+	#   https://github.com/haskell/cabal/issues/new?labels=priority:+high+:fire:&title=re-enable+%60cabal+outdated%60+on+CI
+	#
+	# - on a release branch, then make sure that you run `make outdated`
+	#   manually before making a release
+	#
+	cd Cabal && cabal outdated --exit-code
+	cd cabal-install && cabal outdated --exit-code
+	cd Cabal-syntax && cabal outdated --exit-code
+	cd Cabal-hooks && cabal outdated --exit-code
+	cd hooks-exe && cabal outdated --exit-code
+	cd cabal-install-solver && cabal outdated --exit-code
+
 .PHONY: style-todo
 style-todo: ## Configured for fourmolu, avoiding GHC parser failures.
 	@fourmolu -q $(FORMAT_DIRS_TODO) > /dev/null
