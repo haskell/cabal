@@ -1,4 +1,14 @@
-cabal-version: 3.8
+cabal-version: 3.6
+-- ^ bundled with GHC 9.2.8 (2023-05-26)
+--
+-- https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/libraries/version-history
+--
+-- * don't bump this for a minor release
+-- * make sure that this is not too recent (the corresponding `Cabal` library
+--   should be at least five years, or older)
+--
+-- https://cabal.readthedocs.io/en/stable/file-format-changelog.html
+
 name:          Cabal
 version:       3.17.0.0
 copyright:     2003-2025, Cabal Development Team (see AUTHORS file)
