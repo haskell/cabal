@@ -115,17 +115,17 @@ Got questions? Ask in [Haskell Matrix](https://matrix.to/#/#haskell:matrix.org)
 Support window
 --------------
 
-Our GHC support window is five years ([reference](https://gitlab.haskell.org/ghc/ghc/-/wikis/GHC%20Status#all-released-ghc-versions))
+Our GHC support window is three years ([reference](https://gitlab.haskell.org/ghc/ghc/-/wikis/GHC%20Status#all-released-ghc-versions))
 for both the Cabal library and `cabal-install`.  That is:
 
 * Cabal library must be buildable out-of-the-box against the
-  boot libraries shipped with GHC, for any GHC released in the past five
+  boot libraries shipped with GHC, for any GHC released in the past three
   years from Cabal library release date.
 * `cabal-install` should be buildable with `bootstrap/bootstrap.py`
-  script, for any GHC released in the past five years from `cabal-install`
+  script, for any GHC released in the past three years from `cabal-install`
   release date.
 * `cabal-install` should be able to drive the most recent minor version of
-  any GHCs major version released in the past five years from `cabal-install`
+  any GHCs major version released in the past three years from `cabal-install`
   release date.
   In this context, "drive" means `cabal-install` will work with the Cabal
   library (usually but not always the one that came with the ghc version)
@@ -135,7 +135,7 @@ Self-upgrade to the latest version (i.e. `cabal install cabal-install`)
 must work with all versions of `cabal-install` released during the last
 three years.
 
-Cabal maintainers try to support GHC versions older than five years
+Cabal maintainers try to support GHC versions older than three years
 on a minimal-effort basis.
 
 Build for hacking and contributing to cabal
