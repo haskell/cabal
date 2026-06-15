@@ -115,7 +115,7 @@ data License
 
 instance Binary License
 instance Structured License
-instance NFData License where rnf = genericRnf
+instance NFData License
 
 -- | The list of all currently recognised licenses.
 knownLicenses :: [License]

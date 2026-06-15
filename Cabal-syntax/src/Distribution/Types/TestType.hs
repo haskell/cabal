@@ -30,7 +30,7 @@ data TestType
 instance Binary TestType
 instance Structured TestType
 
-instance NFData TestType where rnf = genericRnf
+instance NFData TestType
 
 knownTestTypes :: [TestType]
 knownTestTypes =

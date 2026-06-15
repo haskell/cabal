@@ -100,7 +100,7 @@ instance MonadPlus Condition where
 
 instance Binary c => Binary (Condition c)
 instance Structured c => Structured (Condition c)
-instance NFData c => NFData (Condition c) where rnf = genericRnf
+instance NFData c => NFData (Condition c)
 
 -- | Simplify the condition and return its free variables.
 simplifyCondition

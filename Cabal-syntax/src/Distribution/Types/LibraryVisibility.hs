@@ -39,7 +39,7 @@ instance Parsec LibraryVisibility where
 
 instance Binary LibraryVisibility
 instance Structured LibraryVisibility
-instance NFData LibraryVisibility where rnf = genericRnf
+instance NFData LibraryVisibility
 
 instance Semigroup LibraryVisibility where
   LibraryVisibilityPrivate <> LibraryVisibilityPrivate = LibraryVisibilityPrivate

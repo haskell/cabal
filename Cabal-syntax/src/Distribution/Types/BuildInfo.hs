@@ -151,7 +151,7 @@ data BuildInfo = BuildInfo
 
 instance Binary BuildInfo
 instance Structured BuildInfo
-instance NFData BuildInfo where rnf = genericRnf
+instance NFData BuildInfo
 
 instance Monoid BuildInfo where
   mempty =

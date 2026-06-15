@@ -61,7 +61,7 @@ data CondTree v a = CondNode
 
 instance (Binary v, Binary a) => Binary (CondTree v a)
 instance (Structured v, Structured a) => Structured (CondTree v a)
-instance (NFData v, NFData a) => NFData (CondTree v a) where rnf = genericRnf
+instance (NFData v, NFData a) => NFData (CondTree v a)
 
 instance Semigroup a => Semigroup (CondTree v a) where
   (CondNode a bs) <> (CondNode a' bs') = CondNode (a <> a') (bs <> bs')
@@ -82,7 +82,7 @@ data CondBranch v a = CondBranch
 
 instance (Binary v, Binary a) => Binary (CondBranch v a)
 instance (Structured v, Structured a) => Structured (CondBranch v a)
-instance (NFData v, NFData a) => NFData (CondBranch v a) where rnf = genericRnf
+instance (NFData v, NFData a) => NFData (CondBranch v a)
 
 condIfThen :: Condition v -> CondTree v a -> CondBranch v a
 condIfThen c t = CondBranch c t Nothing

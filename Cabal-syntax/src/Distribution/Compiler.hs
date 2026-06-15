@@ -83,7 +83,7 @@ data CompilerFlavor
 
 instance Binary CompilerFlavor
 instance Structured CompilerFlavor
-instance NFData CompilerFlavor where rnf = genericRnf
+instance NFData CompilerFlavor
 
 knownCompilerFlavors :: [CompilerFlavor]
 knownCompilerFlavors =
@@ -177,7 +177,7 @@ data CompilerId = CompilerId CompilerFlavor Version
 
 instance Binary CompilerId
 instance Structured CompilerId
-instance NFData CompilerId where rnf = genericRnf
+instance NFData CompilerId
 
 instance Pretty CompilerId where
   pretty (CompilerId f v)

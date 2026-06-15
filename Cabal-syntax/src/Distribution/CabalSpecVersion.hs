@@ -42,7 +42,7 @@ data CabalSpecVersion
 
 instance Binary CabalSpecVersion
 instance Structured CabalSpecVersion
-instance NFData CabalSpecVersion where rnf = genericRnf
+instance NFData CabalSpecVersion
 
 -- | Show cabal spec version, but not the way in the .cabal files
 --
