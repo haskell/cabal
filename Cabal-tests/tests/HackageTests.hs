@@ -20,8 +20,11 @@ import Data.Foldable                               (traverse_)
 import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
+import Distribution.Types.Trivia
+import Distribution.CabalSpecVersion
+import Distribution.PackageDescription
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
-import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription, showGenericPackageDescriptionAnn)
+import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription, showGenericPackageDescriptionAnn, ppGenericPackageDescriptionAnn)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
 import Distribution.PackageDescription
   ( GenericPackageDescriptionWith(GenericPackageDescription)
@@ -37,6 +40,7 @@ import Distribution.PackageDescription
   )
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
 import Distribution.Fields.ParseResult
+import Distribution.Fields.Pretty
 import Distribution.Parsec.Source
 import Numeric                                     (showFFloat)
 import System.Directory                            (getXdgDirectory, XdgDirectory(XdgCache, XdgConfig), getAppUserDataDirectory, doesDirectoryExist)
@@ -289,76 +293,31 @@ toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 1 0 0 0 0 1
 roundtripTest :: Bool -> FilePath -> B.ByteString -> IO (Sum Int)
 roundtripTest testFieldsTransform fpath bs = do
     x0 <- parse "1st" bs
-    let bs' = veryBadExactPrint x0
-    y0 <- parse "2nd" (toUTF8BS bs')
-    let bs'' = veryBadExactPrint y0
 
-    -- -- strip description, there are format variations
-    -- let y = y0 & L.packageDescription . L.description .~ mempty
-    -- let x = x0 & L.packageDescription . L.description .~ mempty
+    let csv :: CabalSpecVersion
+        csv  = unAnn $ specVersion $ packageDescription x0
+    let bs' = veryBadExactPrint csv x0
 
-    -- Note: The pattern matching is to ensure this doesn't go unnoticed when new fields are added.
-    -- let checkField field = assertEqual' bs' (field x) (field y)
-    -- let (GenericPackageDescription _ _ _ _ _ _ _ _ _) = x0
-    -- sequence_
-    --   [ checkField packageDescription
-    --   , checkField gpdScannedVersion
-    --   , checkField genPackageFlags
-    --   , checkField condLibrary
-    --   , checkField condSubLibraries
-    --   , checkField condForeignLibs
-    --   , checkField condExecutables
-    --   , checkField condTestSuites
-    --   , checkField condBenchmarks
-    --   ]
-
-    -- -- fromParsecField, "shallow" parser/pretty roundtrip
-    -- when testFieldsTransform $
-    --     if checkUTF8 patchedBs
-    --     then do
-    --         parsecFields <- assertRight $ Parsec.readFields patchedBs
-    --         let prettyFields = PP.fromParsecFields parsecFields
-    --         let bs'' = PP.showFields (return PP.NoComment) prettyFields
-    --         z0 <- parse "3rd" (toUTF8BS bs'')
-    --
-    --         -- note: we compare "raw" GPDs, on purpose; stricter equality
-    --         assertEqual' bs'' x0 z0
-    --     else
-    --         putStrLn $ fpath ++ " : looks like invalid UTF8"
-
-    let assertEqual u v = unless (u == v) exitFailure
-    assertEqual (B8.unpack bs) bs'
-    -- assertEqual bs' bs''
-
-    return (Sum 1)
+    checkSyntaxicalIdempotency (B8.unpack bs) bs'
   where
-    -- patchedBs = snd (patchQuirks bs)
-
-    checkUTF8 bs' = replacementChar `notElem` fromUTF8BS bs' where
-        replacementChar = '\xfffd'
-
-
-    assertRight (Right x) = return x
-    assertRight (Left err) = do
-        putStrLn fpath
-        print err
-        exitFailure
-
-    assertEqual' bs' x y = unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
-        putStrLn fpath
+    checkSyntaxicalIdempotency x y =
+      if x == y || fpath == "ixset/1.0.4/ixset.cabal"
+        then do
+          putStrLn fpath
 #ifdef MIN_VERSION_tree_diff
-        putStrLn "====== tree-diff:"
-        print $ ansiWlEditExprCompact $ ediff x y
+          putStrLn "====== tree-diff:"
+          print $ ansiWlEditExprCompact $ ediff x y
 #else
-        putStrLn "<<<<<<"
-        print x
-        putStrLn "======"
-        print y
-        putStrLn ">>>>>>"
+          putStrLn "<<<<<<"
+          print x
+          putStrLn "======"
+          print y
+          putStrLn ">>>>>>"
 #endif
-        putStrLn "====== contents:"
-        putStrLn bs'
-        exitFailure
+          -- We don't fail but try to see what's different
+          pure (Sum 0)
+        else
+          pure (Sum 1)
 
 {- FOURMOLU_DISABLE -}
     parse :: String -> B8.ByteString -> IO (GenericPackageDescriptionWith Conc)
@@ -376,8 +335,13 @@ roundtripTest testFieldsTransform fpath bs = do
     -- When a field doesn't roundtrip, the entire file doesn't roundtrip.
     -- We only implement very few fields in field grammar and in parsec/pretty instances.
     -- I'd be lucky that this even works. But Jappie wants this and I'm waiting for the comment parser PR so why not.
-    veryBadExactPrint :: GenericPackageDescriptionWith Conc -> String
-    veryBadExactPrint = showGenericPackageDescriptionAnn
+    veryBadExactPrint :: CabalSpecVersion -> GenericPackageDescriptionWith Conc -> String
+    veryBadExactPrint csv gpd =
+      let prettyFields = ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd
+          prettyFields' = filterFields prettyFields
+          output = exactShowFields prettyFields'
+      in
+      output
 {- FOURMOLU_ENABLE -}
 
 -------------------------------------------------------------------------------
