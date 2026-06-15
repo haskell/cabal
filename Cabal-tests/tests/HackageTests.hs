@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE CPP                 #-}
@@ -55,6 +56,7 @@ import qualified Codec.Archive.Tar.Entry                as Tar
 import qualified Data.ByteString                        as B
 import qualified Data.ByteString.Char8                  as B8
 import qualified Data.ByteString.Lazy                   as BSL
+import GHC.Generics
 import qualified Distribution.Fields.Parser             as Parsec
 import qualified Distribution.Fields.Pretty             as PP
 import qualified Distribution.PackageDescription.Parsec as Parsec
@@ -290,7 +292,21 @@ toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 1 0 0 0 0 1
 -- Roundtrip test
 -------------------------------------------------------------------------------
 
-roundtripTest :: Bool -> FilePath -> B.ByteString -> IO (Sum Int)
+data RoundtripResult = RoundtripResult
+  { rrProcessed :: Int
+  , rrSucceeded :: Int
+  }
+  deriving (Generic)
+
+instance Semigroup RoundtripResult where
+  RoundtripResult s t <> RoundtripResult a b = RoundtripResult (s + a) (t + b)
+
+instance Monoid RoundtripResult where
+  mempty = RoundtripResult 0 0
+
+instance NFData RoundtripResult
+
+roundtripTest :: Bool -> FilePath -> B.ByteString -> IO RoundtripResult
 roundtripTest testFieldsTransform fpath bs = do
     x0 <- parse "1st" bs
 
@@ -298,26 +314,29 @@ roundtripTest testFieldsTransform fpath bs = do
         csv  = unAnn $ specVersion $ packageDescription x0
     let bs' = veryBadExactPrint csv x0
 
-    checkSyntaxicalIdempotency (B8.unpack bs) bs'
+    pure $ checkSyntaxicalIdempotency (B8.unpack bs) bs'
   where
     checkSyntaxicalIdempotency x y =
-      if x == y || fpath == "ixset/1.0.4/ixset.cabal"
-        then do
-          putStrLn fpath
-#ifdef MIN_VERSION_tree_diff
-          putStrLn "====== tree-diff:"
-          print $ ansiWlEditExprCompact $ ediff x y
-#else
-          putStrLn "<<<<<<"
-          print x
-          putStrLn "======"
-          print y
-          putStrLn ">>>>>>"
-#endif
-          -- We don't fail but try to see what's different
-          pure (Sum 0)
-        else
-          pure (Sum 1)
+        RoundtripResult 1 $
+          if x == y || fpath == "ixset/1.0.4/ixset.cabal" then 1 else 0
+
+--       if x == y || fpath == "ixset/1.0.4/ixset.cabal"
+--         then do
+--           putStrLn fpath
+-- #ifdef MIN_VERSION_tree_diff
+--           putStrLn "====== tree-diff:"
+--           print $ ansiWlEditExprCompact $ ediff x y
+-- #else
+--           putStrLn "<<<<<<"
+--           print x
+--           putStrLn "======"
+--           print y
+--           putStrLn ">>>>>>"
+-- #endif
+--           -- We don't fail but try to see what's different
+--           pure (Sum 0)
+--         else
+--           pure (Sum 1)
 
 {- FOURMOLU_DISABLE -}
     parse :: String -> B8.ByteString -> IO (GenericPackageDescriptionWith Conc)
@@ -412,8 +431,8 @@ main = join (O.execParser opts)
 
     roundtripP = roundtripA <$> prefixP <*> testFieldsP <*> indexP
     roundtripA pfx testFieldsTransform idx = do
-        Sum n <- parseIndex (mkPredicate pfx idx) (roundtripTest testFieldsTransform)
-        putStrLn $ show n ++ " files processed"
+        RoundtripResult processed succeeded <- parseIndex (mkPredicate pfx idx) (roundtripTest testFieldsTransform)
+        putStrLn $ show processed ++ " files processed, " ++ show succeeded ++ " files succeeded."
 
     checkP = checkA <$> prefixP <*> indexP
     checkA pfx idx = do
