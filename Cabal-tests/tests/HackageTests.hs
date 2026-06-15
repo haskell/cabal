@@ -314,11 +314,15 @@ roundtripTest testFieldsTransform fpath bs = do
         csv  = unAnn $ specVersion $ packageDescription x0
     let bs' = veryBadExactPrint csv x0
 
-    pure $ checkSyntaxicalIdempotency (B8.unpack bs) bs'
+    checkSyntaxicalIdempotency (B8.unpack bs) bs'
   where
     checkSyntaxicalIdempotency x y =
-        RoundtripResult 1 $
-          if x == y || fpath == "ixset/1.0.4/ixset.cabal" then 1 else 0
+      if x == y
+        then do
+          print $ fpath <> " succeeded!"
+          pure (RoundtripResult 1 1)
+        else
+          pure (RoundtripResult 1 0)
 
 --       if x == y || fpath == "ixset/1.0.4/ixset.cabal"
 --         then do
