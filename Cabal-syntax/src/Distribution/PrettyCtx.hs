@@ -30,5 +30,5 @@ defaultPrettyCtxVersioned :: Pretty a => CabalSpecVersion -> ([Comment Position]
 defaultPrettyCtxVersioned csv (_, x) = prettyVersioned csv x
 
 instance Pretty a => PrettyCtx (Identity a) where
-  prettyCtx = pTrace "Identity" $ defaultPrettyCtx
-  prettyCtxVersioned = pTrace "Identity" $ defaultPrettyCtxVersioned
+  prettyCtx = defaultPrettyCtx
+  prettyCtxVersioned = defaultPrettyCtxVersioned

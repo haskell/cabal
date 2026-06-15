@@ -291,11 +291,9 @@ instance (Newtype a b, Sep Conc sep, Pretty b) => PrettyCtx (ListAnn sep b a) wh
   prettyCtx (cmts, x) =
     let locatedDocs :: [(Position, Doc)] = prettySep @Conc (Proxy :: Proxy sep) . (map . fmap . fmap) (pretty . (pack :: a -> b)) . unpack $ x
         withComments = interleaveCommentsWithDocs cmts locatedDocs
-    in
-      pTraceShow (show withComments) $
-        mconcat $ map snd $ withComments
+    in  mconcat $ map snd $ withComments
 
-  prettyCtxVersioned _ = pTrace "Identity" $ prettyCtx
+  prettyCtxVersioned _ = prettyCtx
 
 -- TODO(leana8959): indentation is not exact with the comments we preserve, we need to patch them either at the lexer stage or here
 commentToLocatedDoc :: Comment Position -> (Position, Doc)
