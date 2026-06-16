@@ -11,7 +11,6 @@ import Distribution.Text (display, simpleParse)
 import Distribution.Verbosity (Verbosity (..), defaultVerbosityHandles, normal)
 import Language.Haskell.Extension (Extension (..), knownLanguages)
 
-import Data.List ((\\))
 import System.Environment (getArgs, getProgName)
 
 -- | Language editions as Extensions.
@@ -61,11 +60,8 @@ checkProblems implemented =
   -- Extensions that ghc knows about but that are not registered except for the known languages.
   let unregistered = [ext | ext <- implemented, not (registered ext), ext `notElem` langsAsExts]
 
-      -- check if someone has forgotten to update the `langsAsExts` exceptions list...
-      badExceptions = langsAsExts \\ implemented
-
       -- exceptions that are now registered
-      badExceptions' = filter registered langsAsExts
+      badExceptions = filter registered langsAsExts
    in catMaybes
         [ check unregistered $
             unlines
@@ -77,17 +73,9 @@ checkProblems implemented =
         , check badExceptions $
             unlines
               [ "Error in the extension exception list. The following extensions"
-              , "are listed as exceptions but are not even implemented by GHC:"
-              , "  " ++ intercalate "\n  " (map display badExceptions)
-              , "Please fix this test program by correcting the list of"
-              , "exceptions."
-              ]
-        , check badExceptions' $
-            unlines
-              [ "Error in the extension exception list. The following extensions"
               , "are listed as exceptions to registration but they are in fact"
               , "now registered in Language.Haskell.Extension:"
-              , "  " ++ intercalate "\n  " (map display badExceptions')
+              , "  " ++ intercalate "\n  " (map display badExceptions)
               , "Please fix this test program by correcting the list of"
               , "exceptions."
               ]
