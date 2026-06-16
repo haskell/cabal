@@ -47,6 +47,9 @@ library
     , bytestring >= 0.10.8   && < 0.13
     , containers >= 0.5.8.2  && < 0.9
     , deepseq    >= 1.4      && < 1.7
+    , base16-bytestring >= 1.0 && < 1.1
+    , binary     >= 0.7.3    && < 0.9
+    , cryptohash-sha256 >= 0.11 && < 0.12
     , directory  >= 1.2.7    && < 1.4
     , filepath   >= 1.4.2    && < 1.6
     , pretty     >= 1.1.1    && < 1.2
@@ -126,11 +129,13 @@ library
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.Errors
+    Distribution.Simple.FileMonitor
     Distribution.Simple.FileMonitor.Types
     Distribution.Simple.Flag
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
+    Distribution.Simple.HashValue
     Distribution.Simple.Glob
     Distribution.Simple.Glob.Internal
     Distribution.Simple.Hpc
@@ -158,6 +163,7 @@ library
     Distribution.Simple.Program.Script
     Distribution.Simple.Program.Strip
     Distribution.Simple.Program.Types
+    Distribution.Simple.RebuildMonad
     Distribution.Simple.Register
     Distribution.Simple.Setup
     Distribution.Simple.ShowBuildInfo

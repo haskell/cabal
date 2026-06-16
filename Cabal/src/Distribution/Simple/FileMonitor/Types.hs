@@ -7,6 +7,7 @@ module Distribution.Simple.FileMonitor.Types
     RootedGlob (..)
   , FilePathRoot (..)
   , Glob
+  , getFilePathRootDirectory
 
     -- * File monitoring
   , MonitorFilePath (..)
@@ -39,6 +40,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Utils.Generic (isAsciiAlpha)
 import qualified Text.PrettyPrint as Disp
+import System.Directory (getHomeDirectory)
 
 --------------------------------------------------------------------------------
 -- Rooted globs.
@@ -66,6 +68,19 @@ data FilePathRoot
 
 instance Binary FilePathRoot
 instance Structured FilePathRoot
+
+-- | Get the 'FilePath' corresponding to a 'FilePathRoot'.
+--
+-- The 'FilePath' argument is required to supply the path for the
+-- 'FilePathRelative' case.
+getFilePathRootDirectory
+  :: FilePathRoot
+  -> FilePath
+  -- ^ root for relative paths
+  -> IO FilePath
+getFilePathRootDirectory FilePathRelative root = return root
+getFilePathRootDirectory (FilePathRoot root) _ = return root
+getFilePathRootDirectory FilePathHomeDir _ = getHomeDirectory
 
 ------------------------------------------------------------------------------
 -- Types for specifying files to monitor
