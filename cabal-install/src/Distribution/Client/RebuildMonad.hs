@@ -1,7 +1,12 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- | An abstraction for re-running actions if values or files have changed.
 --
@@ -62,49 +67,48 @@ module Distribution.Client.RebuildMonad
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Simple.RebuildMonad
+
 import Distribution.Client.FileMonitor
 import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 import Distribution.Client.JobControl
 import Distribution.Simple.PreProcess.Types (Suffix (..))
 
-import Distribution.Simple.Utils (debug, ordNub)
+import Distribution.Simple.Utils (ordNub)
 
-import Control.Concurrent.MVar (MVar, modifyMVar, newMVar)
-import Control.Monad
 import Control.Monad.Reader as Reader
-import Control.Monad.State as State
-import qualified Data.Map.Strict as Map
+import Control.Monad.Writer as Writer
 import System.Directory
 import System.FilePath
 
--- | A monad layered on top of 'IO' to help with re-running actions when the
--- input files and values they depend on change. The crucial operations are
--- 'rerunIfChanged' and 'monitorFiles'.
-newtype Rebuild a = Rebuild (ReaderT FilePath (StateT [MonitorFilePath] IO) a)
+-- | A custom rebuild monad to be used for file monitoring within
+-- @cabal-install@. On top of the basic 'MonadRebuild' functionality, it keeps
+-- the current root path in a 'ReaderT' context.
+newtype Rebuild a = Rebuild (ReaderT FilePath (WriterT [MonitorFilePath] IO) a)
   deriving (Functor, Applicative, Monad, MonadIO)
 
--- | Use this within the body action of 'rerunIfChanged' to declare that the
--- action depends on the given files. This can be based on what the action
--- actually did. It is these files that will be checked for changes next
--- time 'rerunIfChanged' is called for that 'FileMonitor'.
---
--- Relative paths are interpreted as relative to an implicit root, ultimately
--- passed in to 'runRebuild'.
-monitorFiles :: [MonitorFilePath] -> Rebuild ()
-monitorFiles filespecs = Rebuild (State.modify (filespecs ++))
+deriving newtype instance MonadWriter [MonitorFilePath] Rebuild
+
+instance MonadRebuild Rebuild where
+  withRunRebuildInIO action = do
+    rootDir <- askRoot
+    let runInIO = unRebuild rootDir
+    (result, files) <- liftIO $ action runInIO
+    Writer.tell files
+    return result
 
 -- | Run a 'Rebuild' IO action.
 unRebuild :: FilePath -> Rebuild a -> IO (a, [MonitorFilePath])
-unRebuild rootDir (Rebuild action) = runStateT (runReaderT action rootDir) []
+unRebuild rootDir (Rebuild action) = runWriterT (runReaderT action rootDir)
 
 -- | Run a 'Rebuild' IO action.
 runRebuild :: FilePath -> Rebuild a -> IO a
-runRebuild rootDir (Rebuild action) = evalStateT (runReaderT action rootDir) []
+runRebuild rootDir (Rebuild action) = fst <$> runWriterT (runReaderT action rootDir)
 
 -- | Run a 'Rebuild' IO action.
 execRebuild :: FilePath -> Rebuild a -> IO [MonitorFilePath]
-execRebuild rootDir (Rebuild action) = execStateT (runReaderT action rootDir) []
+execRebuild rootDir (Rebuild action) = execWriterT (runReaderT action rootDir)
 
 -- | The root that relative paths are interpreted as being relative to.
 askRoot :: Rebuild FilePath
@@ -116,6 +120,8 @@ askRoot = Rebuild Reader.ask
 -- depends on have not changed then return a previously cached action result.
 --
 -- The result is still in the 'Rebuild' monad, so these can be nested.
+--
+-- See also 'rerunIfChanged''.
 --
 -- Do not share 'FileMonitor's between different uses of 'rerunIfChanged'.
 rerunIfChanged
@@ -133,7 +139,7 @@ rerunIfChanged verbosity monitor key action = do
     [x] -> return x
     _ -> error "rerunIfChanged: impossible!"
 
--- | Like 'rerunIfChanged' meets 'mapConcurrently': For when we want multiple actions
+-- | 'rerunIfChanged' meets 'mapConcurrently': For when we want multiple actions
 -- that need to do be re-run-if-changed asynchronously. The function returns
 -- when all values have finished computing.
 rerunConcurrentlyIfChanged
@@ -144,114 +150,11 @@ rerunConcurrentlyIfChanged
   -> Rebuild [b]
 rerunConcurrentlyIfChanged verbosity mkJobControl triples = do
   rootDir <- askRoot
-  dacts <- forM triples $ \(monitor, key, action) -> do
-    let monitorName = takeFileName (fileMonitorCacheFile monitor)
-    changed <- liftIO $ checkFileMonitorChanged monitor rootDir key
-    case changed of
-      MonitorUnchanged result files -> do
-        liftIO $
-          debug verbosity $
-            "File monitor '"
-              ++ monitorName
-              ++ "' unchanged."
-        monitorFiles files
-        return (return (result, []))
-      MonitorChanged reason -> do
-        liftIO $
-          debug verbosity $
-            "File monitor '"
-              ++ monitorName
-              ++ "' changed: "
-              ++ showReason reason
-        return $ do
-          startTime <- beginUpdateFileMonitor
-          (result, files) <- unRebuild rootDir action
-          updateFileMonitor
-            monitor
-            rootDir
-            (Just startTime)
-            files
-            key
-            result
-          return (result, files)
-
-  (results, files) <- liftIO $
-    withJobControl mkJobControl $ \jobControl -> do
-      unzip <$> mapConcurrentWithJobs jobControl id dacts
-  monitorFiles (concat files)
-  return results
+  rerunIfChanged' verbosity rootDir chainIOs triples
   where
-    showReason (MonitoredFileChanged file) = "file " ++ file
-    showReason (MonitoredValueChanged _) = "monitor value changed"
-    showReason MonitorFirstRun = "first run"
-    showReason MonitorCorruptCache = "invalid cache file"
-
--- | When using 'rerunIfChanged' for each element of a list of actions, it is
--- sometimes the case that each action needs to make use of some resource. e.g.
---
--- > sequence
--- >   [ rerunIfChanged verbosity monitor key $ do
--- >       resource <- mkResource
--- >       ... -- use the resource
--- >   | ... ]
---
--- For efficiency one would like to share the resource between the actions
--- but the straightforward way of doing this means initialising it every time
--- even when no actions need re-running.
---
--- > resource <- mkResource
--- > sequence
--- >   [ rerunIfChanged verbosity monitor key $ do
--- >       ... -- use the resource
--- >   | ... ]
---
--- This utility allows one to get the best of both worlds:
---
--- > getResource <- delayInitSharedResource mkResource
--- > sequence
--- >   [ rerunIfChanged verbosity monitor key $ do
--- >       resource <- getResource
--- >       ... -- use the resource
--- >   | ... ]
-delayInitSharedResource :: forall a. IO a -> Rebuild (Rebuild a)
-delayInitSharedResource action = do
-  var <- liftIO (newMVar Nothing)
-  return (liftIO (getOrInitResource var))
-  where
-    getOrInitResource :: MVar (Maybe a) -> IO a
-    getOrInitResource var =
-      modifyMVar var $ \case
-        Just x -> return (Just x, x)
-        Nothing -> do
-          x <- action
-          return (Just x, x)
-
--- | Much like 'delayInitSharedResource' but for a keyed set of resources.
---
--- > getResource <- delayInitSharedResource mkResource
--- > sequence
--- >   [ rerunIfChanged verbosity monitor key $ do
--- >       resource <- getResource key
--- >       ... -- use the resource
--- >   | ... ]
-delayInitSharedResources
-  :: forall k v
-   . Ord k
-  => (k -> IO v)
-  -> Rebuild (k -> Rebuild v)
-delayInitSharedResources action = do
-  var <- liftIO (newMVar Map.empty)
-  return (liftIO . getOrInitResource var)
-  where
-    getOrInitResource :: MVar (Map k v) -> k -> IO v
-    getOrInitResource var k =
-      modifyMVar var $ \m ->
-        case Map.lookup k m of
-          Just x -> return (m, x)
-          Nothing -> do
-            x <- action k
-            let !m' = Map.insert k x m
-            return (m', x)
+    chainIOs dacts =
+      withJobControl mkJobControl $ \jobControl ->
+        mapConcurrentWithJobs jobControl id dacts
 
 -- | Utility to match a file glob against the file system, starting from a
 -- given root directory. The results are all relative to the given root.
@@ -263,30 +166,6 @@ matchFileGlob glob = do
   root <- askRoot
   monitorFiles [monitorFileGlobExistence glob]
   liftIO $ Glob.matchFileGlob root glob
-
-getDirectoryContentsMonitored :: FilePath -> Rebuild [FilePath]
-getDirectoryContentsMonitored dir = do
-  exists <- monitorDirectoryStatus dir
-  if exists
-    then liftIO $ listDirectory dir
-    else return []
-
-createDirectoryMonitored :: Bool -> FilePath -> Rebuild ()
-createDirectoryMonitored createParents dir = do
-  monitorFiles [monitorDirectoryExistence dir]
-  liftIO $ createDirectoryIfMissing createParents dir
-
--- | Monitor a directory as in 'monitorDirectory' if it currently exists or
--- as 'monitorNonExistentDirectory' if it does not.
-monitorDirectoryStatus :: FilePath -> Rebuild Bool
-monitorDirectoryStatus dir = do
-  exists <- liftIO $ doesDirectoryExist dir
-  monitorFiles
-    [ if exists
-        then monitorDirectory dir
-        else monitorNonExistentDirectory dir
-    ]
-  return exists
 
 -- | Like 'doesFileExist', but in the 'Rebuild' monad.  This does
 -- NOT track the contents of 'FilePath'; use 'need' in that case.
