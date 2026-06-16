@@ -1552,7 +1552,7 @@ hscolour'
   suffixes
   flags =
     either noHsColourPath (\(hscolourProg, _, _) -> go hscolourProg)
-      =<< lookupProgramVersion
+      =<< lookupAndConfigureProgramVersion
         verbosity
         hscolourProgram
         (orLaterVersion (mkVersion [1, 8]))

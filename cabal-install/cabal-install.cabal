@@ -499,6 +499,7 @@ test-suite long-tests
     , tasty-expected-failure
     , tasty-hunit >= 0.10
     , tasty-quickcheck <0.12
+    , tasty-hunit >= 0.10
     , text
     , QuickCheck >= 2.14 && <2.20
     , pretty-show >= 1.6.15

@@ -23,6 +23,7 @@ module Distribution.Simple.RebuildMonad
   , MonitorFilePath
   , MonitorFilePaths
   , monitorFile
+  , monitorFileExistence
   , monitorFileHashed
   , monitorNonExistentFile
   , monitorDirectory

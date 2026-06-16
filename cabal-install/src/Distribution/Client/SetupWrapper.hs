@@ -72,8 +72,7 @@ import Distribution.Simple.PackageDescription
   ( readGenericPackageDescription
   )
 import Distribution.Simple.PreProcess
-  ( ppUnlit
-  , runSimplePreProcessor
+  ( runUnlit
   )
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
@@ -967,7 +966,7 @@ updateSetupScript verbosity options _ Custom = do
     (False, True) -> do
       srcNewer <- customSetupLhs `moreRecentFile` i (setupHs options)
       when srcNewer $
-        runSimplePreProcessor ppUnlit customSetupLhs (i (setupHs options)) verbosity
+        runUnlit customSetupLhs (i (setupHs options)) verbosity
     (True, _) -> do
       when useLhs $
         notice verbosity "Setup.hs and Setup.lhs files are both present. Ignoring the latter."
@@ -989,7 +988,7 @@ updateSetupScript verbosity options cabalLibVersion Hooks = do
     (False, False) ->
       die' verbosity "Using 'build-type: Hooks' but there is no SetupHooks.hs or SetupHooks.lhs file."
     (False, True) -> do
-      runSimplePreProcessor ppUnlit setupHooksLhs (i (setupHooks options)) verbosity
+      runUnlit setupHooksLhs (i (setupHooks options)) verbosity
       rewriteFiles
     (True, _) -> do
       when useLhs $
