@@ -29,7 +29,7 @@ data ExeDependency
 
 instance Binary ExeDependency
 instance Structured ExeDependency
-instance NFData ExeDependency where rnf = genericRnf
+instance NFData ExeDependency
 
 instance Pretty ExeDependency where
   pretty (ExeDependency name exe ver) =

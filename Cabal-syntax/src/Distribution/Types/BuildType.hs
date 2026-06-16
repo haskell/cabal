@@ -35,7 +35,7 @@ data BuildType
 
 instance Binary BuildType
 instance Structured BuildType
-instance NFData BuildType where rnf = genericRnf
+instance NFData BuildType
 
 knownBuildTypes :: [BuildType]
 knownBuildTypes = [Simple, Configure, Make, Custom, Hooks]

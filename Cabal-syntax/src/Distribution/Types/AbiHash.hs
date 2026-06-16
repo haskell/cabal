@@ -52,7 +52,7 @@ instance IsString AbiHash where
 
 instance Binary AbiHash
 instance Structured AbiHash
-instance NFData AbiHash where rnf = genericRnf
+instance NFData AbiHash
 
 instance Pretty AbiHash where
   pretty = text . unAbiHash

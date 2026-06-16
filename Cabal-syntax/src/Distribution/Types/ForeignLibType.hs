@@ -44,7 +44,7 @@ instance Parsec ForeignLibType where
 
 instance Binary ForeignLibType
 instance Structured ForeignLibType
-instance NFData ForeignLibType where rnf = genericRnf
+instance NFData ForeignLibType
 
 instance Semigroup ForeignLibType where
   ForeignLibTypeUnknown <> b = b

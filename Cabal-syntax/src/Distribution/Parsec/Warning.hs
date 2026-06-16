@@ -70,7 +70,7 @@ data PWarnType
   deriving (Eq, Ord, Show, Enum, Bounded, Generic)
 
 instance Binary PWarnType
-instance NFData PWarnType where rnf = genericRnf
+instance NFData PWarnType
 
 -- | Parser warning.
 data PWarning = PWarning {pwarningType :: !PWarnType, pwarningPosition :: !Position, pwarningMessage :: !String}
@@ -80,7 +80,7 @@ data PWarningWithSource src = PWarningWithSource {pwarningSource :: !(PSource sr
   deriving (Eq, Ord, Show, Generic, Functor)
 
 instance Binary PWarning
-instance NFData PWarning where rnf = genericRnf
+instance NFData PWarning
 
 showPWarning :: FilePath -> PWarning -> String
 showPWarning fpath (PWarning _ pos msg) =

@@ -64,7 +64,7 @@ data Language
 instance Binary Language
 instance Structured Language
 
-instance NFData Language where rnf = genericRnf
+instance NFData Language
 
 -- | List of known (supported) languages for GHC, oldest first.
 knownLanguages :: [Language]
@@ -120,7 +120,7 @@ data Extension
 instance Binary Extension
 instance Structured Extension
 
-instance NFData Extension where rnf = genericRnf
+instance NFData Extension
 
 -- | Known Haskell language extensions, including deprecated and undocumented
 -- ones.
@@ -571,7 +571,7 @@ data KnownExtension
 instance Binary KnownExtension
 instance Structured KnownExtension
 
-instance NFData KnownExtension where rnf = genericRnf
+instance NFData KnownExtension
 
 -- | Extensions that have been deprecated, possibly paired with another
 -- extension that replaces it.

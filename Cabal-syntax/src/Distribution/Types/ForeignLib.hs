@@ -85,7 +85,7 @@ instance Read LibVersionInfo where
 
 instance Binary LibVersionInfo
 instance Structured LibVersionInfo
-instance NFData LibVersionInfo where rnf = genericRnf
+instance NFData LibVersionInfo
 
 instance Pretty LibVersionInfo where
   pretty (LibVersionInfo c r a) =
@@ -138,7 +138,7 @@ instance L.HasBuildInfo ForeignLib where
 
 instance Binary ForeignLib
 instance Structured ForeignLib
-instance NFData ForeignLib where rnf = genericRnf
+instance NFData ForeignLib
 
 instance Semigroup ForeignLib where
   a <> b =
