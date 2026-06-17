@@ -10,7 +10,7 @@ library foo
   buildable: True
 
 
-  Build-depends:
+  build-depends:
     -- bad comment
     text
      ,
