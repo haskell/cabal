@@ -56,7 +56,7 @@ import Control.Monad.Trans.Class (lift)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.FieldGrammar
-import Distribution.FieldGrammar.Parsec (NamelessField (..))
+import Distribution.FieldGrammar.Parsec (NamelessField (..), FieldAnn (..), FieldLineAnn (..))
 import Distribution.Fields.ConfVar (parseConditionConfVar)
 import Distribution.Fields.Field (Comment (..), FieldName, WithComments (..), getName, sectionArgAnn)
 import Distribution.Fields.LexerMonad (LexWarning, toPWarnings)
@@ -372,7 +372,7 @@ parseGenericPackageDescriptionPrim' scannedVer lexWarnings utf8WarnPos fs = do
   setCabalSpecVersion (Just specVer')
 
   -- Package description
-  pd <- parseFieldGrammar specVer fields (packageDescriptionFieldGrammar @mod)
+  pd <- parseFieldGrammar specVer (normaliseFields fields) (packageDescriptionFieldGrammar @mod)
 
   -- Sections
   let gpd :: GenericPackageDescriptionWith mod
@@ -632,11 +632,11 @@ parseFields
   -> ParseResult src a
 parseFields v commentedFields grammar = do
   let (fs0, ss) = partitionFields commentedFields
-  traverse_ (traverse_ warnInvalidSubsection) ((map . map . fmap) unComments ss)
+  traverse_ (traverse_ warnInvalidSubsection) ss
   parseFieldGrammar v fs0 grammar
 
-warnInvalidSubsection :: Section Position -> ParseResult src ()
-warnInvalidSubsection (MkSection (Name pos name) _ _) =
+warnInvalidSubsection :: Section (WithComments Position) -> ParseResult src ()
+warnInvalidSubsection (MkSection (Name (WithComments _ pos) name) _ _) =
   void $ parseFailure pos $ "invalid subsection " ++ show name
 
 parseCondTree
@@ -1146,9 +1146,6 @@ parseHookedBuildInfo bs = case readFields' bs of
   -- TODO: better marshalling of errors
   Left perr -> parseFatalFailure zeroPos (show perr)
 
-annotateNoComments :: Fields Position -> Fields (WithComments Position)
-annotateNoComments = (fmap . fmap . fmap) (WithComments mempty)
-
 parseHookedBuildInfo'
   :: [LexWarning]
   -> [Field Position]
@@ -1161,32 +1158,32 @@ parseHookedBuildInfo' lexWarnings fs = do
   return (mLib, biExes)
   where
     -- TODO(leana8959): maybe add a compatibility parser alias so this side can be unchanged?
-    parseLib :: Fields Position -> ParseResult src (Maybe BuildInfo)
+    parseLib :: Fields FieldAnn FieldLineAnn -> ParseResult src (Maybe BuildInfo)
     parseLib fields
       | Map.null fields = pure Nothing
-      | otherwise = Just <$> parseFieldGrammar cabalSpecLatest (annotateNoComments fields) buildInfoFieldGrammar
+      | otherwise = Just <$> parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
 
-    parseExe :: (UnqualComponentName, Fields Position) -> ParseResult src (UnqualComponentName, BuildInfo)
+    parseExe :: (UnqualComponentName, Fields FieldAnn FieldLineAnn) -> ParseResult src (UnqualComponentName, BuildInfo)
     parseExe (n, fields) = do
-      bi <- parseFieldGrammar cabalSpecLatest (annotateNoComments fields) buildInfoFieldGrammar
+      bi <- parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
       pure (n, bi)
 
-    stanzas :: [Field Position] -> ParseResult src (Fields Position, [(UnqualComponentName, Fields Position)])
+    stanzas :: [Field Position] -> ParseResult src (Fields FieldAnn FieldLineAnn, [(UnqualComponentName, Fields FieldAnn FieldLineAnn)])
     stanzas fields = do
       let (hdr0, exes0) = breakMaybe isExecutableField fields
       hdr <- toFields hdr0
       exes <- unfoldrM (traverse toExe) exes0
       pure (hdr, exes)
 
-    toFields :: [Field Position] -> ParseResult src (Fields Position)
+    toFields :: [Field Position] -> ParseResult src (Fields FieldAnn FieldLineAnn)
     toFields fields = do
-      let (fields', ss) = partitionFields fields
+      let (fields', ss) = partitionFields $ (map . fmap) (WithComments mempty) fields
       traverse_ (traverse_ warnInvalidSubsection) ss
       pure fields'
 
     toExe
       :: ([FieldLine Position], [Field Position])
-      -> ParseResult src ((UnqualComponentName, Fields Position), Maybe ([FieldLine Position], [Field Position]))
+      -> ParseResult src ((UnqualComponentName, Fields FieldAnn FieldLineAnn), Maybe ([FieldLine Position], [Field Position]))
     toExe (fss, fields) = do
       name <- runFieldParser zeroPos parsec cabalSpecLatest fss
       let (hdr0, rest) = breakMaybe isExecutableField fields

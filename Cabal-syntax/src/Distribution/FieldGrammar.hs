@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -38,6 +39,7 @@ module Distribution.FieldGrammar
   , takeFields
   , runFieldParser
   , runFieldParser'
+  , normaliseFields
   , defaultFreeTextFieldDefST
 
     -- * Newtypes
@@ -49,7 +51,8 @@ import Prelude ()
 
 import qualified Data.Bifunctor as Bi
 import qualified Data.Map.Strict as Map
-
+import qualified Data.ByteString.Char8 as BS
+import Distribution.Parsec.Position
 import Distribution.FieldGrammar.Class
 import Distribution.FieldGrammar.Newtypes
 import Distribution.FieldGrammar.Parsec
@@ -77,7 +80,7 @@ infixl 5 ^^^
 x ^^^ f = f x
 
 -- | Partitioning state
-data PS ann = PS (Fields ann) [Section ann] [[Section ann]]
+data PS ann = PS (Fields FieldAnn FieldLineAnn) [Section ann] [[Section ann]]
 
 -- | Partition field list into field map and groups of sections.
 -- Groups sections between fields. This means that the following snippet contains
@@ -94,17 +97,28 @@ data PS ann = PS (Fields ann) [Section ann] [[Section ann]]
 -- yet-another-section
 --     field: value
 -- @
-partitionFields :: [Field ann] -> (Fields ann, [[Section ann]])
+partitionFields :: [Field (WithComments Position)] -> (Fields FieldAnn FieldLineAnn, [[Section (WithComments Position)]])
 partitionFields = finalize . foldl' f (PS mempty mempty mempty)
   where
-    finalize :: PS ann -> (Fields ann, [[Section ann]])
+    finalize :: PS (WithComments Position) -> (Fields FieldAnn FieldLineAnn, [[Section (WithComments Position)]])
     finalize (PS fs s ss)
       | null s = (fs, reverse ss)
       | otherwise = (fs, reverse (reverse s : ss))
 
-    f :: PS ann -> Field ann -> PS ann
-    f (PS fs s ss) (Field (Name ann name) fss) =
-      PS (Map.insertWith (flip (++)) name [MkNamelessField ann fss] fs) [] ss'
+    f :: PS (WithComments Position) -> Field (WithComments Position) -> PS (WithComments Position)
+    f (PS fs s ss) (Field (Name (WithComments cmts pos) name) fss) =
+      PS
+        ( Map.insertWith
+            (flip (++))
+            name
+            [ MkNamelessField
+                (FieldAnn pos cmts name)
+                ((map . fmap) (\(WithComments cmts' pos') -> FieldLineAnn pos' cmts') fss)
+            ]
+            fs
+        )
+        []
+        ss'
       where
         ss'
           | null s = ss
@@ -114,13 +128,29 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
 
 -- | Take all fields from the front.
 -- Returns a tuple containing the comments, nameless fields, and sections
-takeFields :: [Field ann] -> (Fields ann, [Field ann])
+takeFields :: [Field ann] -> (Fields ann ann, [Field ann])
 takeFields = finalize . spanMaybe match
   where
     finalize (fs, rest) = (Map.fromListWith (flip (++)) fs, rest)
 
     match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
+
+
+-- | Preserve the original casing, normalise field names.
+normaliseFields :: Fields (WithComments Position) (WithComments Position) -> Fields FieldAnn FieldLineAnn
+normaliseFields =
+  Map.mapKeys (BS.map toLower)
+  . Map.mapWithKey (map . normaliseFieldsStep)
+
+normaliseFieldsStep
+  :: FieldName
+  -> NamelessField (WithComments Position) (WithComments Position)
+  -> NamelessField FieldAnn FieldLineAnn
+normaliseFieldsStep faCasedName (MkNamelessField (WithComments faComments faPosition) fls) =
+  MkNamelessField
+    (FieldAnn {..})
+    ((map . fmap) (\(WithComments flaComments flaPosition) -> FieldLineAnn {..}) fls)
 
 extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
 extractComments = Bi.first mconcat . unzip . map extractCommentsStep
