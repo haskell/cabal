@@ -78,7 +78,6 @@ module Distribution.FieldGrammar.Parsec
   ) where
 
 import Distribution.Compat.Lens
-import Distribution.Compat.CaseInsensitive
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (fromUTF8BS)
@@ -110,14 +109,7 @@ import Distribution.Types.Annotation
 -- Auxiliary types
 -------------------------------------------------------------------------------
 
-type Fields ann = Map (CaseInsensitive FieldName) [NamelessField ann]
-
--- | For keys that have unlawful Eq instances (lacking extensionality like CaseInsensitive), we want to retrieve the original key.
---   We would like to also know the original key.
-lookupKey :: Ord k => k -> Map k v -> Maybe (k, v)
-lookupKey k m =
-  (\(k', v) -> if k' == k then Just (k', v) else Nothing)
-    =<< Map.lookupLE k m
+type Fields ann = Map FieldName [NamelessField ann]
 
 -- | Single field, without name, but with its annotation.
 data NamelessField ann = MkNamelessField !ann [FieldLine ann]
@@ -148,9 +140,9 @@ unCommentFields = (fmap . fmap . fmap) unComments
 
 parseFieldGrammar :: CabalSpecVersion -> Fields (WithComments Position) -> ParsecFieldGrammarWith m s a -> ParseResult src a
 parseFieldGrammar v commentedFields grammar = do
-  for_ (Map.toList (Map.filterWithKey (\k v -> isUnknownField grammar (foldedCase k) v) fields)) $ \(name, nfields) ->
+  for_ (Map.toList (Map.filterWithKey (isUnknownField grammar) fields)) $ \(name, nfields) ->
     for_ nfields $ \(MkNamelessField pos _) ->
-      parseWarning pos PWTUnknownField $ "Unknown field: " ++ show (unCaseInsensitive name)
+      parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
   -- TODO: fields allowed in this section
 
   -- parse
@@ -167,7 +159,7 @@ isUnknownField grammar k _ =
 -- | Parse a ParsecFieldGrammar and check for fields that should be stanzas.
 parseFieldGrammarCheckingStanzas :: CabalSpecVersion -> Fields (WithComments Position) -> ParsecFieldGrammarWith m s a -> Set BS.ByteString -> ParseResult src a
 parseFieldGrammarCheckingStanzas v commentedFields grammar sections = do
-  for_ (Map.toList (Map.filterWithKey (\k v -> isUnknownField grammar (foldedCase k) v) fields)) $ \(foldedCase->name, nfields) ->
+  for_ (Map.toList (Map.filterWithKey (isUnknownField grammar) fields)) $ \(name, nfields) ->
     for_ nfields $ \(MkNamelessField pos _) ->
       if name `Set.member` sections
         then parseFailure pos $ "'" ++ fromUTF8BS name ++ "' is a stanza, not a field. Remove the trailing ':' to parse a stanza."
@@ -214,11 +206,11 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
 
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case lookupKey (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
-        Just (_k, []) -> parseFatalFailure zeroPos $ show fn ++ " field missing"
-        Just (_k, [x]) -> parseOne v x
-        Just (_k, xs@(_ : y : ys)) -> do
+        Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
@@ -229,11 +221,11 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
 
   booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case lookupKey (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure def
-        Just (_k, []) -> pure def
-        Just (_k, [x]) -> parseOne v x
-        Just (_k, xs@(_ : y : ys)) -> do
+        Just [] -> pure def
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
@@ -243,7 +235,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
 
   optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure Nothing
         Just [] -> pure Nothing
         Just [x] -> parseOne v x
@@ -259,7 +251,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
 
   optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure def
         Just [] -> pure def
         Just [x] -> parseOne v x
@@ -273,7 +265,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
 
   freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure Nothing
         Just [] -> pure Nothing
         Just [x] -> parseOne v x
@@ -288,7 +280,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
 
   freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure ""
         Just [] -> pure ""
         Just [x] -> parseOne v x
@@ -304,7 +296,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
   -- freeTextFieldDefST = defaultFreeTextFieldDefST
   freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
         Just [] -> pure mempty
         Just [x] -> parseOne v x
@@ -329,7 +321,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser :: CabalSpecVersion -> Fields (WithComments Position) -> ParseResult src a
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
         Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
 
@@ -343,9 +335,8 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
       parser :: Fields (WithComments Position) -> [(String, String)]
       parser (unCommentFields->values) = reorder $ concatMap convert $ filter match $ Map.toList values
 
-      match :: (CaseInsensitive FieldName, [NamelessField Position]) -> Bool
-      match (foldedCase->fn, _) = fnPfx `BS.isPrefixOf` fn
-      convert (foldedCase->fn, fields) =
+      match (fn, _) = fnPfx `BS.isPrefixOf` fn
+      convert (fn, fields) =
         [ (pos, (fromUTF8BS fn, trim $ fromUTF8BS $ fieldlinesToBS fls))
         | MkNamelessField pos fls <- fields
         ]
@@ -357,11 +348,11 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
       parser' v commentedValues
         | v >= vs = parser v commentedValues
         | otherwise = do
-            let unknownFields = Map.intersection values $ Map.fromSet (const ()) $ Set.map MkCaseInsensitive names
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
             for_ (Map.toList unknownFields) $ \(name, fields) ->
               for_ fields $ \(MkNamelessField pos _) ->
                 parseWarning pos PWTUnknownField $
-                  "The field " <> show (unCaseInsensitive name) <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ ". This field will be ignored."
+                  "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ ". This field will be ignored."
 
             pure def
         where
@@ -372,11 +363,11 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
       parser' v commentedValues
         | v >= vs = parser v commentedValues
         | otherwise = do
-            let unknownFields = Map.intersection values $ Map.fromSet (const ()) $ Set.map MkCaseInsensitive names
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
             for_ (Map.toList unknownFields) $ \(name, fields) ->
               for_ fields $ \(MkNamelessField pos _) ->
                 parseWarning pos PWTUnknownField $
-                  "The field " <> show (unCaseInsensitive name) <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ "."
+                  "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ "."
 
             parser v commentedValues
         where
@@ -387,11 +378,11 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
     where
       parser' v commentedValues
         | v >= vs = do
-            let deprecatedFields = Map.intersection values $ Map.fromSet (const ()) $ Set.map MkCaseInsensitive names
+            let deprecatedFields = Map.intersection values $ Map.fromSet (const ()) names
             for_ (Map.toList deprecatedFields) $ \(name, fields) ->
               for_ fields $ \(MkNamelessField pos _) ->
                 parseWarning pos PWTDeprecatedField $
-                  "The field " <> show (unCaseInsensitive name) <> " is deprecated in the Cabal specification version " ++ showCabalSpecVersion vs ++ ". " ++ msg
+                  "The field " <> show name <> " is deprecated in the Cabal specification version " ++ showCabalSpecVersion vs ++ ". " ++ msg
 
             parser v commentedValues
         | otherwise = parser v commentedValues
@@ -403,7 +394,7 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
       parser' v commentedValues
         | v >= vs = do
             let msg' = if null msg then "" else ' ' : msg
-            let unknownFields = Map.intersection values $ Map.fromSet (const ()) $ Set.map MkCaseInsensitive names
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
             let namePos =
                   [ (name, pos)
                   | (name, fields) <- Map.toList unknownFields
@@ -417,8 +408,8 @@ instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
               [] -> parser v mempty
               -- if there's single field: fail fatally with it
               ((name, pos) : rest) -> do
-                for_ rest $ \(name', pos') -> parseFailure pos' $ makeMsg (unCaseInsensitive name')
-                parseFatalFailure pos $ makeMsg (unCaseInsensitive name)
+                for_ rest $ \(name', pos') -> parseFailure pos' $ makeMsg name'
+                parseFatalFailure pos $ makeMsg name
         | otherwise = parser v commentedValues
         where
           values = unCommentFields commentedValues
@@ -432,7 +423,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [x] -> parseOne v x
@@ -443,7 +434,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         unpack' _pack <$> runFieldParser pos parsec v fls
   booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure def
         Just [] -> pure def
         Just [x] -> parseOne v x
@@ -453,7 +444,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
       parseOne v (extractCommentsField->(cmts, MkNamelessField pos fls)) = runFieldParser pos parsec v fls
   optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure Nothing
         Just [] -> pure Nothing
         Just [x] -> parseOne v x
@@ -465,7 +456,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         | otherwise = Just . unpack' _pack <$> runFieldParser pos parsec v fls
   optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure def
         Just [] -> pure def
         Just [x] -> parseOne v x
@@ -477,7 +468,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         | otherwise = unpack' _pack <$> runFieldParser pos parsec v fls
   freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure Nothing
         Just [] -> pure Nothing
         Just [x] -> parseOne v x
@@ -490,7 +481,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         | otherwise = pure (Just (fieldlinesToFreeText fls))
   freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure ""
         Just [] -> pure ""
         Just [x] -> parseOne v x
@@ -503,7 +494,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         | otherwise = pure (fieldlinesToFreeText fls)
   freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
         Just [] -> pure mempty
         Just [x] -> parseOne v x
@@ -526,7 +517,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser :: CabalSpecVersion -> Fields (WithComments Position) -> ParseResult src a
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
         Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
       parseOne :: CabalSpecVersion -> NamelessField (WithComments Position) -> ParseResult src b
@@ -536,8 +527,8 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
     where
       parser :: Fields (WithComments Position) -> [(String, String)]
       parser values = reorder $ concatMap convert $ filter match $ Map.toList values
-      match (foldedCase->fn, _) = fnPfx `BS.isPrefixOf` fn
-      convert (foldedCase->fn, fields) =
+      match (fn, _) = fnPfx `BS.isPrefixOf` fn
+      convert (fn, fields) =
         [ (pos, (fromUTF8BS fn, trim $ fromUTF8BS $ fieldlinesToBS fls))
         | MkNamelessField pos fls <- fields
         ]
@@ -548,11 +539,11 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
       parser' v commentedValues
         | v >= vs = parser v commentedValues
         | otherwise = do
-            let unknownFields = Map.intersection values $ Map.fromSet (const ()) $ Set.map MkCaseInsensitive names
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
             for_ (Map.toList unknownFields) $ \(name, fields) ->
               for_ fields $ \(MkNamelessField pos _) ->
                 parseWarning pos PWTUnknownField $
-                  "The field " <> show (unCaseInsensitive name) <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ ". This field will be ignored."
+                  "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ ". This field will be ignored."
             pure def
           where
             values = unCommentFields commentedValues
@@ -562,11 +553,11 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
       parser' v commentedValues
         | v >= vs = parser v commentedValues
         | otherwise = do
-            let unknownFields = Map.intersection values $ Map.fromSet (const ()) $ Set.map MkCaseInsensitive names
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
             for_ (Map.toList unknownFields) $ \(name, fields) ->
               for_ fields $ \(MkNamelessField pos _) ->
                 parseWarning pos PWTUnknownField $
-                  "The field " <> show (unCaseInsensitive name) <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ "."
+                  "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ "."
             parser v commentedValues
           where
             values = unCommentFields commentedValues
@@ -575,11 +566,11 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
     where
       parser' v commentedValues
         | v >= vs = do
-            let deprecatedFields = Map.intersection values $ Map.fromSet (const ()) $ Set.map MkCaseInsensitive names
+            let deprecatedFields = Map.intersection values $ Map.fromSet (const ()) names
             for_ (Map.toList deprecatedFields) $ \(name, fields) ->
               for_ fields $ \(MkNamelessField pos _) ->
                 parseWarning pos PWTDeprecatedField $
-                  "The field " <> show (unCaseInsensitive name) <> " is deprecated in the Cabal specification version " ++ showCabalSpecVersion vs ++ ". " ++ msg
+                  "The field " <> show name <> " is deprecated in the Cabal specification version " ++ showCabalSpecVersion vs ++ ". " ++ msg
             parser v commentedValues
         | otherwise = parser v commentedValues
         where
@@ -589,7 +580,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
       parser' v commentedValues
         | v >= vs = do
             let msg' = if null msg then "" else ' ' : msg
-            let unknownFields = Map.intersection values $ Map.fromSet (const ()) $ Set.map MkCaseInsensitive names
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
             let namePos =
                   [ (name, pos)
                   | (name, fields) <- Map.toList unknownFields
@@ -601,8 +592,8 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
               [] -> parser v mempty
               -- if there's single field: fail fatally with it
               ((name, pos) : rest) -> do
-                for_ rest $ \(name', pos') -> parseFailure pos' $ makeMsg (unCaseInsensitive name')
-                parseFatalFailure pos $ makeMsg (unCaseInsensitive name)
+                for_ rest $ \(name', pos') -> parseFailure pos' $ makeMsg name'
+                parseFatalFailure pos $ makeMsg name
         | otherwise = parser v commentedValues
         where
           values = unCommentFields commentedValues
@@ -623,7 +614,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
   booleanFieldDef' fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser :: CabalSpecVersion -> Fields (WithComments Position) -> ParseResult src [Ann Positions Bool]
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure def'
         Just [] -> pure def'
         Just [x] -> parseOne v x
@@ -655,7 +646,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
   monoidalFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser :: CabalSpecVersion -> Fields (WithComments Position) -> ParseResult src [([Comment Position], (Positions, a))]
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
         Just xs -> (map . fmap . fmap) (unpack' _pack) <$> traverse (parseOne v) xs
 
@@ -679,7 +670,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
   optionalFieldDefAla' fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser :: CabalSpecVersion -> Fields (WithComments Position) -> ParseResult src (Ann Positions a)
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> pure def'
         Just [] -> pure def'
         Just [x] -> parseOne v x
@@ -712,7 +703,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
   uniqueFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser :: CabalSpecVersion -> Fields (WithComments Position) -> ParseResult src (Ann Positions a)
-      parser v fields = case Map.lookup (MkCaseInsensitive fn) fields of
+      parser v fields = case Map.lookup fn fields of
         Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [x] -> parseOne v x

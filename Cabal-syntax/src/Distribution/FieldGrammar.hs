@@ -45,7 +45,6 @@ module Distribution.FieldGrammar
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Compat.CaseInsensitive
 import Prelude ()
 
 import qualified Data.Bifunctor as Bi
@@ -105,7 +104,7 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
 
     f :: PS ann -> Field ann -> PS ann
     f (PS fs s ss) (Field (Name ann name) fss) =
-      PS (Map.insertWith (flip (++)) (MkCaseInsensitive name) [MkNamelessField ann fss] fs) [] ss'
+      PS (Map.insertWith (flip (++)) name [MkNamelessField ann fss] fs) [] ss'
       where
         ss'
           | null s = ss
@@ -120,7 +119,7 @@ takeFields = finalize . spanMaybe match
   where
     finalize (fs, rest) = (Map.fromListWith (flip (++)) fs, rest)
 
-    match (Field (Name ann name) fs) = Just (MkCaseInsensitive name, [MkNamelessField ann fs])
+    match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
 
 extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
