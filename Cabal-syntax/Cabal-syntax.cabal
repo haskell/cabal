@@ -83,7 +83,6 @@ library
     Distribution.Compat.Exception
     Distribution.Compat.Graph
     Distribution.Compat.Lens
-    Distribution.Compat.CaseInsensitive
     Distribution.Compat.Newtype
     Distribution.Compat.NonEmptySet
     Distribution.Compat.Parsing
