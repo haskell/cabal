@@ -7,11 +7,11 @@ main = cabalTest . withRepo "repo" $ do
     env <- getTestEnv
 
     -- Check properties of executable component
-    libDir <- findDependencyInStore "exe"
+    exeDir <- findDependencyInStore "exe"
     -- Documentation is enabled..
-    assertFileDoesContain (libDir </> "cabal-hash.txt") "documentation: True"
+    assertFileDoesContain (exeDir </> "cabal-hash.txt") "documentation: True"
     -- But not built
-    shouldDirectoryNotExist (  libDir </> "share" </> "doc" )
+    shouldDirectoryNotExist (exeDir </> "share" </> "doc" )
 
     -- Check properties of library
     libDir <- findDependencyInStore "lib"
