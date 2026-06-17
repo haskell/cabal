@@ -19,6 +19,12 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
+``cabal-version: 3.18``
+-----------------------
+
+* License fields use identifiers from SPDX License List version
+  ``3.28 2026-02-20``.
+
 ``cabal-version: 3.14``
 -----------------------
 
