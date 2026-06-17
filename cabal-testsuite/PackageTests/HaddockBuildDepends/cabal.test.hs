@@ -11,11 +11,11 @@ main = cabalTest . withRepo "repo" $ do
     -- Documentation is enabled..
     assertFileDoesContain (exeDir </> "cabal-hash.txt") "documentation: True"
     -- But not built
-    shouldDirectoryNotExist (exeDir </> "share" </> "doc" )
+    shouldDirectoryNotExist (exeDir </> "share" </> "doc")
 
     -- Check properties of library
     libDir <- findDependencyInStore "lib"
     -- Documentation is enabled..
     assertFileDoesContain (libDir </> "cabal-hash.txt") "documentation: True"
     -- and has been built
-    shouldDirectoryExist (  libDir </> "share" </> "doc" )
+    shouldDirectoryExist (libDir </> "share" </> "doc")
