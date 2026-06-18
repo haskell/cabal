@@ -188,7 +188,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                     then
                       transformProgressCtx (++ [text "Note: This version of base is not reinstallable"])
                         <$> transformProgressCtx (++ [text "Suggestion: Bump upper bounds on base to allow a reinstallable version"])
-                    else addProgressCtx PP.empty
+                    else id
             case Map.lookup name lib_dep_map of
               Nothing ->
                 moreCtx <$> dieProgress $
