@@ -412,13 +412,13 @@ mapHead _ [] = []
 mapHead f (x : xs) = f x : xs
 
 addFakeDepsToBuildDepends
-  :: [([Comment Position], (Positions, [(Position, Ann SurroundingText DependencyAnn)]))]
-  -> [([Comment Position], (Positions, [(Position, Ann SurroundingText DependencyAnn)]))]
+  :: [([Comment Position], BS8.ByteString, (Positions, [(Position, Ann SurroundingText DependencyAnn)]))]
+  -> [([Comment Position], BS8.ByteString, (Positions, [(Position, Ann SurroundingText DependencyAnn)]))]
 addFakeDepsToBuildDepends = mapHead addFakeDepsToBuildDependsFirstGroup
 
 addFakeDepsToBuildDependsFirstGroup
-  :: ([Comment Position], (Positions, [(Position, Ann SurroundingText DependencyAnn)]))
-  -> ([Comment Position], (Positions, [(Position, Ann SurroundingText DependencyAnn)]))
+  :: ([Comment Position], BS8.ByteString, (Positions, [(Position, Ann SurroundingText DependencyAnn)]))
+  -> ([Comment Position], BS8.ByteString, (Positions, [(Position, Ann SurroundingText DependencyAnn)]))
 addFakeDepsToBuildDependsFirstGroup = (fmap . fmap) addFakeDepsToListOfDeps
 
 addFakeDepsToListOfDeps :: [(Position, Ann SurroundingText DependencyAnn)] -> [(Position, Ann SurroundingText DependencyAnn)]
@@ -446,6 +446,7 @@ smallCabalFileTest = testCase "smallCabalFile" $ do
       Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
 
   let gpd = addFakeDepsToGpd gpd0
+  pPrint gpd
 
   let prettyFields = ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd
       prettyFields' = filterFields prettyFields

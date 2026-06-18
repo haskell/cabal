@@ -181,7 +181,8 @@ instance NFData BuildInfo where rnf = genericRnf
 
 unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
 unannotateBuildInfo bi =
-  let unannotateMonoidalField = map (unAnn . snd) . join . map snd . map snd
+  let unannotateMonoidalField = map (unAnn . snd) . join . map snd . map trd
+      trd (_, _, x) = x
    in bi
         { buildable = foldl (&&) False $ map unAnn $ buildable bi
         , buildTools = unannotateMonoidalField $ buildTools bi
@@ -207,7 +208,7 @@ unannotateBuildInfo bi =
         , -- TODO(leana8959): add more fields here
 
           -- [(Positions, (Position, Ann t dep))]
-          targetBuildDepends = map (unannotateDependencyAnn . unAnn . snd) $ join $ map snd $ map snd $ targetBuildDepends bi
+          targetBuildDepends = map (unannotateDependencyAnn . unAnn . snd) $ join $ map snd $ map trd $ targetBuildDepends bi
         }
 
 instance Monoid BuildInfo where

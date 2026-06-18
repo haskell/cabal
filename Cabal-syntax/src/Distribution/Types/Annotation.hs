@@ -10,6 +10,7 @@ import Distribution.Parsec.Position
 import Distribution.Types.Trivia
 import Distribution.Fields.Field
 
+import qualified Data.ByteString as BS
 import Data.Data
 import Data.Kind
 import Data.List (List)
@@ -39,4 +40,8 @@ type AttachComments (m :: ParsingPhase) (a :: Type) = AttachWith [Comment Positi
 
 -- FieldGrammar aliases
 -- Note: within each group, there is an associated comments list and item list
-type MonoidalFieldAla (m :: ParsingPhase) (a :: Type) = PreserveGrouping m (AttachComments m (AttachPositions m a))
+type MonoidalFieldAla (m :: ParsingPhase) (a :: Type) =
+  PreserveGrouping m
+    ( IfConc m ( (,,) [Comment Position] BS.ByteString )
+      (AttachPositions m a)
+    )

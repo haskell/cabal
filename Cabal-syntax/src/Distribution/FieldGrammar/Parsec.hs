@@ -649,21 +649,19 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
      . (Parsec b, Newtype a b)
     => FieldName
     -> (a -> b)
-    -> ALens' s [([Comment Position], (Positions, a))]
-    -> ParsecFieldGrammarWith Conc s [([Comment Position], (Positions, a))]
+    -> ALens' s [([Comment Position], BS.ByteString, (Positions, a))]
+    -> ParsecFieldGrammarWith Conc s [([Comment Position], BS.ByteString, (Positions, a))]
   monoidalFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser :: CabalSpecVersion -> Fields FieldAnn FieldLineAnn -> ParseResult src [([Comment Position], (Positions, a))]
+      parser :: CabalSpecVersion -> Fields FieldAnn FieldLineAnn -> ParseResult src [([Comment Position], BS.ByteString, (Positions, a))]
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
         Just xs -> (map . fmap . fmap) (unpack' _pack) <$> traverse (parseOne v) xs
 
-      parseOne :: CabalSpecVersion -> NamelessField FieldAnn FieldLineAnn -> ParseResult src ([Comment Position], (Positions, b))
+      parseOne :: CabalSpecVersion -> NamelessField FieldAnn FieldLineAnn -> ParseResult src ([Comment Position], BS.ByteString, (Positions, b))
       parseOne v (extractCommentsField->(cmts, casedName, MkNamelessField pos fls)) = do
         (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
-
-        trace ("Cased name was: " <> fromUTF8BS casedName) $
-          pure (cmts, (Positions Nothing pos flPos, x))
+        pure (cmts, casedName, (Positions Nothing pos flPos, x))
 
   optionalFieldDefAla'
     :: forall b a s

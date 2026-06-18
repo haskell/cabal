@@ -233,7 +233,8 @@ instance FieldGrammarWith Conc PrettyCtx PrettyFieldGrammarWith where
   monoidalFieldAla' fn _pack l = PrettyFG $ \v s ->
     let bs =
           map
-            ( \(cmts, (poss, x)) -> (poss, prettyCtxVersioned v (cmts, pack' _pack x))
+          -- TODO(leana8959): output cased name
+            ( \(cmts, _casedName, (poss, x)) -> (poss, prettyCtxVersioned v (cmts, pack' _pack x))
             )
             (aview l s)
      in ppFieldPos fn bs
