@@ -234,10 +234,10 @@ instance FieldGrammarWith Conc PrettyCtx PrettyFieldGrammarWith where
     let bs =
           map
           -- TODO(leana8959): output cased name
-            ( \(cmts, _casedName, (poss, x)) -> (poss, prettyCtxVersioned v (cmts, pack' _pack x))
+            ( \(cmts, casedName, (poss, x)) -> (poss, casedName, prettyCtxVersioned v (cmts, pack' _pack x))
             )
             (aview l s)
-     in ppFieldPos fn bs
+     in ppFieldPos' bs
 
   booleanFieldDef' fn l _def = PrettyFG $ \_v s ->
     aview l s >>= \(Ann t b) -> case t of
@@ -291,6 +291,12 @@ ppFieldPos :: FieldName -> [(Positions, Doc)] -> PrettyFieldGrammarOut Conc
 ppFieldPos name possFieldDocs =
   [ (,) (fieldNamePos poss, name) (fieldLinePos poss, fieldDoc)
   | (poss, fieldDoc) <- possFieldDocs
+  ]
+
+ppFieldPos' :: [(Positions, FieldName, Doc)] -> PrettyFieldGrammarOut Conc
+ppFieldPos' possFieldDocs =
+  [ (,) (fieldNamePos poss, fieldName) (fieldLinePos poss, fieldDoc)
+  | (poss, fieldName, fieldDoc) <- possFieldDocs
   ]
 
 -- TODO(leana8959): push out position
