@@ -26,6 +26,7 @@ import Distribution.Simple.Flag (Flag)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentInclude
+import Distribution.Types.Version
 import Distribution.Utils.Generic
 import Distribution.Utils.LogProgress
 import Distribution.Utils.MapAccum
@@ -180,9 +181,17 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
       then fmap concat $
         forM (targetBuildDepends bi) $
           \(Dependency name _ sublibs) -> do
+            let moreCtx =
+                  if unPackageName name == "ghc-bignum"
+                    && unPackageName (packageName $ package pkg_descr) == "base"
+                    && pkgVersion (package pkg_descr) < mkVersion [4, 22, 0, 0]
+                    then
+                      addProgressCtx (text "Suggestion: Bump upper bounds on base to allow a reinstallable version")
+                        <$> addProgressCtx (text "Note: This version of base is not reinstallable")
+                    else addProgressCtx PP.empty
             case Map.lookup name lib_dep_map of
               Nothing ->
-                dieProgress $
+                moreCtx <$> dieProgress $
                   text "Dependency on unbuildable"
                     <+> text "package"
                     <+> pretty name
@@ -192,7 +201,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                   let comp = CLibName lib
                    in case Map.lookup comp pkg of
                         Nothing ->
-                          dieProgress $
+                          moreCtx <$> dieProgress $
                             text "Dependency on unbuildable"
                               <+> text (showLibraryName lib)
                               <+> text "from"
