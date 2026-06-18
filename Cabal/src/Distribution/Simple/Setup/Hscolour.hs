@@ -99,7 +99,6 @@ defaultHscolourFlags =
 
 instance Monoid HscolourFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup HscolourFlags where
   (<>) = gmappend

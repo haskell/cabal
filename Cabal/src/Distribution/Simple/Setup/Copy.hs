@@ -170,7 +170,6 @@ emptyCopyFlags = mempty
 
 instance Monoid CopyFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup CopyFlags where
   (<>) = gmappend

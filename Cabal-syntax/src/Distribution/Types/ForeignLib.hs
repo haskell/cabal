@@ -152,7 +152,7 @@ instance Semigroup ForeignLib where
       , foreignLibModDefFile = combine foreignLibModDefFile
       }
     where
-      combine field = field a `mappend` field b
+      combine field = field a <> field b
       -- chooseLast: the second field overrides the first, unless it is Nothing
       chooseLast field = getLast (Last (field a) <> Last (field b))
 
@@ -167,7 +167,6 @@ instance Monoid ForeignLib where
       , foreignLibVersionLinux = Nothing
       , foreignLibModDefFile = []
       }
-  mappend = (<>)
 
 -- | An empty foreign library.
 emptyForeignLib :: ForeignLib

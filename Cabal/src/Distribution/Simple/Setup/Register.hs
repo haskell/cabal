@@ -211,7 +211,6 @@ emptyRegisterFlags = mempty
 
 instance Monoid RegisterFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup RegisterFlags where
   (<>) = gmappend

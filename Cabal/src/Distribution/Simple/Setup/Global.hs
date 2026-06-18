@@ -37,7 +37,7 @@ import Distribution.Utils.Path
 
 -- In fact since individual flags types are monoids and these are just sets of
 -- flags then they are also monoids pointwise. This turns out to be really
--- useful. The mempty is the set of empty flags and mappend allows us to
+-- useful. The mempty is the set of empty flags and (<>) allows us to
 -- override specific flags. For example we can start with default flags and
 -- override with the ones we get from a file or the command line, or both.
 
@@ -132,7 +132,6 @@ emptyGlobalFlags = mempty
 
 instance Monoid GlobalFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup GlobalFlags where
   (<>) = gmappend

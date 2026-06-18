@@ -53,7 +53,6 @@ instance Semigroup ForeignLibType where
 
 instance Monoid ForeignLibType where
   mempty = ForeignLibTypeUnknown
-  mappend = (<>)
 
 knownForeignLibTypes :: [ForeignLibType]
 knownForeignLibTypes =

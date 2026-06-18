@@ -84,7 +84,7 @@ updateInstallDirs userInstallFlag savedConfig =
     userInstall =
       fromFlagOrDefault
         defaultUserInstall
-        (configUserInstall configureFlags `mappend` userInstallFlag)
+        (configUserInstall configureFlags <> userInstallFlag)
 
 -- | Check which type of package environment we're in and return a
 -- correctly-initialised @SavedConfig@ and a @UseSandbox@ value that indicates
@@ -105,7 +105,7 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
     UserPackageEnvironment -> do
       config <- loadConfig verbosity configFileFlag
       userConfig <- loadUserConfig verbosity pkgEnvDir Nothing
-      let config' = config `mappend` userConfig
+      let config' = config <> userConfig
       return config'
 
     -- Neither @cabal.sandbox.config@ nor @cabal.config@ are present.
@@ -115,7 +115,7 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
             flagToMaybe . globalConstraintsFile . savedGlobalFlags $ config
       globalConstraintConfig <-
         loadUserConfig verbosity pkgEnvDir globalConstraintsOpt
-      let config' = config `mappend` globalConstraintConfig
+      let config' = config <> globalConstraintConfig
       return config'
 
 -- | Return the saved \"dist/\" prefix, or the default prefix.
@@ -124,7 +124,7 @@ findSavedDistPref config flagDistPref = do
   let defDistPref = useDistPref defaultSetupScriptOptions
       flagDistPref' =
         setupDistPref (configCommonFlags $ savedConfigureFlags config)
-          `mappend` flagDistPref
+          <> flagDistPref
   findDistPref defDistPref flagDistPref'
 
 -- Utils (transitionary)

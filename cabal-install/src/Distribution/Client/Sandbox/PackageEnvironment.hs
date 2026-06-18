@@ -84,7 +84,6 @@ data PackageEnvironment = PackageEnvironment
 
 instance Monoid PackageEnvironment where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup PackageEnvironment where
   (<>) = gmappend

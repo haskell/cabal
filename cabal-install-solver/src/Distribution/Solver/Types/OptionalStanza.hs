@@ -109,7 +109,6 @@ instance Semigroup OptionalStanzaSet where
 
 instance Monoid OptionalStanzaSet where
     mempty = OptionalStanzaSet 0
-    mappend = (<>)
 
 -------------------------------------------------------------------------------
 -- OptionalStanzaMap

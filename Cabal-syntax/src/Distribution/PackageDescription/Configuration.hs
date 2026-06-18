@@ -155,7 +155,6 @@ data DepTestRslt
 
 instance Monoid DepTestRslt where
   mempty = DepOk
-  mappend = (<>)
 
 instance Semigroup DepTestRslt where
   DepOk <> x = x
@@ -402,7 +401,6 @@ data PDTagged
 
 instance Monoid PDTagged where
   mempty = PDNull
-  mappend = (<>)
 
 instance Semigroup PDTagged where
   PDNull <> x = x

@@ -38,7 +38,7 @@ newtype FieldDescrs s a = F {runF :: Map P.FieldName (SP s)}
 
 instance Applicative (FieldDescrs s) where
   pure _ = F mempty
-  f <*> x = F (mappend (runF f) (runF x))
+  f <*> x = F (runF f <> runF x)
 
 singletonF :: P.FieldName -> (s -> Disp.Doc) -> (forall m. P.CabalParsing m => s -> m s) -> FieldDescrs s a
 singletonF fn f g = F $ Map.singleton fn (SP f g)
@@ -102,7 +102,7 @@ instance FieldGrammar ParsecPretty FieldDescrs where
   monoidalFieldAla fn _pack l = singletonF fn f g
     where
       f s = pretty (pack' _pack (aview l s))
-      g s = cloneLens l (\x -> mappend x . unpack' _pack <$> P.parsec) s
+      g s = cloneLens l (\x -> (x <>) . unpack' _pack <$> P.parsec) s
 
   prefixedFields _fnPfx _l = F mempty
   knownField _ = pure ()

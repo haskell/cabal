@@ -122,7 +122,6 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable (fold)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
-import qualified Data.Monoid as Mon
 import Distribution.Verbosity
 import System.FilePath ((</>))
 import Text.PrettyPrint (hsep, parens, text)
@@ -792,7 +791,7 @@ whyNotPerComponent = \case
 pkgOrderDependencies :: ElaboratedPackage -> ComponentDeps [UnitId]
 pkgOrderDependencies pkg =
   fmap (map (newSimpleUnitId . confInstId)) (map fst <$> pkgLibDependencies pkg)
-    `Mon.mappend` fmap (map (newSimpleUnitId . confInstId)) (pkgExeDependencies pkg)
+    <> fmap (map (newSimpleUnitId . confInstId)) (pkgExeDependencies pkg)
 
 -- | This is used in the install plan to indicate how the package will be
 -- built.

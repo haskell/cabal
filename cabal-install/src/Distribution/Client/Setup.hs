@@ -1081,7 +1081,6 @@ relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . prettyShow) pkgs
 
 instance Monoid ConfigExFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ConfigExFlags where
   (<>) = gmappend
@@ -1891,7 +1890,6 @@ reportCommand =
 
 instance Monoid ReportFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ReportFlags where
   (<>) = gmappend
@@ -2057,7 +2055,6 @@ unpackCommand =
 
 instance Monoid GetFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup GetFlags where
   (<>) = gmappend
@@ -2170,7 +2167,6 @@ listNeedsCompiler f =
 
 instance Monoid ListFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ListFlags where
   (<>) = gmappend
@@ -2226,7 +2222,6 @@ infoCommand =
 
 instance Monoid InfoFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup InfoFlags where
   (<>) = gmappend
@@ -2866,7 +2861,6 @@ optionNumJobs get set =
 
 instance Monoid InstallFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup InstallFlags where
   (<>) = gmappend
@@ -3000,7 +2994,6 @@ uploadCommand =
 
 instance Monoid UploadFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup UploadFlags where
   (<>) = gmappend
@@ -3486,7 +3479,6 @@ actAsSetupCommand =
 
 instance Monoid ActAsSetupFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ActAsSetupFlags where
   (<>) = gmappend
@@ -3511,7 +3503,6 @@ instance Monoid UserConfigFlags where
       , userConfigForce = toFlag False
       , userConfigAppendLines = toFlag []
       }
-  mappend = (<>)
 
 instance Semigroup UserConfigFlags where
   (<>) = gmappend

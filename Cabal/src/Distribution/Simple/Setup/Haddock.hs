@@ -382,7 +382,6 @@ emptyHaddockFlags = mempty
 
 instance Monoid HaddockFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup HaddockFlags where
   (<>) = gmappend
@@ -634,7 +633,6 @@ emptyHaddockProjectFlags = mempty
 
 instance Monoid HaddockProjectFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup HaddockProjectFlags where
   (<>) = gmappend

@@ -151,7 +151,6 @@ emptyBenchmarkFlags = mempty
 
 instance Monoid BenchmarkFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup BenchmarkFlags where
   (<>) = gmappend

@@ -61,7 +61,6 @@ instance Semigroup CharSet where
 
 instance Monoid CharSet where
     mempty = empty
-    mappend = (<>)
 
 -- | Empty character set.
 empty :: CharSet

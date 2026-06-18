@@ -240,7 +240,7 @@ reqArg ad mkflag showflag sf lf d get set =
     d
     (sf, lf)
     ad
-    (fmap (\a b -> set (get b `mappend` a) b) mkflag)
+    (fmap (\a b -> set (get b <> a) b) mkflag)
     (showflag . get)
 
 -- | Create a string-valued command line interface with a default value.
@@ -256,8 +256,8 @@ optArg ad mkflag (dv, mkDef) showflag sf lf d get set =
     d
     (sf, lf)
     ad
-    (fmap (\a b -> set (get b `mappend` a) b) mkflag)
-    (dv, \b -> set (get b `mappend` mkDef) b)
+    (fmap (\a b -> set (get b <> a) b) mkflag)
+    (dv, \b -> set (get b <> mkDef) b)
     (showflag . get)
 
 -- | (String -> a) variant of "reqArg"

@@ -41,17 +41,16 @@ overNubList f (NubList list) = toNubList . f $ list
 -- identity, associativity and closure.
 --
 -- Identity : by inspection:
---      mempty `mappend` NubList xs == NubList xs `mappend` mempty
+--      mempty <> NubList xs == NubList xs <> mempty
 --
 -- Associativity : by inspection:
---      (NubList xs `mappend` NubList ys) `mappend` NubList zs
---      == NubList xs `mappend` (NubList ys `mappend` NubList zs)
+--      (NubList xs <> NubList ys) <> NubList zs
+--      == NubList xs <> (NubList ys <> NubList zs)
 --
 -- Closure : appending two lists of type a and removing duplicates obviously
 -- does not change the type.
 instance Ord a => Monoid (NubList a) where
   mempty = NubList []
-  mappend = (<>)
 
 instance Ord a => Semigroup (NubList a) where
   (NubList xs) <> (NubList ys) = NubList $ xs `listUnion` ys
@@ -95,7 +94,6 @@ overNubListR f (NubListR list) = toNubListR . f $ list
 
 instance Ord a => Monoid (NubListR a) where
   mempty = NubListR []
-  mappend = (<>)
 
 instance Ord a => Semigroup (NubListR a) where
   (NubListR xs) <> (NubListR ys) = NubListR $ xs `listUnionRight` ys

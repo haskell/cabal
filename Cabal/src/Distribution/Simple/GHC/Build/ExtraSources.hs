@@ -211,18 +211,18 @@ buildExtraSources
                 baseSrcOpts{ghcOptFPic = toFlag True}
               profSrcOpts =
                 vanillaSrcOpts
-                  `mappend` mempty
+                  <> mempty
                     { ghcOptProfilingMode = toFlag True
                     }
               sharedSrcOpts =
                 vanillaSrcOpts
-                  `mappend` mempty
+                  <> mempty
                     { ghcOptFPic = toFlag True
                     , ghcOptDynLinkMode = toFlag GhcDynamicOnly
                     }
               profSharedSrcOpts =
                 vanillaSrcOpts
-                  `mappend` mempty
+                  <> mempty
                     { ghcOptProfilingMode = toFlag True
                     , ghcOptFPic = toFlag True
                     , ghcOptDynLinkMode = toFlag GhcDynamicOnly

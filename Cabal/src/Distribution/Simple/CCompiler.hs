@@ -53,8 +53,8 @@ import System.FilePath
   ( takeExtension
   )
 
--- | Represents a dialect of C.  The Monoid instance expresses backward
---   compatibility, in the sense that 'mappend a b' is the least inclusive
+-- | Represents a dialect of C.  The Semigroup instance expresses backward
+--   compatibility, in the sense that 'a <> b' is the least inclusive
 --   dialect which both 'a' and 'b' can be correctly interpreted as.
 data CDialect
   = C
@@ -65,7 +65,6 @@ data CDialect
 
 instance Monoid CDialect where
   mempty = C
-  mappend = (<>)
 
 instance Semigroup CDialect where
   C <> anything = anything

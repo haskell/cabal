@@ -544,10 +544,10 @@ configurePackage
               -- (But if they didn't, let solver decide.)
               configBenchmarks =
                 toFlag (BenchStanzas `optStanzaSetMember` stanzas)
-                  `mappend` configBenchmarks configFlags
+                  <> configBenchmarks configFlags
             , configTests =
                 toFlag (TestStanzas `optStanzaSetMember` stanzas)
-                  `mappend` configTests configFlags
+                  <> configTests configFlags
             }
 
       pkg :: PkgDesc.PackageDescription

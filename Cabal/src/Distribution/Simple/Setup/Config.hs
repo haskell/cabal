@@ -1077,7 +1077,6 @@ emptyConfigFlags = mempty
 
 instance Monoid ConfigFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ConfigFlags where
   (<>) = gmappend

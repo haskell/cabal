@@ -119,7 +119,6 @@ data IgnoreMajorVersionBumps
 
 instance Monoid IgnoreMajorVersionBumps where
   mempty = IgnoreMajorVersionBumpsNone
-  mappend = (<>)
 
 instance Semigroup IgnoreMajorVersionBumps where
   IgnoreMajorVersionBumpsNone <> r = r
@@ -378,7 +377,7 @@ instance Pretty (OutdatedDependencyX Version) where
 
 instance Pretty (OutdatedDependencyX ()) where
   pretty (OutdatedDependency dep _ src) =
-    pretty dep <+> PP.text "(from:" <+> PP.text (prettyOutdatedDependencySource src) `mappend` PP.text ")"
+    pretty dep <+> PP.text "(from:" <+> (PP.text (prettyOutdatedDependencySource src) <> PP.text ")")
 
 data OutdatedDependencySource = ConfigSource ConstraintSource | ComponentSource PackageId ComponentTarget
 

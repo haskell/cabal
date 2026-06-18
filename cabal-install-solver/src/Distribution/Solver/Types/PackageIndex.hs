@@ -88,10 +88,9 @@ instance Package pkg => Semigroup (PackageIndex pkg) where
 
 instance Package pkg => Monoid (PackageIndex pkg) where
   mempty  = PackageIndex Map.empty
-  mappend = (<>)
-  --save one mappend with empty in the common case:
+  --save one (<>) with empty in the common case:
   mconcat [] = mempty
-  mconcat xs = Prelude.foldr1 mappend xs
+  mconcat xs = Prelude.foldr1 (<>) xs
 
 instance Binary pkg => Binary (PackageIndex pkg)
 
@@ -207,7 +206,7 @@ overrideOrMerge strategy i1@(PackageIndex m1) i2@(PackageIndex m2) =
 
 -- | Inserts a single package into the index.
 --
--- This is equivalent to (but slightly quicker than) using 'mappend' or
+-- This is equivalent to (but slightly quicker than) using '(<>)' or
 -- 'merge' with a singleton index.
 --
 insert :: Package pkg => pkg -> PackageIndex pkg -> PackageIndex pkg

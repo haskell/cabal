@@ -380,7 +380,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p =
     }
   where
     updateLibrary :: Maybe BuildInfo -> Maybe Library -> Maybe Library
-    updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = bi `mappend` libBuildInfo lib})
+    updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = bi <> libBuildInfo lib})
     updateLibrary Nothing mb_lib = mb_lib
     updateLibrary (Just _) Nothing = Nothing
 
@@ -402,7 +402,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p =
     -- \^list with exeName updated
     updateExecutable _ [] = []
     updateExecutable exe_bi'@(name, bi) (exe : exes)
-      | exeName exe == name = exe{buildInfo = bi `mappend` buildInfo exe} : exes
+      | exeName exe == name = exe{buildInfo = bi <> buildInfo exe} : exes
       | otherwise = exe : updateExecutable exe_bi' exes
 
 -- -----------------------------------------------------------------------------
