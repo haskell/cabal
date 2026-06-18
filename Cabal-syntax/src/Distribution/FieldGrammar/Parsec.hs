@@ -659,9 +659,11 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         Just xs -> (map . fmap . fmap) (unpack' _pack) <$> traverse (parseOne v) xs
 
       parseOne :: CabalSpecVersion -> NamelessField FieldAnn FieldLineAnn -> ParseResult src ([Comment Position], (Positions, b))
-      parseOne v (extractCommentsField->(cmts, _casedName, MkNamelessField pos fls)) = do
+      parseOne v (extractCommentsField->(cmts, casedName, MkNamelessField pos fls)) = do
         (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
-        pure (cmts, (Positions Nothing pos flPos, x))
+
+        trace ("Cased name was: " <> fromUTF8BS casedName) $
+          pure (cmts, (Positions Nothing pos flPos, x))
 
   optionalFieldDefAla'
     :: forall b a s

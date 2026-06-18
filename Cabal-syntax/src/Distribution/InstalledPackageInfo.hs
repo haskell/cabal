@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 -----------------------------------------------------------------------------
 
 -- This module is meant to be local-only to Distribution...
@@ -100,7 +102,7 @@ parseInstalledPackageInfo
 parseInstalledPackageInfo s = case P.readFieldsWithComments s of
   Left err -> Left (show err :| [])
   Right fs -> case partitionFields fs of
-    (fs', _) -> case P.runParseResult $ withSource PInstalledPackageInfo $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
+    (normaliseFields->fs', _) -> case P.runParseResult $ withSource PInstalledPackageInfo $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
       (ws, Right x) -> x `deepseq` Right (ws', x)
         where
           ws' =

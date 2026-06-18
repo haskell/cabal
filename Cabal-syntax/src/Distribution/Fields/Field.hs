@@ -143,7 +143,7 @@ data Name ann = Name !ann !FieldName
 deriving instance Ord ann => Ord (Name ann)
 
 mkName :: ann -> FieldName -> Name ann
-mkName ann bs = Name ann (B.map Char.toLower bs)
+mkName ann bs = Name ann bs
 
 getName :: Name ann -> FieldName
 getName (Name _ bs) = bs

@@ -80,7 +80,7 @@ infixl 5 ^^^
 x ^^^ f = f x
 
 -- | Partitioning state
-data PS ann = PS (Fields FieldAnn FieldLineAnn) [Section ann] [[Section ann]]
+data PS ann = PS (Fields ann ann) [Section ann] [[Section ann]]
 
 -- | Partition field list into field map and groups of sections.
 -- Groups sections between fields. This means that the following snippet contains
@@ -97,26 +97,18 @@ data PS ann = PS (Fields FieldAnn FieldLineAnn) [Section ann] [[Section ann]]
 -- yet-another-section
 --     field: value
 -- @
-partitionFields :: [Field (WithComments Position)] -> (Fields FieldAnn FieldLineAnn, [[Section (WithComments Position)]])
+partitionFields :: [Field (WithComments Position)] -> (Fields (WithComments Position) (WithComments Position), [[Section (WithComments Position)]])
 partitionFields = finalize . foldl' f (PS mempty mempty mempty)
   where
-    finalize :: PS (WithComments Position) -> (Fields FieldAnn FieldLineAnn, [[Section (WithComments Position)]])
+    finalize :: PS (WithComments Position) -> (Fields (WithComments Position) (WithComments Position), [[Section (WithComments Position)]])
     finalize (PS fs s ss)
       | null s = (fs, reverse ss)
       | otherwise = (fs, reverse (reverse s : ss))
 
     f :: PS (WithComments Position) -> Field (WithComments Position) -> PS (WithComments Position)
-    f (PS fs s ss) (Field (Name (WithComments cmts pos) name) fss) =
+    f (PS fs s ss) (Field (Name nameAnn name) fss) =
       PS
-        ( Map.insertWith
-            (flip (++))
-            name
-            [ MkNamelessField
-                (FieldAnn pos cmts name)
-                ((map . fmap) (\(WithComments cmts' pos') -> FieldLineAnn pos' cmts') fss)
-            ]
-            fs
-        )
+        (Map.insertWith (flip (++)) name [MkNamelessField nameAnn fss] fs)
         []
         ss'
       where

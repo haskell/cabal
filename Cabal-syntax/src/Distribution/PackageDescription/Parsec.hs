@@ -633,7 +633,7 @@ parseFields
 parseFields v commentedFields grammar = do
   let (fs0, ss) = partitionFields commentedFields
   traverse_ (traverse_ warnInvalidSubsection) ss
-  parseFieldGrammar v fs0 grammar
+  parseFieldGrammar v (normaliseFields fs0) grammar
 
 warnInvalidSubsection :: Section (WithComments Position) -> ParseResult src ()
 warnInvalidSubsection (MkSection (Name (WithComments _ pos) name) _ _) =
@@ -666,7 +666,7 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo = go
 
       let (fs, ss) = partitionFields fields
       -- TODO(leana8959): there are no position for conditional sections for now
-      x <- parseFieldGrammar v fs grammar
+      x <- parseFieldGrammar v (normaliseFields fs) grammar
       branches <- concat <$> traverse parseIfs ss
       return $ endo $ CondNode x branches
 
@@ -1179,7 +1179,7 @@ parseHookedBuildInfo' lexWarnings fs = do
     toFields fields = do
       let (fields', ss) = partitionFields $ (map . fmap) (WithComments mempty) fields
       traverse_ (traverse_ warnInvalidSubsection) ss
-      pure fields'
+      pure (normaliseFields fields')
 
     toExe
       :: ([FieldLine Position], [Field Position])
