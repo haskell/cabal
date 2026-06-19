@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -331,7 +332,10 @@ exactRenderPrettyField ctx0@(_, lastFieldLine) field = case field of
         docOut =
           placeAt sectionNamePosition $
             EPP.text (T.pack $ fromUTF8BS fieldName)
-              <> mconcat (map docToExactDoc sectionArgs)
+            -- HACK: Prepend a space when the argument is not null.
+              <> ( let args = mconcat (map docToExactDoc sectionArgs)
+                   in if args == EPP.Nil then mempty else EPP.text " " <> args
+                 )
               <> EPP.nest guessedIndentation fieldsFinal
      in ( ctx'
         , docOut

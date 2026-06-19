@@ -466,12 +466,12 @@ goSections specVer = traverse_ process
 
       -- Sublibraries
       -- TODO: check cabal-version
-      | name == "library" = do
+      | BS8.map toLower name == "library" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos ((map . fmap) unComments args)
           let name'' = LSubLibName name'
           lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
-          let lib' = mapTreeData (\l -> l{sectionPosition = Just pos}) lib
+          let lib' = mapTreeData (\l -> l{libExt = Just (pos, name {- casedName -})}) lib
 
           -- TODO check duplicate name here?
           stateGpd . L.condSubLibraries %= snoc (name', lib')

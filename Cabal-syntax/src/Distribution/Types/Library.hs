@@ -21,6 +21,8 @@ module Distribution.Types.Library
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Fields.Field
+
 import Distribution.ModuleName
 import Distribution.Parsec.Position
 import Distribution.Types.BuildInfo
@@ -37,8 +39,10 @@ type Library = LibraryWith Abst
 type LibraryAnn = LibraryWith Conc
 
 data LibraryWith (m :: ParsingPhase) = Library
-  { sectionPosition :: Maybe Position
-  -- ^ spiritually an extension point.
+  { libExt :: Maybe (Position, FieldName)
+  -- NOTE(leana8959): this breaks a lot of instances, which is one of the reasons that GPD
+  -- is bad for th exactprint job.
+  -- ^ The extension point, saves exactprint details.
   , libName :: LibraryName
   , exposedModules :: [ModuleName]
   , reexportedModules :: [ModuleReexport]
@@ -73,7 +77,7 @@ emptyLibrary :: Library
 emptyLibrary =
   Library
     { libName = LMainLibName
-    , sectionPosition = Nothing
+    , libExt = Nothing
     , exposedModules = mempty
     , reexportedModules = mempty
     , signatures = mempty
@@ -86,7 +90,7 @@ emptyLibraryAnn :: LibraryWith Conc
 emptyLibraryAnn =
   Library
     { libName = LMainLibName
-    , sectionPosition = Nothing
+    , libExt = Nothing
     , exposedModules = mempty
     , reexportedModules = mempty
     , signatures = mempty
@@ -113,9 +117,8 @@ instance Monoid (LibraryWith Conc) where
 instance Semigroup (LibraryWith Conc) where
   a <> b =
     Library
-      { sectionPosition = undefined
-      , -- TODO(leana8959): bad instance
-        libName = combineLibraryName (libName a) (libName b)
+      { libExt = libExt a <|> libExt b
+      , libName = combineLibraryName (libName a) (libName b)
       , exposedModules = combine exposedModules
       , reexportedModules = reexportedModules a <> reexportedModules b
       , signatures = combine signatures
@@ -129,7 +132,7 @@ instance Semigroup (LibraryWith Conc) where
 instance Semigroup Library where
   a <> b =
     Library
-      { sectionPosition = sectionPosition a <|> sectionPosition b
+      { libExt = libExt a <|> libExt b
       , libName = combineLibraryName (libName a) (libName b)
       , exposedModules = exposedModules a <> exposedModules b
       , reexportedModules = combine reexportedModules

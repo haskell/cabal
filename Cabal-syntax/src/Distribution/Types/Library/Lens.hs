@@ -10,6 +10,8 @@ import Prelude ()
 import Distribution.Types.Annotation
 import Distribution.Types.Trivia
 
+import Distribution.Fields.Field
+
 import Distribution.ModuleName (ModuleName)
 import Distribution.Types.BuildInfo (BuildInfoWith)
 import Distribution.Types.Library (Library, LibraryWith)
@@ -21,9 +23,9 @@ import Distribution.Parsec.Position
 
 import qualified Distribution.Types.Library as T
 
-sectionPosition :: Lens' (LibraryWith mod) (Maybe Position)
-sectionPosition f s = fmap (\x -> s{T.sectionPosition = x}) (f (T.sectionPosition s))
-{-# INLINE sectionPosition #-}
+libExt :: Lens' (LibraryWith mod) (Maybe (Position, FieldName))
+libExt f s = fmap (\x -> s{T.libExt = x}) (f (T.libExt s))
+{-# INLINE libExt #-}
 
 libName :: Lens' (LibraryWith mod) LibraryName
 libName f s = fmap (\x -> s{T.libName = x}) (f (T.libName s))

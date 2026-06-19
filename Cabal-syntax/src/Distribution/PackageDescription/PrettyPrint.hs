@@ -70,10 +70,9 @@ import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Compat.NonEmptySet as NES
+import qualified Data.Functor as Functor (unzip)
 
 import Distribution.Types.Annotation
-
-import Debug.Pretty.Simple
 
 -- | Writes a .cabal file from a generic package description
 writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> IO ()
@@ -270,9 +269,9 @@ ppCondLibraryAnn :: CabalSpecVersion -> Maybe (CondTree ConfVar (LibraryWith Con
 ppCondLibraryAnn _ Nothing = mempty
 ppCondLibraryAnn v (Just condTree) =
   let fields = ppCondTree2Ann v (libraryFieldGrammar LMainLibName) condTree
-      sectionPos_ = sectionPosition $ condTreeData condTree
+      (mSectionPos, mName) = Functor.unzip $ libExt $ condTreeData condTree
    in -- TODO(leana8959): assert that there are no more than one library ?
-      [ PrettySection (fromMaybe zeroPos sectionPos_, "library") [] fields
+      [ PrettySection (fromMaybe zeroPos mSectionPos, fromMaybe "library" mName) [] fields
       ]
 
 ppCondSubLibraries :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar Library)] -> [PrettyField]
@@ -284,10 +283,10 @@ ppCondSubLibraries v libs =
 
 ppCondSubLibrariesAnn :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar (LibraryWith Conc))] -> [PrettyFieldWith Conc]
 ppCondSubLibrariesAnn v libs =
-  [ PrettySection (fromMaybe zeroPos sectionPos_, "library") [pretty n] fields
+  [ PrettySection (fromMaybe zeroPos mSectionPos, fromMaybe "library" mName) [pretty n] fields
   | (n, condTree) <- libs
   , let fields =  ppCondTree2Ann v (libraryFieldGrammar $ LSubLibName n) condTree
-  , let sectionPos_ = sectionPosition $ condTreeData condTree
+  , let (mSectionPos, mName) = Functor.unzip $ libExt $ condTreeData condTree
   ]
 
 ppCondForeignLibs :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar ForeignLib)] -> [PrettyField]
