@@ -445,7 +445,7 @@ smallCabalFileTest = testCase "smallCabalFile" $ do
       Right ok -> pure ok
       Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
 
-  let gpd = addFakeDepsToGpd gpd0
+  let gpd = {- addFakeDepsToGpd -} gpd0
   pPrint gpd
 
   let prettyFields = ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd
