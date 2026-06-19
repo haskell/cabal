@@ -1,0 +1,2 @@
+# cabal user-config
+Writing default configuration to <ROOT>/cabal.dist/cabal-config
