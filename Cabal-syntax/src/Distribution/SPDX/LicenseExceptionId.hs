@@ -30,87 +30,92 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseExceptionId
 -------------------------------------------------------------------------------
 
--- | SPDX License Exceptions identifiers list v3.26
+-- | SPDX License Exceptions identifiers list v3.28
 data LicenseExceptionId
     = N_389_exception -- ^ @389-exception@, 389 Directory Server Exception
-    | Asterisk_exception -- ^ @Asterisk-exception@, Asterisk exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Asterisk_linking_protocols_exception -- ^ @Asterisk-linking-protocols-exception@, Asterisk linking protocols exception, SPDX License List 3.25, SPDX License List 3.26
+    | Asterisk_exception -- ^ @Asterisk-exception@, Asterisk exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Asterisk_linking_protocols_exception -- ^ @Asterisk-linking-protocols-exception@, Asterisk linking protocols exception, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | Autoconf_exception_2_0 -- ^ @Autoconf-exception-2.0@, Autoconf exception 2.0
     | Autoconf_exception_3_0 -- ^ @Autoconf-exception-3.0@, Autoconf exception 3.0
-    | Autoconf_exception_generic_3_0 -- ^ @Autoconf-exception-generic-3.0@, Autoconf generic exception for GPL-3.0, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Autoconf_exception_generic -- ^ @Autoconf-exception-generic@, Autoconf generic exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Autoconf_exception_macro -- ^ @Autoconf-exception-macro@, Autoconf macro exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Bison_exception_1_24 -- ^ @Bison-exception-1.24@, Bison exception 1.24, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | Autoconf_exception_generic_3_0 -- ^ @Autoconf-exception-generic-3.0@, Autoconf generic exception for GPL-3.0, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Autoconf_exception_generic -- ^ @Autoconf-exception-generic@, Autoconf generic exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Autoconf_exception_macro -- ^ @Autoconf-exception-macro@, Autoconf macro exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Bison_exception_1_24 -- ^ @Bison-exception-1.24@, Bison exception 1.24, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | Bison_exception_2_2 -- ^ @Bison-exception-2.2@, Bison exception 2.2
     | Bootloader_exception -- ^ @Bootloader-exception@, Bootloader Distribution Exception
-    | CGAL_linking_exception -- ^ @CGAL-linking-exception@, CGAL Linking Exception, SPDX License List 3.26
+    | CGAL_linking_exception -- ^ @CGAL-linking-exception@, CGAL Linking Exception, SPDX License List 3.26, SPDX License List 3.28
+    | Classpath_exception_2_0_short -- ^ @Classpath-exception-2.0-short@, Classpath exception 2.0 - short, SPDX License List 3.28
     | Classpath_exception_2_0 -- ^ @Classpath-exception-2.0@, Classpath exception 2.0
     | CLISP_exception_2_0 -- ^ @CLISP-exception-2.0@, CLISP exception 2.0
-    | Cryptsetup_OpenSSL_exception -- ^ @cryptsetup-OpenSSL-exception@, cryptsetup OpenSSL exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Digia_Qt_LGPL_exception_1_1 -- ^ @Digia-Qt-LGPL-exception-1.1@, Digia Qt LGPL Exception version 1.1, SPDX License List 3.26
+    | Cryptsetup_OpenSSL_exception -- ^ @cryptsetup-OpenSSL-exception@, cryptsetup OpenSSL exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Digia_Qt_LGPL_exception_1_1 -- ^ @Digia-Qt-LGPL-exception-1.1@, Digia Qt LGPL Exception version 1.1, SPDX License List 3.26, SPDX License List 3.28
     | DigiRule_FOSS_exception -- ^ @DigiRule-FOSS-exception@, DigiRule FOSS License Exception
     | ECos_exception_2_0 -- ^ @eCos-exception-2.0@, eCos exception 2.0
-    | Erlang_otp_linking_exception -- ^ @erlang-otp-linking-exception@, Erlang/OTP Linking Exception, SPDX License List 3.25, SPDX License List 3.26
+    | Erlang_otp_linking_exception -- ^ @erlang-otp-linking-exception@, Erlang/OTP Linking Exception, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | Fawkes_Runtime_exception -- ^ @Fawkes-Runtime-exception@, Fawkes Runtime Exception
     | FLTK_exception -- ^ @FLTK-exception@, FLTK exception
-    | Fmt_exception -- ^ @fmt-exception@, fmt exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | Fmt_exception -- ^ @fmt-exception@, fmt exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | Font_exception_2_0 -- ^ @Font-exception-2.0@, Font exception 2.0
     | Freertos_exception_2_0 -- ^ @freertos-exception-2.0@, FreeRTOS Exception 2.0
-    | GCC_exception_2_0_note -- ^ @GCC-exception-2.0-note@, GCC    Runtime Library exception 2.0 - note variant, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | GCC_exception_2_0_note -- ^ @GCC-exception-2.0-note@, GCC    Runtime Library exception 2.0 - note variant, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | GCC_exception_2_0 -- ^ @GCC-exception-2.0@, GCC Runtime Library exception 2.0
     | GCC_exception_3_1 -- ^ @GCC-exception-3.1@, GCC Runtime Library exception 3.1
-    | Gmsh_exception -- ^ @Gmsh-exception@, Gmsh exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | GNAT_exception -- ^ @GNAT-exception@, GNAT exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | GNOME_examples_exception -- ^ @GNOME-examples-exception@, GNOME examples exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | GNU_compiler_exception -- ^ @GNU-compiler-exception@, GNU Compiler Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | Gmsh_exception -- ^ @Gmsh-exception@, Gmsh exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | GNAT_exception -- ^ @GNAT-exception@, GNAT exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | GNOME_examples_exception -- ^ @GNOME-examples-exception@, GNOME examples exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | GNU_compiler_exception -- ^ @GNU-compiler-exception@, GNU Compiler Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | Gnu_javamail_exception -- ^ @gnu-javamail-exception@, GNU JavaMail exception
-    | GPL_3_0_389_ds_base_exception -- ^ @GPL-3.0-389-ds-base-exception@, GPL-3.0 389 DS Base Exception, SPDX License List 3.26
-    | GPL_3_0_interface_exception -- ^ @GPL-3.0-interface-exception@, GPL-3.0 Interface Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | GPL_3_0_linking_exception -- ^ @GPL-3.0-linking-exception@, GPL-3.0 Linking Exception, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | GPL_3_0_linking_source_exception -- ^ @GPL-3.0-linking-source-exception@, GPL-3.0 Linking Exception (with Corresponding Source), SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | GPL_CC_1_0 -- ^ @GPL-CC-1.0@, GPL Cooperation Commitment 1.0, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | GStreamer_exception_2005 -- ^ @GStreamer-exception-2005@, GStreamer Exception (2005), SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | GStreamer_exception_2008 -- ^ @GStreamer-exception-2008@, GStreamer Exception (2008), SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Harbour_exception -- ^ @harbour-exception@, harbour exception, SPDX License List 3.26
+    | GPL_3_0_389_ds_base_exception -- ^ @GPL-3.0-389-ds-base-exception@, GPL-3.0 389 DS Base Exception, SPDX License List 3.26, SPDX License List 3.28
+    | GPL_3_0_interface_exception -- ^ @GPL-3.0-interface-exception@, GPL-3.0 Interface Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | GPL_3_0_linking_exception -- ^ @GPL-3.0-linking-exception@, GPL-3.0 Linking Exception, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | GPL_3_0_linking_source_exception -- ^ @GPL-3.0-linking-source-exception@, GPL-3.0 Linking Exception (with Corresponding Source), SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | GPL_CC_1_0 -- ^ @GPL-CC-1.0@, GPL Cooperation Commitment 1.0, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | GStreamer_exception_2005 -- ^ @GStreamer-exception-2005@, GStreamer Exception (2005), SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | GStreamer_exception_2008 -- ^ @GStreamer-exception-2008@, GStreamer Exception (2008), SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Harbour_exception -- ^ @harbour-exception@, harbour exception, SPDX License List 3.26, SPDX License List 3.28
     | I2p_gpl_java_exception -- ^ @i2p-gpl-java-exception@, i2p GPL+Java Exception
-    | Independent_modules_exception -- ^ @Independent-modules-exception@, Independent Module Linking exception, SPDX License List 3.26
-    | KiCad_libraries_exception -- ^ @KiCad-libraries-exception@, KiCad Libraries Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | LGPL_3_0_linking_exception -- ^ @LGPL-3.0-linking-exception@, LGPL-3.0 Linking Exception, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Libpri_OpenH323_exception -- ^ @libpri-OpenH323-exception@, libpri OpenH323 exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | Independent_modules_exception -- ^ @Independent-modules-exception@, Independent Module Linking exception, SPDX License List 3.26, SPDX License List 3.28
+    | KiCad_libraries_exception -- ^ @KiCad-libraries-exception@, KiCad Libraries Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Kvirc_openssl_exception -- ^ @kvirc-openssl-exception@, kvirc OpenSSL Exception, SPDX License List 3.28
+    | LGPL_3_0_linking_exception -- ^ @LGPL-3.0-linking-exception@, LGPL-3.0 Linking Exception, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Libpri_OpenH323_exception -- ^ @libpri-OpenH323-exception@, libpri OpenH323 exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | Libtool_exception -- ^ @Libtool-exception@, Libtool Exception
     | Linux_syscall_note -- ^ @Linux-syscall-note@, Linux Syscall Note
-    | LLGPL -- ^ @LLGPL@, LLGPL Preamble, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | LLVM_exception -- ^ @LLVM-exception@, LLVM Exception, SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | LLGPL -- ^ @LLGPL@, LLGPL Preamble, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | LLVM_exception -- ^ @LLVM-exception@, LLVM Exception, SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | LZMA_exception -- ^ @LZMA-exception@, LZMA exception
     | Mif_exception -- ^ @mif-exception@, Macros and Inline Functions Exception
     | Nokia_Qt_exception_1_1 -- ^ @Nokia-Qt-exception-1.1@, Nokia Qt LGPL exception 1.1, SPDX License List 3.0, SPDX License List 3.2
-    | Mxml_exception -- ^ @mxml-exception@, mxml Exception, SPDX License List 3.26
-    | OCaml_LGPL_linking_exception -- ^ @OCaml-LGPL-linking-exception@, OCaml LGPL Linking Exception, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | Mxml_exception -- ^ @mxml-exception@, mxml Exception, SPDX License List 3.26, SPDX License List 3.28
+    | OCaml_LGPL_linking_exception -- ^ @OCaml-LGPL-linking-exception@, OCaml LGPL Linking Exception, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | OCCT_exception_1_0 -- ^ @OCCT-exception-1.0@, Open CASCADE Exception 1.0
-    | OpenJDK_assembly_exception_1_0 -- ^ @OpenJDK-assembly-exception-1.0@, OpenJDK Assembly exception 1.0, SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | OpenJDK_assembly_exception_1_0 -- ^ @OpenJDK-assembly-exception-1.0@, OpenJDK Assembly exception 1.0, SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | Openvpn_openssl_exception -- ^ @openvpn-openssl-exception@, OpenVPN OpenSSL Exception
-    | PCRE2_exception -- ^ @PCRE2-exception@, PCRE2 exception, SPDX License List 3.25, SPDX License List 3.26
-    | Polyparse_exception -- ^ @polyparse-exception@, Polyparse Exception, SPDX License List 3.26
-    | PS_or_PDF_font_exception_20170817 -- ^ @PS-or-PDF-font-exception-20170817@, PS/PDF font exception (2017-08-17), SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | QPL_1_0_INRIA_2004_exception -- ^ @QPL-1.0-INRIA-2004-exception@, INRIA QPL 1.0 2004 variant exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Qt_GPL_exception_1_0 -- ^ @Qt-GPL-exception-1.0@, Qt GPL exception 1.0, SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Qt_LGPL_exception_1_1 -- ^ @Qt-LGPL-exception-1.1@, Qt LGPL exception 1.1, SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | PCRE2_exception -- ^ @PCRE2-exception@, PCRE2 exception, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Polyparse_exception -- ^ @polyparse-exception@, Polyparse Exception, SPDX License List 3.26, SPDX License List 3.28
+    | PS_or_PDF_font_exception_20170817 -- ^ @PS-or-PDF-font-exception-20170817@, PS/PDF font exception (2017-08-17), SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | QPL_1_0_INRIA_2004_exception -- ^ @QPL-1.0-INRIA-2004-exception@, INRIA QPL 1.0 2004 variant exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Qt_GPL_exception_1_0 -- ^ @Qt-GPL-exception-1.0@, Qt GPL exception 1.0, SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Qt_LGPL_exception_1_1 -- ^ @Qt-LGPL-exception-1.1@, Qt LGPL exception 1.1, SPDX License List 3.2, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | Qwt_exception_1_0 -- ^ @Qwt-exception-1.0@, Qwt exception 1.0
-    | Romic_exception -- ^ @romic-exception@, Romic Exception, SPDX License List 3.25, SPDX License List 3.26
-    | RRDtool_FLOSS_exception_2_0 -- ^ @RRDtool-FLOSS-exception-2.0@, RRDtool FLOSS exception 2.0, SPDX License List 3.25, SPDX License List 3.26
-    | SANE_exception -- ^ @SANE-exception@, SANE Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | SHL_2_0 -- ^ @SHL-2.0@, Solderpad Hardware License v2.0, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | SHL_2_1 -- ^ @SHL-2.1@, Solderpad Hardware License v2.1, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Stunnel_exception -- ^ @stunnel-exception@, stunnel Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | SWI_exception -- ^ @SWI-exception@, SWI exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Swift_exception -- ^ @Swift-exception@, Swift Exception, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Texinfo_exception -- ^ @Texinfo-exception@, Texinfo exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | Romic_exception -- ^ @romic-exception@, Romic Exception, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | RRDtool_FLOSS_exception_2_0 -- ^ @RRDtool-FLOSS-exception-2.0@, RRDtool FLOSS exception 2.0, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Rsync_linking_exception -- ^ @rsync-linking-exception@, rsync Linking Exception, SPDX License List 3.28
+    | SANE_exception -- ^ @SANE-exception@, SANE Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | SHL_2_0 -- ^ @SHL-2.0@, Solderpad Hardware License v2.0, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | SHL_2_1 -- ^ @SHL-2.1@, Solderpad Hardware License v2.1, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Simple_Library_Usage_exception -- ^ @Simple-Library-Usage-exception@, Simple Library Usage Exception, SPDX License List 3.28
+    | Sqlitestudio_OpenSSL_exception -- ^ @sqlitestudio-OpenSSL-exception@, sqlitestudio OpenSSL exception, SPDX License List 3.28
+    | Stunnel_exception -- ^ @stunnel-exception@, stunnel Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | SWI_exception -- ^ @SWI-exception@, SWI exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Swift_exception -- ^ @Swift-exception@, Swift Exception, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Texinfo_exception -- ^ @Texinfo-exception@, Texinfo exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | U_boot_exception_2_0 -- ^ @u-boot-exception-2.0@, U-Boot exception 2.0
-    | UBDL_exception -- ^ @UBDL-exception@, Unmodified Binary Distribution exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Universal_FOSS_exception_1_0 -- ^ @Universal-FOSS-exception-1.0@, Universal FOSS Exception, Version 1.0, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
-    | Vsftpd_openssl_exception -- ^ @vsftpd-openssl-exception@, vsftpd OpenSSL exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | UBDL_exception -- ^ @UBDL-exception@, Unmodified Binary Distribution exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Universal_FOSS_exception_1_0 -- ^ @Universal-FOSS-exception-1.0@, Universal FOSS Exception, Version 1.0, SPDX License List 3.6, SPDX License List 3.9, SPDX License List 3.10, SPDX License List 3.16, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
+    | Vsftpd_openssl_exception -- ^ @vsftpd-openssl-exception@, vsftpd OpenSSL exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
     | WxWindows_exception_3_1 -- ^ @WxWindows-exception-3.1@, WxWindows Library Exception 3.1
-    | X11vnc_openssl_exception -- ^ @x11vnc-openssl-exception@, x11vnc OpenSSL Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
+    | X11vnc_openssl_exception -- ^ @x11vnc-openssl-exception@, x11vnc OpenSSL Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26, SPDX License List 3.28
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Data, Generic)
 
 instance Binary LicenseExceptionId where
@@ -123,7 +128,7 @@ instance Binary LicenseExceptionId where
 
 -- note: remember to bump version each time the definition changes
 instance Structured LicenseExceptionId where
-    structure p = set typeVersion 307 $ nominalStructure p
+    structure p = set typeVersion 308 $ nominalStructure p
 
 instance Pretty LicenseExceptionId where
     pretty = Disp.text . licenseExceptionId
@@ -156,6 +161,7 @@ licenseExceptionId Bison_exception_1_24 = "Bison-exception-1.24"
 licenseExceptionId Bison_exception_2_2 = "Bison-exception-2.2"
 licenseExceptionId Bootloader_exception = "Bootloader-exception"
 licenseExceptionId CGAL_linking_exception = "CGAL-linking-exception"
+licenseExceptionId Classpath_exception_2_0_short = "Classpath-exception-2.0-short"
 licenseExceptionId Classpath_exception_2_0 = "Classpath-exception-2.0"
 licenseExceptionId CLISP_exception_2_0 = "CLISP-exception-2.0"
 licenseExceptionId Cryptsetup_OpenSSL_exception = "cryptsetup-OpenSSL-exception"
@@ -187,6 +193,7 @@ licenseExceptionId Harbour_exception = "harbour-exception"
 licenseExceptionId I2p_gpl_java_exception = "i2p-gpl-java-exception"
 licenseExceptionId Independent_modules_exception = "Independent-modules-exception"
 licenseExceptionId KiCad_libraries_exception = "KiCad-libraries-exception"
+licenseExceptionId Kvirc_openssl_exception = "kvirc-openssl-exception"
 licenseExceptionId LGPL_3_0_linking_exception = "LGPL-3.0-linking-exception"
 licenseExceptionId Libpri_OpenH323_exception = "libpri-OpenH323-exception"
 licenseExceptionId Libtool_exception = "Libtool-exception"
@@ -210,9 +217,12 @@ licenseExceptionId Qt_LGPL_exception_1_1 = "Qt-LGPL-exception-1.1"
 licenseExceptionId Qwt_exception_1_0 = "Qwt-exception-1.0"
 licenseExceptionId Romic_exception = "romic-exception"
 licenseExceptionId RRDtool_FLOSS_exception_2_0 = "RRDtool-FLOSS-exception-2.0"
+licenseExceptionId Rsync_linking_exception = "rsync-linking-exception"
 licenseExceptionId SANE_exception = "SANE-exception"
 licenseExceptionId SHL_2_0 = "SHL-2.0"
 licenseExceptionId SHL_2_1 = "SHL-2.1"
+licenseExceptionId Simple_Library_Usage_exception = "Simple-Library-Usage-exception"
+licenseExceptionId Sqlitestudio_OpenSSL_exception = "sqlitestudio-OpenSSL-exception"
 licenseExceptionId Stunnel_exception = "stunnel-exception"
 licenseExceptionId SWI_exception = "SWI-exception"
 licenseExceptionId Swift_exception = "Swift-exception"
@@ -238,6 +248,7 @@ licenseExceptionName Bison_exception_1_24 = "Bison exception 1.24"
 licenseExceptionName Bison_exception_2_2 = "Bison exception 2.2"
 licenseExceptionName Bootloader_exception = "Bootloader Distribution Exception"
 licenseExceptionName CGAL_linking_exception = "CGAL Linking Exception"
+licenseExceptionName Classpath_exception_2_0_short = "Classpath exception 2.0 - short"
 licenseExceptionName Classpath_exception_2_0 = "Classpath exception 2.0"
 licenseExceptionName CLISP_exception_2_0 = "CLISP exception 2.0"
 licenseExceptionName Cryptsetup_OpenSSL_exception = "cryptsetup OpenSSL exception"
@@ -269,6 +280,7 @@ licenseExceptionName Harbour_exception = "harbour exception"
 licenseExceptionName I2p_gpl_java_exception = "i2p GPL+Java Exception"
 licenseExceptionName Independent_modules_exception = "Independent Module Linking exception"
 licenseExceptionName KiCad_libraries_exception = "KiCad Libraries Exception"
+licenseExceptionName Kvirc_openssl_exception = "kvirc OpenSSL Exception"
 licenseExceptionName LGPL_3_0_linking_exception = "LGPL-3.0 Linking Exception"
 licenseExceptionName Libpri_OpenH323_exception = "libpri OpenH323 exception"
 licenseExceptionName Libtool_exception = "Libtool Exception"
@@ -292,9 +304,12 @@ licenseExceptionName Qt_LGPL_exception_1_1 = "Qt LGPL exception 1.1"
 licenseExceptionName Qwt_exception_1_0 = "Qwt exception 1.0"
 licenseExceptionName Romic_exception = "Romic Exception"
 licenseExceptionName RRDtool_FLOSS_exception_2_0 = "RRDtool FLOSS exception 2.0"
+licenseExceptionName Rsync_linking_exception = "rsync Linking Exception"
 licenseExceptionName SANE_exception = "SANE Exception"
 licenseExceptionName SHL_2_0 = "Solderpad Hardware License v2.0"
 licenseExceptionName SHL_2_1 = "Solderpad Hardware License v2.1"
+licenseExceptionName Simple_Library_Usage_exception = "Simple Library Usage Exception"
+licenseExceptionName Sqlitestudio_OpenSSL_exception = "sqlitestudio OpenSSL exception"
 licenseExceptionName Stunnel_exception = "stunnel Exception"
 licenseExceptionName SWI_exception = "SWI exception"
 licenseExceptionName Swift_exception = "Swift Exception"
@@ -533,6 +548,66 @@ licenseExceptionIdList LicenseListVersion_3_26 =
     , X11vnc_openssl_exception
     ]
     ++ bulkOfLicenses
+licenseExceptionIdList LicenseListVersion_3_28 =
+    [ Asterisk_exception
+    , Asterisk_linking_protocols_exception
+    , Autoconf_exception_generic_3_0
+    , Autoconf_exception_generic
+    , Autoconf_exception_macro
+    , Bison_exception_1_24
+    , CGAL_linking_exception
+    , Classpath_exception_2_0_short
+    , Cryptsetup_OpenSSL_exception
+    , Digia_Qt_LGPL_exception_1_1
+    , Erlang_otp_linking_exception
+    , Fmt_exception
+    , GCC_exception_2_0_note
+    , Gmsh_exception
+    , GNAT_exception
+    , GNOME_examples_exception
+    , GNU_compiler_exception
+    , GPL_3_0_389_ds_base_exception
+    , GPL_3_0_interface_exception
+    , GPL_3_0_linking_exception
+    , GPL_3_0_linking_source_exception
+    , GPL_CC_1_0
+    , GStreamer_exception_2005
+    , GStreamer_exception_2008
+    , Harbour_exception
+    , Independent_modules_exception
+    , KiCad_libraries_exception
+    , Kvirc_openssl_exception
+    , LGPL_3_0_linking_exception
+    , Libpri_OpenH323_exception
+    , LLGPL
+    , LLVM_exception
+    , Mxml_exception
+    , OCaml_LGPL_linking_exception
+    , OpenJDK_assembly_exception_1_0
+    , PCRE2_exception
+    , Polyparse_exception
+    , PS_or_PDF_font_exception_20170817
+    , QPL_1_0_INRIA_2004_exception
+    , Qt_GPL_exception_1_0
+    , Qt_LGPL_exception_1_1
+    , Romic_exception
+    , RRDtool_FLOSS_exception_2_0
+    , Rsync_linking_exception
+    , SANE_exception
+    , SHL_2_0
+    , SHL_2_1
+    , Simple_Library_Usage_exception
+    , Sqlitestudio_OpenSSL_exception
+    , Stunnel_exception
+    , SWI_exception
+    , Swift_exception
+    , Texinfo_exception
+    , UBDL_exception
+    , Universal_FOSS_exception_1_0
+    , Vsftpd_openssl_exception
+    , X11vnc_openssl_exception
+    ]
+    ++ bulkOfLicenses
 
 -- | Create a 'LicenseExceptionId' from a 'String'.
 mkLicenseExceptionId :: LicenseListVersion -> String -> Maybe LicenseExceptionId
@@ -545,6 +620,7 @@ mkLicenseExceptionId LicenseListVersion_3_16 s = Map.lookup s stringLookup_3_16
 mkLicenseExceptionId LicenseListVersion_3_23 s = Map.lookup s stringLookup_3_23
 mkLicenseExceptionId LicenseListVersion_3_25 s = Map.lookup s stringLookup_3_25
 mkLicenseExceptionId LicenseListVersion_3_26 s = Map.lookup s stringLookup_3_26
+mkLicenseExceptionId LicenseListVersion_3_28 s = Map.lookup s stringLookup_3_28
 
 stringLookup_3_0 :: Map String LicenseExceptionId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
@@ -581,6 +657,10 @@ stringLookup_3_25 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
 stringLookup_3_26 :: Map String LicenseExceptionId
 stringLookup_3_26 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
     licenseExceptionIdList LicenseListVersion_3_26
+
+stringLookup_3_28 :: Map String LicenseExceptionId
+stringLookup_3_28 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
+    licenseExceptionIdList LicenseListVersion_3_28
 
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]
