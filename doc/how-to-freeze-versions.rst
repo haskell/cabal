@@ -454,35 +454,6 @@ will use the exact same set of dependencies, regardless of any updates (even
 patches) that might get published for these dependencies in the meantime.
 Therefore, we have effectively "frozen" the dependencies in place.
 
-Project environments
-^^^^^^^^^^^^^^^^^^^^
-
-If a package is built in several environments, such as a development
-environment, a staging environment and a production environment, it may be
-necessary or desirable to ensure that the same dependency versions are selected
-in each environment. While this can be done with a **freeze file** there are
-limitations.
-
-Freezing limitations
-^^^^^^^^^^^^^^^^^^^^
-
-There's a lot to consider before deciding to add a ``cabal.project.freeze`` file
-to source control due to limitations of ``cabal freeze``.  A freeze is specific
-for a single Cabal dependency solver run within the current environment. A good
-many packages have platform-specific dependencies and will vary their
-dependencies based on the operating system. The index state of the local package
-index will also change the list of possible dependencies available to the
-solver.
-
-The solver can only solve for the platform and environment that it is running on
-and within so the generated ``cabal.project.freeze`` file has no ``os(name)``,
-``arch(name)`` or ``impl(compiler)`` conditionals. This is why a ``.freeze``
-file is not a true lock file.
-
-For a software product that is developed and built for production on the same
-platform and environment, committing the freeze file to source control may make
-sense.
-
 .. Tip::
 
     To freeze but also build your project with different versions of GHC; fix
@@ -497,3 +468,40 @@ sense.
 
     Common configuration can be shared between projects by using project
     imports.
+
+Freezing limitations
+^^^^^^^^^^^^^^^^^^^^
+
+A freeze is specific for a single Cabal dependency solver run within the current
+environment.  There's a lot to consider before deciding to add a
+``cabal.project.freeze`` file to source control due to limitations of ``cabal
+freeze``.
+
+Environment Limitation
+    The solver can only solve for the environment that it is running within so
+    the generated ``cabal.project.freeze`` file has no ``os(name)``,
+    ``arch(name)`` or ``impl(compiler)`` conditionals. This is why a ``.freeze``
+    file is not a true lock file.
+
+    A good many packages have platform-specific dependencies and will vary their
+    dependencies based on the operating system.
+
+Index State Limitation
+    The index state of the local package index will also change the list of
+    possible dependencies available to the solver.
+
+Revision Limitation
+    A version constraint cannot include a package revision, neither by revision
+    number nor hash. These constraints do not have sufficient granularity to
+    guarantee picking a specific revision. To work around this limitation a
+    project file will often fix the index state and so hide future revisions
+    that a freeze file's equality constraints cannot specify.
+
+Index State Limitation
+    Aside from revisions, the index state of the local package index will also
+    change the list of possible dependency versions available to the solver.
+
+Despite all of those limitations, for a software product that is always
+developed on the same platform and environment, committing the freeze file to
+source control may make sense. Even then, a production build would likely need
+to avoid such a freeze file.
