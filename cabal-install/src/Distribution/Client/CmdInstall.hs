@@ -144,7 +144,7 @@ import Distribution.Simple.Flag
 import Distribution.Simple.GHC
   ( GhcEnvironmentFileEntry (..)
   , GhcImplInfo (..)
-  , ParseErrorExc
+  , ParseErrorExc (..)
   , getGhcAppDir
   , getImplInfo
   , ghcPlatformAndVersionString
@@ -1294,12 +1294,13 @@ getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile = do
     if (compilerFlavor == GHC || compilerFlavor == GHCJS)
       && supportsPkgEnvFiles
       && envFileExists
-      then catch ((True,) <$> readGhcEnvironmentFile envFile) $ \(_ :: ParseErrorExc) ->
+      then catch ((True,) <$> readGhcEnvironmentFile envFile) $ \(ParseErrorExc parseError) ->
         warn
           verbosity
           ( "The environment file "
               ++ envFile
-              ++ " is unparsable. Libraries cannot be installed."
+              ++ " is unparsable. Libraries cannot be installed.\n"
+              ++ displayException parseError
           )
           >> return (False, [])
       else return (False, [])
