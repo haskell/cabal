@@ -467,6 +467,10 @@ and within so the generated ``cabal.project.freeze`` file has no ``os(name)``,
 ``arch(name)`` or ``impl(compiler)`` conditionals. This is why a ``.freeze``
 file is not a true lock file.
 
+For a software product that is developed and built for production on the same
+platform and environment, committing the freeze file to source control may make
+sense.
+
 .. Tip::
 
     To freeze but also build your project with different versions of GHC; fix
