@@ -454,7 +454,13 @@ will use the exact same set of dependencies, regardless of any updates (even
 patches) that might get published for these dependencies in the meantime.
 Therefore, we have effectively "frozen" the dependencies in place.
 
-``cabal.project.freeze`` is intended to be committed to version control.
+There's a lot to consider before deciding to add a ``cabal.project.freeze`` file
+to source control due to limitations of ``cabal freeze``.  A freeze is specific
+for a single Cabal dependency solver run within the current environment. A good
+many packages have platform-specific dependencies and will vary their
+dependencies based on the operating system. The index state of the local package
+index will also change the list of possible dependencies available to the
+solver.
 
 .. Tip::
 
