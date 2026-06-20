@@ -462,6 +462,11 @@ dependencies based on the operating system. The index state of the local package
 index will also change the list of possible dependencies available to the
 solver.
 
+The solver can only solve for the platform and environment that it is running on
+and within so the generated ``cabal.project.freeze`` file has no ``os(name)``,
+``arch(name)`` or ``impl(compiler)`` conditionals. This is why a ``.freeze``
+file is not a true lock file.
+
 .. Tip::
 
     To freeze but also build your project with different versions of GHC; fix
