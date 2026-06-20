@@ -33,12 +33,14 @@ data SPDXLicenseListVersion
     | SPDXLicenseListVersion_3_23
     | SPDXLicenseListVersion_3_25
     | SPDXLicenseListVersion_3_26
+    | SPDXLicenseListVersion_3_28
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 allVers :: Set.Set SPDXLicenseListVersion
 allVers =  Set.fromList [minBound .. maxBound]
 
 prettyVer :: SPDXLicenseListVersion -> Text
+prettyVer SPDXLicenseListVersion_3_28 = "SPDX License List 3.28"
 prettyVer SPDXLicenseListVersion_3_26 = "SPDX License List 3.26"
 prettyVer SPDXLicenseListVersion_3_25 = "SPDX License List 3.25"
 prettyVer SPDXLicenseListVersion_3_23 = "SPDX License List 3.23"
@@ -50,6 +52,7 @@ prettyVer SPDXLicenseListVersion_3_2  = "SPDX License List 3.2"
 prettyVer SPDXLicenseListVersion_3_0  = "SPDX License List 3.0"
 
 suffixVer :: SPDXLicenseListVersion -> String
+suffixVer SPDXLicenseListVersion_3_28 = "_3_28"
 suffixVer SPDXLicenseListVersion_3_26 = "_3_26"
 suffixVer SPDXLicenseListVersion_3_25 = "_3_25"
 suffixVer SPDXLicenseListVersion_3_23 = "_3_23"
@@ -64,7 +67,7 @@ suffixVer SPDXLicenseListVersion_3_0  = "_3_0"
 -- Per version
 -------------------------------------------------------------------------------
 
-data PerV a = PerV a a a a a a a a a
+data PerV a = PerV a a a a a a a a a a
   deriving (Show, Functor, Foldable, Traversable)
 
 class Functor f => Representable i f | f -> i where
@@ -72,15 +75,16 @@ class Functor f => Representable i f | f -> i where
     tabulate :: (i -> a) -> f a
 
 instance Representable SPDXLicenseListVersion PerV where
-    index SPDXLicenseListVersion_3_0  (PerV x _ _ _ _ _ _ _ _) = x
-    index SPDXLicenseListVersion_3_2  (PerV _ x _ _ _ _ _ _ _) = x
-    index SPDXLicenseListVersion_3_6  (PerV _ _ x _ _ _ _ _ _) = x
-    index SPDXLicenseListVersion_3_9  (PerV _ _ _ x _ _ _ _ _) = x
-    index SPDXLicenseListVersion_3_10 (PerV _ _ _ _ x _ _ _ _) = x
-    index SPDXLicenseListVersion_3_16 (PerV _ _ _ _ _ x _ _ _) = x
-    index SPDXLicenseListVersion_3_23 (PerV _ _ _ _ _ _ x _ _) = x
-    index SPDXLicenseListVersion_3_25 (PerV _ _ _ _ _ _ _ x _) = x
-    index SPDXLicenseListVersion_3_26 (PerV _ _ _ _ _ _ _ _ x) = x
+    index SPDXLicenseListVersion_3_0  (PerV x _ _ _ _ _ _ _ _ _) = x
+    index SPDXLicenseListVersion_3_2  (PerV _ x _ _ _ _ _ _ _ _) = x
+    index SPDXLicenseListVersion_3_6  (PerV _ _ x _ _ _ _ _ _ _) = x
+    index SPDXLicenseListVersion_3_9  (PerV _ _ _ x _ _ _ _ _ _) = x
+    index SPDXLicenseListVersion_3_10 (PerV _ _ _ _ x _ _ _ _ _) = x
+    index SPDXLicenseListVersion_3_16 (PerV _ _ _ _ _ x _ _ _ _) = x
+    index SPDXLicenseListVersion_3_23 (PerV _ _ _ _ _ _ x _ _ _) = x
+    index SPDXLicenseListVersion_3_25 (PerV _ _ _ _ _ _ _ x _ _) = x
+    index SPDXLicenseListVersion_3_26 (PerV _ _ _ _ _ _ _ _ x _) = x
+    index SPDXLicenseListVersion_3_28 (PerV _ _ _ _ _ _ _ _ _ x) = x
 
     tabulate f = PerV
         (f SPDXLicenseListVersion_3_0)
@@ -92,6 +96,7 @@ instance Representable SPDXLicenseListVersion PerV where
         (f SPDXLicenseListVersion_3_23)
         (f SPDXLicenseListVersion_3_25)
         (f SPDXLicenseListVersion_3_26)
+        (f SPDXLicenseListVersion_3_28)
 
 -------------------------------------------------------------------------------
 -- Sorting
