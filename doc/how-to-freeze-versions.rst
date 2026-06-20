@@ -454,6 +454,18 @@ will use the exact same set of dependencies, regardless of any updates (even
 patches) that might get published for these dependencies in the meantime.
 Therefore, we have effectively "frozen" the dependencies in place.
 
+Project environments
+^^^^^^^^^^^^^^^^^^^^
+
+If a package is built in several environments, such as a development
+environment, a staging environment and a production environment, it may be
+necessary or desirable to ensure that the same dependency versions are selected
+in each environment. While this can be done with a **freeze file** there are
+limitations.
+
+Freezing limitations
+^^^^^^^^^^^^^^^^^^^^
+
 There's a lot to consider before deciding to add a ``cabal.project.freeze`` file
 to source control due to limitations of ``cabal freeze``.  A freeze is specific
 for a single Cabal dependency solver run within the current environment. A good
@@ -485,11 +497,3 @@ sense.
 
     Common configuration can be shared between projects by using project
     imports.
-
-Project environments
-^^^^^^^^^^^^^^^^^^^^
-
-If a package is built in several environments, such as a development
-environment, a staging environment and a production environment, it may be
-necessary or desirable to ensure that the same dependency versions are selected
-in each environment. This can be done with a **freeze file**.
