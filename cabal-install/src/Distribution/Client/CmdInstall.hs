@@ -1300,7 +1300,7 @@ getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile = do
           ( "The environment file "
               ++ envFile
               ++ " is unparsable. Libraries cannot be installed.\n"
-              ++ displayException parseError
+              ++ show parseError
           )
           >> return (False, [])
       else return (False, [])
