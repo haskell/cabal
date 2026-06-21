@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
@@ -99,6 +100,7 @@ data TestFlags = TestFlags
     testOptions :: [PathTemplate]
   }
   deriving (Show, Generic)
+  deriving (Semigroup, Monoid) via Generically TestFlags
 
 pattern TestCommonFlags
   :: Flag VerbosityFlags
@@ -275,9 +277,3 @@ testOptions' showOrParseArgs =
 
 emptyTestFlags :: TestFlags
 emptyTestFlags = mempty
-
-instance Monoid TestFlags where
-  mempty = gmempty
-
-instance Semigroup TestFlags where
-  (<>) = gmappend

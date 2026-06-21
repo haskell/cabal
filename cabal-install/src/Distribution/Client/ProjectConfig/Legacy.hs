@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -394,12 +395,7 @@ data LegacyProjectConfig = LegacyProjectConfig
   , legacySpecificConfig :: MapMappend PackageName LegacyPackageConfig
   }
   deriving (Show, Generic)
-
-instance Monoid LegacyProjectConfig where
-  mempty = gmempty
-
-instance Semigroup LegacyProjectConfig where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically LegacyProjectConfig
 
 data LegacyPackageConfig = LegacyPackageConfig
   { legacyConfigureFlags :: ConfigFlags
@@ -409,12 +405,7 @@ data LegacyPackageConfig = LegacyPackageConfig
   , legacyBenchmarkFlags :: BenchmarkFlags
   }
   deriving (Show, Generic)
-
-instance Monoid LegacyPackageConfig where
-  mempty = gmempty
-
-instance Semigroup LegacyPackageConfig where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically LegacyPackageConfig
 
 data LegacySharedConfig = LegacySharedConfig
   { legacyGlobalFlags :: GlobalFlags
@@ -426,12 +417,7 @@ data LegacySharedConfig = LegacySharedConfig
   , legacyMultiRepl :: Flag Bool
   }
   deriving (Show, Generic)
-
-instance Monoid LegacySharedConfig where
-  mempty = gmempty
-
-instance Semigroup LegacySharedConfig where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically LegacySharedConfig
 
 ------------------------------------------------------------------
 -- Converting from and to the legacy types

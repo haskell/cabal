@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | Handling project configuration, types.
@@ -156,6 +157,7 @@ data ProjectConfig = ProjectConfig
   , projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
   }
   deriving (Eq, Show, Generic)
+  deriving (Semigroup, Monoid) via Generically ProjectConfig
 
 -- | That part of the project configuration that only affects /how/ we build
 -- and not the /value/ of the things we build. This means this information
@@ -184,6 +186,7 @@ data ProjectConfigBuildOnly = ProjectConfigBuildOnly
   , projectConfigClientInstallFlags :: ClientInstallFlags
   }
   deriving (Eq, Show, Generic)
+  deriving (Semigroup, Monoid) via Generically ProjectConfigBuildOnly
 
 -- | Project configuration that is shared between all packages in the project.
 -- In particular this includes configuration that affects the solver.
@@ -242,6 +245,7 @@ data ProjectConfigShared = ProjectConfigShared
   -- projectConfigUpgradeDeps       :: Flag Bool
   }
   deriving (Eq, Show, Generic)
+  deriving (Semigroup, Monoid) via Generically ProjectConfigShared
 
 data ProjectFileParser
   = LegacyParser
@@ -344,6 +348,7 @@ data PackageConfig = PackageConfig
     packageConfigBenchmarkOptions :: [PathTemplate]
   }
   deriving (Eq, Show, Generic)
+  deriving (Semigroup, Monoid) via Generically PackageConfig
 
 instance Binary ProjectConfig
 instance Binary ProjectConfigBuildOnly
@@ -405,30 +410,6 @@ instance (Semigroup v, Ord k) => Semigroup (MapMappend k v) where
   MapMappend a <> MapMappend b = MapMappend (Map.unionWith (<>) a b)
 
 -- rather than Map.union which is the normal Map monoid instance
-
-instance Monoid ProjectConfig where
-  mempty = gmempty
-
-instance Semigroup ProjectConfig where
-  (<>) = gmappend
-
-instance Monoid ProjectConfigBuildOnly where
-  mempty = gmempty
-
-instance Semigroup ProjectConfigBuildOnly where
-  (<>) = gmappend
-
-instance Monoid ProjectConfigShared where
-  mempty = gmempty
-
-instance Semigroup ProjectConfigShared where
-  (<>) = gmappend
-
-instance Monoid PackageConfig where
-  mempty = gmempty
-
-instance Semigroup PackageConfig where
-  (<>) = gmappend
 
 ----------------------------------------
 -- Resolving configuration to settings

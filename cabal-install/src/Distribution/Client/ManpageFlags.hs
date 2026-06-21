@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 
 module Distribution.Client.ManpageFlags
   ( ManpageFlags (..)
@@ -17,12 +18,7 @@ data ManpageFlags = ManpageFlags
   , manpageRaw :: Flag Bool
   }
   deriving (Eq, Show, Generic)
-
-instance Monoid ManpageFlags where
-  mempty = gmempty
-
-instance Semigroup ManpageFlags where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically ManpageFlags
 
 defaultManpageFlags :: ManpageFlags
 defaultManpageFlags =

@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -156,6 +157,7 @@ data HaddockArgs = HaddockArgs
   -- ^ haddock's `--use-unicode` flag
   }
   deriving (Generic)
+  deriving (Semigroup, Monoid) via Generically HaddockArgs
 
 -- | The FilePath of a directory, it's a monoid under '(</>)'.
 newtype Directory = Dir {unDir' :: FilePath} deriving (Read, Show, Eq, Ord)
@@ -1638,12 +1640,6 @@ haddockToHscolour flags =
 
 -- ------------------------------------------------------------------------------
 -- Boilerplate Monoid instance.
-instance Monoid HaddockArgs where
-  mempty = gmempty
-
-instance Semigroup HaddockArgs where
-  (<>) = gmappend
-
 instance Monoid Directory where
   mempty = Dir "."
 

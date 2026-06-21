@@ -7,8 +7,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Simple.GHC
 -- Copyright   :  Isaac Jones 2003-2007
