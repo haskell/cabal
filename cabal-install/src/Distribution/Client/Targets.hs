@@ -513,10 +513,7 @@ disambiguatePackageTargets availablePkgIndex availableExtra targets =
 
     -- use any extra specific available packages to help us disambiguate
     packageNameEnv :: PackageNameEnv
-    packageNameEnv =
-      mappend
-        (indexPackageNameEnv availablePkgIndex)
-        (extraPackageNameEnv availableExtra)
+    packageNameEnv = indexPackageNameEnv availablePkgIndex <> extraPackageNameEnv availableExtra
 
 -- | Report problems to the user. That is, if there are any problems
 -- then raise an exception.
@@ -567,7 +564,6 @@ newtype PackageNameEnv = PackageNameEnv (PackageName -> [PackageName])
 
 instance Monoid PackageNameEnv where
   mempty = PackageNameEnv (const [])
-  mappend = (<>)
 
 instance Semigroup PackageNameEnv where
   PackageNameEnv lookupA <> PackageNameEnv lookupB =

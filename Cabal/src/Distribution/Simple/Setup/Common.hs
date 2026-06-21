@@ -102,7 +102,6 @@ instance Semigroup CommonSetupFlags where
 
 instance Monoid CommonSetupFlags where
   mempty = gmempty
-  mappend = (<>)
 
 defaultCommonSetupFlags :: CommonSetupFlags
 defaultCommonSetupFlags =

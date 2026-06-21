@@ -24,9 +24,9 @@ tests :: IO [TestTree]
 tests = do
   confFlags <- loadConfigOrSandboxConfig v defaultGlobalFlags
 
-  let confFlags' = savedConfigureFlags confFlags `mappend` compFlags
-      initFlags' = savedInitFlags confFlags `mappend` emptyFlags
-      globalFlags' = savedGlobalFlags confFlags `mappend` defaultGlobalFlags
+  let confFlags' = savedConfigureFlags confFlags <> compFlags
+      initFlags' = savedInitFlags confFlags <> emptyFlags
+      globalFlags' = savedGlobalFlags confFlags <> defaultGlobalFlags
 
   (comp, _, progdb) <- configCompilerAux' confFlags'
 

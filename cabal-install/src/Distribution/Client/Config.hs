@@ -280,7 +280,6 @@ data SavedConfig = SavedConfig
 
 instance Monoid SavedConfig where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup SavedConfig where
   a <> b =
@@ -302,7 +301,7 @@ instance Semigroup SavedConfig where
       , savedReplMulti = combinedSavedReplMulti
       }
     where
-      -- This is ugly, but necessary. If we're mappending two config files, we
+      -- This is ugly, but necessary. If we're combining two config files, we
       -- want the values of the *non-empty* list fields from the second one to
       -- \*override* the corresponding values from the first one. Default
       -- behaviour (concatenation) is confusing and makes some use cases (see
@@ -321,7 +320,7 @@ instance Semigroup SavedConfig where
       -- NB: the signature prevents us from using 'combine' on lists.
       combine' :: (SavedConfig -> flags) -> (flags -> Flag a) -> Flag a
       combine' field subfield =
-        (subfield . field $ a) `mappend` (subfield . field $ b)
+        subfield (field a) <> subfield (field b)
 
       combineMonoid
         :: Monoid mon
@@ -329,7 +328,7 @@ instance Semigroup SavedConfig where
         -> (flags -> mon)
         -> mon
       combineMonoid field subfield =
-        (subfield . field $ a) `mappend` (subfield . field $ b)
+        subfield (field a) <> subfield (field b)
 
       lastNonEmpty' :: (SavedConfig -> flags) -> (flags -> [a]) -> [a]
       lastNonEmpty' field subfield =
@@ -512,10 +511,9 @@ instance Semigroup SavedConfig where
           , configDebugInfo = combine configDebugInfo
           , configProgPrefix = combine configProgPrefix
           , configProgSuffix = combine configProgSuffix
-          , -- Parametrised by (Flag PathTemplate), so safe to use 'mappend'.
+          , -- Parametrised by (Flag PathTemplate), so safe to use '(<>)'.
             configInstallDirs =
-              (configInstallDirs . savedConfigureFlags $ a)
-                `mappend` (configInstallDirs . savedConfigureFlags $ b)
+              configInstallDirs (savedConfigureFlags a) <> configInstallDirs (savedConfigureFlags b)
           , configScratchDir = combine configScratchDir
           , -- TODO: NubListify
             configExtraLibDirs = lastNonEmpty configExtraLibDirs
@@ -584,15 +582,13 @@ instance Semigroup SavedConfig where
           combine = combine' savedConfigureExFlags
           lastNonEmpty = lastNonEmpty' savedConfigureExFlags
 
-      -- Parametrised by (Flag PathTemplate), so safe to use 'mappend'.
+      -- Parametrised by (Flag PathTemplate), so safe to use '(<>)'.
       combinedSavedUserInstallDirs =
-        savedUserInstallDirs a
-          `mappend` savedUserInstallDirs b
+        savedUserInstallDirs a <> savedUserInstallDirs b
 
-      -- Parametrised by (Flag PathTemplate), so safe to use 'mappend'.
+      -- Parametrised by (Flag PathTemplate), so safe to use '(<>)'.
       combinedSavedGlobalInstallDirs =
-        savedGlobalInstallDirs a
-          `mappend` savedGlobalInstallDirs b
+        savedGlobalInstallDirs a <> savedGlobalInstallDirs b
 
       combinedSavedUploadFlags =
         UploadFlags
@@ -964,7 +960,7 @@ loadConfig verbosity configFileFlag = do
 extendToEffectiveConfig :: SavedConfig -> IO SavedConfig
 extendToEffectiveConfig config = do
   base <- baseSavedConfig
-  let effective0 = base `mappend` config
+  let effective0 = base <> config
       globalFlags0 = savedGlobalFlags effective0
       effective =
         effective0
@@ -1074,7 +1070,7 @@ createDefaultConfigFile verbosity extraLines filePath = do
   initialConf <- initialSavedConfig
   extraConf <- parseExtraLines verbosity extraLines
   notice verbosity $ "Writing default configuration to " ++ filePath
-  writeConfigFile filePath commentConf (initialConf `mappend` extraConf)
+  writeConfigFile filePath commentConf (initialConf <> extraConf)
   return initialConf
 
 writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
@@ -1954,7 +1950,7 @@ userConfigDiff verbosity globalFlags extraLines = do
       M.unionWith
         combine
         (M.fromList . map justFst $ filterShow testConfig)
-        (M.fromList . map justSnd $ filterShow (userConfig `mappend` extraConfig))
+        (M.fromList . map justSnd $ filterShow (userConfig <> extraConfig))
   where
     justFst (a, b) = (a, (Just b, Nothing))
     justSnd (a, b) = (a, (Nothing, Just b))
@@ -2012,4 +2008,4 @@ userConfigUpdate verbosity globalFlags extraLines = do
   writeConfigFile
     cabalFile
     commentConf
-    (newConfig `mappend` userConfig `mappend` extraConfig)
+    (newConfig <> userConfig <> extraConfig)

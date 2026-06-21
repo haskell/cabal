@@ -61,7 +61,6 @@ emptyLibrary =
 -- libraries when `buildable: false`. This may cause problems.
 instance Monoid Library where
   mempty = emptyLibrary
-  mappend = (<>)
 
 instance Semigroup Library where
   a <> b =
@@ -75,7 +74,7 @@ instance Semigroup Library where
       , libBuildInfo = combine libBuildInfo
       }
     where
-      combine field = field a `mappend` field b
+      combine field = field a <> field b
 
 -- | Get all the module names from the library (exposed and internal modules)
 -- which are explicitly listed in the package description which would

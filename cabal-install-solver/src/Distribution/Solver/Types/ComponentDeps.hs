@@ -91,7 +91,6 @@ newtype ComponentDeps a = ComponentDeps { unComponentDeps :: Map Component a }
 
 instance Semigroup a => Monoid (ComponentDeps a) where
   mempty = ComponentDeps Map.empty
-  mappend = (<>)
 
 instance Semigroup a => Semigroup (ComponentDeps a) where
   ComponentDeps d <> ComponentDeps d' =
@@ -122,7 +121,7 @@ empty :: ComponentDeps a
 empty = ComponentDeps Map.empty
 
 fromList :: Monoid a => [ComponentDep a] -> ComponentDeps a
-fromList = ComponentDeps . Map.fromListWith mappend
+fromList = ComponentDeps . Map.fromListWith (<>)
 
 singleton :: Component -> a -> ComponentDeps a
 singleton comp = ComponentDeps . Map.singleton comp
@@ -131,7 +130,7 @@ insert :: Monoid a => Component -> a -> ComponentDeps a -> ComponentDeps a
 insert comp a = ComponentDeps . Map.alter aux comp . unComponentDeps
   where
     aux Nothing   = Just a
-    aux (Just a') = Just $ a `mappend` a'
+    aux (Just a') = Just $ a <> a'
 
 -- | Zip two 'ComponentDeps' together by 'Component', using 'mempty'
 -- as the neutral element when a 'Component' is present only in one.

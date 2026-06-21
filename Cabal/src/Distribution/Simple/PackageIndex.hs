@@ -157,11 +157,10 @@ type InstalledPackageIndex = PackageIndex IPI.InstalledPackageInfo
 
 instance Monoid (PackageIndex IPI.InstalledPackageInfo) where
   mempty = PackageIndex Map.empty Map.empty
-  mappend = (<>)
 
-  -- save one mappend with empty in the common case:
+  -- save one (<>) with empty in the common case:
   mconcat [] = mempty
-  mconcat xs = Prelude.foldr1 mappend xs
+  mconcat xs = Prelude.foldr1 (<>) xs
 
 instance Semigroup (PackageIndex IPI.InstalledPackageInfo) where
   (<>) = merge
@@ -276,7 +275,7 @@ merge (PackageIndex pids1 pnames1) (PackageIndex pids2 pnames2) =
 
 -- | Inserts a single package into the index.
 --
--- This is equivalent to (but slightly quicker than) using 'mappend' or
+-- This is equivalent to (but slightly quicker than) using '(<>)' or
 -- 'merge' with a singleton index.
 insert :: IPI.InstalledPackageInfo -> InstalledPackageIndex -> InstalledPackageIndex
 insert pkg (PackageIndex pids pnames) =

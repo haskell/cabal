@@ -116,7 +116,6 @@ instance Structured dir => Structured (InstallDirs dir)
 
 instance Monoid dir => Monoid (InstallDirs dir) where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup dir => Semigroup (InstallDirs dir) where
   (<>) = gmappend

@@ -174,7 +174,7 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
     -- 'buildHaskellModules'
     baseOpts way =
       Internal.componentGhcOptions (verbosityLevel verbosity) lbi bi clbi buildTargetDir
-        `mappend` mempty
+        <> mempty
           { ghcOptMode = toFlag GhcModeMake
           , -- Previously we didn't pass -no-link when building libs,
             -- but I think that could result in a bug (e.g. if a lib module is

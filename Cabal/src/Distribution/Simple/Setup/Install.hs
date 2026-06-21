@@ -178,7 +178,6 @@ emptyInstallFlags = mempty
 
 instance Monoid InstallFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup InstallFlags where
   (<>) = gmappend

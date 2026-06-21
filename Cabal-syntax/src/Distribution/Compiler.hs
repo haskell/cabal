@@ -164,7 +164,6 @@ instance Semigroup a => Semigroup (PerCompilerFlavor a) where
 
 instance Monoid a => Monoid (PerCompilerFlavor a) where
   mempty = PerCompilerFlavor mempty mempty
-  mappend = (<>)
 
 -- ------------------------------------------------------------
 

@@ -58,8 +58,8 @@ instance Foldable Condition where
   f `foldMap` Var c = f c
   _ `foldMap` Lit _ = mempty
   f `foldMap` CNot c = foldMap f c
-  f `foldMap` COr c d = foldMap f c `mappend` foldMap f d
-  f `foldMap` CAnd c d = foldMap f c `mappend` foldMap f d
+  f `foldMap` COr c d = foldMap f c <> foldMap f d
+  f `foldMap` CAnd c d = foldMap f c <> foldMap f d
 
 instance Traversable Condition where
   f `traverse` Var c = Var `fmap` f c
@@ -85,18 +85,17 @@ instance Monad Condition where
 
 instance Monoid (Condition a) where
   mempty = Lit False
-  mappend = (<>)
 
 instance Semigroup (Condition a) where
   (<>) = COr
 
 instance Alternative Condition where
   empty = mempty
-  (<|>) = mappend
+  (<|>) = (<>)
 
 instance MonadPlus Condition where
   mzero = mempty
-  mplus = mappend
+  mplus = (<>)
 
 instance Binary c => Binary (Condition c)
 instance Structured c => Structured (Condition c)

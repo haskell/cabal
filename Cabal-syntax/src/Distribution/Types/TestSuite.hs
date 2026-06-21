@@ -46,7 +46,6 @@ instance Monoid TestSuite where
       , testBuildInfo = mempty
       , testCodeGenerators = mempty
       }
-  mappend = (<>)
 
 instance Semigroup TestSuite where
   a <> b =
@@ -57,7 +56,7 @@ instance Semigroup TestSuite where
       , testCodeGenerators = combine testCodeGenerators
       }
     where
-      combine field = field a `mappend` field b
+      combine field = field a <> field b
 
 emptyTestSuite :: TestSuite
 emptyTestSuite = mempty

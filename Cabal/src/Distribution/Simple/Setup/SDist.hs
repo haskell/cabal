@@ -135,7 +135,6 @@ emptySDistFlags = mempty
 
 instance Monoid SDistFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup SDistFlags where
   (<>) = gmappend

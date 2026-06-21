@@ -205,7 +205,6 @@ instance Monoid BuildInfo where
       , targetBuildDepends = []
       , mixins = []
       }
-  mappend = (<>)
 
 instance Semigroup BuildInfo where
   a <> b =
@@ -260,7 +259,7 @@ instance Semigroup BuildInfo where
       , mixins = combine mixins
       }
     where
-      combine field = field a `mappend` field b
+      combine field = field a <> field b
       combineNub field = ordNub (combine field)
       combineMby field = field b `mplus` field a
 

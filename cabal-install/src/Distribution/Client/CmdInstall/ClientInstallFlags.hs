@@ -55,7 +55,6 @@ data ClientInstallFlags = ClientInstallFlags
 
 instance Monoid ClientInstallFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ClientInstallFlags where
   (<>) = gmappend

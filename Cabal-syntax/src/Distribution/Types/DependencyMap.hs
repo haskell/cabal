@@ -23,7 +23,6 @@ newtype DependencyMap = DependencyMap {unDependencyMap :: Map PackageName (Versi
 
 instance Monoid DependencyMap where
   mempty = DependencyMap Map.empty
-  mappend = (<>)
 
 instance Semigroup DependencyMap where
   (DependencyMap a) <> (DependencyMap b) =
