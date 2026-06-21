@@ -2365,7 +2365,6 @@ instance Alternative Match where
   (<|>) = matchPlus
 
 instance Monad Match where
-  return = pure
   NoMatch d ms >>= _ = NoMatch d ms
   Match m d xs >>= f =
     -- To understand this, it needs to be read in context with the

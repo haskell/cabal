@@ -330,7 +330,6 @@ instance Applicative PurePrompt where
       Right (a, s'') -> Right (f a, s'')
 
 instance Monad PurePrompt where
-  return = pure
   PurePrompt a >>= k = PurePrompt $ \s -> case a s of
     Left e -> Left e
     Right (a', s') -> runPromptState (k a') s'
