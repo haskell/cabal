@@ -1,0 +1,14 @@
+synopsis: Fixed build failure with absolute paths in `BuildInfo` `cSources`
+packages: Cabal
+prs: #12005
+issues: #11998
+significance: significant
+
+description: {
+
+Cabal no longer fails the build when hooks append absolute symbolic paths to `BuildInfo`'s `cSources` field.
+Previously, appending an absolute path would cause a build failure at the program link stage, because the implementation expected only relative paths.
+This conflicted with `BuildInfo`'s `cSources` type, which permits absolute paths.
+The generated cSources must be placed in the component's `autogen` directory obtained through `autogenComponentModulesDir`.
+
+}
