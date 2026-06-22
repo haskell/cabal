@@ -14,7 +14,6 @@
 - ignore: {name: "Use :"} # 30 hints
 - ignore: {name: "Use <$>"} # 83 hints
 - ignore: {name: "Use Down"} # 3 hints
-- ignore: {name: "Use bimap"} # 7 hints
 - ignore: {name: "Use camelCase"} # 92 hints
 - ignore: {name: "Use const"} # 36 hints
 - ignore: {name: "Use fst"} # 2 hints

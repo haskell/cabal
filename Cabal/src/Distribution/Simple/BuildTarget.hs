@@ -42,7 +42,7 @@ module Distribution.Simple.BuildTarget
   , reportBuildTargetProblems
   ) where
 
-import Data.Bifunctor (second)
+import Data.Bifunctor (bimap, second)
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -421,10 +421,9 @@ reportBuildTargetProblems verbosity problems = do
       dieWithException verbosity $
         AmbiguousBuildTarget $
           map
-            ( \(target, amb) ->
-                ( showUserBuildTarget target
-                , map (\(ut, bt) -> (showUserBuildTarget ut, showBuildTargetKind bt)) amb
-                )
+            ( bimap
+                showUserBuildTarget
+                (map (bimap showUserBuildTarget showBuildTargetKind))
             )
             targets
   where
