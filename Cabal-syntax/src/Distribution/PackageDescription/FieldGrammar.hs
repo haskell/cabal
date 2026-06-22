@@ -203,7 +203,7 @@ libraryFieldGrammar n =
   Library
     <$> pure Nothing
     <*> pure n
-    <*> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
+    <*> monoidalFieldAla' "exposed-modules" formatExposedModules L.exposedModules
     <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
     <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
       ^^^ availableSince CabalSpecV2_0 []

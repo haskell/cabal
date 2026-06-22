@@ -11,16 +11,5 @@ Cabal-version:       >=1.2
 
 Library
   hs-source-dirs:  src
-
-  buildable: True
-
-
-  bUiLd-DePeNdS:
-    -- bad comment
-    text
-     ,
-
-    -- good comment
-    base >  4
-
-    -- meow
+  Exposed-modules:     Data.Composition
+  Build-depends:       base >= 2 && < 5

@@ -31,7 +31,7 @@ libName :: Lens' (LibraryWith mod) LibraryName
 libName f s = fmap (\x -> s{T.libName = x}) (f (T.libName s))
 {-# INLINE libName #-}
 
-exposedModules :: Lens' (LibraryWith mod) [ModuleName]
+exposedModules :: Lens' (LibraryWith mod) (MonoidalFieldAla mod [ModuleName])
 exposedModules f s = fmap (\x -> s{T.exposedModules = x}) (f (T.exposedModules s))
 {-# INLINE exposedModules #-}
 

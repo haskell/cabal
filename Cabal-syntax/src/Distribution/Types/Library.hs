@@ -44,7 +44,7 @@ data LibraryWith (m :: ParsingPhase) = Library
   -- is bad for th exactprint job.
   -- ^ The extension point, saves exactprint details.
   , libName :: LibraryName
-  , exposedModules :: [ModuleName]
+  , exposedModules :: MonoidalFieldAla m [ModuleName]
   , reexportedModules :: [ModuleReexport]
   , signatures :: [ModuleName]
   -- ^ What sigs need implementations?
@@ -119,7 +119,7 @@ instance Semigroup (LibraryWith Conc) where
     Library
       { libExt = libExt a <|> libExt b
       , libName = combineLibraryName (libName a) (libName b)
-      , exposedModules = combine exposedModules
+      , exposedModules = exposedModules a <> exposedModules b
       , reexportedModules = reexportedModules a <> reexportedModules b
       , signatures = combine signatures
       , libExposed = libExposed a <> libExposed b -- so False propagates
