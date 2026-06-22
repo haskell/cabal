@@ -32,7 +32,7 @@ jobs:
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # runner.os isn't sufficient for binary compatible caches
       - name: Get runner OS/version for cache keys
