@@ -44,7 +44,7 @@ import Distribution.Parsec                         (Parsec (..), explicitEitherP
 import Distribution.Pretty                         (Pretty (..), prettyShow)
 import Distribution.Fields.Parser                  (readFields', readFieldsWithComments)
 import Distribution.Fields.ParseResult
-import Distribution.Fields.Pretty                  (PrettyFieldWith (..), exactShowFields, filterFields)
+import Distribution.Fields.Pretty                  (PrettyFieldWith (..), exactShowFields, filterFields, sortPrettyFields)
 import Distribution.FieldGrammar.Parsec            (ParsecFieldGrammar, parseFieldGrammar, fieldLinesToStream)
 import Distribution.FieldGrammar.Pretty            (prettyFieldGrammar)
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
@@ -449,10 +449,12 @@ smallCabalFileTest = testCase "smallCabalFile" $ do
   pPrint gpd
 
   let prettyFields = ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd
-      prettyFields' = filterFields prettyFields
+      prettyFields' = sortPrettyFields $ filterFields prettyFields
 
-  -- pPrint $ prettyFields'
-  putStrLn $ exactShowFields prettyFields'
+  pPrint $ prettyFields'
+  putStrLn $
+    replicate 80 '=' <> "\n" <>
+    exactShowFields prettyFields'
   where
     input = "tests" </> "ParserTests" </> fp
     fp = "smallCabalFile.cabal"

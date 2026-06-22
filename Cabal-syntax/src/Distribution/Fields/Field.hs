@@ -37,8 +37,6 @@ module Distribution.Fields.Field
   ) where
 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as B
-import qualified Data.Char as Char
 import Distribution.Compat.Prelude
 import Distribution.Pretty (showTokenStr)
 import Distribution.Utils.Generic (fromUTF8BS)

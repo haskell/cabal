@@ -18,6 +18,7 @@ module Distribution.Fields.Pretty
   , PrettyField
   , PrettyFieldWith (..)
   , filterFields
+  , sortPrettyFields
   , showFields
   , exactShowFields
   , showFields'
@@ -68,7 +69,6 @@ deriving instance Eq (PrettyFieldWith Conc)
 data PrettyFieldWith (mod :: ParsingPhase)
   = PrettyField (AttachPosition mod FieldName) (AttachPosition mod PP.Doc)
   | PrettySection (AttachPosition mod FieldName) [PP.Doc] [PrettyFieldWith mod]
-  | PrettyEmpty
 
 prettyFieldPosition :: PrettyFieldWith Conc -> Maybe Position
 prettyFieldPosition (PrettyField (pos, _) _) = Just pos
@@ -91,6 +91,19 @@ showFields :: (ann -> CommentPosition) -> [PrettyField] -> String
 showFields rann = showFields' rann (const id) 4
 
 -- | Only for the prototype.
+--   The printer's printing order depends on the order of 'Applicative' effects in the 'FieldGrammar' definition.
+sortPrettyFields :: [PrettyFieldWith Conc] -> [PrettyFieldWith Conc]
+sortPrettyFields (x : y : zs) =
+  case (compare `on` posOfFieldOrSection) x y of
+    GT -> y : sortPrettyFields (x : zs)
+    _ -> x : sortPrettyFields (y : zs)
+  where
+    posOfFieldOrSection = \case
+      PrettyField (p, _) _ -> p
+      PrettySection (p, _) _ _ -> p
+sortPrettyFields oneOrNothing = oneOrNothing
+
+-- | Only for the prototype.
 --   We use zeroPos (Position 0 0) as a marker for data that shouldn't be printed.
 --   This function filters them out.
 filterFields :: [PrettyFieldWith Conc] -> [PrettyFieldWith Conc]
@@ -102,7 +115,6 @@ filterFields = mapMaybe $ \field -> case field of
     let fields' = filterFields fields
     guard (not (null fields'))
     pure (PrettySection sname args fields')
-  PrettyEmpty -> Nothing
 
 exactShowFields :: [PrettyFieldWith Conc] -> String
 exactShowFields =
@@ -159,7 +171,6 @@ renderFields opts fields = flattenBlocks blocks
     maxNameLength !acc [] = acc
     maxNameLength !acc (PrettyField name _ : rest) = maxNameLength (max acc (BS.length name)) rest
     maxNameLength !acc (PrettySection{} : rest) = maxNameLength acc rest
-    maxNameLength !acc (PrettyEmpty : rest) = maxNameLength acc rest
 
 -- | Block of lines with flags for optional blank lines before and after
 data Block = Block
@@ -213,8 +224,6 @@ renderField opts@(Opts _ indent _) _ (PrettySection name args fields) =
     [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args]
       ++ map indent (renderFields opts fields)
   where
-
-renderField _ _ PrettyEmpty = Block NoMargin NoMargin mempty
 
 -------------------------------------------------------------------------------
 -- Transform from Parsec.Field
@@ -289,7 +298,6 @@ exactRenderPrettyField
   -> (PrettyFieldPositionContext, ExactDoc)
 exactRenderPrettyField ctx0@(_, lastFieldLine) field = case field of
   -- Absorb empty
-  PrettyEmpty -> (ctx0, mempty)
   PrettyField (pos, fieldName) fieldLines ->
     let ctx' :: PrettyFieldPositionContext
         fieldLines' :: ExactDoc

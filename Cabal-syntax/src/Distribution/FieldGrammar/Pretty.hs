@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -23,7 +24,6 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
-import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField, PrettyFieldWith (..))
 import Distribution.Parsec.Position
 import Distribution.Pretty (Pretty (..), showFreeText, showFreeTextV3)
@@ -36,7 +36,6 @@ import qualified Text.PrettyPrint as PP
 import Prelude ()
 
 import Data.Kind
-import Debug.Pretty.Simple
 
 import Distribution.FieldGrammar.Class
 
