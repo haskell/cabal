@@ -49,6 +49,7 @@ import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
 
 import qualified Data.ByteString as BS
+import Data.List (sortOn)
 
 -- | This type is used to discern when a comment block should go
 --   before or after a cabal-like file field, otherwise it would
@@ -93,15 +94,9 @@ showFields rann = showFields' rann (const id) 4
 -- | Only for the prototype.
 --   The printer's printing order depends on the order of 'Applicative' effects in the 'FieldGrammar' definition.
 sortPrettyFields :: [PrettyFieldWith Conc] -> [PrettyFieldWith Conc]
-sortPrettyFields (x : y : zs) =
-  case (compare `on` posOfFieldOrSection) x y of
-    GT -> y : sortPrettyFields (x : zs)
-    _ -> x : sortPrettyFields (y : zs)
-  where
-    posOfFieldOrSection = \case
-      PrettyField (p, _) _ -> p
-      PrettySection (p, _) _ _ -> p
-sortPrettyFields oneOrNothing = oneOrNothing
+sortPrettyFields = sortOn $ \case
+    PrettyField (p, _) _ -> p
+    PrettySection (p, _) _ _ -> p
 
 -- | Only for the prototype.
 --   We use zeroPos (Position 0 0) as a marker for data that shouldn't be printed.
