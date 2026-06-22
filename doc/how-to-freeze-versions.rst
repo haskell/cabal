@@ -98,15 +98,19 @@ on:
 For large projects with many packages, it would be a lot of work to keep all
 package dependency version ranges up to date if each package was independently
 maintained, especially using tight version ranges for dependencies in the
-packages. Here are some options for avoiding or setting the same version ranges
-in each package of a project with many packages:
+packages. For a dependency, we can avoid setting its version range in any
+package, or we can set the same version range in each package of a project.
 
 **Avoiding**
     Package-level version ranges can be avoided;
 
-    - by using a curated set of packages and versions and import these into the project, or
+    - by using a curated set of packages and versions, or
     - by specifying version constraints only in the ``cabal.project``.
 
+    Curated sets of version constrained packages, such as the ones supplied by
+    Stackage, are project-level configuration, ready-made to be imported by a
+    project.
+    
 **Setting**
     Package-level version ranges can be specified in one place and then copied
     to packages;
@@ -114,6 +118,17 @@ in each package of a project with many packages:
     - by using a package generator like `dhall-hpack-cabal <https://github.com/cabalism/hpack-dhall/blob/3d464cddea0aa0a7f268c45556e0daafa8ac06ff/hpack-dhall.cabal#L148>`_ with imports,
     - by using a package formatter with fragment pragmas, or
     - by using a bash script to replace or update version ranges in all package descriptions.
+
+If a project has many packages and these are all in-house and not published,
+then it will be easier to use the same version range for a dependency
+everywhere.  When only some packages of a project are published, and moreover
+when their publication times are staggered, it may not be possible to use the
+same version range for a dependency in all packages of a project. In this latter
+case we'll need to adjust the avoidance and shared setting techniques.  A
+project-level version range for a dependency will still work as long as it lies
+within (as long as it narrows) each package-level version range for the same
+dependency.  For package-level generators, formatters or scripts, you may need
+to use more than one set of imports, fragment pragmas or scripts.
 
 .. _version-constraints:
 
