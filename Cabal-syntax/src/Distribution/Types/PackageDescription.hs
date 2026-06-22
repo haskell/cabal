@@ -118,10 +118,10 @@ type PackageDescription = PackageDescriptionWith Abst
 data PackageDescriptionWith (mod :: ParsingPhase) = PackageDescription
   { -- the following are required by all packages:
 
-    specVersion :: AnnotateWith Positions mod CabalSpecVersion
+    specVersion :: OptionalFieldAla mod CabalSpecVersion
   -- ^ The version of the Cabal spec that this package description uses.
   , package :: PackageIdentifierWith mod
-  , licenseRaw :: Either SPDX.License License
+  , licenseRaw ::  OptionalFieldAla mod (Either SPDX.License License)
   , licenseFiles :: [RelativePath Pkg File]
   , copyright :: !ShortText
   , maintainer :: !ShortText
@@ -267,9 +267,9 @@ emptyPackageDescriptionAnn =
         PackageIdentifier
           (Positions Nothing zeroPos zeroPos, "name", mkPackageName "")
           (Positions Nothing zeroPos zeroPos, "version", nullVersion)
-    , licenseRaw = Right UnspecifiedLicense -- TODO:
+    , licenseRaw = (Positions Nothing zeroPos zeroPos, "license", Right UnspecifiedLicense)
     , licenseFiles = []
-    , specVersion = Ann IsInserted CabalSpecV1_0
+    , specVersion = (Positions Nothing zeroPos zeroPos, "version", CabalSpecV1_0)
     , buildTypeRaw = Nothing
     , copyright = mempty
     , maintainer = mempty
@@ -280,7 +280,7 @@ emptyPackageDescriptionAnn =
     , pkgUrl = mempty
     , bugReports = mempty
     , sourceRepos = []
-    , synopsis = (Positions Nothing zeroPos zeroPos, "", "")
+    , synopsis = (Positions Nothing zeroPos zeroPos, "synopsis", "")
     , description = mempty
     , category = mempty
     , customFieldsPD = []

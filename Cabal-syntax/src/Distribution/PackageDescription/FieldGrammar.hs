@@ -133,7 +133,7 @@ packageDescriptionFieldGrammar =
   PackageDescription
     <$> optionalFieldDefAla' "cabal-version" SpecVersion L.specVersion CabalSpecV1_0
     <*> blurFieldGrammar L.package packageIdentifierGrammar
-    <*> optionalFieldDefAla "license" SpecLicense L.licenseRaw (Left SPDX.NONE)
+    <*> optionalFieldDefAla' "license" SpecLicense L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar
     <*> freeTextFieldDefST "copyright" L.copyright
     <*> freeTextFieldDefST "maintainer" L.maintainer

@@ -250,12 +250,8 @@ instance FieldGrammarWith Conc PrettyCtx PrettyFieldGrammarWith where
     where
       -- We absorb fields that have no position for the prototype
       pp v s =
-        let Ann t u :: Ann Positions Doc = (\u -> prettyCtxVersioned v (mempty, pack' _pack u)) <$> x
-         in case t of
-              IsInserted -> mempty
-              HasTrivia pos -> ppFieldPos fn [(pos, u)]
-              -- TODO(leana8959): there shouldn't be any other cases
-              _ -> error "unreachable, bad model"
+        let (poss, casedName, d) = prettyCtxVersioned v . (mempty,) . pack' _pack <$> x
+        in  ppFieldPos casedName [(poss, d)]
         where
           x = aview l s
 

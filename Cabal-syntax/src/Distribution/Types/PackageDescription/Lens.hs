@@ -39,13 +39,12 @@ import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.PackageDescription as T
 
 import Distribution.Types.Annotation
-import Distribution.Types.Trivia
 
 package :: Lens' (PackageDescriptionWith mod) (PackageIdentifierWith mod)
 package f s = fmap (\x -> s{T.package = x}) (f (T.package s))
 {-# INLINE package #-}
 
-licenseRaw :: Lens' (PackageDescriptionWith mod) (Either SPDX.License License)
+licenseRaw :: Lens' (PackageDescriptionWith mod) (OptionalFieldAla mod (Either SPDX.License License))
 licenseRaw f s = fmap (\x -> s{T.licenseRaw = x}) (f (T.licenseRaw s))
 {-# INLINE licenseRaw #-}
 
@@ -105,7 +104,7 @@ customFieldsPD :: Lens' (PackageDescriptionWith mod) [(String, String)]
 customFieldsPD f s = fmap (\x -> s{T.customFieldsPD = x}) (f (T.customFieldsPD s))
 {-# INLINE customFieldsPD #-}
 
-specVersion :: Lens' (PackageDescriptionWith mod) (AnnotateWith Positions mod CabalSpecVersion)
+specVersion :: Lens' (PackageDescriptionWith mod) (OptionalFieldAla mod CabalSpecVersion)
 specVersion f s = fmap (\x -> s{T.specVersion = x}) (f (T.specVersion s))
 {-# INLINE specVersion #-}
 

@@ -48,4 +48,6 @@ type MonoidalFieldAla (m :: ParsingPhase) (a :: Type) =
 
 type UniqueField (m :: ParsingPhase) (a :: Type) = IfConc m ((,,) Positions BS.ByteString) a
 
+type OptionalFieldAla (m :: ParsingPhase) (a :: Type) = IfConc m ((,,) Positions BS.ByteString) a
+
 type FreeTextFieldDefST (m :: ParsingPhase) (a :: Type) = IfConc m ((,,) Positions BS.ByteString) a

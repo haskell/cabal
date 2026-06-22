@@ -64,7 +64,6 @@ import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 import qualified Distribution.PackageDescription.FieldGrammar as FG
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
-import Distribution.Types.Trivia
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
@@ -91,7 +90,8 @@ showGenericPackageDescriptionAnn gpd =
     filterFields $
       ppGenericPackageDescriptionAnn v gpd
   where
-    v = unAnn $ specVersion $ packageDescription gpd
+    trd (_, _, x) = x
+    v = trd $ specVersion $ packageDescription gpd
 
 -- | Convert a generic package description to 'PrettyField's.
 ppGenericPackageDescription :: CabalSpecVersion -> GenericPackageDescription -> [PrettyField]
