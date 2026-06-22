@@ -144,7 +144,7 @@ packageDescriptionFieldGrammar =
     <*> freeTextFieldDefST "package-url" L.pkgUrl
     <*> freeTextFieldDefST "bug-reports" L.bugReports
     <*> pure [] -- source-repos are stanza
-    <*> freeTextFieldDefST "synopsis" L.synopsis
+    <*> freeTextFieldDefST' "synopsis" L.synopsis
     <*> freeTextFieldDefST "description" L.description
     <*> freeTextFieldDefST "category" L.category
     <*> prefixedFields "x-" L.customFieldsPD

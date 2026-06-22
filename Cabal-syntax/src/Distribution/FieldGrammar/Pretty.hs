@@ -39,6 +39,7 @@ import Data.Kind
 
 import Distribution.FieldGrammar.Class
 import qualified Data.ByteString as BS
+import Distribution.Utils.ShortText (fromShortText)
 
 type PrettyFieldGrammar = PrettyFieldGrammarWith Abst
 
@@ -277,6 +278,15 @@ instance FieldGrammarWith Conc PrettyCtx PrettyFieldGrammarWith where
          in ppFieldPos casedName [(poss, d)]
         where
           x = aview l s
+  freeTextFieldDefST' fn l = PrettyFG pp
+    where
+      pp v s =
+        let showFT
+              | v >= CabalSpecV3_0 = showFreeTextV3 . fromShortText
+              | otherwise = showFreeText . fromShortText
+
+            (poss, casedName, d) = showFT <$> aview l s
+        in  ppFieldPos casedName [(poss, d)]
 
 ppField :: FieldName -> Doc -> [PrettyField]
 ppField name fielddoc

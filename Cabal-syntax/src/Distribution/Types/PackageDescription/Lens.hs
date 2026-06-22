@@ -89,7 +89,7 @@ sourceRepos :: Lens' (PackageDescriptionWith mod) [SourceRepo]
 sourceRepos f s = fmap (\x -> s{T.sourceRepos = x}) (f (T.sourceRepos s))
 {-# INLINE sourceRepos #-}
 
-synopsis :: Lens' (PackageDescriptionWith mod) ShortText
+synopsis :: Lens' (PackageDescriptionWith mod) (FreeTextFieldDefST mod ShortText)
 synopsis f s = fmap (\x -> s{T.synopsis = x}) (f (T.synopsis s))
 {-# INLINE synopsis #-}
 

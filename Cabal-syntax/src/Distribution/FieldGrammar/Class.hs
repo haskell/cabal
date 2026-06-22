@@ -172,6 +172,13 @@ class
     -- ^ lens into the field
     -> g m s ShortText
 
+  -- | @since 3.2.0.0
+  freeTextFieldDefST'
+    :: FieldName
+    -> ALens' s (FreeTextFieldDefST m ShortText)
+    -- ^ lens into the field
+    -> g m s (FreeTextFieldDefST m ShortText)
+
   -- | Monoidal field.
   --
   -- Values are combined with 'mappend'.

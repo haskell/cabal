@@ -109,6 +109,7 @@ import Distribution.Types.Trivia
 import Data.Kind
 
 import Distribution.Types.Annotation
+import qualified Distribution.Utils.ShortText as ST
 
 -------------------------------------------------------------------------------
 -- Auxiliary types
@@ -723,6 +724,25 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
       parseOne v (extractCommentsField->(cmts, casedName, MkNamelessField pos fls)) = do
         (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition (parsec @b)) v fls
         pure (Positions Nothing pos flPos, casedName, unpack' _pack x)
+
+  freeTextFieldDefST' fn _ = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Map FieldName [NamelessField FieldAnn FieldLineAnn] -> ParseResult src (Positions, BS.ByteString, ST.ShortText)
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure (Positions Nothing zeroPos zeroPos, "", "")
+        Just [] -> pure (Positions Nothing zeroPos zeroPos, "", "")
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+
+      parseOne :: CabalSpecVersion -> NamelessField FieldAnn FieldLineAnn -> ParseResult src (Positions, BS.ByteString, ST.ShortText)
+      parseOne v (extractCommentsField->(cmts, casedName, MkNamelessField pos fls)) = case fls of
+        [] -> pure (Positions Nothing zeroPos zeroPos, casedName, "")
+        [FieldLine flPos bs] -> pure (Positions Nothing pos flPos, casedName, ShortText.unsafeFromUTF8BS bs)
+        (FieldLine flPos _ : _)
+          | v >= freeTextIgnoreDotlineVers -> pure (Positions Nothing pos flPos, casedName, ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
+          | otherwise -> pure (Positions Nothing pos flPos, casedName, ShortText.toShortText $ fieldlinesToFreeText fls)
 
 -------------------------------------------------------------------------------
 -- Parsec

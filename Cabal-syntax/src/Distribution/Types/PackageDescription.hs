@@ -132,7 +132,7 @@ data PackageDescriptionWith (mod :: ParsingPhase) = PackageDescription
   , pkgUrl :: !ShortText
   , bugReports :: !ShortText
   , sourceRepos :: [SourceRepo]
-  , synopsis :: !ShortText
+  , synopsis :: !(FreeTextFieldDefST mod ShortText)
   -- ^ A one-line summary of this package
   , description :: !ShortText
   -- ^ A more verbose description of this package
@@ -280,7 +280,7 @@ emptyPackageDescriptionAnn =
     , pkgUrl = mempty
     , bugReports = mempty
     , sourceRepos = []
-    , synopsis = mempty
+    , synopsis = (Positions Nothing zeroPos zeroPos, "", "")
     , description = mempty
     , category = mempty
     , customFieldsPD = []
