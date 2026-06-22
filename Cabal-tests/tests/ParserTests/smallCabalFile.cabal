@@ -5,6 +5,7 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Dan Burton
 Maintainer:          danburton.email@gmail.com
+Category:            Data
 
 cabal-version: >=1.2
 

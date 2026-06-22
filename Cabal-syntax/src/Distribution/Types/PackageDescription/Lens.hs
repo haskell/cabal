@@ -96,7 +96,7 @@ description :: Lens' (PackageDescriptionWith mod) ShortText
 description f s = fmap (\x -> s{T.description = x}) (f (T.description s))
 {-# INLINE description #-}
 
-category :: Lens' (PackageDescriptionWith mod) ShortText
+category :: Lens' (PackageDescriptionWith mod) (FreeTextFieldDefST mod ShortText)
 category f s = fmap (\x -> s{T.category = x}) (f (T.category s))
 {-# INLINE category #-}
 

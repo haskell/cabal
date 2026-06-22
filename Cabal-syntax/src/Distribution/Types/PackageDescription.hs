@@ -136,7 +136,7 @@ data PackageDescriptionWith (mod :: ParsingPhase) = PackageDescription
   -- ^ A one-line summary of this package
   , description :: !ShortText
   -- ^ A more verbose description of this package
-  , category :: !ShortText
+  , category :: !(FreeTextFieldDefST mod ShortText)
   , customFieldsPD :: [(String, String)]
   -- ^ Custom fields starting
   --  with x-, stored in a
@@ -282,7 +282,7 @@ emptyPackageDescriptionAnn =
     , sourceRepos = []
     , synopsis = (Positions Nothing zeroPos zeroPos, "synopsis", "")
     , description = mempty
-    , category = mempty
+    , category = (Positions Nothing zeroPos zeroPos, "category", mempty)
     , customFieldsPD = []
     , setupBuildInfo = Nothing
     , library = Nothing

@@ -146,7 +146,7 @@ packageDescriptionFieldGrammar =
     <*> pure [] -- source-repos are stanza
     <*> freeTextFieldDefST' "synopsis" L.synopsis
     <*> freeTextFieldDefST "description" L.description
-    <*> freeTextFieldDefST "category" L.category
+    <*> freeTextFieldDefST' "category" L.category
     <*> prefixedFields "x-" L.customFieldsPD
     <*> optionalField "build-type" L.buildTypeRaw
     <*> pure Nothing -- custom-setup
