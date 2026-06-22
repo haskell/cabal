@@ -334,7 +334,7 @@ haddock_setupHooks
           pkg_descr
           lbi
           suffixes
-          (defaultHscolourFlags `mappend` haddockToHscolour flags)
+          (defaultHscolourFlags <> haddockToHscolour flags)
 
     targets <- readTargetInfos verbosity pkg_descr lbi (haddockTargets flags)
 
@@ -1640,14 +1640,12 @@ haddockToHscolour flags =
 -- Boilerplate Monoid instance.
 instance Monoid HaddockArgs where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup HaddockArgs where
   (<>) = gmappend
 
 instance Monoid Directory where
   mempty = Dir "."
-  mappend = (<>)
 
 instance Semigroup Directory where
   Dir m <> Dir n = Dir $ m </> n

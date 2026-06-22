@@ -42,4 +42,3 @@ instance Semigroup ExecutableScope where
 -- | 'mempty' = 'ExecutablePublic'
 instance Monoid ExecutableScope where
   mempty = ExecutablePublic
-  mappend = (<>)

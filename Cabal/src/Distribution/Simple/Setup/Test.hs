@@ -83,7 +83,6 @@ instance Parsec TestShowDetails where
 -- TODO: do we need this instance?
 instance Monoid TestShowDetails where
   mempty = Never
-  mappend = (<>)
 
 instance Semigroup TestShowDetails where
   a <> b = max a b
@@ -279,7 +278,6 @@ emptyTestFlags = mempty
 
 instance Monoid TestFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup TestFlags where
   (<>) = gmappend

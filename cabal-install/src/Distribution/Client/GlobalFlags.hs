@@ -121,7 +121,6 @@ defaultGlobalFlags =
 
 instance Monoid GlobalFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup GlobalFlags where
   (<>) = gmappend

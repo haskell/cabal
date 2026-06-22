@@ -20,7 +20,6 @@ data ManpageFlags = ManpageFlags
 
 instance Monoid ManpageFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ManpageFlags where
   (<>) = gmappend

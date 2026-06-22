@@ -1970,7 +1970,7 @@ testBuildKeepGoing :: ProjectConfig -> Assertion
 testBuildKeepGoing config = do
   -- P is expected to fail, Q does not depend on P but without
   -- parallel build and without keep-going then we don't build Q yet.
-  (plan1, res1) <- executePlan =<< planProject testdir (config `mappend` keepGoing False)
+  (plan1, res1) <- executePlan =<< planProject testdir (config <> keepGoing False)
   (_, failure1) <- expectPackageFailed plan1 res1 "p-0.1"
   expectBuildFailed failure1
   _ <- expectPackageConfigured plan1 res1 "q-0.1"
@@ -1978,7 +1978,7 @@ testBuildKeepGoing config = do
   -- With keep-going then we should go on to successfully build Q
   (plan2, res2) <-
     executePlan
-      =<< planProject testdir (config `mappend` keepGoing True)
+      =<< planProject testdir (config <> keepGoing True)
   (_, failure2) <- expectPackageFailed plan2 res2 "p-0.1"
   expectBuildFailed failure2
   _ <- expectPackageInstalled plan2 res2 "q-0.1"

@@ -173,8 +173,8 @@ linkOrLoadComponent
               -- TODO: The repl doesn't use the runtime paths from linkerOpts
               -- (ghcOptRPaths), which looks like a bug. After the refactor we
               -- can fix this.
-              `mappend` linkerOpts mempty
-              `mappend` mempty
+              <> linkerOpts mempty
+              <> mempty
                 { ghcOptMode = toFlag GhcModeInteractive
                 , ghcOptOptimisation = toFlag GhcNoOptimisation
                 }
@@ -463,8 +463,8 @@ linkExecutable linkerOpts (way, buildOpts) targetDir targetName runGhcProg lbi =
   let baseOpts = buildOpts way
       linkOpts =
         baseOpts
-          `mappend` linkerOpts
-          `mappend` mempty
+          <> linkerOpts
+          <> mempty
             { -- If there are no input Haskell files we pass -no-hs-main, and
               -- assume there is a main function in another non-haskell object
               ghcOptLinkNoHsMain = toFlag (ghcOptInputFiles baseOpts == mempty && ghcOptInputScripts baseOpts == mempty)
@@ -528,9 +528,9 @@ linkFLib flib bi lbi linkerOpts (way, buildOpts) targetDir runGhcProg = do
     linkOpts = case foreignLibType flib of
       ForeignLibNativeShared ->
         buildOpts way
-          `mappend` linkerOpts
-          `mappend` rtsLinkOpts
-          `mappend` mempty
+          <> linkerOpts
+          <> rtsLinkOpts
+          <> mempty
             { ghcOptLinkNoHsMain = toFlag True
             , ghcOptShared = toFlag True
             , ghcOptFPic = toFlag True

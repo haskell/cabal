@@ -47,7 +47,6 @@ instance Semigroup (Check a) where
 
 instance Monoid (Check a) where
   mempty = Check $ \_ a -> return (mempty, a)
-  mappend = (<>)
 
 -- | Re-configure the package in the current directory if needed. Deciding
 -- when to reconfigure and with which options is convoluted:

@@ -48,7 +48,6 @@ snoc xs x = xs <> singleton x
 
 instance Monoid (DList a) where
   mempty = empty
-  mappend = (<>)
 
 instance Semigroup (DList a) where
   DList a <> DList b = DList (a . b)

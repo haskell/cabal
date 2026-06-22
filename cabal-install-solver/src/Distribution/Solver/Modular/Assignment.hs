@@ -68,12 +68,12 @@ toCPs (A pa fa sa) rdm =
     -- Determine the flags per package, by walking over and regrouping the
     -- complete flag assignment by package.
     fapp :: Map QPN FlagAssignment
-    fapp = M.fromListWith mappend $
+    fapp = M.fromListWith (<>) $
            L.map (\ (FN qpn fn, b) -> (qpn, mkFlagAssignment [(fn, b)])) $
            M.toList fa
     -- Stanzas per package.
     sapp :: Map QPN OptionalStanzaSet
-    sapp = M.fromListWith mappend
+    sapp = M.fromListWith (<>)
          $ L.map (\ (SN qpn sn, b) -> (qpn, if b then optStanzaSetSingleton sn else mempty))
          $ M.toList sa
     -- Dependencies per package.

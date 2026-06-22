@@ -43,7 +43,6 @@ instance Monoid Executable where
       , exeScope = mempty
       , buildInfo = mempty
       }
-  mappend = (<>)
 
 instance Semigroup Executable where
   a <> b =
@@ -54,7 +53,7 @@ instance Semigroup Executable where
       , buildInfo = combine buildInfo
       }
     where
-      combine field = field a `mappend` field b
+      combine field = field a <> field b
 
 emptyExecutable :: Executable
 emptyExecutable = mempty

@@ -178,7 +178,6 @@ emptyBuildFlags = mempty
 
 instance Monoid BuildFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup BuildFlags where
   (<>) = gmappend

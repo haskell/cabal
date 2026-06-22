@@ -47,4 +47,3 @@ instance Semigroup LibraryVisibility where
 
 instance Monoid LibraryVisibility where
   mempty = LibraryVisibilityPrivate
-  mappend = (<>)

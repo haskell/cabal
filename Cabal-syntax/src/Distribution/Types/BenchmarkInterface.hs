@@ -35,7 +35,6 @@ instance NFData BenchmarkInterface
 
 instance Monoid BenchmarkInterface where
   mempty = BenchmarkUnsupported (BenchmarkTypeUnknown mempty nullVersion)
-  mappend = (<>)
 
 instance Semigroup BenchmarkInterface where
   a <> (BenchmarkUnsupported _) = a
