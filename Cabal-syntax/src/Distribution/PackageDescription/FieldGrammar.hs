@@ -110,6 +110,7 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
+import Distribution.FieldGrammar.Class (optionalField')
 
 -------------------------------------------------------------------------------
 -- PackageDescription
@@ -148,7 +149,7 @@ packageDescriptionFieldGrammar =
     <*> freeTextFieldDefST "description" L.description
     <*> freeTextFieldDefST' "category" L.category
     <*> prefixedFields "x-" L.customFieldsPD
-    <*> optionalField "build-type" L.buildTypeRaw
+    <*> optionalField' @mod @c @g @_ @BuildType "build-type" L.buildTypeRaw
     <*> pure Nothing -- custom-setup
     -- components
     <*> pure Nothing -- lib

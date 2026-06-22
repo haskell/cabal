@@ -17,6 +17,7 @@ module Distribution.FieldGrammar.Class
   , uniqueField
   , uniqueField'
   , optionalField
+  , optionalField'
   , optionalFieldDef
   , monoidalField
   , defaultFreeTextFieldDefST
@@ -116,6 +117,17 @@ class
     -> ALens' s (Maybe a)
     -- ^ lens into the field
     -> g m s (Maybe a)
+
+  -- | Optional field.
+  optionalFieldAla'
+    :: (c b, Newtype a b)
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'pack'
+    -> ALens' s (OptionalFieldAla m (Maybe a))
+    -- ^ lens into the field
+    -> g m s (OptionalFieldAla m (Maybe a))
 
   -- | Optional field with default value.
   optionalFieldDefAla
@@ -297,6 +309,17 @@ optionalField
   -- ^ lens into the field
   -> g m s (Maybe a)
 optionalField fn l = optionalFieldAla fn Identity l
+
+-- | Field which can be defined at most once.
+optionalField'
+  :: forall m c g s a
+   . (FieldGrammarWith m c g, c (Identity a))
+  => FieldName
+  -- ^ field name
+  -> ALens' s (OptionalFieldAla m (Maybe a))
+  -- ^ lens into the field
+  -> g m s (OptionalFieldAla m (Maybe a))
+optionalField' fn l = optionalFieldAla' @m @c @g @(Identity a) fn Identity l
 
 -- | Optional field with default value.
 optionalFieldDef

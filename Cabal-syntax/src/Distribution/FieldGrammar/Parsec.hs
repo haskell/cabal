@@ -744,6 +744,21 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
           | v >= freeTextIgnoreDotlineVers -> pure (Positions Nothing pos flPos, casedName, ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
           | otherwise -> pure (Positions Nothing pos flPos, casedName, ShortText.toShortText $ fieldlinesToFreeText fls)
 
+
+  optionalFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure (Positions Nothing zeroPos zeroPos, fn, Nothing)
+        Just [] -> pure (Positions Nothing zeroPos zeroPos, fn, Nothing)
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+
+      parseOne v (extractCommentsField->(cmts, casedName, MkNamelessField faPos fls)) = case fls of
+        [] -> pure (Positions Nothing faPos zeroPos, casedName, Nothing)
+        (FieldLine pos _ : _) -> (Positions Nothing faPos pos, casedName,) . Just . unpack' _pack <$> runFieldParser pos parsec v fls
+
 -------------------------------------------------------------------------------
 -- Parsec
 -------------------------------------------------------------------------------

@@ -108,7 +108,7 @@ specVersion :: Lens' (PackageDescriptionWith mod) (OptionalFieldAla mod CabalSpe
 specVersion f s = fmap (\x -> s{T.specVersion = x}) (f (T.specVersion s))
 {-# INLINE specVersion #-}
 
-buildTypeRaw :: Lens' (PackageDescriptionWith mod) (Maybe BuildType)
+buildTypeRaw :: Lens' (PackageDescriptionWith mod) (OptionalFieldAla mod (Maybe BuildType))
 buildTypeRaw f s = fmap (\x -> s{T.buildTypeRaw = x}) (f (T.buildTypeRaw s))
 {-# INLINE buildTypeRaw #-}
 

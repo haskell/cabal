@@ -141,7 +141,7 @@ data PackageDescriptionWith (mod :: ParsingPhase) = PackageDescription
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , buildTypeRaw :: Maybe BuildType
+  , buildTypeRaw :: OptionalFieldAla mod (Maybe BuildType)
   -- ^ The original @build-type@ value as parsed from the
   -- @.cabal@ file without defaulting. See also 'buildType'.
   --
@@ -270,7 +270,7 @@ emptyPackageDescriptionAnn =
     , licenseRaw = (Positions Nothing zeroPos zeroPos, "license", Right UnspecifiedLicense)
     , licenseFiles = []
     , specVersion = (Positions Nothing zeroPos zeroPos, "version", CabalSpecV1_0)
-    , buildTypeRaw = Nothing
+    , buildTypeRaw = (Positions Nothing zeroPos zeroPos, "build-type", Nothing)
     , copyright = mempty
     , maintainer = (Positions Nothing zeroPos zeroPos, "maintainer", mempty)
     , author = (Positions Nothing zeroPos zeroPos, "author", mempty)

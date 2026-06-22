@@ -284,6 +284,15 @@ instance FieldGrammarWith Conc PrettyCtx PrettyFieldGrammarWith where
             (poss, casedName, d) = showFT <$> aview l s
         in  ppFieldPos casedName [(poss, d)]
 
+  optionalFieldAla' fn _pack l = PrettyFG pp
+    where
+      pp v s =
+       let (poss, casedName, md) = fmap (prettyCtxVersioned v . (mempty,) . pack' _pack) <$> aview l s
+       in  case md of
+          Nothing -> mempty
+          Just d -> ppFieldPos casedName [(poss, d)]
+
+
 ppField :: FieldName -> Doc -> [PrettyField]
 ppField name fielddoc
   | PP.isEmpty fielddoc = []

@@ -6,6 +6,7 @@ License-file:        LICENSE
 Author:              Dan Burton
 Maintainer:          danburton.email@gmail.com
 Category:            Data
+Build-type:          Simple
 
 cabal-version: >=1.2
 
