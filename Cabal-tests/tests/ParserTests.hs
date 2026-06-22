@@ -451,10 +451,18 @@ smallCabalFileTest = testCase "smallCabalFile" $ do
   let prettyFields = ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd
       prettyFields' = sortPrettyFields $ filterFields prettyFields
 
-  pPrint $ prettyFields'
+  pPrint prettyFields'
+
+  let reprinted = exactShowFields prettyFields' <> "\n" -- Why is there a trailing line
   putStrLn $
     replicate 80 '=' <> "\n" <>
-    exactShowFields prettyFields'
+    reprinted
+
+  unless (BS8.unpack contents == reprinted) $
+    assertFailure $ unlines
+        [ "re-parsed doesn't match"
+        , show $ ansiWlEditExpr $ ediff (BS8.unpack contents) reprinted
+        ]
   where
     input = "tests" </> "ParserTests" </> fp
     fp = "smallCabalFile.cabal"
