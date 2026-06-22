@@ -124,7 +124,7 @@ packageDescriptionFieldGrammar
      , c (List FSep TestedWith (CompilerFlavor, VersionRange))
      , c (List VCat (RelativePathNT DataDir File) (RelativePath DataDir File))
      , c (List VCat (RelativePathNT Pkg File) (RelativePath Pkg File))
-     , c (List FSep (RelativePathNT Pkg File) (RelativePath Pkg File))
+     -- , c (List FSep (RelativePathNT Pkg File) (RelativePath Pkg File))
      , c CompatLicenseFile
      , c CompatDataDir
      )
@@ -172,14 +172,17 @@ packageDescriptionFieldGrammar =
         <$> uniqueField' @mod @c @g @_ @PackageName "name" (L.pkgName @mod)
         <*> uniqueField' @mod @c @g @_ @Version "version" L.pkgVersion
 
+    -- We are cheating here, this is for the prototype.
+    -- We only parse license-file and not licenses-files
     licenseFilesGrammar =
-      (++)
-        -- TODO: neither field is deprecated
-        -- should we pretty print license-file if there's single license file
-        -- and license-files when more
-        <$> monoidalFieldAla "license-file" CompatLicenseFile L.licenseFiles
-        <*> monoidalFieldAla "license-files" (alaList' FSep RelativePathNT) L.licenseFiles
-          ^^^ hiddenField
+        monoidalFieldAla' "license-file" CompatLicenseFile L.licenseFiles
+      -- (++)
+      --   -- TODO: neither field is deprecated
+      --   -- should we pretty print license-file if there's single license file
+      --   -- and license-files when more
+      --   <$> monoidalFieldAla "license-file" CompatLicenseFile L.licenseFiles
+      --   <*> monoidalFieldAla "license-files" (alaList' FSep RelativePathNT) L.licenseFiles
+      --     ^^^ hiddenField
 
 -------------------------------------------------------------------------------
 -- Library

@@ -122,7 +122,7 @@ data PackageDescriptionWith (mod :: ParsingPhase) = PackageDescription
   -- ^ The version of the Cabal spec that this package description uses.
   , package :: PackageIdentifierWith mod
   , licenseRaw ::  OptionalFieldAla mod (Either SPDX.License License)
-  , licenseFiles :: [RelativePath Pkg File]
+  , licenseFiles :: MonoidalFieldAla mod [RelativePath Pkg File]
   , copyright :: !ShortText
   , maintainer :: !ShortText
   , author :: !ShortText

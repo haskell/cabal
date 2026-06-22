@@ -48,7 +48,7 @@ licenseRaw :: Lens' (PackageDescriptionWith mod) (OptionalFieldAla mod (Either S
 licenseRaw f s = fmap (\x -> s{T.licenseRaw = x}) (f (T.licenseRaw s))
 {-# INLINE licenseRaw #-}
 
-licenseFiles :: Lens' (PackageDescriptionWith mod) [RelativePath Pkg File]
+licenseFiles :: Lens' (PackageDescriptionWith mod) (MonoidalFieldAla mod [RelativePath Pkg File])
 licenseFiles f s = fmap (\x -> s{T.licenseFiles = x}) (f (T.licenseFiles s))
 {-# INLINE licenseFiles #-}
 
