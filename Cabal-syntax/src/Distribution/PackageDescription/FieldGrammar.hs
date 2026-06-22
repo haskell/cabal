@@ -136,7 +136,7 @@ packageDescriptionFieldGrammar =
     <*> optionalFieldDefAla' "license" SpecLicense L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar
     <*> freeTextFieldDefST "copyright" L.copyright
-    <*> freeTextFieldDefST "maintainer" L.maintainer
+    <*> freeTextFieldDefST' "maintainer" L.maintainer
     <*> freeTextFieldDefST' "author" L.author
     <*> freeTextFieldDefST "stability" L.stability
     <*> monoidalFieldAla "tested-with" (alaList' FSep TestedWith) L.testedWith

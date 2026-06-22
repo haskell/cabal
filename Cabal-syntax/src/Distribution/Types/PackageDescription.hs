@@ -124,7 +124,7 @@ data PackageDescriptionWith (mod :: ParsingPhase) = PackageDescription
   , licenseRaw ::  OptionalFieldAla mod (Either SPDX.License License)
   , licenseFiles :: MonoidalFieldAla mod [RelativePath Pkg File]
   , copyright :: !ShortText
-  , maintainer :: !ShortText
+  , maintainer :: !(FreeTextFieldDefST mod ShortText)
   , author :: !(FreeTextFieldDefST mod ShortText)
   , stability :: !ShortText
   , testedWith :: [(CompilerFlavor, VersionRange)]
@@ -272,7 +272,7 @@ emptyPackageDescriptionAnn =
     , specVersion = (Positions Nothing zeroPos zeroPos, "version", CabalSpecV1_0)
     , buildTypeRaw = Nothing
     , copyright = mempty
-    , maintainer = mempty
+    , maintainer = (Positions Nothing zeroPos zeroPos, "maintainer", mempty)
     , author = (Positions Nothing zeroPos zeroPos, "author", mempty)
     , stability = mempty
     , testedWith = []

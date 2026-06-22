@@ -56,7 +56,7 @@ copyright :: Lens' (PackageDescriptionWith mod) ShortText
 copyright f s = fmap (\x -> s{T.copyright = x}) (f (T.copyright s))
 {-# INLINE copyright #-}
 
-maintainer :: Lens' (PackageDescriptionWith mod) ShortText
+maintainer :: Lens' (PackageDescriptionWith mod) (FreeTextFieldDefST mod ShortText)
 maintainer f s = fmap (\x -> s{T.maintainer = x}) (f (T.maintainer s))
 {-# INLINE maintainer #-}
 
