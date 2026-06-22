@@ -125,7 +125,7 @@ data PackageDescriptionWith (mod :: ParsingPhase) = PackageDescription
   , licenseFiles :: MonoidalFieldAla mod [RelativePath Pkg File]
   , copyright :: !ShortText
   , maintainer :: !ShortText
-  , author :: !ShortText
+  , author :: !(FreeTextFieldDefST mod ShortText)
   , stability :: !ShortText
   , testedWith :: [(CompilerFlavor, VersionRange)]
   , homepage :: !ShortText
@@ -273,7 +273,7 @@ emptyPackageDescriptionAnn =
     , buildTypeRaw = Nothing
     , copyright = mempty
     , maintainer = mempty
-    , author = mempty
+    , author = (Positions Nothing zeroPos zeroPos, "author", mempty)
     , stability = mempty
     , testedWith = []
     , homepage = mempty

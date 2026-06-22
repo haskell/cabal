@@ -3,6 +3,7 @@ Version:             0.1
 Synopsis:            Combinators for unorthodox function composition
 License:             BSD3
 License-file:        LICENSE
+Author:              Dan Burton
 
 cabal-version: >=1.2
 

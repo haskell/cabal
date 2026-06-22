@@ -60,7 +60,7 @@ maintainer :: Lens' (PackageDescriptionWith mod) ShortText
 maintainer f s = fmap (\x -> s{T.maintainer = x}) (f (T.maintainer s))
 {-# INLINE maintainer #-}
 
-author :: Lens' (PackageDescriptionWith mod) ShortText
+author :: Lens' (PackageDescriptionWith mod) (FreeTextFieldDefST mod ShortText)
 author f s = fmap (\x -> s{T.author = x}) (f (T.author s))
 {-# INLINE author #-}
 

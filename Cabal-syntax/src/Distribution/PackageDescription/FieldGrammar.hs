@@ -137,7 +137,7 @@ packageDescriptionFieldGrammar =
     <*> licenseFilesGrammar
     <*> freeTextFieldDefST "copyright" L.copyright
     <*> freeTextFieldDefST "maintainer" L.maintainer
-    <*> freeTextFieldDefST "author" L.author
+    <*> freeTextFieldDefST' "author" L.author
     <*> freeTextFieldDefST "stability" L.stability
     <*> monoidalFieldAla "tested-with" (alaList' FSep TestedWith) L.testedWith
     <*> freeTextFieldDefST "homepage" L.homepage
