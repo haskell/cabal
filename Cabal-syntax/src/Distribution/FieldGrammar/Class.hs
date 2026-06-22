@@ -82,9 +82,9 @@ class
     -- ^ field name
     -> (a -> b)
     -- ^ 'Newtype' pack
-    -> ALens' s (AnnotateWith Positions m a)
+    -> ALens' s (UniqueField m a)
     -- ^ lens into the field
-    -> g m s (AnnotateWith Positions m a)
+    -> g m s (UniqueField m a)
 
   -- | Boolean field with a default value.
   booleanFieldDef
@@ -276,9 +276,9 @@ uniqueField'
      )
   => FieldName
   -- ^ field name
-  -> ALens' s (AnnotateWith Positions m a)
+  -> ALens' s (UniqueField m a)
   -- ^ lens into the field
-  -> g m s (AnnotateWith Positions m a)
+  -> g m s (UniqueField m a)
 uniqueField' fn l = uniqueFieldAla' @m @c @g @(Identity a) @s @a fn Identity l
 
 -- | Field which can be defined at most once.

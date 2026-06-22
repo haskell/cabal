@@ -38,6 +38,7 @@ import Prelude ()
 import Data.Kind
 
 import Distribution.FieldGrammar.Class
+import qualified Data.ByteString as BS
 
 type PrettyFieldGrammar = PrettyFieldGrammarWith Abst
 
@@ -266,18 +267,14 @@ instance FieldGrammarWith Conc PrettyCtx PrettyFieldGrammarWith where
     -- \^ field name
     -> (a -> b)
     -- \^ 'Newtype' pack
-    -> ALens' s (Ann Positions a)
+    -> ALens' s (Positions, BS.ByteString, a)
     -- \^ lens into the field
-    -> PrettyFieldGrammarWith Conc s (Ann Positions a)
-  uniqueFieldAla' fn _pack l = PrettyFG pp
+    -> PrettyFieldGrammarWith Conc s (Positions, BS.ByteString, a)
+  uniqueFieldAla' _fn _pack l = PrettyFG pp
     where
       pp v s =
-        let Ann t u :: Ann Positions Doc = (\u -> prettyCtxVersioned v (mempty, pack' _pack u)) <$> x
-         in case t of
-              -- We absorb fields that have no position for the prototype
-              IsInserted -> mempty
-              HasTrivia pos -> ppFieldPos fn [(pos, u)]
-              _ -> error "unreachable, bad model"
+        let (poss, casedName, d)  = prettyCtxVersioned v . (mempty,) . pack' _pack <$> x
+         in ppFieldPos casedName [(poss, d)]
         where
           x = aview l s
 

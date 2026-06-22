@@ -1,5 +1,5 @@
-name: small-cabal-file
-version: 0.0.0
+Name: small-cabal-file
+Version: 0.0.0
 cabal-version: >=1.2
 
 library foo

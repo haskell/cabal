@@ -12,14 +12,13 @@ import Distribution.Types.PackageName (PackageName)
 import Distribution.Version (Version)
 
 import Distribution.Types.Annotation
-import Distribution.Types.Trivia
 
 import qualified Distribution.Types.PackageId as T
 
-pkgName :: Lens' (PackageIdentifierWith mod) (AnnotateWith Positions mod PackageName)
+pkgName :: Lens' (PackageIdentifierWith mod) (UniqueField mod PackageName)
 pkgName f s = fmap (\x -> s{T.pkgName = x}) (f (T.pkgName s))
 {-# INLINE pkgName #-}
 
-pkgVersion :: Lens' (PackageIdentifierWith mod) (AnnotateWith Positions mod Version)
+pkgVersion :: Lens' (PackageIdentifierWith mod) (UniqueField mod Version)
 pkgVersion f s = fmap (\x -> s{T.pkgVersion = x}) (f (T.pkgVersion s))
 {-# INLINE pkgVersion #-}

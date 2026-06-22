@@ -24,7 +24,6 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.Types.Annotation
-import Distribution.Types.Trivia
 
 -- | Type alias so we can use the shorter name PackageId.
 type PackageId = PackageIdentifier
@@ -33,9 +32,9 @@ type PackageIdentifier = PackageIdentifierWith Abst
 
 -- | The name and version of a package.
 data PackageIdentifierWith (mod :: ParsingPhase) = PackageIdentifier
-  { pkgName :: AnnotateWith Positions mod PackageName
+  { pkgName :: UniqueField mod PackageName
   -- ^ The name of this package, eg. foo
-  , pkgVersion :: AnnotateWith Positions mod Version
+  , pkgVersion :: UniqueField mod Version
   -- ^ the version of this package, eg 1.2
   }
 

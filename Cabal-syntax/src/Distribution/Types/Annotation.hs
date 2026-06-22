@@ -45,3 +45,5 @@ type MonoidalFieldAla (m :: ParsingPhase) (a :: Type) =
     ( IfConc m ( (,,) [Comment Position] BS.ByteString )
       (AttachPositions m a)
     )
+
+type UniqueField (m :: ParsingPhase) (a :: Type) = IfConc m ((,,) Positions BS.ByteString) a

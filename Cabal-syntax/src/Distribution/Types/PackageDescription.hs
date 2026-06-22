@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -102,6 +103,7 @@ import Distribution.Types.Annotation
 import Distribution.Types.Trivia
 
 import qualified Distribution.SPDX as SPDX
+import Distribution.Parsec (zeroPos)
 
 type PackageDescription = PackageDescriptionWith Abst
 
@@ -263,8 +265,8 @@ emptyPackageDescriptionAnn =
   PackageDescription
     { package =
         PackageIdentifier
-          (Ann IsInserted $ mkPackageName "")
-          (Ann IsInserted $ nullVersion)
+          (Positions Nothing zeroPos zeroPos, "name", mkPackageName "")
+          (Positions Nothing zeroPos zeroPos, "version", nullVersion)
     , licenseRaw = Right UnspecifiedLicense -- TODO:
     , licenseFiles = []
     , specVersion = Ann IsInserted CabalSpecV1_0

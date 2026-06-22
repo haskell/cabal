@@ -705,12 +705,12 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
     -- \^ field name
     -> (a -> b)
     -- \^ 'Newtype' pack
-    -> ALens' s (Ann Positions a)
+    -> ALens' s (Positions, BS.ByteString, a)
     -- \^ lens into the field
-    -> ParsecFieldGrammarWith Conc s (Ann Positions a)
+    -> ParsecFieldGrammarWith Conc s (Positions, BS.ByteString, a)
   uniqueFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser :: CabalSpecVersion -> Fields FieldAnn FieldLineAnn -> ParseResult src (Ann Positions a)
+      parser :: CabalSpecVersion -> Fields FieldAnn FieldLineAnn -> ParseResult src (Positions, BS.ByteString, a)
       parser v fields = case Map.lookup fn fields of
         Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
@@ -718,12 +718,11 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
-        where
 
-      parseOne :: CabalSpecVersion -> NamelessField FieldAnn FieldLineAnn -> ParseResult src (Ann Positions a)
-      parseOne v (extractCommentsField->(cmts, _casedName, MkNamelessField pos fls)) = do
+      parseOne :: CabalSpecVersion -> NamelessField FieldAnn FieldLineAnn -> ParseResult src (Positions, BS.ByteString, a)
+      parseOne v (extractCommentsField->(cmts, casedName, MkNamelessField pos fls)) = do
         (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition (parsec @b)) v fls
-        pure (Ann (HasTrivia $ Positions Nothing pos flPos) (unpack' _pack x))
+        pure (Positions Nothing pos flPos, casedName, unpack' _pack x)
 
 -------------------------------------------------------------------------------
 -- Parsec
