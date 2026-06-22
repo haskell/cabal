@@ -77,7 +77,6 @@ instance Semigroup (GrammarRegex a) where
 
 instance Monoid (GrammarRegex a) where
     mempty = REAppend []
-    mappend = (<>)
 
 -------------------------------------------------------------------------------
 -- Smart constructors

@@ -196,7 +196,6 @@ instance Semigroup ParsecResult where
 
 instance Monoid ParsecResult where
     mempty  = ParsecResult 0 0 0
-    mappend = (<>)
 
 instance NFData ParsecResult where
     rnf ParsecResult{} = ()
@@ -243,7 +242,6 @@ instance Semigroup CheckResult where
 
 instance Monoid CheckResult where
     mempty = CheckResult 0 0 0 0 0 0 0 0
-    mappend = (<>)
 
 toCheckResult :: PackageCheck -> CheckResult
 toCheckResult PackageBuildImpossible {}    = CheckResult 0 0 1 1 0 0 0 0
@@ -472,4 +470,4 @@ fieldLinesToString fieldLines =
 foldIO :: forall a m. (Monoid m) => (a -> IO m) -> [a] -> IO m
 foldIO f = go mempty where
     go !acc [] = acc
-    go !acc (x:xs) = go (mappend acc (f x)) xs
+    go !acc (x:xs) = go (acc <> f x) xs

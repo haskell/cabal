@@ -1055,7 +1055,6 @@ splitRTSArgs args =
 
 instance Monoid GhcOptions where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup GhcOptions where
   (<>) = gmappend

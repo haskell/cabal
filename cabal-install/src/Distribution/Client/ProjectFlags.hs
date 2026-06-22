@@ -125,7 +125,6 @@ removeIgnoreProjectOption = filter (\o -> optionName o /= "ignore-project")
 
 instance Monoid ProjectFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ProjectFlags where
   (<>) = gmappend

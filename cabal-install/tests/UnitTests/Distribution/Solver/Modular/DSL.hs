@@ -176,7 +176,6 @@ instance Monoid Dependencies where
       , depsIsBuildable = True
       , depsExampleDependencies = []
       }
-  mappend = (<>)
 
 dependencies :: [ExampleDependency] -> Dependencies
 dependencies deps = mempty{depsExampleDependencies = deps}

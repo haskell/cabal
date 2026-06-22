@@ -117,7 +117,6 @@ emptyCleanFlags = mempty
 
 instance Monoid CleanFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup CleanFlags where
   (<>) = gmappend

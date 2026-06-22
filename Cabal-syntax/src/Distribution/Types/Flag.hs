@@ -159,7 +159,6 @@ instance Semigroup FlagAssignment where
 
 instance Monoid FlagAssignment where
   mempty = FlagAssignment Map.empty
-  mappend = (<>)
 
 -- | Construct a 'FlagAssignment' from a list of flag/value pairs.
 --

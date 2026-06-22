@@ -2522,7 +2522,7 @@ elaborateInstallPlan
         -- This is where we merge the options from the project config that
         -- apply to all packages, all project local packages, and to specific
         -- named packages
-        global `mappend` local `mappend` perpkg
+        global <> local <> perpkg
         where
           global = f allPackagesConfig
           local

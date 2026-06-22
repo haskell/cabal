@@ -137,7 +137,6 @@ data InitFlags = InitFlags
 
 instance Monoid InitFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup InitFlags where
   (<>) = gmappend

@@ -43,7 +43,6 @@ instance Monoid Benchmark where
       , benchmarkInterface = mempty
       , benchmarkBuildInfo = mempty
       }
-  mappend = (<>)
 
 instance Semigroup Benchmark where
   a <> b =
@@ -53,7 +52,7 @@ instance Semigroup Benchmark where
       , benchmarkBuildInfo = combine benchmarkBuildInfo
       }
     where
-      combine field = field a `mappend` field b
+      combine field = field a <> field b
 
 emptyBenchmark :: Benchmark
 emptyBenchmark = mempty

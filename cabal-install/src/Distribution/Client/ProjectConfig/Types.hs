@@ -383,15 +383,14 @@ instance (NFData k, NFData v) => NFData (MapLast k v)
 
 instance Ord k => Monoid (MapLast k v) where
   mempty = MapLast Map.empty
-  mappend = (<>)
 
 instance Ord k => Semigroup (MapLast k v) where
   MapLast a <> MapLast b = MapLast $ Map.union b a
 
 -- rather than Map.union which is the normal Map monoid instance
 
--- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that
--- 'mappend's values of overlapping keys rather than taking the first.
+-- | Newtype wrapper for 'Map' that provides a 'Semigroup' instance that
+-- combines values of overlapping keys with `(<>)` rather than taking the first.
 newtype MapMappend k v = MapMappend {getMapMappend :: Map k v}
   deriving (Eq, Show, Functor, Generic, Binary)
 
@@ -401,7 +400,6 @@ instance (NFData k, NFData v) => NFData (MapMappend k v)
 
 instance (Semigroup v, Ord k) => Monoid (MapMappend k v) where
   mempty = MapMappend Map.empty
-  mappend = (<>)
 
 instance (Semigroup v, Ord k) => Semigroup (MapMappend k v) where
   MapMappend a <> MapMappend b = MapMappend (Map.unionWith (<>) a b)
@@ -410,28 +408,24 @@ instance (Semigroup v, Ord k) => Semigroup (MapMappend k v) where
 
 instance Monoid ProjectConfig where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ProjectConfig where
   (<>) = gmappend
 
 instance Monoid ProjectConfigBuildOnly where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ProjectConfigBuildOnly where
   (<>) = gmappend
 
 instance Monoid ProjectConfigShared where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ProjectConfigShared where
   (<>) = gmappend
 
 instance Monoid PackageConfig where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup PackageConfig where
   (<>) = gmappend

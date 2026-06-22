@@ -717,10 +717,10 @@ onAllBranches p = go mempty
     -- done. If not, then one of the conditional branches below the current node
     -- must satisfy it. Each node may have multiple immediate children; we only
     -- one need one to satisfy the property because the configure step uses
-    -- 'mappend' to join together the results of flag resolution.
+    -- '(<>)' to join together the results of flag resolution.
     go :: a -> CondTree v a -> Bool
     go acc ct =
-      let acc' = acc `mappend` condTreeData ct
+      let acc' = acc <> condTreeData ct
        in p acc' || any (goBranch acc') (condTreeComponents ct)
 
     -- Both the 'true' and the 'false' block must satisfy the property.

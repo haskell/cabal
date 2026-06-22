@@ -87,7 +87,6 @@ instance Structured ReplOptions
 
 instance Monoid ReplOptions where
   mempty = ReplOptions mempty (Flag False) NoFlag NoFlag
-  mappend = (<>)
 
 instance Semigroup ReplOptions where
   (<>) = gmappend
@@ -116,7 +115,6 @@ defaultReplFlags =
 
 instance Monoid ReplFlags where
   mempty = gmempty
-  mappend = (<>)
 
 instance Semigroup ReplFlags where
   (<>) = gmappend

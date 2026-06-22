@@ -439,7 +439,7 @@ findDistPref
   -> IO (SymbolicPath Pkg (Dir Dist))
 findDistPref defDistPref overrideDistPref = do
   envDistPref <- parseEnvDistPref <$> lookupEnv "CABAL_BUILDDIR"
-  return $ fromFlagOrDefault defDistPref (mappend envDistPref overrideDistPref)
+  return $ fromFlagOrDefault defDistPref (envDistPref <> overrideDistPref)
   where
     parseEnvDistPref env =
       case env of
@@ -1320,31 +1320,31 @@ addExtraIncludeLibDirsFromConfigFlags pkg_descr cfg =
         l
           { libBuildInfo =
               libBuildInfo l
-                `mappend` extraBi
+                <> extraBi
           }
       modifyExecutable e =
         e
           { buildInfo =
               buildInfo e
-                `mappend` extraBi
+                <> extraBi
           }
       modifyForeignLib f =
         f
           { foreignLibBuildInfo =
               foreignLibBuildInfo f
-                `mappend` extraBi
+                <> extraBi
           }
       modifyTestsuite t =
         t
           { testBuildInfo =
               testBuildInfo t
-                `mappend` extraBi
+                <> extraBi
           }
       modifyBenchmark b =
         b
           { benchmarkBuildInfo =
               benchmarkBuildInfo b
-                `mappend` extraBi
+                <> extraBi
           }
    in pkg_descr
         { library = modifyLib `fmap` library pkg_descr
@@ -1931,7 +1931,7 @@ configureCoverage verbosity cfg comp = do
       tryLibCoverage =
         fromFlagOrDefault
           tryExeCoverage
-          (mappend (configCoverage cfg) (configLibCoverage cfg))
+          (configCoverage cfg <> configLibCoverage cfg)
   -- TODO: Should we also enforce something here on that --coverage-for cannot
   -- include indefinite components or instantiations?
   if coverageSupported comp
@@ -1980,7 +1980,7 @@ computeEffectiveProfiling cfg =
       tryExeProfiling =
         fromFlagOrDefault
           False
-          (mappend (configProf cfg) (configProfExe cfg))
+          (configProf cfg <> configProfExe cfg)
       tryLibProfiling =
         fromFlagOrDefault
           (tryExeProfiling && not dynamicExe)
@@ -2008,10 +2008,7 @@ configureProfiling verbosity cfg comp = do
       tryLibProfileLevel =
         fromFlagOrDefault
           ProfDetailDefault
-          ( mappend
-              (configProfDetail cfg)
-              (configProfLibDetail cfg)
-          )
+          (configProfDetail cfg <> configProfLibDetail cfg)
 
       checkProfileLevel (ProfDetailOther other) = do
         warn
@@ -2609,7 +2606,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     -- Adds pkgconfig dependencies to the build info for a component
     addPkgConfigBI compBI setCompBI comp = do
       bi <- pkgconfigBuildInfo (pkgconfigDepends (compBI comp))
-      return $ setCompBI comp (compBI comp `mappend` bi)
+      return $ setCompBI comp (compBI comp <> bi)
 
     -- Adds pkgconfig dependencies to the build info for a library
     addPkgConfigBILib = addPkgConfigBI libBuildInfo $

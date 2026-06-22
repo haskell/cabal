@@ -67,7 +67,6 @@ instance Semigroup a => Semigroup (CondTree v a) where
   (CondNode a bs) <> (CondNode a' bs') = CondNode (a <> a') (bs <> bs')
 
 instance Monoid a => Monoid (CondTree v a) where
-  mappend = (<>)
   mempty = CondNode mempty mempty
 
 -- | A 'CondBranch' represents a conditional branch, e.g., @if
