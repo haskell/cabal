@@ -275,6 +275,7 @@ import Distribution.Version
   , foldVersionRange
   )
 
+import Data.Bifunctor (bimap)
 import qualified Data.ByteString as BS
 import Data.Foldable (fold)
 import Distribution.Client.Errors
@@ -1355,7 +1356,7 @@ printBuildFailures verbosity buildOutcomes =
     failed ->
       dieWithException verbosity $
         SomePackagesFailedToInstall $
-          map (\(pkgid, reason) -> (prettyShow pkgid, printFailureReason reason)) failed
+          map (bimap prettyShow printFailureReason) failed
   where
     printFailureReason reason = case reason of
       GracefulFailure msg -> msg
