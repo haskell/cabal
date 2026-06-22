@@ -9,9 +9,7 @@ Category:            Data
 Build-type:          Simple
 Cabal-version:       >=1.2
 
-library foo
-
-
+Library
 
   buildable: True
 

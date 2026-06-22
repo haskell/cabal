@@ -451,7 +451,7 @@ goSections specVer = traverse_ process
               lift $
                 parseFailure pos $
                   "Duplicate common stanza: " ++ name'
-      | name == "library" && null args = do
+      | BS8.map toLower name == "library" && null args = do
           prev <- use $ stateGpd . L.condLibrary
           when (isJust prev) $
             lift $
@@ -460,9 +460,9 @@ goSections specVer = traverse_ process
           commonStanzas <- use stateCommonStanzas
           let name'' = LMainLibName
           lib <- lift $ parseCondTree' (libraryFieldGrammar @mod name'') (libraryFromBuildInfo name'') commonStanzas fields
-          --
+          let lib' = mapTreeData (\l -> l{libExt = Just (pos, name {- casedName -})}) lib
           -- TODO check that not set
-          stateGpd . L.condLibrary ?= lib
+          stateGpd . L.condLibrary ?= lib'
 
       -- Sublibraries
       -- TODO: check cabal-version
