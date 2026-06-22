@@ -96,13 +96,24 @@ on:
             Please add them. There is more information at https://pvp.haskell.org/
 
 For large projects with many packages, it would be a lot of work to keep all
-package dependency version ranges up to date. Ways of overcoming, in worse to
-better order, are:
+package dependency version ranges up to date if each package was independently
+maintained, especially using tight version ranges for dependencies in the
+packages. Here are some options for avoiding or setting the same version ranges
+in each package of a project with many packages:
 
-- use a bash script to replace or update version ranges in all package descriptions
-- use a package generator like `dhall-hpack-cabal <https://github.com/cabalism/hpack-dhall/blob/3d464cddea0aa0a7f268c45556e0daafa8ac06ff/hpack-dhall.cabal#L148>`_ to import sets of dependencies with version ranges
-- use a ``cabal.project`` file to specify version constraints for some or all dependencies
-- use a curated set of packages and versions and import these into the project
+**Avoiding**
+    Package-level version ranges can be avoided;
+
+    - by using a curated set of packages and versions and import these into the project, or
+    - by specifying version constraints only in the ``cabal.project``.
+
+**Setting**
+    Package-level version ranges can be specified in one place and then copied
+    to packages;
+
+    - by using a package generator like `dhall-hpack-cabal <https://github.com/cabalism/hpack-dhall/blob/3d464cddea0aa0a7f268c45556e0daafa8ac06ff/hpack-dhall.cabal#L148>`_ with imports,
+    - by using a package formatter with fragment pragmas, or
+    - by using a bash script to replace or update version ranges in all package descriptions.
 
 .. _version-constraints:
 
