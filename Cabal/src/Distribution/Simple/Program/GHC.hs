@@ -10,7 +10,6 @@
 module Distribution.Simple.Program.GHC
   ( GhcOptions (..)
   , GhcMode (..)
-  , GhcOptimisation (..)
   , GhcDynLinkMode (..)
   , GhcObjectMode (..)
   , GhcProfAuto (..)
@@ -48,12 +47,16 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import GHC.IO.Encoding (TextEncoding)
-import Language.Haskell.Extension
+import Language.Haskell.Extension (Extension, Language)
 
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All (..), Any (..), Endo (..))
 import qualified Data.Set as Set
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
+import qualified Distribution.Types.DebugInfoLevel as DebugInfoLevel
+import Distribution.Types.OptimisationLevel (OptimisationLevel)
+import qualified Distribution.Types.OptimisationLevel as OptimisationLevel
 import qualified System.Process as Process
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
@@ -548,7 +551,7 @@ data GhcOptions = GhcOptions
   , ----------------
     -- Compilation
 
-    ghcOptOptimisation :: Flag GhcOptimisation
+    ghcOptOptimisation :: Flag OptimisationLevel
   -- ^ What optimisation level to use; the @ghc -O@ flag.
   , ghcOptDebugInfo :: Flag DebugInfoLevel
   -- ^ Emit debug info; the @ghc -g@ flag.
@@ -622,17 +625,6 @@ data GhcMode
     --             | GhcModeDepAnalysis -- ^ @ghc -M@
     --             | GhcModeEvaluate    -- ^ @ghc -e@
     GhcModeAbiHash
-  deriving (Show, Eq)
-
-data GhcOptimisation
-  = -- | @-O0@
-    GhcNoOptimisation
-  | -- | @-O@
-    GhcNormalOptimisation
-  | -- | @-O2@
-    GhcMaximumOptimisation
-  | -- | e.g. @-Odph@
-    GhcSpecialOptimisation String
   deriving (Show, Eq)
 
 data GhcDynLinkMode
@@ -794,18 +786,8 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ----------------
           -- Compilation
 
-          case flagToMaybe (ghcOptOptimisation opts) of
-            Nothing -> []
-            Just GhcNoOptimisation -> ["-O0"]
-            Just GhcNormalOptimisation -> ["-O"]
-            Just GhcMaximumOptimisation -> ["-O2"]
-            Just (GhcSpecialOptimisation s) -> ["-O" ++ s] -- eg -Odph
-        , case flagToMaybe (ghcOptDebugInfo opts) of
-            Nothing -> []
-            Just NoDebugInfo -> []
-            Just MinimalDebugInfo -> ["-g1"]
-            Just NormalDebugInfo -> ["-g2"]
-            Just MaximalDebugInfo -> ["-g3"]
+          ["-O" ++ (OptimisationLevel.toString . fromNoFlag) (ghcOptOptimisation opts)]
+        , ["-g" ++ (DebugInfoLevel.toString . fromNoFlag) (ghcOptDebugInfo opts)]
         , ["-prof" | flagBool ghcOptProfilingMode]
         , case flagToMaybe (ghcOptProfilingAuto opts) of
             _

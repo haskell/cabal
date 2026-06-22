@@ -119,11 +119,10 @@ import Distribution.Parsec
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.Simple.Compiler
   ( Compiler (..)
-  , OptimisationLevel (..)
   )
 import Distribution.Simple.Flag
   ( flagToMaybe
-  , fromFlagOrDefault
+  , fromNoFlag
   )
 import Distribution.Simple.PackageDescription
   ( parseString
@@ -434,7 +433,7 @@ scriptDistDirParams scriptPath ctx compiler platform =
     , distParamComponentName = Just $ CExeName cn
     , distParamCompilerId = compilerId compiler
     , distParamPlatform = platform
-    , distParamOptimization = fromFlagOrDefault NormalOptimisation optimization
+    , distParamOptimization = fromNoFlag optimization
     }
   where
     cn = scriptComponentName scriptPath

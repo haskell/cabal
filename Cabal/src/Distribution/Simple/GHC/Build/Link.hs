@@ -46,6 +46,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
@@ -176,7 +177,7 @@ linkOrLoadComponent
               <> linkerOpts mempty
               <> mempty
                 { ghcOptMode = toFlag GhcModeInteractive
-                , ghcOptOptimisation = toFlag GhcNoOptimisation
+                , ghcOptOptimisation = toFlag NoOptimisation
                 }
           replOpts_final =
             replOpts

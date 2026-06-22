@@ -309,7 +309,7 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
     removeFileForcibly buildInfoFile
   where
     buildInfoFile = interpretSymbolicPathLBI lbi $ buildInfoPref distPref
-    shouldDumpBuildInfo = fromFlagOrDefault NoDumpBuildInfo dumpBuildInfoFlag == DumpBuildInfo
+    shouldDumpBuildInfo = fromNoFlag dumpBuildInfoFlag == DumpBuildInfo
 
     -- \| Given the flavor of the compiler, try to find out
     -- which program we need.
