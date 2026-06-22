@@ -94,9 +94,18 @@ showFields rann = showFields' rann (const id) 4
 -- | Only for the prototype.
 --   The printer's printing order depends on the order of 'Applicative' effects in the 'FieldGrammar' definition.
 sortPrettyFields :: [PrettyFieldWith Conc] -> [PrettyFieldWith Conc]
-sortPrettyFields = sortOn $ \case
-    PrettyField (p, _) _ -> p
-    PrettySection (p, _) _ _ -> p
+sortPrettyFields =
+  map sortPrettySections
+  . sortOn
+    ( \case
+      PrettyField (p, _) _ -> p
+      PrettySection (p, _) _ _ -> p
+    )
+
+sortPrettySections :: PrettyFieldWith Conc -> PrettyFieldWith Conc
+sortPrettySections f = case f of
+  PrettySection n args fls -> PrettySection n args (sortPrettyFields fls)
+  _ -> f
 
 -- | Only for the prototype.
 --   We use zeroPos (Position 0 0) as a marker for data that shouldn't be printed.

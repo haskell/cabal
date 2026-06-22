@@ -10,6 +10,7 @@ Build-type:          Simple
 Cabal-version:       >=1.2
 
 Library
+  hs-source-dirs:  src
 
   buildable: True
 
