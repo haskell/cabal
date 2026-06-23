@@ -309,7 +309,7 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
 
   -- https://github.com/haskell/cabal/issues/6013
   -- https://github.com/haskell/cabal/issues/7401
-  let projPath = distProjectFileMain (distProjectFile distDirLayout)
+  let projPath = distProjectFile distDirLayout ProjectFileKeyMain
   when (null (projectPackages projectConfig) && null (projectPackagesOptional projectConfig)) $
     dieWithException verbosity (ProjectConfigNoPackages projPath)
 
