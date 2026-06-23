@@ -5,3 +5,8 @@ Error:
         library bar
         library foo
     In the inplace package 'DepCycle-1.0'
+    CallStack (from HasCallStack):
+      dieProgress, called at src/Distribution/Client/ProjectPlanning.hs:_:_ in cabal-install-3.17.0.0-inplace:Distribution.Client.ProjectPlanning
+      elaborateInstallPlan, called at src/Distribution/Client/ProjectPlanning.hs:_:_ in cabal-install-3.17.0.0-inplace:Distribution.Client.ProjectPlanning
+      phaseElaboratePlan, called at src/Distribution/Client/ProjectPlanning.hs:_:_ in cabal-install-3.17.0.0-inplace:Distribution.Client.ProjectPlanning
+      rebuildInstallPlan, called at src/Distribution/Client/ProjectOrchestration.hs:_:_ in cabal-install-3.17.0.0-inplace:Distribution.Client.ProjectOrchestration
