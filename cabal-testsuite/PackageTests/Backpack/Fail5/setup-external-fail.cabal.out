@@ -7,3 +7,5 @@ Error:
             framework-0.1.0.0 (has unfilled signature: App)
               The package is installed as indefinite.
               To use it, rebuild it in the same cabal project as the consumer so cabal can fill the signatures.
+    CallStack (from HasCallStack):
+      dieProgress, called at src/Distribution/Backpack/Configure.hs:_:_ in Cabal-3.17.0.0-inplace:Distribution.Backpack.Configure
