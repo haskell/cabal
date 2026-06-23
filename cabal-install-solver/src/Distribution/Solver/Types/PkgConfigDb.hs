@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric      #-}
------------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Solver.Types.PkgConfigDb
 -- Copyright   :  (c) Iñaki García Etxebarria 2016
@@ -9,7 +7,6 @@
 -- Portability :  portable
 --
 -- Read the list of packages available to pkg-config.
------------------------------------------------------------------------------
 module Distribution.Solver.Types.PkgConfigDb
     ( PkgConfigDb (..)
     , readPkgConfigDb

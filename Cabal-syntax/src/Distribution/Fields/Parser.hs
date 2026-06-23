@@ -1,9 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Fields.Parser

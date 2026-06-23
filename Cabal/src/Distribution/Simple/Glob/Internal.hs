@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Simple.Glob.Internal
 -- Copyright   :  Isaac Jones, Simon Marlow 2003-2004

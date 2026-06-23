@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 -- | Reordering or pruning the tree in order to prefer or make certain choices.
 module Distribution.Solver.Modular.Preference
     ( avoidReinstalls

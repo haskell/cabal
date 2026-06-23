@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Test.Cabal.DecodeShowBuildInfo where

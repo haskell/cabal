@@ -1,6 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
 
 -- |
 -- Module      :  Distribution.Client.Sandbox

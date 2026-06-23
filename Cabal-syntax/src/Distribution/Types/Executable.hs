@@ -1,6 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.Executable
   ( Executable (..)

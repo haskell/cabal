@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-
 -- |
 -- Module      :  Distribution.System
 -- Copyright   :  Duncan Coutts 2007-2008

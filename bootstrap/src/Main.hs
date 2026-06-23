@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 
 module Main (main) where

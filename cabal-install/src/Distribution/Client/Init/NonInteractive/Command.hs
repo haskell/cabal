@@ -1,5 +1,4 @@
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TupleSections #-}
 
 module Distribution.Client.Init.NonInteractive.Command
   ( genPkgDescription

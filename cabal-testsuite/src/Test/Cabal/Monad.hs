@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- | The test monad
 module Test.Cabal.Monad
   ( -- * High-level runners

@@ -1,9 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.BuildPaths

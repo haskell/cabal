@@ -1,9 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveTraversable #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Compiler
 -- Copyright   :  Isaac Jones 2003-2004

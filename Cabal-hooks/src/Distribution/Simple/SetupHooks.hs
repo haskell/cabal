@@ -1,10 +1,6 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StaticPointers #-}
 
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}

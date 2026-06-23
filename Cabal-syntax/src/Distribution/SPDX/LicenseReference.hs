@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.SPDX.LicenseReference
   ( LicenseRef
   , licenseRef

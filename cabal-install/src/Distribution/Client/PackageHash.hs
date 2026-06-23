@@ -1,4 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Functions to calculate nix-style hashes for package ids.

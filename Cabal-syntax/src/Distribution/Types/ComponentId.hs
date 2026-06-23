@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Types.ComponentId
   ( ComponentId
   , unComponentId

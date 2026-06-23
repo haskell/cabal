@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE RankNTypes #-}
 
 module Distribution.Simple.GHC.Build.Utils where
 

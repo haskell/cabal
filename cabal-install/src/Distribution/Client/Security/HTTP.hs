@@ -1,8 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-
 -- | Implementation of 'HttpLib' using cabal-install's own 'HttpTransport'
 module Distribution.Client.Security.HTTP (HttpLib, transportAdapter) where
 

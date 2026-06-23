@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module UnitTests.Distribution.Client.Get (tests) where
 
 import Distribution.Client.Get

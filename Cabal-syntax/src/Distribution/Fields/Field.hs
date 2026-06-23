@@ -1,6 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --

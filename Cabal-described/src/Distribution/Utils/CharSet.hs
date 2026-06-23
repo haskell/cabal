@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 -- | Sets of characters.
 --
 -- Using this is more efficient than 'RE.Type.Alt':ng individual characters.

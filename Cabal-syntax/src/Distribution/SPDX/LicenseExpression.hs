@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.SPDX.LicenseExpression
   ( LicenseExpression (..)
   , SimpleLicenseExpression (..)

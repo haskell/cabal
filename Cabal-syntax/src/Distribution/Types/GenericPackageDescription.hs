@@ -1,8 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription

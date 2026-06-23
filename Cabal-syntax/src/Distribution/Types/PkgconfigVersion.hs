@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 -- @since 3.0
 module Distribution.Types.PkgconfigVersion
   ( PkgconfigVersion (..)

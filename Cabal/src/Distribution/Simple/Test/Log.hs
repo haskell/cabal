@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-
 module Distribution.Simple.Test.Log
   ( PackageLog (..)
   , TestLogs (..)

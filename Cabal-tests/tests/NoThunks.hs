@@ -7,8 +7,6 @@ main = putStrLn "Old GHC, no nothunks"
 
 {-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Main (main) where
 

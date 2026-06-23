@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Distribution.Solver.Types.Settings
     ( ReorderGoals(..)
     , IndependentGoals(..)

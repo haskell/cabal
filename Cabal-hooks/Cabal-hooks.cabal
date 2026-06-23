@@ -23,7 +23,7 @@ source-repository head
   subdir:   Cabal-hooks
 
 library
-  default-language: Haskell2010
+  default-language: GHC2021
   hs-source-dirs: src
 
   build-depends:
