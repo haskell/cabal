@@ -79,7 +79,7 @@ allCondTrees
   -> GenericPackageDescription
   -> f GenericPackageDescription
 allCondTrees f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
-  (GenericPackageDescription p <$> pure v)
+  pure (GenericPackageDescription p v)
     <*> pure a1
     <*> traverse f x1
     <*> (traverse . _2) f x2
