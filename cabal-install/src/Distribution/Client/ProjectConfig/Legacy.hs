@@ -779,10 +779,10 @@ convertLegacyPerPackageFlags
         , configRelocatable = packageConfigRelocatable
         , configCoverageFor = _
         } = configFlags
-      packageConfigExtraLibDirs = fmap getSymbolicPath $ configExtraLibDirs configFlags
-      packageConfigExtraLibDirsStatic = fmap getSymbolicPath $ configExtraLibDirsStatic configFlags
-      packageConfigExtraFrameworkDirs = fmap getSymbolicPath $ configExtraFrameworkDirs configFlags
-      packageConfigExtraIncludeDirs = fmap getSymbolicPath $ configExtraIncludeDirs configFlags
+      packageConfigExtraLibDirs = getSymbolicPath <$> configExtraLibDirs configFlags
+      packageConfigExtraLibDirsStatic = getSymbolicPath <$> configExtraLibDirsStatic configFlags
+      packageConfigExtraFrameworkDirs = getSymbolicPath <$> configExtraFrameworkDirs configFlags
+      packageConfigExtraIncludeDirs = getSymbolicPath <$> configExtraIncludeDirs configFlags
       packageConfigProgramPaths = MapLast (Map.fromList configProgramPaths)
       packageConfigProgramArgs = MapMappend (Map.fromListWith (++) configProgramArgs)
 
