@@ -429,7 +429,7 @@ filterAutogenModules pkg_descr0 =
         }
     pathsModule = autogenPathsModuleName pkg_descr0
     packageInfoModule = autogenPackageInfoModuleName pkg_descr0
-    filterFunction bi = \mn ->
+    filterFunction bi mn =
       mn /= pathsModule
         && mn /= packageInfoModule
         && notElem mn (autogenModules bi)

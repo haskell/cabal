@@ -72,7 +72,7 @@ withAsyncNF m = inline withAsyncUsing forkIO (m >>= evaluateNF)
 withAsyncUsing :: (IO () -> IO ThreadId) -> IO a -> (AsyncM a -> IO b) -> IO b
 -- The bracket version works, but is slow.  We can do better by
 -- hand-coding it:
-withAsyncUsing doFork = \action inner -> do
+withAsyncUsing doFork action inner = do
   var <- newEmptyMVar
   mask $ \restore -> do
     t <- doFork $ try (restore action) >>= putMVar var
