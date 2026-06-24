@@ -183,8 +183,7 @@ instance Parsec OpenModule where
       parsecOpenModule = do
         uid <- parsec
         _ <- P.char ':'
-        mod_name <- parsec
-        return (OpenModule uid mod_name)
+        OpenModule uid <$> parsec
 
       parsecModuleVar = do
         _ <- P.char '<'
