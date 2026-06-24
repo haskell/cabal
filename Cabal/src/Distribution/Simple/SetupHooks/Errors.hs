@@ -125,8 +125,7 @@ rulesExceptionMessage = \case
       showCycle :: (RuleBinary, [Graph.Tree RuleBinary]) -> String
       showCycle (r, rs) =
         unlines . map ("  " ++) . lines $
-          Tree.drawTree $
-            (show <$> Tree.Node r rs)
+          Tree.drawTree (show <$> Tree.Node r rs)
   CantFindSourceForRuleDependencies _r deps ->
     unlines $
       ("Pre-build rules: can't find source for rule " ++ what ++ ":")

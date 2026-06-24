@@ -1556,7 +1556,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                   , ghcOptLinkLibs = rtsOptLinkLibs
                   , ghcOptLinkLibPath = toNubListR $ map makeSymbolicPath $ rtsLibPaths rtsInfo
                   , ghcOptFPic = toFlag True
-                  , ghcOptLinkModDefFiles = toNubListR $ (getSymbolicPath <$> gbuildModDefFiles bm)
+                  , ghcOptLinkModDefFiles = toNubListR (getSymbolicPath <$> gbuildModDefFiles bm)
                   }
             ForeignLibNativeStatic ->
               -- this should be caught by buildFLib

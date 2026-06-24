@@ -18,7 +18,7 @@ main = setupAndCabalTest $ do
                 .   resultOutput
                 <$> runProgramM ghcProgram ["--print-libdir"] Nothing
             else do
-                hasGxx <- liftIO $ (isJust <$> findExecutable "g++")
+                hasGxx <- liftIO (isJust <$> findExecutable "g++")
                 skipUnless "g++" hasGxx
                 pure "g++"
 
