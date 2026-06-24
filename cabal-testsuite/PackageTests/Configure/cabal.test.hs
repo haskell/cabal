@@ -21,7 +21,7 @@ main = cabalTest $ do
                 void $ shell "C:\\msys64\\usr\\bin\\bash.exe" [ "-l", "-c", "cd $(cygpath -m '" <> testTmpDir env <> "') && autoreconf -i"]
                 cabal "v2-build" []
     else do
-        hasAutoreconf <- liftIO $ (isJust <$> findExecutable "autoreconf")
+        hasAutoreconf <- liftIO (isJust <$> findExecutable "autoreconf")
         skipUnless "no autoreconf" hasAutoreconf
         _ <- shell "autoreconf" ["-i"]
         cabal "v2-build" []
