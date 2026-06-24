@@ -979,7 +979,7 @@ rawSystemExitCode
   -> Maybe [(String, String)]
   -> IO ExitCode
 rawSystemExitCode verbosity mbWorkDir path args menv =
-  withFrozenCallStack $
+  withFrozenCallStack
     ( fst
         <$> rawSystemIOWithEnvAndAction
           verbosity
