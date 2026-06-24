@@ -829,7 +829,7 @@ readProjectLocalFreezeConfig verbosity parserOption httpTransport distDirLayout 
 readProjectFileSkeletonGen :: DistDirLayout -> ProjectFileKey -> (FilePath -> IO ProjectConfigSkeleton) -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonGen
   DistDirLayout{distProjectFile, distProjectRootDirectory}
-  key@(distProjectFile -> extensionFile)
+  key@(distProjectFile -> possiblyRelativeExtensionFile)
   parseConfig =
     do
       exists <- liftIO $ doesFileExist extensionFile
@@ -869,7 +869,7 @@ readProjectFileSkeletonGen
               [ monitorFileHashed path
               | let projFile = makeAbsolute . distProjectFile
               , path <-
-                  filter (`notElem` [extensionFile, projFile "freeze", projFile "local"]) $
+                  filter (`notElem` [extensionFile, projFile ProjectFileKeyFreeze, projFile ProjectFileKeyLocal]) $
                     ordNub
                       [ p
                       | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- projectSkeletonImports pcs
@@ -918,7 +918,7 @@ readProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> 
 readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key = do
   readProjectFileSkeletonGen distDirLayout key $ \fp -> do
     debug verbosity "Reading project file using the legacy parser"
-    parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key fp
+    parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key
       >>= liftIO . reportParseResult verbosity (extensionDescription key) fp
 
 -- | Read a project file using the parsec parser, but if that fails, it falls back to the legacy parser.
@@ -926,14 +926,14 @@ readProjectFileSkeletonFallback :: Verbosity -> HttpTransport -> DistDirLayout -
 readProjectFileSkeletonFallback verbosity httpTransport distDirLayout key = do
   readProjectFileSkeletonGen distDirLayout key $ \fp -> do
     debug verbosity "Reading project file using the fallback parser"
-    (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key fp
+    (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key
     let (_, pres) = runParseResult res
     case pres of
       -- 1. Successful parse with parsec parser, handle the result as normal.
       Right{} -> liftIO $ reportParseResultParsec verbosity fp bs res
       -- 2. The parse failed with the parsec parser, fallback to the legacy parser.
       Left{} -> do
-        lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key fp
+        lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key
         case lres of
           -- 3a. The legacy parser worked, but the parsec parser failed!
           -- Report a warning to the user that this happened.
@@ -949,15 +949,15 @@ readProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> 
 readProjectFileSkeletonParsec verbosity httpTransport distDirLayout key = do
   readProjectFileSkeletonGen distDirLayout key $ \fp -> do
     debug verbosity "Reading project file using the parsec parser"
-    (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key fp
+    (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key
     liftIO $ reportParseResultParsec verbosity fp bs res
 
 readProjectFileSkeletonCompare :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonCompare verbosity httpTransport distDirLayout key = do
   readProjectFileSkeletonGen distDirLayout key $ \fp -> do
     debug verbosity "Reading project file using the comparative parser"
-    (pres, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key fp
-    lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key fp
+    (pres, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key
+    lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key
     let (_, ppres) = runParseResult pres
     case (lres, ppres) of
       -- 1. Both succeed, compare the results
@@ -996,16 +996,18 @@ reportParseResultParsec verbosity fpath _contents pr = do
       dieWithException verbosity $ ProjectConfigParseFailure $ ProjectConfigParseError errors warnings
 
 -- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
-parseProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> FilePath -> IO (OldParser.ProjectParseResult ProjectConfigSkeleton)
-parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key extensionFile = do
+parseProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> IO (OldParser.ProjectParseResult ProjectConfigSkeleton)
+parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key = do
+  let extensionFile = distProjectFile distDirLayout key
   bs <- BS.readFile extensionFile
   res <- parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
   case res of
     x@(OldParser.ProjectParseOk _ skeleton) -> reportDuplicateImports verbosity skeleton >> pure x
     x@OldParser.ProjectParseFailed{} -> pure x
 
-parseProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> FilePath -> IO (Parsec.ParseResult ProjectFileSource ProjectConfigSkeleton, BS.ByteString)
-parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key extensionFile = do
+parseProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> IO (Parsec.ParseResult ProjectFileSource ProjectConfigSkeleton, BS.ByteString)
+parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key = do
+  let extensionFile = distProjectFile distDirLayout key
   bs <- BS.readFile extensionFile
   res <- Parsec.parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
   case snd $ runParseResult res of
