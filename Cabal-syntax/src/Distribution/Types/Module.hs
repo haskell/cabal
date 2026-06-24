@@ -35,8 +35,7 @@ instance Parsec Module where
   parsec = do
     uid <- parsec
     _ <- P.char ':'
-    mod_name <- parsec
-    return (Module uid mod_name)
+    Module uid <$> parsec
 
 instance NFData Module where
   rnf (Module uid mod_name) = rnf uid `seq` rnf mod_name
