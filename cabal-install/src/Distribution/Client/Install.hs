@@ -2031,7 +2031,7 @@ installUnpackedPackage
 
               traverse (readPkgConf (getSymbolicPath pkgConfDest)) . sort . filter notHidden
                 =<< listDirectory (getSymbolicPath pkgConfDest)
-            else fmap (: []) $ readPkgConf "." (getSymbolicPath pkgConfDest)
+            else (: []) <$> readPkgConf "." (getSymbolicPath pkgConfDest)
 
       readPkgConf
         :: FilePath
