@@ -6,7 +6,6 @@
 - ignore: {name: "Move filter"} # 4 hints
 - ignore: {name: "Redundant $"} # 12 hints
 - ignore: {name: "Redundant $!"} # 3 hints
-- ignore: {name: "Redundant <$>"} # 2 hints
 - ignore: {name: "Redundant bracket"} # 4 hints
 - ignore: {name: "Redundant guard"} # 1 hint
 - ignore: {name: "Redundant if"} # 6 hints
