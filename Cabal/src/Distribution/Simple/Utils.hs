@@ -452,8 +452,8 @@ dieWithLocation' verbosity filename mb_lineno msg =
 die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
   ioError . verbatimUserError
-    =<< annotateErrorString verbosity
-    =<< (wrapTextVerbosity (verbosityFlags verbosity) . addErrorPrefix <$> prefixWithProgName msg)
+    =<< annotateErrorString verbosity . wrapTextVerbosity (verbosityFlags verbosity) . addErrorPrefix
+    =<< prefixWithProgName msg
 
 -- Type which will be a wrapper for cabal -exceptions and cabal-install exceptions
 data VerboseException a = VerboseException CallStack POSIXTime VerbosityFlags a
