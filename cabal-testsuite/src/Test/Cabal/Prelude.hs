@@ -1157,9 +1157,7 @@ skipIfNoProfiledLibraries = skipUnless "no profiled libraries" =<< hasProfiledLi
 -- An example where this is needed is if you want to dynamically link
 -- detailed-0.9 test suites, since those depend on the Cabal library unde rtest.
 hasCabalShared :: TestM Bool
-hasCabalShared = do
-  env <- getTestEnv
-  return (testHaveCabalShared env)
+hasCabalShared = testHaveCabalShared <$> getTestEnv
 
 anyCabalVersion :: WithCallStack (String -> TestM Bool)
 anyCabalVersion = isCabalVersion any

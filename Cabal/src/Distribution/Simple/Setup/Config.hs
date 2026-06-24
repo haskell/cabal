@@ -923,8 +923,7 @@ parsecPromisedComponent = do
         then LMainLibName
         else LSubLibName ucn
   _ <- P.char '='
-  cid <- parsec
-  return $ PromisedComponent pn ln cid
+  PromisedComponent pn ln <$> parsec
 
 prettyPromisedComponent :: PromisedComponent -> String
 prettyPromisedComponent (PromisedComponent pn cn cid) =
@@ -946,8 +945,7 @@ parsecGivenComponent = do
         then LMainLibName
         else LSubLibName ucn
   _ <- P.char '='
-  cid <- parsec
-  return $ GivenComponent pn ln cid
+  GivenComponent pn ln <$> parsec
 
 prettyGivenComponent :: GivenComponent -> String
 prettyGivenComponent (GivenComponent pn cn cid) =
