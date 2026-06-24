@@ -521,7 +521,7 @@ linkFLib flib bi lbi linkerOpts (way, buildOpts) targetDir runGhcProg = do
             { ghcOptLinkNoHsMain = toFlag True
             , ghcOptShared = toFlag True
             , ghcOptFPic = toFlag True
-            , ghcOptLinkModDefFiles = toNubListR $ fmap getSymbolicPath $ foreignLibModDefFile flib
+            , ghcOptLinkModDefFiles = toNubListR (getSymbolicPath <$> foreignLibModDefFile flib)
             }
       ForeignLibNativeStatic ->
         -- this should be caught by buildFLib

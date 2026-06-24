@@ -152,8 +152,7 @@ userPackageEnvironment verbosity pkgEnvDir globalConfigLocation = do
 -- | Same as @userPackageEnvironmentFile@, but returns a SavedConfig.
 loadUserConfig :: Verbosity -> FilePath -> Maybe FilePath -> IO SavedConfig
 loadUserConfig verbosity pkgEnvDir globalConfigLocation =
-  fmap pkgEnvSavedConfig $
-    userPackageEnvironment verbosity pkgEnvDir globalConfigLocation
+  pkgEnvSavedConfig <$> userPackageEnvironment verbosity pkgEnvDir globalConfigLocation
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: ConstraintSource -> [FieldDescr PackageEnvironment]

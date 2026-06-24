@@ -328,9 +328,9 @@ abiHash
 abiHash verbosity pkg distPref lbi lib clbi =
   case compilerFlavor comp of
     GHC -> do
-      fmap mkAbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
+      mkAbiHash <$> GHC.libAbiHash verbosity pkg lbi' lib clbi
     GHCJS -> do
-      fmap mkAbiHash $ GHCJS.libAbiHash verbosity pkg lbi' lib clbi
+      mkAbiHash <$> GHCJS.libAbiHash verbosity pkg lbi' lib clbi
     _ -> return (mkAbiHash "")
   where
     comp = compiler lbi
@@ -715,8 +715,7 @@ relocatableInstalledPackageInfo pkg abi_hash lib lbi clbi pkgroot =
     bi = libBuildInfo lib
 
     installDirs =
-      fmap (("${pkgroot}" </>) . shortRelativePath (getSymbolicPath pkgroot)) $
-        absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
+      ("${pkgroot}" </>) . shortRelativePath (getSymbolicPath pkgroot) <$> absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
 
 -- -----------------------------------------------------------------------------
 -- Unregistration
