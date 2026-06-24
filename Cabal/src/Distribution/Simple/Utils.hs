@@ -455,9 +455,7 @@ die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
   ioError . verbatimUserError
     =<< annotateErrorString verbosity
-    =<< pure . wrapTextVerbosity (verbosityFlags verbosity)
-    =<< pure . addErrorPrefix
-    =<< prefixWithProgName msg
+    =<< (wrapTextVerbosity (verbosityFlags verbosity) . addErrorPrefix <$> prefixWithProgName msg)
 
 -- Type which will be a wrapper for cabal -exceptions and cabal-install exceptions
 data VerboseException a = VerboseException CallStack POSIXTime VerbosityFlags a
@@ -974,17 +972,18 @@ rawSystemExitCode
   -> IO ExitCode
 rawSystemExitCode verbosity mbWorkDir path args menv =
   withFrozenCallStack $
-    fmap fst $
-      rawSystemIOWithEnvAndAction
-        verbosity
-        path
-        args
-        (fmap getSymbolicPath mbWorkDir)
-        menv
-        (\_ _ _ -> return ())
-        Nothing
-        Nothing
-        Nothing
+    ( fst
+        <$> rawSystemIOWithEnvAndAction
+          verbosity
+          path
+          args
+          (fmap getSymbolicPath mbWorkDir)
+          menv
+          (\_ _ _ -> return ())
+          Nothing
+          Nothing
+          Nothing
+    )
 
 -- | Execute the given command with the given arguments, returning
 -- the command's exit code.
