@@ -1271,8 +1271,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
         --
         hashesFromRepoMetadata <-
           Sec.uncheckClientErrors $ -- TODO: [code cleanup] wrap in our own exceptions
-            fmap (Map.fromList . concat) $
-              sequence
+            ((Map.fromList . concat) <$> sequence
                 -- Reading the repo index is expensive so we group the packages by repo
                 [ repoContextWithSecureRepo repoctx repo $ \secureRepo ->
                   Sec.withIndex secureRepo $ \repoIndex ->
@@ -1293,7 +1292,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
                       . NE.groupBy ((==) `on` (repoName . fst))
                       . sortBy (compare `on` (repoName . fst))
                       $ repoTarballPkgsWithMetadata
-                ]
+                ])
 
         -- For tarballs from repos that do not have hashes available, download
         -- the ones we previously determined we need.
@@ -1324,13 +1323,12 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
           ++ repoTarballPkgsNewlyDownloaded
   hashesFromTarballFiles <-
     liftIO $
-      fmap Map.fromList $
-        sequence
+      (Map.fromList <$> sequence
           [ do
             srchash <- readFileHashValue tarball
             return (pkgid, srchash)
           | (pkgid, tarball) <- allTarballFilePkgs
-          ]
+          ])
   monitorFiles
     [ monitorFile tarball
     | (_pkgid, tarball) <- allTarballFilePkgs

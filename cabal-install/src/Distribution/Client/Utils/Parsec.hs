@@ -81,8 +81,7 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (NubList' sep b a) where
 
 remoteRepoGrammar :: RepoName -> ParsecFieldGrammar RemoteRepo RemoteRepo
 remoteRepoGrammar name =
-  pure (RemoteRepo name)
-    <*> uniqueFieldAla "url" URI_NT remoteRepoURILens
+  (RemoteRepo name <$> uniqueFieldAla "url" URI_NT remoteRepoURILens)
     <*> optionalField "secure" remoteRepoSecureLens
     <*> monoidalFieldAla "root-keys" (alaList' FSep Token) remoteRepoRootKeysLens
     <*> optionalFieldDefAla "key-threshold" KeyThreshold remoteRepoKeyThresholdLens 0

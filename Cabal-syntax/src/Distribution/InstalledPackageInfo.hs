@@ -134,11 +134,11 @@ showFullInstalledPackageInfo = P.showFields (const NoComment) . prettyFieldGramm
 -- Just "maintainer: Tester"
 showInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showInstalledPackageInfoField fn =
-  fmap (\g -> Disp.render . ppField fn . g) $ fieldDescrPretty ipiFieldGrammar (toUTF8BS fn)
+  (\g -> Disp.render . ppField fn . g) <$> fieldDescrPretty ipiFieldGrammar (toUTF8BS fn)
 
 showSimpleInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showSimpleInstalledPackageInfoField fn =
-  fmap (Disp.renderStyle myStyle .) $ fieldDescrPretty ipiFieldGrammar (toUTF8BS fn)
+  (Disp.renderStyle myStyle .) <$> fieldDescrPretty ipiFieldGrammar (toUTF8BS fn)
   where
     myStyle = Disp.style{Disp.mode = Disp.LeftMode}
 

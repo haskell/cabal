@@ -126,8 +126,7 @@ rulesExceptionMessage = \case
       showCycle (r, rs) =
         unlines . map ("  " ++) . lines $
           Tree.drawTree $
-            fmap show $
-              Tree.Node r rs
+            (show <$> Tree.Node r rs)
   CantFindSourceForRuleDependencies _r deps ->
     unlines $
       ("Pre-build rules: can't find source for rule " ++ what ++ ":")

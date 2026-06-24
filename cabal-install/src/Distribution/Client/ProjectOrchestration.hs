@@ -458,8 +458,7 @@ runProjectBuildPhase
   verbosity
   ProjectBaseContext{..}
   ProjectBuildContext{..} =
-    fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
-      rebuildTargets
+    Map.union (previousBuildOutcomes pkgsBuildStatus) <$> rebuildTargets
         verbosity
         projectConfig
         distDirLayout
@@ -712,10 +711,8 @@ resolveTargets
       -- We can ask to build any whole package, project-local or a dependency
       checkTarget bt@(TargetPackage _ (ordNub -> [pkgid]) mkfilter)
         | Just ats <-
-            fmap (maybe id filterTargetsKind mkfilter) $
-              Map.lookup pkgid availableTargetsByPackageId =
-            fmap (componentTargets WholeComponent) $
-              selectPackageTargets bt ats
+            maybe id filterTargetsKind mkfilter <$> Map.lookup pkgid availableTargetsByPackageId =
+            componentTargets WholeComponent <$> selectPackageTargets bt ats
         | otherwise =
             Left (TargetProblemNoSuchPackage pkgid)
       checkTarget (TargetPackage _ pkgids _) =
@@ -742,8 +739,7 @@ resolveTargets
             Map.lookup
               (pkgid, cname)
               availableTargetsByPackageIdAndComponentName =
-            fmap (componentTargets subtarget) $
-              selectComponentTargets subtarget ats
+            componentTargets subtarget <$> selectComponentTargets subtarget ats
         | Map.member pkgid availableTargetsByPackageId =
             Left (TargetProblemNoSuchComponent pkgid cname)
         | otherwise =
@@ -758,16 +754,14 @@ resolveTargets
               Map.lookup
                 (pkgname, cname)
                 availableTargetsByPackageNameAndComponentName =
-            fmap (componentTargets subtarget) $
-              selectComponentTargets subtarget ats
+            componentTargets subtarget <$> selectComponentTargets subtarget ats
         | Map.member pkgname availableTargetsByPackageName =
             Left (TargetProblemUnknownComponent pkgname ecname)
         | otherwise =
             Left (TargetNotInProject pkgname)
       checkTarget bt@(TargetPackageNamed pkgname mkfilter)
         | Just ats <-
-            fmap (maybe id filterTargetsKind mkfilter) $
-              Map.lookup pkgname availableTargetsByPackageName =
+            maybe id filterTargetsKind mkfilter <$> Map.lookup pkgname availableTargetsByPackageName =
             fmap (componentTargets WholeComponent)
               . selectPackageTargets bt
               $ ats

@@ -586,8 +586,7 @@ probeMonitorStateFiles
         -- directory modification time changed:
         -- a matching file may have been added or deleted
         matches <-
-          return . filter (matchGlobPieces glob)
-            =<< liftIO (listDirectory (root </> dirName))
+          filter (matchGlobPieces glob) <$> liftIO (listDirectory (root </> dirName))
 
         traverse_ probeMergeResult $
           mergeBy
@@ -790,8 +789,7 @@ probeMonitorStateGlobRel
         -- directory modification time changed:
         -- a matching file may have been added or deleted
         matches <-
-          return . filter (matchGlobPieces glob)
-            =<< liftIO (listDirectory (root </> dirName))
+          filter (matchGlobPieces glob) <$> liftIO (listDirectory (root </> dirName))
 
         traverse_ probeMergeResult $
           mergeBy
