@@ -2059,8 +2059,7 @@ matchPackageDir ps = \str fstatus ->
     FileStatusExistsDir canondir ->
       orNoSuchThing "package directory" str (map (snd . fst) dirs) $
         increaseConfidenceFor $
-          fmap snd $
-            matchExactly (fst . fst) dirs canondir
+          (snd <$> matchExactly (fst . fst) dirs canondir)
     _ -> mzero
   where
     dirs =
@@ -2074,8 +2073,7 @@ matchPackageFile ps = \str fstatus -> do
     FileStatusExistsFile canonfile ->
       orNoSuchThing "package .cabal file" str (map (snd . fst) files) $
         increaseConfidenceFor $
-          fmap snd $
-            matchExactly (fst . fst) files canonfile
+          (snd <$> matchExactly (fst . fst) files canonfile)
     _ -> mzero
   where
     files =
