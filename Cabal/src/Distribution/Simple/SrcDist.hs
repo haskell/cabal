@@ -272,13 +272,13 @@ listPackageSources' verbosity rip mbWorkDir pkg_descr pps =
         . withAllLib
         $ \l -> do
           let lbi = libBuildInfo l
-              incls = fmap getSymbolicPath $ filter (`notElem` autogenIncludes lbi) (installIncludes lbi)
+              incls = getSymbolicPath <$> filter (`notElem` autogenIncludes lbi) (installIncludes lbi)
               relincdirs = fmap getSymbolicPath $ sameDirectory : mapMaybe symbolicPathRelative_maybe (includeDirs lbi)
           traverse (fmap (makeSymbolicPath . snd) . findIncludeFile verbosity cwd relincdirs) incls
     , -- Setup script, if it exists.
-      fmap (maybe [] (\f -> [makeSymbolicPath f])) $ findSetupFile cwd
+      maybe [] (\f -> [makeSymbolicPath f]) <$> findSetupFile cwd
     , -- SetupHooks script, if it exists.
-      fmap (maybe [] (\f -> [makeSymbolicPath f])) $ findSetupHooksFile cwd
+      maybe [] (\f -> [makeSymbolicPath f]) <$> findSetupHooksFile cwd
     , -- The .cabal file itself.
       fmap (\d -> [d]) (coerceSymbolicPath . relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir)
     ]
