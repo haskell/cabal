@@ -2082,7 +2082,7 @@ guardPackageFile _ (FileStatusExistsFile file)
 guardPackageFile str _ = matchErrorExpected "package .cabal file" str
 
 matchPackage :: [KnownPackage] -> String -> FileStatus -> Match KnownPackage
-matchPackage pinfo = \str fstatus ->
+matchPackage pinfo str fstatus =
   orNoThingIn "project" "" $
     matchPackageName pinfo str
       </> ( matchPackageNameUnknown str
@@ -2091,7 +2091,7 @@ matchPackage pinfo = \str fstatus ->
           )
 
 matchPackageName :: [KnownPackage] -> String -> Match KnownPackage
-matchPackageName ps = \str -> do
+matchPackageName ps str = do
   guard (validPackageName str)
   orNoSuchThing
     "package"

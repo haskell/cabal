@@ -78,7 +78,7 @@ testHttp = withFakeRepoCtxt get200 $ \repoCtxt repo -> do
       pkgId' @?= pkgId
     _ -> assertFailure $ "expected RepoTarballPackage, got " ++ show res
   where
-    get200 = \_uri -> return 200
+    get200 _uri = return 200
 
 testGetInterrupt :: Assertion
 testGetInterrupt = testGetAny UserInterrupt
