@@ -117,8 +117,7 @@ instance Parsec LicenseExpression where
 
       simple = do
         s <- parsec
-        exc <- exception
-        return $ ELicense s exc
+        ELicense s <$> exception
 
       exception = P.optional $ P.try (spaces1 *> P.string "WITH" *> spaces1) *> parsec
 
