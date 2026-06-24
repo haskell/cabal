@@ -1271,7 +1271,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
         --
         hashesFromRepoMetadata <-
           Sec.uncheckClientErrors -- TODO: [code cleanup] wrap in our own exceptions
-            ( (Map.fromList . concat)
+            ( Map.fromList . concat
                 <$> sequence
                   -- Reading the repo index is expensive so we group the packages by repo
                   [ repoContextWithSecureRepo repoctx repo $ \secureRepo ->

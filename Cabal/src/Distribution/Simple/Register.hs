@@ -717,7 +717,7 @@ relocatableInstalledPackageInfo pkg abi_hash lib lbi clbi pkgroot =
     bi = libBuildInfo lib
 
     installDirs =
-      (("${pkgroot}" </>) . shortRelativePath (getSymbolicPath pkgroot)) <$> absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
+      ("${pkgroot}" </>) . shortRelativePath (getSymbolicPath pkgroot) <$> absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
 
 -- -----------------------------------------------------------------------------
 -- Unregistration
