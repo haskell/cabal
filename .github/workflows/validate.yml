@@ -32,7 +32,7 @@ on:
 env:
   # We choose a stable ghc version across all os's
   # which will be used to do the next release
-  GHC_FOR_RELEASE: "9.10.3"
+  GHC_FOR_RELEASE: "9.12.4"
   # Ideally we should use the version about to be released for hackage tests and benchmarks
   GHC_FOR_SOLVER_BENCHMARKS: "9.10.3"
   GHC_FOR_COMPLETE_HACKAGE_TESTS: "9.10.3"
