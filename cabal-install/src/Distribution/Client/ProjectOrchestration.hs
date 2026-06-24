@@ -455,7 +455,8 @@ runProjectBuildPhase
   verbosity
   ProjectBaseContext{..}
   ProjectBuildContext{..} =
-    Map.union (previousBuildOutcomes pkgsBuildStatus) <$> rebuildTargets
+    Map.union (previousBuildOutcomes pkgsBuildStatus)
+      <$> rebuildTargets
         verbosity
         projectConfig
         distDirLayout
