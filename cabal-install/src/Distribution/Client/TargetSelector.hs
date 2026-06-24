@@ -321,23 +321,18 @@ parseTargetString =
   where
     parseTargetApprox :: Parse.ReadP TargetString
     parseTargetApprox =
-      ( do
-          a <- tokenQEnd
-          return (TargetString1 a)
-      )
+      (TargetString1 <$> tokenQEnd)
         +++ ( do
                 a <- tokenQ0
                 _ <- Parse.char ':'
-                b <- tokenQEnd
-                return (TargetString2 a b)
+                TargetString2 a <$> tokenQEnd
             )
         +++ ( do
                 a <- tokenQ0
                 _ <- Parse.char ':'
                 b <- tokenQ
                 _ <- Parse.char ':'
-                c <- tokenQEnd
-                return (TargetString3 a b c)
+                TargetString3 a b <$> tokenQEnd
             )
         +++ ( do
                 a <- tokenQ0
@@ -346,8 +341,7 @@ parseTargetString =
                 _ <- Parse.char ':'
                 c <- tokenQ
                 _ <- Parse.char ':'
-                d <- tokenQEnd
-                return (TargetString4 a b c d)
+                TargetString4 a b c <$> tokenQEnd
             )
         +++ ( do
                 a <- tokenQ0
@@ -358,8 +352,7 @@ parseTargetString =
                 _ <- Parse.char ':'
                 d <- tokenQ
                 _ <- Parse.char ':'
-                e <- tokenQEnd
-                return (TargetString5 a b c d e)
+                TargetString5 a b c d <$> tokenQEnd
             )
         +++ ( do
                 a <- tokenQ0
@@ -374,8 +367,7 @@ parseTargetString =
                 _ <- Parse.char ':'
                 f <- tokenQ
                 _ <- Parse.char ':'
-                g <- tokenQEnd
-                return (TargetString7 a b c d e f g)
+                TargetString7 a b c d e f <$> tokenQEnd
             )
 
     token = Parse.munch1 (\x -> not (isSpace x) && x /= ':')
@@ -2108,8 +2100,7 @@ matchPackageDir ps = \str fstatus ->
     FileStatusExistsDir canondir ->
       orNoSuchThing "package directory" str (map (snd . fst) dirs) $
         increaseConfidenceFor $
-          fmap snd $
-            matchExactly (fst . fst) dirs canondir
+          (snd <$> matchExactly (fst . fst) dirs canondir)
     _ -> mzero
   where
     dirs =
@@ -2123,8 +2114,7 @@ matchPackageFile ps = \str fstatus -> do
     FileStatusExistsFile canonfile ->
       orNoSuchThing "package .cabal file" str (map (snd . fst) files) $
         increaseConfidenceFor $
-          fmap snd $
-            matchExactly (fst . fst) files canonfile
+          (snd <$> matchExactly (fst . fst) files canonfile)
     _ -> mzero
   where
     files =
