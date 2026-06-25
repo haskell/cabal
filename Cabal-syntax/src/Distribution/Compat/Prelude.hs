@@ -16,13 +16,12 @@ module Distribution.Compat.Prelude
 
     -- * Common type-classes
   , Semigroup (..)
-  , gmappend
-  , gmempty
   , Typeable
   , TypeRep
   , typeRep
   , Data
   , Generic
+  , Generically (..)
   , NFData (..)
   , Binary (..)
   , Structured
@@ -232,8 +231,7 @@ import Data.Typeable (TypeRep, Typeable, typeRep)
 import Data.Void (Void, absurd, vacuous)
 import Data.Word (Word, Word16, Word32, Word64, Word8)
 import Distribution.Compat.Binary (Binary (..))
-import Distribution.Compat.Semigroup (gmappend, gmempty)
-import GHC.Generics (Generic)
+import GHC.Generics (Generic, Generically (..))
 import System.Exit (ExitCode (..), exitFailure, exitSuccess, exitWith)
 import Text.Read (readMaybe)
 

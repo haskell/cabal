@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
@@ -93,15 +94,10 @@ data CommonSetupFlags = CommonSetupFlags
   -- after the @cabal repl@ command exits.
   }
   deriving (Eq, Show, Read, Generic)
+  deriving (Semigroup, Monoid) via Generically CommonSetupFlags
 
 instance Binary CommonSetupFlags
 instance Structured CommonSetupFlags
-
-instance Semigroup CommonSetupFlags where
-  (<>) = gmappend
-
-instance Monoid CommonSetupFlags where
-  mempty = gmempty
 
 defaultCommonSetupFlags :: CommonSetupFlags
 defaultCommonSetupFlags =
