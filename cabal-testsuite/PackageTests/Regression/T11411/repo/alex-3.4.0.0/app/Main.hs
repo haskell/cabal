@@ -10,7 +10,7 @@ main = do
     "--version" : _ ->
       putStrLn "Alex version 3.4.0, (c) 2003 Chris Dornan and Simon Marlow"
     _ ->
-      writeFile (outputFile args) "THIS IS NOT VALID HASKELL\n"
+      writeFile (outputFile args) "module Hello where\nTHIS IS NOT VALID HASKELL\n"
 
 outputFile :: [String] -> FilePath
 outputFile ("-o" : f : _) = f
