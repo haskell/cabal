@@ -1,9 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE TupleSections #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.Sandbox.PackageEnvironment
@@ -81,12 +78,7 @@ data PackageEnvironment = PackageEnvironment
   { pkgEnvSavedConfig :: SavedConfig
   }
   deriving (Generic)
-
-instance Monoid PackageEnvironment where
-  mempty = gmempty
-
-instance Semigroup PackageEnvironment where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically PackageEnvironment
 
 -- | Optional package environment file that can be used to customize the default
 -- settings. Created by the user.

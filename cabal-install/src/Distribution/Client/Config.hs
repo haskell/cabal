@@ -1,10 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.Config
@@ -277,9 +274,7 @@ data SavedConfig = SavedConfig
   , savedReplMulti :: Flag Bool
   }
   deriving (Generic)
-
-instance Monoid SavedConfig where
-  mempty = gmempty
+  deriving (Monoid) via Generically SavedConfig
 
 instance Semigroup SavedConfig where
   a <> b =

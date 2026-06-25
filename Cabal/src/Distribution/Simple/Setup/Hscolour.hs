@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
@@ -55,6 +56,7 @@ data HscolourFlags = HscolourFlags
   , hscolourForeignLibs :: Flag Bool
   }
   deriving (Show, Generic)
+  deriving (Semigroup, Monoid) via Generically HscolourFlags
 
 pattern HscolourCommonFlags
   :: Flag VerbosityFlags
@@ -96,12 +98,6 @@ defaultHscolourFlags =
     , hscolourBenchmarks = Flag False
     , hscolourForeignLibs = Flag False
     }
-
-instance Monoid HscolourFlags where
-  mempty = gmempty
-
-instance Semigroup HscolourFlags where
-  (<>) = gmappend
 
 hscolourCommand :: CommandUI HscolourFlags
 hscolourCommand =

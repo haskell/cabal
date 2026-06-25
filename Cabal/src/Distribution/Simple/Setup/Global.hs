@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -49,6 +50,7 @@ data GlobalFlags = GlobalFlags
   , globalWorkingDir :: Flag (SymbolicPath CWD (Dir Pkg))
   }
   deriving (Generic)
+  deriving (Semigroup, Monoid) via Generically GlobalFlags
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags =
@@ -129,9 +131,3 @@ globalCommand commands =
 
 emptyGlobalFlags :: GlobalFlags
 emptyGlobalFlags = mempty
-
-instance Monoid GlobalFlags where
-  mempty = gmempty
-
-instance Semigroup GlobalFlags where
-  (<>) = gmappend
