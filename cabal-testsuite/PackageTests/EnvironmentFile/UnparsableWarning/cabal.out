@@ -1,7 +1,0 @@
-# cabal install
-Wrote tarball sdist to <ROOT>/cabal.dist/work/./dist/sdist/UnparsableWarning-0.1.0.0.tar.gz
-Warning: The environment file <ROOT>/bad.environment is unparsable. Libraries cannot be installed.
-"<ROOT>/bad.environment" (line 1, column 1):
-unexpected 't'
-expecting "--", "package-id", "global-package-db", "user-package-db", "package-db", "clear-package-db" or end of input
-Resolving dependencies...
