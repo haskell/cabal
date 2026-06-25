@@ -138,8 +138,7 @@ rerunIfChanged'
      -- For serial execution, this can simply be 'sequence'; for concurrent
      -- execution, something more sophisticated can be passed here.
   -> [(FileMonitor a b, a, m b)]
-     -- ^ Triples of a file monitor, a key to identify it, and an associated
-     -- action.
+     -- ^ Triples of a file monitor, a key, and an associated action.
   -> m [b]
 rerunIfChanged' verbosity rootDir chainIOs triples = do
   withRunRebuildInIO $ \runInIO -> do

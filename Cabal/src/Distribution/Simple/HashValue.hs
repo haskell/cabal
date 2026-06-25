@@ -3,6 +3,7 @@
 module Distribution.Simple.HashValue
   ( HashValue
   , hashValue
+  , hashEncode
   , rawHashValue
   , truncateHash
   , showHashValue
@@ -12,6 +13,7 @@ module Distribution.Simple.HashValue
 import Distribution.Compat.Prelude
 
 import Control.Monad ( (<=<) )
+import qualified Data.Binary as Binary
 import qualified Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS
@@ -47,6 +49,10 @@ instance Structured HashValue
 -- | Hash some data. Currently uses SHA256.
 hashValue :: LBS.ByteString -> HashValue
 hashValue = HashValue . SHA256.hashlazy
+
+-- | Hash a value's 'Binary' representation.
+hashEncode :: Binary a => a -> HashValue
+hashEncode = hashValue . Binary.encode
 
 -- | Convert a raw hash value, given as a bytestring, into a 'HashValue'. No
 -- well-formedness guarantees are provided; the caller is responsible for

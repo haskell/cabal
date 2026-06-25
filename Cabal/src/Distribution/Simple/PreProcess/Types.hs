@@ -28,6 +28,7 @@ where
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Simple.HashValue
 import Distribution.ModuleName (ModuleName)
 import Distribution.Pretty
 import Distribution.Utils.Path
@@ -45,11 +46,14 @@ import qualified Text.PrettyPrint as Disp
 --  >   PreProcessor {
 --  >     platformIndependent = True,
 --  >     ppOrdering = \_ _ -> return,
---  >     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
---  >       do info verbosity (inFile++" has been preprocessed to "++outFile)
---  >          stuff <- readFile inFile
---  >          writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
---  >          return ()
+--  >     configurePreProcessor = \verbosity -> do
+--  >       let runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+--  >               do info verbosity (inFile++" has been preprocessed to "++outFile)
+--  >                  stuff <- readFile inFile
+--  >                  writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
+--  >                  return ()
+--  >           ppInfo = hashEncode "test"
+--  >       return (runPreProcessor, ppInfo)
 --
 --  We split the input and output file names into a base directory and the
 --  rest of the file name. The input base dir is the path in the list of search
@@ -91,8 +95,11 @@ data PreProcessor = PreProcessor
   -- well-behaved and not reorder modules it doesn't have dominion over!
   --
   -- @since 3.8.1.0
-  , runPreProcessor
-      :: PreProcessCommand
+
+  , configurePreProcessor
+      :: Verbosity
+      -> IO (PreProcessCommand, Maybe HashValue)
+  
   }
 
 -- | A command to run a given preprocessor on a single source file.
