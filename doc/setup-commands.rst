@@ -1091,11 +1091,14 @@ This command takes the following options:
 
     GHC 9.8.1 and later can act as a jobserver client, which enables two or more
     GHC processes running at once to share system resources with each other,
-    communicating via a specified system semaphore. The system semaphore is
-    identified by a name (a string).
+    communicating via a specified system client semaphore. A GHC version
+    supports a specific protocol version for semaphores. On non-Windows
+    operating systems, more than one protocol version exists. The system client
+    semaphore is identified by a string, being a bare name (for protocol
+    version 1) or a versioned name (for subsequent protocol versions).
 
     This option causes Cabal to control parallelism by using the specified
-    system semaphore.
+    system client semaphore.
 
 .. _setup-haddock:
 
