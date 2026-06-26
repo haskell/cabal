@@ -22,6 +22,7 @@ import Distribution.Version
 import Control.Concurrent (threadDelay)
 import Control.Monad (replicateM)
 import Data.Array hiding (index)
+import Data.Bifunctor (bimap)
 import Data.Graph
 import Data.IORef
 import Data.List ()
@@ -236,7 +237,7 @@ arbitraryInstallPlan
 arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
   (ipkgvs, srcpkgvs) <-
     fmap
-      ( (\(ipkgs, srcpkgs) -> (map fst ipkgs, map fst srcpkgs))
+      ( bimap (map fst) (map fst)
           . partition snd
       )
       $ sequenceA

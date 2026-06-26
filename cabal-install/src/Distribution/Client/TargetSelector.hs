@@ -100,7 +100,7 @@ import Control.Arrow ((&&&))
 import Control.Monad hiding
   ( mfilter
   )
-import Data.Bifunctor (second)
+import Data.Bifunctor (bimap, second)
 #if MIN_VERSION_base(4,20,0)
 import Data.Functor as UZ (unzip)
 #else
@@ -807,10 +807,9 @@ reportTargetSelectorProblems verbosity problems = do
           (showTargetSelector originalMatch)
           (showTargetSelectorKind originalMatch)
         $ map
-          ( \(rendering, matches) ->
-              ( showTargetString rendering
-              , map (\match -> showTargetSelector match ++ " (" ++ showTargetSelectorKind match ++ ")") matches
-              )
+          ( bimap
+              showTargetString
+              (map (\match -> showTargetSelector match ++ " (" ++ showTargetSelectorKind match ++ ")"))
           )
           renderingsAndMatches
 
@@ -834,10 +833,9 @@ reportTargetSelectorProblems verbosity problems = do
       dieWithException verbosity $
         TargetSelectorAmbiguousErr $
           map
-            ( \(target, amb) ->
-                ( showTargetString target
-                , map (\(ut, bt) -> (showTargetString ut, showTargetSelectorKind bt)) amb
-                )
+            ( bimap
+                showTargetString
+                (map (bimap showTargetString showTargetSelectorKind))
             )
             targets
 
@@ -2084,7 +2082,7 @@ guardPackageFile _ (FileStatusExistsFile file)
 guardPackageFile str _ = matchErrorExpected "package .cabal file" str
 
 matchPackage :: [KnownPackage] -> String -> FileStatus -> Match KnownPackage
-matchPackage pinfo = \str fstatus ->
+matchPackage pinfo str fstatus =
   orNoThingIn "project" "" $
     matchPackageName pinfo str
       </> ( matchPackageNameUnknown str
@@ -2093,7 +2091,7 @@ matchPackage pinfo = \str fstatus ->
           )
 
 matchPackageName :: [KnownPackage] -> String -> Match KnownPackage
-matchPackageName ps = \str -> do
+matchPackageName ps str = do
   guard (validPackageName str)
   orNoSuchThing
     "package"

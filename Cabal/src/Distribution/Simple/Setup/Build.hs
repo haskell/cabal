@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
@@ -59,6 +60,7 @@ data BuildFlags = BuildFlags
   , buildUseSemaphore :: Flag String
   }
   deriving (Read, Show, Generic)
+  deriving (Semigroup, Monoid) via Generically BuildFlags
 
 pattern BuildCommonFlags
   :: Flag VerbosityFlags
@@ -175,10 +177,3 @@ buildOptions progDb showOrParseArgs =
 
 emptyBuildFlags :: BuildFlags
 emptyBuildFlags = mempty
-
-instance Monoid BuildFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup BuildFlags where
-  (<>) = gmappend

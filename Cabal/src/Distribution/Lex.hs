@@ -47,4 +47,4 @@ tokenizeQuotedWords = filter (not . null) . go False mempty
     go True accum (c : cs)
       | c == '"' = go False accum cs
     go quoted accum (c : cs) =
-      go quoted (accum `mappend` singleton c) cs
+      go quoted (accum <> singleton c) cs

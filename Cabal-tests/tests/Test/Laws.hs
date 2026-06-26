@@ -35,39 +35,38 @@ fmap_2 :: (Eq (f c), Functor f) => (b -> c) -> (a -> b) -> f a -> Bool
 fmap_2 f g x = fmap (f . g) x == (fmap f . fmap g) x
 
 
--- | The monoid identity law, 'mempty' is a left and right identity of
--- 'mappend':
+-- | The monoid identity law, 'mempty' is a left and right identity of '(<>)':
 --
--- > mempty `mappend` x = x
--- > x `mappend` mempty = x
+-- > mempty <> x = x
+-- > x <> mempty = x
 --
 monoid_1 :: (Eq a, Data.Monoid.Monoid a) => a -> Bool
-monoid_1 x = mempty `mappend` x == x
-          && x `mappend` mempty == x
+monoid_1 x = mempty <> x == x
+          && x <> mempty == x
 
--- | The monoid associativity law, 'mappend' must be associative.
+-- | The monoid associativity law, '(<>)' must be associative.
 --
--- > (x `mappend` y) `mappend` z = x `mappend` (y `mappend` z)
+-- > (x <> y) <> z = x <> (y <> z)
 --
 monoid_2 :: (Eq a, Data.Monoid.Monoid a) => a -> a -> a -> Bool
-monoid_2 x y z = (x `mappend`  y) `mappend` z
-              ==  x `mappend` (y  `mappend` z)
+monoid_2 x y z = (x <>  y) <> z
+              ==  x <> (y  <> z)
 
 -- | The 'mconcat' definition. It can be overridden for the sake of efficiency
 -- but it must still satisfy the property given by the default definition:
 --
--- > mconcat = foldr mappend mempty
+-- > mconcat = foldr (<>) mempty
 --
 monoid_3 :: (Eq a, Data.Monoid.Monoid a) => [a] -> Bool
-monoid_3 xs = mconcat xs == foldr mappend mempty xs
+monoid_3 xs = mconcat xs == foldr (<>) mempty xs
 
 
 -- | First 'Foldable' law
 --
--- > Foldable.fold = Foldable.foldr mappend mempty
+-- > Foldable.fold = Foldable.foldr (<>) mempty
 --
 foldable_1 :: (Foldable.Foldable t, Monoid m, Eq m) => t m -> Bool
-foldable_1 x = Foldable.fold x == Foldable.foldr mappend mempty x
+foldable_1 x = Foldable.fold x == Foldable.foldr (<>) mempty x
 
 -- | Second 'Foldable' law
 --

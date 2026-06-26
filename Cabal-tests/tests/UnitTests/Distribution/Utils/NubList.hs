@@ -69,9 +69,9 @@ prop_Nub xs = rhs === lhs
 
 prop_Identity :: [Int] -> Bool
 prop_Identity xs =
-    mempty `mappend` toNubList xs == toNubList xs `mappend` mempty
+    mempty <> toNubList xs == toNubList xs <> mempty
 
 prop_Associativity :: [Int] -> [Int] -> [Int] -> Bool
 prop_Associativity xs ys zs =
-    (toNubList xs `mappend` toNubList ys) `mappend` toNubList zs
-            == toNubList xs `mappend` (toNubList ys `mappend` toNubList zs)
+    (toNubList xs <> toNubList ys) <> toNubList zs
+            == toNubList xs <> (toNubList ys <> toNubList zs)

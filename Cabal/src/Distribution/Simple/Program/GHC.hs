@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
@@ -608,6 +609,7 @@ data GhcOptions = GhcOptions
   -- Modifies some of the GHC error messages.
   }
   deriving (Show, Generic)
+  deriving (Semigroup, Monoid) via Generically GhcOptions
 
 data GhcMode
   = -- | @ghc -c@
@@ -1049,13 +1051,3 @@ splitRTSArgs args =
               then addRTSArg arg $ go isRTSArg rest
               else addNonRTSArg arg $ go isRTSArg rest
    in go False args
-
--- -----------------------------------------------------------------------------
--- Boilerplate Monoid instance for GhcOptions
-
-instance Monoid GhcOptions where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup GhcOptions where
-  (<>) = gmappend

@@ -7,8 +7,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Simple.GHC
 -- Copyright   :  Isaac Jones 2003-2007
@@ -791,13 +789,13 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     mbWorkDir = mbWorkDirLBI lbi
     vanillaArgs =
       Internal.componentGhcOptions (verbosityLevel verbosity) lbi libBi clbi (componentBuildDir lbi clbi)
-        `mappend` mempty
+        <> mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib
           }
     sharedArgs =
       vanillaArgs
-        `mappend` mempty
+        <> mempty
           { ghcOptDynLinkMode = toFlag GhcDynamicOnly
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "dyn_hi"
@@ -806,7 +804,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           }
     profArgs =
       vanillaArgs
-        `mappend` mempty
+        <> mempty
           { ghcOptProfilingMode = toFlag True
           , ghcOptProfilingAuto =
               Internal.profDetailLevelFlag
@@ -818,7 +816,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           }
     profDynArgs =
       vanillaArgs
-        `mappend` mempty
+        <> mempty
           { ghcOptProfilingMode = toFlag True
           , ghcOptProfilingAuto =
               Internal.profDetailLevelFlag

@@ -49,6 +49,7 @@ import Distribution.Simple.Utils
 
 import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
+  , ProjectFileKey (ProjectFileKeyLocal)
   )
 import Distribution.Client.Errors
 import Distribution.Client.HttpUtils
@@ -131,7 +132,7 @@ configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
 
   baseCtx <- establishProjectBaseContext v cliConfig OtherCommand
 
-  let localFile = distProjectFile (distDirLayout baseCtx) "local"
+  let localFile = distProjectFile (distDirLayout baseCtx) ProjectFileKeyLocal
   -- If cabal.project.local already exists, and the flags allow, back up to cabal.project.local~
   let backups = fromFlagOrDefault True $ configBackup configExFlags
       appends = fromFlagOrDefault False $ configAppend configExFlags

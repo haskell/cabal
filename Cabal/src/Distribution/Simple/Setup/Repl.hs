@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
@@ -57,6 +58,7 @@ data ReplOptions = ReplOptions
   , replWithRepl :: Flag FilePath
   }
   deriving (Show, Generic)
+  deriving (Semigroup) via Generically ReplOptions
 
 pattern ReplCommonFlags
   :: Flag VerbosityFlags
@@ -87,10 +89,6 @@ instance Structured ReplOptions
 
 instance Monoid ReplOptions where
   mempty = ReplOptions mempty (Flag False) NoFlag NoFlag
-  mappend = (<>)
-
-instance Semigroup ReplOptions where
-  (<>) = gmappend
 
 data ReplFlags = ReplFlags
   { replCommonFlags :: !CommonSetupFlags
@@ -100,6 +98,7 @@ data ReplFlags = ReplFlags
   , replReplOptions :: ReplOptions
   }
   deriving (Show, Generic)
+  deriving (Semigroup, Monoid) via Generically ReplFlags
 
 instance Binary ReplFlags
 instance Structured ReplFlags
@@ -113,13 +112,6 @@ defaultReplFlags =
     , replReload = Flag False
     , replReplOptions = mempty
     }
-
-instance Monoid ReplFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ReplFlags where
-  (<>) = gmappend
 
 replCommand :: ProgramDb -> CommandUI ReplFlags
 replCommand progDb =

@@ -2,6 +2,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -109,17 +110,11 @@ data InstallDirs dir = InstallDirs
   , sysconfdir :: dir
   }
   deriving (Eq, Read, Show, Functor, Generic)
+  deriving (Semigroup, Monoid) via Generically (InstallDirs dir)
 
 instance Binary dir => Binary (InstallDirs dir)
 instance NFData dir => NFData (InstallDirs dir)
 instance Structured dir => Structured (InstallDirs dir)
-
-instance Monoid dir => Monoid (InstallDirs dir) where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup dir => Semigroup (InstallDirs dir) where
-  (<>) = gmappend
 
 combineInstallDirs
   :: (a -> b -> c)

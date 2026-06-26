@@ -123,7 +123,7 @@ stage2 = sortBy lowerboundCmp
 
 lowerboundCmp :: VersionInterval -> VersionInterval -> Ordering
 lowerboundCmp (VersionInterval (LowerBound v vb) _) (VersionInterval (LowerBound u ub) _) =
-  compare v u `mappend` compareBound vb ub
+  compare v u <> compareBound vb ub
   where
     compareBound :: Bound -> Bound -> Ordering
     compareBound InclusiveBound InclusiveBound = EQ

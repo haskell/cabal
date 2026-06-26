@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
@@ -52,6 +53,7 @@ data ProjectFlags = ProjectFlags
   -- ^ The parser to use for the project file.
   }
   deriving (Show, Generic)
+  deriving (Semigroup, Monoid) via Generically ProjectFlags
 
 defaultProjectFlags :: ProjectFlags
 defaultProjectFlags =
@@ -122,13 +124,6 @@ projectFileParserPrinter NoFlag = []
 -- parsing from the help message.
 removeIgnoreProjectOption :: [OptionField a] -> [OptionField a]
 removeIgnoreProjectOption = filter (\o -> optionName o /= "ignore-project")
-
-instance Monoid ProjectFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ProjectFlags where
-  (<>) = gmappend
 
 yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
 yesNoOpt ShowArgs sf lf = trueArg sf lf

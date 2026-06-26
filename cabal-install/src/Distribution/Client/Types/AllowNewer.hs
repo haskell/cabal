@@ -241,7 +241,6 @@ instance Semigroup RelaxDeps where
 -- | @'RelaxDepsSome' []@ is the /identity element/
 instance Monoid RelaxDeps where
   mempty = RelaxDepsSome []
-  mappend = (<>)
 
 instance Semigroup AllowNewer where
   AllowNewer x <> AllowNewer y = AllowNewer (x <> y)
@@ -251,8 +250,6 @@ instance Semigroup AllowOlder where
 
 instance Monoid AllowNewer where
   mempty = AllowNewer mempty
-  mappend = (<>)
 
 instance Monoid AllowOlder where
   mempty = AllowOlder mempty
-  mappend = (<>)

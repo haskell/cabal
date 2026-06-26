@@ -254,21 +254,21 @@ enforcePackageConstraints pcs = go
     go (PChoiceF qpn@(Q _ pn) rdm gr                    ts) =
       let c = varToConflictSet (P qpn)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP qpn c i pc)
+          g (POption i _) = foldl (\ h pc -> h . processPackageConstraintP qpn c i pc)
                                        id
                                        (M.findWithDefault [] pn pcs)
       in PChoiceF qpn rdm gr        (W.mapWithKey g ts)
     go (FChoiceF qfn@(FN qpn@(Q _ pn) f) rdm gr tr m d ts) =
       let c = varToConflictSet (F qfn)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ b -> foldl (\ h pc -> h . processPackageConstraintF qpn f c b pc)
+          g b = foldl (\ h pc -> h . processPackageConstraintF qpn f c b pc)
                            id
                            (M.findWithDefault [] pn pcs)
       in FChoiceF qfn rdm gr tr m d (W.mapWithKey g ts)
     go (SChoiceF qsn@(SN qpn@(Q _ pn) f) rdm gr tr   ts) =
       let c = varToConflictSet (S qsn)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ b -> foldl (\ h pc -> h . processPackageConstraintS qpn f c b pc)
+          g b = foldl (\ h pc -> h . processPackageConstraintS qpn f c b pc)
                            id
                            (M.findWithDefault [] pn pcs)
       in SChoiceF qsn rdm gr tr     (W.mapWithKey g ts)

@@ -33,7 +33,6 @@ instance NFData SetupBuildInfo
 
 instance Monoid SetupBuildInfo where
   mempty = SetupBuildInfo [] False
-  mappend = (<>)
 
 instance Semigroup SetupBuildInfo where
   a <> b =

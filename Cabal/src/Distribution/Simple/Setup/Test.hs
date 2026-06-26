@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
@@ -83,7 +84,6 @@ instance Parsec TestShowDetails where
 -- TODO: do we need this instance?
 instance Monoid TestShowDetails where
   mempty = Never
-  mappend = (<>)
 
 instance Semigroup TestShowDetails where
   a <> b = max a b
@@ -100,6 +100,7 @@ data TestFlags = TestFlags
     testOptions :: [PathTemplate]
   }
   deriving (Show, Generic)
+  deriving (Semigroup, Monoid) via Generically TestFlags
 
 pattern TestCommonFlags
   :: Flag VerbosityFlags
@@ -276,10 +277,3 @@ testOptions' showOrParseArgs =
 
 emptyTestFlags :: TestFlags
 emptyTestFlags = mempty
-
-instance Monoid TestFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup TestFlags where
-  (<>) = gmappend

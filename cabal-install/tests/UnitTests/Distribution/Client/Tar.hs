@@ -1,23 +1,13 @@
-module UnitTests.Distribution.Client.Tar
-  ( tests
-  ) where
+module UnitTests.Distribution.Client.Tar (tests) where
 
-import Codec.Archive.Tar
-  ( foldEntries
-  )
-import Codec.Archive.Tar.Entry
-  ( simpleEntry
-  , toTarPath
-  )
-import Distribution.Client.Tar
-  ( filterEntries
-  , filterEntriesM
-  )
+import Codec.Archive.Tar (GenEntry, foldEntries)
+import Codec.Archive.Tar.Entry (simpleEntry, toTarPath)
+import Distribution.Client.Tar (filterEntries, filterEntriesM)
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Control.Monad.Writer.Lazy (runWriterT, tell)
+import Control.Monad.Writer.Lazy (WriterT, runWriterT, tell)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -33,24 +23,17 @@ filterTest :: Assertion
 filterTest = do
   let e1 = getFileEntry "file1" "x"
       e2 = getFileEntry "file2" "y"
-      p =
-        ( \e ->
-            let str = BS.Char8.unpack $ case entryContent e of
-                  NormalFile dta _ -> dta
-                  _ -> error "Invalid entryContent"
-             in str /= "y"
-        )
   assertEqual "Unexpected result for filter" "xz" $
     entriesToString $
-      filterEntries p $
+      filterEntries unpackCheck $
         Next e1 $
           Next e2 Done
   assertEqual "Unexpected result for filter" "z" $
     entriesToString $
-      filterEntries p Done
+      filterEntries unpackCheck Done
   assertEqual "Unexpected result for filter" "xf" $
     entriesToString $
-      filterEntries p $
+      filterEntries unpackCheck $
         Next e1 $
           Next e2 $
             Fail "f"
@@ -59,23 +42,15 @@ filterMTest :: Assertion
 filterMTest = do
   let e1 = getFileEntry "file1" "x"
       e2 = getFileEntry "file2" "y"
-      p =
-        ( \e ->
-            let str = BS.Char8.unpack $ case entryContent e of
-                  NormalFile dta _ -> dta
-                  _ -> error "Invalid entryContent"
-             in tell "t" >> return (str /= "y")
-        )
-
-  (r, w) <- runWriterT $ filterEntriesM p $ Next e1 $ Next e2 Done
+  (r, w) <- runWriterT $ filterEntriesM unpackCheckM $ Next e1 $ Next e2 Done
   assertEqual "Unexpected result for filterM" "xz" $ entriesToString r
   assertEqual "Unexpected result for filterM w" "tt" w
 
-  (r1, w1) <- runWriterT $ filterEntriesM p Done
+  (r1, w1) <- runWriterT $ filterEntriesM unpackCheckM Done
   assertEqual "Unexpected result for filterM" "z" $ entriesToString r1
   assertEqual "Unexpected result for filterM w" "" w1
 
-  (r2, w2) <- runWriterT $ filterEntriesM p $ Next e1 $ Next e2 $ Fail "f"
+  (r2, w2) <- runWriterT $ filterEntriesM unpackCheckM $ Next e1 $ Next e2 $ Fail "f"
   assertEqual "Unexpected result for filterM" "xf" $ entriesToString r2
   assertEqual "Unexpected result for filterM w" "tt" w2
 
@@ -88,14 +63,16 @@ getFileEntry pth dta =
       Left e -> error e
     dta' = BS.Char8.pack dta
 
+unpackNormalFile :: GenEntry BS.ByteString tarPath linkTarget -> String
+unpackNormalFile e = BS.Char8.unpack $ case entryContent e of
+  NormalFile dta _ -> dta
+  _ -> error "Invalid entryContent"
+
+unpackCheck :: GenEntry BS.ByteString tarPath linkTarget -> Bool
+unpackCheck e = unpackNormalFile e /= "y"
+
+unpackCheckM :: GenEntry BS.ByteString tarPath linkTarget -> WriterT String IO Bool
+unpackCheckM e = tell "t" >> return (unpackCheck e)
+
 entriesToString :: Entries String -> String
-entriesToString =
-  foldEntries
-    ( \e acc ->
-        let str = BS.Char8.unpack $ case entryContent e of
-              NormalFile dta _ -> dta
-              _ -> error "Invalid entryContent"
-         in str ++ acc
-    )
-    "z"
-    id
+entriesToString = foldEntries (\e acc -> unpackNormalFile e ++ acc) "z" id

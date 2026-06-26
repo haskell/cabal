@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -394,13 +395,7 @@ data LegacyProjectConfig = LegacyProjectConfig
   , legacySpecificConfig :: MapMappend PackageName LegacyPackageConfig
   }
   deriving (Show, Generic)
-
-instance Monoid LegacyProjectConfig where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup LegacyProjectConfig where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically LegacyProjectConfig
 
 data LegacyPackageConfig = LegacyPackageConfig
   { legacyConfigureFlags :: ConfigFlags
@@ -410,13 +405,7 @@ data LegacyPackageConfig = LegacyPackageConfig
   , legacyBenchmarkFlags :: BenchmarkFlags
   }
   deriving (Show, Generic)
-
-instance Monoid LegacyPackageConfig where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup LegacyPackageConfig where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically LegacyPackageConfig
 
 data LegacySharedConfig = LegacySharedConfig
   { legacyGlobalFlags :: GlobalFlags
@@ -428,13 +417,7 @@ data LegacySharedConfig = LegacySharedConfig
   , legacyMultiRepl :: Flag Bool
   }
   deriving (Show, Generic)
-
-instance Monoid LegacySharedConfig where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup LegacySharedConfig where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically LegacySharedConfig
 
 ------------------------------------------------------------------
 -- Converting from and to the legacy types
@@ -1896,7 +1879,7 @@ packageSpecificOptionsSectionDescr =
                 { legacySpecificConfig =
                     MapMappend $
                       Map.insertWith
-                        mappend
+                        (<>)
                         pkgname
                         pkgconf
                         (getMapMappend $ legacySpecificConfig projconf)
@@ -2072,7 +2055,7 @@ monoidFieldParsec
 monoidFieldParsec name showF readF get' set =
   liftField get' set' $ ParseUtils.fieldParsec name showF readF
   where
-    set' xs b = set (get' b `mappend` xs) b
+    set' xs b = set (get' b <> xs) b
 
 -- TODO: [code cleanup] local redefinition that should replace the version in
 -- D.ParseUtils called showFilePath. This version escapes "." and "--" which

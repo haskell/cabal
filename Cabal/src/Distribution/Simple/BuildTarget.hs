@@ -42,7 +42,7 @@ module Distribution.Simple.BuildTarget
   , reportBuildTargetProblems
   ) where
 
-import Data.Bifunctor (second)
+import Data.Bifunctor (bimap, second)
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -421,10 +421,9 @@ reportBuildTargetProblems verbosity problems = do
       dieWithException verbosity $
         AmbiguousBuildTarget $
           map
-            ( \(target, amb) ->
-                ( showUserBuildTarget target
-                , map (\(ut, bt) -> (showUserBuildTarget ut, showBuildTargetKind bt)) amb
-                )
+            ( bimap
+                showUserBuildTarget
+                (map (bimap showUserBuildTarget showBuildTargetKind))
             )
             targets
   where
@@ -612,13 +611,13 @@ showComponentKindShort BenchKind = "bench"
 --
 
 matchComponent1 :: [ComponentInfo] -> String -> Match BuildTarget
-matchComponent1 cs = \str1 -> do
+matchComponent1 cs str1 = do
   guardComponentName str1
   c <- matchComponentName cs str1
   return (BuildTargetComponent (cinfoName c))
 
 matchComponent2 :: [ComponentInfo] -> String -> String -> Match BuildTarget
-matchComponent2 cs = \str1 str2 -> do
+matchComponent2 cs str1 str2 = do
   ckind <- matchComponentKind str1
   guardComponentName str2
   c <- matchComponentKindAndName cs ckind str2
@@ -667,7 +666,7 @@ matchComponentKindAndName cs ckind str =
 --
 
 matchModule1 :: [ComponentInfo] -> String -> Match BuildTarget
-matchModule1 cs = \str1 -> do
+matchModule1 cs str1 = do
   guardModuleName str1
   nubMatchErrors $ do
     c <- tryEach cs
@@ -676,7 +675,7 @@ matchModule1 cs = \str1 -> do
     return (BuildTargetModule (cinfoName c) m)
 
 matchModule2 :: [ComponentInfo] -> String -> String -> Match BuildTarget
-matchModule2 cs = \str1 str2 -> do
+matchModule2 cs str1 str2 = do
   guardComponentName str1
   guardModuleName str2
   c <- matchComponentName cs str1

@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
@@ -134,13 +135,7 @@ data InitFlags = InitFlags
   , overwrite :: Flag Bool
   }
   deriving (Eq, Show, Generic)
-
-instance Monoid InitFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup InitFlags where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically InitFlags
 
 -- -------------------------------------------------------------------- --
 -- Targets

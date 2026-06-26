@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
@@ -52,13 +53,7 @@ data ClientInstallFlags = ClientInstallFlags
   , cinstInstalldir :: Flag FilePath
   }
   deriving (Eq, Show, Generic)
-
-instance Monoid ClientInstallFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ClientInstallFlags where
-  (<>) = gmappend
+  deriving (Semigroup, Monoid) via Generically ClientInstallFlags
 
 instance Binary ClientInstallFlags
 instance NFData ClientInstallFlags
