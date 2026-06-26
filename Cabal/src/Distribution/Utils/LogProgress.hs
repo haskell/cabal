@@ -41,7 +41,6 @@ instance Applicative LogProgress where
   LogProgress f <*> LogProgress x = LogProgress $ \r -> f r `ap` x r
 
 instance Monad LogProgress where
-  return = pure
   LogProgress m >>= f = LogProgress $ \r -> m r >>= \x -> unLogProgress (f x) r
 
 -- | Run 'LogProgress', outputting traces according to 'Verbosity',
