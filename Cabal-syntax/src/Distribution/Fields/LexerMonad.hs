@@ -55,7 +55,6 @@ instance Applicative Lex where
   (<*>) = ap
 
 instance Monad Lex where
-  return = pure
   (>>=) = thenLex
 
 data LexResult a = LexResult {-# UNPACK #-} !LexState a

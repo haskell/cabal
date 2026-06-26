@@ -218,7 +218,6 @@ instance Applicative InstM where
      in (f' x', s'')
 
 instance Monad InstM where
-  return = pure
   InstM m >>= f = InstM $ \s ->
     let (x, s') = m s
      in runInstM (f x) s'

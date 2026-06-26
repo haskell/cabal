@@ -908,8 +908,6 @@ instance Applicative Match where
   (<*>) = ap
 
 instance Monad Match where
-  return = pure
-
   NoMatch d ms >>= _ = NoMatch d ms
   ExactMatch d xs >>= f =
     addDepth d $
