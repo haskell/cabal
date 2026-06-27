@@ -678,14 +678,9 @@ noticeNoWrap verbosity
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
 noticeDoc :: Verbosity -> Disp.Doc -> IO ()
-noticeDoc verbosity msg = withFrozenCallStack $ do
-  when (verbosityLevel verbosity >= Normal) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NormalMark FlagTrace flags $
-        Disp.renderStyle defaultStyle msg
+noticeDoc verbosity (Disp.renderStyle defaultStyle -> msg)
+  | verbosityLevel verbosity >= Normal = withFrozenCallStack $ logMsg NormalMark verbosity msg
+  | otherwise = pure ()
 
 -- | Display a "setup status message".  Prefer using setupMessage'
 -- if possible.
