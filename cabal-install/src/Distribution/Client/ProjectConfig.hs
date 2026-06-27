@@ -858,18 +858,20 @@ readProjectFileSkeletonGen
           -- 'currentProjectConfigPath' gives us the head of the path, an
           -- importee or the root project file.
           --
-          -- If we have an extensionName of "" it is still possible for the main
-          -- project to import the .local or .freeze explicitly. These aren't
-          -- normally imported but there's nothing stopping the user from
-          -- importing them. They're read separately and we don't want to
-          -- monitor them twice, so we filter them out. We're already monitoring
-          -- the main project file (above), so we filter that out.
+          -- It is possible for the main project file to import the .local or
+          -- .freeze file explicitly. It is also possible for the user to edit
+          -- the .local or .freeze file to import the main project file. There's
+          -- nothing stopping the user from setting up these imports.
+
+          -- Each of the main project file, the .local and .freeze file are read
+          -- separately. We don't want to monitor them twice, so we filter them
+          -- out.
           when (key == ProjectFileKeyMain) $ do
             monitorFiles
               [ monitorFileHashed path
               | let projFile = makeAbsolute . distProjectFile
               , path <-
-                  filter (`notElem` [extensionFile, projFile ProjectFileKeyFreeze, projFile ProjectFileKeyLocal]) $
+                  filter (`notElem` [projFile k | k <- filter (/= key) [minBound .. maxBound]]) $
                     ordNub
                       [ p
                       | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- projectSkeletonImports pcs
