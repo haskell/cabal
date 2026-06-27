@@ -66,6 +66,7 @@ projectConfigBuildOnlyFieldGrammar =
     <*> optionalFieldDefAla "remote-repo-cache" (alaFlag FilePathNT) L.projectConfigCacheDir mempty
     <*> optionalFieldDefAla "logs-dir" (alaFlag FilePathNT) L.projectConfigLogsDir mempty
     <*> blurFieldGrammar L.projectConfigClientInstallFlags clientInstallFlagsGrammar
+    <*> optionalFieldDef "build-timings" L.projectConfigBuildTimings mempty
 
 projectConfigSharedFieldGrammar :: ProjectConfigPath -> ParsecFieldGrammar' ProjectConfigShared
 projectConfigSharedFieldGrammar source =

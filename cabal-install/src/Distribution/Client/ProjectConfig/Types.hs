@@ -184,6 +184,7 @@ data ProjectConfigBuildOnly = ProjectConfigBuildOnly
   , projectConfigCacheDir :: Flag FilePath
   , projectConfigLogsDir :: Flag FilePath
   , projectConfigClientInstallFlags :: ClientInstallFlags
+  , projectConfigBuildTimings :: Flag Bool
   }
   deriving (Eq, Show, Generic)
   deriving (Semigroup, Monoid) via Generically ProjectConfigBuildOnly
@@ -497,6 +498,7 @@ data BuildTimeSettings = BuildTimeSettings
   , buildSettingIgnoreExpiry :: Bool
   , buildSettingProgPathExtra :: [FilePath]
   , buildSettingHaddockOpen :: Bool
+  , buildSettingBuildTimings :: Bool
   }
   deriving (Generic)
 
