@@ -152,7 +152,6 @@ instance Applicative (UnifyM s) where
           Just x'' -> return (Just (f'' x''))
 
 instance Monad (UnifyM s) where
-  return = pure
   UnifyM m >>= f = UnifyM $ \r -> do
     x <- m r
     case x of
