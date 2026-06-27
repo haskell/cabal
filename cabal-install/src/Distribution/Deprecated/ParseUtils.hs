@@ -124,7 +124,6 @@ instance Applicative ParseResult where
   (<*>) = ap
 
 instance Monad ParseResult where
-  return = pure
   ParseFailed err >>= _ = ParseFailed err
   ParseOk ws x >>= f = case f x of
     ParseFailed err -> ParseFailed err
