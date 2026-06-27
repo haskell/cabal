@@ -743,7 +743,7 @@ installed binaries, and so on.
     compiler-store-path: /home/alice/.local/state/cabal/store/ghc-9.8.2
     cache-home: /home/alice/.cache/cabal
     remote-repo-cache: /home/alice/.cache/cabal/packages
-    logs-dir: /home/alice/.cache/cabal/logs
+    logs-dir: /home/alice/.local/state/cabal/logs
     store-dir: /home/alice/.local/state/cabal/store
     config-file: /home/alice/.config/cabal/config
     installdir: /home/alice/.local/bin
@@ -767,7 +767,7 @@ Or using the json output:
       },
       "cache-home": "/home/alice/.cache/cabal",
       "remote-repo-cache": "/home/alice/.cache/cabal/packages",
-      "logs-dir": "/home/alice/.cache/cabal/logs",
+      "logs-dir": "/home/alice/.local/state/cabal/logs",
       "store-dir": "/home/alice/.local/state/cabal/store",
       "config-file": "/home/alice/.config/cabal/config",
       "installdir": "/home/alice/.local/bin"
