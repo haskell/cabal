@@ -828,8 +828,8 @@ readProjectLocalFreezeConfig verbosity parserOption httpTransport distDirLayout 
 -- be used with the legacy or parsec parser, or a combination of both.
 readProjectFileSkeletonGen :: DistDirLayout -> ProjectFileKey -> (FilePath -> IO ProjectConfigSkeleton) -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonGen
-  DistDirLayout{distProjectFile, distProjectRootDirectory}
-  key@(distProjectFile -> possiblyRelativeExtensionFile)
+  DistDirLayout{distProjectFile}
+  key@(distProjectFile -> extensionFile)
   parseConfig =
     do
       exists <- liftIO $ doesFileExist extensionFile
@@ -869,12 +869,12 @@ readProjectFileSkeletonGen
           when (key == ProjectFileKeyMain) $ do
             monitorFiles
               [ monitorFileHashed path
-              | let projFile = makeAbsolute . distProjectFile
+              | let projFile = distProjectFile
               , path <-
                   filter (`notElem` [projFile k | k <- filter (/= key) [minBound .. maxBound]]) $
                     ordNub
                       [ p
-                      | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- projectSkeletonImports pcs
+                      | (Nothing, currentProjectConfigPath -> p) <- projectSkeletonImports pcs
                       ]
               ]
 
@@ -882,12 +882,6 @@ readProjectFileSkeletonGen
         else do
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
-    where
-      -- REVIEW: Do we prefer absolute paths for cache monitoring?
-      makeAbsolute f
-        | isAbsolute f = f
-        | otherwise = distProjectRootDirectory </> f
-      extensionFile = makeAbsolute possiblyRelativeExtensionFile
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
