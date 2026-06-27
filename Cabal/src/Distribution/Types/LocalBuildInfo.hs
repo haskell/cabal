@@ -47,6 +47,8 @@ module Distribution.Types.LocalBuildInfo
       , libCoverage
       , extraCoverageFor
       , relocatable
+      , programPrefix
+      , programSuffix
       , ..
       )
 
@@ -188,6 +190,8 @@ pattern LocalBuildInfo
   -> Bool
   -> [UnitId]
   -> Bool
+  -> Maybe PathTemplate
+  -> Maybe PathTemplate
   -> LocalBuildInfo
 pattern LocalBuildInfo
   { configFlags
@@ -227,6 +231,8 @@ pattern LocalBuildInfo
   , libCoverage
   , extraCoverageFor
   , relocatable
+  , programPrefix
+  , programSuffix
   } =
   NewLocalBuildInfo
     { localBuildDescr =
@@ -279,6 +285,8 @@ pattern LocalBuildInfo
             , exeCoverage
             , libCoverage
             , relocatable
+            , programPrefix
+            , programSuffix
             }
         }
     }
@@ -316,10 +324,13 @@ packageRoot cfg =
     mbWorkDir = flagToMaybe $ setupWorkingDir cfg
 
 progPrefix, progSuffix :: LocalBuildInfo -> PathTemplate
-progPrefix (LocalBuildInfo{configFlags = cfg}) =
-  fromFlag $ configProgPrefix cfg
-progSuffix (LocalBuildInfo{configFlags = cfg}) =
-  fromFlag $ configProgSuffix cfg
+-- NB: make sure to read from 'BuildOptions' rather than the 'ConfigFlags'
+-- stored in 'PackageBuildDescr', as the latter are the original command-line
+-- input and are not updated by 'SetupHooks' configure hooks.
+progPrefix (LocalBuildInfo{programPrefix = pfix}) =
+  fromMaybe (toPathTemplate "") pfix
+progSuffix (LocalBuildInfo{programSuffix = sfix}) =
+  fromMaybe (toPathTemplate "") sfix
 
 -- TODO: Get rid of these functions, as much as possible.  They are
 -- a bit useful in some cases, but you should be very careful!

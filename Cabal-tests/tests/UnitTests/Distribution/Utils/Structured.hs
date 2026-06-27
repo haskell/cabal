@@ -27,10 +27,14 @@ tests = testGroup "Distribution.Utils.Structured"
 md5Check :: Structured a => Proxy a -> Integer -> Assertion
 md5Check proxy md5Int = structureHash proxy @?= md5FromInteger md5Int
 
+-- NB: if you need to update these values locally, you can run:
+--
+-- > cabal run Cabal-tests:unit-tests -- -p "/Structured/"
+
 md5CheckGenericPackageDescription :: Proxy GenericPackageDescription -> Assertion
 md5CheckGenericPackageDescription proxy = md5Check proxy
     0xfbca1c1f2a700fb3a174ec5346e86cbb
 
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
-    0x3bf7bf1420847ce5fdaf6e36e33aecb2
+    0xd9542841ab7584d348aa142053fe934f
