@@ -128,7 +128,6 @@ instance Applicative (ParseResult src) where
   {-# INLINE (<*) #-}
 
 instance Monad (ParseResult src) where
-  return = pure
   (>>) = (*>)
 
   m >>= k = PR $ \ !s fp failure success ->

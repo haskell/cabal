@@ -145,8 +145,6 @@ instance Alternative ParsecParser where
   {-# INLINE some #-}
 
 instance Monad ParsecParser where
-  return = pure
-
   m >>= k = PP $ \v -> unPP m v >>= \x -> unPP (k x) v
   {-# INLINE (>>=) #-}
   (>>) = (*>)
