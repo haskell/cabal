@@ -197,6 +197,7 @@ pull_request_rules:
 
 merge_queue:
   max_parallel_checks: 2
+  queue_controls_comment: false
 
 queue_rules:
   # Mergify now requires different queues for different strategies
