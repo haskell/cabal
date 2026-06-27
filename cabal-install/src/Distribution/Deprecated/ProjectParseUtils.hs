@@ -41,7 +41,6 @@ instance Applicative ProjectParseResult where
   (<*>) = ap
 
 instance Monad ProjectParseResult where
-  return = pure
   ProjectParseFailed err >>= _ = ProjectParseFailed err
   ProjectParseOk ws x >>= f = case f x of
     ProjectParseFailed err -> ProjectParseFailed err
