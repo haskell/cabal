@@ -879,7 +879,7 @@ Build options
                --logs-dir=DIR
     :synopsis: Directory to store build logs.
 
-    :default: ``~/.cache/cabal/logs``
+    :default: ``~/.local/state/cabal/logs``
 
     :strike:`The location where build logs for packages are stored.`
     Not implemented yet.
@@ -890,7 +890,7 @@ Build options
                --build-summary=TEMPLATE
     :synopsis: Build summaries location.
 
-    :default: ``~/.cache/cabal/logs/build.log``
+    :default: ``~/.local/state/cabal/logs/build.log``
 
     :strike:`The file to save build summaries.` Not implemented yet.
 
