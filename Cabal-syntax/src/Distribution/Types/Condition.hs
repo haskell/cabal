@@ -73,8 +73,6 @@ instance Applicative Condition where
   (<*>) = ap
 
 instance Monad Condition where
-  return = pure
-
   -- Terminating cases
   (>>=) (Lit x) _ = Lit x
   (>>=) (Var x) f = f x
