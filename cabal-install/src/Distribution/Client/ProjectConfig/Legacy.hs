@@ -887,6 +887,7 @@ convertLegacyBuildOnlyFlags
         , installUseSemaphore = projectConfigUseSemaphore
         , installKeepGoing = projectConfigKeepGoing
         , installOfflineMode = projectConfigOfflineMode
+        , installBuildTimings = projectConfigBuildTimings
         } = installFlags
 
 convertToLegacyProjectConfig :: ProjectConfig -> LegacyProjectConfig
@@ -1022,6 +1023,7 @@ convertToLegacySharedConfig
           , installKeepGoing = projectConfigKeepGoing
           , installRunTests = mempty
           , installOfflineMode = projectConfigOfflineMode
+          , installBuildTimings = projectConfigBuildTimings
           }
 
       projectFlags =
@@ -1458,6 +1460,7 @@ legacySharedConfigFieldDescrs constraintSrc =
           , "keep-going"
           , "offline"
           , "per-component"
+          , "build-timings"
           , -- solver flags:
             "max-backjumps"
           , "reorder-goals"
