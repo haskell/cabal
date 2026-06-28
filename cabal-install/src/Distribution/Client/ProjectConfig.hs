@@ -826,15 +826,18 @@ readProjectLocalFreezeConfig verbosity parserOption httpTransport distDirLayout 
 -- | Reads a named extended (with imports and conditionals) config file in the
 -- given project root dir, or returns empty.  This function is generic and can
 -- be used with the legacy or parsec parser, or a combination of both.
-readProjectFileSkeletonGen :: DistDirLayout -> ProjectFileKey -> (FilePath -> IO ProjectConfigSkeleton) -> Rebuild ProjectConfigSkeleton
+readProjectFileSkeletonGen :: Verbosity -> DistDirLayout -> ProjectFileKey -> (FilePath -> IO ProjectConfigSkeleton) -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonGen
-  DistDirLayout{distProjectFile}
+  verbosity
+  DistDirLayout{distProjectFile, distProjectRootDirectory}
   key@(distProjectFile -> extensionFile)
   parseConfig =
     do
       exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
+          liftIO . notice verbosity $
+            "Monitoring: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
 
@@ -867,21 +870,29 @@ readProjectFileSkeletonGen
           -- separately. We don't want to monitor them twice, so we filter them
           -- out.
           when (key == ProjectFileKeyMain) $ do
-            monitorFiles
-              [ monitorFileHashed path
-              | let projFile = distProjectFile
-              , path <-
-                  filter (`notElem` [projFile k | k <- filter (/= key) [minBound .. maxBound]]) $
-                    ordNub
-                      [ p
-                      | (Nothing, currentProjectConfigPath -> p) <- projectSkeletonImports pcs
-                      ]
-              ]
+            let paths =
+                  [ path
+                  | let projFile = distProjectFile
+                  , path <-
+                      filter (`notElem` [projFile k | k <- filter (/= key) [minBound .. maxBound]]) $
+                        ordNub
+                          [ p
+                          | (Nothing, currentProjectConfigPath -> p) <- projectSkeletonImports pcs
+                          ]
+                  ]
+            for_ paths $ \p ->
+              liftIO . notice verbosity $
+                "Monitoring: " ++ p ++ " (" ++ makeAbsolute p ++ ")"
+            monitorFiles $ monitorFileHashed <$> paths
 
           return pcs
         else do
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
+    where
+      makeAbsolute f
+        | isAbsolute f = f
+        | otherwise = distProjectRootDirectory </> f
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
@@ -912,7 +923,7 @@ readProjectFileSkeleton option =
 -- | Read a project file using the legacy parser.
 readProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key = do
-  readProjectFileSkeletonGen distDirLayout key $ \fp -> do
+  readProjectFileSkeletonGen verbosity distDirLayout key $ \fp -> do
     debug verbosity "Reading project file using the legacy parser"
     parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key
       >>= liftIO . reportParseResult verbosity (extensionDescription key) fp
@@ -920,7 +931,7 @@ readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key = do
 -- | Read a project file using the parsec parser, but if that fails, it falls back to the legacy parser.
 readProjectFileSkeletonFallback :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonFallback verbosity httpTransport distDirLayout key = do
-  readProjectFileSkeletonGen distDirLayout key $ \fp -> do
+  readProjectFileSkeletonGen verbosity distDirLayout key $ \fp -> do
     debug verbosity "Reading project file using the fallback parser"
     (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key
     let (_, pres) = runParseResult res
@@ -943,14 +954,14 @@ readProjectFileSkeletonFallback verbosity httpTransport distDirLayout key = do
 -- | Read a project file using the parsec parser.
 readProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonParsec verbosity httpTransport distDirLayout key = do
-  readProjectFileSkeletonGen distDirLayout key $ \fp -> do
+  readProjectFileSkeletonGen verbosity distDirLayout key $ \fp -> do
     debug verbosity "Reading project file using the parsec parser"
     (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key
     liftIO $ reportParseResultParsec verbosity fp bs res
 
 readProjectFileSkeletonCompare :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonCompare verbosity httpTransport distDirLayout key = do
-  readProjectFileSkeletonGen distDirLayout key $ \fp -> do
+  readProjectFileSkeletonGen verbosity distDirLayout key $ \fp -> do
     debug verbosity "Reading project file using the comparative parser"
     (pres, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key
     lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key
