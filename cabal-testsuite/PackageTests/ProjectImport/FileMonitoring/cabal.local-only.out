@@ -1,5 +1,7 @@
 # Disabling tests on the command line
 # cabal build
+Monitoring: <ROOT>/cabal.local-only.project (<ROOT>/cabal.local-only.project)
+Monitoring: <ROOT>/cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -34,6 +36,8 @@ Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
 # Rewriting an imported project file to disable tests
 # cabal clean
 # cabal build
+Monitoring: <ROOT>/cabal.local-only.project (<ROOT>/cabal.local-only.project)
+Monitoring: <ROOT>/cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

@@ -1,5 +1,9 @@
 # Disabling tests on the command line
 # cabal build
+Monitoring: <ROOT>/cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -25,12 +29,26 @@ Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
 # Disabling tests with configure command
 # cabal configure
 # cabal build
+Monitoring: <ROOT>/cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
+Monitoring: <ROOT>/cabal.project.local (<ROOT>/cabal.project.local)
 Warning: The builddir option is not supported in project and config files. It will be ignored.
 Resolving dependencies...
 Up to date
 # Enabling tests on the command line
 # cabal configure
+Monitoring: <ROOT>/cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 # cabal build
+Monitoring: <ROOT>/cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
+Monitoring: <ROOT>/cabal.project.local (<ROOT>/cabal.project.local)
 Warning: The builddir option is not supported in project and config files. It will be ignored.
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
@@ -43,6 +61,10 @@ Error: [Cabal-7125]
 Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
 # As-is, the project should not build
 # cabal build
+Monitoring: <ROOT>/cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - cabal-project-repro-0.1.0.0 (test:cabal-project-repro-test) (first run)
@@ -54,6 +76,10 @@ Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
 # Rewriting an imported project file to disable tests
 # cabal clean
 # cabal build
+Monitoring: <ROOT>/cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
