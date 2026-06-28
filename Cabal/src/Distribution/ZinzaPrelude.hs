@@ -33,7 +33,6 @@ instance Applicative Writer where
   (<*>) = ap
 
 instance Monad Writer where
-  return = pure
   m >>= k = W $ \s1 ->
     let (s2, x) = unW m s1
      in unW (k x) s2

@@ -36,7 +36,6 @@ foldProgress step' fail' done' = fold
         fold (Done r)   = done' r
 
 instance Monad (Progress step fail) where
-  return   = pure
   p >>= f  = foldProgress Step Fail f p
 
 instance MonadFail (Progress step String) where
