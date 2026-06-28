@@ -8,7 +8,10 @@ import A (bobble, isNeeded)
 
 foreign import ccall razzle :: CInt -> CInt
 
+foreign import ccall abccd :: CInt -> CInt
+
 main = do
   print bobble
   print $ razzle 3
   print $ isNeeded 77
+  print $ abccd 1
