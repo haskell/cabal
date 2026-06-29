@@ -267,7 +267,7 @@ cabal preferences. It is very useful when you are e.g. first configuring
 
   .. option:: --config-file=PATH
 
-      Specify config file path. (default: ``~/.cabal/config``).
+      Specify config file path. (default: ``~/.config/cabal/config``).
 
   .. option:: -f, --force
 
@@ -739,12 +739,12 @@ installed binaries, and so on.
     compiler-flavour: ghc
     compiler-id: ghc-9.8.2
     compiler-path: /home/alice/.ghcup/bin/ghc
-    cache-home: /home/alice/.cabal
-    remote-repo-cache: /home/alice/.cabal/packages
-    logs-dir: /home/alice/.cabal/logs
-    store-dir: /home/alice/.cabal/store
-    config-file: /home/alice/.cabal/config
-    installdir: /home/alice/.cabal/bin
+    cache-home: /home/alice/.cache/cabal
+    remote-repo-cache: /home/alice/.cache/cabal/packages
+    logs-dir: /home/alice/.cache/cabal/logs
+    store-dir: /home/alice/.cache/cabal/store
+    config-file: /home/alice/.config/cabal/config
+    installdir: /home/alice/.cache/cabal/bin
 
 Or using the json output:
 
@@ -755,18 +755,18 @@ Or using the json output:
 .. code-block:: json
 
     {
-      "cabal-version": "3.13.0.0",
+      "cabal-version": "3.14.1.0",
       "compiler": {
         "flavour": "ghc",
         "id": "ghc-9.8.2",
         "path": "/home/alice/.ghcup/bin/ghc"
       },
-      "cache-home": "/home/alice/.cabal",
-      "remote-repo-cache": "/home/alice/.cabal/packages",
-      "logs-dir": "/home/alice/.cabal/logs",
-      "store-dir": "/home/alice/.cabal/store",
-      "config-file": "/home/alice/.cabal/config",
-      "installdir": "/home/alice/.cabal/bin"
+      "cache-home": "/home/alice/.cache/cabal",
+      "remote-repo-cache": "/home/alice/.cache/cabal/packages",
+      "logs-dir": "/home/alice/.cache/cabal/logs",
+      "store-dir": "/home/alice/.cache/cabal/store",
+      "config-file": "/home/alice/.config/cabal/config",
+      "installdir": "/home/alice/.cache/cabal/bin"
     }
 
 If ``cabal path`` is passed a single option naming a path, then that
@@ -775,7 +775,7 @@ path will be printed *without* any label:
 ::
 
    $ cabal path --installdir
-   /home/alice/.cabal/bin
+   /home/alice/.cache/cabal/bin
 
 While this interface is intended to be used for scripting, it is an experimental command.
 Scripting example:
