@@ -1,8 +1,0 @@
----
-synopsis: 'Allow relocatable builds on FreeBSD'
-packages: [Cabal, cabal-install]
-prs: 11042
----
-
-Properly enables relocatable builds on FreeBSD, just like on
-OSX and Linux.

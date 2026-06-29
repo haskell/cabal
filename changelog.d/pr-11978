@@ -1,9 +1,0 @@
-synopsis: add SPDX license data version 3.28
-packages: Cabal
-prs: #11978
-
-description: {
-
-- Update SPDX license list to version 3.28.0 2026-02-20
-
-}
