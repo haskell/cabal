@@ -174,11 +174,13 @@ library
     Distribution.TestSuite
     Distribution.Types.AnnotatedId
     Distribution.Types.ComponentInclude
+    Distribution.Types.DebugInfoLevel
     Distribution.Types.DumpBuildInfo
     Distribution.Types.PackageName.Magic
     Distribution.Types.ComponentLocalBuildInfo
     Distribution.Types.LocalBuildConfig
     Distribution.Types.LocalBuildInfo
+    Distribution.Types.OptimisationLevel
     Distribution.Types.TargetInfo
     Distribution.Types.GivenComponent
     Distribution.Types.ParStrat
