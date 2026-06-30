@@ -796,7 +796,7 @@ exResolve
   -> FineGrainedConflicts
   -> MinimizeConflictSet
   -> IndependentGoals
-  -> PreferOldest
+  -> PreferVersion
   -> ReorderGoals
   -> AllowBootLibInstalls
   -> OnlyConstrained
@@ -820,7 +820,7 @@ exResolve
   fineGrainedConflicts
   minimizeConflictSet
   indepGoals
-  prefOldest
+  prefVersion
   reorder
   allowBootLibInstalls
   onlyConstrained
@@ -859,23 +859,27 @@ exResolve
         | otherwise = []
       targets' = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
       params =
-        addConstraints (fmap toConstraint constraints) $
-          addConstraints (fmap toLpc enableTests) $
-            addPreferences (fmap toPref prefs) $
-              setCountConflicts countConflicts $
-                setFineGrainedConflicts fineGrainedConflicts $
-                  setMinimizeConflictSet minimizeConflictSet $
-                    setIndependentGoals indepGoals $
-                      (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id) $
-                        setReorderGoals reorder $
-                          setMaxBackjumps mbj $
-                            setAllowBootLibInstalls allowBootLibInstalls $
-                              setOnlyConstrained onlyConstrained $
-                                setEnableBackjumping enableBj $
-                                  setSolveExecutables solveExes $
-                                    setGoalOrder goalOrder $
-                                      setSolverVerbosity (C.verbosityLevel verbosity) $
-                                        standardInstallPolicy instIdx avaiIdx targets'
+        addConstraints (fmap toConstraint constraints)
+          $ addConstraints (fmap toLpc enableTests)
+          $ addPreferences (fmap toPref prefs)
+          $ setCountConflicts countConflicts
+          $ setFineGrainedConflicts fineGrainedConflicts
+          $ setMinimizeConflictSet minimizeConflictSet
+          $ setIndependentGoals indepGoals
+          $ ( case prefVersion of
+                PreferOldest -> setPreferenceDefault PreferAllOldest
+                PreferLatest -> setPreferenceDefault PreferAllLatest
+                PreferInstalledOrLatest -> setPreferenceDefault PreferLatestForSelected
+            )
+          $ setReorderGoals reorder
+          $ setMaxBackjumps mbj
+          $ setAllowBootLibInstalls allowBootLibInstalls
+          $ setOnlyConstrained onlyConstrained
+          $ setEnableBackjumping enableBj
+          $ setSolveExecutables solveExes
+          $ setGoalOrder goalOrder
+          $ setSolverVerbosity (C.verbosityLevel verbosity)
+          $ standardInstallPolicy instIdx avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
       toConstraint (ExVersionConstraint scope v) =

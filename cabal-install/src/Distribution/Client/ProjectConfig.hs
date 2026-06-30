@@ -395,7 +395,7 @@ resolveSolverSettings
       solverSettingIndexState = flagToMaybe projectConfigIndexState
       solverSettingActiveRepos = flagToMaybe projectConfigActiveRepos
       solverSettingIndependentGoals = fromFlag projectConfigIndependentGoals
-      solverSettingPreferOldest = fromFlag projectConfigPreferOldest
+      solverSettingPreferVersion = fromFlag projectConfigPreferVersion
       -- solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
       -- solverSettingReinstall         = fromFlag projectConfigReinstall
       -- solverSettingAvoidReinstalls   = fromFlag projectConfigAvoidReinstalls
@@ -418,7 +418,7 @@ resolveSolverSettings
           , projectConfigAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
           , projectConfigOnlyConstrained = Flag OnlyConstrainedNone
           , projectConfigIndependentGoals = Flag (IndependentGoals False)
-          , projectConfigPreferOldest = Flag (PreferOldest False)
+          , projectConfigPreferVersion = Flag PreferInstalledOrLatest
           -- projectConfigShadowPkgs        = Flag False,
           -- projectConfigReinstall         = Flag False,
           -- projectConfigAvoidReinstalls   = Flag False,
