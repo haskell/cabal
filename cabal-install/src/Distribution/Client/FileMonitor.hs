@@ -2,7 +2,7 @@
 -- input values they depend on have changed.
 module Distribution.Client.FileMonitor
   ( -- * Declaring files to monitor
-    module Distribution.Simple.FileMonitor.Types
+      module Distribution.Simple.FileMonitor.Types
 
     -- * Creating and checking sets of monitored files
   , FileMonitor (..)

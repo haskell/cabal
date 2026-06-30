@@ -204,7 +204,6 @@ module Distribution.Simple.Utils
   , wrapText
   , wrapLine
   , stripCommonPrefix
-
   , MergeResult (..)
   , mergeBy
   , duplicates
@@ -248,11 +247,11 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Data.ByteString.Lazy as BS
-import Data.Typeable
-  ( cast
-  )
 import Data.List
   ( groupBy
+  )
+import Data.Typeable
+  ( cast
   )
 
 import Control.Concurrent (threadDelay)

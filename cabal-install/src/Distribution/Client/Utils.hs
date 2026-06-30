@@ -70,14 +70,14 @@ import Distribution.Compat.Environment
 import Distribution.Compat.Time (getModTime)
 import Distribution.Simple.Setup (Flag, pattern Flag, pattern NoFlag)
 import Distribution.Simple.Utils
-  ( dieWithException
-  , findPackageDesc
-  , noticeNoWrap
-  , removeFileForcibly
-  , MergeResult (..)
-  , mergeBy
+  ( MergeResult (..)
+  , dieWithException
   , duplicates
   , duplicatesBy
+  , findPackageDesc
+  , mergeBy
+  , noticeNoWrap
+  , removeFileForcibly
   )
 import Distribution.Utils.Path
   ( CWD
