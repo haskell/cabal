@@ -47,16 +47,16 @@ import Control.Monad.State (StateT, mapStateT)
 import qualified Control.Monad.State as State
 import Control.Monad.Trans (MonadIO, liftIO)
 
+import Distribution.Compat.Time
+import Distribution.Simple.FileMonitor.Types
 import Distribution.Simple.Glob
 import Distribution.Simple.Glob.Internal (Glob (..), GlobPieces)
 import Distribution.Simple.HashValue
-import Distribution.Compat.Time
-import Distribution.Simple.FileMonitor.Types
 import Distribution.Simple.Utils
-  ( handleDoesNotExist
-  , writeFileAtomic
-  , MergeResult (..)
+  ( MergeResult (..)
+  , handleDoesNotExist
   , mergeBy
+  , writeFileAtomic
   )
 import Distribution.Utils.Structured (Tag (..), structuredEncode)
 
@@ -1348,4 +1348,3 @@ handleIOException e =
 ------------------------------------------------------------------------------
 -- Instances
 --
-

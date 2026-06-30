@@ -39,8 +39,8 @@ import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Utils.Generic (isAsciiAlpha)
-import qualified Text.PrettyPrint as Disp
 import System.Directory (getHomeDirectory)
+import qualified Text.PrettyPrint as Disp
 
 --------------------------------------------------------------------------------
 -- Rooted globs.

@@ -1,11 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- | An abstraction for re-running actions if values or files have changed.
 --
@@ -53,8 +53,8 @@ module Distribution.Simple.RebuildMonad
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Verbosity (Verbosity (..))
 import Distribution.Simple.FileMonitor
+import Distribution.Verbosity (Verbosity (..))
 
 import Distribution.Simple.Utils (debug)
 
@@ -68,8 +68,10 @@ import System.FilePath
 -- | A monad layered on top of 'IO' to help with re-running actions when the
 -- input files and values they depend on change. The crucial operations are
 -- 'rerunIfChanged'' and 'monitorFiles'.
-class (Monad m, MonadIO m, MonadWriter [MonitorFilePath] m)
-      => MonadRebuild m where
+class
+  (Monad m, MonadIO m, MonadWriter [MonitorFilePath] m) =>
+  MonadRebuild m
+  where
   -- | Lift an 'IO' action into a 'MonadRebuild' context, such that other
   -- (compatible) 'MonadRebuild' actions can be unlifted inside that 'IO'
   -- action. This is similar to @MonadUnliftIO@ or @MonadBaseControl@, but
@@ -96,9 +98,9 @@ class (Monad m, MonadIO m, MonadWriter [MonitorFilePath] m)
   -- >     -- action; the result will become the result of the outer 'm' action,
   -- >     -- while the files get injected back into the 'm' monad.
   -- >     return (result', files)
-  --
-  withRunRebuildInIO :: ((forall a. m a -> IO (a, [MonitorFilePath])) -> IO (b, [MonitorFilePath]))
-                     -> m b
+  withRunRebuildInIO
+    :: ((forall a. m a -> IO (a, [MonitorFilePath])) -> IO (b, [MonitorFilePath]))
+    -> m b
 
 -- | Minimal instance for a simple @WriterT [MonitorFilePath] IO@.
 instance MonadRebuild (WriterT [MonitorFilePath] IO) where
@@ -131,15 +133,15 @@ rerunIfChanged'
   :: (Binary a, Structured a, Binary b, Structured b, MonadRebuild m)
   => Verbosity
   -> FilePath
-     -- ^ Root directory for file monitoring. Used to resolve relative paths
-     -- in file monitors.
+  -- ^ Root directory for file monitoring. Used to resolve relative paths
+  -- in file monitors.
   -> ([IO (b, [MonitorFilePath])] -> IO [(b, [MonitorFilePath])])
-     -- ^ Helper function for combining multiple IO actions into a single one.
-     -- For serial execution, this can simply be 'sequence'; for concurrent
-     -- execution, something more sophisticated can be passed here.
+  -- ^ Helper function for combining multiple IO actions into a single one.
+  -- For serial execution, this can simply be 'sequence'; for concurrent
+  -- execution, something more sophisticated can be passed here.
   -> [(FileMonitor a b, a, m b)]
-     -- ^ Triples of a file monitor, a key to identify it, and an associated
-     -- action.
+  -- ^ Triples of a file monitor, a key to identify it, and an associated
+  -- action.
   -> m [b]
 rerunIfChanged' verbosity rootDir chainIOs triples = do
   withRunRebuildInIO $ \runInIO -> do
@@ -174,7 +176,6 @@ rerunIfChanged' verbosity rootDir chainIOs triples = do
 
     (results, files) <- unzip <$> chainIOs dacts
     return (results, mconcat files)
-
   where
     showReason (MonitoredFileChanged file) = "file " ++ file
     showReason (MonitoredValueChanged _) = "monitor value changed"
