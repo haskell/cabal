@@ -1091,8 +1091,13 @@ This command takes the following options:
 
     GHC 9.8.1 and later can act as a jobserver client, which enables two or more
     GHC processes running at once to share system resources with each other,
-    communicating via a specified system semaphore. The system semaphore is
-    identified by a name (a string).
+    communicating via a specified system semaphore. See GHC's
+    `boot package <https://hackage.haskell.org/package/semaphore-compat>`_
+    ``semaphore-compat`` for more information.
+
+    The semaphore is identified by a string, being the serialised identifier of
+    a semaphore name for transport between processes (or, in the case of
+    ``semaphore-compat-1.0.0`` only, the semaphore name).
 
     This option causes Cabal to control parallelism by using the specified
     system semaphore.
