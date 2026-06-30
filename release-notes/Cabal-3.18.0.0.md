@@ -405,7 +405,7 @@ Cabal and Cabal-syntax 3.18.0.0 changelog and release notes
   `Distribution.PackageDescription.Check.CheckPackageContentOps` of the same
   name.
 
-- Introduce `removeFileForcibly`, remove [#11616](https://github.com/haskell/cabal/pull/11616)
+- Introduce `removeFileForcibly`, remove `removeExistingFile` [#11616](https://github.com/haskell/cabal/pull/11616)
 
   Introduce a robust file removing helper
   `Distribution.Simple.Utils.removeFileForcibly`, similar in spirit to
@@ -423,10 +423,12 @@ Cabal and Cabal-syntax 3.18.0.0 changelog and release notes
   successful (previously only on Windows) and include a small delay in
   between.
 
-- Fix typos explicit [#11621](https://github.com/haskell/cabal/pull/11621)
+- Fix typos in the word "explicit" [#11621](https://github.com/haskell/cabal/pull/11621)
 
-  Changes `CheckExplanation` constructor `CVExplicitDepsCustomSetup` and
+  Introduce `CheckExplanation` constructor `CVExplicitDepsCustomSetup` and
   `CheckExplanationID` constructor `CICVExplicitDepsCustomSetup`.
+
+  These constructors were previously misspelled in the "explicit" part.
 
 - Recognise `ExplicitLevelImports` and `ImplicitStagePersistence` extensions [#11936](https://github.com/haskell/cabal/pull/11936)
 
@@ -437,7 +439,7 @@ Cabal and Cabal-syntax 3.18.0.0 changelog and release notes
 
   Now `createTempDirectory` from `Distribution.Compat.Internal.TempFile` uses a global counter as a part of temporary folder name template, so that probing is less likely to fail. The change should be invisible for users.
 
-- bump `process` [#11923](https://github.com/haskell/cabal/issues/11923) [#11928](https://github.com/haskell/cabal/pull/11928)
+- Bump `process` [#11923](https://github.com/haskell/cabal/issues/11923) [#11928](https://github.com/haskell/cabal/pull/11928)
 
   `Cabal` and `cabal-install` now depend on a newer version of `process`
   (`1.6.29.0`).  This avoids segfaults on macOS, where certain symbols
@@ -461,7 +463,7 @@ Cabal and Cabal-syntax 3.18.0.0 changelog and release notes
   Drop compatibility layer for `deepseq < 1.4`, now `Cabal-syntax` and `Cabal`
   require `deepseq-1.4.0.0` (which is 11 years old) or newer.
 
-- add SPDX license data version 3.28 [#11978](https://github.com/haskell/cabal/pull/11978)
+- Add SPDX license data version 3.28 [#11978](https://github.com/haskell/cabal/pull/11978)
 
   - Update SPDX license list to version 3.28.0 2026-02-20
 
