@@ -59,7 +59,7 @@ runConfigureTest projOpts = do
   let localFile = cwd </> "cabal.project.local"
   haveLocal <- liftIO $ doesFileExist localFile
   let existsMsg = if haveLocal then "It exists." else "It was not found."
-  log $ "Checking for the existance of: " ++ localFile ++ ". " ++ existsMsg
+  log $ "Checking for the existence of: " ++ localFile ++ ". " ++ existsMsg
   when haveLocal . liftIO $ removeFile localFile
 
   log "Disabling tests with configure command"

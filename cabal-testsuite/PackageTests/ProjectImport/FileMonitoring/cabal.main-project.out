@@ -23,7 +23,7 @@ Preprocessing test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.
 Building test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0...
 Error: [Cabal-7125]
 Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
-# Checking for the existance of: <ROOT>/cabal.project.local. It was not found.
+# Checking for the existence of: <ROOT>/cabal.project.local. It was not found.
 # Disabling tests with configure command
 # cabal configure
 # cabal build
