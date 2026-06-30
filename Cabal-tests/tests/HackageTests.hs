@@ -1,7 +1,4 @@
-{-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE CPP                 #-}
-{-# LANGUAGE Rank2Types          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-unused-pattern-binds #-} -- pattern match to assert field count
 
 module Main where

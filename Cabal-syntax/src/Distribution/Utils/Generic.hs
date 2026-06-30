@@ -1,8 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- |
 -- Module      :  Distribution.Utils.Generic
 -- Copyright   :  Isaac Jones, Simon Marlow 2003-2004

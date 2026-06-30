@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Parsec.Source
   ( PSource (..)
   , CabalFileSource (..)

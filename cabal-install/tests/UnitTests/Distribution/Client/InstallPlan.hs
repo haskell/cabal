@@ -1,5 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
 

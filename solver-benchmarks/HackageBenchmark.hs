@@ -1,7 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StandaloneDeriving  #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module HackageBenchmark (
     hackageBenchmarkMain

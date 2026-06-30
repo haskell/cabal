@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module Distribution.Compat.NonEmptySet
   ( NonEmptySet
 

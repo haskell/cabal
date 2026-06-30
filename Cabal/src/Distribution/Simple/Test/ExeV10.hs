@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-
 module Distribution.Simple.Test.ExeV10
   ( runTest
   ) where

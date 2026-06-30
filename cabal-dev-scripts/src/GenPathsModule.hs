@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE GADTs               #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Main (main) where

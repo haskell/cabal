@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Types.ExposedModule where
 
 import Distribution.Compat.Prelude

@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Distribution.Client.Compat.Orphans () where

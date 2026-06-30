@@ -1,5 +1,3 @@
-{-# LANGUAGE Rank2Types #-}
-
 module Distribution.Types.GenericPackageDescription.Lens
   ( GenericPackageDescription
   , PackageFlag

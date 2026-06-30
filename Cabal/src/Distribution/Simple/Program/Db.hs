@@ -1,8 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Simple.Program.Db
 -- Copyright   :  Isaac Jones 2006, Duncan Coutts 2007-2009

@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Types.ComponentRequestedSpec
   ( -- $buildable_vs_enabled_components
     ComponentRequestedSpec (..)

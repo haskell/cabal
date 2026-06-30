@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Simple.InstallDirs.Internal
   ( PathComponent (..)
   , PathTemplateVariable (..)

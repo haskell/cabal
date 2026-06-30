@@ -1,8 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.License
 -- Description :  The License data type.

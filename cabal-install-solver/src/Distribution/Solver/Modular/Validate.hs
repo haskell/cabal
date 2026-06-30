@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module Distribution.Solver.Modular.Validate (validateTree) where
 
 -- Validation of the tree.

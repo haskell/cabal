@@ -1,8 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Simple.Program.Strip
 --

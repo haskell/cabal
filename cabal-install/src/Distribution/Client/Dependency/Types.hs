@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Client.Dependency.Types
   ( PreSolver (..)
   , Solver (..)

@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Client.Types.PackageLocation
   ( PackageLocation (..)
   , UnresolvedPkgLoc

@@ -2,7 +2,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NondecreasingIndentation #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | A GHC run-server, which supports running multiple GHC scripts
 -- without having to restart from scratch.

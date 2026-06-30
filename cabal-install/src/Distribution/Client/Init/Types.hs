@@ -1,10 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Distribution.Client.Init.Types

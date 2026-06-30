@@ -22,7 +22,7 @@ source-repository head
   subdir:   cabal-benchmarks
 
 test-suite cabal-benchmarks
-  default-language: Haskell2010
+  default-language: GHC2021
   type:             exitcode-stdio-1.0
   main-is:          CabalBenchmarks.hs
   hs-source-dirs:   bench

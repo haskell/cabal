@@ -1,5 +1,4 @@
 -- | Wrapper around Data.Graph with support for edge labels
-{-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Solver.Modular.LabeledGraph (
     -- * Graphs
     Graph

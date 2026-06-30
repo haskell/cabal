@@ -1,8 +1,5 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE StandaloneDeriving #-}
-
------------------------------------------------------------------------------
 
 -- Module      :  Distribution.Simple.SetupHooks.Errors
 -- Copyright   :

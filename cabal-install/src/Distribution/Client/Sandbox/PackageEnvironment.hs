@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module      :  Distribution.Client.Sandbox.PackageEnvironment
