@@ -852,25 +852,36 @@ readProjectFileSkeletonGen :: Verbosity -> HttpTransport -> DistDirLayout -> Pro
 readProjectFileSkeletonGen
   verbosity
   httpTransport
-  dir
+  DistDirLayout{distProjectFile, distProjectRootDirectory}
   key
   parseConfig =
     do
       exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
+          liftIO . notice verbosity $
+            "Monitor existing: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
-          monitorFiles
-            [ monitorFileHashed (projectConfigPathRoot path)
-            | (Nothing, path) <- projectSkeletonImports pcs
-            ]
+          let paths =
+                [ projectConfigPathRoot path
+                | (Nothing, path) <- projectSkeletonImports pcs
+                ]
+          for_ paths $ \p ->
+            liftIO . notice verbosity $
+              "Monitoring: " ++ p ++ " (" ++ makeAbsolute p ++ ")"
+          monitorFiles $ monitorFileHashed <$> paths
           return pcs
         else do
+          liftIO . notice verbosity $
+            "Monitor nonexistant: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
-      extensionFile = distProjectFile dir key
+      extensionFile = distProjectFile key
+      makeAbsolute f
+        | isAbsolute f = f
+        | otherwise = distProjectRootDirectory </> f
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
