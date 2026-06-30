@@ -124,6 +124,7 @@ import Control.Exception
   ( assert
   )
 import qualified Data.Foldable as Foldable (all, toList)
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Compat.Graph (Graph, IsNode (..))
@@ -1023,7 +1024,7 @@ valid loc graph =
     ps -> internalError loc ('\n' : unlines (map showPlanProblem ps))
 
 data PlanProblem ipkg srcpkg
-  = PackageMissingDeps (GenericPlanPackage ipkg srcpkg) [UnitId]
+  = PackageMissingDeps (GenericPlanPackage ipkg srcpkg) (NonEmpty UnitId)
   | PackageCycle [GenericPlanPackage ipkg srcpkg]
   | PackageStateInvalid
       (GenericPlanPackage ipkg srcpkg)
@@ -1037,7 +1038,7 @@ showPlanProblem (PackageMissingDeps pkg missingDeps) =
   "Package "
     ++ prettyShow (nodeKey pkg)
     ++ " depends on the following packages which are missing from the plan: "
-    ++ intercalate ", " (map prettyShow missingDeps)
+    ++ intercalate ", " (map prettyShow (NE.toList missingDeps))
 showPlanProblem (PackageCycle cycleGroup) =
   "The following packages are involved in a dependency cycle "
     ++ intercalate ", " (map (prettyShow . nodeKey) cycleGroup)
@@ -1062,10 +1063,7 @@ problems
 problems graph =
   [ PackageMissingDeps
     pkg
-    ( mapMaybe
-        (fmap nodeKey . flip Graph.lookup graph)
-        missingDeps
-    )
+    missingDeps
   | (pkg, missingDeps) <- Graph.broken graph
   ]
     ++ [ PackageCycle cycleGroup

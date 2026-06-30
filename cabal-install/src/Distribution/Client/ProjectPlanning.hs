@@ -3914,7 +3914,7 @@ pruneInstallPlanToDependencies pkgTargets installPlan =
             CannotPruneDependencies
               [ (pkg, missingDeps)
               | (pkg, missingDepIds) <- brokenPackages
-              , let missingDeps = mapMaybe lookupDep missingDepIds
+              , let missingDeps = mapMaybe lookupDep (toList missingDepIds)
               ]
           where
             -- lookup in the original unpruned graph
