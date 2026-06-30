@@ -51,7 +51,7 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
 - Allow reinstalling packages like `base` and `template-haskell` for GHC>=9.14 [#10087](https://github.com/haskell/cabal/issues/10087) [#10982](https://github.com/haskell/cabal/pull/10982)
 
   Historically cabal-install disallowed reinstalling packages like `base` and
-  `template-haskell`.  As of GHC-9.12, the reasons for this have been lifted.
+  `template-haskell`.  As of GHC 9.12, the reasons for this have been lifted.
   We update cabal-install to become aware of this and allow reinstalling more
   packages.  Certain packages like `ghc` and `ghc-internal` still cannot be
   reinstalled.
@@ -331,15 +331,6 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
   `Cabal` and `cabal-install` now recognise extensions from GHC 9.14
   (`ImplicitStagePersistence` and `ImplicitStagePersistence`).
 
-- Add unit tests for `active-repositories` feature [#11684](https://github.com/haskell/cabal/pull/11684)
-
-  Add unit tests for the `active-repositories` cabal configuration field:
-
-  - `organizeByRepos`: ordering and strategy assignment with `:rest`, named repos, and error cases
-  - `filterSkippedActiveRepos`: filtering of skipped entries in the absence of `:rest`
-  - `CombineStrategy` index-combining logic (Skip/Merge/Override)
-  - Parse/pretty roundtrip for `ActiveRepos` (QuickCheck)
-
 - `active-repositories`: don't override fully-deprecated packages [#11760](https://github.com/haskell/cabal/pull/11760)
 
   When `active-repositories` includes a repo with `:override`, and that
@@ -366,7 +357,7 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
   removes the flag and thus any usage of `lukko` in `cabal-install`, now
   `base:GHC.IO.Handle.Lock` is used unconditionally.
 
-- bump `process` [#11923](https://github.com/haskell/cabal/issues/11923) [#11928](https://github.com/haskell/cabal/pull/11928)
+- Bump `process` [#11923](https://github.com/haskell/cabal/issues/11923) [#11928](https://github.com/haskell/cabal/pull/11928)
 
   `Cabal` and `cabal-install` now depend on a newer version of `process`
   (`1.6.29.0`).  This avoids segfaults on macOS, where certain symbols
