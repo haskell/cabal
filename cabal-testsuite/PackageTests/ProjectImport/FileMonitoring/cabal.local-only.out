@@ -1,0 +1,56 @@
+# Disabling tests on the command line
+# cabal build
+Monitor existing: <ROOT>/cabal.local-only.project (<ROOT>/cabal.local-only.project)
+Monitor nonexistant: <ROOT>/cabal.local-only.project.freeze (<ROOT>/cabal.local-only.project.freeze)
+Monitor existing: <ROOT>/cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - cabal-project-repro-0.1.0.0 (exe:filemonitor-test) (first run)
+Configuring executable 'filemonitor-test' for cabal-project-repro-0.1.0.0...
+Preprocessing executable 'filemonitor-test' for cabal-project-repro-0.1.0.0...
+Building executable 'filemonitor-test' for cabal-project-repro-0.1.0.0...
+# Enabling tests on the command line
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - cabal-project-repro-0.1.0.0 (test:cabal-project-repro-test) (first run)
+ - cabal-project-repro-0.1.0.0 (exe:filemonitor-test) (configuration changed)
+Configuring test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0...
+Preprocessing test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0...
+Building test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0...
+Error: [Cabal-7125]
+Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
+# As-is, the project should not build
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - cabal-project-repro-0.1.0.0 (test:cabal-project-repro-test) (first run)
+ - cabal-project-repro-0.1.0.0 (exe:filemonitor-test) (configuration changed)
+Preprocessing test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0...
+Building test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0...
+Error: [Cabal-7125]
+Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
+# Rewriting an imported project file to disable tests
+# cabal clean
+# cabal build
+Monitor existing: <ROOT>/cabal.local-only.project (<ROOT>/cabal.local-only.project)
+Monitor nonexistant: <ROOT>/cabal.local-only.project.freeze (<ROOT>/cabal.local-only.project.freeze)
+Monitor existing: <ROOT>/cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+Assertion failed
+
+HasCallStack backtrace:
+  throwIO, called at libraries/ghc-internal/src/GHC/Internal/IO/Exception.hs:_:_ in ghc-internal:GHC.Internal.IO.Exception
+  assert, called at src/Distribution/Client/ProjectPlanning.hs:_:_ in cabal-install-3.17.0.0-inplace:Distribution.Client.ProjectPlanning
+

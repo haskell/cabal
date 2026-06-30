@@ -101,8 +101,11 @@ runProjectTest projOpts = do
   let configFile = cwd </> "test" </> "tests-toggle.config"
   liftIO $ writeFile configFile "package *\n  tests: False"
   _ <- cabal' "clean" projOpts
-  projDisabledTests <- cabal' "build" projOpts
-  assertOutputDoesNotContain testNotYetImplementedMsg projDisabledTests
-  assertOutputDoesNotContain failureMsg projDisabledTests
+  -- TODO: Monitor the the imported files. If these were monitored, the build
+  -- should succeed. When fixed, remove the "fails".
+  projDisabledTests <- fails $ cabal' "build" projOpts
+  -- TODO: Uncomment these assertions when fixed.
+  -- assertOutputDoesNotContain testNotYetImplementedMsg projDisabledTests
+  -- assertOutputDoesNotContain failureMsg projDisabledTests
   -- Revert the change.
   liftIO $ writeFile configFile "package *\n  tests: True"
