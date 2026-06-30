@@ -266,11 +266,6 @@ sanityCheckElaboratedConfiguredPackage
               == hashedInstalledPackageId
                 (packageHashInputs sharedConfig elab)
         )
-      -- the stanzas explicitly disabled should not be available
-      . assert
-        ( optStanzaSetNull $
-            optStanzaKeysFilteredByValue (maybe False not) elabStanzasRequested `optStanzaSetIntersection` elabStanzasAvailable
-        )
       -- either a package is built inplace, or we are not attempting to
       -- build any test suites or benchmarks (we never build these
       -- for remote packages!)

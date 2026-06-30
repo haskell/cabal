@@ -1,0 +1,25 @@
+cabal-version:      3.0
+name:               cabal-project-repro
+version:            0.1.0.0
+license:            BSD-3-Clause
+author:             Julian Ospald
+maintainer:         hasufell@posteo.de
+build-type:         Simple
+
+common warnings
+    ghc-options: -Wall
+
+executable filemonitor-test
+    import:           warnings
+    main-is:          Main.hs
+    build-depends:    base, filepath
+    hs-source-dirs:   app
+    default-language: Haskell2010
+
+test-suite cabal-project-repro-test
+    import:           warnings
+    default-language: Haskell2010
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    build-depends:    base
