@@ -88,6 +88,22 @@ updateCursorRow row = do
 
   pure padding
 
+
+renderEDocs :: [Floating ExactDoc] -> Text
+renderEDocs = renderEDocs' zeroPos
+
+renderEDocs' :: Position -> [Floating ExactDoc] -> Text
+renderEDocs' _ [] = mempty
+renderEDocs' p (d : ds) =
+  let (t, newAnchor) = renderEDoc p d
+  in  t <> renderEDocs newAnchor ds
+
+data Floating = Floating { unFloating :: {- anchor -} Position -> ExactDoc }
+
+renderEDoc :: Position -> Floating ExactDoc -> (Text, Position)
+renderEDoc startingPos doc0 = -- put the thing at the position
+
+
 updateCursorCol :: Int -> State RenderState Text
 updateCursorCol col = do
   Position currentRow currentCol <- get

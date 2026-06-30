@@ -118,6 +118,11 @@ instance Parsec Version where
           [] -> pure ()
           (_ : _) -> parsecWarning PWTVersionTag "version with tags"
 
+
+versions :: CabalParsing m => m [Version]
+versions = many (parsec @Version <* comma)
+
+
 instance ExactParsec Version where
   exactParsec = do
     pos <- getPosition
