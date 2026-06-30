@@ -3,9 +3,9 @@
 Monitor existing: <ROOT>/cabal.local-only.project (<ROOT>/cabal.local-only.project)
 Monitor nonexistant: <ROOT>/cabal.local-only.project.freeze (<ROOT>/cabal.local-only.project.freeze)
 Monitor existing: <ROOT>/cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
-Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
-Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
-Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -42,9 +42,9 @@ Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
 Monitor existing: <ROOT>/cabal.local-only.project (<ROOT>/cabal.local-only.project)
 Monitor nonexistant: <ROOT>/cabal.local-only.project.freeze (<ROOT>/cabal.local-only.project.freeze)
 Monitor existing: <ROOT>/cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
-Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
-Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
-Monitoring: cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

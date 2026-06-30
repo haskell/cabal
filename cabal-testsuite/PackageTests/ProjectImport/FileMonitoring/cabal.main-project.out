@@ -1,9 +1,9 @@
 # Disabling tests on the command line
 # cabal build
 Monitor existing: <ROOT>/cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Monitor nonexistant: <ROOT>/cabal.project.freeze (<ROOT>/cabal.project.freeze)
 Monitor nonexistant: <ROOT>/cabal.project.local (<ROOT>/cabal.project.local)
 Resolving dependencies...
@@ -30,9 +30,9 @@ Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
 # cabal configure
 # cabal build
 Monitor existing: <ROOT>/cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Monitor nonexistant: <ROOT>/cabal.project.freeze (<ROOT>/cabal.project.freeze)
 Monitor existing: <ROOT>/cabal.project.local (<ROOT>/cabal.project.local)
 Warning: The builddir option is not supported in project and config files. It will be ignored.
@@ -41,16 +41,16 @@ Up to date
 # Enabling tests on the command line
 # cabal configure
 Monitor existing: <ROOT>/cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Monitor nonexistant: <ROOT>/cabal.project.freeze (<ROOT>/cabal.project.freeze)
 Monitor nonexistant: <ROOT>/cabal.project.local (<ROOT>/cabal.project.local)
 # cabal build
 Monitor existing: <ROOT>/cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Monitor nonexistant: <ROOT>/cabal.project.freeze (<ROOT>/cabal.project.freeze)
 Monitor existing: <ROOT>/cabal.project.local (<ROOT>/cabal.project.local)
 Warning: The builddir option is not supported in project and config files. It will be ignored.
@@ -66,9 +66,9 @@ Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
 # As-is, the project should not build
 # cabal build
 Monitor existing: <ROOT>/cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Monitor nonexistant: <ROOT>/cabal.project.freeze (<ROOT>/cabal.project.freeze)
 Monitor nonexistant: <ROOT>/cabal.project.local (<ROOT>/cabal.project.local)
 Resolving dependencies...
@@ -84,9 +84,9 @@ Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
 # cabal clean
 # cabal build
 Monitor existing: <ROOT>/cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
-Monitoring: cabal.project (<ROOT>/cabal.project)
+Monitoring: nested/hop.config (<ROOT>/nested/hop.config)
+Monitoring: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitoring: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
 Monitor nonexistant: <ROOT>/cabal.project.freeze (<ROOT>/cabal.project.freeze)
 Monitor nonexistant: <ROOT>/cabal.project.local (<ROOT>/cabal.project.local)
 Resolving dependencies...
