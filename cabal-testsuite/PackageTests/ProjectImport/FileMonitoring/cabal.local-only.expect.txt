@@ -1,0 +1,6 @@
+Monitor existing: <ROOT>/cabal.local-only.project (<ROOT>/cabal.local-only.project)
+Monitor nonexistant: <ROOT>/cabal.local-only.project.freeze (<ROOT>/cabal.local-only.project.freeze)
+Monitor existing: <ROOT>/cabal.local-only.project.local (<ROOT>/cabal.local-only.project.local)
+Monitor imported: nested/hop.config (<ROOT>/nested/hop.config)
+Monitor imported: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
+Monitor imported: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)

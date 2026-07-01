@@ -1,9 +1,11 @@
+import Control.Monad.Trans.Reader
+import Data.List
 import Prelude hiding (log)
-import Test.Cabal.Prelude
+import System.Directory (doesFileExist, removeFile)
 import System.Exit (ExitCode(ExitFailure))
 import System.IO
-import System.Directory (doesFileExist, removeFile)
-import Control.Monad.Trans.Reader
+import Test.Cabal.OutputNormalizer
+import Test.Cabal.Prelude
 
 -- If tests are enabled then we get this output:
 -- [1 of 1] Compiling Main
@@ -16,17 +18,20 @@ import Control.Monad.Trans.Reader
 main = do
   cabalTest' "main-project" . recordMode RecordMarked $ do
     let opts = ["--project-file=cabal.project"]
+    expectedMonitoring <- readFileVerbatim "cabal.main-project.expect.txt"
+    runProjectTest expectedMonitoring opts
     runCommandTest opts
     runConfigureTest opts
-    runProjectTest opts
   cabalTest' "local-only" . recordMode RecordMarked $ do
     let opts = ["--project-file=cabal.local-only.project"]
+    expectedMonitoring <- readFileVerbatim "cabal.local-only.expect.txt"
+    runProjectTest expectedMonitoring opts
     runCommandTest opts
-    runProjectTest opts
   cabalTest' "freeze-only" . recordMode RecordMarked $ do
     let opts = ["--project-file=cabal.freeze-only.project"]
+    expectedMonitoring <- readFileVerbatim "cabal.freeze-only.expect.txt"
+    runProjectTest expectedMonitoring opts
     runCommandTest opts
-    runProjectTest opts
 
 testNotYetImplementedMsg :: String
 testNotYetImplementedMsg = "Test suite not yet implemented"
@@ -88,10 +93,17 @@ runConfigureTest projOpts = do
 
 -- | Runs the build command that should fail but then a write to an imported
 -- project configuration file should be noticed by file monitoring.
-runProjectTest :: [String] -> ReaderT TestEnv IO ()
-runProjectTest projOpts = do
+--
+-- WARNING: Don't run other tests before `runProjectTest` otherwise the
+-- expected monitoring output will have already been output and missed.
+runProjectTest :: String -> [String] -> ReaderT TestEnv IO ()
+runProjectTest expectMsg projOpts = do
   log "As-is, the project should not build"
   projEnabledTests <- fails $ cabal' "build" projOpts
+  env <- getTestEnv
+  norm_env <- mkNormalizerEnv
+  let actual = normalizeOutput norm_env (resultOutput projEnabledTests)
+  unless (expectMsg `isInfixOf` actual) $ assertFailure $ "Can't find expected output:\n" ++ expectMsg
   assertExitCode (ExitFailure 1) projEnabledTests
   assertOutputContains failureMsg projEnabledTests
 
@@ -100,12 +112,11 @@ runProjectTest projOpts = do
   cwd <- testCurrentDir <$> getTestEnv
   let configFile = cwd </> "test" </> "tests-toggle.config"
   liftIO $ writeFile configFile "package *\n  tests: False"
-  _ <- cabal' "clean" projOpts
   -- TODO: Monitor the the imported files. If these were monitored, the build
   -- should succeed. When fixed, remove the "fails".
-  projDisabledTests <- fails $ cabal' "build" projOpts
+  projDisabledTests <- cabal' "build" projOpts
   -- TODO: Uncomment these assertions when fixed.
-  -- assertOutputDoesNotContain testNotYetImplementedMsg projDisabledTests
-  -- assertOutputDoesNotContain failureMsg projDisabledTests
+  assertOutputDoesNotContain testNotYetImplementedMsg projDisabledTests
+  assertOutputDoesNotContain failureMsg projDisabledTests
   -- Revert the change.
   liftIO $ writeFile configFile "package *\n  tests: True"

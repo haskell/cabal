@@ -84,6 +84,7 @@ import Distribution.Simple.Utils
   , debug
   , dieWithException
   , maybeExit
+  , info
   , notice
   , noticeDoc
   , ordNub
@@ -216,9 +217,6 @@ import Distribution.Utils.NubList
   ( fromNubList
   )
 import Distribution.Verbosity
-  ( makeVerbose
-  , modifyVerbosityFlags
-  )
 import Distribution.Version
 
 import qualified Codec.Archive.Tar as Tar
@@ -859,25 +857,23 @@ readProjectFileSkeletonGen
       exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
-          liftIO . notice verbosity $
-            "Monitor existing: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
+          monitorLog $ "Monitor existing: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
           let paths =
                 [ projectConfigPathRoot path
                 | (Nothing, path) <- projectSkeletonImports pcs
                 ]
-          for_ paths $ \p ->
-            liftIO . notice verbosity $
-              "Monitoring: " ++ p ++ " (" ++ makeAbsolute p ++ ")"
+          for_ paths $ \p -> do
+            monitorLog $ "Monitor imported: " ++ p ++ " (" ++ makeAbsolute p ++ ")"
           monitorFiles $ monitorFileHashed <$> paths
           return pcs
         else do
-          liftIO . notice verbosity $
-            "Monitor nonexistant: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
+          monitorLog $ "Monitor nonexistant: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
+      monitorLog = liftIO . info verbosity
       extensionFile = distProjectFile key
       makeAbsolute f
         | isAbsolute f = f
