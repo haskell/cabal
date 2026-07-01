@@ -1,6 +1,6 @@
-Monitor existing: <ROOT>/cabal.freeze-only.project (<ROOT>/cabal.freeze-only.project)
-Monitor existing: <ROOT>/cabal.freeze-only.project.freeze (<ROOT>/cabal.freeze-only.project.freeze)
+Monitor existing: <ROOT>/cabal.freeze-only.project
+Monitor existing: <ROOT>/cabal.freeze-only.project.freeze
 Monitor imported: nested/hop.config (<ROOT>/nested/hop.config)
 Monitor imported: nested/deeply-nested/hop.config (<ROOT>/nested/deeply-nested/hop.config)
 Monitor imported: test/tests-toggle.config (<ROOT>/test/tests-toggle.config)
-Monitor nonexistent: <ROOT>/cabal.freeze-only.project.local (<ROOT>/cabal.freeze-only.project.local)
+Monitor nonexistent: <ROOT>/cabal.freeze-only.project.local
