@@ -11,7 +11,10 @@ Building test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0..
 Error: [Cabal-7125]
 Failed to build cabal-project-repro-0.1.0.0-inplace-cabal-project-repro-test.
 # Rewriting an imported project file to disable tests
+# A clean should not be necessary with proper monitoring of files a project imports.
+# cabal clean
 # cabal build
+Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - cabal-project-repro-0.1.0.0 (exe:filemonitor-test) (first run)
@@ -34,6 +37,7 @@ Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - cabal-project-repro-0.1.0.0 (test:cabal-project-repro-test) (first run)
  - cabal-project-repro-0.1.0.0 (exe:filemonitor-test) (configuration changed)
+Configuring test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0...
 Preprocessing test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0...
 Building test suite 'cabal-project-repro-test' for cabal-project-repro-0.1.0.0...
 Error: [Cabal-7125]
