@@ -1,0 +1,22 @@
+import: project-cabal/ghc-options.config
+import: project-cabal/ghc-latest.config
+import: project-cabal/pkgs.config
+import: project-cabal/constraints.config
+
+tests: True
+write-ghc-environment-files: never
+program-options
+  ghc-options: -Werror
+
+-- if you are developing on a system without TH, use a `cabal.validate.project.local`
+-- to disable the git-rev flag.
+-- The +legacy-comparison flag is to set the default project file parser to compare
+-- the result of the legacy and parsec parser and fail if they are not equal.
+package cabal-install
+  flags: +git-rev
+
+package Cabal
+  flags: +git-rev
+
+package cabal-install-solver
+  flags: +debug-expensive-assertions

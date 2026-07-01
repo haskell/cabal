@@ -1,0 +1,13 @@
+
+
+build-depends:
+    base         > 4.8    , text > 2
+
+  , megaparsec > 5
+
+  , containers > 0.6
+
+cabal-version:
+  2.0
+
+  -- meow

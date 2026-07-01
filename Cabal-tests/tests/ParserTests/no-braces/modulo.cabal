@@ -1,0 +1,61 @@
+
+name:               modulo
+version:            1.7.2
+cabal-version:      >= 1.6
+author:             Hans Hoglund
+maintainer:         Hans Hoglund <hans@hanshoglund.se>
+license:            GPL-3
+license-file:       COPYING
+synopsis:           Modular C code generator
+category:           Language, FFI
+build-type:         Simple
+
+description: 
+    Modulo is a tool that generates modular, standard C interfaces based on a high-level 
+    description language. The idea is to specify functionality in the module language 
+    and implement it in any language that supports C-style calling conventions. 
+    
+    This package include generators for C and Common Lisp (JavaScript and Haskell on the way).
+
+source-repository head
+  type:             git
+  location:         git://github.com/hanshoglund/modulo.git
+  
+library                    
+    build-depends: 
+        base            >= 4 && < 5,
+        semigroups, 
+        nats, 
+        data-default,
+        text,
+        parsec          >= 3.1.2 && < 4, 
+        prettify        >= 1.0 && < 2,
+        language-c, 
+        haskell-src     == 1.0.1.5,
+        atto-lisp,
+
+        pandoc-types    == 1.10,
+        pandoc          == 1.11.1,
+        process,
+        directory
+    hs-source-dirs: src
+    exposed-modules:
+        Language.Modulo
+
+        Language.Modulo.C
+        Language.Modulo.Lisp
+        Language.Modulo.Haskell
+        Language.Modulo.JavaScript
+        Language.Modulo.Pandoc
+
+        Language.Modulo.Load
+        Language.Modulo.Parse
+        Language.Modulo.Rename
+        Language.Modulo.Util
+        Language.Modulo.Util.Mangle
+        Language.Modulo.Util.Unmangle
+
+executable "modulo"
+    hs-source-dirs: src
+    main-is: Main.hs
+    

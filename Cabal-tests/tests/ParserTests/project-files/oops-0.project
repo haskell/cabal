@@ -1,0 +1,4 @@
+packages: ./oops/oops.cabal
+
+import: oops/oops-1.config
+constraints: hashable ==1.4.3.0

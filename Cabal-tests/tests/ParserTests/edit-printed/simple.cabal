@@ -1,0 +1,9 @@
+cabal-version: 3.0
+name: simple
+version: 1.0
+
+library
+  build-depends: base > 4.8
+
+library namedLibrary
+  build-depends: base <= 5

@@ -1,0 +1,3 @@
+packages: .
+import:		https://www.stackage.org/nightly-2024-12-05/cabal.config		   
+import: with-ghc.config

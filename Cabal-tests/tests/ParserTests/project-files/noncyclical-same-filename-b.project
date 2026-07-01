@@ -1,0 +1,3 @@
+packages: .
+
+import: same-filename/noncyclical-same-filename-b.config

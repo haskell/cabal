@@ -40,12 +40,15 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Char as Char
 import Distribution.Compat.Prelude
+import Distribution.Parsec.Position.Lens (HasPosition (..))
 import Distribution.Pretty (showTokenStr)
 import Distribution.Utils.Generic (fromUTF8BS)
 import Prelude ()
 #if MIN_VERSION_base(4,18,0)
 import qualified Data.Foldable1 as F1
 #endif
+
+import Distribution.Parsec.Position
 
 -------------------------------------------------------------------------------
 -- Cabal file
@@ -60,6 +63,9 @@ data WithComments ann = WithComments
   }
   deriving (Show, Generic, Eq, Ord, Functor)
 
+instance HasPosition ann => HasPosition (WithComments ann) where
+  position f (WithComments cmts ann) = WithComments cmts <$> position f ann
+
 mapComments :: ([Comment ann] -> [Comment ann]) -> WithComments ann -> WithComments ann
 mapComments f (WithComments cs x) = WithComments (f cs) x
 
@@ -68,7 +74,7 @@ mapCommentedData f (WithComments cs x) = WithComments cs (f x)
 
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
-  = Field !(Name ann) [FieldLine ann]
+  = Field Position !(Name ann) [FieldLine ann]
   | Section !(Name ann) [SectionArg ann] [Field ann]
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
@@ -77,7 +83,7 @@ deriving instance Ord ann => Ord (Field ann)
 
 -- | Section of field name
 fieldName :: Field ann -> Name ann
-fieldName (Field n _) = n
+fieldName (Field _ n _) = n
 fieldName (Section n _ _) = n
 
 fieldAnn :: Field ann -> ann
@@ -88,7 +94,7 @@ fieldAnn = nameAnn . fieldName
 -- /Note:/ the resulting list is never empty.
 fieldUniverse :: Field ann -> [Field ann]
 fieldUniverse f@(Section _ _ fs) = f : concatMap fieldUniverse fs
-fieldUniverse f@(Field _ _) = [f]
+fieldUniverse f@(Field _ _ _) = [f]
 
 -- | A line of text representing the value of a field from a Cabal file.
 -- A field may contain multiple lines.
@@ -142,8 +148,9 @@ data Name ann = Name !ann !FieldName
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Name ann)
 
+-- TODO(leana8959): not enforcing lower case works, but it will need a later stage normalization
 mkName :: ann -> FieldName -> Name ann
-mkName ann bs = Name ann (B.map Char.toLower bs)
+mkName ann bs = Name ann bs
 
 getName :: Name ann -> FieldName
 getName (Name _ bs) = bs
@@ -187,7 +194,7 @@ fieldLinesToString =
 
 -- | @since 3.12.0.0
 instance F1.Foldable1 Field where
-  foldMap1 f (Field x ys) =
+  foldMap1 f (Field _ x ys) =
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys)
   foldMap1 f (Section x ys zs) =
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys ++ map (F1.foldMap1 f) zs)

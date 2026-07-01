@@ -1,4 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | This module provides a 'FieldGrammarParser', one way to parse
 -- @.cabal@ -like files.
@@ -63,6 +66,8 @@ module Distribution.FieldGrammar.Parsec
   , runFieldParser'
   , fieldLinesToStream
   , freeTextIgnoreDotlineVers
+  , joinFieldLines
+  , splitFieldLines
   ) where
 
 import Distribution.Compat.Newtype
@@ -71,10 +76,15 @@ import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
 import Prelude ()
 
+import Data.Function
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
+import Data.Foldable1
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Distribution.Compat.Lens as L
+import qualified Distribution.Parsec.Position.Lens as L
 import qualified Distribution.Utils.ShortText as ShortText
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Error as P
@@ -457,3 +467,44 @@ fieldLinesToStream :: [FieldLine ann] -> FieldLineStream
 fieldLinesToStream [] = fieldLineStreamEnd
 fieldLinesToStream [FieldLine _ bs] = FLSLast bs
 fieldLinesToStream (FieldLine _ bs : fs) = FLSCons bs (fieldLinesToStream fs)
+
+-- TODO(leana8959): this will lose all the comments
+-- TODO(leana8959): should we add a trailing newline
+joinFieldLines :: L.HasPosition ann => NonEmpty (FieldLine ann) -> FieldLine ann
+-- No indentation needed
+joinFieldLines (FieldLine ann bs :| []) = FieldLine ann bs
+-- Fixup missing whitespaces, then join
+joinFieldLines fsNE =
+  let leftmostCol = foldl1' min $ fmap (L.view L.positionCol . fieldLineAnn) fsNE
+      ann0 = fieldLineAnn (NE.head fsNE)
+      indented = map (indentFieldLine leftmostCol) (NE.toList fsNE)
+      bss = toBSWithNewlines (L.view L.positionRow ann0) indented
+   in FieldLine (L.set L.positionCol leftmostCol ann0) bss
+
+-- | Indent a FieldLine while preserving 'FieldLine' invariants.
+indentFieldLine :: L.HasPosition ann => Int -> FieldLine ann -> FieldLine ann
+indentFieldLine leftmostCol (FieldLine ann bs) =
+  let myCol = L.view L.positionCol ann
+      indent = myCol - leftmostCol
+   in FieldLine (L.set L.positionCol leftmostCol ann) (BS8.replicate indent ' ' <> bs)
+
+toBSWithNewlines :: L.HasPosition ann => Int -> [FieldLine ann] -> BS.ByteString
+toBSWithNewlines row0 = mconcat . mealy go row0
+  where
+    go row (FieldLine ann bs) =
+      let myRow = L.view L.positionRow ann
+          newlines = myRow - row
+       in (myRow, BS8.replicate newlines '\n' <> bs)
+
+
+-- | Lines the inner 'ByteString', remove empty lines, distributing start colomn numbers and enumerate row numbers.
+--   We assume that the joined field lines have been aligned to the same column.
+splitFieldLines :: (L.HasPosition ann) => ann -> FieldLine ann -> [FieldLine ann]
+splitFieldLines emptyAnn (FieldLine ann bs0) =
+  let ls = BS8.lines bs0
+      Position startRow startCol = L.view L.position ann
+      rowNs = [startRow..]
+  in
+      zipWith
+        ( \ bs row -> FieldLine (emptyAnn & L.set L.position ( Position row startCol )) bs
+        ) ls rowNs

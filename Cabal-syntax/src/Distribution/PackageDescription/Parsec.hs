@@ -270,7 +270,7 @@ cabalFormatVersionsDesc = "Current cabal-version values are listed at https://ca
 goSections :: CabalSpecVersion -> [Field Position] -> SectionParser src ()
 goSections specVer = traverse_ process
   where
-    process (Field (Name pos name) _) =
+    process (Field _ (Name pos name) _) =
       lift $
         parseWarning pos PWTTrailingFields $
           "Ignoring trailing fields after sections: " ++ show name
@@ -685,13 +685,13 @@ processImports v fromBuildInfo commonStanzas = go []
     getList' :: List CommaFSep Token String -> [String]
     getList' = Newtype.unpack
 
-    go acc (Field (Name pos name) _ : fields)
+    go acc (Field _ (Name pos name) _ : fields)
       | name == "import"
       , hasCommonStanzas == NoCommonStanzas = do
           parseWarning pos PWTUnknownField "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
           go acc fields
     -- supported:
-    go acc (Field (Name pos name) fls : fields) | name == "import" = do
+    go acc (Field _ (Name pos name) fls : fields) | name == "import" = do
       names <- getList' <$> runFieldParser pos parsec v fls
       names' <- for names $ \commonName ->
         case Map.lookup commonName commonStanzas of
@@ -710,7 +710,7 @@ processImports v fromBuildInfo commonStanzas = go []
 
 -- | Warn on "import" fields, also map to Maybe, so erroneous fields can be filtered
 warnImport :: CabalSpecVersion -> Field Position -> ParseResult src (Maybe (Field Position))
-warnImport v (Field (Name pos name) _) | name == "import" = do
+warnImport v (Field _ (Name pos name) _) | name == "import" = do
   if specHasCommonStanzas v == NoCommonStanzas
     then parseWarning pos PWTUnknownField "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
     else parseWarning pos PWTUnknownField "Unknown field: import. Common stanza imports should be at the top of the enclosing section"
@@ -904,7 +904,7 @@ sectionizeFields fs = case classifyFields fs of
     classifyFields :: [Field ann] -> Maybe [(Name ann, [FieldLine ann])]
     classifyFields = traverse f
       where
-        f (Field name fieldlines) = Just (name, fieldlines)
+        f (Field _ name fieldlines) = Just (name, fieldlines)
         f _ = Nothing
 
     trim = BS.dropWhile isSpace' . BS.reverse . BS.dropWhile isSpace' . BS.reverse
@@ -913,7 +913,10 @@ sectionizeFields fs = case classifyFields fs of
     convert :: [(Name ann, [FieldLine ann])] -> [Field ann]
     convert fields =
       let
-        toField (name, ls) = Field name ls
+        -- TODO(leana8959): this is a hack
+        -- Eventually we want to separate a cased-name preserving, colon position preserving Field ann, and another one that is not.
+        -- This will guarantee compatibility.
+        toField (name, ls) = Field zeroPos name ls
         -- "build-depends" is a local field now.  To be backwards
         -- compatible, we still allow it as a global field in old-style
         -- package description files and translate it to a local field by
@@ -1003,7 +1006,7 @@ parseHookedBuildInfo' lexWarnings fs = do
       hdr <- toFields hdr0
       pure ((name, hdr), rest)
 
-    isExecutableField (Field (Name _ name) fss)
+    isExecutableField (Field _ (Name _ name) fss)
       | name == "executable" = Just fss
       | otherwise = Nothing
     isExecutableField _ = Nothing

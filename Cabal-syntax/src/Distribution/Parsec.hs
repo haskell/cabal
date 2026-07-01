@@ -52,6 +52,7 @@ module Distribution.Parsec
   , parsecLeadingOptCommaList
   , parsecStandard
   , parsecUnqualComponentName
+  , liftParsec
   ) where
 
 import Data.ByteString (ByteString)
@@ -96,6 +97,8 @@ class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
   parsecHaskellString = stringLiteral
 
   askCabalSpecVersion :: m CabalSpecVersion
+
+  getPosition :: m Position
 
 -- | 'parsec' /could/ consume trailing spaces, this function /will/ consume.
 lexemeParsec :: (CabalParsing m, Parsec a) => m a
@@ -175,6 +178,10 @@ instance CabalParsing ParsecParser where
     Parsec.modifyState
       (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
   askCabalSpecVersion = PP pure
+
+  getPosition = do
+    spos <- liftParsec Parsec.getPosition
+    pure $ Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a

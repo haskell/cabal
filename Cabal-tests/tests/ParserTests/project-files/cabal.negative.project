@@ -1,0 +1,9 @@
+packages: .
+
+source-repository-package
+    type: git
+-- A Sample repo to test post-checkout-command
+    location: https://github.com/haskell/bytestring
+    post-checkout-command: false
+    tag: 0.10.9.0
+-- https://en.wikipedia.org/wiki/True_and_false_(commands)

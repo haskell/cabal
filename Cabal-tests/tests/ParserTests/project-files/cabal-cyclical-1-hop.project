@@ -1,0 +1,3 @@
+packages: .
+
+import: cabal-cyclical-1-hop.config

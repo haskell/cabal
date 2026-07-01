@@ -1,0 +1,2 @@
+-- NOTE: Intentionally empty as we can't specify
+-- --project-file=cabal.freeze-only.project when that file doesn't exist.

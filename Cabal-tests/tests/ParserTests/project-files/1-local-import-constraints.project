@@ -1,0 +1,4 @@
+packages: .
+allow-newer: hashable:*
+import: stackage-local.config
+constraints: hashable ==1.4.2.0
