@@ -21,7 +21,7 @@ main = do
     expectedMonitoring <- readFileVerbatim "cabal.main-project.expect.txt"
     runProjectTest expectedMonitoring opts
     runCommandTest opts
-    runConfigureTest opts
+    runConfigureTest "cabal.project.local" opts
   cabalTest' "local-only" . recordMode RecordMarked $ do
     let opts = ["--project-file=cabal.local-only.project"]
     expectedMonitoring <- readFileVerbatim "cabal.local-only.expect.txt"
@@ -32,6 +32,7 @@ main = do
     expectedMonitoring <- readFileVerbatim "cabal.freeze-only.expect.txt"
     runProjectTest expectedMonitoring opts
     runCommandTest opts
+    runConfigureTest "cabal.freeze-only.project.local" opts
 
 testNotYetImplementedMsg :: String
 testNotYetImplementedMsg = "Test suite not yet implemented"
@@ -58,10 +59,10 @@ runCommandTest projOpts = do
 -- tests to be enabled. The project .local is the place where this configuration
 -- is saved. The .local file that the configure command creates is deleted at
 -- the conclusion of this test.
-runConfigureTest :: [String] -> ReaderT TestEnv IO ()
-runConfigureTest projOpts = do
+runConfigureTest :: String -> [String] -> ReaderT TestEnv IO ()
+runConfigureTest projectLocalFile projOpts = do
   cwd <- testCurrentDir <$> getTestEnv
-  let localFile = cwd </> "cabal.project.local"
+  let localFile = cwd </> projectLocalFile
   haveLocal <- liftIO $ doesFileExist localFile
   let existsMsg = if haveLocal then "It exists." else "It was not found."
   log $ "Checking for the existence of: " ++ localFile ++ ". " ++ existsMsg
