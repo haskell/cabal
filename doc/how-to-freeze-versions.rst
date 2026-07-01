@@ -110,7 +110,7 @@ package, or we can set the same version range in each package of a project.
     Curated sets of version constrained packages, such as the ones supplied by
     Stackage, are project-level configuration, ready-made to be imported by a
     project.
-    
+
 **Setting**
     Package-level version ranges can be specified in one place and then copied
     to packages;
