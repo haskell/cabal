@@ -869,7 +869,7 @@ readProjectFileSkeletonGen
           monitorFiles $ monitorFileHashed <$> paths
           return pcs
         else do
-          monitorLog $ "Monitor nonexistant: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
+          monitorLog $ "Monitor nonexistent: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
