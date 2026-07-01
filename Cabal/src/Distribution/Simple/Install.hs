@@ -143,7 +143,7 @@ install_setupHooks
     where
       common = copyCommonFlags flags
       distPref = fromFlag $ setupDistPref common
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+      CommonSetupVerbosity verbosity = (verbHandles, common)
       copydest = fromFlag (copyDest flags)
 
       checkHasLibsOrExes =

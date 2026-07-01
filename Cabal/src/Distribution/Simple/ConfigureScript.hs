@@ -59,7 +59,7 @@ runConfigureScript
   -> IO ()
 runConfigureScript verbHandles cfg flags programDb hp = do
   let commonCfg = configCommonFlags cfg
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonCfg)
+      CommonSetupVerbosity verbosity = (verbHandles, commonCfg)
   dist_dir <- findDistPrefOrDefault $ setupDistPref commonCfg
   let build_dir = dist_dir </> makeRelativePathEx "build"
       mbWorkDir = flagToMaybe $ setupWorkingDir commonCfg
