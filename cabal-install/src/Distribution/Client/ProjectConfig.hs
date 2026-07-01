@@ -857,7 +857,7 @@ readProjectFileSkeletonGen
       exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
-          monitorLog $ "Monitor existing: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
+          monitorLog $ "Monitor existing: " ++ fileWithAbsolute extensionFile
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
           let paths =
@@ -865,16 +865,21 @@ readProjectFileSkeletonGen
                 | (Nothing, path) <- projectSkeletonImports pcs
                 ]
           for_ paths $ \p -> do
-            monitorLog $ "Monitor imported: " ++ p ++ " (" ++ makeAbsolute p ++ ")"
+            monitorLog $ "Monitor imported: " ++ fileWithAbsolute p
           monitorFiles $ monitorFileHashed <$> paths
           return pcs
         else do
-          monitorLog $ "Monitor nonexistent: " ++ extensionFile ++ " (" ++ makeAbsolute extensionFile ++ ")"
+          monitorLog $ "Monitor nonexistent: " ++ fileWithAbsolute extensionFile
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
       monitorLog = liftIO . info verbosity
       extensionFile = distProjectFile key
+
+      fileWithAbsolute f
+        | isAbsolute f = f
+        | otherwise = f ++ " (" ++ makeAbsolute f ++ ")"
+
       makeAbsolute f
         | isAbsolute f = f
         | otherwise = distProjectRootDirectory </> f
