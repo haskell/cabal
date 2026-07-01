@@ -14,6 +14,7 @@ module Distribution.Simple.PreProcess.Types
   ( Suffix (..)
   , PreProcessor (..)
   , PreProcessCommand
+  , PreProcessorKey (..)
   , builtinHaskellSuffixes
   , builtinHaskellBootSuffixes
   )
@@ -22,9 +23,9 @@ where
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Simple.HashValue
 import Distribution.ModuleName (ModuleName)
 import Distribution.Pretty
+import Distribution.Simple.Program.Types (ConfiguredProgram)
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import qualified Text.PrettyPrint as Disp
@@ -89,12 +90,26 @@ data PreProcessor = PreProcessor
   -- well-behaved and not reorder modules it doesn't have dominion over!
   --
   -- @since 3.8.1.0
-
   , configurePreProcessor
       :: Verbosity
-      -> IO (PreProcessCommand, Maybe HashValue)
-  
+      -> IO (PreProcessCommand, PreProcessorKey)
   }
+
+-- | Uniquely identifies a specific preprocessor (version) for change
+-- monitoring purposes.
+-- This value should change iff the preprocessor itself changes in a way that
+-- requires re-running it for a given input file.
+data PreProcessorKey
+  = -- | A built-in preprocessor; these only change when Cabal itself does, so
+    -- there is no need to track changes for these.
+    PreProcessorBuiltin
+  | -- | A preprocessor that runs some program, identified uniquely by the
+    -- configured program.
+    PreProcessorPrograms [ConfiguredProgram]
+  deriving (Generic, Eq)
+
+instance Binary PreProcessorKey
+instance Structured PreProcessorKey
 
 -- | A command to run a given preprocessor on a single source file.
 --
