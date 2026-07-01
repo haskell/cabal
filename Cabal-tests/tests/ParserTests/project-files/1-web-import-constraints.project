@@ -1,0 +1,11 @@
+packages: .
+allow-newer: hashable:*
+
+-- NOTE: We could have grabbed this config from stackage but we don't to avoid
+-- making an HTTP request with the test. So instead we save it locally.
+--
+-- $ curl https://www.stackage.org/nightly-2023-12-07/cabal.config --output project-stackage/nightly-2023-12-07.config
+import: project-stackage/nightly-2023-12-07.config
+
+constraints: hashable ==1.4.2.0
+import: with-ghc.config

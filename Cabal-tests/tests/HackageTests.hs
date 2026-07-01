@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP                 #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -Wno-unused-pattern-binds #-} -- pattern match to assert field count
 
 module Main where
@@ -58,15 +61,19 @@ import qualified Distribution.Types.PackageDescription.Lens        as L
 
 -- import Distribution.Types.BuildInfo                (BuildInfo (cppOptions))
 -- import qualified Distribution.Types.BuildInfo.Lens                 as L
+import Distribution.Fields.ExactPretty
 
 #ifdef MIN_VERSION_tree_diff
 import Data.TreeDiff                 (ediff)
 import Data.TreeDiff.Instances.Cabal ()
-import Data.TreeDiff.Pretty          (ansiWlEditExprCompact)
+import Data.TreeDiff.Pretty          (ansiWlEditExprCompact, ansiWlEditExpr)
 #endif
 
 import Data.Time.Clock.System
 import Data.Time.Format
+
+import Data.Char
+import Debug.Trace
 
 -------------------------------------------------------------------------------
 -- parseIndex: Index traversal
@@ -153,6 +160,50 @@ readFieldTest fpath bs = case Parsec.readFields bs' of
   where
     (_, bs') = patchQuirks bs
 
+fieldRoundTripTest :: FilePath -> B.ByteString -> IO RoundTripResult
+fieldRoundTripTest fpath bs0 = do
+  fs <- case Parsec.readFieldsWithComments bs of
+        Right ok  -> pure ok
+        Left err -> do
+            putStrLn fpath
+            print err
+            exitFailure
+
+  let bs'' = runRenderFields fs
+  let !failedCount = if bs'' /= bs then 1 else 0
+  -- when (bs'' /= bs && B8.notElem '{' bs) $ do
+  --   putStrLn $
+-- #ifdef MIN_VERSION_tree_diff
+  --     unlines
+  --         [ "re-parsed doesn't match"
+  --         , show $ ansiWlEditExpr $ ediff bs bs''
+  --         ]
+-- #else
+  --     unlines
+  --         [ "re-parsed doesn't match"
+  --         , "expected"
+  --         , show bs
+  --         , "actual"
+  --         , show bs''
+  --         ]
+-- #endif
+
+  pure (RoundTripResult failedCount 1)
+  where
+    bs =
+    -- Patch tabs and CRLF lineendings, the rest are real problems and need to be inspected
+      ( (<> "\n")
+        . B8.dropWhileEnd ( \c -> isSpace c || c == '\n' )
+        )
+      $! ( B8.intercalate "\n"
+        . map (B8.dropWhileEnd isSpace)
+        . map (\l -> if B8.all isSpace l then "" else l)
+        . map (\l -> case B8.unsnoc l of { Just (l', '\r') -> l' ; _ -> l })
+        . B8.split '\n'
+        )
+      $! B8.map (\case { '\t' -> ' '; c -> c })
+      $! snd (patchQuirks bs0)
+
 -------------------------------------------------------------------------------
 -- Parsec test: whether we can parse everything
 -------------------------------------------------------------------------------
@@ -196,6 +247,20 @@ instance Monoid ParsecResult where
 
 instance NFData ParsecResult where
     rnf ParsecResult{} = ()
+
+
+-- Failed, Total
+data RoundTripResult = RoundTripResult !Int !Int
+  deriving (Eq, Show)
+
+instance Semigroup RoundTripResult where
+  RoundTripResult s t <> RoundTripResult a b = RoundTripResult (s + a) (t + b)
+
+instance Monoid RoundTripResult where
+  mempty = RoundTripResult 0 0
+
+instance NFData RoundTripResult where
+    rnf RoundTripResult{} = ()
 
 -------------------------------------------------------------------------------
 -- Check test
@@ -355,6 +420,8 @@ main = join (O.execParser opts)
     optsP = subparser
         [ command "read-fields" readFieldsP
           "Parse outer format (to '[Field]', TODO: apply Quirks)"
+        , command "field-roundtrip" fieldRoundTripP
+          "Parse outer format and print it, check roundtrip"
         , command "parsec"      parsecP     "Parse GPD with parsec"
         , command "roundtrip"   roundtripP  "parse . pretty . parse = parse"
         , command "check"       checkP      "Check GPD"
@@ -366,6 +433,12 @@ main = join (O.execParser opts)
 
     readFieldsP = readFieldsA <$> prefixP <*> indexP
     readFieldsA pfx idx = parseIndex (mkPredicate pfx idx) readFieldTest
+
+    fieldRoundTripP = fieldRoundTripA <$> prefixP <*> indexP
+    fieldRoundTripA pfx idx = do
+      RoundTripResult failed total <- parseIndex (mkPredicate pfx idx) fieldRoundTripTest
+      putStrLn $ show total  ++ " files processed"
+      putStrLn $ show failed ++ " files failed to roundtrip"
 
     parsecP = parsecA <$> prefixP <*> keepGoingP <*> indexP
     keepGoingP =
@@ -433,7 +506,7 @@ main = join (O.execParser opts)
 reposFromConfig :: [Parsec.Field ann] -> [String]
 reposFromConfig fields = takeWhile (/= ':') <$> mapMaybe f fields
   where
-    f (Parsec.Field (Parsec.Name _ name) fieldLines)
+    f (Parsec.Field _ (Parsec.Name _ name) fieldLines)
         | B8.unpack name == "remote-repo" =
             Just $ fieldLinesToString fieldLines
     f (Parsec.Section (Parsec.Name _ name)
@@ -446,7 +519,7 @@ reposFromConfig fields = takeWhile (/= ':') <$> mapMaybe f fields
 lookupInConfig :: String -> [Parsec.Field ann] -> [String]
 lookupInConfig key = mapMaybe f
   where
-    f (Parsec.Field (Parsec.Name _ name) fieldLines)
+    f (Parsec.Field _ (Parsec.Name _ name) fieldLines)
         | B8.unpack name == key =
             Just $ fieldLinesToString fieldLines
     f _ = Nothing

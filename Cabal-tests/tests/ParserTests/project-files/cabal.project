@@ -1,0 +1,5 @@
+-- Separate project file to avoid conflicts,
+-- e.g. via the dependency on cabal-install-parsers
+
+packages: .
+optimization: False

@@ -181,7 +181,7 @@ genericFromParsecFields f g = goMany
   where
     goMany = traverse go
 
-    go (P.Field (P.Name ann name) fls) = PrettyField ann name <$> f name fls
+    go (P.Field _ (P.Name ann name) fls) = PrettyField ann name <$> f name fls
     go (P.Section (P.Name ann name) secargs fs) = PrettySection ann name <$> g name secargs <*> goMany fs
 
 -- | Used in 'fromParsecFields'.

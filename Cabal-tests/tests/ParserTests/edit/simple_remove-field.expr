@@ -1,0 +1,75 @@
+EditOk
+  [
+    Field
+      (Position 1 14)
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 1 1}
+        "cabal-version")
+      [
+        FieldLine
+          WithComments {
+            justComments = [],
+            unComments = Position 1 16}
+          "3.0"],
+    Field
+      (Position 2 5)
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 2 1}
+        "name")
+      [
+        FieldLine
+          WithComments {
+            justComments = [],
+            unComments = Position 2 7}
+          "simple"],
+    Section
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 5 1}
+        "library")
+      []
+      [
+        Field
+          (Position 6 16)
+          (Name
+            WithComments {
+              justComments = [],
+              unComments = Position 6 3}
+            "build-depends")
+          [
+            FieldLine
+              WithComments {
+                justComments = [],
+                unComments = Position 6 18}
+              "base > 4.8"]],
+    Section
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 8 1}
+        "library")
+      [
+        SecArgName
+          WithComments {
+            justComments = [],
+            unComments = Position 8 9}
+          "namedLibrary"]
+      [
+        Field
+          (Position 9 16)
+          (Name
+            WithComments {
+              justComments = [],
+              unComments = Position 9 3}
+            "build-depends")
+          [
+            FieldLine
+              WithComments {
+                justComments = [],
+                unComments = Position 9 18}
+              "base <= 5"]]]

@@ -15,6 +15,7 @@ import Distribution.Backpack                       (OpenModule, OpenUnitId)
 import Distribution.CabalSpecVersion               (CabalSpecVersion)
 import Distribution.Compiler                       (CompilerFlavor, CompilerId, PerCompilerFlavor)
 import Distribution.Fields.Field                   (Field, Name, FieldLine, SectionArg, Comment, WithComments)
+import Distribution.Fields.Transform               (EditResult, EditError)
 import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.PackageDescription
@@ -108,6 +109,8 @@ instance ToExpr ComponentId
 instance ToExpr DebugInfoLevel
 instance ToExpr DefUnitId
 instance ToExpr DumpBuildInfo
+instance (ToExpr a) => ToExpr (EditResult a)
+instance ToExpr EditError
 instance ToExpr ExeDependency
 instance ToExpr Executable
 instance ToExpr ExecutableScope
