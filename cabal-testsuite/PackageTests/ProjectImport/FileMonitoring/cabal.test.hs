@@ -27,6 +27,8 @@ main = do
     expectedMonitoring <- readFileVerbatim "cabal.local-only.expect.txt"
     runProjectTest expectedMonitoring opts
     runCommandTest opts
+    -- Don't run the configure test for this project because the configure
+    -- command will back up and rename the existing .local file.
   cabalTest' "freeze-only" . recordMode RecordMarked $ do
     let opts = ["--project-file=cabal.freeze-only.project"]
     expectedMonitoring <- readFileVerbatim "cabal.freeze-only.expect.txt"
