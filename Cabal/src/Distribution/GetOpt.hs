@@ -1,8 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TupleSections #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.GetOpt
 -- Copyright   :  (c) Sven Panne 2002-2005

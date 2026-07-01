@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE Rank2Types #-}
-
 module Distribution.Backpack.DescribeUnitId where
 
 import Distribution.Compat.Prelude

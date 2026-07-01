@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveFunctor         #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module Main (main) where
 
 import Data.Map.Strict (Map)

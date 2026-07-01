@@ -1,6 +1,4 @@
-{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Described (
     Described (..),
     describeDoc,

@@ -1,7 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.IndexUtils.IndexUtils

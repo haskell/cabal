@@ -33,7 +33,7 @@ flag debug-tracetree
   manual:      True
 
 library
-  default-language: Haskell2010
+  default-language: GHC2021
   hs-source-dirs:   src
   hs-source-dirs:   src-assertion
   ghc-options:
@@ -123,7 +123,7 @@ library
       , tracetree ^>=0.1
 
 Test-Suite unit-tests
-   default-language: Haskell2010
+   default-language: GHC2021
    ghc-options: -rtsopts -threaded
 
    type: exitcode-stdio-1.0

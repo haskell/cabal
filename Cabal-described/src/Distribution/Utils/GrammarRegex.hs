@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Utils.GrammarRegex (
     -- * Regular expressions
     GrammarRegex (..),

@@ -1,8 +1,4 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module provides a 'FieldGrammarParser', one way to parse
 -- @.cabal@ -like files.

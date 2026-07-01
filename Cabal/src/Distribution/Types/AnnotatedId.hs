@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-
 module Distribution.Types.AnnotatedId
   ( AnnotatedId (..)
   ) where

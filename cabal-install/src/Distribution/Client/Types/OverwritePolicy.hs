@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Client.Types.OverwritePolicy where
 
 import Distribution.Client.Compat.Prelude

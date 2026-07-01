@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Types.AbiDependency where
 
 import Distribution.Compat.Prelude

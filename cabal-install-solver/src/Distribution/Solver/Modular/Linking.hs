@@ -1,6 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-
 -- TODO: remove this
 {-# OPTIONS -Wno-incomplete-uni-patterns #-}
 module Distribution.Solver.Modular.Linking (

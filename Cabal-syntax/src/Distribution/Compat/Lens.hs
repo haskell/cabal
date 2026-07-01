@@ -1,6 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
-
 -- | This module provides very basic lens functionality, without extra dependencies.
 --
 -- For the documentation of the combinators see <http://hackage.haskell.org/package/lens lens> package.

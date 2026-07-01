@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 module Distribution.Solver.Types.SourcePackage
     ( PackageDescriptionOverride
     , SourcePackage(..)

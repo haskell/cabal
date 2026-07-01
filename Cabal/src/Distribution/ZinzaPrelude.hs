@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 -- | A small prelude used in @zinza@ generated
 -- template modules.
 module Distribution.ZinzaPrelude

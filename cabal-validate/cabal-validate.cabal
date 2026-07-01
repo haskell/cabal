@@ -14,10 +14,12 @@ common common
         -- Pattern exhaustiveness checker is not as good, misses a case.
         ghc-options: -Wno-incomplete-patterns
 
-    default-language: Haskell2010
+    default-language: GHC2021
+    -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
     default-extensions:
         OverloadedStrings
         , TypeApplications
+        , NoImportQualifiedPost
 
 executable cabal-validate
     import: common

@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module UnitTests.Distribution.Client.FetchUtils
   ( tests
   )

@@ -3,7 +3,7 @@ name:          cabal-bootstrap-gen
 version:       0
 
 executable cabal-bootstrap-gen
-  default-language: Haskell2010
+  default-language: GHC2021
   hs-source-dirs:   src
   ghc-options:      -Wall
   main-is:          Main.hs

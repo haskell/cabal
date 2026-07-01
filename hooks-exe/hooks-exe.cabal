@@ -54,4 +54,4 @@ library
     Distribution.Client.SetupHooks.CallHooksExe.Errors
 
   default-language:
-    Haskell2010
+    GHC2021

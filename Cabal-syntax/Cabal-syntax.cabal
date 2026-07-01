@@ -24,7 +24,9 @@ source-repository head
   subdir:   Cabal-syntax
 
 library
-  default-language: Haskell2010
+  default-language: GHC2021
+  -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
+  default-extensions: NoImportQualifiedPost
   hs-source-dirs: src
 
   build-depends:

@@ -1,13 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-
--- simplifier goes nuts otherwise
-#if __GLASGOW_HASKELL__ < 806
-{-# OPTIONS_GHC -funfolding-use-threshold=30 #-}
-#endif
 
 module UnitTests.Distribution.Client.ProjectConfig (tests) where
 
