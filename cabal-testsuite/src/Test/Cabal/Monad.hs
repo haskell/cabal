@@ -28,6 +28,7 @@ module Test.Cabal.Monad
     -- * The test environment
   , TestEnv (..)
   , getTestEnv
+  , mkNormalizerEnv
 
     -- * Recording mode
   , RecordMode (..)
