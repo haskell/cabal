@@ -83,8 +83,8 @@ import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , debug
   , dieWithException
-  , maybeExit
   , info
+  , maybeExit
   , notice
   , noticeDoc
   , ordNub
