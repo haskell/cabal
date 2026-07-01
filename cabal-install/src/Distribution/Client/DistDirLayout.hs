@@ -87,7 +87,7 @@ data ProjectFileKey
   = ProjectFileKeyMain
   | ProjectFileKeyLocal
   | ProjectFileKeyFreeze
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Bounded, Enum)
 
 -- | The layout of the project state directory. Traditionally this has been
 -- called the @dist@ directory.
