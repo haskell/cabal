@@ -5,12 +5,45 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# OPTIONS_GHC -Wno-duplicate-exports #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 -- | Generally useful definitions that we expect most test scripts
 -- to use.
 module Test.Cabal.Prelude
-  ( module Test.Cabal.Prelude
+  ( -- * Assertions
+
+    -- ** Assert Marked Output
+    -- $marked-output
+    assertOutputContains
+  , assertOutputDoesNotContain
+  , assertOutputMatches
+  , assertOutputDoesNotMatch
+  , assertOn
+
+    -- ** Assert File
+  , assertFileDoesContain
+  , assertFileDoesNotContain
+  , assertFindInFile
+  , assertAnyFileContains
+  , assertNoFileContains
+
+    -- ** Assert Glob
+  , assertGlobMatches
+  , assertGlobDoesNotMatch
+  , assertGlobMatchesTestDir
+  , assertGlobDoesNotMatchTestDir
+
+    -- ** Other Assertions
+  , assertBool
+  , assertEqual
+  , assertExitCode
+  , assertFailure
+  , assertNotEqual
+  , assertRegex
+
+    -- * Re-exports
+  , module Test.Cabal.Prelude
   , module Test.Cabal.Monad
   , module Test.Cabal.NeedleHaystack
   , module Test.Cabal.Run
@@ -39,9 +72,6 @@ import Distribution.Simple.Configure
 import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
-  ( tryFindPackageDesc
-  , withFileContents
-  )
 import Distribution.System (Arch (JavaScript), OS (Linux, OSX, Windows), buildArch, buildOS)
 import Distribution.Types.LocalBuildInfo
 import Distribution.Utils.Path
@@ -87,6 +117,19 @@ import System.Process
 #ifndef mingw32_HOST_OS
 import System.Posix.Resource
 #endif
+
+-- $marked-output
+-- When asserting on the output of a command we only have access to the marked
+-- output. That is the output between these markers:
+--
+-- @
+-- -----BEGIN CABAL OUTPUT-----
+-- -----END CABAL OUTPUT-----
+-- @
+--
+-- This is the output from 'notice' and `warn` messages. It does not include the
+-- output from `debug` or `info` messages. This is mostly because the output
+-- from `debug` and `info` messages is not expected to be deterministic.
 
 ------------------------------------------------------------------------
 
