@@ -236,11 +236,8 @@ arbitraryInstallPlan
   -> Gen (InstallPlan.GenericInstallPlan ipkg srcpkg)
 arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
   (ipkgvs, srcpkgvs) <-
-    fmap
-      ( bimap (map fst) (map fst)
-          . partition snd
-      )
-      $ sequenceA
+    bimap (map fst) (map fst) . partition snd
+      <$> sequenceA
         [ do
           isipkg <-
             if isRoot

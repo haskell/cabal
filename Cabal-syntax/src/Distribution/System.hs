@@ -301,8 +301,7 @@ instance Parsec Platform where
   parsec = do
     arch <- parsecDashlessArch
     _ <- P.char '-'
-    os <- parsec
-    return (Platform arch os)
+    Platform arch <$> parsec
     where
       parsecDashlessArch = classifyArch Strict <$> dashlessIdent
 

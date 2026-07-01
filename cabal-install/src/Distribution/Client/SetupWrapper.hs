@@ -791,7 +791,7 @@ invoke verbosity path args options = do
   let loggingHandle = maybe Inherit UseHandle (useLoggingHandle options)
       cp =
         (proc path args)
-          { Process.cwd = fmap getSymbolicPath $ useWorkingDir options
+          { Process.cwd = getSymbolicPath <$> useWorkingDir options
           , Process.env = env
           , Process.std_out = loggingHandle
           , Process.std_err = loggingHandle

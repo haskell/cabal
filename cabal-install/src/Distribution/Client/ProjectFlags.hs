@@ -99,7 +99,7 @@ projectFlagsOptions showOrParseArgs =
       "Set the parser to use for the project file"
       flagProjectFileParser
       (\pf flags -> flags{flagProjectFileParser = pf})
-      (reqArg "PARSER" (fmap Flag $ ReadE parseProjectFileParser) projectFileParserPrinter)
+      (reqArg "PARSER" (Flag <$> ReadE parseProjectFileParser) projectFileParserPrinter)
   ]
 
 parseProjectFileParser :: String -> Either String ProjectFileParser

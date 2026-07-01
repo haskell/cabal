@@ -110,8 +110,7 @@ instance Parsec ActiveRepoEntry where
 
       leadRepo = do
         r <- parsec
-        s <- strategyP
-        return (ActiveRepo r s)
+        ActiveRepo r <$> strategyP
 
       strategyP = P.option CombineStrategyMerge (P.char ':' *> parsec)
 

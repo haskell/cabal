@@ -454,9 +454,7 @@ dieWithLocation' verbosity filename mb_lineno msg =
 die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
   ioError . verbatimUserError
-    =<< annotateErrorString verbosity
-    =<< pure . wrapTextVerbosity (verbosityFlags verbosity)
-    =<< pure . addErrorPrefix
+    =<< annotateErrorString verbosity . wrapTextVerbosity (verbosityFlags verbosity) . addErrorPrefix
     =<< prefixWithProgName msg
 
 -- Type which will be a wrapper for cabal -exceptions and cabal-install exceptions
@@ -973,18 +971,19 @@ rawSystemExitCode
   -> Maybe [(String, String)]
   -> IO ExitCode
 rawSystemExitCode verbosity mbWorkDir path args menv =
-  withFrozenCallStack $
-    fmap fst $
-      rawSystemIOWithEnvAndAction
-        verbosity
-        path
-        args
-        (fmap getSymbolicPath mbWorkDir)
-        menv
-        (\_ _ _ -> return ())
-        Nothing
-        Nothing
-        Nothing
+  withFrozenCallStack
+    ( fst
+        <$> rawSystemIOWithEnvAndAction
+          verbosity
+          path
+          args
+          (fmap getSymbolicPath mbWorkDir)
+          menv
+          (\_ _ _ -> return ())
+          Nothing
+          Nothing
+          Nothing
+    )
 
 -- | Execute the given command with the given arguments, returning
 -- the command's exit code.

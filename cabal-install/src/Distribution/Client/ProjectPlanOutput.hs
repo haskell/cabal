@@ -855,8 +855,8 @@ writePlanGhcEnvironment
     | compilerFlavor compiler == GHC
     , supportsPkgEnvFiles (getImplInfo compiler) =
         -- TODO: check ghcjs compat
-        fmap Just $
-          writeGhcEnvironmentFile
+        Just
+          <$> writeGhcEnvironmentFile
             path
             platform
             (compilerVersion compiler)

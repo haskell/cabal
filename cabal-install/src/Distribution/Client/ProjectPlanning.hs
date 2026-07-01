@@ -1270,30 +1270,31 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
         -- the hashes for the packages
         --
         hashesFromRepoMetadata <-
-          Sec.uncheckClientErrors $ -- TODO: [code cleanup] wrap in our own exceptions
-            fmap (Map.fromList . concat) $
-              sequence
-                -- Reading the repo index is expensive so we group the packages by repo
-                [ repoContextWithSecureRepo repoctx repo $ \secureRepo ->
-                  Sec.withIndex secureRepo $ \repoIndex ->
-                    sequence
-                      [ do
-                        hash <-
-                          Sec.trusted
-                            <$> Sec.indexLookupHash repoIndex pkgid -- strip off Trusted tag
+          Sec.uncheckClientErrors -- TODO: [code cleanup] wrap in our own exceptions
+            ( Map.fromList . concat
+                <$> sequence
+                  -- Reading the repo index is expensive so we group the packages by repo
+                  [ repoContextWithSecureRepo repoctx repo $ \secureRepo ->
+                    Sec.withIndex secureRepo $ \repoIndex ->
+                      sequence
+                        [ do
+                          hash <-
+                            Sec.trusted
+                              <$> Sec.indexLookupHash repoIndex pkgid -- strip off Trusted tag
 
-                        -- Note that hackage-security currently uses SHA256
-                        -- but this API could in principle give us some other
-                        -- choice in future.
-                        return (pkgid, hashFromTUF hash)
-                      | pkgid <- pkgids
-                      ]
-                | (repo, pkgids) <-
-                    map (\grp@((repo, _) :| _) -> (repo, map snd (NE.toList grp)))
-                      . NE.groupBy ((==) `on` (repoName . fst))
-                      . sortBy (compare `on` (repoName . fst))
-                      $ repoTarballPkgsWithMetadata
-                ]
+                          -- Note that hackage-security currently uses SHA256
+                          -- but this API could in principle give us some other
+                          -- choice in future.
+                          return (pkgid, hashFromTUF hash)
+                        | pkgid <- pkgids
+                        ]
+                  | (repo, pkgids) <-
+                      map (\grp@((repo, _) :| _) -> (repo, map snd (NE.toList grp)))
+                        . NE.groupBy ((==) `on` (repoName . fst))
+                        . sortBy (compare `on` (repoName . fst))
+                        $ repoTarballPkgsWithMetadata
+                  ]
+            )
 
         -- For tarballs from repos that do not have hashes available, download
         -- the ones we previously determined we need.
@@ -1323,14 +1324,15 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
           ++ repoTarballPkgsDownloaded
           ++ repoTarballPkgsNewlyDownloaded
   hashesFromTarballFiles <-
-    liftIO $
-      fmap Map.fromList $
-        sequence
-          [ do
-            srchash <- readFileHashValue tarball
-            return (pkgid, srchash)
-          | (pkgid, tarball) <- allTarballFilePkgs
-          ]
+    liftIO
+      ( Map.fromList
+          <$> sequence
+            [ do
+              srchash <- readFileHashValue tarball
+              return (pkgid, srchash)
+            | (pkgid, tarball) <- allTarballFilePkgs
+            ]
+      )
   monitorFiles
     [ monitorFile tarball
     | (_pkgid, tarball) <- allTarballFilePkgs

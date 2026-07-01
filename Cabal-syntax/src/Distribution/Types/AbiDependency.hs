@@ -36,8 +36,7 @@ instance Parsec AbiDependency where
   parsec = do
     uid <- parsec
     _ <- P.char '='
-    abi <- parsec
-    return (AbiDependency uid abi)
+    AbiDependency uid <$> parsec
 
 instance Binary AbiDependency
 instance Structured AbiDependency

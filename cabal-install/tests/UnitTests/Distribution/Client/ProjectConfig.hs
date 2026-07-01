@@ -637,8 +637,7 @@ instance Arbitrary ProjectConfigShared where
 
   shrink ProjectConfigShared{..} =
     runShrinker $
-      pure ProjectConfigShared
-        <*> shrinker projectConfigDistDir
+      (ProjectConfigShared <$> shrinker projectConfigDistDir)
         <*> shrinker projectConfigConfigFile
         <*> shrinker projectConfigProjectDir
         <*> shrinker projectConfigProjectFile
@@ -982,8 +981,7 @@ instance f ~ [] => Arbitrary (SourceRepositoryPackage f) where
 
   shrink SourceRepositoryPackage{..} =
     runShrinker $
-      pure SourceRepositoryPackage
-        <*> shrinker srpType
+      (SourceRepositoryPackage <$> shrinker srpType)
         <*> shrinkerAla ShortToken srpLocation
         <*> shrinkerAla (fmap ShortToken) srpTag
         <*> shrinkerAla (fmap ShortToken) srpBranch
