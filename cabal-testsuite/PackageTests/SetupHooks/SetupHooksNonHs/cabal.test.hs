@@ -1,2 +1,5 @@
 import Test.Cabal.Prelude
-main = cabalTest $ cabal "run" []
+main = cabalTest $ do
+  cabal "run" []
+  withDirectory "inner" $
+    cabal "run" ["exe:NonHs"]
