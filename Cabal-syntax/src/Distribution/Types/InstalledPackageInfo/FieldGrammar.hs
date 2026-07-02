@@ -1,3 +1,4 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -303,27 +304,26 @@ basicFieldGrammar
      , c (MQuoted Version)
      )
   => g Basic Basic
-basicFieldGrammar =
-  mkBasic
-    <$> optionalFieldDefAla "name" MQuoted basicName (mungedPackageName emptyInstalledPackageInfo)
-    <*> optionalFieldDefAla "version" MQuoted basicVersion nullVersion
-    <*> optionalField "package-name" basicPkgName
-    <*> optionalField "lib-name" basicLibName
-    <*> optionalFieldDef "visibility" basicLibVisibility LibraryVisibilityPrivate
-  where
-    mkBasic n v pn ln lv = Basic n v pn ln' lv'
-      where
-        ln' = maybe LMainLibName LSubLibName ln
-        -- Older GHCs (<8.8) always report installed libraries as private
+basicFieldGrammar = do
+  _basicName <- optionalFieldDefAla "name" MQuoted basicName (mungedPackageName emptyInstalledPackageInfo)
+  _basicVersion <- optionalFieldDefAla "version" MQuoted basicVersion nullVersion
+  _basicPkgName <- optionalField "package-name" basicPkgName
+  _basicLibName <- maybe LMainLibName LSubLibName <$> optionalField "lib-name" basicLibName
+  _basicLibVisibility' <- optionalFieldDef "visibility" basicLibVisibility LibraryVisibilityPrivate
+  pure
+    Basic
+      { -- Older GHCs (<8.8) always report installed libraries as private
         -- because their ghc-pkg builds with an older Cabal.
         -- So we always set LibraryVisibilityPublic for main (unnamed) libs.
         -- This can be removed once we stop supporting GHC<8.8, at the
         -- condition that we keep marking main libraries as public when
         -- registering them.
-        lv' =
-          if let MungedPackageName _ mln = n
-              in -- We need to check both because on ghc<8.2 ln' will always
+        _basicLibVisibility =
+          if let MungedPackageName _ mln = _basicName
+              in -- We need to check both because on ghc<8.2 _basicLibName will always
                  -- be LMainLibName
-                 ln' == LMainLibName && mln == LMainLibName
+                 _basicLibName == LMainLibName && mln == LMainLibName
             then LibraryVisibilityPublic
-            else lv
+            else _basicLibVisibility'
+      , ..
+      }

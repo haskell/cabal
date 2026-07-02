@@ -1,4 +1,6 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module Main (main) where
 
 import Control.Lens     (imap)
@@ -119,12 +121,13 @@ newtype LicenseList = LL { unLL :: [License] }
   deriving (Show)
 
 instance FromJSON License where
-    parseJSON = withObject "License" $ \obj -> License
-        <$> obj .: "licenseId"
-        <*> obj .: "name"
-        <*> obj .: "isOsiApproved"
-        <*> obj .:? "isFsfLibre" .!= False
-        <*> obj .: "isDeprecatedLicenseId"
+    parseJSON = withObject "License" $ \obj -> do
+        licenseId <- obj .: "licenseId"
+        licenseName <- obj .: "name"
+        licenseOsiApproved <- obj .: "isOsiApproved"
+        licenseFsfLibre <- obj .:? "isFsfLibre" .!= False
+        licenseDeprecated <- obj .: "isDeprecatedLicenseId"
+        pure License{..}
 
 instance FromJSON LicenseList where
     parseJSON = withObject "License list" $ \obj ->

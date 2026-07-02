@@ -1,5 +1,7 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Distribution.Client.Types.SourceRepo
@@ -102,14 +104,14 @@ sourceRepositoryPackageGrammar
      , c (NonEmpty' NoCommaFSep Token String)
      )
   => g SourceRepoList SourceRepoList
-sourceRepositoryPackageGrammar =
-  SourceRepositoryPackage
-    <$> uniqueField "type" srpTypeLens
-    <*> uniqueFieldAla "location" Token srpLocationLens
-    <*> optionalFieldAla "tag" Token srpTagLens
-    <*> optionalFieldAla "branch" Token srpBranchLens
-    <*> monoidalFieldAla "subdir" (alaList' NoCommaFSep FilePathNT) srpSubdirLens -- note: NoCommaFSep is somewhat important for roundtrip, as "." is there...
-    <*> fmap (maybe [] toList) pcc
+sourceRepositoryPackageGrammar = do
+  srpType <- uniqueField "type" srpTypeLens
+  srpLocation <- uniqueFieldAla "location" Token srpLocationLens
+  srpTag <- optionalFieldAla "tag" Token srpTagLens
+  srpBranch <- optionalFieldAla "branch" Token srpBranchLens
+  srpSubdir <- monoidalFieldAla "subdir" (alaList' NoCommaFSep FilePathNT) srpSubdirLens -- note: NoCommaFSep is somewhat important for roundtrip, as "." is there...
+  srpCommand <- fmap (maybe [] toList) pcc
+  pure SourceRepositoryPackage{..}
   where
     pcc = optionalFieldAla "post-checkout-command" (alaNonEmpty' NoCommaFSep Token) srpCommandLensNE
 {-# SPECIALIZE sourceRepositoryPackageGrammar :: ParsecFieldGrammar' SourceRepoList #-}

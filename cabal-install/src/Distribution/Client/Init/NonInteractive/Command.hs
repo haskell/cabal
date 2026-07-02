@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.Init.NonInteractive.Command
   ( genPkgDescription
@@ -171,19 +172,19 @@ genPkgDescription
   => InitFlags
   -> SourcePackageDb
   -> m PkgDescription
-genPkgDescription flags srcDb =
-  PkgDescription
-    <$> cabalVersionHeuristics flags
-    <*> packageNameHeuristics srcDb flags
-    <*> versionHeuristics flags
-    <*> licenseHeuristics flags
-    <*> authorHeuristics flags
-    <*> emailHeuristics flags
-    <*> homepageHeuristics flags
-    <*> synopsisHeuristics flags
-    <*> categoryHeuristics flags
-    <*> getExtraSrcFiles flags
-    <*> extraDocFileHeuristics flags
+genPkgDescription flags srcDb = do
+  _pkgCabalVersion <- cabalVersionHeuristics flags
+  _pkgName <- packageNameHeuristics srcDb flags
+  _pkgVersion <- versionHeuristics flags
+  _pkgLicense <- licenseHeuristics flags
+  _pkgAuthor <- authorHeuristics flags
+  _pkgEmail <- emailHeuristics flags
+  _pkgHomePage <- homepageHeuristics flags
+  _pkgSynopsis <- synopsisHeuristics flags
+  _pkgCategory <- categoryHeuristics flags
+  _pkgExtraSrcFiles <- getExtraSrcFiles flags
+  _pkgExtraDocFiles <- extraDocFileHeuristics flags
+  pure PkgDescription{..}
 
 genLibTarget
   :: Interactive m
@@ -192,15 +193,15 @@ genLibTarget
   -> CabalSpecVersion
   -> m LibTarget
 genLibTarget flags pkgs v = do
-  srcDirs <- srcDirsHeuristics flags
-  let srcDir = fromMaybe defaultSourceDir $ safeHead srcDirs
-  LibTarget srcDirs
-    <$> languageHeuristics flags
-    <*> exposedModulesHeuristics flags
-    <*> libOtherModulesHeuristics flags
-    <*> otherExtsHeuristics flags srcDir
-    <*> dependenciesHeuristics flags srcDir pkgs
-    <*> buildToolsHeuristics flags srcDir v
+  _libSourceDirs <- srcDirsHeuristics flags
+  let srcDir = fromMaybe defaultSourceDir $ safeHead _libSourceDirs
+  _libLanguage <- languageHeuristics flags
+  _libExposedModules <- exposedModulesHeuristics flags
+  _libOtherModules <- libOtherModulesHeuristics flags
+  _libOtherExts <- otherExtsHeuristics flags srcDir
+  _libDependencies <- dependenciesHeuristics flags srcDir pkgs
+  _libBuildTools <- buildToolsHeuristics flags srcDir v
+  pure LibTarget{..}
 
 genExeTarget
   :: Interactive m
@@ -209,16 +210,15 @@ genExeTarget
   -> CabalSpecVersion
   -> m ExeTarget
 genExeTarget flags pkgs v = do
-  appDirs <- appDirsHeuristics flags
-  let appDir = fromMaybe defaultApplicationDir $ safeHead appDirs
-  ExeTarget
-    <$> mainFileHeuristics flags
-    <*> pure appDirs
-    <*> languageHeuristics flags
-    <*> exeOtherModulesHeuristics flags
-    <*> otherExtsHeuristics flags appDir
-    <*> dependenciesHeuristics flags appDir pkgs
-    <*> buildToolsHeuristics flags appDir v
+  _exeApplicationDirs <- appDirsHeuristics flags
+  let appDir = fromMaybe defaultApplicationDir $ safeHead _exeApplicationDirs
+  _exeMainIs <- mainFileHeuristics flags
+  _exeLanguage <- languageHeuristics flags
+  _exeOtherModules <- exeOtherModulesHeuristics flags
+  _exeOtherExts <- otherExtsHeuristics flags appDir
+  _exeDependencies <- dependenciesHeuristics flags appDir pkgs
+  _exeBuildTools <- buildToolsHeuristics flags appDir v
+  pure ExeTarget{..}
 
 genTestTarget
   :: Interactive m
@@ -228,20 +228,18 @@ genTestTarget
   -> m (Maybe TestTarget)
 genTestTarget flags pkgs v = do
   initialized <- initializeTestSuiteHeuristics flags
-  testDirs' <- testDirsHeuristics flags
-  let testDir = fromMaybe defaultTestDir $ safeHead testDirs'
+  _testDirs <- testDirsHeuristics flags
+  let testDir = fromMaybe defaultTestDir $ safeHead _testDirs
   if not initialized
     then return Nothing
-    else
-      fmap Just $
-        TestTarget
-          <$> testMainHeuristics flags
-          <*> pure testDirs'
-          <*> languageHeuristics flags
-          <*> testOtherModulesHeuristics flags
-          <*> otherExtsHeuristics flags testDir
-          <*> dependenciesHeuristics flags testDir pkgs
-          <*> buildToolsHeuristics flags testDir v
+    else do
+      _testMainIs <- testMainHeuristics flags
+      _testLanguage <- languageHeuristics flags
+      _testOtherModules <- testOtherModulesHeuristics flags
+      _testOtherExts <- otherExtsHeuristics flags testDir
+      _testDependencies <- dependenciesHeuristics flags testDir pkgs
+      _testBuildTools <- buildToolsHeuristics flags testDir v
+      pure $ Just TestTarget{..}
 
 -- -------------------------------------------------------------------- --
 -- Get flags from init config

@@ -1,6 +1,8 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.CmdInstall.ClientInstallFlags
   ( InstallMethod (..)
@@ -122,15 +124,15 @@ clientInstallFlagsGrammar
      , c (Identity (Flag InstallMethod))
      )
   => g ClientInstallFlags ClientInstallFlags
-clientInstallFlagsGrammar =
-  ClientInstallFlags
-    <$> optionalFieldDef "lib" cinstInstallLibsLens mempty
-    <*> ( optionalFieldDefAla "package-env" (alaFlag FilePathNT) cinstEnvironmentPathLens mempty
-            <* optionalFieldDefAla "env" (alaFlag FilePathNT) cinstEnvironmentPathLens mempty
-        )
-    <*> optionalFieldDef "overwrite-policy" cinstOverwritePolicyLens mempty
-    <*> optionalFieldDef "install-method" cinstInstallMethodLens mempty
-    <*> optionalFieldDefAla "installdir" (alaFlag FilePathNT) cinstInstalldirLens mempty
+clientInstallFlagsGrammar = do
+  cinstInstallLibs <- optionalFieldDef "lib" cinstInstallLibsLens mempty
+  cinstEnvironmentPath <-
+    optionalFieldDefAla "package-env" (alaFlag FilePathNT) cinstEnvironmentPathLens mempty
+      <* optionalFieldDefAla "env" (alaFlag FilePathNT) cinstEnvironmentPathLens mempty
+  cinstOverwritePolicy <- optionalFieldDef "overwrite-policy" cinstOverwritePolicyLens mempty
+  cinstInstallMethod <- optionalFieldDef "install-method" cinstInstallMethodLens mempty
+  cinstInstalldir <- optionalFieldDefAla "installdir" (alaFlag FilePathNT) cinstInstalldirLens mempty
+  pure ClientInstallFlags{..}
 {-# SPECIALIZE clientInstallFlagsGrammar :: ParsecFieldGrammar' ClientInstallFlags #-}
 
 parsecInstallMethod :: CabalParsing m => m InstallMethod

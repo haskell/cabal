@@ -1,9 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE PatternSynonyms #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
+{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- Module      :  Distribution.Client.Init.Command
@@ -192,19 +189,19 @@ genPkgDescription
   -> SourcePackageDb
   -> m PkgDescription
 genPkgDescription flags' srcDb = do
-  csv <- cabalVersionPrompt flags'
-  let flags = flags'{cabalVersion = Flag csv}
-  PkgDescription csv
-    <$> packageNamePrompt srcDb flags
-    <*> versionPrompt flags
-    <*> licensePrompt flags
-    <*> authorPrompt flags
-    <*> emailPrompt flags
-    <*> homepagePrompt flags
-    <*> synopsisPrompt flags
-    <*> categoryPrompt flags
-    <*> getExtraSrcFiles flags
-    <*> getExtraDocFiles flags
+  _pkgCabalVersion <- cabalVersionPrompt flags'
+  let flags = flags'{cabalVersion = Flag _pkgCabalVersion}
+  _pkgName <- packageNamePrompt srcDb flags
+  _pkgVersion <- versionPrompt flags
+  _pkgLicense <- licensePrompt flags
+  _pkgAuthor <- authorPrompt flags
+  _pkgEmail <- emailPrompt flags
+  _pkgHomePage <- homepagePrompt flags
+  _pkgSynopsis <- synopsisPrompt flags
+  _pkgCategory <- categoryPrompt flags
+  _pkgExtraSrcFiles <- getExtraSrcFiles flags
+  _pkgExtraDocFiles <- getExtraDocFiles flags
+  pure PkgDescription{..}
 
 -- | Extract flags relevant to a library target and interactively
 -- generate a 'LibTarget' object for creation. If the user specifies
@@ -215,15 +212,15 @@ genLibTarget
   => InitFlags
   -> InstalledPackageIndex
   -> m LibTarget
-genLibTarget flags pkgs =
-  LibTarget
-    <$> srcDirsPrompt flags
-    <*> languagePrompt flags "library"
-    <*> getExposedModules flags
-    <*> getOtherModules flags
-    <*> getOtherExts flags
-    <*> dependenciesPrompt pkgs flags
-    <*> getBuildTools flags
+genLibTarget flags pkgs = do
+  _libSourceDirs <- srcDirsPrompt flags
+  _libLanguage <- languagePrompt flags "library"
+  _libExposedModules <- getExposedModules flags
+  _libOtherModules <- getOtherModules flags
+  _libOtherExts <- getOtherExts flags
+  _libDependencies <- dependenciesPrompt pkgs flags
+  _libBuildTools <- getBuildTools flags
+  pure LibTarget{..}
 
 -- | Extract flags relevant to a executable target and interactively
 -- generate a 'ExeTarget' object for creation. If the user specifies
@@ -234,15 +231,15 @@ genExeTarget
   => InitFlags
   -> InstalledPackageIndex
   -> m ExeTarget
-genExeTarget flags pkgs =
-  ExeTarget
-    <$> mainFilePrompt flags
-    <*> appDirsPrompt flags
-    <*> languagePrompt flags "executable"
-    <*> getOtherModules flags
-    <*> getOtherExts flags
-    <*> dependenciesPrompt pkgs flags
-    <*> getBuildTools flags
+genExeTarget flags pkgs = do
+  _exeMainIs <- mainFilePrompt flags
+  _exeApplicationDirs <- appDirsPrompt flags
+  _exeLanguage <- languagePrompt flags "executable"
+  _exeOtherModules <- getOtherModules flags
+  _exeOtherExts <- getOtherExts flags
+  _exeDependencies <- dependenciesPrompt pkgs flags
+  _exeBuildTools <- getBuildTools flags
+  pure ExeTarget{..}
 
 -- | Extract flags relevant to a test target and interactively
 -- generate a 'TestTarget' object for creation. If the user specifies
@@ -261,16 +258,15 @@ genTestTarget flags pkgs = initializeTestSuitePrompt flags >>= go
   where
     go initialized
       | not initialized = return Nothing
-      | otherwise =
-          fmap Just $
-            TestTarget
-              <$> testMainPrompt
-              <*> testDirsPrompt flags
-              <*> languagePrompt flags "test suite"
-              <*> getOtherModules flags
-              <*> getOtherExts flags
-              <*> dependenciesPrompt pkgs flags
-              <*> getBuildTools flags
+      | otherwise = do
+          _testMainIs <- testMainPrompt
+          _testDirs <- testDirsPrompt flags
+          _testLanguage <- languagePrompt flags "test suite"
+          _testOtherModules <- getOtherModules flags
+          _testOtherExts <- getOtherExts flags
+          _testDependencies <- dependenciesPrompt pkgs flags
+          _testBuildTools <- getBuildTools flags
+          pure $ Just TestTarget{..}
 
 -- -------------------------------------------------------------------- --
 -- Prompts

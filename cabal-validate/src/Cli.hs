@@ -1,3 +1,6 @@
+{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE RecordWildCards #-}
+
 -- | Parse CLI arguments and resolve defaults from the environment.
 module Cli
   ( Opts (..)
@@ -315,69 +318,75 @@ data RawOpts = RawOpts
 --
 -- See: `fullRawOptsParser`
 rawOptsParser :: Parser RawOpts
-rawOptsParser =
-  RawOpts
-    <$> ( flag'
-            Verbose
-            ( short 'v'
-                <> long "verbose"
-                <> help "Always display build and test output"
-            )
-            <|> flag
-              Info
-              Quiet
-              ( short 'q'
-                  <> long "quiet"
-                  <> help "Silence build and test output"
-              )
+rawOptsParser = do
+  rawVerbosity <-
+    flag'
+      Verbose
+      ( short 'v'
+          <> long "verbose"
+          <> help "Always display build and test output"
+      )
+      <|> flag
+        Info
+        Quiet
+        ( short 'q'
+            <> long "quiet"
+            <> help "Silence build and test output"
         )
-    <*> option
+  rawJobs <-
+    option
       (Just <$> auto)
       ( short 'j'
           <> long "jobs"
           <> help "Passed to `cabal build --jobs`"
           <> value Nothing
       )
-    <*> strOption
+  rawCompiler <-
+    strOption
       ( short 'w'
           <> long "with-compiler"
           <> help "Build Cabal with the given compiler instead of `ghc`"
           <> value "ghc"
       )
-    <*> strOption
+  rawCabal <-
+    strOption
       ( long "with-cabal"
           <> help "Test the given `cabal-install` (the `cabal` on your `$PATH` is used for builds)"
           <> value "cabal"
       )
-    <*> many
+  rawExtraCompilers <-
+    many
       ( strOption
           ( long "extra-hc"
               <> help "Extra compilers to run the test suites against"
           )
       )
-    <*> option
+  rawTastyPattern <-
+    option
       (Just <$> Opt.str)
       ( short 'p'
           <> long "pattern"
           <> help "Pattern to filter tests by"
           <> value Nothing
       )
-    <*> many
+  rawTastyArgs <-
+    many
       ( strOption
           ( long "tasty-arg"
               <> help "Extra arguments to pass to Tasty test suites"
           )
       )
-    <*> maybeBoolOption
+  rawTastyHideSuccesses <-
+    maybeBoolOption
       "hide-successes"
-      ( help "Do not print tests that passed successfully"
-      )
-    <*> boolOption
+      (help "Do not print tests that passed successfully")
+  rawDoctest <-
+    boolOption
       False
       "doctest"
-      ( help "Run doctest on the `Cabal` library"
-      )
-    <*> many
+      (help "Run doctest on the `Cabal` library")
+  rawSteps <-
+    many
       ( option
           (maybeReader parseStep)
           ( short 's'
@@ -385,64 +394,66 @@ rawOptsParser =
               <> help "Run only a specific step (can be specified multiple times)"
           )
       )
-    <*> switch
+  rawListSteps <-
+    switch
       ( long "list-steps"
           <> help "List the available steps and exit"
       )
-    <*> ( flag'
-            True
-            ( long "lib-only"
-                <> help "Test only `Cabal` (the library)"
-            )
-            <|> flag
-              False
-              False
-              ( long "cli"
-                  <> help "Test `cabal-install` (the executable) in addition to `Cabal` (the library)"
-              )
+  rawLibOnly <-
+    flag'
+      True
+      ( long "lib-only"
+          <> help "Test only `Cabal` (the library)"
+      )
+      <|> flag
+        False
+        False
+        ( long "cli"
+            <> help "Test `cabal-install` (the executable) in addition to `Cabal` (the library)"
         )
-    <*> boolOption
+  rawRunLibTests <-
+    boolOption
       True
       "run-lib-tests"
-      ( help "Run tests for the `Cabal` library"
-      )
-    <*> boolOption
+      (help "Run tests for the `Cabal` library")
+  rawRunCliTests <-
+    boolOption
       True
       "run-cli-tests"
-      ( help "Run client tests for the `cabal-install` executable"
-      )
-    <*> boolOption
+      (help "Run client tests for the `cabal-install` executable")
+  rawRunLibSuite <-
+    boolOption
       False
       "run-lib-suite"
-      ( help "Run `cabal-testsuite` with the `Cabal` library"
-      )
-    <*> boolOption
+      (help "Run `cabal-testsuite` with the `Cabal` library")
+  rawRunCliSuite <-
+    boolOption
       False
       "run-cli-suite"
-      ( help "Run `cabal-testsuite` with the `cabal-install` executable"
-      )
-    <*> boolOption
+      (help "Run `cabal-testsuite` with the `cabal-install` executable")
+  rawRunSolverTests <-
+    boolOption
       True
       "run-solver-tests"
-      ( help "Run `cabal-install-solver` tests"
-      )
-    <*> boolOption
+      (help "Run `cabal-install-solver` tests")
+  rawSolverBenchmarks <-
+    boolOption
       False
       "solver-benchmarks"
-      ( help "Build and trial run `solver-benchmarks`"
+      (help "Build and trial run `solver-benchmarks`")
+  rawHackageTests <-
+    flag'
+      CompleteHackageTests
+      ( long "complete-hackage-tests"
+          <> help "Run `hackage-tests` on complete Hackage data"
       )
-    <*> ( flag'
-            CompleteHackageTests
-            ( long "complete-hackage-tests"
-                <> help "Run `hackage-tests` on complete Hackage data"
-            )
-            <|> flag
-              NoHackageTests
-              PartialHackageTests
-              ( long "partial-hackage-tests"
-                  <> help "Run `hackage-tests` on parts of Hackage data"
-              )
+      <|> flag
+        NoHackageTests
+        PartialHackageTests
+        ( long "partial-hackage-tests"
+            <> help "Run `hackage-tests` on parts of Hackage data"
         )
+  pure RawOpts{..}
 
 -- | Parse a boolean switch with separate names for the true and false options.
 boolOption' :: Bool -> String -> String -> Mod FlagFields Bool -> Parser Bool

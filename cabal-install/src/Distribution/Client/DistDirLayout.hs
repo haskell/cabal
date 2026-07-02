@@ -336,4 +336,4 @@ mkCabalDirLayout mstoreDir mlogDir = do
     defaultStoreDirLayout <$> maybe defaultStoreDir pure mstoreDir
   cabalLogsDirectory <-
     maybe defaultLogsDir pure mlogDir
-  pure $ CabalDirLayout{..}
+  pure CabalDirLayout{..}
