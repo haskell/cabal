@@ -16,7 +16,7 @@ import Test.Cabal.Prelude
 -- 4 | main = puStrLn "Test suite not yet implemented."
 --   |
 main = do
-  cabalTest' "main-project" . recordMode RecordMarked $ do
+  cabalTest' "main-project" . recordMode DoNotRecord $ do
     let opts = ["--project-file=cabal.project"]
     expectedMonitoring <-
       -- TODO: When fixed, use expected output, not the actual output and delete
@@ -29,7 +29,7 @@ main = do
 
   -- Don't run the configure test for the local-only project because the
   -- configure command will back up and rename the existing .local file.
-  cabalTest' "local-only" . recordMode RecordMarked $ do
+  cabalTest' "local-only" . recordMode DoNotRecord $ do
     let opts = ["--project-file=cabal.local-only.project"]
     expectedMonitoring <-
       -- TODO: When fixed, use expected output, not the actual output and delete
@@ -39,7 +39,7 @@ main = do
     runProjectTest expectedMonitoring opts
     runCommandTest opts
 
-  cabalTest' "freeze-only" . recordMode RecordMarked $ do
+  cabalTest' "freeze-only" . recordMode DoNotRecord $ do
     let opts = ["--project-file=cabal.freeze-only.project"]
     expectedMonitoring <-
       -- TODO: When fixed, use expected output, not the actual output and delete
