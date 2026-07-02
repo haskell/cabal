@@ -1,6 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-
 module Distribution.Solver.Modular.Builder (
     buildTree
   , splits -- for testing

@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric      #-}
 module Distribution.Solver.Types.OptionalStanza (
     -- * OptionalStanza
     OptionalStanza(..),

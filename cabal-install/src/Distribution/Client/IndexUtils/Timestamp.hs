@@ -1,9 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.IndexUtils.Timestamp

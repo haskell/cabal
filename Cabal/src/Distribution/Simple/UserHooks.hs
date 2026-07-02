@@ -1,8 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Simple.UserHooks
 -- Copyright   :  Isaac Jones 2003-2005

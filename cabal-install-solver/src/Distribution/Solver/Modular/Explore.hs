@@ -1,6 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Solver.Modular.Explore (backjumpAndExplore) where
 
 import Distribution.Solver.Compat.Prelude

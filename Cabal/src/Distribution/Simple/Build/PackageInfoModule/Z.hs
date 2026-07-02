@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Simple.Build.PackageInfoModule.Z (render, Z (..)) where
 
 import Distribution.ZinzaPrelude (Generic, execWriter, tell)

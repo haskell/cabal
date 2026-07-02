@@ -11,7 +11,7 @@ category:      Distribution
 build-type:    Simple
 
 executable gen-spdx
-  default-language: Haskell2010
+  default-language: GHC2021
   main-is:          GenSPDX.hs
   other-modules:    GenUtils
   hs-source-dirs:   src
@@ -28,7 +28,7 @@ executable gen-spdx
     , zinza                 ^>=0.2
 
 executable gen-spdx-exc
-  default-language: Haskell2010
+  default-language: GHC2021
   main-is:          GenSPDXExc.hs
   other-modules:    GenUtils
   hs-source-dirs:   src
@@ -45,7 +45,7 @@ executable gen-spdx-exc
     , zinza                 ^>=0.2
 
 executable gen-validate-dockerfile
-  default-language: Haskell2010
+  default-language: GHC2021
   main-is:          GenValidateDockerfile.hs
   hs-source-dirs:   src
   ghc-options:      -Wall
@@ -57,7 +57,7 @@ executable gen-validate-dockerfile
     , zinza       ^>=0.2
 
 executable gen-cabal-macros
-  default-language: Haskell2010
+  default-language: GHC2021
   main-is:          GenCabalMacros.hs
   other-modules:    Capture
   hs-source-dirs:   src
@@ -71,7 +71,7 @@ executable gen-cabal-macros
     , zinza             ^>=0.2
 
 executable gen-paths-module
-  default-language: Haskell2010
+  default-language: GHC2021
   main-is:          GenPathsModule.hs
   other-modules:    Capture
   hs-source-dirs:   src
@@ -85,7 +85,7 @@ executable gen-paths-module
     , zinza             ^>=0.2
 
 executable gen-cabal-install-cabal
-  default-language: Haskell2010
+  default-language: GHC2021
   main-is:          GenCabalInstallCabal.hs
   hs-source-dirs:   src
   ghc-options:      -Wall
@@ -96,7 +96,7 @@ executable gen-cabal-install-cabal
     , zinza             ^>=0.2
 
 executable analyse-imports
-  default-language: Haskell2010
+  default-language: GHC2021
   main-is:          AnalyseImports.hs
   hs-source-dirs:   src
   ghc-options:      -Wall

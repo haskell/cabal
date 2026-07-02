@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 -- | This module implements a view of a 'VersionRange' as a finite
 -- list of separated version intervals.
 --

@@ -1,8 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Language.Haskell.Extension

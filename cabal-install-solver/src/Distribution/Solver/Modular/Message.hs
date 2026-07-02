@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 module Distribution.Solver.Modular.Message (
     Message(..),
     summarizeMessages,

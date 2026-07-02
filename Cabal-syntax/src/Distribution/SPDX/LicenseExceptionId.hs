@@ -1,7 +1,5 @@
 -- This file is generated. See Makefile's spdx rule
 {- FOURMOLU_DISABLE -}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
 module Distribution.SPDX.LicenseExceptionId (
     LicenseExceptionId (..),
     licenseExceptionId,

@@ -1,5 +1,4 @@
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DeriveGeneric #-}
 module Distribution.Solver.Types.ResolverPackage
     ( ResolverPackage(..)
     , resolverPackageLibDeps

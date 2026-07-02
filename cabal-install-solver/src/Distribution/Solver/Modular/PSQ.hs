@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveTraversable #-}
 module Distribution.Solver.Modular.PSQ
     ( PSQ(..)  -- Unit test needs constructor access
     , casePSQ

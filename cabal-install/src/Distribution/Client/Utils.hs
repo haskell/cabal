@@ -1,7 +1,5 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Client.Utils
   ( MergeResult (..)

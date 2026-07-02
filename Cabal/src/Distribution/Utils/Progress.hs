@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-
 -- Note: This module was copied from cabal-install.
 
 -- | A progress monad, which we use to report failure and logging from

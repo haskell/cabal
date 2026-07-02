@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 module Main (main) where
 
 import Control.Exception  (SomeException (..), catch, displayException)

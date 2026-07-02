@@ -1,6 +1,4 @@
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Check.Conditional

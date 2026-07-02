@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP           #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Test.QuickCheck.Instances.Cabal () where
 

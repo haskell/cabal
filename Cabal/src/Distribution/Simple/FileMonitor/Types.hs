@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 -- |
 -- Module: Distribution.Simple.FileMonitor.Types
 --

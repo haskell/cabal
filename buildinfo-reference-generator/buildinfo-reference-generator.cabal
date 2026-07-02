@@ -3,7 +3,7 @@ name:          buildinfo-reference-generator
 version:       0
 
 executable buildinfo-reference-generator
-  default-language: Haskell2010
+  default-language: GHC2021
   hs-source-dirs:   src
   ghc-options:      -Wall
   main-is:          Main.hs

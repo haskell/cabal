@@ -8,7 +8,7 @@ description:
   Provides QuickCheck Arbitrary instances for some types in Cabal
 
 library
-  default-language: Haskell2010
+  default-language: GHC2021
   hs-source-dirs:   src
   ghc-options:      -Wall
   build-depends:

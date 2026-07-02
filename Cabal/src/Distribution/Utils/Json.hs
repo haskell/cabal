@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 
 -- | Extremely simple JSON helper. Don't do anything too fancy with this!
 module Distribution.Utils.Json

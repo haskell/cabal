@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Verbosity.Internal
   ( VerbosityLevel (..)
   , VerbosityFlag (..)

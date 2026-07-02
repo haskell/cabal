@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-
 module Distribution.Client.TargetProblem
   ( TargetProblem (..)
   , TargetProblem'

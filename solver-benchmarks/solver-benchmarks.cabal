@@ -39,7 +39,7 @@ library
     , time
     , statistics >= 0.14 && < 0.17
     , vector
-  default-language: Haskell2010
+  default-language: GHC2021
 
 executable hackage-benchmark
   main-is: hackage-benchmark.hs
@@ -48,7 +48,7 @@ executable hackage-benchmark
   build-depends:
     , base
     , solver-benchmarks
-  default-language: Haskell2010
+  default-language: GHC2021
 
 test-suite unit-tests
   type: exitcode-stdio-1.0
@@ -61,4 +61,4 @@ test-suite unit-tests
     , statistics >= 0.14 && < 0.17
     , tasty
     , tasty-hunit
-  default-language: Haskell2010
+  default-language: GHC2021

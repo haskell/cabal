@@ -1,8 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeApplications #-}
-
------------------------------------------------------------------------------
-
 -- Verbosity for Cabal functions.
 
 -- |
