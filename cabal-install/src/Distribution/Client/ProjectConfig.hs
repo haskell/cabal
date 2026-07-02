@@ -80,6 +80,7 @@ import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , debug
   , dieWithException
+  , info
   , maybeExit
   , notice
   , noticeDoc
@@ -213,9 +214,6 @@ import Distribution.Utils.NubList
   ( fromNubList
   )
 import Distribution.Verbosity
-  ( makeVerbose
-  , modifyVerbosityFlags
-  )
 import Distribution.Version
 
 import qualified Codec.Archive.Tar as Tar
@@ -849,25 +847,39 @@ readProjectFileSkeletonGen :: Verbosity -> HttpTransport -> DistDirLayout -> Pro
 readProjectFileSkeletonGen
   verbosity
   httpTransport
-  dir
+  DistDirLayout{distProjectFile, distProjectRootDirectory}
   key
   parseConfig =
     do
       exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
+          monitorLog $ "Monitor existing: " ++ fileWithAbsolute extensionFile
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
-          monitorFiles
-            [ monitorFileHashed (projectConfigPathRoot path)
-            | (Nothing, path) <- projectSkeletonImports pcs
-            ]
+          let paths =
+                [ projectConfigPathRoot path
+                | (Nothing, path) <- projectSkeletonImports pcs
+                ]
+          for_ paths $ \p -> do
+            monitorLog $ "Monitor imported: " ++ fileWithAbsolute p
+          monitorFiles $ monitorFileHashed <$> paths
           return pcs
         else do
+          monitorLog $ "Monitor nonexistent: " ++ fileWithAbsolute extensionFile
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
-      extensionFile = distProjectFile dir key
+      monitorLog = liftIO . info verbosity
+      extensionFile = distProjectFile key
+
+      fileWithAbsolute f
+        | isAbsolute f = f
+        | otherwise = f ++ " (" ++ makeAbsolute f ++ ")"
+
+      makeAbsolute f
+        | isAbsolute f = f
+        | otherwise = distProjectRootDirectory </> f
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
