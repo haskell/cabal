@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Client.Types.InstallMethod where
 
 import Distribution.Client.Compat.Prelude

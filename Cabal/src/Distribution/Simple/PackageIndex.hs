@@ -1,9 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Simple.PackageIndex
 -- Copyright   :  (c) David Himmelstrup 2005,

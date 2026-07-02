@@ -1,9 +1,6 @@
 -- This is Distribution.Extra.Doctest module from cabal-doctest-1.0.4
 -- This isn't technically a Custom-Setup script, but it /was/.
 
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleInstances #-}
-
 {-
 
 Copyright (c) 2017, Oleg Grenrus

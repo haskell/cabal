@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RecordWildCards #-}
 module Distribution.Solver.Modular.Dependency (
     -- * Variables

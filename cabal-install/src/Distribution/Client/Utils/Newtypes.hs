@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-
 -- | This module provides @newtype@ wrappers to be used with "Distribution.FieldGrammar".
 -- Whenever we can not provide a Parsec instance for a type, we need to wrap it in a newtype and define the instance.
 module Distribution.Client.Utils.Newtypes

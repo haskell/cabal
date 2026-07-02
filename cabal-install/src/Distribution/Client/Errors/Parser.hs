@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Distribution.Client.Errors.Parser where
 
 import Distribution.Client.Compat.Prelude

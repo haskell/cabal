@@ -1,6 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TupleSections #-}
-
 -- | Separate module for HTTP actions, using a proxy server if one exists.
 module Distribution.Client.HttpUtils
   ( DownloadResult (..)

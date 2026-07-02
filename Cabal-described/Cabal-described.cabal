@@ -7,7 +7,7 @@ description:   Provides rere bindings
 build-type:    Simple
 
 library
-  default-language: Haskell2010
+  default-language: GHC2021
   hs-source-dirs:   src
   ghc-options:      -Wall
   build-depends:

@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE PatternGuards #-}
-
 -- | A type class 'ModSubst' for objects which can have 'ModuleSubst'
 -- applied to them.
 --

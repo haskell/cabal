@@ -1,6 +1,4 @@
 {-# LANGUAGE NondecreasingIndentation #-}
-{-# LANGUAGE ScopedTypeVariables      #-}
-{-# LANGUAGE TypeApplications         #-}
 
 import Test.Cabal.Workdir
 import Test.Cabal.Script

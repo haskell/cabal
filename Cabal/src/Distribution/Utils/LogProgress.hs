@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE Rank2Types #-}
-
 module Distribution.Utils.LogProgress
   ( LogProgress
   , runLogProgress

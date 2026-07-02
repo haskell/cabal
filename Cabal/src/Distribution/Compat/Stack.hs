@@ -1,5 +1,4 @@
 {-# LANGUAGE ImplicitParams #-}
-{-# LANGUAGE RankNTypes #-}
 
 module Distribution.Compat.Stack
   ( WithCallStack

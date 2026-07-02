@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
 module Distribution.Client.CmdGenBounds
   ( genBounds
   , genBoundsCommand

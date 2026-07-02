@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections #-}
 
 -- | Parsing project configuration.
 module Distribution.Client.ProjectConfig.Parsec

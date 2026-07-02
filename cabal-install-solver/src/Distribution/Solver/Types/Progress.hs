@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE FlexibleInstances #-}
 module Distribution.Solver.Types.Progress
     ( Progress(..)
     , foldProgress
