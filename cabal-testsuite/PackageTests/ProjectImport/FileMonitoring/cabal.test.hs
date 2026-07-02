@@ -120,7 +120,9 @@ runProjectTest expectMsg projOpts = do
   env <- getTestEnv
   norm_env <- mkNormalizerEnv
   let actual = normalizeOutput norm_env (resultOutput projEnabledTests)
-  unless (expectMsg `isInfixOf` actual) $ assertFailure $ "Can't find expected output:\n" ++ expectMsg
+  -- The normalized comparison fails on Windows. Don't `skipIfWindows` for the
+  -- whole test, skip only this comparison.
+  unless (isWindows || expectMsg `isInfixOf` actual) $ assertFailure $ "Can't find expected output:\n" ++ expectMsg
   assertExitCode (ExitFailure 1) projEnabledTests
   assertOutputContains failureMsg projEnabledTests
 
