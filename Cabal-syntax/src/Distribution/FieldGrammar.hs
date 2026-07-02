@@ -99,6 +99,7 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
       PS fs (MkSection name sargs sfields : s) ss
 
 -- | Take all fields from the front.
+-- Returns a tuple containing the comments, nameless fields, and sections
 takeFields :: [Field ann] -> (Fields ann, [Field ann])
 takeFields = finalize . spanMaybe match
   where
