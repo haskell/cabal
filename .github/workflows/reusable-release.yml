@@ -576,7 +576,6 @@ jobs:
       TARBALL_EXT: "zip"
       DISTRO: na
       CABAL_DIR: "C:\\Users\\runneradmin\\AppData\\Roaming\\cabal"
-      GHCUP_INSTALL_BASE_PREFIX: "/c"
     strategy:
       fail-fast: false
       matrix:
