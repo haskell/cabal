@@ -453,6 +453,14 @@ dependOnWiredIns compiler params = addConstraints extraConstraints params
         ConstraintSourceNonReinstallablePackage
       | (pkgName, unitId) <- fromMaybe [] $ compilerInfoWiredInUnitIds compiler
       ]
+        ++
+        -- Old versions of `base` must be excluded from build plans still as they do not depend on any version of a wired-in unit.
+        -- If we do not do this then we will get confusing error messages about old versions of `base` being unbuildable.
+        -- Newer versions of `base` will be handled gracefully as they were designed to be reinstallable.
+        [ LabeledPackageConstraint
+            (PackageConstraint (ScopeAnyQualifier $ mkPackageName "base") (PackagePropertyVersion (orLaterVersion (mkVersion [4, 22]))))
+            ConstraintSourceNonReinstallablePackage
+        ]
 
 -- | Some packages are specific to a given compiler version and should never be
 -- reinstalled.
