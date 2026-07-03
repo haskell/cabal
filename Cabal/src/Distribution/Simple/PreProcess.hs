@@ -339,9 +339,9 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
       -- the tarball).
       -- TODO: eliminate sdist variant, just supply different handlers
       when (not forSDist || forSDist && platformIndependent pp) $ do
-        -- look for existing pre-processed source file in the dest dir to
-        -- see if we really have to re-run the preprocessor.
-
+        -- Use file monitoring to only re-run the preprocessor if either the
+        -- input file or the preprocessor itself have changed.
+        -- See Note [Preprocessor monitoring].
         (runPreProcessor, key) <- configurePreProcessor pp verbosity
         let recompile = liftIO $ do
               let destDir = i buildLoc </> takeDirectory srcStem
@@ -1003,3 +1003,42 @@ preprocessExtras verbosity comp lbi = case comp of
           ++ map exeName (executables pkg_descr)
           ++ map testName (testSuites pkg_descr)
           ++ map benchmarkName (benchmarks pkg_descr)
+
+{-
+
+Note [Preprocessor monitoring]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In order to decide whether a given pre-processed file must be (re)generated, we
+need to check two things: the input file, and the preprocessor that is used to
+generate it. If either of these changes, *or* if the output file doesn't exist,
+we need to (re-)run the preprocessor.
+
+We reuse the existing file monitoring infrastructure for this (see
+"Distribution.Simple.FileMonitor"), which allows us to specify a set of files to
+monitor (our input file), and a /key/, which is an arbitrary value which, when
+changed, will trigger a re-run.
+
+That key will be different for each known preprocessor, but it will generally be
+one of two things:
+
+- A dummy value to indicate that we're dealing with a built-in preprocessor
+  (e.g. @unlit@), which never changes between builds using the same Cabal
+  version
+- A set of configured programs ('ConfiguredProgram'), each representing an
+  on-disk binary that will handle (part of) the preprocessing, with a full path
+  and any arguments and environment variables that will be passed to it.
+
+The 'PreProcessorKey' type (defined in "Distribution.Simple.PreProcess.Types")
+represents these keys.
+
+Further, to make sure that we can get that key without actually having to run
+the preprocessor (which is the very thing we try to avoid), the 'PreProcessor'
+data structure exposes the 'configurePreProcessor' function, which in turn
+produces the actual preprocessor action together with the corresponding key,
+thus making sure that the two always match.
+
+Crucially, the re-run logic here __relies on the fact that all preprocessors
+will be pre-configured__, such that 'lookupProgramVersion' never actually has to
+configure any programs at this point.
+
+-}

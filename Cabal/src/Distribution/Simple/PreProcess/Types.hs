@@ -99,6 +99,7 @@ data PreProcessor = PreProcessor
 -- monitoring purposes.
 -- This value should change iff the preprocessor itself changes in a way that
 -- requires re-running it for a given input file.
+-- See Note [Preprocessor monitoring] in Distribution.Simple.PreProcess
 data PreProcessorKey
   = -- | A built-in preprocessor; these only change when Cabal itself does, so
     -- there is no need to track changes for these.
