@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- |
 -- Module      :  Distribution.Client.Targets
 -- Copyright   :  (c) Duncan Coutts 2011

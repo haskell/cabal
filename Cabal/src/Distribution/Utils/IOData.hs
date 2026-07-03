@@ -1,6 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- | @since 2.2.0
 module Distribution.Utils.IOData

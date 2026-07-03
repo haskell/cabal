@@ -1,6 +1,4 @@
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators #-}
 
 module UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
   ( testPropertyWithSeed

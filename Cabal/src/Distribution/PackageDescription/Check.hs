@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Check

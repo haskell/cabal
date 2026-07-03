@@ -1,6 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs            #-}
-{-# LANGUAGE TypeOperators #-}
 module Test.QuickCheck.GenericArbitrary (
     genericArbitrary,
     GArbitrary,

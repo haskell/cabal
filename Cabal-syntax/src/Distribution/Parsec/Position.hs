@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Parsec.Position
   ( Position (..)
   , incPos

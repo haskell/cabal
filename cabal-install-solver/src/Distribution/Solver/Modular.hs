@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..) ) where

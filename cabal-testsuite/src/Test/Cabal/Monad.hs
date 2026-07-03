@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- | The test monad
 module Test.Cabal.Monad
   ( -- * High-level runners
@@ -28,6 +26,7 @@ module Test.Cabal.Monad
     -- * The test environment
   , TestEnv (..)
   , getTestEnv
+  , mkNormalizerEnv
 
     -- * Recording mode
   , RecordMode (..)

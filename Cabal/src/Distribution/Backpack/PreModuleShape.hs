@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Backpack.PreModuleShape
   ( PreModuleShape (..)
   , toPreModuleShape

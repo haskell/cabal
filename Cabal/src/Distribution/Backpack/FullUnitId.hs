@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Backpack.FullUnitId
   ( FullUnitId (..)
   , FullDb

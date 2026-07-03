@@ -1,8 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.TestSuite
 -- Copyright   :  Thomas Tuegel 2010

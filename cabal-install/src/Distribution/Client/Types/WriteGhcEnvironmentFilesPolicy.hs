@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
   ( WriteGhcEnvironmentFilesPolicy (..)
   ) where

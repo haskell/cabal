@@ -1,9 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE InstanceSigs #-}
-
------------------------------------------------------------------------------
-
 -- Module      :  Distribution.Client.Errors
 -- Copyright   :  Suganya Arun
 -- License     :  BSD3

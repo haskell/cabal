@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
------------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Solver.Types.PackageIndex
 -- Copyright   :  (c) David Himmelstrup 2005,

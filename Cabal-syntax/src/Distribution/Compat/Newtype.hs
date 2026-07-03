@@ -1,5 +1,4 @@
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
 -- | Per Conor McBride, the 'Newtype' typeclass represents the packing and

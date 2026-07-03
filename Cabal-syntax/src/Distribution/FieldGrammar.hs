@@ -1,7 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- | This module provides a way to specify a grammar of @.cabal@ -like files.
 module Distribution.FieldGrammar
   ( -- * Field grammar type

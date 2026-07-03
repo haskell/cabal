@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Test.Utils.TempTestDir
   ( withTestDir
   , withTestDir'

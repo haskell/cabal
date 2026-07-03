@@ -1,4 +1,3 @@
-{-# LANGUAGE Rank2Types #-}
 module Distribution.Solver.Modular.RetryLog
     ( RetryLog
     , toProgress

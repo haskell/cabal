@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
 module Distribution.Solver.Modular.Package
   ( I(..)
   , Loc(..)

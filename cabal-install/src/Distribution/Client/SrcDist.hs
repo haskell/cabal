@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 
 -- | Utilities to implement cabal @v2-sdist@.
 module Distribution.Client.SrcDist

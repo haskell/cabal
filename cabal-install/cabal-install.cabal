@@ -77,8 +77,10 @@ common cabal-install-solver-dep
 
 library
     import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
-    default-language: Haskell2010
+    default-language: GHC2021
+    -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
     default-extensions: TypeOperators
+                        NoImportQualifiedPost
 
     hs-source-dirs:   src
     autogen-modules:
@@ -305,7 +307,9 @@ executable cabal
     import: warnings, base-dep
     main-is: Main.hs
     hs-source-dirs: main
-    default-language: Haskell2010
+    default-language: GHC2021
+    -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
+    default-extensions: NoImportQualifiedPost
 
     ghc-options: -rtsopts -threaded
 
@@ -323,8 +327,10 @@ executable cabal
 --
 test-suite unit-tests
     import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
-    default-language: Haskell2010
+    default-language: GHC2021
+    -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
     default-extensions: TypeOperators
+                        NoImportQualifiedPost
     ghc-options: -rtsopts -threaded
 
     type: exitcode-stdio-1.0
@@ -393,7 +399,9 @@ test-suite unit-tests
 -- Tests for the project file parser
 test-suite parser-tests
     import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
-    default-language: Haskell2010
+    default-language: GHC2021
+    -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
+    default-extensions: NoImportQualifiedPost
     ghc-options: -rtsopts -threaded
 
     type: exitcode-stdio-1.0
@@ -419,7 +427,9 @@ test-suite mem-use-tests
   type: exitcode-stdio-1.0
   main-is: MemoryUsageTests.hs
   hs-source-dirs: tests
-  default-language: Haskell2010
+  default-language: GHC2021
+  -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
+  default-extensions: NoImportQualifiedPost
 
   ghc-options: -threaded -rtsopts "-with-rtsopts=-M16M -K1K"
 
@@ -444,7 +454,9 @@ test-suite integration-tests2
   type: exitcode-stdio-1.0
   main-is: IntegrationTests2.hs
   hs-source-dirs: tests
-  default-language: Haskell2010
+  default-language: GHC2021
+  -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
+  default-extensions: NoImportQualifiedPost
 
   build-depends:
     , bytestring
@@ -465,7 +477,9 @@ test-suite long-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is: LongTests.hs
-  default-language: Haskell2010
+  default-language: GHC2021
+  -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
+  default-extensions: NoImportQualifiedPost
 
   other-modules:
     UnitTests.Distribution.Client.ArbitraryInstances

@@ -1,6 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- |
 -- Module      :  Distribution.PackageDescription.Check.Monad
 -- Copyright   :  Francesco Ariis 2022

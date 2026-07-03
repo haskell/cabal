@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Types.DumpBuildInfo
   ( DumpBuildInfo (..)
   ) where

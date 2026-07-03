@@ -23,7 +23,7 @@ source-repository head
   subdir:   cabal-testsuite
 
 common shared
-  default-language: Haskell2010
+  default-language: GHC2021
 
   build-depends:
     , base >= 4.11 && < 4.22

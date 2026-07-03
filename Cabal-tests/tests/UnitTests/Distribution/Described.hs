@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 module UnitTests.Distribution.Described where
 
