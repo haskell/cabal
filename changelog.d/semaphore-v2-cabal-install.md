@@ -1,5 +1,5 @@
 ---
-synopsis: Update to semaphore-compat 2.0.0 (`-jsem` protocol v2)
+synopsis: Update to semaphore-compat 2.0.1 (`-jsem` protocol v2)
 packages: [cabal-install]
 prs: 11628
 issues: 9993
