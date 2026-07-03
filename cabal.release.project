@@ -3,7 +3,7 @@ import: project-cabal/pkgs/cabal.config
 import: project-cabal/pkgs/install.config
 import: project-cabal/pkgs/tests.config
 
-index-state: hackage.haskell.org 2026-06-20T05:46:05Z
+index-state: hackage.haskell.org 2026-07-02T14:25:01Z
 
 -- never include this or its TH dependency in a release!
 package cabal-install

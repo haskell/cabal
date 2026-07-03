@@ -119,7 +119,7 @@
             "version": "3.17.0.0"
         },
         {
-            "cabal_sha256": "8526e690c91e9ef812d49f84f7f41c79bb4b692a55e399e4b8464687017f0342",
+            "cabal_sha256": "b74eed77eb3237c4ab6a39f08bcce4712b4486b091712ee20e92c8864f1e80a0",
             "component": "lib:process",
             "flags": [
                 "+os-string"
@@ -127,8 +127,8 @@
             "package": "process",
             "revision": 0,
             "source": "hackage",
-            "src_sha256": "579d57cf0c7bceb3104c13ec452114a1e479cc718684ca018b322742b79e4cb4",
-            "version": "1.6.29.0"
+            "src_sha256": "accf821b45b016c284ee2634ef8243ce4c6a6db1a8610092af32d1b4e71b0be2",
+            "version": "1.6.30.0"
         },
         {
             "cabal_sha256": null,
@@ -426,17 +426,16 @@
             "version": "0.7.1.1"
         },
         {
-            "cabal_sha256": "c026577b7110184bcd8596040dd109ff815124d47bfc08be195d13ed6f1a72c0",
+            "cabal_sha256": "745341e6c9b8c40296af055771917c0cbcf6ed54398c69a6fd92ae8535d0f94b",
             "component": "lib:hackage-security",
             "flags": [
-                "+cabal-syntax",
-                "-lukko"
+                "+cabal-syntax"
             ],
             "package": "hackage-security",
-            "revision": 2,
+            "revision": 0,
             "source": "hackage",
-            "src_sha256": "bf8f97868ed5219d0a13a90fcbfad819bbeba4ab368c5cb590b57202c98768f9",
-            "version": "0.6.3.2"
+            "src_sha256": "1ffa26af30eccd458f163634b066fc120d60e118aa638408571968838899bf66",
+            "version": "0.6.3.3"
         },
         {
             "cabal_sha256": null,
@@ -449,7 +448,7 @@
             "version": "0.1"
         },
         {
-            "cabal_sha256": "a5effff3d14a0bbfde51dd62e72cff069b56be4298f16a78db7d3cc0c678c859",
+            "cabal_sha256": "0dc8dc33b9bba0e025e444355f6c2d806f62a4656446961c3647165f80f0d278",
             "component": "lib:open-browser",
             "flags": [
                 "-example"
@@ -457,8 +456,8 @@
             "package": "open-browser",
             "revision": 0,
             "source": "hackage",
-            "src_sha256": "deff01d066a027bfb609522465e8e0580d8b56004cebb5b1f3e0f05f79cbf85d",
-            "version": "0.4.0.0"
+            "src_sha256": "1066e286615e39ef43f7e7437a4644775246e264c33b4d259b4858cff0985f0b",
+            "version": "0.5.1.0"
         },
         {
             "cabal_sha256": "d6c0c6d1136f5046207a331114ff4130e70640452096de7719bf03e3fceb7c7b",
@@ -503,7 +502,7 @@
             "version": "0.1.7.4"
         },
         {
-            "cabal_sha256": "e2eee36b01e7f686cb3d5467e649466272207be2107b19e2c781c7f17862906d",
+            "cabal_sha256": "4f18e702a467ab65a808fdcdd7b88d92cc6c5e277bfd9759d3c361e8b8b0ac30",
             "component": "lib:semaphore-compat",
             "flags": [
                 "-build-testing"
@@ -511,8 +510,8 @@
             "package": "semaphore-compat",
             "revision": 0,
             "source": "hackage",
-            "src_sha256": "eaf00de15ff13e890d7d39181e5edf13dd12ae7d956b6a97df713097d89c4d62",
-            "version": "2.0.0"
+            "src_sha256": "ec8764d146db62e8a5dc56fa78fffd2487931235df0e16519c6f993c81420919",
+            "version": "2.0.1"
         },
         {
             "cabal_sha256": null,
@@ -520,7 +519,6 @@
             "flags": [
                 "-git-rev",
                 "-legacy-comparison",
-                "-lukko",
                 "+native-dns"
             ],
             "package": "cabal-install",
@@ -535,7 +533,6 @@
             "flags": [
                 "-git-rev",
                 "-legacy-comparison",
-                "-lukko",
                 "+native-dns"
             ],
             "package": "cabal-install",
