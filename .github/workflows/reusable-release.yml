@@ -71,7 +71,7 @@ jobs:
       fail-fast: false
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
-        platform: [ { image: "alpine:3.20"
+        platform: [ { image: "alpine:3.21"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
                     , DISTRO: "Unknown"
@@ -136,7 +136,7 @@ jobs:
           ref: ${{ matrix.branch }}
 
       - name: Run build (32 bit linux)
-        uses: docker://i386/alpine:3.20
+        uses: docker://i386/alpine:3.21
         with:
           args: sh -c "apk update && apk add curl bash git ${{ needs.tool-output.outputs.apk_tools }} && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.bash"
 
@@ -172,7 +172,7 @@ jobs:
         with:
           ref: ${{ matrix.branch }}
 
-      - uses: docker://arm64v8/alpine:3.20
+      - uses: docker://arm64v8/alpine:3.21
         name: Run build (aarch64 linux alpine)
         with:
           args: sh -c "apk update && apk add curl bash git ${{ needs.tool-output.outputs.apk_tools }} && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.bash"
@@ -378,7 +378,7 @@ jobs:
       fail-fast: false
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
-        platform: [ { image: "alpine:3.20"
+        platform: [ { image: "alpine:3.21"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
                     , DISTRO: "Unknown"
@@ -448,7 +448,7 @@ jobs:
 #          path: ./out
 #
 #      - name: Run build (32 bit linux)
-#        uses: docker://i386/alpine:3.20
+#        uses: docker://i386/alpine:3.21
 #        with:
 #          args: sh -c "apk update && apk add curl bash git ${{ needs.tool-output.outputs.apk_tools }} groff && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.bash"
 
@@ -480,7 +480,7 @@ jobs:
           name: artifacts-${{ matrix.platform.ARTIFACT }}-${{ matrix.branch }}
           path: ./out
 
-      - uses: docker://arm64v8/alpine:3.20
+      - uses: docker://arm64v8/alpine:3.21
         name: Run build (aarch64 linux alpine)
         with:
           args: sh -c "apk update && apk add curl bash git groff ${{ needs.tool-output.outputs.apk_tools }} && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/test.bash"
