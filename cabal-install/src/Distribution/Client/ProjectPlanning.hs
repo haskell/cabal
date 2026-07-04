@@ -251,11 +251,6 @@ sanityCheckElaboratedConfiguredPackage
         ElabPackage pkg -> sanityCheckElaboratedPackage elab pkg
         ElabComponent comp -> sanityCheckElaboratedComponent elab comp
     )
-      -- The assertion below fails occasionally for unknown reason
-      -- so it was muted until we figure it out, otherwise it severely
-      -- hinders our ability to share and test development builds of cabal-install.
-      -- Tracking issue: https://github.com/haskell/cabal/issues/6006
-      --
       -- either a package is being built inplace, or the
       -- 'installedPackageId' we assigned is consistent with
       -- the 'hashedInstalledPackageId' we would compute from
