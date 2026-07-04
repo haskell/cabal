@@ -202,6 +202,32 @@ test-suite no-thunks-test
     build-depends:
       , nothunks >=0.1.1.0 && <0.3
 
+-- Slow, long-running tests
+test-suite long-tests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests
+  other-modules:
+    Test.Laws
+    UnitTests.Options
+    UnitTests.Distribution.Simple.FileMonitor
+
+  main-is:          LongTests.hs
+  build-depends:
+    , base                >=4.17    && <5
+    , Cabal
+    , Cabal-described
+    , Cabal-syntax
+    , Cabal-QuickCheck
+    , containers
+    , directory           >=1.2.7
+    , filepath
+    , tasty               >=1.2.3 && <1.6
+    , tasty-expected-failure
+    , tasty-hunit
+
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
 executable ghc-supported-extensions
   hs-source-dirs:   exes
   main-is:          GhcSupportedExtensions.hs

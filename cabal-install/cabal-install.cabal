@@ -484,7 +484,6 @@ test-suite long-tests
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Described
     UnitTests.Distribution.Client.DescribedInstances
-    UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.VCS
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.QuickCheck

@@ -1,4 +1,4 @@
-module UnitTests.Distribution.Client.FileMonitor (tests) where
+module UnitTests.Distribution.Simple.FileMonitor (tests) where
 
 import Distribution.Parsec (simpleParsec)
 
@@ -16,7 +16,7 @@ import Distribution.Compat.Binary
 import Distribution.Simple.Utils (removeFileForcibly, withTempDirectory)
 import Distribution.System (OS (Windows), buildOS)
 
-import Distribution.Client.FileMonitor
+import Distribution.Simple.FileMonitor
 import Distribution.Compat.Time
 import Distribution.Utils.Structured (Structured, structureHash)
 import GHC.Fingerprint (Fingerprint (..))
@@ -1029,3 +1029,4 @@ withFileMonitor action = do
         monitor = newFileMonitor file
     finally (action (RootPath root) monitor) $ do
       removeFileForcibly file
+
