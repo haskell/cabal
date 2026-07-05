@@ -242,14 +242,24 @@ set of project dependencies, explicit and transitive.  The ``cabal freeze``
 command saves these to a file named the same as the whole of the project file
 name but with a extra ``.freeze`` extension, so the freeze file for
 ``cabal.project`` is ``cabal.project.freeze``. Effectively a ``.freeze`` file is
-an implicit project import, same as the ``.local`` file for projects.
+an implicit project import, the same way the project ``.local`` file is.  The
+order of imports of ``.local`` and ``.freeze`` files is important.  The
+``.local`` file is imported last, after the ``.freeze`` file, giving the user a
+final say in the setting of any fields that have override semantics.
 
-.. Note::
+.. Todo::
 
-    The order of imports of ``.local`` and ``.freeze`` files is important.  The
-    ``.local`` file is imported last, after the ``.freeze`` file, giving the
-    user a final say in the setting of any fields that have override semantics.
+    The ``cabal.project.local`` is loaded even when ``cabal.project`` does not
+    exist.
 
+    TODO: Find out if this is the case for the default project only?
+
+    TODO: Find out if the behavior for ``cabal.project.freeze`` matches.
+
+    TODO: Confirm that the ``.local`` file has to be in the same directory as
+    its project file.
+
+.. Tip::
     The ``.local`` and ``.freeze`` extensions are specialized and quirky. In
     general, it is better to use a ``.project`` extension for any project and a
     ``.config`` extension for any project configuration that is imported. It is
