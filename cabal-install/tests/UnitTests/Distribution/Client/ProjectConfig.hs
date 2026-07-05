@@ -630,7 +630,8 @@ instance Arbitrary ProjectConfigShared where
 
   shrink ProjectConfigShared{..} =
     runShrinker $
-      (ProjectConfigShared <$> shrinker projectConfigDistDir)
+      ProjectConfigShared
+        <$> shrinker projectConfigDistDir
         <*> shrinker projectConfigConfigFile
         <*> shrinker projectConfigProjectDir
         <*> shrinker projectConfigProjectFile
