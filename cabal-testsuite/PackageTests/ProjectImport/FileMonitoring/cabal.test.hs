@@ -19,10 +19,7 @@ main = do
   cabalTest' "main-project" . recordMode DoNotRecord $ do
     let opts = ["--project-file=cabal.project"]
     expectedMonitoring <-
-      -- TODO: When fixed, use expected output, not the actual output and delete
-      -- the actual output file.
-      -- readFileVerbatim "cabal.main-project.expect.txt"
-      readFileVerbatim "cabal.main-project.actual.txt"
+      readFileVerbatim "cabal.main-project.expect.txt"
     runProjectTest expectedMonitoring opts
     runCommandTest opts
     runConfigureTest "cabal.project.local" opts
@@ -32,20 +29,14 @@ main = do
   cabalTest' "local-only" . recordMode DoNotRecord $ do
     let opts = ["--project-file=cabal.local-only.project"]
     expectedMonitoring <-
-      -- TODO: When fixed, use expected output, not the actual output and delete
-      -- the actual output file.
-      -- readFileVerbatim "cabal.local-only.expect.txt"
-      readFileVerbatim "cabal.local-only.actual.txt"
+      readFileVerbatim "cabal.local-only.expect.txt"
     runProjectTest expectedMonitoring opts
     runCommandTest opts
 
   cabalTest' "freeze-only" . recordMode DoNotRecord $ do
     let opts = ["--project-file=cabal.freeze-only.project"]
     expectedMonitoring <-
-      -- TODO: When fixed, use expected output, not the actual output and delete
-      -- the actual output file.
-      -- readFileVerbatim "cabal.freeze-only.expect.txt"
-      readFileVerbatim "cabal.freeze-only.actual.txt"
+      readFileVerbatim "cabal.freeze-only.expect.txt"
     runProjectTest expectedMonitoring opts
     runCommandTest opts
     runConfigureTest "cabal.freeze-only.project.local" opts
@@ -131,10 +122,10 @@ runProjectTest expectMsg projOpts = do
   cwd <- testCurrentDir <$> getTestEnv
   let configFile = cwd </> "test" </> "tests-toggle.config"
   liftIO $ writeFile configFile "package *\n  tests: False"
-  -- TODO: If project imports were properly monitored, the build
-  -- should succeed without a clean. When fixed, remove the clean.
+  -- NOTE: When project imports are properly monitored, the build succeeds
+  -- without a clean or touching the root project file. The change to the
+  -- imported file is noticed.
   log "A clean should not be necessary with proper monitoring of files a project imports."
-  _ <- cabal' "clean" projOpts
   projDisabledTests <- cabal' "build" projOpts
   assertOutputDoesNotContain testNotYetImplementedMsg projDisabledTests
   assertOutputDoesNotContain failureMsg projDisabledTests
