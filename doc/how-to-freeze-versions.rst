@@ -397,6 +397,10 @@ Ensuring everything is frozen
     cannot change and, at that point when every dependency is frozen, ``cabal
     freeze`` becomes an idempotent operation.
 
+.. Warning::
+    A freeze file snapshots a solver resolution. It does not block adding new
+    dependencies.
+
 .. Tip::
     Use :cfg-field:`reject-unconstrained-dependencies` to ensure each dependency
     has version constraints.
