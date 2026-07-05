@@ -858,7 +858,7 @@ readProjectFileSkeletonGen
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
           let paths =
-                [ projectConfigPathRoot path
+                [ currentProjectConfigPath path
                 | (Nothing, path) <- projectSkeletonImports pcs
                 ]
           for_ paths $ \p -> do

@@ -1,5 +1,0 @@
-Monitor existing: <ROOT>/cabal.freeze-only.project
-Monitor existing: <ROOT>/cabal.freeze-only.project.freeze
-Monitor imported: cabal.freeze-only.project.freeze (<ROOT>/cabal.freeze-only.project.freeze)
-Monitor imported: cabal.freeze-only.project.freeze (<ROOT>/cabal.freeze-only.project.freeze)
-Monitor imported: cabal.freeze-only.project.freeze (<ROOT>/cabal.freeze-only.project.freeze)
