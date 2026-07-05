@@ -397,10 +397,9 @@ Ensuring everything is frozen
     cannot change and, at that point when every dependency is frozen, ``cabal
     freeze`` becomes an idempotent operation.
 
-.. Warning::
-    Setting :cfg-field:`reject-unconstrained-dependencies` to ``all`` will
-    ensure that dependencies have version constraints but does not require these
-    be equality constraints.
+.. Tip::
+    Use :cfg-field:`reject-unconstrained-dependencies` to ensure each dependency
+    has version constraints.
 
 When adding a new dependency to a project that utilizes a freeze file
 [#add-new-dep]_, regenerating the freeze file using one of the methods described
