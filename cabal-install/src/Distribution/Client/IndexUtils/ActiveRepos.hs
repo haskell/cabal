@@ -105,9 +105,7 @@ instance Parsec ActiveRepoEntry where
           "repo" -> P.char ':' *> leadRepo
           _ -> P.unexpected $ "Unknown active repository entry type: " ++ token
 
-      leadRepo = do
-        r <- parsec
-        ActiveRepo r <$> strategyP
+      leadRepo = ActiveRepo <$> parsec <*> strategyP
 
       strategyP = P.option CombineStrategyMerge (P.char ':' *> parsec)
 
