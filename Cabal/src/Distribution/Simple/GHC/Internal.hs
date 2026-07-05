@@ -352,8 +352,8 @@ splitCandCxxOptions
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
-  -> SymbolicPathX 'AllowAbsolute Pkg (Dir Artifacts)
-  -> SymbolicPathX 'AllowAbsolute Pkg File
+  -> SymbolicPath Pkg (Dir Artifacts)
+  -> SymbolicPath Pkg File
   -> GhcOptions
 splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
   CxxProgram ->
@@ -449,6 +449,9 @@ sourcesGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptInputFiles = toNubListR [filename]
     , ghcOptObjDir = toFlag odir
     , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
+    , -- cpp-options apply only to .hs files; GHC ignores -optP for non-Haskell
+      -- files (and since 9.10 this behavior is explicit/enforced)
+      ghcOptCppOptions = []
     }
 
 optimizationCFlags :: LocalBuildInfo -> [String]
