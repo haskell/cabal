@@ -260,11 +260,9 @@ final say in the setting of any fields that have override semantics.
     its project file.
 
 .. Tip::
-    The ``.local`` and ``.freeze`` extensions are specialized and quirky. In
-    general, it is better to use a ``.project`` extension for any project and a
-    ``.config`` extension for any project configuration that is imported. It is
-    of course possible to have multiple ``.project`` files and for these to have
-    import relationships.
+    Use a ``.project`` extension for any project and a ``.config`` extension for
+    any project configuration that is imported. It is of course possible to have
+    multiple ``.project`` files and for these to have import relationships.
 
 .. Warning::
 
