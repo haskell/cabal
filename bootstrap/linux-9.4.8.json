@@ -79,14 +79,14 @@
     ],
     "dependencies": [
         {
-            "cabal_sha256": "7c2be4d5333786c0e1f6ed7b856c9424c03965013e161bbab07f94bf9a095196",
+            "cabal_sha256": "c0663f5f428108680f4aae0f67b7b357c1bb5954281c7fbe941c50c58cd79f18",
             "component": "lib:os-string",
             "flags": [],
             "package": "os-string",
             "revision": 0,
             "source": "hackage",
-            "src_sha256": "f682b8a6121a09fc820ce69d99e33bfa9b1a959505663ef2fedebe7b95c75aa5",
-            "version": "2.0.10"
+            "src_sha256": "54807410e65e0e97c71ee37eaa89ade9a656b5e27f435c214f1dd6eaad18d714",
+            "version": "2.0.11"
         },
         {
             "cabal_sha256": "c6ec08084ffc90838ad36d03c3792be70fa171942a3677ec68e9be8b437754fe",
@@ -114,7 +114,7 @@
             "version": "2.8.8.0"
         },
         {
-            "cabal_sha256": "5e3466f15993e499db47d79d09c519d6d37c143cfe94fb46dd218bf2f6f3fd39",
+            "cabal_sha256": "e896ca0207a70f04a1d4357bb031a703f79317ff973efc62817fa237c2964e5c",
             "component": "lib:file-io",
             "flags": [
                 "+long-paths",
@@ -123,20 +123,18 @@
             "package": "file-io",
             "revision": 0,
             "source": "hackage",
-            "src_sha256": "0ae9986dc1df9a87d17a16c6c0afb2bfc72dcd2a2ec7a40faf1257bf1fa4d710",
-            "version": "0.1.6"
+            "src_sha256": "8e75f8905d7c9f114e6164779e7a19ff0e2968015ecf686934e38250575dabe7",
+            "version": "0.2.0"
         },
         {
-            "cabal_sha256": "bf029d8163ccae567cc6a5aa8f654016f58dfc066d15f8a8f7c74b8ca855562c",
+            "cabal_sha256": "2346c4f0af05c4ed55e77543e94b26f1b82523efd24da986bdd48a8f8a84c5a0",
             "component": "lib:directory",
-            "flags": [
-                "+os-string"
-            ],
+            "flags": [],
             "package": "directory",
             "revision": 0,
             "source": "hackage",
-            "src_sha256": "d8f718851aa25a357ca4a6d0204eb357a69383b9b69528d18e2bca463e94c259",
-            "version": "1.3.10.1"
+            "src_sha256": "182a93beb41b33d6da9313d9eefe5c28823e1879d68da5c54ad7ca6331d5a28c",
+            "version": "1.3.11.0"
         },
         {
             "cabal_sha256": "8db1ce2ae03edd217c408206980e8b3fce7f00b9d4b99f3e3e83b35525d94074",
@@ -159,7 +157,7 @@
             "version": "3.17.0.0"
         },
         {
-            "cabal_sha256": "8526e690c91e9ef812d49f84f7f41c79bb4b692a55e399e4b8464687017f0342",
+            "cabal_sha256": "b74eed77eb3237c4ab6a39f08bcce4712b4486b091712ee20e92c8864f1e80a0",
             "component": "lib:process",
             "flags": [
                 "+os-string"
@@ -167,8 +165,8 @@
             "package": "process",
             "revision": 0,
             "source": "hackage",
-            "src_sha256": "579d57cf0c7bceb3104c13ec452114a1e479cc718684ca018b322742b79e4cb4",
-            "version": "1.6.29.0"
+            "src_sha256": "accf821b45b016c284ee2634ef8243ce4c6a6db1a8610092af32d1b4e71b0be2",
+            "version": "1.6.30.0"
         },
         {
             "cabal_sha256": null,
@@ -454,17 +452,16 @@
             "version": "0.7.1.1"
         },
         {
-            "cabal_sha256": "c026577b7110184bcd8596040dd109ff815124d47bfc08be195d13ed6f1a72c0",
+            "cabal_sha256": "745341e6c9b8c40296af055771917c0cbcf6ed54398c69a6fd92ae8535d0f94b",
             "component": "lib:hackage-security",
             "flags": [
-                "+cabal-syntax",
-                "-lukko"
+                "+cabal-syntax"
             ],
             "package": "hackage-security",
-            "revision": 2,
+            "revision": 0,
             "source": "hackage",
-            "src_sha256": "bf8f97868ed5219d0a13a90fcbfad819bbeba4ab368c5cb590b57202c98768f9",
-            "version": "0.6.3.2"
+            "src_sha256": "1ffa26af30eccd458f163634b066fc120d60e118aa638408571968838899bf66",
+            "version": "0.6.3.3"
         },
         {
             "cabal_sha256": null,
@@ -477,7 +474,7 @@
             "version": "0.1"
         },
         {
-            "cabal_sha256": "a5effff3d14a0bbfde51dd62e72cff069b56be4298f16a78db7d3cc0c678c859",
+            "cabal_sha256": "0dc8dc33b9bba0e025e444355f6c2d806f62a4656446961c3647165f80f0d278",
             "component": "lib:open-browser",
             "flags": [
                 "-example"
@@ -485,8 +482,8 @@
             "package": "open-browser",
             "revision": 0,
             "source": "hackage",
-            "src_sha256": "deff01d066a027bfb609522465e8e0580d8b56004cebb5b1f3e0f05f79cbf85d",
-            "version": "0.4.0.0"
+            "src_sha256": "1066e286615e39ef43f7e7437a4644775246e264c33b4d259b4858cff0985f0b",
+            "version": "0.5.1.0"
         },
         {
             "cabal_sha256": "d6c0c6d1136f5046207a331114ff4130e70640452096de7719bf03e3fceb7c7b",
@@ -531,7 +528,7 @@
             "version": "0.1.7.4"
         },
         {
-            "cabal_sha256": "e2eee36b01e7f686cb3d5467e649466272207be2107b19e2c781c7f17862906d",
+            "cabal_sha256": "4f18e702a467ab65a808fdcdd7b88d92cc6c5e277bfd9759d3c361e8b8b0ac30",
             "component": "lib:semaphore-compat",
             "flags": [
                 "-build-testing"
@@ -539,8 +536,8 @@
             "package": "semaphore-compat",
             "revision": 0,
             "source": "hackage",
-            "src_sha256": "eaf00de15ff13e890d7d39181e5edf13dd12ae7d956b6a97df713097d89c4d62",
-            "version": "2.0.0"
+            "src_sha256": "ec8764d146db62e8a5dc56fa78fffd2487931235df0e16519c6f993c81420919",
+            "version": "2.0.1"
         },
         {
             "cabal_sha256": null,
@@ -548,7 +545,6 @@
             "flags": [
                 "-git-rev",
                 "-legacy-comparison",
-                "-lukko",
                 "+native-dns"
             ],
             "package": "cabal-install",
@@ -563,7 +559,6 @@
             "flags": [
                 "-git-rev",
                 "-legacy-comparison",
-                "-lukko",
                 "+native-dns"
             ],
             "package": "cabal-install",
