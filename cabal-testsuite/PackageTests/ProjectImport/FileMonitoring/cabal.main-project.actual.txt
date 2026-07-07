@@ -1,6 +1,0 @@
-Monitor existing: <ROOT>/cabal.project
-Monitor imported: cabal.project (<ROOT>/cabal.project)
-Monitor imported: cabal.project (<ROOT>/cabal.project)
-Monitor imported: cabal.project (<ROOT>/cabal.project)
-Monitor nonexistent: <ROOT>/cabal.project.freeze
-Monitor nonexistent: <ROOT>/cabal.project.local
