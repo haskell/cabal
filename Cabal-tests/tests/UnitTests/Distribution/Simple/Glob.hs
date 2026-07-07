@@ -306,7 +306,7 @@ printParseTests =
 
 tests :: [TestTree]
 tests =
-  [ testGroup "print/parse" $
+  [ testGroup "print/parse"
       printParseTests
   , testGroup "pre-2.4 compatibility" $
       compatibilityTests CabalSpecV2_2
