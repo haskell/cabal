@@ -6,7 +6,7 @@ module Test.QuickCheck.Instances.Cabal () where
 import Control.Applicative        (liftA2)
 #endif
 import Data.Bits                  (countLeadingZeros, finiteBitSize, shiftL, shiftR)
-import Data.Char                  (isAlphaNum, isDigit, toLower)
+import Data.Char                  (isAlphaNum, isDigit, toLower, isLetter)
 import Data.List                  (intercalate, (\\))
 import Data.List.NonEmpty         (NonEmpty (..))
 import Distribution.Utils.Generic (lowercase)
@@ -20,6 +20,8 @@ import Distribution.ModuleName
 import Distribution.Simple.Compiler
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..), DumpBuildInfo)
+import Distribution.Simple.FileMonitor.Types (FilePathRoot (..), RootedGlob (..))
+import Distribution.Simple.Glob.Internal (Glob (..), GlobPiece (..))
 import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
@@ -470,6 +472,117 @@ instance Arbitrary (PackageDBX FilePath) where
 
 instance Arbitrary DumpBuildInfo where
     arbitrary = arbitraryBoundedEnum
+
+-------------------------------------------------------------------------------
+-- Glob
+-------------------------------------------------------------------------------
+
+instance Arbitrary RootedGlob where
+  arbitrary =
+    (RootedGlob <$> arbitrary <*> arbitrary)
+      `suchThat` validFilePathGlob
+
+  shrink (RootedGlob root pathglob) =
+    [ RootedGlob root' pathglob'
+    | (root', pathglob') <- shrink (root, pathglob)
+    , validFilePathGlob (RootedGlob root' pathglob')
+    ]
+
+validFilePathGlob :: RootedGlob -> Bool
+validFilePathGlob (RootedGlob FilePathRelative pathglob) =
+  case pathglob of
+    GlobDirTrailing -> False
+    GlobDir [Literal "~"] _ -> False
+    GlobDir [Literal (d : ":")] _
+      | isLetter d -> False
+    _ -> True
+validFilePathGlob _ = True
+
+instance Arbitrary FilePathRoot where
+  arbitrary =
+    frequency
+      [ (3, pure FilePathRelative)
+      , (1, pure (FilePathRoot unixroot))
+      , (1, FilePathRoot <$> windrive)
+      , (1, pure FilePathHomeDir)
+      ]
+    where
+      unixroot = "/"
+      windrive = do d <- choose ('A', 'Z'); return (d : ":\\")
+
+  shrink FilePathRelative = []
+  shrink (FilePathRoot _) = [FilePathRelative]
+  shrink FilePathHomeDir = [FilePathRelative]
+
+instance Arbitrary Glob where
+  arbitrary = sized $ \sz ->
+    oneof $
+      take
+        (max 1 sz)
+        [ pure GlobDirTrailing
+        , GlobFile . getGlobPieces <$> arbitrary
+        , (GlobDir . getGlobPieces <$> arbitrary)
+            <*> resize (sz `div` 2) arbitrary
+        ]
+
+  shrink GlobDirTrailing = []
+  shrink (GlobFile glob) =
+    GlobDirTrailing
+      : [GlobFile (getGlobPieces glob') | glob' <- shrink (GlobPieces glob)]
+  shrink (GlobDir glob pathglob) =
+    pathglob
+      : GlobFile glob
+      : [ GlobDir (getGlobPieces glob') pathglob'
+        | (glob', pathglob') <- shrink (GlobPieces glob, pathglob)
+        ]
+  shrink (GlobDirRecursive glob) =
+    GlobDirTrailing
+      : [GlobFile (getGlobPieces glob') | glob' <- shrink (GlobPieces glob)]
+
+newtype GlobPieces = GlobPieces {getGlobPieces :: [GlobPiece]}
+  deriving (Eq)
+
+instance Arbitrary GlobPieces where
+  arbitrary = GlobPieces . mergeLiterals <$> shortListOf1 5 arbitrary
+
+  shrink (GlobPieces glob) =
+    [ GlobPieces (mergeLiterals (getNonEmpty glob'))
+    | glob' <- shrink (NonEmpty glob)
+    ]
+
+mergeLiterals :: [GlobPiece] -> [GlobPiece]
+mergeLiterals (Literal a : Literal b : ps) = mergeLiterals (Literal (a ++ b) : ps)
+mergeLiterals (Union as : ps) = Union (map mergeLiterals as) : mergeLiterals ps
+-- Two consecutive wildcards are semantically equivalent to a single one, but
+-- would syntactically produce a recursive wildcard when pretty-printed, so
+-- whenever we end up generating two or more consecutive wildcards, we merge
+-- them together to avoid this problem.
+mergeLiterals (WildCard : WildCard : ps) = mergeLiterals (WildCard : ps)
+mergeLiterals (p : ps) = p : mergeLiterals ps
+mergeLiterals [] = []
+
+instance Arbitrary GlobPiece where
+  arbitrary = sized $ \sz ->
+    frequency
+      [ (3, Literal <$> shortListOf1 10 (elements globLiteralChars))
+      , (1, pure WildCard)
+      , (1, Union <$> resize (sz `div` 2) (shortListOf1 5 (shortListOf1 5 arbitrary)))
+      ]
+
+  shrink (Literal str) =
+    [ Literal str'
+    | str' <- shrink str
+    , not (null str')
+    , all (`elem` globLiteralChars) str'
+    ]
+  shrink WildCard = []
+  shrink (Union as) =
+    [ Union (map getGlobPieces (getNonEmpty as'))
+    | as' <- shrink (NonEmpty (map GlobPieces as))
+    ]
+
+globLiteralChars :: [Char]
+globLiteralChars = ['\0' .. '\128'] \\ "*{},/\\"
 
 -------------------------------------------------------------------------------
 -- Helpers

@@ -215,9 +215,7 @@ test-suite long-tests
   build-depends:
     , base                >=4.17    && <5
     , Cabal
-    , Cabal-described
     , Cabal-syntax
-    , Cabal-QuickCheck
     , containers
     , directory           >=1.2.7
     , filepath
