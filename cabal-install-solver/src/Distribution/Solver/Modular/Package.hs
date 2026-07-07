@@ -26,6 +26,7 @@ import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.Stage (Stage (..))
 
 -- | A package name.
 type PN = PackageName
@@ -89,7 +90,7 @@ instUid _ _ = False
 -- as setup deps.
 --
 primaryPP :: PackagePath -> Bool
-primaryPP (PackagePath _ns q) = go q
+primaryPP (PackagePath _s _ns q) = go q
   where
     go QualToplevel    = True
     go (QualBase  _)   = True
@@ -101,10 +102,10 @@ primaryPP (PackagePath _ns q) = go q
 -- dependency (grep 'setupPP' to see the use sites).
 --
 setupPP :: PackagePath -> Bool
-setupPP (PackagePath _ns (QualSetup _)) = True
-setupPP (PackagePath _ns _)         = False
+setupPP (PackagePath _s _ns (QualSetup _)) = True
+setupPP (PackagePath _s _ns _)         = False
 
 -- | Qualify a target package with its own name so that its dependencies are not
 -- required to be consistent with other targets.
 makeIndependent :: PN -> QPN
-makeIndependent pn = Q (PackagePath (Independent pn) QualToplevel) pn
+makeIndependent pn = Q (PackagePath Host (Independent pn) QualToplevel) pn
