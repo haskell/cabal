@@ -1,0 +1,11 @@
+cabal-version:       2.2
+name:                cpp-options-only-for-hs
+version:             0.1
+build-type:          Simple
+
+executable cpp-options-only-for-hs-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  c-sources:           cbits/clib.c
+  cpp-options:         -DSUPPORT_SSE
