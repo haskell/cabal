@@ -38,6 +38,7 @@ import           Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Modular.Dependency as D
 import Distribution.Solver.Modular.Flag as F
 import Distribution.Solver.Modular.Index
+import Distribution.Solver.Types.Stage (Stage (..))
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
@@ -61,8 +62,13 @@ convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
         -> SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
         -> Index
 convPIs os arch comp constraints sip strfl solveExes iidx sidx =
-  mkIndex $
-  convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
+  -- Only the host stage is populated for now: the installed/source indexes come
+  -- from a single (host) toolchain. Once toolchains are staged, this will
+  -- produce a separate 'StageIndex' per stage, each converted from that stage's
+  -- own compiler and package DBs.
+  M.singleton Host $
+    mkIndex $
+      convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
