@@ -1,28 +1,29 @@
 {-# LANGUAGE LambdaCase #-}
+
 module UnitTests.Distribution.Simple.Glob
-    ( tests
-    ) where
+  ( tests
+  ) where
 
 import Distribution.Compat.Prelude hiding (last)
 import Prelude ()
 
-import GHC.Fingerprint
+import Distribution.CabalSpecVersion
+import Distribution.Parsec
+import Distribution.Pretty
+import Distribution.Simple.FileMonitor.Types
 import Distribution.Simple.Glob
 import Distribution.Simple.Glob.Internal
-import Distribution.Simple.FileMonitor.Types
-import qualified Distribution.Verbosity as Verbosity
-import Distribution.CabalSpecVersion
+import Distribution.Utils.Structured (structureHash)
+import Distribution.Verbosity
+import Distribution.Verbosity qualified as Verbosity
+import GHC.Fingerprint
 import System.Directory (createDirectoryIfMissing)
-import System.FilePath ((</>), splitFileName, normalise)
+import System.FilePath (normalise, splitFileName, (</>))
 import System.IO.Temp (withSystemTempDirectory)
+import Test.QuickCheck.Instances.Cabal ()
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
-import Test.QuickCheck.Instances.Cabal ()
-import Distribution.Verbosity
-import Distribution.Utils.Structured (structureHash)
-import Distribution.Pretty
-import Distribution.Parsec
 
 sampleFileNames :: [FilePath]
 sampleFileNames =
@@ -243,19 +244,23 @@ testMatchesVersion version pat expected = do
           -- check can't identify that kind of match.
           expected' = filter (\case GlobMatchesDirectory _ -> False; _ -> True) expected
       unless (sort expected' == sort actual) $
-        assertFailure $ "Unexpected result (pure matcher): " ++ show actual ++ "\nExpected: " ++ show expected
+        assertFailure $
+          "Unexpected result (pure matcher): " ++ show actual ++ "\nExpected: " ++ show expected
     checkIO globPat =
       withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
         makeSampleFiles tmpdir
         actual <- runDirFileGlob verbosity (Just version) tmpdir globPat
         unless (isEqual actual expected) $
-          assertFailure $ "Unexpected result (impure matcher): " ++ show actual ++ "\nExpected: " ++ show expected
+          assertFailure $
+            "Unexpected result (impure matcher): " ++ show actual ++ "\nExpected: " ++ show expected
 
 testFailParseVersion :: CabalSpecVersion -> FilePath -> GlobSyntaxError -> Assertion
 testFailParseVersion version pat expected =
   case parseFileGlob version pat of
-    Left err -> unless (expected == err) $
-      assertFailure $ "Unexpected error: " ++ show err
+    Left err ->
+      unless (expected == err) $
+        assertFailure $
+          "Unexpected error: " ++ show err
     Right _ -> assertFailure "Unexpected success in parsing."
 
 globstarTests :: [TestTree]
@@ -306,7 +311,8 @@ printParseTests =
 
 tests :: [TestTree]
 tests =
-  [ testGroup "print/parse"
+  [ testGroup
+      "print/parse"
       printParseTests
   , testGroup "pre-2.4 compatibility" $
       compatibilityTests CabalSpecV2_2

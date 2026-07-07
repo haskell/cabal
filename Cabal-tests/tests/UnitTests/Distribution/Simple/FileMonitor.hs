@@ -16,8 +16,8 @@ import Distribution.Compat.Binary
 import Distribution.Simple.Utils (removeFileForcibly, withTempDirectory)
 import Distribution.System (OS (Windows), buildOS)
 
-import Distribution.Simple.FileMonitor
 import Distribution.Compat.Time
+import Distribution.Simple.FileMonitor
 import Distribution.Utils.Structured (Structured, structureHash)
 import GHC.Fingerprint (Fingerprint (..))
 
@@ -1029,4 +1029,3 @@ withFileMonitor action = do
         monitor = newFileMonitor file
     finally (action (RootPath root) monitor) $ do
       removeFileForcibly file
-

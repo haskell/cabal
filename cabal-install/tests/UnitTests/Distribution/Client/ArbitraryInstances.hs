@@ -334,4 +334,3 @@ instance Arbitrary InstallOutcome where
 instance Arbitrary Outcome where
   arbitrary = genericArbitrary
   shrink = genericShrink
-
