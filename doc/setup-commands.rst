@@ -1089,13 +1089,22 @@ This command takes the following options:
 
     :since: 3.12.0.0
 
+    This option causes Cabal to control parallelism by using the specified
+    semaphore.
+
     GHC 9.8.1 and later can act as a jobserver client, which enables two or more
     GHC processes running at once to share system resources with each other,
-    communicating via a specified system semaphore. The system semaphore is
-    identified by a name (a string).
+    communicating via a semaphore.
 
-    This option causes Cabal to control parallelism by using the specified
-    system semaphore.
+    The expected use is that the system controlling the build (e.g.
+    ``cabal-install``, ``stack``, ``nix`` or ``buck2``) (a jobserver) creates or
+    obtains a semaphore using the ``semaphore-compat`` library. It then passes
+    the semaphore to jobserver clients in order to control the amount of
+    parallelism. This is done by passing the corresponding semaphore identifier
+    to Cabal via the ``--semaphore`` option.
+
+    For more information, see
+    `semaphore-compat <https://hackage.haskell.org/package/semaphore-compat>`_.
 
 .. _setup-haddock:
 
