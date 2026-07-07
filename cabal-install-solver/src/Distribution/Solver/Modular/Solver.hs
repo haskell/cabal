@@ -21,6 +21,7 @@ import Distribution.Compiler (CompilerInfo)
 
 import Distribution.Version
 import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.Stage (Stage (..))
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
@@ -269,5 +270,5 @@ _removeGR = trav go
    dummy =
        DependencyGoal $
        DependencyReason
-           (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
+           (Q (PackagePath Host DefaultNamespace QualToplevel) (mkPackageName "$"))
            M.empty S.empty

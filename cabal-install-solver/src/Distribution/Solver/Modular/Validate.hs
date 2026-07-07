@@ -189,7 +189,7 @@ validate = go
 
     -- What to do for package nodes ...
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
-    goP qpn@(Q _pp pn) (POption i _) r = do
+    goP qpn@(Q (PackagePath s _pns _pq) pn) (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -200,7 +200,7 @@ validate = go
       rComps         <- asks requiredComponents
       qo             <- asks qualifyOptions
       -- obtain dependencies and index-dictated exclusions introduced by the choice
-      let (PInfo deps comps _ mfr) = idx ! pn ! i
+      let (PInfo deps comps _ mfr) = idx ! s ! pn ! i
       -- qualify the deps in the current scope
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
@@ -225,11 +225,11 @@ validate = go
                Left (c, fr)          -> -- We have an inconsistency. We can stop.
                                         return (Fail c fr)
                Right (nppa, rComps') -> -- We have an updated partial assignment for the recursive validation.
-                                        local (\ s -> s { pa = PA nppa pfa psa
-                                                        , saved = nsvd
-                                                        , availableComponents = M.insert qpn comps aComps
-                                                        , requiredComponents = rComps'
-                                                        }) r
+                                        local (\ vs -> vs { pa = PA nppa pfa psa
+                                                          , saved = nsvd
+                                                          , availableComponents = M.insert qpn comps aComps
+                                                          , requiredComponents = rComps'
+                                                          }) r
 
     -- What to do for flag nodes ...
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
