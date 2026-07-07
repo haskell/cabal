@@ -13,7 +13,7 @@ module SetupHooks where
 import Distribution.Compat.Binary
 import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
-  ( interpretSymbolicPathLBI )
+  ( interpretSymbolicPathLBI, mbWorkDirLBI )
 import Distribution.Simple.SetupHooks
 import Distribution.Simple.Utils
 import Distribution.Types.LocalBuildInfo
@@ -65,7 +65,8 @@ pcc (PreConfComponentInputs _lbc pbd _comp) =
             --    recompilation checking.
             emptyBuildInfo
               { cSources = [ autogenDir </> unsafeMakeSymbolicPath "Gen.c"
-                           , autogenDir </> unsafeMakeSymbolicPath "Gen2.c"]
+                           , autogenDir </> unsafeMakeSymbolicPath "Gen2.c"
+                           , autogenDir </> unsafeMakeSymbolicPath "DynDep.c"]
               }
         }
   where
@@ -77,6 +78,7 @@ preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = l
       clbi = targetCLBI tgt
       autogenDir = autogenComponentModulesDir lbi clbi
       buildDir = componentBuildDir lbi clbi
+      mbWorkDir = mbWorkDirLBI lbi
 
       runPpAction1 (PpInput {..}) = do
         let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
@@ -131,6 +133,18 @@ preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = l
         warn verbosity "Running MyPp4"
         rewriteFileEx verbosity (getSymbolicPath genDir </> "GenLib.a") ""
 
+      runDynPpDependencyAction5 :: PpInput -> IO ([Dependency], ())
+      runDynPpDependencyAction5 (PpInput {..}) = do
+        let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
+        warn verbosity "Running DynMyPpDependency5"
+        pure ([FileDependency $ Location sameDirectory (unsafeMakeSymbolicPath "DynDep.c")], ())
+
+      runDynPpAction5 :: PpInput -> () -> IO ()
+      runDynPpAction5 (PpInput {..}) () = do
+        let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
+        warn verbosity "Running DynMyPp5"
+        copyFileToCwd verbosity mbWorkDir genDir (makeRelativePathEx "DynDep.c")
+
       mkRule1 =
         staticRule
           (mkCommand (static Dict) (static runPpAction1) $ PpInput {genDir = autogenDir, ..})
@@ -157,16 +171,24 @@ preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = l
           [ ]
           ( Location autogenDir (unsafeMakeSymbolicPath "GenLib.a") NE.:| [] )
 
+      depsCmd = mkCommand (static Dict) (static runDynPpDependencyAction5) $ PpInput {genDir = autogenDir, ..}
+      genCmd = mkCommand (static Dict) (static runDynPpAction5) $ PpInput {genDir = autogenDir, ..}
+      output = Location autogenDir (unsafeMakeSymbolicPath "DynDep.c")
+      mkRule5 =
+        dynamicRule (static Dict) depsCmd genCmd [] (output NE.:| [])
+
   r1 <- registerRule "MyPP1" mkRule1
   void $ registerRule "MyPP2" (mkRule2 r1)
   void $ registerRule "MyPP3" mkRule3
   void $ registerRule "MyPP4" mkRule4
+  void $ registerRule "DynMyPP5" mkRule5
 
 -- | Input to preprocessor command
 data PpInput
   = PpInput
   { verbosityFlags :: VerbosityFlags
   , genDir         :: SymbolicPath Pkg (Dir Source)
+  , mbWorkDir      :: Maybe (SymbolicPath CWD (Dir Pkg))
   }
   deriving stock ( Show, Generic )
   deriving anyclass Binary
