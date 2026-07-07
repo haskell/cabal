@@ -161,6 +161,7 @@ import Distribution.Solver.Types.SolverPackage
   ( SolverPackage (SolverPackage)
   )
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Stage (always)
 import Distribution.Solver.Types.Variable
 
 import Control.Exception
@@ -886,9 +887,12 @@ resolveDependencies platform comp pkgConfigDB params = do
             verbosity
             (PruneAfterFirstSuccess False)
         )
-        platform
-        comp
-        installedPkgIndex
+        -- Step A: wrap the single (host) toolchain values so every stage sees
+        -- the same platform, compiler and installed-package index. Genuine
+        -- per-stage values arrive with cross-compilation support.
+        (always platform)
+        (always comp)
+        (always installedPkgIndex)
         sourcePkgIndex
         pkgConfigDB
         preferences
