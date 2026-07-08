@@ -199,6 +199,12 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigHcFlavor :: Flag CompilerFlavor
   , projectConfigHcPath :: Flag FilePath
   , projectConfigHcPkg :: Flag FilePath
+  , projectConfigBuildHcFlavor :: Flag CompilerFlavor
+  -- ^ Compiler flavour for the build stage (cross-compilation).
+  , projectConfigBuildHcPath :: Flag FilePath
+  -- ^ Path to the compiler for the build stage (cross-compilation).
+  , projectConfigBuildHcPkg :: Flag FilePath
+  -- ^ Path to the package tool for the build stage (cross-compilation).
   , projectConfigHaddockIndex :: Flag PathTemplate
   , -- Only makes sense for manual mode, not --local mode
     -- too much control!
