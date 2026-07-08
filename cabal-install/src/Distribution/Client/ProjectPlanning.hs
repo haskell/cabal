@@ -191,7 +191,10 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
-import Distribution.System
+
+-- 'buildPlatform' (the compile-time host platform) is hidden: the build-stage
+-- platform now comes from the configured build toolchain, not this constant.
+import Distribution.System hiding (buildPlatform)
 
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentInclude
@@ -836,12 +839,12 @@ rebuildInstallPlan
               , progsearchpath
               )
               $ do
-                compilerEtc <- phaseConfigureCompiler projectConfig
-                _ <- phaseConfigurePrograms projectConfig compilerEtc
+                toolchains <- phaseConfigureCompiler projectConfig
+                _ <- phaseConfigurePrograms projectConfig toolchains
                 (solverPlan, pkgConfigDB, totalIndexState, activeRepos) <-
                   phaseRunSolver
                     projectConfig
-                    compilerEtc
+                    toolchains
                     localPackages
                     (fromMaybe mempty mbInstalledPackages)
                 ( elaboratedPlan
@@ -849,7 +852,7 @@ rebuildInstallPlan
                   ) <-
                   phaseElaboratePlan
                     projectConfig
-                    compilerEtc
+                    toolchains
                     pkgConfigDB
                     solverPlan
                     localPackages
@@ -879,8 +882,8 @@ rebuildInstallPlan
       --
       phaseConfigureCompiler
         :: ProjectConfig
-        -> Rebuild (Compiler, Platform, ProgramDb)
-      phaseConfigureCompiler = configureCompiler verbosity distDirLayout
+        -> Rebuild Toolchains
+      phaseConfigureCompiler = configureToolchains verbosity distDirLayout
 
       -- Configuring other programs.
       --
@@ -896,9 +899,10 @@ rebuildInstallPlan
       --
       phaseConfigurePrograms
         :: ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> Toolchains
         -> Rebuild ()
-      phaseConfigurePrograms projectConfig (_, _, compilerProgDb) = do
+      phaseConfigurePrograms projectConfig toolchains = do
+        let compilerProgDb = toolchainProgramDb (getStage toolchains Host)
         -- Users are allowed to specify program locations independently for
         -- each package (e.g. to use a particular version of a pre-processor
         -- for some packages). However they cannot do this for the compiler
@@ -919,7 +923,7 @@ rebuildInstallPlan
       --
       phaseRunSolver
         :: ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> Toolchains
         -> [PackageSpecifier UnresolvedSourcePackage]
         -> InstalledPackageIndex
         -> Rebuild (SolverInstallPlan, Maybe PkgConfigDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
@@ -931,7 +935,7 @@ rebuildInstallPlan
           , projectConfigLocalPackages
           , projectConfigSpecificPackage
           }
-        (compiler, platform, progdb)
+        toolchains
         localPackages
         installedPackages =
           rerunIfChanged
@@ -971,8 +975,7 @@ rebuildInstallPlan
                   foldProgress logMsg (pure . Left) (pure . Right) $
                     planPackages
                       verbosity
-                      compiler
-                      platform
+                      toolchains
                       solverSettings
                       (installedPackages <> installedPkgIndex)
                       sourcePkgDb
@@ -985,6 +988,14 @@ rebuildInstallPlan
                     dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
+            -- The solver currently plans for the host stage only; the build
+            -- toolchain is carried through for later stage-aware planning.
+            Toolchain
+              { toolchainCompiler = compiler
+              , toolchainPlatform = platform
+              , toolchainProgramDb = progdb
+              } = getStage toolchains Host
+
             corePackageDbs :: PackageDBStackCWD
             corePackageDbs =
               Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigShared)
@@ -1019,7 +1030,7 @@ rebuildInstallPlan
       phaseElaboratePlan
         :: HasCallStack
         => ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> Toolchains
         -> Maybe PkgConfigDb
         -> SolverInstallPlan
         -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
@@ -1035,7 +1046,7 @@ rebuildInstallPlan
           , projectConfigSpecificPackage
           , projectConfigBuildOnly
           }
-        (compiler, platform, compilerProgDb)
+        toolchains
         pkgConfigDB
         solverPlan
         localPackages = do
@@ -1050,16 +1061,20 @@ rebuildInstallPlan
 
           defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
           let installDirs = fmap Cabal.fromFlag $ fmap Flag defaultInstallDirs <> projectConfigInstallDirs projectConfigShared
-          -- Configure the compiler ProgramDb now (once for the entire project),
-          -- to avoid repeatedly doing this once per package.
-          configuredCompilerProgDb <- liftIO $ configureAllKnownPrograms verbosity compilerProgDb
+          -- Configure the ProgramDb of every toolchain now (once for the entire
+          -- project), to avoid repeatedly doing this once per package. The
+          -- build stage is 'Nothing' in a non-cross build, so this configures
+          -- exactly one program database there.
+          toolchains' <-
+            liftIO $
+              traverse
+                (\tc -> (\progdb -> tc{toolchainProgramDb = progdb}) <$> configureAllKnownPrograms verbosity (toolchainProgramDb tc))
+                toolchains
           (elaboratedPlan, elaboratedShared) <-
             liftIO . runLogProgress verbosity $
               elaborateInstallPlan
                 verbosity
-                platform
-                compiler
-                configuredCompilerProgDb
+                toolchains'
                 pkgConfigDB
                 distDirLayout
                 cabalStoreDirLayout
@@ -1080,6 +1095,9 @@ rebuildInstallPlan
           liftIO $ debugNoWrap verbosity (showElaboratedInstallPlan instantiatedPlan)
           return (instantiatedPlan, elaboratedShared)
           where
+            -- Host-stage compiler, used to compute the install dirs.
+            compiler = toolchainCompiler (getStage toolchains Host)
+
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
               projectConfigWithSolverRepoContext
@@ -1454,8 +1472,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 
 planPackages
   :: Verbosity
-  -> Compiler
-  -> Platform
+  -> Toolchains
   -> SolverSettings
   -> InstalledPackageIndex
   -> SourcePackageDb
@@ -1465,8 +1482,7 @@ planPackages
   -> Progress String String SolverInstallPlan
 planPackages
   verbosity
-  comp
-  platform
+  toolchains
   SolverSettings{..}
   installedPkgIndex
   sourcePkgDb
@@ -1479,6 +1495,13 @@ planPackages
       pkgConfigDB
       resolverParams
     where
+      -- The solver plans for the host stage; the build toolchain is available
+      -- via @toolchains@ for later stage-aware planning (e.g. setup deps).
+      Toolchain
+        { toolchainCompiler = comp
+        , toolchainPlatform = platform
+        } = getStage toolchains Host
+
       -- TODO: [nice to have] disable multiple instances restriction in
       -- the solver, but then make sure we can cope with that in the
       -- output.
@@ -1771,10 +1794,10 @@ planPackages
 elaborateInstallPlan
   :: HasCallStack
   => Verbosity
-  -> Platform
-  -> Compiler
-  -> ProgramDb
-  -- ^ __Configured__ compiler program database (ghc, ghc-pkg, haddock, ld, etc)
+  -> Toolchains
+  -- ^ The per-stage toolchains. Its 'Host' stage supplies the platform,
+  -- compiler and __configured__ compiler program database (ghc, ghc-pkg,
+  -- haddock, ld, etc) used to elaborate the plan.
   -> Maybe PkgConfigDb
   -> DistDirLayout
   -> StoreDirLayout
@@ -1789,9 +1812,7 @@ elaborateInstallPlan
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan
   verbosity
-  platform
-  compiler
-  compilerProgDb
+  toolchains
   pkgConfigDB
   distDirLayout@DistDirLayout{..}
   storeDirLayout@StoreDirLayout{storePackageDBStack}
@@ -1806,11 +1827,28 @@ elaborateInstallPlan
     x <- elaboratedInstallPlan
     return (x, elaboratedSharedConfig)
     where
+      -- The plan is elaborated against the host toolchain; both toolchains are
+      -- flattened into the scalar 'ElaboratedSharedConfig' fields below.
+      Toolchain
+        { toolchainCompiler = compiler
+        , toolchainPlatform = platform
+        , toolchainProgramDb = compilerProgDb
+        } = getStage toolchains Host
+
+      Toolchain
+        { toolchainCompiler = buildCompiler
+        , toolchainPlatform = buildPlatform
+        , toolchainProgramDb = buildProgDb
+        } = getStage toolchains Build
+
       elaboratedSharedConfig =
         ElaboratedSharedConfig
           { pkgConfigPlatform = platform
           , pkgConfigCompiler = compiler
           , pkgConfigCompilerProgs = compilerProgDb
+          , pkgConfigBuildPlatform = buildPlatform
+          , pkgConfigBuildCompiler = buildCompiler
+          , pkgConfigBuildProgs = buildProgDb
           , pkgConfigReplOptions = mempty
           }
 

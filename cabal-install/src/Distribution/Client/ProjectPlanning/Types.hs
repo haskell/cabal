@@ -188,6 +188,15 @@ data ElaboratedSharedConfig = ElaboratedSharedConfig
   -- (e.g. ghc & ghc-pkg) plus associated tools (hsc2hs, haddock, hpc,
   -- runghc) and toolchain programs (ar, ld, strip). Once constructed,
   -- only the 'configuredPrograms' are used.
+  , pkgConfigBuildPlatform :: Platform
+  -- ^ Platform of the /build/ toolchain (the machine running the build). Equal
+  -- to 'pkgConfigPlatform' unless cross-compiling.
+  , pkgConfigBuildCompiler :: Compiler
+  -- ^ Compiler of the /build/ toolchain, used for build-tools and custom
+  -- @Setup.hs@ scripts. Equal to 'pkgConfigCompiler' unless cross-compiling.
+  , pkgConfigBuildProgs :: ProgramDb
+  -- ^ Program database of the /build/ toolchain. Equal to
+  -- 'pkgConfigCompilerProgs' unless cross-compiling.
   , pkgConfigReplOptions :: ReplOptions
   }
   deriving (Show, Generic)
