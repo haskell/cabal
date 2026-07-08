@@ -91,6 +91,7 @@ import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
+import Distribution.Solver.Types.Stage (always)
 import qualified Distribution.Solver.Types.PackageIndex as CI.PackageIndex
 import qualified Distribution.Solver.Types.PackagePath as P
 import qualified Distribution.Solver.Types.PkgConfigDb as PC
@@ -828,7 +829,7 @@ exResolve
   prefs
   verbosity
   enableAllTests =
-    resolveDependencies C.buildPlatform compiler pkgConfigDb params
+    resolveDependencies (always (compiler, C.buildPlatform)) (always pkgConfigDb) params
     where
       defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
       compiler =
