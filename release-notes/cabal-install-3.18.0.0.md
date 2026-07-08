@@ -56,7 +56,7 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
   packages.  Certain packages like `ghc` and `ghc-internal` still cannot be
   reinstalled.
 
-- Detect non-cyclical duplicate project imports [#9562](https://github.com/haskell/cabal/issues/9562) [#9578](https://github.com/haskell/cabal/pull/9578) [#9933](https://github.com/haskell/cabal/pull/9933)
+- Detect non-cyclical duplicate project imports [#9562](https://github.com/haskell/cabal/issues/9562) [#9578](https://github.com/haskell/cabal/pull/9578) [#10933](https://github.com/haskell/cabal/pull/10933)
 
   Detect and report on duplicate imports that are non-cyclical. Give more detail
   when reporting duplicate imports.
