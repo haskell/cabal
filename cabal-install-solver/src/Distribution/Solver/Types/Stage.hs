@@ -7,6 +7,7 @@ module Distribution.Solver.Types.Stage
   , prevStage
   , Staged (..)
   , getStage
+  , overStage
   , always
   , isCross
   , activeStages
@@ -72,6 +73,13 @@ instance NFData a => NFData (Staged a)
 getStage :: Staged a -> Stage -> a
 getStage s Host = onHost s
 getStage s Build = fromMaybe (onHost s) (onBuild s)
+
+-- | Apply a function to the value for a given 'Stage', leaving the other
+-- stage untouched. Editing the build stage of a non-cross build is a no-op
+-- (there is no separate value to edit).
+overStage :: Stage -> (a -> a) -> Staged a -> Staged a
+overStage Host f s = s{onHost = f (onHost s)}
+overStage Build f s = s{onBuild = fmap f (onBuild s)}
 
 -- | The same value for every stage — the non-cross case (no separate build
 -- stage).
