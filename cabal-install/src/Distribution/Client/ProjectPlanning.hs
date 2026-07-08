@@ -144,6 +144,7 @@ import Distribution.Client.Toolchain
   , Staged (..)
   , Toolchain (..)
   , Toolchains
+  , always
   , getStage
   )
 import Distribution.Client.Types
@@ -1495,9 +1496,8 @@ planPackages
   localPackages
   pkgStanzasEnable =
     resolveDependencies
-      platform
-      (compilerInfo comp)
-      pkgConfigDB
+      (fmap (\tc -> (compilerInfo (toolchainCompiler tc), toolchainPlatform tc)) toolchains)
+      (always pkgConfigDB)
       resolverParams
     where
       -- The solver plans for the host stage; the build toolchain is available
