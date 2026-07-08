@@ -161,7 +161,12 @@ import Distribution.Solver.Types.SolverPackage
   ( SolverPackage (SolverPackage)
   )
 import Distribution.Solver.Types.SourcePackage
-import Distribution.Solver.Types.Stage (always)
+import Distribution.Solver.Types.Stage
+  ( Stage (..)
+  , Staged
+  , always
+  , getStage
+  )
 import Distribution.Solver.Types.Variable
 
 import Control.Exception
@@ -860,12 +865,11 @@ runSolver = modularResolver
 -- a 'Progress' structure that can be unfolded to provide progress information,
 -- logging messages and the final result or an error.
 resolveDependencies
-  :: Platform
-  -> CompilerInfo
-  -> Maybe PkgConfigDb
+  :: Staged (CompilerInfo, Platform)
+  -> Staged (Maybe PkgConfigDb)
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
-resolveDependencies platform comp pkgConfigDB params = do
+resolveDependencies toolchains pkgConfigDbs params = do
   step (showDepResolverParams finalparams)
   pkgs <-
     formatProgress $
@@ -887,19 +891,18 @@ resolveDependencies platform comp pkgConfigDB params = do
             verbosity
             (PruneAfterFirstSuccess False)
         )
-        -- Step A: wrap the single (host) toolchain values so every stage sees
-        -- the same platform, compiler and installed-package index. Genuine
-        -- per-stage values arrive with cross-compilation support.
-        (always platform)
-        (always comp)
+        toolchains
+        pkgConfigDbs
+        -- Part B.1: the installed index is still held single-stage in the
+        -- resolver params; B.2 supplies it per stage.
         (always installedPkgIndex)
         sourcePkgIndex
-        pkgConfigDB
         preferences
         constraints
         targets
   validateSolverResult platform comp indGoals pkgs
   where
+    (comp, platform) = getStage toolchains Host
     finalparams@( DepResolverParams
                     targets
                     constraints
