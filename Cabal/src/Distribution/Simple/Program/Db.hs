@@ -29,34 +29,34 @@ module Distribution.Simple.Program.Db
   , addKnownProgram
   , addKnownPrograms
   , clearUnconfiguredPrograms
-  , prependProgramSearchPath
-  , prependProgramSearchPathNoLogging
-  , lookupKnownProgram
-  , knownPrograms
-  , getProgramSearchPath
-  , setProgramSearchPath
-  , modifyProgramSearchPath
-  , userSpecifyPath
-  , userSpecifyPaths
-  , userMaybeSpecifyPath
-  , userSpecifyArgs
-  , userSpecifyArgss
-  , userSpecifiedArgs
-  , lookupProgram
-  , lookupProgramByName
-  , updateProgram
+  , configureAllKnownPrograms
   , configuredPrograms
-
-    -- ** Query and manipulate the program db
   , configureProgram
   , configureUnconfiguredProgram
-  , configureAllKnownPrograms
-  , unconfigureProgram
+  , getProgramSearchPath
+  , knownPrograms
+  , lookupKnownProgram
+  , lookupProgram
+  , lookupProgramByName
   , lookupProgramVersion
+  , lookupAndConfigureProgramVersion
+  , lookupConfiguredProgramVersion
+  , modifyProgramSearchPath
+  , needProgram
+  , prependProgramSearchPath
+  , prependProgramSearchPathNoLogging
   , reconfigurePrograms
   , requireProgram
   , requireProgramVersion
-  , needProgram
+  , setProgramSearchPath
+  , unconfigureProgram
+  , updateProgram
+  , userMaybeSpecifyPath
+  , userSpecifiedArgs
+  , userSpecifyArgs
+  , userSpecifyArgss
+  , userSpecifyPath
+  , userSpecifyPaths
 
     -- * Internal functions
   , UnconfiguredProgs
@@ -571,6 +571,19 @@ needProgram verbosity prog progdb = do
     Nothing -> return Nothing
     Just configuredProg -> return (Just (configuredProg, progdb'))
 
+{-# DEPRECATED lookupProgramVersion "Use lookupAndConfigureProgramVersion instead" #-}
+
+-- | Check that a program is configured and available to be run.
+--
+-- Alias for 'lookupConfiguredProgramVersion'
+lookupProgramVersion
+  :: Verbosity
+  -> Program
+  -> VersionRange
+  -> ProgramDb
+  -> IO (Either CabalException (ConfiguredProgram, Version, ProgramDb))
+lookupProgramVersion = lookupAndConfigureProgramVersion
+
 -- | Check that a program is configured and available to be run.
 --
 -- Additionally check that the program version number is suitable and return
@@ -580,13 +593,13 @@ needProgram verbosity prog progdb = do
 -- It returns the configured program, its version number and a possibly updated
 -- 'ProgramDb'. If the program could not be configured or the version is
 -- unsuitable, it returns an error value.
-lookupProgramVersion
+lookupAndConfigureProgramVersion
   :: Verbosity
   -> Program
   -> VersionRange
   -> ProgramDb
   -> IO (Either CabalException (ConfiguredProgram, Version, ProgramDb))
-lookupProgramVersion verbosity prog range programDb = do
+lookupAndConfigureProgramVersion verbosity prog range programDb = do
   -- If it's not already been configured, try to configure it now
   programDb' <- case lookupProgram prog programDb of
     Nothing -> configureProgram verbosity prog programDb
@@ -604,7 +617,7 @@ lookupProgramVersion verbosity prog range programDb = do
         Nothing ->
           return $! Left $ UnknownVersionDb (programName prog) range (locationPath location)
 
--- | Like 'lookupProgramVersion', but raises an exception in case of error
+-- | Like 'lookupAndConfigureProgramVersion', but raises an exception in case of error
 -- instead of returning 'Left errMsg'.
 requireProgramVersion
   :: Verbosity
@@ -615,3 +628,34 @@ requireProgramVersion
 requireProgramVersion verbosity prog range programDb =
   either (dieWithException verbosity) return
     =<< lookupProgramVersion verbosity prog range programDb
+
+-- | Check that a program is configured and available to be run.
+--
+-- Additionally check that the program version number is suitable and return
+-- it. For example you could require 'AnyVersion' or @'orLaterVersion'
+-- ('Version' [1,0] [])@
+--
+-- It returns the configured program and its version number.
+-- If the program has not been configured or the version is unsuitable, it
+-- returns an error value.
+--
+-- Unlike 'lookupAndConfigureProgramVersion', this function will not configure
+-- a program that hasn't been configured yet, and it will not modify the
+-- program database.
+lookupConfiguredProgramVersion
+  :: Program
+  -> VersionRange
+  -> ProgramDb
+  -> Either CabalException (ConfiguredProgram, Version)
+lookupConfiguredProgramVersion prog range programDb = do
+  case lookupProgram prog programDb of
+    Nothing -> Left $ NoProgramFound (programName prog) range
+    Just configuredProg@ConfiguredProgram{programLocation = location} ->
+      case programVersion configuredProg of
+        Just version
+          | withinRange version range ->
+              return (configuredProg, version)
+          | otherwise ->
+              Left $ BadVersionDb (programName prog) version range (locationPath location)
+        Nothing ->
+          Left $ UnknownVersionDb (programName prog) range (locationPath location)
