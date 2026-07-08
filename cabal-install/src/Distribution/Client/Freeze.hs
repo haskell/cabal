@@ -48,11 +48,11 @@ import Distribution.Client.Targets
 import Distribution.Client.Types
 
 import Distribution.Solver.Types.ConstraintSource
-import Distribution.Solver.Types.Stage (always)
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.SolverId
+import Distribution.Solver.Types.Stage (always)
 
 import Distribution.Client.Errors
 import Distribution.Package
@@ -246,7 +246,7 @@ planPackages
                in LabeledPackageConstraint pc ConstraintSourceFreeze
             | pkgSpecifier <- pkgSpecifiers
             ]
-          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+          $ standardInstallPolicy (always installedPkgIndex) sourcePkgDb pkgSpecifiers
 
       logMsg message rest = debug verbosity message >> rest
 

@@ -164,8 +164,8 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Stage
   ( Stage (..)
   , Staged
-  , always
   , getStage
+  , overStage
   )
 import Distribution.Solver.Types.Variable
 
@@ -193,7 +193,12 @@ data DepResolverParams = DepResolverParams
   , depResolverConstraints :: [LabeledPackageConstraint]
   , depResolverPreferences :: [PackagePreference]
   , depResolverPreferenceDefault :: PackagesPreferenceDefault
-  , depResolverInstalledPkgIndex :: InstalledPackageIndex
+  , depResolverInstalledPkgIndex :: Staged InstalledPackageIndex
+  -- ^ The installed-package index the solver works against, per build
+  -- 'Distribution.Solver.Types.Stage.Stage'. Policies that hide installed
+  -- packages so they get rebuilt (see 'hideInstalledPackagesAllVersions',
+  -- 'reinstallTargets') edit the host stage only; the build stage keeps its
+  -- installed packages (they are reused from the build compiler, not rebuilt).
   , depResolverSourcePkgIndex :: PackageIndex.PackageIndex UnresolvedSourcePackage
   , depResolverReorderGoals :: ReorderGoals
   , depResolverCountConflicts :: CountConflicts
@@ -289,7 +294,7 @@ showPackagePreference (PackageStanzasPreference pn st) =
   prettyShow pn ++ " " ++ show st
 
 basicDepResolverParams
-  :: InstalledPackageIndex
+  :: Staged InstalledPackageIndex
   -> PackageIndex.PackageIndex UnresolvedSourcePackage
   -> DepResolverParams
 basicDepResolverParams installedPkgIndex sourcePkgIndex =
@@ -532,10 +537,10 @@ hideInstalledPackagesSpecificBySourcePackageId pkgids params =
   -- TODO: this should work using exclude constraints instead
   params
     { depResolverInstalledPkgIndex =
-        foldl'
-          (flip InstalledPackageIndex.deleteSourcePackageId)
+        overStage
+          Host
+          (\idx -> foldl' (flip InstalledPackageIndex.deleteSourcePackageId) idx pkgids)
           (depResolverInstalledPkgIndex params)
-          pkgids
     }
 
 hideInstalledPackagesAllVersions
@@ -546,10 +551,10 @@ hideInstalledPackagesAllVersions pkgnames params =
   -- TODO: this should work using exclude constraints instead
   params
     { depResolverInstalledPkgIndex =
-        foldl'
-          (flip InstalledPackageIndex.deletePackageName)
+        overStage
+          Host
+          (\idx -> foldl' (flip InstalledPackageIndex.deletePackageName) idx pkgnames)
           (depResolverInstalledPkgIndex params)
-          pkgnames
     }
 
 -- | Remove upper bounds in dependencies using the policy specified by the
@@ -783,7 +788,7 @@ reinstallTargets params =
 
 -- | A basic solver policy on which all others are built.
 basicInstallPolicy
-  :: InstalledPackageIndex
+  :: Staged InstalledPackageIndex
   -> SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
@@ -812,7 +817,7 @@ basicInstallPolicy
 --
 -- It extends the 'basicInstallPolicy' with a policy on setup deps.
 standardInstallPolicy
-  :: InstalledPackageIndex
+  :: Staged InstalledPackageIndex
   -> SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
@@ -893,9 +898,7 @@ resolveDependencies toolchains pkgConfigDbs params = do
         )
         toolchains
         pkgConfigDbs
-        -- Part B.1: the installed index is still held single-stage in the
-        -- resolver params; B.2 supplies it per stage.
-        (always installedPkgIndex)
+        installedPkgIndex
         sourcePkgIndex
         preferences
         constraints
@@ -1218,8 +1221,10 @@ configuredPackageProblems
 -- It is suitable for tasks such as selecting packages to download for user
 -- inspection. It is not suitable for selecting packages to install.
 --
--- Note: if no installed package index is available, it is OK to pass 'mempty'.
--- It simply means preferences for installed packages will be ignored.
+-- Note: if no installed package index is available, it is OK to build the
+-- params with an empty one (e.g. @'always' 'mempty'@). It simply means
+-- preferences for installed packages will be ignored. Only the host stage of
+-- the params' installed index is consulted here.
 resolveWithoutDependencies
   :: DepResolverParams
   -> Either [ResolveNoDepsError] [UnresolvedSourcePackage]
@@ -1279,7 +1284,7 @@ resolveWithoutDependencies
               not
                 . null
                 . InstalledPackageIndex.lookupSourcePackageId
-                  installedPkgIndex
+                  (getStage installedPkgIndex Host)
                 . packageId
           versionPref :: Package a => a -> Int
           versionPref pkg =
