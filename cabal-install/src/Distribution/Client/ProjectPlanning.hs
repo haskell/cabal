@@ -69,6 +69,8 @@ module Distribution.Client.ProjectPlanning
   , pkgHasEphemeralBuildTargets
   , elabBuildTargetWholeComponents
   , configureCompiler
+  , configureToolchains
+  , sameCompiler
 
     -- * Setup.hs CLI flags for building
   , setupHsScriptOptions
@@ -137,6 +139,13 @@ import Distribution.Client.Setup hiding (cabalVersion, packageName)
 import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
 import Distribution.Client.Targets (userToPackageConstraint)
+import Distribution.Client.Toolchain
+  ( Stage (..)
+  , Staged (..)
+  , Toolchain (..)
+  , Toolchains
+  , getStage
+  )
 import Distribution.Client.Types
 import Distribution.Client.Utils (concatMapM, duplicatesBy, incVersion)
 
@@ -515,22 +524,41 @@ rebuildProjectConfig
                   $ projectConfigProvenance projectConfig
             ]
 
--- | Configure the compiler. This results in a program database that contains
--- the **configured** compiler (which is stored in a cache)
--- and **unconfigured** related programs (cannot be cached, as unconfigured).
---
--- This will be re-run when the compiler or @hc-pkg@ change, and when the
--- program search path or @extra-prog-path@ or @program-locations@ change.
---
--- In the case of @GHC@, we configure @ghc@ and @ghc-pkg@, and provide
--- unconfigured attendant programs such as @hsc2hs@, @haddock@ and toolchain
--- programs such as @ar@, @ld@. See 'Distribution.Simple.GHC.configure'.
+-- | Backwards-compatible view of 'configureToolchains' that returns just the
+-- host toolchain as a bare @(Compiler, Platform, ProgramDb)@ triple. Existing
+-- callers that don't (yet) care about the build stage use this.
 configureCompiler
   :: Verbosity
   -> DistDirLayout
   -> ProjectConfig
   -> Rebuild (Compiler, Platform, ProgramDb)
-configureCompiler
+configureCompiler verbosity distDirLayout projectConfig =
+  toTriple . flip getStage Host <$> configureToolchains verbosity distDirLayout projectConfig
+  where
+    toTriple Toolchain{toolchainCompiler, toolchainPlatform, toolchainProgramDb} =
+      (toolchainCompiler, toolchainPlatform, toolchainProgramDb)
+
+-- | Configure the toolchain(s) the plan is built against, one per build
+-- 'Stage': the host toolchain (from @--with-compiler@ etc.) and, under
+-- cross-compilation, the build toolchain (from @--with-build-compiler@ etc.).
+-- When no build compiler is requested the build stage /is/ the host stage and
+-- the host toolchain is reused directly.
+--
+-- Each stage results in a program database that contains the __configured__
+-- compiler (which is stored in a cache) and __unconfigured__ related programs
+-- (cannot be cached, as unconfigured). A stage is re-configured when its
+-- compiler or @hc-pkg@ change, and when the program search path or
+-- @extra-prog-path@ or @program-locations@ change.
+--
+-- In the case of @GHC@, we configure @ghc@ and @ghc-pkg@, and provide
+-- unconfigured attendant programs such as @hsc2hs@, @haddock@ and toolchain
+-- programs such as @ar@, @ld@. See 'Distribution.Simple.GHC.configure'.
+configureToolchains
+  :: Verbosity
+  -> DistDirLayout
+  -> ProjectConfig
+  -> Rebuild Toolchains
+configureToolchains
   verbosity
   DistDirLayout
     { distProjectCacheFile
@@ -541,6 +569,9 @@ configureCompiler
         { projectConfigHcFlavor
         , projectConfigHcPath
         , projectConfigHcPkg
+        , projectConfigBuildHcFlavor
+        , projectConfigBuildHcPath
+        , projectConfigBuildHcPkg
         , projectConfigProgPathExtra
         }
     , projectConfigAllPackages =
@@ -553,79 +584,151 @@ configureCompiler
         , packageConfigProgramPathExtra
         }
     } = do
-    let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile "compiler"
-        userProgramPaths =
+    progsearchpath <- liftIO getSystemSearchPath
+
+    -- User-supplied program locations (the global and the local
+    -- @program-locations@ sections), applied to both stages: the settings are
+    -- project-wide and there is no per-stage variant of them.
+    let userProgramPaths =
           Map.toList
             . getMapLast
             $ packageConfigProgramPathsGlobal <> packageConfigProgramPathsLocal
         userPaths :: ProgramDb -> ProgramDb
         userPaths = userSpecifyPaths userProgramPaths
 
-    progsearchpath <- liftIO getSystemSearchPath
+    -- Configure the compiler for a single stage, caching the result under the
+    -- given project-cache file. Shared program-path settings apply to both
+    -- stages; only the compiler flavour/path/hc-pkg differ.
+    let configureStage cacheName hcFlavor hcPath hcPkg = do
+          let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile cacheName
+          (hc, plat, hcProgDb) <-
+            rerunIfChanged
+              verbosity
+              fileMonitorCompiler
+              ( hcFlavor
+              , hcPath
+              , hcPkg
+              , progsearchpath
+              , packageConfigProgramPathsGlobal
+              , packageConfigProgramPathsLocal
+              , packageConfigProgramPathExtra
+              )
+              $ do
+                liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
+                progdb <- liftIO $ do
+                  -- Add paths in the global config then paths in the local config
+                  let addPaths pathList = prependProgramSearchPath verbosity (fromNubList pathList) []
+                  let globalPaths :: IO ProgramDb = addPaths projectConfigProgPathExtra defaultProgramDb
+                  let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtra
+                  (globalPaths >>= localPaths) <&> userPaths
+                result@(_, _, progdb') <-
+                  liftIO $
+                    Cabal.configCompiler
+                      hcFlavor
+                      hcPath
+                      progdb
+                      verbosity
+                -- Note that we added the user-supplied program locations and args
+                -- for /all/ programs, not just those for the compiler prog and
+                -- compiler-related utils. In principle we don't know which programs
+                -- the compiler will configure (and it does vary between compilers).
+                -- We do know however that the compiler will only configure the
+                -- programs it cares about, and those are the ones we monitor here.
+                monitorFiles (programsMonitorFiles progdb')
+                return result
 
-    (hc, plat, hcProgDb) <-
-      rerunIfChanged
-        verbosity
-        fileMonitorCompiler
-        ( hcFlavor
-        , hcPath
-        , hcPkg
-        , progsearchpath
-        , packageConfigProgramPathsGlobal
-        , packageConfigProgramPathsLocal
-        , packageConfigProgramPathExtra
-        )
-        $ do
-          liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-          progdb <- liftIO $ do
-            -- Add paths in the global config then paths in the local config
-            let addPaths pathList = prependProgramSearchPath verbosity (fromNubList pathList) []
-            let globalPaths :: IO ProgramDb = addPaths projectConfigProgPathExtra defaultProgramDb
-            let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtra
-            (globalPaths >>= localPaths) <&> userPaths
-          result@(_, _, progdb') <-
-            liftIO $
-              Cabal.configCompiler
-                hcFlavor
-                hcPath
-                progdb
-                verbosity
-          -- Note that we added the user-supplied program locations and args
-          -- for /all/ programs, not just those for the compiler prog and
-          -- compiler-related utils. In principle we don't know which programs
-          -- the compiler will configure (and it does vary between compilers).
-          -- We do know however that the compiler will only configure the
-          -- programs it cares about, and those are the ones we monitor here.
-          monitorFiles (programsMonitorFiles progdb')
-          return result
+          -- Now, **outside** of the caching logic of 'rerunIfChanged':
+          --
+          --  1. Call 'clearUnconfiguredPrograms' to ensure the consistency between
+          --     the first run (in-memory) and when deserialising from cache.
+          --  2. Add on auxiliary unconfigured programs to the ProgramDb
+          --     (e.g. hsc2hs, haddock, ar, ld...).
+          --
+          -- See Note [Caching the result of configuring the compiler]
+          finalProgDb <-
+            liftIO $ do
+              progDb <-
+                Cabal.configCompilerProgDb
+                  verbosity
+                  hc
+                  (clearUnconfiguredPrograms hcProgDb)
+                  hcPkg
+              -- Re-apply the user-supplied program locations: 'configCompilerProgDb'
+              -- drops the unconfigured programs (along with any user-specified
+              -- locations) and re-adds the toolchain programs (gcc, ar, ld, ...)
+              -- without them. Without this, @--with-gcc@ and the @program-locations@
+              -- section would have no effect (see #11881).
+              return $ userPaths progDb
+          return
+            Toolchain
+              { toolchainCompiler = hc
+              , toolchainPlatform = plat
+              , toolchainProgramDb = finalProgDb
+              }
 
-    -- Now, **outside** of the caching logic of 'rerunIfChanged':
+    -- The host stage keeps the cache file name the single compiler always
+    -- had, so an existing dist-newstyle is not reconfigured on upgrade.
+    hostToolchain <-
+      configureStage
+        "compiler"
+        (flagToMaybe projectConfigHcFlavor)
+        (flagToMaybe projectConfigHcPath)
+        (flagToMaybe projectConfigHcPkg)
+
+    -- A distinct build toolchain exists only when a build-stage compiler is
+    -- requested AND it turns out to be a different compiler from the host's.
+    -- Otherwise there is no separate build stage ('onBuild' is 'Nothing'): it
+    -- falls back to the host stage. This 'Nothing'\/'Just' is the single source
+    -- of truth for whether the build is cross-compiling.
     --
-    --  1. Call 'clearUnconfiguredPrograms' to ensure the consistency between
-    --     the first run (in-memory) and when deserialising from cache.
-    --  2. Add on auxiliary unconfigured programs to the ProgramDb
-    --     (e.g. hsc2hs, haddock, ar, ld...).
+    -- When a build compiler is requested, the flavour and path fall back to the
+    -- host's (the build compiler is the same /kind/ of compiler, and the flavour
+    -- is required — it is not inferred from the path). The @hc-pkg@ does NOT fall
+    -- back: it is discovered next to the build compiler, so inheriting the host's
+    -- @hc-pkg@ would pair it with the wrong compiler.
     --
-    -- See Note [Caching the result of configuring the compiler]
-    finalProgDb <-
-      liftIO $ do
-        progDb <-
-          Cabal.configCompilerProgDb
-            verbosity
-            hc
-            (clearUnconfiguredPrograms hcProgDb)
-            hcPkg
-        -- Re-apply the user-supplied program locations: 'configCompilerProgDb'
-        -- drops the unconfigured programs (along with any user-specified
-        -- locations) and re-adds the toolchain programs (gcc, ar, ld, ...)
-        -- without them. Without this, @--with-gcc@ and the @program-locations@
-        -- section would have no effect (see #11881).
-        return $ userPaths progDb
-    return (hc, plat, finalProgDb)
-    where
-      hcFlavor = flagToMaybe projectConfigHcFlavor
-      hcPath = flagToMaybe projectConfigHcPath
-      hcPkg = flagToMaybe projectConfigHcPkg
+    -- The comparison is made on the /configured/ compilers, not on the options:
+    -- a build system may pass @--with-build-compiler@ explicitly equal to
+    -- @--with-compiler@ (GHC's own staged bootstrap does this for its non-cross
+    -- stage1), or spell the same compiler two ways (@ghc@ vs its absolute
+    -- path). Treating that as cross-compiling would solve, elaborate and build
+    -- every shared dependency twice, under two indistinguishable 'UnitId's:
+    -- 'sameCompiler' compares exactly the compiler properties that go into a
+    -- unit id, so two toolchains it identifies would have produced identical
+    -- unit ids.
+    let buildHcFlavor = flagToMaybe projectConfigBuildHcFlavor
+        buildHcPath = flagToMaybe projectConfigBuildHcPath
+        buildHcPkg = flagToMaybe projectConfigBuildHcPkg
+    buildToolchain <-
+      if isJust buildHcFlavor || isJust buildHcPath || isJust buildHcPkg
+        then do
+          candidate <-
+            configureStage
+              "build-compiler"
+              (buildHcFlavor <|> flagToMaybe projectConfigHcFlavor)
+              (buildHcPath <|> flagToMaybe projectConfigHcPath)
+              buildHcPkg
+          return $
+            if sameCompiler hostToolchain candidate
+              then Nothing
+              else Just candidate
+        else pure Nothing
+
+    return Staged{onHost = hostToolchain, onBuild = buildToolchain}
+
+-- | Do two toolchains build the same thing the same way?
+--
+-- This compares exactly the toolchain properties that go into a 'UnitId': the
+-- compiler's id and ABI tag, and the platform it targets. Two toolchains this
+-- identifies would produce identical unit ids, so treating them as two stages
+-- would solve, elaborate and build every shared dependency twice under
+-- indistinguishable keys. It deliberately ignores the 'ProgramDb', so the same
+-- compiler named two ways (@ghc@ and its absolute path) compares equal.
+sameCompiler :: Toolchain -> Toolchain -> Bool
+sameCompiler a b =
+  compilerId (toolchainCompiler a) == compilerId (toolchainCompiler b)
+    && compilerAbiTag (toolchainCompiler a) == compilerAbiTag (toolchainCompiler b)
+    && toolchainPlatform a == toolchainPlatform b
 
 {- Note [Caching the result of configuring the compiler]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
