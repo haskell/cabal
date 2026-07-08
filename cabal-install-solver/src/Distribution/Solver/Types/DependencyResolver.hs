@@ -32,17 +32,16 @@ import Distribution.Solver.Types.Stage ( Staged )
 -- solving the package dependency problem and we want to make it easy to swap
 -- in alternatives.
 --
--- The platform, compiler and installed-package index are provided per build
--- 'Distribution.Solver.Types.Stage.Stage' (as 'Staged'), so the solver can
--- target a different toolchain for the build machine and the host machine when
--- cross-compiling. In an ordinary build both stages hold the same value. The
--- source package index is shared across stages.
+-- The compiler+platform, the pkg-config database and the installed-package
+-- index are provided per build 'Distribution.Solver.Types.Stage.Stage' (as
+-- 'Staged'), so the solver can target a different toolchain for the build
+-- machine and the host machine when cross-compiling. In an ordinary build both
+-- stages hold the same value. The source package index is shared across stages.
 --
-type DependencyResolver loc = Staged Platform
-                           -> Staged CompilerInfo
+type DependencyResolver loc = Staged (CompilerInfo, Platform)
+                           -> Staged (Maybe PkgConfigDb)
                            -> Staged InstalledPackageIndex
                            -> PackageIndex (SourcePackage loc)
-                           -> Maybe PkgConfigDb
                            -> (PackageName -> PackagePreferences)
                            -> [LabeledPackageConstraint]
                            -> Set PackageName

@@ -48,6 +48,7 @@ import Distribution.Client.Targets
 import Distribution.Client.Types
 
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.Stage (always)
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
@@ -213,9 +214,8 @@ planPackages
     installPlan <-
       foldProgress logMsg (dieWithException verbosity . FreezeException) return $
         resolveDependencies
-          platform
-          (compilerInfo comp)
-          pkgConfigDb
+          (always (compilerInfo comp, platform))
+          (always pkgConfigDb)
           resolverParams
 
     return $ pruneInstallPlan installPlan pkgSpecifiers
