@@ -79,15 +79,15 @@ import Distribution.Solver.Modular.Message ( renderSummarizedMessage )
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
-modularResolver sc platforms cinfos iidxs sidx pkgConfigDB pprefs pcs pns =
+modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
   uncurry postprocess <$> -- convert install plan
   solve' sc cinfo idx pkgConfigDB pprefs gcs pns
     where
-      -- Step A: only the host stage is consumed for now; Step B will fold
-      -- 'convPIs' over all stages to build a per-stage index.
-      Platform arch os = getStage platforms Host
-      cinfo  = getStage cinfos Host
-      iidx   = getStage iidxs Host
+      -- Part B.1: the interface is per-stage, but the internals still consume
+      -- the host stage only; B.2 makes 'convPIs'/'solve'' genuinely per-stage.
+      (cinfo, Platform arch os) = getStage toolchains Host
+      pkgConfigDB = getStage pkgConfigDbs Host
+      iidx = getStage iidxs Host
       -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs os arch cinfo gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx
       -- Constraints have to be converted into a finite map indexed by PN.

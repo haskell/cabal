@@ -57,6 +57,7 @@ import Distribution.Client.Types as Source
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.Stage (always)
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageIndex
@@ -472,7 +473,7 @@ planLocalPackage
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-    return (resolveDependencies platform (compilerInfo comp) pkgConfigDb resolverParams)
+    return (resolveDependencies (always (compilerInfo comp, platform)) (always pkgConfigDb) resolverParams)
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ReadyPackage'. In particular the
