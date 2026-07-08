@@ -121,6 +121,29 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
 
 ### Other changes
 
+- Fix monitoring of project file imports [#12077](https://github.com/haskell/cabal/pull/12077)
+
+    Watch for changes in all project files, the root `cabal.project` and all local
+    files it imports. We don't monitor remote URI imports.
+
+- Add info level logging of project file monitoring [#12069](https://github.com/haskell/cabal/pull/12069)
+
+    If the project configuration being monitored is not absolute, then the
+    logging includes the monitored path and the absolute path. The monitored
+    file is classified as existing, imported or nonexistent. Nonexistent
+    occurs for something like `cabal.project.local` that is monitored but may
+    not exist. The non-imported files would be `cabal.project`,
+    `cabal.project.freeze` and `cabal.project.local`.
+
+    Also exports `mkNormalizerEnv` for normalized comparisons in tests when
+    the output is not marked. Logging at any verbosity level other than normal
+    is not marked.
+
+- `cpp-options` apply only to .hs files [#11997](https://github.com/haskell/cabal/pull/11997)
+
+    `cpp-options` apply only to .hs files; GHC ignores `-optP` for non-Haskell
+    files (and since 9.10 this behavior is explicit/enforced).
+
 - Replace `pip` with `uv` for building users guide [#11382](https://github.com/haskell/cabal/pull/11382)
 
   Aside from being faster, by using `uv` to build the user guide:
@@ -384,7 +407,7 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
   - `cyclicalImportMsg`
   - `untrimmedUriImportMsg`
 
-- Update to `semaphore-compat` `2.0.0` (`-jsem` protocol v2) [#9993](https://github.com/haskell/cabal/issues/9993) [#11628](https://github.com/haskell/cabal/pull/11628)
+- Update to `semaphore-compat` `2.0.1` (`-jsem` protocol v2) [#9993](https://github.com/haskell/cabal/issues/9993) [#11628](https://github.com/haskell/cabal/pull/11628)
 
   On Linux and other POSIX platforms, cabal-install's `--semaphore`
   jobserver now speaks v2 of the semaphore-compat protocol, which uses

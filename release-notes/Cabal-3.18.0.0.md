@@ -191,7 +191,47 @@ Cabal and Cabal-syntax 3.18.0.0 changelog and release notes
 
   In the next release we plan to remove the legacy parser.
 
+  `Distribution.Parsec.Error` now exports `PErrorWithSource` and
+  `showPErrorWithSource`.  `PErrorWithSource` replaces `PError` as the
+  return type of `runParseResult`.
+
+  `readProjectConfig` now requires an additional `ProjectFileParser`
+  parameter.
+
+- Fixed build failure with absolute paths in `BuildInfo` `cSources` [#12005](https://github.com/haskell/cabal/issues/12005) [#11998](https://github.com/haskell/cabal/pull/11998)
+
+    Cabal no longer fails the build when hooks append absolute symbolic paths
+    to `BuildInfo`'s `cSources` field.  Previously, appending an absolute path
+    would cause a build failure at the program link stage, because the
+    implementation expected only relative paths.  This conflicted with
+    `BuildInfo`'s `cSources` type, which permits absolute paths.  The
+    generated cSources must be placed in the component's `autogen` directory
+    obtained through `autogenComponentModulesDir`.
+
+
 ### Other changes
+
+- Better document Cabal's `--semaphore=SEMAPHORE` option in light of `semaphore-compat-2.0.0` [#12022](https://github.com/haskell/cabal/pull/12022)
+
+    - Cabal's `--semaphore=SEMAPHORE` option is better documented in the user's guide and in `--help`.
+
+- Change the input type for the `distProjectFile` function [#11995](https://github.com/haskell/cabal/pull/11995)
+
+    Change the `DistDirLayout` record's `distProjectFile` field type. It was a
+    function from `String` to `FilePath` but is now a function from `ProjectFileKey`
+    to `FilePath`. The input sum type to this function has cases for the main
+    project file, the `.local` file and the `.freeze` file.
+
+    Other functions that were taking `String` for the extension or description of
+    these project files now take a `ProjectFileKey` instead;
+
+        - `readProjectFileSkeleton`
+        - `readProjectFileSkeletonLegacy`
+        - `readProjectFileSkeletonParsec`
+        - `readProjectFileSkeletonFallback`
+        - `readProjectFileSkeletonCompare`
+
+    Remove the `distProjectFileMain` function.
 
 - Drop support for anything below GHC 8.0.0, base 4.9.0.0, Cabal 1.24.0.0 [#11630](https://github.com/haskell/cabal/pull/11630)
 

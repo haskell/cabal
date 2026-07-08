@@ -71,6 +71,24 @@
   don't list them there and generate them in a pre-build rule, relying on the
   files getting picked up from included directories (this may be brittle).
 
+- Fixed binary format mismatch resulting in `runRuleDynDepsCmd` build error [#12053](https://github.com/haskell/cabal/issues/12053) [#12054](https://github.com/haskell/cabal/pull/12054)
+
+
+    A build containing a `dynamicRule` would fail with the following error:
+
+    ```
+    Error: [Cabal-7125]
+    Failed to build hooks-0.1.0.0. The exception was:
+    Missing ByteString argument in 'ruleExecCmd'.
+    Run 'runRuleDynDepsCmd' on the rule to obtain this data.
+    ```
+
+    This was caused by a mismatch between the binary formats used to encode
+    and decode the rules.  The hook produced a result of type `([Dependency],
+    LBS.ByteString)`, which was then encoded into a `Binary` blob.  However,
+    `hooks-exe` decoded this data as `Maybe ([Dependency], LBS.ByteString)`,
+    causing the build error.
+
 ## 3.16.1 – December 2025
   * No changes
 
