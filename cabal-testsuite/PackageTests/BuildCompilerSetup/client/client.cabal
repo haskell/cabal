@@ -1,0 +1,14 @@
+cabal-version: 2.0
+name:          client
+version:       0.1.0.0
+build-type:    Custom
+
+custom-setup
+  setup-depends:
+      base
+    , Cabal >= 2.0
+
+executable check-compiler
+  main-is:          Main.hs
+  build-depends:    base
+  default-language: Haskell2010
