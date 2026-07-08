@@ -91,13 +91,13 @@ import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
-import Distribution.Solver.Types.Stage (always)
 import qualified Distribution.Solver.Types.PackageIndex as CI.PackageIndex
 import qualified Distribution.Solver.Types.PackagePath as P
 import qualified Distribution.Solver.Types.PkgConfigDb as PC
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Stage (always)
 import Distribution.Solver.Types.Variable
 import Distribution.Types.UnitId (UnitId)
 
@@ -877,7 +877,7 @@ exResolve
           $ setSolveExecutables solveExes
           $ setGoalOrder goalOrder
           $ setSolverVerbosity (C.verbosityLevel verbosity)
-          $ standardInstallPolicy instIdx avaiIdx targets'
+          $ standardInstallPolicy (always instIdx) avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
       toConstraint (ExVersionConstraint scope v) =

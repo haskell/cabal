@@ -33,12 +33,12 @@ import Distribution.Client.Targets
 import Distribution.Client.Types
 
 import Distribution.Solver.Types.ConstraintSource
-import Distribution.Solver.Types.Stage (always)
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Stage (always)
 
 import Distribution.Client.Errors
 import Distribution.Package
@@ -221,7 +221,7 @@ planPackages
           -- already installed. Since we want to get the source packages of
           -- things we might have installed (but not have the sources for).
           . reinstallTargets
-          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+          $ standardInstallPolicy (always installedPkgIndex) sourcePkgDb pkgSpecifiers
 
       includeDependencies = fromFlag (fetchDeps fetchFlags)
       logMsg message rest = debug verbosity message >> rest
