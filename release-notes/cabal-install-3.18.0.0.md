@@ -79,6 +79,10 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
   - `cyclicalImportMsg`
   - `untrimmedUriImportMsg`
 
+  `ProjectConfigSkeleton` type synonym has now changed from from
+  `CondTree ConfVar ([ProjectConfigPath], ProjectConfig)` to
+  `CondTree ConfVar ([(Maybe URI, ProjectConfigPath)], ProjectConfig)`.
+
 - Decomission `build-type: Make` [#11610](https://github.com/haskell/cabal/issues/11610) [#11894](https://github.com/haskell/cabal/pull/11894)
 
   `build-type: Make` has not been functional since at least version 3.4, and
@@ -118,6 +122,13 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
   * `compare` - the new parser using parsec, but comparing the results with the old parser
 
   In the next release we plan to remove the legacy parser.
+
+  `Distribution.Parsec.Error` now exports `PErrorWithSource` and
+  `showPErrorWithSource`.  `PErrorWithSource` replaces `PError` as the
+  return type of `runParseResult`.
+
+  `readProjectConfig` now requires an additional `ProjectFileParser`
+  parameter.
 
 ### Other changes
 
