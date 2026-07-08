@@ -90,7 +90,7 @@ data PreProcessor = PreProcessor
   -- well-behaved and not reorder modules it doesn't have dominion over!
   --
   -- @since 3.8.1.0
-  , configurePreProcessor
+  , getPreProcessor
       :: Verbosity
       -> IO (PreProcessCommand, PreProcessorKey)
   }

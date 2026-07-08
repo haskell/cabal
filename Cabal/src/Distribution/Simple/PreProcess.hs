@@ -122,7 +122,7 @@ runSimplePreProcessor
   -> Verbosity
   -> IO ()
 runSimplePreProcessor pp inFile outFile verbosity = do
-  (runPreProcessor, _) <- configurePreProcessor pp verbosity
+  (runPreProcessor, _) <- getPreProcessor pp verbosity
   runPreProcessor (".", inFile) (".", outFile) verbosity
 
 -- | A preprocessor for turning non-Haskell files with the given 'Suffix'
@@ -342,7 +342,7 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
         -- Use file monitoring to only re-run the preprocessor if either the
         -- input file or the preprocessor itself have changed.
         -- See Note [Preprocessor monitoring].
-        (runPreProcessor, key) <- configurePreProcessor pp verbosity
+        (runPreProcessor, key) <- getPreProcessor pp verbosity
         let recompile = liftIO $ do
               let destDir = i buildLoc </> takeDirectory srcStem
               createDirectoryIfMissingVerbose verbosity True destDir
@@ -412,7 +412,7 @@ ppUnlit =
   PreProcessor
     { platformIndependent = True
     , ppOrdering = unsorted
-    , configurePreProcessor = \_ -> do
+    , getPreProcessor = \_ -> do
         let runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
               withUTF8FileContents inFile $ \contents ->
                 either (writeUTF8File outFile) (dieWithException verbosity) (unlit inFile contents)
@@ -444,7 +444,7 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , configurePreProcessor = \verbosity' -> do
+    , getPreProcessor = \verbosity' -> do
         progVersion <- getProgVersion verbosity'
         let ppInfo = PreProcessorPrograms [fst progVersion]
         return (runPreProcessor progVersion, ppInfo)
@@ -472,8 +472,8 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
       :: Verbosity
       -> IO (ConfiguredProgram, Version)
     getProgVersion verbosity = do
-      (prog, version, _) <-
-        requireProgramVersion
+      (prog, version) <-
+        requireConfiguredProgramVersion
           verbosity
           program
           anyVersion
@@ -485,7 +485,7 @@ ppCpphs extraArgs _bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , configurePreProcessor = \verbosity -> do
+    , getPreProcessor = \verbosity -> do
         progVersion <- getProgVersion verbosity
         let ppInfo = PreProcessorPrograms [fst progVersion]
         return (runPreProcessor progVersion, ppInfo)
@@ -509,8 +509,8 @@ ppCpphs extraArgs _bi lbi clbi =
       :: Verbosity
       -> IO (ConfiguredProgram, Version)
     getProgVersion verbosity = do
-      (prog, version, _) <-
-        requireProgramVersion
+      (prog, version) <-
+        requireConfiguredProgramVersion
           verbosity
           cpphsProgram
           anyVersion
@@ -522,7 +522,7 @@ ppHsc2hs bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , configurePreProcessor = \verbosity -> do
+    , getPreProcessor = \verbosity -> do
         progVersion <- getProgVersion verbosity
         let (gccProg, hsc2hsProg, _) = progVersion
         let ppInfo = PreProcessorPrograms [gccProg, hsc2hsProg]
@@ -560,8 +560,8 @@ ppHsc2hs bi lbi clbi =
       -> IO (ConfiguredProgram, ConfiguredProgram, Version)
     getProgVersion verbosity = do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
-      (hsc2hsProg, hsc2hsVersion, _) <-
-        requireProgramVersion
+      (hsc2hsProg, hsc2hsVersion) <-
+        requireConfiguredProgramVersion
           verbosity
           hsc2hsProgram
           anyVersion
@@ -721,7 +721,7 @@ ppC2hs bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , configurePreProcessor = \verbosity -> do
+    , getPreProcessor = \verbosity -> do
         progVersion <- getProgVersion verbosity
         let (gccProg, c2hsProg, _) = progVersion
         let ppInfo = PreProcessorPrograms [gccProg, c2hsProg]
@@ -773,8 +773,8 @@ ppC2hs bi lbi clbi =
                ]
 
     getProgVersion verbosity = do
-      (c2hsProg, c2hsVersion, _) <-
-        requireProgramVersion
+      (c2hsProg, c2hsVersion) <-
+        requireConfiguredProgramVersion
           verbosity
           c2hsProgram
           (orLaterVersion (mkVersion [0, 15]))
@@ -913,7 +913,7 @@ standardPP lbi prog args =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , configurePreProcessor = \_ ->
+    , getPreProcessor = \_ ->
         pure
           ( runPreProcessor
           , PreProcessorPrograms . maybeToList $ lookupProgram prog (withPrograms lbi)
@@ -1033,7 +1033,7 @@ represents these keys.
 
 Further, to make sure that we can get that key without actually having to run
 the preprocessor (which is the very thing we try to avoid), the 'PreProcessor'
-data structure exposes the 'configurePreProcessor' function, which in turn
+data structure exposes the 'getPreProcessor' function, which in turn
 produces the actual preprocessor action together with the corresponding key,
 thus making sure that the two always match.
 

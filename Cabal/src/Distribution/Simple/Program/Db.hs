@@ -48,6 +48,7 @@ module Distribution.Simple.Program.Db
   , reconfigurePrograms
   , requireProgram
   , requireProgramVersion
+  , requireConfiguredProgramVersion
   , setProgramSearchPath
   , unconfigureProgram
   , updateProgram
@@ -627,7 +628,19 @@ requireProgramVersion
   -> IO (ConfiguredProgram, Version, ProgramDb)
 requireProgramVersion verbosity prog range programDb =
   either (dieWithException verbosity) return
-    =<< lookupProgramVersion verbosity prog range programDb
+    =<< lookupAndConfigureProgramVersion verbosity prog range programDb
+
+-- | Like 'lookupConfiguredProgramVersion', but raises an exception in case of
+-- error instead of returning 'Left errMsg'.
+requireConfiguredProgramVersion
+  :: Verbosity
+  -> Program
+  -> VersionRange
+  -> ProgramDb
+  -> IO (ConfiguredProgram, Version)
+requireConfiguredProgramVersion verbosity prog range programDb =
+  either (dieWithException verbosity) return
+    $ lookupConfiguredProgramVersion prog range programDb
 
 -- | Check that a program is configured and available to be run.
 --
