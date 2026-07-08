@@ -504,7 +504,6 @@ test-suite long-tests
     , tagged
     , tasty >= 1.2.3 && <1.6
     , tasty-expected-failure
-    , tasty-hunit >= 0.10
     , tasty-quickcheck <0.12
     , QuickCheck >= 2.14 && <2.19
     , pretty-show >= 1.6.15
