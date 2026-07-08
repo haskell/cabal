@@ -1613,7 +1613,7 @@ planPackages
         -- Note: we don't use the standardInstallPolicy here, since that uses
         -- its own addDefaultSetupDependencies that is not appropriate for us.
         basicInstallPolicy
-          installedPkgIndex
+          (always installedPkgIndex)
           sourcePkgDb
           localPackages
 
