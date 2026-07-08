@@ -355,7 +355,13 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         addWarnings x' = x'
     liftPR p _ (ParseFailed e) = pure $ projectParseFail Nothing (Just p) e
     modifiesCompiler :: ProjectConfig -> Bool
-    modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
+    modifiesCompiler pc =
+      isSet projectConfigHcFlavor
+        || isSet projectConfigHcPath
+        || isSet projectConfigHcPkg
+        || isSet projectConfigBuildHcFlavor
+        || isSet projectConfigBuildHcPath
+        || isSet projectConfigBuildHcPkg
       where
         isSet f = f (projectConfigShared pc) /= NoFlag
 
@@ -698,6 +704,9 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , configAllowNewer = projectConfigAllowNewer
       , configWriteGhcEnvironmentFilesPolicy =
         projectConfigWriteGhcEnvironmentFilesPolicy
+      , configBuildHcFlavor = projectConfigBuildHcFlavor
+      , configBuildHcPath = projectConfigBuildHcPath
+      , configBuildHcPkg = projectConfigBuildHcPkg
       } = configExFlags
 
     InstallFlags
@@ -981,6 +990,9 @@ convertToLegacySharedConfig
           , configAllowNewer = projectConfigAllowNewer
           , configWriteGhcEnvironmentFilesPolicy =
               projectConfigWriteGhcEnvironmentFilesPolicy
+          , configBuildHcFlavor = projectConfigBuildHcFlavor
+          , configBuildHcPath = projectConfigBuildHcPath
+          , configBuildHcPkg = projectConfigBuildHcPkg
           }
 
       installFlags =
@@ -1425,11 +1437,19 @@ legacySharedConfigFieldDescrs constraintSrc =
               (fmap Just parsec)
               (fmap unAllowNewer . configAllowNewer)
               (\v conf -> conf{configAllowNewer = fmap AllowNewer v})
+          , simpleFieldParsec
+              "build-compiler"
+              (fromFlagOrDefault Disp.empty . fmap pretty)
+              (toFlag <$> parsec <|> pure mempty)
+              configBuildHcFlavor
+              (\v conf -> conf{configBuildHcFlavor = v})
           ]
         . filterFields
           [ "cabal-lib-version"
           , "solver"
           , "write-ghc-environment-files"
+          , "with-build-compiler"
+          , "with-build-hc-pkg"
           -- not "constraint" or "preference", we use our own plural ones above
           ]
         . commandOptionsToFields
