@@ -236,7 +236,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors
 import Distribution.Solver.Types.ProjectConfigPath
-import GHC.Stack (HasCallStack)
 import System.Directory (getCurrentDirectory)
 import System.FilePath
 import qualified Text.PrettyPrint as Disp
@@ -352,8 +351,7 @@ sanityCheckElaboratedPackage
 -- | Return the up-to-date project config and information about the local
 -- packages within the project.
 rebuildProjectConfig
-  :: HasCallStack
-  => Verbosity
+  :: Verbosity
   -> HttpTransport
   -> DistDirLayout
   -> ProjectConfig
@@ -667,8 +665,7 @@ See #9840 for more information about the problems surrounding the lossy
 -- dependencies of executables and setup scripts.
 --
 rebuildInstallPlan
-  :: HasCallStack
-  => Verbosity
+  :: Verbosity
   -> DistDirLayout
   -> CabalDirLayout
   -> ProjectConfig
@@ -909,8 +906,7 @@ rebuildInstallPlan
       -- version of the plan has the final nix-style hashed ids.
       --
       phaseElaboratePlan
-        :: HasCallStack
-        => ProjectConfig
+        :: ProjectConfig
         -> (Compiler, Platform, ProgramDb)
         -> Maybe PkgConfigDb
         -> SolverInstallPlan
@@ -1666,8 +1662,7 @@ planPackages
 -- In theory should be able to make an elaborated install plan with a policy
 -- matching that of the classic @cabal install --user@ or @--global@
 elaborateInstallPlan
-  :: HasCallStack
-  => Verbosity
+  :: Verbosity
   -> Platform
   -> Compiler
   -> ProgramDb
@@ -1726,7 +1721,8 @@ elaborateInstallPlan
                   )
           f _ = Nothing
 
-      elaboratedInstallPlan :: LogProgress ElaboratedInstallPlan
+      elaboratedInstallPlan
+        :: LogProgress (InstallPlan.GenericInstallPlan IPI.InstalledPackageInfo ElaboratedConfiguredPackage)
       elaboratedInstallPlan =
         flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
           case planpkg of
