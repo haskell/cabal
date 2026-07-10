@@ -1,8 +1,0 @@
----
-synopsis: Recognise `Modifiers` and `QualifiedStrings` extensions
-packages: [Cabal, cabal-install]
-prs: 11936
----
-
-`Cabal` and `cabal-install` now recognise extensions from GHC 10.0
-(`Modifiers` and `QualifiedStrings`).
