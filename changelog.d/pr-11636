@@ -1,8 +1,0 @@
----
-synopsis: Recognise `ExplicitLevelImports` and `ImplicitStagePersistence` extensions
-packages: [Cabal, cabal-install]
-prs: 11936
----
-
-`Cabal` and `cabal-install` now recognise extensions from GHC 9.14
-(`ImplicitStagePersistence` and `ImplicitStagePersistence`).
