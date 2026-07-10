@@ -6,5 +6,3 @@ Error:
             brought into scope by build-depends: Fail4:sig-lib-a
             brought into scope by build-depends: Fail4:sig-lib-b
     In the stanza executable foo
-    CallStack (from HasCallStack):
-      dieProgress, called at src/Distribution/Backpack/LinkedComponent.hs:_:_ in Cabal-3.17.0.0-inplace:Distribution.Backpack.LinkedComponent
