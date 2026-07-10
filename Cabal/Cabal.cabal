@@ -1,6 +1,6 @@
 cabal-version: 3.8
 name:          Cabal
-version:       3.17.0.0
+version:       3.18.1.0
 copyright:     2003-2026, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
@@ -39,7 +39,7 @@ library
   hs-source-dirs: src
 
   build-depends:
-    , Cabal-syntax ^>= 3.17
+    , Cabal-syntax ^>= 3.18
     , array      >= 0.4.0.1  && < 0.6
     , base       >= 4.17     && < 5
     , bytestring >= 0.10.8   && < 0.13
