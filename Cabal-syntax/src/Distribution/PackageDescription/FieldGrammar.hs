@@ -71,7 +71,6 @@ import Language.Haskell.Extension
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.Newtype (Newtype, pack', unpack')
 import Distribution.Compiler (CompilerFlavor (..), PerCompilerFlavor (..))
 import Distribution.FieldGrammar
 import Distribution.Fields
@@ -84,6 +83,7 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import qualified Data.ByteString.Char8 as BS8
+import Data.Coerce (coerce)
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
@@ -889,8 +889,6 @@ formatOtherModules = alaList' VCat MQuoted
 -- I suspect some of them are generated (e.g. formatted) by machine.
 newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir DataDir)}
 
-instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
-
 instance Parsec CompatDataDir where
   parsec = do
     token <- parsecToken
@@ -903,11 +901,9 @@ instance Pretty CompatDataDir where
 
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
 
-instance Newtype [RelativePath Pkg File] CompatLicenseFile
-
 -- TODO
 instance Parsec CompatLicenseFile where
-  parsec = emptyToken <|> CompatLicenseFile . unpack' (alaList FSep) <$> parsec
+  parsec = emptyToken <|> CompatLicenseFile . (coerce :: List FSep (Identity a) a -> [a]) <$> parsec
     where
       emptyToken = P.try $ do
         token <- parsecToken
@@ -916,7 +912,7 @@ instance Parsec CompatLicenseFile where
           else P.unexpected "non-empty-token"
 
 instance Pretty CompatLicenseFile where
-  pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
+  pretty = pretty . (coerce :: [a] -> List FSep (Identity a) a) . getCompatLicenseFile
 
 -------------------------------------------------------------------------------
 -- vim syntax definitions

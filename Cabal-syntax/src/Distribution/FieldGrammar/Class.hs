@@ -11,13 +11,13 @@ module Distribution.FieldGrammar.Class
   , defaultFreeTextFieldDefST
   ) where
 
+import Data.Coerce (Coercible)
 import Data.Kind (Constraint, Type)
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.CabalSpecVersion (CabalSpecVersion)
-import Distribution.Compat.Newtype (Newtype)
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Fields.Field
 import Distribution.Utils.ShortText
@@ -45,11 +45,10 @@ class
 
   -- | Field which should be defined, exactly once.
   uniqueFieldAla
-    :: (c b, Newtype a b)
+    :: (c b, Coercible a b)
     => FieldName
     -- ^ field name
-    -> (a -> b)
-    -- ^ 'Newtype' pack
+    -> proxy a b
     -> ALens' s a
     -- ^ lens into the field
     -> g s a
@@ -66,22 +65,20 @@ class
 
   -- | Optional field.
   optionalFieldAla
-    :: (c b, Newtype a b)
+    :: (c b, Coercible a b)
     => FieldName
     -- ^ field name
-    -> (a -> b)
-    -- ^ 'pack'
+    -> proxy a b
     -> ALens' s (Maybe a)
     -- ^ lens into the field
     -> g s (Maybe a)
 
   -- | Optional field with default value.
   optionalFieldDefAla
-    :: (c b, Newtype a b, Eq a)
+    :: (c b, Coercible a b, Eq a)
     => FieldName
     -- ^ field name
-    -> (a -> b)
-    -- ^ 'Newtype' pack
+    -> proxy a b
     -> ALens' s a
     -- ^ @'Lens'' s a@: lens into the field
     -> a
@@ -121,11 +118,10 @@ class
   --
   -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
   monoidalFieldAla
-    :: (c b, Monoid a, Newtype a b)
+    :: (c b, Monoid a, Coercible a b)
     => FieldName
     -- ^ field name
-    -> (a -> b)
-    -- ^ 'pack'
+    -> proxy a b
     -> ALens' s a
     -- ^ lens into the field
     -> g s a

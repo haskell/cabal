@@ -35,6 +35,7 @@ import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.FieldGrammar (PrettyFieldGrammar', prettyFieldGrammar)
+import Distribution.FieldGrammar.Newtypes (MQuoted (..), RelativePathNT (..), SymbolicPathNT (..), TestedWith (..), Token (..), Token' (..))
 import Distribution.Fields.Pretty
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration (transformAllBuildInfos)

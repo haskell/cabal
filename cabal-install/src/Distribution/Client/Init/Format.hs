@@ -32,7 +32,7 @@ module Distribution.Client.Init.Format
 
 import Distribution.CabalSpecVersion
 import Distribution.Client.Init.Types
-import Distribution.FieldGrammar.Newtypes (SpecLicense (SpecLicense))
+import Distribution.FieldGrammar.Newtypes (MQuoted (..), RelativePathNT (..), SpecLicense (SpecLicense), SymbolicPathNT (..))
 import Distribution.Fields
 import Distribution.License
 import Distribution.Package (unPackageName)
