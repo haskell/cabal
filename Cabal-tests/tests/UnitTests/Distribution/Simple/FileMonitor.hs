@@ -29,7 +29,7 @@ tests :: Int -> [TestTree]
 tests mtimeChange =
   [ testGroup
       "Structured hashes"
-      [ testCase "MonitorStateFile" $ structureHash (Proxy :: Proxy MonitorStateFile) @?= Fingerprint 0xe1339b9dcfdfe19d 0x9135a5f30da7ca82
+      [ testCase "MonitorStateFile" $ structureHash (Proxy :: Proxy MonitorStateFile) @?= Fingerprint fingerprintStateFile1 fingerprintStateFile2
       , testCase "MonitorStateGlob" $ structureHash (Proxy :: Proxy MonitorStateGlob) @?= Fingerprint fingerprintStateGlob1 fingerprintStateGlob2
       , testCase "MonitorStateFileSet" $ structureHash (Proxy :: Proxy MonitorStateFileSet) @?= Fingerprint fingerprintStateFileSet1 fingerprintStateFileSet2
       ]
@@ -94,11 +94,13 @@ tests mtimeChange =
     knownBrokenInWindows msg = case buildOS of
       Windows -> expectFailBecause msg
       _ -> id
-    fingerprintStateGlob1, fingerprintStateGlob2, fingerprintStateFileSet1, fingerprintStateFileSet2 :: Word64
-    fingerprintStateGlob1 = 0x5d9efec2b93d22a1
-    fingerprintStateGlob2 = 0xfdbc86351866a191
-    fingerprintStateFileSet1 = 0x4cee0a3a23697bb1
-    fingerprintStateFileSet2 = 0x96039d15c3241985
+    fingerprintStateFile1, fingerprintStateFile2, fingerprintStateGlob1, fingerprintStateGlob2, fingerprintStateFileSet1, fingerprintStateFileSet2 :: Word64
+    fingerprintStateFile1 = 0x982ee8fef06a3b5f
+    fingerprintStateFile2 = 0xe3c608811ccf1011
+    fingerprintStateGlob1 = 0xd17eeece5373667b
+    fingerprintStateGlob2 = 0x0b8d8ed7d6a103e8
+    fingerprintStateFileSet1 = 0xb1555b75c3f96850
+    fingerprintStateFileSet2 = 0x4a51468742b6452b
 
 -- Check the file system behaves the way we expect it to
 

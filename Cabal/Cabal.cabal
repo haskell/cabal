@@ -44,12 +44,10 @@ library
     , Cabal-syntax ^>= 3.17
     , array      >= 0.4.0.1  && < 0.6
     , base       >= 4.17     && < 5
+    , binary     >= 0.7.3    && < 0.9
     , bytestring >= 0.10.8   && < 0.13
     , containers >= 0.5.8.2  && < 0.9
     , deepseq    >= 1.4      && < 1.7
-    , base16-bytestring >= 1.0 && < 1.1
-    , binary     >= 0.7.3    && < 0.9
-    , cryptohash-sha256 >= 0.11 && < 0.12
     , directory  >= 1.2.7    && < 1.4
     , filepath   >= 1.4.2    && < 1.6
     , pretty     >= 1.1.1    && < 1.2
@@ -135,7 +133,6 @@ library
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
-    Distribution.Simple.HashValue
     Distribution.Simple.Glob
     Distribution.Simple.Glob.Internal
     Distribution.Simple.Hpc

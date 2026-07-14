@@ -30,9 +30,10 @@ module Distribution.Simple.FileMonitor
 
 import Distribution.Compat.Prelude
 
-import qualified Data.Binary as Binary
-
+import GHC.Fingerprint hiding (getFileHash)
+import qualified GHC.Fingerprint as Fingerprint
 import Data.Binary.Get (runGetOrFail)
+import qualified Data.Binary as Binary
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map.Strict as Map
 
@@ -46,12 +47,13 @@ import Control.Monad.Except
 import Control.Monad.State (StateT, mapStateT)
 import qualified Control.Monad.State as State
 import Control.Monad.Trans (MonadIO, liftIO)
+import GHC.Fingerprint (Fingerprint)
+import qualified GHC.Fingerprint as Fingerprint
 
 import Distribution.Compat.Time
 import Distribution.Simple.FileMonitor.Types
 import Distribution.Simple.Glob
 import Distribution.Simple.Glob.Internal (Glob (..), GlobPieces)
-import Distribution.Simple.HashValue
 import Distribution.Simple.Utils
   ( MergeResult (..)
   , handleDoesNotExist
@@ -108,7 +110,7 @@ data MonitorStateFileStatus
   | -- | cached file mtime
     MonitorStateFileModTime !ModTime
   | -- | cached mtime and content hash
-    MonitorStateFileHashed !ModTime !HashValue
+    MonitorStateFileHashed !ModTime !Fingerprint
   | MonitorStateDirExists
   | -- | cached dir mtime
     MonitorStateDirModTime !ModTime
@@ -1158,21 +1160,21 @@ buildMonitorStateGlobRel
 -- updating a file monitor the set of files is the same or largely the same so
 -- we can grab the previously known content hashes with their corresponding
 -- mtimes.
-type FileHashCache = Map FilePath (ModTime, HashValue)
+type FileHashCache = Map FilePath (ModTime, Fingerprint)
 
 -- | We declare it a cache hit if the mtime of a file is the same as before.
-lookupFileHashCache :: FileHashCache -> FilePath -> ModTime -> Maybe HashValue
+lookupFileHashCache :: FileHashCache -> FilePath -> ModTime -> Maybe Fingerprint
 lookupFileHashCache hashcache file mtime = do
   (mtime', hash) <- Map.lookup file hashcache
   guard (mtime' == mtime)
   return hash
 
 -- | Either get it from the cache or go read the file
-getFileHash :: FileHashCache -> FilePath -> FilePath -> ModTime -> IO HashValue
+getFileHash :: FileHashCache -> FilePath -> FilePath -> ModTime -> IO Fingerprint
 getFileHash hashcache relfile absfile mtime =
   case lookupFileHashCache hashcache relfile mtime of
     Just hash -> return hash
-    Nothing -> readFileHashValue absfile
+    Nothing -> Fingerprint.getFileHash absfile
 
 -- | Build a 'FileHashCache' from the previous 'MonitorStateFileSet'. While
 -- in principle we could preserve the structure of the previous state, given
@@ -1194,7 +1196,7 @@ readCacheFileHashes monitor =
       collectAllFileHashes singlePaths
         `Map.union` collectAllGlobHashes globPaths
 
-    collectAllFileHashes :: [MonitorStateFile] -> Map FilePath (ModTime, HashValue)
+    collectAllFileHashes :: [MonitorStateFile] -> Map FilePath (ModTime, Fingerprint)
     collectAllFileHashes singlePaths =
       Map.fromList
         [ (fpath, (mtime, hash))
@@ -1206,7 +1208,7 @@ readCacheFileHashes monitor =
             singlePaths
         ]
 
-    collectAllGlobHashes :: [MonitorStateGlob] -> Map FilePath (ModTime, HashValue)
+    collectAllGlobHashes :: [MonitorStateGlob] -> Map FilePath (ModTime, Fingerprint)
     collectAllGlobHashes globPaths =
       Map.fromList
         [ (fpath, (mtime, hash))
@@ -1214,20 +1216,20 @@ readCacheFileHashes monitor =
         , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate
         ]
 
-    collectDirHashes :: FilePath -> [(FilePath, MonitorStateGlobRel)] -> [(FilePath, (ModTime, HashValue))]
+    collectDirHashes :: FilePath -> [(FilePath, MonitorStateGlobRel)] -> [(FilePath, (ModTime, Fingerprint))]
     collectDirHashes dir entries =
       [ res
       | (subdir, fstate) <- entries
       , res <- collectGlobHashes (dir </> subdir) fstate
       ]
 
-    collectFileHashes :: FilePath -> [(FilePath, MonitorStateFileStatus)] -> [(FilePath, (ModTime, HashValue))]
+    collectFileHashes :: FilePath -> [(FilePath, MonitorStateFileStatus)] -> [(FilePath, (ModTime, Fingerprint))]
     collectFileHashes dir entries =
       [ (dir </> fname, (mtime, hash))
       | (fname, MonitorStateFileHashed mtime hash) <- entries
       ]
 
-    collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, HashValue))]
+    collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, Fingerprint))]
     collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
       collectDirHashes dir entries
     collectGlobHashes dir (MonitorStateGlobFiles _ _ entries) =
@@ -1250,13 +1252,13 @@ probeFileModificationTime root file mtime = do
   unless unchanged (somethingChanged file)
 
 -- | Within the @root@ directory, check if @file@ has its 'ModTime' and
--- 'HashValue' is the same as @mtime@ and @hash@, short-circuiting if it is
+-- 'Fingerprint' is the same as @mtime@ and @hash@, short-circuiting if it is
 -- different.
 probeFileModificationTimeAndHash
   :: FilePath
   -> FilePath
   -> ModTime
-  -> HashValue
+  -> Fingerprint
   -> ChangedM ()
 probeFileModificationTimeAndHash root file mtime hash = do
   unchanged <-
@@ -1299,12 +1301,12 @@ checkModificationTimeUnchanged root file mtime =
     return (mtime == mtime')
 
 -- | Returns @True@ if, inside the @root@ directory, @file@ has the
--- same 'ModTime' and 'HashValue' as @mtime and @chash@.
+-- same 'ModTime' and 'Fingerprint' as @mtime@ and @chash@.
 checkFileModificationTimeAndHashUnchanged
   :: FilePath
   -> FilePath
   -> ModTime
-  -> HashValue
+  -> Fingerprint
   -> IO Bool
 checkFileModificationTimeAndHashUnchanged root file mtime chash =
   handleIOException False $ do
@@ -1312,7 +1314,7 @@ checkFileModificationTimeAndHashUnchanged root file mtime chash =
     if mtime == mtime'
       then return True
       else do
-        chash' <- readFileHashValue (root </> file)
+        chash' <- Fingerprint.getFileHash (root </> file)
         return (chash == chash')
 
 -- | Given a directory @dir@, return @Nothing@ if its 'ModTime'
