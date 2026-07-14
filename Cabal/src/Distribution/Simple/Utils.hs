@@ -256,8 +256,8 @@ import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
 import qualified Data.Version as DV
 import Distribution.Compat.Process (proc)
 import Foreign.C.Error (Errno (..), ePIPE)
-import GHC.IO.Handle.Lock (LockMode (..), hLock, hTryLock, hUnlock)
 import qualified GHC.IO.Exception as GHC
+import GHC.IO.Handle.Lock (LockMode (..), hLock, hTryLock, hUnlock)
 import GHC.Stack (HasCallStack)
 import Numeric (showFFloat)
 import System.Directory
