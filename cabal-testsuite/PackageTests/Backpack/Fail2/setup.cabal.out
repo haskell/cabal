@@ -4,4 +4,4 @@ Error:
     Mix-in refers to non-existent library 'non-existent'
     (did you forget to add the package to build-depends?)
     CallStack (from HasCallStack):
-      dieProgress, called at src/Distribution/Backpack/ConfiguredComponent.hs:_:_ in Cabal-3.17.0.0-inplace:Distribution.Backpack.ConfiguredComponent
+      dieProgress, called at src/Distribution/Backpack/ConfiguredComponent.hs:_:_ in Cabal-<VERSION>-inplace:Distribution.Backpack.ConfiguredComponent

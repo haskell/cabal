@@ -9,4 +9,4 @@ Error:
     In the stanza 'library'
     In the inplace package 'Reexport2-1.0'
     CallStack (from HasCallStack):
-      dieProgress, called at src/Distribution/Backpack/LinkedComponent.hs:_:_ in Cabal-3.17.0.0-inplace:Distribution.Backpack.LinkedComponent
+      dieProgress, called at src/Distribution/Backpack/LinkedComponent.hs:_:_ in Cabal-<VERSION>-inplace:Distribution.Backpack.LinkedComponent

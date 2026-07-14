@@ -96,6 +96,16 @@ normalizeOutput nenv =
     . resub "(Released|Acquired|Waiting) .*hackage-security-lock\n" ""
     . resub "installed: [0-9]+(\\.[0-9]+)*" "installed: <VERSION>"
     . resub "\\.hs:[0-9]+:[0-9]+" ".hs:_:_"
+    -- CallStack entries reference the in-place unit id of whichever
+    -- boot library (Cabal, Cabal-syntax, cabal-install,
+    -- cabal-install-solver) is being tested, e.g.
+    -- "Cabal-3.17.0.0-inplace:Distribution.Simple.Utils". These
+    -- libraries are all version-bumped together, so their version
+    -- changes on every release; glob it out so golden output doesn't
+    -- go stale on version bumps.
+    . resub
+      "(Cabal-syntax|cabal-install-solver|cabal-install|Cabal)-[0-9]+(\\.[0-9]+)*-inplace"
+      "\\1-<VERSION>-inplace"
   where
     sameDir = "(\\.((\\\\)+|\\/))*"
     packageIdRegex pid =
