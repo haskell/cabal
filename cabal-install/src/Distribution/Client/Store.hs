@@ -15,9 +15,6 @@ module Distribution.Client.Store
   , newStoreEntry
   , NewStoreEntryOutcome (..)
 
-    -- * Cross-process locking
-  , withFileLock
-
     -- * Concurrency strategy
     -- $concurrency
   ) where
@@ -34,15 +31,13 @@ import Distribution.Simple.Compiler (Compiler (..))
 import Distribution.Simple.Utils
   ( debug
   , info
+  , withFileLock
   , withTempDirectory
   )
 
-import Control.Exception
 import qualified Data.Set as Set
-import GHC.IO.Handle.Lock (LockMode (ExclusiveLock), hLock, hTryLock, hUnlock)
 import System.Directory
 import System.FilePath
-import System.IO (IOMode (ReadWriteMode), hClose, openFile)
 
 -- $concurrency
 --
@@ -251,21 +246,3 @@ withIncomingUnitIdLock
         "Waiting for file lock on store entry "
           ++ prettyShow compid
           </> prettyShow unitid
-
--- | Hold an exclusive cross-process lock on @lockPath@ for the duration of
--- @action@, creating the lock file if it does not exist.
-withFileLock :: Verbosity -> FilePath -> String -> IO a -> IO a
-withFileLock verbosity lockPath waitMsg action =
-  bracket takeLock releaseLock (const action)
-  where
-    takeLock = do
-      h <- openFile lockPath ReadWriteMode
-      -- First try non-blocking, but if we would have to wait then
-      -- log an explanation and do it again in blocking mode.
-      gotlock <- hTryLock h ExclusiveLock
-      unless gotlock $ do
-        info verbosity waitMsg
-        hLock h ExclusiveLock
-      return h
-
-    releaseLock h = hUnlock h `finally` hClose h
