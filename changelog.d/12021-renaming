@@ -1,0 +1,10 @@
+---
+synopsis: Rename lookup*Program* functions
+packages: [Cabal, cabal-install]
+prs: 12021
+---
+Introduce `lookupAndConfigureProgramVersion` and
+`lookupConfiguredProgramVersion`, deprecating the (functionally
+identical) `lookupProgramVersion`. The new functions are explicit about whether
+the program should be configured on the fly, or expected to be already
+configured.
