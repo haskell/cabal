@@ -34,6 +34,8 @@ import qualified Data.Binary as Binary
 import Data.Binary.Get (runGetOrFail)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map.Strict as Map
+import GHC.Fingerprint (Fingerprint)
+import qualified GHC.Fingerprint as Fingerprint
 
 import Control.Exception
 import Control.Monad.Except
@@ -45,8 +47,6 @@ import Control.Monad.Except
 import Control.Monad.State (StateT, mapStateT)
 import qualified Control.Monad.State as State
 import Control.Monad.Trans (MonadIO, liftIO)
-import GHC.Fingerprint (Fingerprint)
-import qualified GHC.Fingerprint as Fingerprint
 
 import Distribution.Compat.Time
 import Distribution.Simple.FileMonitor.Types
