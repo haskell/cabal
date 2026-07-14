@@ -15,6 +15,9 @@ module Distribution.Client.Store
   , newStoreEntry
   , NewStoreEntryOutcome (..)
 
+    -- * Cross-process locking
+  , withFileLock
+
     -- * Concurrency strategy
     -- $concurrency
   ) where
@@ -241,20 +244,28 @@ withIncomingUnitIdLock
   compiler
   unitid
   action =
-    bracket takeLock releaseLock (\_hnd -> action)
+    withFileLock verbosity (storeIncomingLock compiler unitid) waitMsg action
     where
       compid = compilerId compiler
-      takeLock = do
-        h <- openFile (storeIncomingLock compiler unitid) ReadWriteMode
-        -- First try non-blocking, but if we would have to wait then
-        -- log an explanation and do it again in blocking mode.
-        gotlock <- hTryLock h ExclusiveLock
-        unless gotlock $ do
-          info verbosity $
-            "Waiting for file lock on store entry "
-              ++ prettyShow compid
-              </> prettyShow unitid
-          hLock h ExclusiveLock
-        return h
+      waitMsg =
+        "Waiting for file lock on store entry "
+          ++ prettyShow compid
+          </> prettyShow unitid
 
-      releaseLock h = hUnlock h >> hClose h
+-- | Hold an exclusive cross-process lock on @lockPath@ for the duration of
+-- @action@, creating the lock file if it does not exist.
+withFileLock :: Verbosity -> FilePath -> String -> IO a -> IO a
+withFileLock verbosity lockPath waitMsg action =
+  bracket takeLock releaseLock (const action)
+  where
+    takeLock = do
+      h <- openFile lockPath ReadWriteMode
+      -- First try non-blocking, but if we would have to wait then
+      -- log an explanation and do it again in blocking mode.
+      gotlock <- hTryLock h ExclusiveLock
+      unless gotlock $ do
+        info verbosity waitMsg
+        hLock h ExclusiveLock
+      return h
+
+    releaseLock h = hUnlock h `finally` hClose h

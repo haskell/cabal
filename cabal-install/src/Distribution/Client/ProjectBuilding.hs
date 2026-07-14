@@ -92,7 +92,7 @@ import Control.Exception (assert, handle)
 import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
-import System.FilePath (makeRelative, normalise, takeDirectory, (<.>), (</>))
+import System.FilePath (makeRelative, normalise, takeDirectory, takeFileName, (<.>), (</>))
 import System.Semaphore (SemaphoreIdentifier)
 
 import Distribution.Client.Errors
@@ -502,8 +502,7 @@ configuring individual packages.
     invocation.
 -}
 
--- | Create a package DB if it does not currently exist. Note that this action
--- is /not/ safe to run concurrently.
+-- | Create a package DB if it does not currently exist.
 createPackageDBIfMissing
   :: Verbosity
   -> Compiler
@@ -515,11 +514,25 @@ createPackageDBIfMissing
   compiler
   progdb
   (SpecificPackageDB dbPath) = do
+    -- If it already exists, skip locking.
     exists <- Cabal.doesPackageDBExist dbPath
     unless exists $ do
       createDirectoryIfMissingVerbose verbosity True (takeDirectory dbPath)
-      Cabal.createPackageDB verbosity compiler progdb dbPath
+      withPackageDBLock verbosity dbPath $ do
+        -- Re-check under the lock. Another process may have created the DB
+        -- while we were waiting.
+        exists' <- Cabal.doesPackageDBExist dbPath
+        unless exists' $
+          Cabal.createPackageDB verbosity compiler progdb dbPath
 createPackageDBIfMissing _ _ _ _ = return ()
+
+-- | Hold an exclusive cross-process lock while initialising a package DB.
+withPackageDBLock :: Verbosity -> FilePath -> IO a -> IO a
+withPackageDBLock verbosity dbPath =
+  withFileLock verbosity lockPath waitMsg
+  where
+    lockPath = takeDirectory dbPath </> ('.' : takeFileName dbPath) <.> "lock"
+    waitMsg = "Waiting for file lock on package database " ++ dbPath
 
 -- | Given all the context and resources, (re)build an individual package.
 rebuildTarget
