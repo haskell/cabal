@@ -78,8 +78,8 @@ import qualified Control.Monad.Trans.State.Strict as State
 import Control.Exception (ErrorCall (..), catch, evaluate)
 
 import GHC.Fingerprint
-import GHC.Generics
 import GHC.Fingerprint (Fingerprint)
+import GHC.Generics
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as Builder

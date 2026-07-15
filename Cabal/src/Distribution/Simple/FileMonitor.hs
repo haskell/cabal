@@ -30,12 +30,12 @@ module Distribution.Simple.FileMonitor
 
 import Distribution.Compat.Prelude
 
-import GHC.Fingerprint hiding (getFileHash)
-import qualified GHC.Fingerprint as Fingerprint
-import Data.Binary.Get (runGetOrFail)
 import qualified Data.Binary as Binary
+import Data.Binary.Get (runGetOrFail)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map.Strict as Map
+import GHC.Fingerprint hiding (getFileHash)
+import qualified GHC.Fingerprint as Fingerprint
 
 import Control.Exception
 import Control.Monad.Except
