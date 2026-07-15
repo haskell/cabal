@@ -8,5 +8,4 @@ Error:
         nor any of its 'build-depends' dependencies.
     In the stanza 'library'
     In the inplace package 'Reexport2-1.0'
-    CallStack (from HasCallStack):
-      dieProgress, called at src/Distribution/Backpack/LinkedComponent.hs:_:_ in Cabal-<VERSION>-inplace:Distribution.Backpack.LinkedComponent
+    CallStack (from HasCallStack): <SNIPPED>

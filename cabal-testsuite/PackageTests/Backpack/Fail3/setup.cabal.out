@@ -4,5 +4,4 @@ Error:
     Non-library component has unfilled requirements:
         UnfilledSig brought into scope by build-depends: Fail1
     In the stanza executable foo
-    CallStack (from HasCallStack):
-      dieProgress, called at src/Distribution/Backpack/LinkedComponent.hs:_:_ in Cabal-<VERSION>-inplace:Distribution.Backpack.LinkedComponent
+    CallStack (from HasCallStack): <SNIPPED>

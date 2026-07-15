@@ -3,5 +3,4 @@ Configuring Fail2-0.1.0.0...
 Error:
     Mix-in refers to non-existent library 'non-existent'
     (did you forget to add the package to build-depends?)
-    CallStack (from HasCallStack):
-  dieProgress, called at src/Distribution/Backpack/ConfiguredComponent.hs:_:_ in Cabal-<VERSION>-inplace:Distribution.Backpack.ConfiguredComponent
+    CallStack (from HasCallStack): <SNIPPED>

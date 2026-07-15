@@ -11,6 +11,4 @@ Failed to build MainIsTest-0.1-inplace-Test. The exception was:
   -----BEGIN CABAL OUTPUT-----
 Error: [Cabal-2115]
 MyDummy.hs doesn't exist
-CallStack (from HasCallStack):
-  dieWithException, called at src/Distribution/Simple/Utils.hs:_:_ in Cabal-<VERSION>-inplace:Distribution.Simple.Utils
-
+CallStack (from HasCallStack): <SNIPPED>
