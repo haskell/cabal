@@ -639,8 +639,8 @@ requireConfiguredProgramVersion
   -> ProgramDb
   -> IO (ConfiguredProgram, Version)
 requireConfiguredProgramVersion verbosity prog range programDb =
-  either (dieWithException verbosity) return
-    $ lookupConfiguredProgramVersion prog range programDb
+  either (dieWithException verbosity) return $
+    lookupConfiguredProgramVersion prog range programDb
 
 -- | Check that a program is configured and available to be run.
 --

@@ -14,5 +14,5 @@ main = do
 
 outputFile :: [String] -> FilePath
 outputFile ("-o" : f : _) = f
-outputFile (_ : rest)     = outputFile rest
-outputFile []             = error "alex: no -o flag"
+outputFile (_ : rest) = outputFile rest
+outputFile [] = error "alex: no -o flag"
