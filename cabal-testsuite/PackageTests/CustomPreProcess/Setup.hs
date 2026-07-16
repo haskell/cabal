@@ -36,6 +36,14 @@ main = defaultMainWithHooks
 #endif
       PreProcessor {
         platformIndependent = True,
+#if MIN_VERSION_Cabal(3,17,0)
+        getPreProcessor = \_ -> pure
+          ( mkSimplePreProcessor $ \inFile outFile verbosity ->
+              do info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)
+                 callProcess progPath [inFile, outFile],
+          , PreProcessorCustom progPath
+          )
+#else
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
           do info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)
 #if MIN_VERSION_Cabal(3,7,0)
@@ -43,6 +51,7 @@ main = defaultMainWithHooks
         ppOrdering = unsorted
 #else
              callProcess progPath [inFile, outFile]
+#endif
 #endif
         }
       where

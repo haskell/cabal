@@ -31,7 +31,7 @@ import Distribution.Verbosity
 import qualified Text.PrettyPrint as Disp
 
 -- | The interface to a preprocessor, which may be implemented using an
---  external program, but need not be.  The arguments are the name of
+--  external program, but need not be. The arguments are the name of
 --  the input file, the name of the output file and a verbosity level.
 --  Here is a simple example that merely prepends a comment to the given
 --  source file:
@@ -41,14 +41,14 @@ import qualified Text.PrettyPrint as Disp
 --  >   PreProcessor {
 --  >     platformIndependent = True,
 --  >     ppOrdering = \_ _ -> return,
---  >     configurePreProcessor = \verbosity -> do
+--  >     getPreProcessor = \_ -> do
 --  >       let runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
 --  >               do info verbosity (inFile++" has been preprocessed to "++outFile)
 --  >                  stuff <- readFile inFile
 --  >                  writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
 --  >                  return ()
---  >           ppInfo = hashEncode "test"
---  >       return (runPreProcessor, ppInfo)
+--  >           ppKey = PreProcessorBuiltin
+--  >       return (runPreProcessor, ppKey)
 --
 --  We split the input and output file names into a base directory and the
 --  rest of the file name. The input base dir is the path in the list of search
@@ -107,6 +107,10 @@ data PreProcessorKey
   | -- | A preprocessor that runs some program, identified uniquely by the
     -- configured program.
     PreProcessorPrograms [ConfiguredProgram]
+  | -- | A custom preprocessor, identified uniquely by a supplied string. Use
+    -- this for preprocessors that may change between builds, but cannot be
+    -- implemented using 'ConfiguredProgram'.
+    PreProcessorCustom String
   deriving (Generic, Eq)
 
 instance Binary PreProcessorKey
