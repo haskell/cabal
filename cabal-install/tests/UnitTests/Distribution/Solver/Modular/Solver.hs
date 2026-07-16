@@ -36,6 +36,10 @@ tests =
       "Simple dependencies"
       [ runTest $ mkTest db1 "alreadyInstalled" ["A"] (solverSuccess [])
       , runTest $ mkTest db1 "installLatest" ["B"] (solverSuccess [("B", 2)])
+      , runTest $ mkTest dbLatest "preferInstalledOverLatest" ["B"] (solverSuccess [("B", 1)])
+      , runTest $
+          preferLatest $
+            mkTest dbLatest "installLatestOverInstalled" ["B"] (solverSuccess [("A", 2), ("B", 1)])
       , runTest $
           preferOldest $
             mkTest db1 "installOldest" ["B"] (solverSuccess [("B", 1)])
@@ -1013,6 +1017,14 @@ db1 =
       , Right $ exAv "G" 1 [ExFix "B" 2, ExAny "E"]
       , Right $ exAv "Z" 1 []
       ]
+
+-- db for testing PreferLatest
+dbLatest :: ExampleDb
+dbLatest =
+  [ Left $ exInst "A" 1 "A-1" []
+  , Right $ exAv "A" 2 []
+  , Right $ exAv "B" 1 [ExAny "A"]
+  ]
 
 -- In this example, we _can_ install C and D as independent goals, but we have
 -- to pick two different versions for B (arbitrarily)

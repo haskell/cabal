@@ -232,7 +232,7 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigOnlyConstrained :: Flag OnlyConstrained
   , projectConfigPerComponent :: Flag Bool
   , projectConfigIndependentGoals :: Flag IndependentGoals
-  , projectConfigPreferOldest :: Flag PreferOldest
+  , projectConfigPreferVersion :: Flag PreferVersion
   , projectConfigProgPathExtra :: NubList FilePath
   , projectConfigMultiRepl :: Flag Bool
   -- More things that only make sense for manual mode, not --local mode
@@ -445,7 +445,7 @@ data SolverSettings = SolverSettings
   , solverSettingIndexState :: Maybe TotalIndexState
   , solverSettingActiveRepos :: Maybe ActiveRepos
   , solverSettingIndependentGoals :: IndependentGoals
-  , solverSettingPreferOldest :: PreferOldest
+  , solverSettingPreferVersion :: PreferVersion
   -- Things that only make sense for manual mode, not --local mode
   -- too much control!
   -- solverSettingShadowPkgs        :: Bool,

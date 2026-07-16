@@ -713,7 +713,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , installMinimizeConflictSet = projectConfigMinimizeConflictSet
       , installPerComponent = projectConfigPerComponent
       , installIndependentGoals = projectConfigIndependentGoals
-      , installPreferOldest = projectConfigPreferOldest
+      , installPreferVersion = projectConfigPreferVersion
       , -- installShadowPkgs         = projectConfigShadowPkgs,
       installStrongFlags = projectConfigStrongFlags
       , installAllowBootLibInstalls = projectConfigAllowBootLibInstalls
@@ -999,7 +999,7 @@ convertToLegacySharedConfig
           , installFineGrainedConflicts = projectConfigFineGrainedConflicts
           , installMinimizeConflictSet = projectConfigMinimizeConflictSet
           , installIndependentGoals = projectConfigIndependentGoals
-          , installPreferOldest = projectConfigPreferOldest
+          , installPreferVersion = projectConfigPreferVersion
           , installShadowPkgs = mempty -- projectConfigShadowPkgs,
           , installStrongFlags = projectConfigStrongFlags
           , installAllowBootLibInstalls = projectConfigAllowBootLibInstalls
@@ -1465,6 +1465,7 @@ legacySharedConfigFieldDescrs constraintSrc =
           , "minimize-conflict-set"
           , "independent-goals"
           , "prefer-oldest"
+          , "prefer-version"
           , "strong-flags"
           , "allow-boot-library-installs"
           , "reject-unconstrained-dependencies"
