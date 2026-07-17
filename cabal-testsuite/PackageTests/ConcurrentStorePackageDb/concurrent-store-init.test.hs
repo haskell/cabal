@@ -18,6 +18,9 @@ import Test.Cabal.Prelude
 main = cabalTest $ do
   env <- getTestEnv
   cabalPath <- programPath <$> requireProgramM cabalProgram
+  -- The condition we need to test is the small window where multiple cabal
+  -- calls concurrently attempt to create the shared store. Use a sufficiently
+  -- high number to increase the probability of hitting that window.
   let n = 10
       ids = [1 .. n] :: [Int]
       root = testCurrentDir env
