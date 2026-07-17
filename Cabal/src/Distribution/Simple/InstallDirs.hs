@@ -1,7 +1,9 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- Module      :  Distribution.Simple.InstallDirs
@@ -559,25 +561,25 @@ foreign import capi unsafe "shlobj.h SHGetFolderPathW"
 -- FieldGrammar
 
 installDirsGrammar :: ParsecFieldGrammar' (InstallDirs (Flag PathTemplate))
-installDirsGrammar =
-  InstallDirs
-    <$> optionalFieldDef "prefix" installDirsPrefixLens mempty
-    <*> optionalFieldDef "bindir" installDirsBindirLens mempty
-    <*> optionalFieldDef "libdir" installDirsLibdirLens mempty
-    <*> optionalFieldDef "libsubdir" installDirsLibsubdirLens mempty
-    <*> optionalFieldDef "dynlibdir" installDirsDynlibdirLens mempty
-    <*> optionalFieldDef "bytecodelibdir" installDirsBytecodelibdirLens mempty
-    <*> pure NoFlag -- flibdir
-    <*> optionalFieldDef "libexecdir" installDirsLibexecdirLens mempty
-    <*> optionalFieldDef "libexecsubdir" installDirsLibexecsubdirLens mempty
-    <*> pure NoFlag -- includedir
-    <*> optionalFieldDef "datadir" installDirsDatadirLens mempty
-    <*> optionalFieldDef "datasubdir" installDirsDatasubdirLens mempty
-    <*> optionalFieldDef "docdir" installDirsDocdirLens mempty
-    <*> pure NoFlag -- mandir
-    <*> optionalFieldDef "htmldir" installDirsHtmldirLens mempty
-    <*> optionalFieldDef "haddockdir" installDirsHaddockdirLens mempty
-    <*> optionalFieldDef "sysconfdir" installDirsSysconfdirLens mempty
+installDirsGrammar = do
+  prefix <- optionalFieldDef "prefix" installDirsPrefixLens mempty
+  bindir <- optionalFieldDef "bindir" installDirsBindirLens mempty
+  libdir <- optionalFieldDef "libdir" installDirsLibdirLens mempty
+  libsubdir <- optionalFieldDef "libsubdir" installDirsLibsubdirLens mempty
+  dynlibdir <- optionalFieldDef "dynlibdir" installDirsDynlibdirLens mempty
+  bytecodelibdir <- optionalFieldDef "bytecodelibdir" installDirsBytecodelibdirLens mempty
+  let flibdir = NoFlag
+  libexecdir <- optionalFieldDef "libexecdir" installDirsLibexecdirLens mempty
+  libexecsubdir <- optionalFieldDef "libexecsubdir" installDirsLibexecsubdirLens mempty
+  let includedir = NoFlag
+  datadir <- optionalFieldDef "datadir" installDirsDatadirLens mempty
+  datasubdir <- optionalFieldDef "datasubdir" installDirsDatasubdirLens mempty
+  docdir <- optionalFieldDef "docdir" installDirsDocdirLens mempty
+  let mandir = NoFlag
+  htmldir <- optionalFieldDef "htmldir" installDirsHtmldirLens mempty
+  haddockdir <- optionalFieldDef "haddockdir" installDirsHaddockdirLens mempty
+  sysconfdir <- optionalFieldDef "sysconfdir" installDirsSysconfdirLens mempty
+  pure InstallDirs{..}
 
 -- ---------------------------------------------------------------------------
 -- Lenses

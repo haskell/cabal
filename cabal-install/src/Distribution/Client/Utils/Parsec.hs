@@ -1,4 +1,6 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.Utils.Parsec
   ( remoteRepoGrammar
@@ -77,10 +79,13 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (NubList' sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . NubList.fromNubList . unpack
 
 remoteRepoGrammar :: RepoName -> ParsecFieldGrammar RemoteRepo RemoteRepo
-remoteRepoGrammar name =
-  pure (RemoteRepo name)
-    <*> uniqueFieldAla "url" URI_NT remoteRepoURILens
-    <*> optionalField "secure" remoteRepoSecureLens
-    <*> monoidalFieldAla "root-keys" (alaList' FSep Token) remoteRepoRootKeysLens
-    <*> optionalFieldDefAla "key-threshold" KeyThreshold remoteRepoKeyThresholdLens 0
-    <*> pure False -- we don't parse remoteRepoShouldTryHttps
+remoteRepoGrammar remoteRepoName = do
+  remoteRepoURI <- uniqueFieldAla "url" URI_NT remoteRepoURILens
+  remoteRepoSecure <- optionalField "secure" remoteRepoSecureLens
+  remoteRepoRootKeys <- monoidalFieldAla "root-keys" (alaList' FSep Token) remoteRepoRootKeysLens
+  remoteRepoKeyThreshold <- optionalFieldDefAla "key-threshold" KeyThreshold remoteRepoKeyThresholdLens 0
+  pure
+    RemoteRepo
+      { remoteRepoShouldTryHttps = False -- we don't parse remoteRepoShouldTryHttps
+      , ..
+      }

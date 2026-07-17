@@ -1,3 +1,6 @@
+{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE RecordWildCards #-}
+
 -- | The test monad
 module Test.Cabal.Monad
   ( -- * High-level runners
@@ -134,9 +137,8 @@ data CommonArgs = CommonArgs
   }
 
 commonArgParser :: Parser CommonArgs
-commonArgParser =
-  CommonArgs
-    <$> optional
+commonArgParser = do
+  argCabalInstallPath <- optional
       ( option
           str
           ( help "Path to cabal-install executable to test. If omitted, tests involving cabal-install are skipped!"
@@ -144,7 +146,7 @@ commonArgParser =
               <> metavar "PATH"
           )
       )
-    <*> optional
+  argGhcPath <- optional
       ( option
           str
           ( help "GHC to ask Cabal to use via --with-ghc flag"
@@ -153,7 +155,7 @@ commonArgParser =
               <> metavar "PATH"
           )
       )
-    <*> optional
+  argHackageRepoToolPath <- optional
       ( option
           str
           ( help "Path to hackage-repo-tool to use for repository manipulation"
@@ -161,7 +163,7 @@ commonArgParser =
               <> metavar "PATH"
           )
       )
-    <*> optional
+  argHaddockPath <- optional
       ( option
           str
           ( help "Path to haddock to use for --with-haddock flag"
@@ -169,15 +171,16 @@ commonArgParser =
               <> metavar "PATH"
           )
       )
-    <*> switch
+  argKeepTmpFiles <- switch
       ( long "keep-tmp-files"
           <> help "Keep temporary files"
       )
-    <*> switch
+  argAccept <- switch
       ( long "accept"
           <> help "Accept output"
       )
-    <*> switch (long "skip-setup-tests" <> help "Skip setup tests")
+  argSkipSetupTests <- switch (long "skip-setup-tests" <> help "Skip setup tests")
+  pure CommonArgs{..}
 
 renderCommonArgs :: CommonArgs -> [String]
 renderCommonArgs args =
@@ -197,15 +200,14 @@ data TestArgs = TestArgs
   }
 
 testArgParser :: Parser TestArgs
-testArgParser =
-  TestArgs
-    <$> option
+testArgParser = do
+  testArgDistDir <- option
       str
       ( help "Build directory of cabal-testsuite"
           <> long "builddir"
           <> metavar "DIR"
       )
-    <*> many
+  testArgPackageDb <- many
       ( option
           str
           ( help "Package DB which contains Cabal and Cabal-syntax"
@@ -213,8 +215,9 @@ testArgParser =
               <> metavar "DIR"
           )
       )
-    <*> argument str (metavar "FILE")
-    <*> commonArgParser
+  testArgScriptPath <- argument str (metavar "FILE")
+  testCommonArgs <- commonArgParser
+  pure TestArgs{..}
 
 -- * skip tests
 
