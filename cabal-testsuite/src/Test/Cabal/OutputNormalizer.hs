@@ -96,6 +96,10 @@ normalizeOutput nenv =
     . resub "(Released|Acquired|Waiting) .*hackage-security-lock\n" ""
     . resub "installed: [0-9]+(\\.[0-9]+)*" "installed: <VERSION>"
     . resub "\\.hs:[0-9]+:[0-9]+" ".hs:_:_"
+    -- Remove all lines after "CallStack (from HasCallStack):"
+    . resub
+      "CallStack \\(from HasCallStack\\):[A-Za-z0-9 \\.,:;'\n/_-]*"
+      "CallStack (from HasCallStack): <SNIPPED>\n"
   where
     sameDir = "(\\.((\\\\)+|\\/))*"
     packageIdRegex pid =
