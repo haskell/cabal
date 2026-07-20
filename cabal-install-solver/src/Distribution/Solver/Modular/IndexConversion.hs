@@ -38,7 +38,7 @@ import           Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Modular.Dependency as D
 import Distribution.Solver.Modular.Flag as F
 import Distribution.Solver.Modular.Index
-import Distribution.Solver.Types.Stage (Stage (..))
+import Distribution.Solver.Types.Stage (Staged, getStage, activeStages)
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
@@ -57,18 +57,26 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
+convPIs :: Staged (CompilerInfo, Platform)
+        -> Map PN [LabeledPackageConstraint]
         -> ShadowPkgs -> StrongFlags -> SolveExecutables
-        -> SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
+        -> Staged SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
         -> Index
-convPIs os arch comp constraints sip strfl solveExes iidx sidx =
-  -- Only the host stage is populated for now: the installed/source indexes come
-  -- from a single (host) toolchain. Once toolchains are staged, this will
-  -- produce a separate 'StageIndex' per stage, each converted from that stage's
-  -- own compiler and package DBs.
-  M.singleton Host $
-    mkIndex $
-      convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
+convPIs toolchains constraints sip strfl solveExes iidxs sidx =
+  -- Build one 'StageIndex' per active stage. A non-cross build has only the
+  -- host stage, reproducing the old single-stage index exactly. A cross build
+  -- also has a build stage, and each stage is converted against its own
+  -- toolchain (compiler + platform) and its own installed-package index, so the
+  -- Build stage sees the build compiler's packages and the Host stage the host
+  -- compiler's. Source packages are shared, but re-evaluated per stage because
+  -- their condition trees depend on the stage's os\/arch\/compiler.
+  M.fromList [ (stage, convStage stage) | stage <- activeStages toolchains ]
+  where
+    convStage stage =
+      let (comp, Platform arch os) = getStage toolchains stage
+      in mkIndex $
+           convIPI' sip (getStage iidxs stage)
+             ++ convSPI' os arch comp constraints strfl solveExes sidx
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.

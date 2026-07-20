@@ -67,8 +67,6 @@ import Distribution.Solver.Types.SummarizedMessage
 import Distribution.Solver.Types.Stage
          ( Stage(Host), getStage )
 import Distribution.Solver.Types.Variable ( Variable(..) )
-import Distribution.System
-         ( Platform(..) )
 import Distribution.Simple.Setup
          ( BooleanFlag(..) )
 import Distribution.Simple.Utils
@@ -83,13 +81,15 @@ modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
   uncurry postprocess <$> -- convert install plan
   solve' sc cinfo idx pkgConfigDB pprefs gcs pns
     where
-      -- Part B.1: the interface is per-stage, but the internals still consume
-      -- the host stage only; B.2 makes 'convPIs'/'solve'' genuinely per-stage.
-      (cinfo, Platform arch os) = getStage toolchains Host
+      -- Compiler info and pkg-config DB used to validate flag/dependency
+      -- choices still come from the host stage; staging the validation phase
+      -- is a separate refinement.
+      cinfo = fst (getStage toolchains Host)
       pkgConfigDB = getStage pkgConfigDbs Host
-      iidx = getStage iidxs Host
-      -- Indices have to be converted into solver-specific uniform index.
-      idx    = convPIs os arch cinfo gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx
+      -- Indices have to be converted into solver-specific uniform index. Which
+      -- stages are solved separately is intrinsic to the staged toolchains (a
+      -- non-cross build has no build stage), so 'convPIs' derives it directly.
+      idx    = convPIs toolchains gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidxs sidx
       -- Constraints have to be converted into a finite map indexed by PN.
       gcs    = M.fromListWith (++) (map pair pcs)
         where
@@ -98,8 +98,12 @@ modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
       -- Results have to be converted into an install plan. 'convCP' removes
       -- package qualifiers, which means that linked packages become duplicates
       -- and can be removed.
+      -- FIXME: install-plan construction still resolves installed packages
+      -- against the host index only. A cross build's build-stage installed
+      -- deps need the build index here too (tracked with the stage-in-
+      -- InstallPlan.fromSolverInstallPlan work).
       postprocess a rdm = ordNubBy nodeKey $
-                          map (convCP iidx sidx) (toCPs a rdm)
+                          map (convCP (getStage iidxs Host) sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN
