@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name:          hooks-exe
-version:       0.1
+version:       3.18
 copyright:     2024, Cabal Development Team
 license:       BSD-3-Clause
 author:        Cabal Development Team <cabal-devel@haskell.org>
