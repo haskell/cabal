@@ -1,5 +1,6 @@
 synopsis: Add option to cabal upload to run a command to get Hackage token
 packages: cabal-install
+significance: significant
 prs: #12132
 description:{
 Introduce `--token-command` option to `cabal upload`, to run a command to get a Hackage authentication token rather than providing it in plaintext.
