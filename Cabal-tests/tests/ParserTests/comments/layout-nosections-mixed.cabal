@@ -1,0 +1,12 @@
+-- comment before
+
+name: comment-after-nameless-field
+    -- comment within
+version: 1
+    -- another comment within
+cabal-version: >= 1.8
+-- comment after
+
+library
+  build-depends:
+    base >= 4
