@@ -590,6 +590,7 @@ instance Semigroup SavedConfig where
           { uploadCandidate = combine uploadCandidate
           , uploadDoc = combine uploadDoc
           , uploadToken = combine uploadToken
+          , uploadTokenCmd = combine uploadTokenCmd
           , uploadUsername = combine uploadUsername
           , uploadPassword = combine uploadPassword
           , uploadPasswordCmd = combine uploadPasswordCmd

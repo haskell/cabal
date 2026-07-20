@@ -1639,6 +1639,22 @@ to Hackage.
     authentication tokens on Hackage's `account management page
     <https://hackage.haskell.org/users/account-management>`__.
 
+.. option:: -T COMMAND or -TCOMMAND, --token-command=COMMAND
+
+    Command to get your Hackage authentication token. This is useful if your
+    token is stored in a secrets manager, for example. Arguments with whitespace
+    must be quoted (double-quotes only). For example:
+
+    ::
+
+        --token-command='sh -c "op read op://hackage/upload-token"'
+
+    Or in the config file:
+
+    ::
+
+        token-command: sh -c "op read op://hackage/upload-token"
+
 .. option:: -u USERNAME or -uUSERNAME, --username=USERNAME
 
     Your Hackage username.
