@@ -18,6 +18,11 @@ build-type:     Simple
 extra-doc-files:
   README.md ChangeLog.md
 
+flag cabal-parsec-debug
+  description: Enable debug build for the cabal field lexer/parser.
+  default:     False
+  manual:      True
+
 source-repository head
   type:     git
   location: https://github.com/haskell/cabal/
@@ -59,6 +64,11 @@ library
 
   if impl(ghc >= 8.0) && impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
+
+  if flag(cabal-parsec-debug)
+    CPP-Options: -DCABAL_PARSEC_DEBUG
+    build-depends:
+      vector
 
   build-tool-depends:
     -- https://github.com/haskell/alex/issues/288

@@ -31,7 +31,6 @@ import qualified Data.ByteString.Char8 as B.Char8
 import qualified Data.Word as Word
 
 #ifdef CABAL_PARSEC_DEBUG
-import Debug.Trace
 import qualified Data.Vector as V
 import qualified Data.Text   as T
 import qualified Data.Text.Encoding as T
@@ -84,8 +83,9 @@ tokens :-
 <bol_section, bol_field_layout, bol_field_braces> {
   @nbspspacetab* @nl         { \pos len inp -> checkWhitespace pos len inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
-  $spacetab* "--" $comment*  ;  -- TODO: check the lack of @nl works here
-                                -- including counting line numbers
+  $spacetab* "--" $comment*  { toki TokComment }
+  -- TODO: check the lack of @nl works here
+  -- including counting line numbers
 }
 
 <bol_section> {
@@ -105,9 +105,8 @@ tokens :-
 }
 
 <in_section> {
-  $spacetab+   ; --TODO: don't allow tab as leading space
-
-  "--" $comment* ;
+  $spacetab+     ; --TODO: don't allow tab as leading space
+  "--" $comment* { toki TokComment }
 
   @name        { toki TokSym }
   @string      { \pos len inp -> return $! L pos (TokStr (B.take (len - 2) (B.tail inp))) }
@@ -161,6 +160,7 @@ data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or 
            | Colon
            | OpenBrace
            | CloseBrace
+           | TokComment !ByteString
            | EOF
            | LexicalError InputStream --TODO: add separate string lexical error
   deriving Show
@@ -230,7 +230,9 @@ lexToken = do
         setInput inp'
         let !len_bytes = B.length inp - B.length inp'
         t <- action pos len_bytes inp
-        --traceShow t $ return tok
+#ifdef CABAL_PARSEC_DEBUG
+        traceShow t $ return tok
+#endif
         return t
 
 
@@ -241,10 +243,12 @@ checkPosition pos@(Position lineno colno) inp inp' len_chars = do
     let len_bytes = B.length inp - B.length inp'
         pos_txt   | lineno-1 < V.length text_lines = T.take len_chars (T.drop (colno-1) (text_lines V.! (lineno-1)))
                   | otherwise = T.empty
-        real_txt  = B.take len_bytes inp
+        real_txt :: B.ByteString
+        real_txt = B.take len_bytes inp
     when (pos_txt /= T.decodeUtf8 real_txt) $
       traceShow (pos, pos_txt, T.decodeUtf8 real_txt) $
-      traceShow (take 3 (V.toList text_lines)) $ return ()
+      traceShow (take 3 (V.toList text_lines)) $
+      return ()
   where
     getDbgText = Lex $ \s@LexState{ dbgText = txt } -> LexResult s txt
 #else
