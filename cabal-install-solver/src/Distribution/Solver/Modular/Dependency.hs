@@ -54,7 +54,7 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
 import Distribution.Solver.Types.PackagePath
-import Distribution.Solver.Types.Stage (Stage)
+import Distribution.Solver.Types.Stage (Stage, prevStage)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
@@ -161,6 +161,13 @@ data QualifyOptions = QO {
 
     -- Should dependencies of the setup script be treated as independent?
   , qoSetupIndependent :: Bool
+
+    -- | Are we cross-compiling, i.e. is a distinct build stage active? When
+    -- true, tool dependencies (build-tool exes, custom @Setup.hs@ deps) are
+    -- solved one stage earlier ('prevStage', Host -> Build); when false they
+    -- stay in the depending package's stage, so a non-cross build behaves
+    -- exactly as before.
+  , qoCross :: Bool
   }
   deriving Show
 
@@ -223,14 +230,15 @@ qualifyDeps QO{..} (Q pp@(PackagePath s ns q) pn) = go
 
     -- The stage a tool dependency (build-tool exe, custom-setup) is solved
     -- for. This is the ONLY place the stage changes as we descend the tree:
-    -- host packages depend on tools built for the build system. In this
-    -- structural prototype the index is not yet stage-aware, so we keep the
-    -- depending package's stage (@s@); the cross-compile feature replaces this
-    -- with @prevStage s@ (Host -> Build), driven by the active-stage set so a
-    -- non-cross build (single toolchain, host stage only) keeps tools at Host.
-    -- Note that stage and namespace (@ns@, threaded unchanged) are independent.
+    -- host packages depend on tools built for the build system. When cross-
+    -- compiling we drop to @prevStage s@ (Host -> Build); a non-cross build
+    -- ('qoCross' is False, only the host stage is active) keeps tools at the
+    -- depending package's stage (@s@), so its behaviour is unchanged. Note
+    -- that stage and namespace (@ns@, threaded unchanged) are independent.
     toolStage :: Stage
-    toolStage = s
+    toolStage
+      | qoCross   = prevStage s
+      | otherwise = s
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool

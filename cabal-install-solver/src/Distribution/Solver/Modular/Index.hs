@@ -81,6 +81,10 @@ defaultQualifyOptions idx = QO {
                               , (LDep _ (Dep (PkgComponent dep _) _ci), _comp) <- flattenFlaggedDeps deps
                               ]
     , qoSetupIndependent = True
+      -- The index's stage-key set is the single source of truth for whether
+      -- we are cross-compiling: 'convPIs' only populates a 'Build' stage when
+      -- the build toolchain differs from the host one.
+    , qoCross = M.member Build idx
     }
   where
     base = mkPackageName "base"
