@@ -1,4 +1,4 @@
-Cabal and Cabal-syntax 3.18.0.0 changelog and release notes
+Cabal and Cabal-syntax 3.18.1.0 changelog and release notes
 ---
 
 ### Significant changes
