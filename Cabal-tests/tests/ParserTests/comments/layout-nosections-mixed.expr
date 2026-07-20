@@ -1,0 +1,13 @@
+[
+  Comment
+    "-- comment before"
+    (Position 1 1),
+  Comment
+    "    -- comment within"
+    (Position 4 1),
+  Comment
+    "    -- another comment within"
+    (Position 6 1),
+  Comment
+    "-- comment after"
+    (Position 8 1)]
