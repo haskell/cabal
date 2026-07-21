@@ -48,6 +48,7 @@ import Distribution.Solver.Types.Settings
 
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
+import Distribution.Client.ProjectConfig.Parsec
 
 import UnitTests.Distribution.Client.ArbitraryInstances
 import UnitTests.Distribution.Client.TreeDiffInstances ()
