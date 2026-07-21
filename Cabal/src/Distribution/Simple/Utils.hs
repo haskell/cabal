@@ -8,6 +8,7 @@
 #ifdef GIT_REV
 {-# LANGUAGE TemplateHaskell #-}
 #endif
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -41,6 +42,7 @@ module Distribution.Simple.Utils
   , isUserException
   , warn
   , warnError
+  , labelMessage
   , notice
   , noticeNoWrap
   , noticeDoc
@@ -618,17 +620,27 @@ topHandler is_user_exception prog = topHandlerWith is_user_exception (const $ ex
 --
 -- We display these at the 'normal' verbosity level.
 warn :: Verbosity -> String -> IO ()
-warn verbosity msg = warnMessage "Warning" verbosity msg
+warn verbosity msg = labelMessage "Warning" Nothing verbosity msg
 
 -- | Like 'warn', but prepend @Error: …@ instead of @Warning: …@ before the
 -- the message. Useful when you want to highlight the condition is an error
 -- but do not want to quit the program yet.
 warnError :: Verbosity -> String -> IO ()
-warnError verbosity message = warnMessage "Error" verbosity message
+warnError verbosity message = labelMessage "Error" Nothing verbosity message
 
--- | Warning message, with a custom label.
-warnMessage :: String -> Verbosity -> String -> IO ()
-warnMessage l verbosity msg = withFrozenCallStack $ do
+-- | A message with a supplied label. If no punctuation is given, it defaults to
+-- ": ".
+--
+-- If "Warning" is supplied as the label and `Nothing` as punctuation then the
+-- effective prefix is "Warning: ".
+--
+-- The punctuation allows for a second level of labelling. For instance,
+-- "Warning" with `Just (": " ++ pkgName ++ " ")` as punctuation would yield
+-- "Warning: pkgName " as the effective prefix to the message.
+--
+-- @since 3.20.0.0
+labelMessage :: String -> Maybe String -> Verbosity -> String -> IO ()
+labelMessage label (fromMaybe ": " -> punctuation) verbosity msg = withFrozenCallStack $ do
   when (verbosityLevel verbosity >= Normal && not (isVerboseNoWarn flags)) $ do
     ts <- getPOSIXTime
     let outHandle = verbosityChosenOutputHandle verbosity
@@ -637,7 +649,7 @@ warnMessage l verbosity msg = withFrozenCallStack $ do
     hPutStr errHandle
       . withMetadata ts NormalMark FlagTrace flags
       . wrapTextVerbosity flags
-      $ l ++ ": " ++ msg
+      $ label ++ punctuation ++ msg
   where
     flags = verbosityFlags verbosity
 
