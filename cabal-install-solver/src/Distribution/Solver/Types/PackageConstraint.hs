@@ -60,6 +60,9 @@ data ConstraintQualifier
      -- | The package with the specified name when it has a
      -- setup qualifier.
    | ScopeAnySetupQualifier PackageName
+     -- | The package with the specified name when it has an
+     -- executable (build-tool) qualifier.
+   | ScopeAnyExeQualifier PackageName
      -- | The package with the specified name regardless of
      -- qualifier.
    | ScopeAnyQualifier PackageName
@@ -77,6 +80,7 @@ scopeToPackageName :: ConstraintScope -> PackageName
 scopeToPackageName (ConstraintScope _ (ScopeTarget pn)) = pn
 scopeToPackageName (ConstraintScope _ (ScopeQualified _ pn)) = pn
 scopeToPackageName (ConstraintScope _ (ScopeAnySetupQualifier pn)) = pn
+scopeToPackageName (ConstraintScope _ (ScopeAnyExeQualifier pn)) = pn
 scopeToPackageName (ConstraintScope _ (ScopeAnyQualifier pn)) = pn
 
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
@@ -98,6 +102,11 @@ constraintQualifierMatches (ScopeAnySetupQualifier pn) _ns q pn' =
   where
     setup (QualSetup _) = True
     setup _             = False
+constraintQualifierMatches (ScopeAnyExeQualifier pn) _ns q pn' =
+    exe q && pn == pn'
+  where
+    exe (QualExe _ _) = True
+    exe _             = False
 constraintQualifierMatches (ScopeAnyQualifier pn) _ns _q pn' = pn == pn'
 
 instance Pretty ConstraintScope where
@@ -111,6 +120,7 @@ instance Pretty ConstraintQualifier where
   pretty (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn
   pretty (ScopeQualified q pn) = dispQualifier q <<>> pretty pn
   pretty (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> pretty pn
+  pretty (ScopeAnyExeQualifier pn) = Disp.text "exe." <<>> pretty pn
   pretty (ScopeAnyQualifier pn) = Disp.text "any." <<>> pretty pn
 
 -- | A package property is a logical predicate on packages.
