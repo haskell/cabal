@@ -116,11 +116,18 @@ exampleConstraints =
             )
         )
     )
-    -- -- TODO: Re-enable UserQualExe tests once we decide on a syntax.
-    --
-    -- , ("foo:happy:exe.template-haskell test",
-    --    UserConstraint (UserQualified (UserQualExe (pn "foo") (pn "happy")) (pn "template-haskell"))
-    --                   (PackagePropertyStanzas [TestStanzas]))
+  ,
+    ( "exe.happy installed"
+    , UserConstraint
+        (UserAnyExeQualifier (pn "happy"))
+        PackagePropertyInstalled
+    )
+  ,
+    ( "foo:happy:exe.template-haskell test"
+    , UserConstraint
+        (UserQualified (UserQualExe (pn "foo") (pn "happy")) (pn "template-haskell"))
+        (PackagePropertyStanzas [TestStanzas])
+    )
   ]
   where
     pn = mkPackageName

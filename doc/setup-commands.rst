@@ -1051,10 +1051,16 @@ Miscellaneous options
         # Use the installed rts for every build-stage package.
         $ cabal install --constraint="build:any.rts installed"
 
-    ..  TODO: Uncomment this example once we decide on a syntax for 'exe'.
-    ..  # Example use of the 'exe' (executable build tool)
-        # qualifier. This constraint applies to package baz when it
-        # is a dependency of the build tool bar being used to
+    ::
+
+        # Example uses of 'exe' (executable build tool) qualifiers.
+
+        # This constraint applies to package bar wherever it is
+        # depended on as a build tool (build-tool-depends).
+        $ cabal install --constraint="exe.bar == 1.0"
+
+        # This constraint applies to package baz when it is a
+        # dependency of the build tool bar being used to
         # build package foo.
         $ cabal install --constraint="foo:bar:exe.baz == 1.0"
 

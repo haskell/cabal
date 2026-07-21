@@ -313,8 +313,7 @@ instance Arbitrary UserQualifier where
     oneof
       [ pure UserQualToplevel
       , UserQualSetup <$> arbitrary
-      -- -- TODO: Re-enable UserQualExe tests once we decide on a syntax.
-      -- , UserQualExe <$> arbitrary <*> arbitrary
+      , UserQualExe <$> arbitrary <*> arbitrary
       ]
 
 instance Arbitrary UserConstraint where
