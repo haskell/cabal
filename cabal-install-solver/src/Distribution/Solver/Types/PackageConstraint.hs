@@ -26,7 +26,7 @@ import Distribution.Version                        (VersionRange, simplifyVersio
 
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.GoalScope
-import Distribution.Solver.Types.Stage             (Stage (..))
+import Distribution.Solver.Types.Stage             (Stage (..), showStage)
 
 import qualified Text.PrettyPrint as Disp
 
@@ -100,10 +100,12 @@ constraintQualifierMatches (ScopeAnySetupQualifier pn) _ns q pn' =
     setup _             = False
 constraintQualifierMatches (ScopeAnyQualifier pn) _ns _q pn' = pn == pn'
 
--- | The stage is not rendered: there is no user syntax for it (yet), and the
--- only staged scopes are the 'Just' 'Host' ones made by 'scopeToplevel'.
 instance Pretty ConstraintScope where
-  pretty (ConstraintScope _mstage qualifier) = pretty qualifier
+  pretty (ConstraintScope mstage qualifier) = dispStagePrefix mstage <<>> pretty qualifier
+    where
+      -- The 'Host' stage is the invisible default, so only 'Build' is rendered.
+      dispStagePrefix (Just Build) = Disp.text (showStage Build) <<>> Disp.text ":"
+      dispStagePrefix _            = Disp.empty
 
 instance Pretty ConstraintQualifier where
   pretty (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn

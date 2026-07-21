@@ -30,7 +30,7 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.Targets
   ( UserConstraint (..)
-  , UserConstraintScope (..)
+  , UserConstraintQualifier (..)
   , UserQualifier (..)
   )
 import Distribution.Solver.Types.ConstraintSource
@@ -272,6 +272,7 @@ projectFreezeConstraints plan =
         localPackages
 
     isVersionConstraint (UserConstraint _ (PackagePropertyVersion _)) = True
+    isVersionConstraint (UserConstraintStaged _ _ (PackagePropertyVersion _)) = True
     isVersionConstraint _ = False
 
     localPackages :: Map PackageName ()

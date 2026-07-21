@@ -4,7 +4,7 @@ module UnitTests.Distribution.Client.Targets
 
 import Distribution.Client.Targets
   ( UserConstraint (..)
-  , UserConstraintScope (..)
+  , UserConstraintQualifier (..)
   , UserQualifier (..)
   , readUserConstraint
   )
@@ -16,6 +16,7 @@ import Distribution.Parsec (explicitEitherParsec, parsec, parsecCommaList)
 
 import Distribution.Solver.Types.OptionalStanza (OptionalStanza (..))
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
+import Distribution.Solver.Types.Stage (Stage (..))
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -78,6 +79,21 @@ exampleConstraints =
     ( "setup.Cabal installed"
     , UserConstraint
         (UserAnySetupQualifier (pn "Cabal"))
+        PackagePropertyInstalled
+    )
+  ,
+    ( "build:any.rts installed"
+    , UserConstraintStaged
+        Build
+        (UserAnyQualifier (pn "rts"))
+        PackagePropertyInstalled
+    )
+  , -- A package literally named "build" keeps its pre-existing meaning: this
+    -- is the setup dependency of package "build", not a build-stage constraint.
+
+    ( "build:setup.foo installed"
+    , UserConstraint
+        (UserQualified (UserQualSetup (pn "build")) (pn "foo"))
         PackagePropertyInstalled
     )
   ,
