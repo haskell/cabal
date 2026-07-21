@@ -279,7 +279,7 @@ testConditionForComponent os arch cinfo constraints p tree =
     flagAssignment :: [(FlagName, Bool)]
     flagAssignment =
         mconcat [ unFlagAssignment fa
-                | PackageConstraint (ScopeAnyQualifier _) (PackagePropertyFlags fa)
+                | PackageConstraint (ConstraintScope _ (ScopeAnyQualifier _)) (PackagePropertyFlags fa)
                     <- L.map unlabelPackageConstraint constraints]
 
     -- Simplify the condition, using the current environment. Most of this
