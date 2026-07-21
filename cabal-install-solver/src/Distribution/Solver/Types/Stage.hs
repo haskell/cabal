@@ -8,6 +8,7 @@ module Distribution.Solver.Types.Stage
   , Staged (..)
   , getStage
   , overStage
+  , traverseWithStage
   , always
   , isCross
   , activeStages
@@ -73,6 +74,13 @@ instance NFData a => NFData (Staged a)
 getStage :: Staged a -> Stage -> a
 getStage s Host = onHost s
 getStage s Build = fromMaybe (onHost s) (onBuild s)
+
+-- | Traverse a 'Staged' with the stage each value belongs to. Only the
+-- stages that carry a distinct value are visited, so the build stage of a
+-- non-cross build is not (its value is the host's).
+traverseWithStage :: Applicative f => (Stage -> a -> f b) -> Staged a -> f (Staged b)
+traverseWithStage f (Staged host build) =
+  Staged <$> f Host host <*> traverse (f Build) build
 
 -- | Apply a function to the value for a given 'Stage', leaving the other
 -- stage untouched. Editing the build stage of a non-cross build is a no-op
