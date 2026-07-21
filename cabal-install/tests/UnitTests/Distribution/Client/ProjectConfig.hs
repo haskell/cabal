@@ -78,12 +78,12 @@ tests =
       ]
   , testGroup
       "ProjectConfig printing/parsing round trip"
-      [ testProperty "packages" prop_roundtrip_printparse_packages
-      , testProperty "buildonly" prop_roundtrip_printparse_buildonly
-      , testProperty "shared" prop_roundtrip_printparse_shared
-      , testProperty "local" prop_roundtrip_printparse_local
-      , testProperty "specific" prop_roundtrip_printparse_specific
-      , testProperty "all" prop_roundtrip_printparse_all
+      [ testProperty "round trip packages" prop_roundtrip_printparse_packages
+      , testProperty "round trip buildonly" prop_roundtrip_printparse_buildonly
+      , testProperty "round trip shared" prop_roundtrip_printparse_shared
+      , testProperty "round trip local" prop_roundtrip_printparse_local
+      , testProperty "round trip specific" prop_roundtrip_printparse_specific
+      , testProperty "round trip all" prop_roundtrip_printparse_all
       ]
   , testGetProjectRootUsability
   , testFindProjectRoot
