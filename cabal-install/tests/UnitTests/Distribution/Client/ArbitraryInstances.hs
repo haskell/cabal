@@ -42,6 +42,7 @@ import Distribution.Client.Types.AllowNewer
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)
 import Distribution.Solver.Types.OptionalStanza (OptionalStanza (..), OptionalStanzaMap, OptionalStanzaSet, optStanzaSetFromList, optStanzaTabulate)
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
+import Distribution.Solver.Types.Stage (Stage (..))
 
 import Data.Coerce (Coercible, coerce)
 import Network.URI (URI (..), URIAuth (..), isUnreserved)
@@ -281,6 +282,29 @@ instance Arbitrary RelaxedDep where
 -------------------------------------------------------------------------------
 
 instance Arbitrary UserConstraintScope where
+  -- Only 'Nothing' and 'Just Build' round-trip through the constraint
+  -- pretty-printer/parser: the 'Host' stage is the invisible default and
+  -- renders empty, so it would come back as 'Nothing'. Never generate it.
+  --
+  -- 'Just Build' is not paired with the any-setup qualifier either: it would
+  -- print as @build:setup.foo@, which the parser (deliberately) reads as the
+  -- setup dependency of a package named @build@. A setup dependency is on
+  -- the build stage whenever there is one, so @setup.foo@ says the same.
+  arbitrary = do
+    q <- arbitrary
+    s <- case q of
+      UserAnySetupQualifier _ -> pure Nothing
+      _ -> elements [Nothing, Just Build]
+    pure (UserConstraintScope s q)
+  shrink (UserConstraintScope s q) =
+    [ UserConstraintScope s q'
+    | q' <- shrink q
+    , case q' of
+        UserAnySetupQualifier _ -> isNothing s
+        _ -> True
+    ]
+
+instance Arbitrary UserConstraintQualifier where
   arbitrary = genericArbitrary
   shrink = genericShrink
 
