@@ -33,6 +33,7 @@ data Stage
 
 instance Binary Stage
 instance Structured Stage
+instance NFData Stage
 
 -- | The stage name as it appears to users: in constraint scopes (@build:@)
 -- and in stage-keyed paths.

@@ -22,6 +22,7 @@ import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)
 import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage)
 
 import Distribution.Simple.Compiler (PackageDBX)
+import Distribution.Solver.Types.Stage (Stage)
 
 import Data.TreeDiff.Class
 import Data.TreeDiff.Instances.Cabal ()
@@ -75,9 +76,11 @@ instance ToExpr RepoName
 instance ToExpr ReportLevel
 instance ToExpr StrongFlags
 instance ToExpr Timestamp
+instance ToExpr Stage
 instance ToExpr TotalIndexState
 instance ToExpr UserConstraint
 instance ToExpr UserConstraintScope
+instance ToExpr UserConstraintQualifier
 instance ToExpr UserQualifier
 instance ToExpr WriteGhcEnvironmentFilesPolicy
 
