@@ -38,6 +38,15 @@ module Distribution.Client.ProjectPlanning
   , ElaboratedConfiguredPackage (..)
   , ElaboratedPlanPackage
   , ElaboratedSharedConfig (..)
+  , pkgConfigToolchain
+  , pkgConfigCompiler
+  , pkgConfigPlatform
+  , pkgConfigCompilerProgs
+  , pkgConfigBuildToolchain
+  , pkgConfigBuildCompiler
+  , pkgConfigBuildPlatform
+  , pkgConfigBuildProgs
+  , setPkgConfigCompilerProgs
   , ElaboratedReadyPackage
   , BuildStyle (..)
   , CabalFileText
@@ -1875,28 +1884,21 @@ elaborateInstallPlan
     x <- elaboratedInstallPlan
     return (x, elaboratedSharedConfig)
     where
-      -- The plan is elaborated against the host toolchain; both toolchains are
-      -- flattened into the scalar 'ElaboratedSharedConfig' fields below.
+      -- The plan is elaborated against the host toolchain; the full 'Toolchains'
+      -- (host + build) are carried in 'ElaboratedSharedConfig'. A few local
+      -- bindings below name the host toolchain's parts (and the build
+      -- compiler) for convenience.
       Toolchain
         { toolchainCompiler = compiler
         , toolchainPlatform = platform
         , toolchainProgramDb = compilerProgDb
         } = getStage toolchains Host
 
-      Toolchain
-        { toolchainCompiler = buildCompiler
-        , toolchainPlatform = buildPlatform
-        , toolchainProgramDb = buildProgDb
-        } = getStage toolchains Build
+      Toolchain{toolchainCompiler = buildCompiler} = getStage toolchains Build
 
       elaboratedSharedConfig =
         ElaboratedSharedConfig
-          { pkgConfigPlatform = platform
-          , pkgConfigCompiler = compiler
-          , pkgConfigCompilerProgs = compilerProgDb
-          , pkgConfigBuildPlatform = buildPlatform
-          , pkgConfigBuildCompiler = buildCompiler
-          , pkgConfigBuildProgs = buildProgDb
+          { pkgConfigToolchains = toolchains
           , pkgConfigReplOptions = mempty
           }
 
@@ -4190,7 +4192,7 @@ setupHsScriptOptions
 setupHsScriptOptions
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   plan
-  ElaboratedSharedConfig{..}
+  sharedConfig
   distdir
   srcdir
   builddir
@@ -4207,8 +4209,8 @@ setupHsScriptOptions
       , -- The Setup.hs script runs on the /build/ machine, so it must be
         -- compiled with the build toolchain (equal to the host toolchain
         -- unless cross-compiling).
-        useCompiler = Just pkgConfigBuildCompiler
-      , usePlatform = Just pkgConfigBuildPlatform
+        useCompiler = Just (pkgConfigBuildCompiler sharedConfig)
+      , usePlatform = Just (pkgConfigBuildPlatform sharedConfig)
       , usePackageDB = elabSetupPackageDBStack
       , usePackageIndex = Nothing
       , useSetupDependencies =
@@ -4218,7 +4220,7 @@ setupHsScriptOptions
                 elabSetupDependencies elab
             ]
       , useVersionMacros = elabSetupScriptStyle == SetupCustomExplicitDeps
-      , useProgramDb = pkgConfigBuildProgs
+      , useProgramDb = pkgConfigBuildProgs sharedConfig
       , useDistPref = builddir
       , useLoggingHandle = Nothing -- this gets set later
       , useWorkingDir = Just srcdir
@@ -4351,7 +4353,7 @@ setupHsConfigureFlags
   mkSymbolicPath
   plan
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
-  sharedConfig@ElaboratedSharedConfig{..}
+  sharedConfig
   configCommonFlags = do
     -- explicitly clear, then our package db stack
     -- TODO: [required eventually] have to do this differently for older Cabal versions
@@ -4402,7 +4404,7 @@ setupHsConfigureFlags
       configProgramPaths = Map.toList elabProgramPaths
       configProgramArgs = Map.toList elabProgramArgs
       configProgramPathExtra = toNubList elabProgramPathExtra
-      configHcFlavor = toFlag (compilerFlavor pkgConfigCompiler)
+      configHcFlavor = toFlag (compilerFlavor (pkgConfigCompiler sharedConfig))
       configHcPath = mempty -- we use configProgramPaths instead
       configHcPkg = mempty -- we use configProgramPaths instead
       configDumpBuildInfo = toFlag elabDumpBuildInfo
@@ -4460,7 +4462,7 @@ setupHsConfigureFlags
       configUserInstall = mempty -- don't rely on defaults
       configPrograms_ = mempty -- never use, shouldn't exist
       configUseResponseFiles = mempty
-      configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported pkgConfigCompiler
+      configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported (pkgConfigCompiler sharedConfig)
       configIgnoreBuildTools = mempty
 
       cidToGivenComponent :: ConfiguredId -> GivenComponent
@@ -4636,13 +4638,13 @@ setupHsHaddockFlags
   -> Cabal.HaddockFlags
 setupHsHaddockFlags
   (ElaboratedConfiguredPackage{..})
-  (ElaboratedSharedConfig{..})
+  sharedConfig
   _buildTimeSettings
   common =
     Cabal.HaddockFlags
       { haddockCommonFlags = common
       , haddockProgramPaths =
-          case lookupProgram haddockProgram pkgConfigCompilerProgs of
+          case lookupProgram haddockProgram (pkgConfigCompilerProgs sharedConfig) of
             Nothing -> mempty
             Just prg ->
               [
@@ -4780,11 +4782,11 @@ packageHashConfigInputs
   :: ElaboratedSharedConfig
   -> ElaboratedConfiguredPackage
   -> PackageHashConfigInputs
-packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
+packageHashConfigInputs shared pkg =
   PackageHashConfigInputs
-    { pkgHashCompilerId = compilerId pkgConfigCompiler
-    , pkgHashCompilerABI = compilerAbiTag pkgConfigCompiler
-    , pkgHashPlatform = pkgConfigPlatform
+    { pkgHashCompilerId = compilerId (pkgConfigCompiler shared)
+    , pkgHashCompilerABI = compilerAbiTag (pkgConfigCompiler shared)
+    , pkgHashPlatform = pkgConfigPlatform shared
     , pkgHashFlagAssignment = elabFlagAssignment
     , pkgHashConfigureScriptArgs = elabConfigureScriptArgs
     , pkgHashVanillaLib = withVanillaLib

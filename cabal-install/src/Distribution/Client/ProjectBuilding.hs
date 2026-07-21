@@ -341,10 +341,7 @@ rebuildTargets
   distDirLayout@DistDirLayout{..}
   storeDirLayout
   installPlan
-  sharedPackageConfig@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigCompilerProgs = progdb
-    }
+  sharedPackageConfig
   pkgsBuildStatus
   buildSettings@BuildTimeSettings
     { buildSettingNumJobs
@@ -352,6 +349,8 @@ rebuildTargets
     }
     | fromFlagOrDefault False (projectConfigOfflineMode config) && not (null packagesToDownload) = return offlineError
     | otherwise = do
+        let compiler = pkgConfigCompiler sharedPackageConfig
+            progdb = pkgConfigCompilerProgs sharedPackageConfig
         registerLock <- newLock -- serialise registration
         cacheLock <- newLock -- serialise access to setup exe cache
         -- TODO: [code cleanup] eliminate setup exe cache

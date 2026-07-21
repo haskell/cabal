@@ -32,6 +32,15 @@ module Distribution.Client.ProjectPlanning.Types
   , pkgOrderDependencies
   , ElaboratedPlanPackage
   , ElaboratedSharedConfig (..)
+  , pkgConfigToolchain
+  , pkgConfigCompiler
+  , pkgConfigPlatform
+  , pkgConfigCompilerProgs
+  , pkgConfigBuildToolchain
+  , pkgConfigBuildCompiler
+  , pkgConfigBuildPlatform
+  , pkgConfigBuildProgs
+  , setPkgConfigCompilerProgs
   , ElaboratedReadyPackage
   , BuildStyle (..)
   , MemoryOrDisk (..)
@@ -77,6 +86,13 @@ import Distribution.Client.InstallPlan
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.SolverInstallPlan
   ( SolverInstallPlan
+  )
+import Distribution.Client.Toolchain
+  ( Stage (..)
+  , Toolchain (..)
+  , Toolchains
+  , getStage
+  , overStage
   )
 import Distribution.Client.Types
 
@@ -181,22 +197,18 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
 --      even platform and compiler could be different if we're building things
 --      like a server + client with ghc + ghcjs
 data ElaboratedSharedConfig = ElaboratedSharedConfig
-  { pkgConfigPlatform :: Platform
-  , pkgConfigCompiler :: Compiler -- TODO: [code cleanup] replace with CompilerInfo
-  , pkgConfigCompilerProgs :: ProgramDb
-  -- ^ All known programs configured once for the project: the compiler
-  -- (e.g. ghc & ghc-pkg) plus associated tools (hsc2hs, haddock, hpc,
-  -- runghc) and toolchain programs (ar, ld, strip). Once constructed,
-  -- only the 'configuredPrograms' are used.
-  , pkgConfigBuildPlatform :: Platform
-  -- ^ Platform of the /build/ toolchain (the machine running the build). Equal
-  -- to 'pkgConfigPlatform' unless cross-compiling.
-  , pkgConfigBuildCompiler :: Compiler
-  -- ^ Compiler of the /build/ toolchain, used for build-tools and custom
-  -- @Setup.hs@ scripts. Equal to 'pkgConfigCompiler' unless cross-compiling.
-  , pkgConfigBuildProgs :: ProgramDb
-  -- ^ Program database of the /build/ toolchain. Equal to
-  -- 'pkgConfigCompilerProgs' unless cross-compiling.
+  { pkgConfigToolchains :: Toolchains
+  -- ^ The host and build 'Toolchain's (compiler, platform, program database).
+  -- In a non-cross build both stages hold the same toolchain; under cross-
+  -- compilation the build stage carries the build-machine toolchain used for
+  -- build-tools and custom @Setup.hs@ scripts. The per-stage values are read
+  -- with 'getStage'; the host-stage and build-stage components also have the
+  -- named accessors below.
+  --
+  -- The compiler program database gathers all known programs configured once
+  -- for the project: the compiler (e.g. ghc & ghc-pkg) plus associated tools
+  -- (hsc2hs, haddock, hpc, runghc) and toolchain programs (ar, ld, strip).
+  -- Once constructed, only the 'configuredPrograms' are used.
   , pkgConfigReplOptions :: ReplOptions
   }
   deriving (Show, Generic)
@@ -205,6 +217,54 @@ data ElaboratedSharedConfig = ElaboratedSharedConfig
 
 instance Binary ElaboratedSharedConfig
 instance Structured ElaboratedSharedConfig
+
+-- | The toolchain for a given build 'Stage'.
+pkgConfigStageToolchain :: ElaboratedSharedConfig -> Stage -> Toolchain
+pkgConfigStageToolchain = getStage . pkgConfigToolchains
+
+-- | The /host/ toolchain (the machine the built artifacts will run on), the
+-- stage every package not reached through a tool dependency belongs to.
+pkgConfigToolchain :: ElaboratedSharedConfig -> Toolchain
+pkgConfigToolchain = flip pkgConfigStageToolchain Host
+
+-- | The host compiler; see 'pkgConfigToolchain'.
+pkgConfigCompiler :: ElaboratedSharedConfig -> Compiler
+pkgConfigCompiler = toolchainCompiler . pkgConfigToolchain
+
+-- | The host platform; see 'pkgConfigToolchain'.
+pkgConfigPlatform :: ElaboratedSharedConfig -> Platform
+pkgConfigPlatform = toolchainPlatform . pkgConfigToolchain
+
+-- | The host toolchain's program database; see 'pkgConfigToolchain'.
+pkgConfigCompilerProgs :: ElaboratedSharedConfig -> ProgramDb
+pkgConfigCompilerProgs = toolchainProgramDb . pkgConfigToolchain
+
+-- | The /build/ toolchain (the machine running the build), used for
+-- build-tools and custom @Setup.hs@ scripts. Equal to the host toolchain
+-- unless cross-compiling.
+pkgConfigBuildToolchain :: ElaboratedSharedConfig -> Toolchain
+pkgConfigBuildToolchain = flip pkgConfigStageToolchain Build
+
+-- | The build compiler; see 'pkgConfigBuildToolchain'.
+pkgConfigBuildCompiler :: ElaboratedSharedConfig -> Compiler
+pkgConfigBuildCompiler = toolchainCompiler . pkgConfigBuildToolchain
+
+-- | The build platform; see 'pkgConfigBuildToolchain'.
+pkgConfigBuildPlatform :: ElaboratedSharedConfig -> Platform
+pkgConfigBuildPlatform = toolchainPlatform . pkgConfigBuildToolchain
+
+-- | The build toolchain's program database; see 'pkgConfigBuildToolchain'.
+pkgConfigBuildProgs :: ElaboratedSharedConfig -> ProgramDb
+pkgConfigBuildProgs = toolchainProgramDb . pkgConfigBuildToolchain
+
+-- | Replace the /host/ toolchain's program database (e.g. to register a
+-- freshly-configured @haddock@). The build toolchain is left untouched.
+setPkgConfigCompilerProgs :: ProgramDb -> ElaboratedSharedConfig -> ElaboratedSharedConfig
+setPkgConfigCompilerProgs progs shared =
+  shared
+    { pkgConfigToolchains =
+        overStage Host (\tc -> tc{toolchainProgramDb = progs}) (pkgConfigToolchains shared)
+    }
 
 data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   { elabUnitId :: UnitId
@@ -348,10 +408,10 @@ normaliseConfiguredPackage
   :: ElaboratedSharedConfig
   -> ElaboratedConfiguredPackage
   -> ElaboratedConfiguredPackage
-normaliseConfiguredPackage ElaboratedSharedConfig{pkgConfigCompilerProgs} pkg =
+normaliseConfiguredPackage shared pkg =
   pkg{elabProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg)}
   where
-    knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
+    knownProgramDb = addKnownPrograms builtinPrograms (pkgConfigCompilerProgs shared)
 
     pkgDesc :: PackageDescription
     pkgDesc = elabPkgDescription pkg

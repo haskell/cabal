@@ -53,6 +53,8 @@ import Distribution.Client.ProjectPlanOutput
 import Distribution.Client.ProjectPlanning
   ( ElaboratedInstallPlan
   , ElaboratedSharedConfig (..)
+  , pkgConfigCompiler
+  , pkgConfigCompilerProgs
   )
 import qualified Distribution.Client.ProjectPlanning as Planning
 import Distribution.Client.ProjectPlanning.Types
