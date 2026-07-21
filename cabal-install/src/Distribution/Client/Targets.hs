@@ -622,6 +622,9 @@ data UserConstraintQualifier
     UserQualified UserQualifier PackageName
   | -- | Scope that applies to the package when it has a setup qualifier.
     UserAnySetupQualifier PackageName
+  | -- | Scope that applies to the package when it has an executable
+    -- (build-tool) qualifier.
+    UserAnyExeQualifier PackageName
   | -- | Scope that applies to the package when it has any qualifier.
     UserAnyQualifier PackageName
   deriving (Eq, Show, Generic)
@@ -640,6 +643,8 @@ fromUserConstraintScope (UserConstraintScope mstage (UserQualified q pn)) =
   ConstraintScope mstage (ScopeQualified (fromUserQualifier q) pn)
 fromUserConstraintScope (UserConstraintScope mstage (UserAnySetupQualifier pn)) =
   ConstraintScope mstage (ScopeAnySetupQualifier pn)
+fromUserConstraintScope (UserConstraintScope mstage (UserAnyExeQualifier pn)) =
+  ConstraintScope mstage (ScopeAnyExeQualifier pn)
 fromUserConstraintScope (UserConstraintScope mstage (UserAnyQualifier pn)) =
   ConstraintScope mstage (ScopeAnyQualifier pn)
 
@@ -670,6 +675,7 @@ userConstraintPackageName (UserConstraintX (UserConstraintScope _stage qualifier
     scopePN (UserQualified _ pn) = pn
     scopePN (UserAnyQualifier pn) = pn
     scopePN (UserAnySetupQualifier pn) = pn
+    scopePN (UserAnyExeQualifier pn) = pn
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 userToPackageConstraint (UserConstraintX scope prop) =
@@ -739,10 +745,14 @@ instance Parsec UserConstraint where
           withDot pn
             | pn == mkPackageName "any" = UserAnyQualifier <$> parsec
             | pn == mkPackageName "setup" = UserAnySetupQualifier <$> parsec
+            | pn == mkPackageName "exe" = UserAnyExeQualifier <$> parsec
             | otherwise = P.unexpected $ "constraint scope: " ++ unPackageName pn
 
           withColon :: PackageName -> m UserConstraintQualifier
           withColon pn =
-            UserQualified (UserQualSetup pn)
-              <$ P.string "setup."
-              <*> parsec
+            P.choice
+              [ UserQualified (UserQualSetup pn) <$> (P.try (P.string "setup.") *> parsec)
+              , -- @pkg:tool:exe.dep@, the form 'dispQualifier' prints for
+                -- 'QualExe', so that written constraints parse back.
+                UserQualified . UserQualExe pn <$> P.try (parsec <* P.string ":exe.") <*> parsec
+              ]

@@ -167,8 +167,10 @@ instance Described UserConstraint where
           <> REUnion
             [ "any." <> describePN
             , "setup." <> describePN
+            , "exe." <> describePN
             , describePN
             , describePN <> ":setup." <> describePN
+            , describePN <> ":" <> describePN <> ":exe." <> describePN
             ]
 
       describeConstraintProperty :: GrammarRegex void
