@@ -53,6 +53,9 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
   ( ElaboratedInstallPlan
   , ElaboratedSharedConfig (..)
+  , pkgConfigCompiler
+  , pkgConfigCompilerProgs
+  , pkgConfigPlatform
   )
 import Distribution.Client.ProjectPlanning.Types
   ( elabOrderExeDependencies
@@ -501,7 +504,8 @@ targetedRepl
               , targetsMap = targets
               }
 
-          ElaboratedSharedConfig{pkgConfigCompiler = compiler, pkgConfigPlatform = platform} = elaboratedShared'
+          compiler = pkgConfigCompiler elaboratedShared'
+          platform = pkgConfigPlatform elaboratedShared'
 
           repl_flags = case originalComponent of
             Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci

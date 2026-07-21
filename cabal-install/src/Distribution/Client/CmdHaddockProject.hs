@@ -38,6 +38,10 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedInstallPlan
   , ElaboratedSharedConfig (..)
   , TargetAction (..)
+  , pkgConfigCompiler
+  , pkgConfigCompilerProgs
+  , pkgConfigPlatform
+  , setPkgConfigCompilerProgs
   )
 import Distribution.Client.ProjectPlanning.Types
   ( elabDistDirParams
@@ -183,7 +187,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
           . addKnownProgram haddockProgram
           . pkgConfigCompilerProgs
           $ sharedConfig
-      let sharedConfig' = sharedConfig{pkgConfigCompilerProgs = progs}
+      let sharedConfig' = setPkgConfigCompilerProgs progs sharedConfig
 
       _ <-
         requireProgramVersion

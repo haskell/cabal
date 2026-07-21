@@ -846,10 +846,7 @@ writePlanGhcEnvironment
 writePlanGhcEnvironment
   path
   elaboratedInstallPlan
-  ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigPlatform = platform
-    }
+  sharedConfig
   postBuildStatus
     | compilerFlavor compiler == GHC
     , supportsPkgEnvFiles (getImplInfo compiler) =
@@ -863,6 +860,9 @@ writePlanGhcEnvironment
                 elaboratedInstallPlan
                 postBuildStatus
             )
+    where
+      compiler = pkgConfigCompiler sharedConfig
+      platform = pkgConfigPlatform sharedConfig
 -- TODO: [required eventually] support for writing user-wide package
 -- environments, e.g. like a global project, but we would not put the
 -- env file in the home dir, rather it lives under ~/.ghc/

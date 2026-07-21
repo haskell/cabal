@@ -26,6 +26,9 @@ data Toolchain = Toolchain
   }
   deriving (Show, Generic)
 
+instance Binary Toolchain
+instance Structured Toolchain
+
 -- | A 'Toolchain' per build 'Stage'. In an ordinary build both stages hold the
 -- same toolchain (see 'always'); under cross-compilation the build and host
 -- stages differ.
