@@ -70,6 +70,7 @@ module Distribution.Client.ProjectPlanning
   , elabBuildTargetWholeComponents
   , configureCompiler
   , configureToolchains
+  , projectPackageDbsFor
   , sameCompiler
 
     -- * Setup.hs CLI flags for building
@@ -146,6 +147,9 @@ import Distribution.Client.Toolchain
   , Toolchains
   , always
   , getStage
+  , isCross
+  , overStage
+  , traverseWithStage
   )
 import Distribution.Client.Types
 import Distribution.Client.Utils (concatMapM, duplicatesBy, incVersion)
@@ -946,18 +950,27 @@ rebuildInstallPlan
             ( solverSettings
             , localPackages
             , localPackagesEnabledStanzas
-            , compiler
-            , platform
-            , programDbSignature progdb
+            , -- Every stage's toolchain is part of the key: the build stage's
+              -- installed index is read inside this block, so changing only
+              -- --with-build-compiler must invalidate the cached plan too.
+              fmap toolchainSignature toolchains
             )
             $ do
+              -- Read the installed-package index once per stage: the host
+              -- toolchain's index and, when cross-compiling, the build
+              -- toolchain's index too. In a non-cross build the staged
+              -- toolchain has no build stage, so this reads a single index.
               installedPkgIndex <-
-                getInstalledPackages
-                  verbosity
-                  compiler
-                  progdb
-                  platform
-                  corePackageDbs
+                traverseWithStage
+                  ( \stage tc ->
+                      getInstalledPackages
+                        verbosity
+                        (toolchainCompiler tc)
+                        (toolchainProgramDb tc)
+                        (toolchainPlatform tc)
+                        (corePackageDbs stage)
+                  )
+                  toolchains
               (sourcePkgDb, tis, ar) <-
                 getSourcePackages
                   verbosity
@@ -979,7 +992,9 @@ rebuildInstallPlan
                       verbosity
                       toolchains
                       solverSettings
-                      (installedPackages <> installedPkgIndex)
+                      -- Pre-supplied installed packages (e.g. from a GHC
+                      -- environment file) belong to the host stage only.
+                      (overStage Host (installedPackages <>) installedPkgIndex)
                       sourcePkgDb
                       pkgConfigDB
                       localPackages
@@ -990,17 +1005,27 @@ rebuildInstallPlan
                     dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
-            -- The solver currently plans for the host stage only; the build
-            -- toolchain is carried through for later stage-aware planning.
+            -- Host-stage values, for the pkg-config database and for reporting
+            -- planning failures. Solving itself is per stage.
             Toolchain
               { toolchainCompiler = compiler
               , toolchainPlatform = platform
               , toolchainProgramDb = progdb
               } = getStage toolchains Host
 
-            corePackageDbs :: PackageDBStackCWD
+            toolchainSignature :: Toolchain -> (Compiler, Platform, [ConfiguredProgram])
+            toolchainSignature tc =
+              ( toolchainCompiler tc
+              , toolchainPlatform tc
+              , programDbSignature (toolchainProgramDb tc)
+              )
+
+            corePackageDbs :: Stage -> PackageDBStackCWD
             corePackageDbs =
-              Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigShared)
+              Cabal.interpretPackageDbFlags False . projectPackageDbs
+
+            projectPackageDbs :: Stage -> [Maybe PackageDBCWD]
+            projectPackageDbs = projectPackageDbsFor toolchains projectConfigShared
 
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
@@ -1476,7 +1501,7 @@ planPackages
   :: Verbosity
   -> Toolchains
   -> SolverSettings
-  -> InstalledPackageIndex
+  -> Staged InstalledPackageIndex
   -> SourcePackageDb
   -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
@@ -1614,7 +1639,7 @@ planPackages
         -- Note: we don't use the standardInstallPolicy here, since that uses
         -- its own addDefaultSetupDependencies that is not appropriate for us.
         basicInstallPolicy
-          (always installedPkgIndex)
+          installedPkgIndex
           sourcePkgDb
           localPackages
 
@@ -1792,6 +1817,28 @@ planPackages
 --
 -- In theory should be able to make an elaborated install plan with a policy
 -- matching that of the classic @cabal install --user@ or @--global@
+-- | The project's package-db settings for a build 'Stage'.
+--
+-- @package-dbs:@ and @--package-db@ name databases of the host compiler, and
+-- a package database is only readable by the compiler that wrote it. A
+-- distinct build toolchain therefore inherits none of them: its stack is its
+-- own global database plus its own store.
+--
+-- When there is no distinct build toolchain the build stage /is/ the host
+-- stage (see 'getStage'), so an ordinary build keeps the settings
+-- everywhere, setup scripts included -- those are built at the stage before
+-- the package's own, which for a host-stage package is 'Build'.
+projectPackageDbsFor
+  :: Toolchains
+  -> ProjectConfigShared
+  -> Stage
+  -> [Maybe PackageDBCWD]
+projectPackageDbsFor toolchains shared stage
+  | Build <- stage
+  , isCross toolchains =
+      []
+  | otherwise = projectConfigPackageDBs shared
+
 elaborateInstallPlan
   :: HasCallStack
   => Verbosity
@@ -2484,7 +2531,7 @@ elaborateInstallPlan
               if shouldBuildInplaceOnly pkg
                 then BuildInplaceOnly OnDisk
                 else BuildAndInstall
-            elabPackageDbs = projectConfigPackageDBs sharedPackageConfig
+            elabPackageDbs = projectPackageDbs Host
             elabBuildPackageDBStack = buildAndRegisterDbs
             elabRegisterPackageDBStack = buildAndRegisterDbs
 
@@ -2495,15 +2542,22 @@ elaborateInstallPlan
                 elabPkgDescription
                 libDepGraph
                 deps0
-            elabSetupPackageDBStack = buildAndRegisterDbs
+            elabSetupPackageDBStack = buildSetupDbs
 
             elabInplaceBuildPackageDBStack = inplacePackageDbs
             elabInplaceRegisterPackageDBStack = inplacePackageDbs
-            elabInplaceSetupPackageDBStack = inplacePackageDbs
+            elabInplaceSetupPackageDBStack = buildInplacePackageDbs
 
             buildAndRegisterDbs
               | shouldBuildInplaceOnly pkg = inplacePackageDbs
               | otherwise = corePackageDbs
+
+            -- The Setup.hs script runs on the /build/ machine, so its
+            -- dependencies come from the build toolchain's databases (equal to
+            -- the host stacks unless cross-compiling).
+            buildSetupDbs
+              | shouldBuildInplaceOnly pkg = buildInplacePackageDbs
+              | otherwise = buildCorePackageDbs
 
             elabPkgDescriptionOverride = descOverride
 
@@ -2659,7 +2713,22 @@ elaborateInstallPlan
         corePackageDbs
           ++ [distPackageDB (compilerId compiler)]
 
-      corePackageDbs = storePackageDBStack compiler (projectConfigPackageDBs sharedPackageConfig)
+      -- The project's package databases belong to the host compiler; a
+      -- distinct build toolchain gets none of them.
+      projectPackageDbs :: Stage -> [Maybe PackageDBCWD]
+      projectPackageDbs = projectPackageDbsFor toolchains sharedPackageConfig
+
+      corePackageDbs =
+        storePackageDBStack compiler (projectPackageDbs Host)
+
+      -- The same database stacks for the build toolchain, used by setup
+      -- scripts. Equal to the host stacks unless cross-compiling.
+      buildInplacePackageDbs =
+        buildCorePackageDbs
+          ++ [distPackageDB (compilerId buildCompiler)]
+
+      buildCorePackageDbs =
+        storePackageDBStack buildCompiler (projectPackageDbs Build)
 
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be
@@ -4135,8 +4204,11 @@ setupHsScriptOptions
           if PD.buildType elabPkgDescription == PD.Hooks
             then Nothing
             else Just cliVersion
-      , useCompiler = Just pkgConfigCompiler
-      , usePlatform = Just pkgConfigPlatform
+      , -- The Setup.hs script runs on the /build/ machine, so it must be
+        -- compiled with the build toolchain (equal to the host toolchain
+        -- unless cross-compiling).
+        useCompiler = Just pkgConfigBuildCompiler
+      , usePlatform = Just pkgConfigBuildPlatform
       , usePackageDB = elabSetupPackageDBStack
       , usePackageIndex = Nothing
       , useSetupDependencies =
@@ -4146,7 +4218,7 @@ setupHsScriptOptions
                 elabSetupDependencies elab
             ]
       , useVersionMacros = elabSetupScriptStyle == SetupCustomExplicitDeps
-      , useProgramDb = pkgConfigCompilerProgs
+      , useProgramDb = pkgConfigBuildProgs
       , useDistPref = builddir
       , useLoggingHandle = Nothing -- this gets set later
       , useWorkingDir = Just srcdir

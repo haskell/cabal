@@ -97,13 +97,10 @@ modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
 
       -- Results have to be converted into an install plan. 'convCP' removes
       -- package qualifiers, which means that linked packages become duplicates
-      -- and can be removed.
-      -- FIXME: install-plan construction still resolves installed packages
-      -- against the host index only. A cross build's build-stage installed
-      -- deps need the build index here too (tracked with the stage-in-
-      -- InstallPlan.fromSolverInstallPlan work).
+      -- and can be removed. Each pre-existing package is resolved against the
+      -- installed-package index of its own stage (see 'convCP').
       postprocess a rdm = ordNubBy nodeKey $
-                          map (convCP (getStage iidxs Host) sidx) (toCPs a rdm)
+                          map (convCP iidxs sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN
