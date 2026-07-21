@@ -463,7 +463,7 @@ dependOnWiredIns compiler params =
   where
     extraConstraints wiredInUnitIds =
       [ LabeledPackageConstraint
-        (PackageConstraint (ScopeAnyQualifier pkgName) (PackagePropertyInstalledSpecificUnitId unitId))
+        (PackageConstraint (ConstraintScope Nothing (ScopeAnyQualifier pkgName)) (PackagePropertyInstalledSpecificUnitId unitId))
         ConstraintSourceNonReinstallablePackage
       | (pkgName, unitId) <- wiredInUnitIds
       ]
@@ -472,7 +472,7 @@ dependOnWiredIns compiler params =
         -- If we do not do this then we will get confusing error messages about old versions of `base` being unbuildable.
         -- Newer versions of `base` will be handled gracefully as they were designed to be reinstallable.
         [ LabeledPackageConstraint
-            (PackageConstraint (ScopeAnyQualifier $ mkPackageName "base") (PackagePropertyVersion (orLaterVersion (mkVersion [4, 22]))))
+            (PackageConstraint (ConstraintScope Nothing (ScopeAnyQualifier $ mkPackageName "base")) (PackagePropertyVersion (orLaterVersion (mkVersion [4, 22]))))
             ConstraintSourceNonReinstallablePackage
         ]
 
@@ -484,7 +484,7 @@ dontInstallNonReinstallablePackages params =
   where
     extraConstraints =
       [ LabeledPackageConstraint
-        (PackageConstraint (ScopeAnyQualifier pkgname) PackagePropertyInstalled)
+        (PackageConstraint (ConstraintScope Nothing (ScopeAnyQualifier pkgname)) PackagePropertyInstalled)
         ConstraintSourceNonReinstallablePackage
       | pkgname <- nonReinstallablePackages
       ]
@@ -737,7 +737,7 @@ addSetupCabalMinVersionConstraint minVersion =
   addConstraints
     [ LabeledPackageConstraint
         ( PackageConstraint
-            (ScopeAnySetupQualifier cabalPkgname)
+            (ConstraintScope Nothing (ScopeAnySetupQualifier cabalPkgname))
             (PackagePropertyVersion $ orLaterVersion minVersion)
         )
         ConstraintSetupCabalMinVersion
@@ -755,7 +755,7 @@ addSetupCabalMaxVersionConstraint maxVersion =
   addConstraints
     [ LabeledPackageConstraint
         ( PackageConstraint
-            (ScopeAnySetupQualifier cabalPkgname)
+            (ConstraintScope Nothing (ScopeAnySetupQualifier cabalPkgname))
             (PackagePropertyVersion $ earlierVersion maxVersion)
         )
         ConstraintSetupCabalMaxVersion
@@ -771,7 +771,7 @@ addSetupCabalProfiledDynamic =
   addConstraints
     [ LabeledPackageConstraint
         ( PackageConstraint
-            (ScopeAnySetupQualifier cabalPkgname)
+            (ConstraintScope Nothing (ScopeAnySetupQualifier cabalPkgname))
             (PackagePropertyVersion $ orLaterVersion (mkVersion [3, 13, 0]))
         )
         ConstraintSourceProfiledDynamic
