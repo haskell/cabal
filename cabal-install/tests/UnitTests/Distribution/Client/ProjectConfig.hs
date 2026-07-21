@@ -260,9 +260,11 @@ prop_roundtrip_legacytypes_specific config =
 roundtrip_printparse :: ProjectConfig -> Property
 roundtrip_printparse config =
   case runParseResult $ parseProjectConfig "unused" (toUTF8BS str) of
-    (_, Right x) ->
+    (_, Right result) ->
       counterexample ("shown:\n" ++ str) $
-        x `ediffEq` config{projectConfigProvenance = mempty}
+        ediffEq
+          result{projectConfigProvenance = mempty}
+          config{projectConfigProvenance = mempty}
     (_, Left err) -> counterexample ("shown:\n" ++ str ++ "\nERROR: " ++ show err) False
   where
     str :: String
