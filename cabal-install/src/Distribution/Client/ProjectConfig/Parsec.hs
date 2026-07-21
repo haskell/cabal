@@ -4,6 +4,7 @@
 module Distribution.Client.ProjectConfig.Parsec
   ( -- * Package configuration
     parseProject
+  , parseProjectConfig
   , ProjectConfig (..)
 
     -- ** Parsing
@@ -174,18 +175,6 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     parseImport :: Position -> [FieldLine Position] -> ParseResult ProjectFileSource FilePath
     parseImport pos lines' = runFieldParser pos (P.many P.anyChar) cabalSpec lines'
 
-    -- We want a normalized path for @fieldsToConfig@. This eventually surfaces
-    -- in solver rejection messages and build messages "this build was affected
-    -- by the following (project) config files" so we want all paths shown there
-    -- to be relative to the directory of the project, not relative to the file
-    -- they were imported from.
-    fieldsToConfig :: ProjectConfigPath -> [Field Position] -> ParseResult ProjectFileSource ProjectConfig
-    fieldsToConfig sourceConfigPath xs = do
-      let (fs, sectionGroups) = partitionFields xs
-          sections = concat sectionGroups
-      config <- parseFieldGrammarCheckingStanzas cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
-      config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
-      return config'
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
       where
@@ -199,7 +188,24 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     sanityWalkBranch :: CondBranch ConfVar ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ParseResult ProjectFileSource ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
+-- We want a normalized path for @fieldsToConfig@. This eventually surfaces
+-- in solver rejection messages and build messages "this build was affected
+-- by the following (project) config files" so we want all paths shown there
+-- to be relative to the directory of the project, not relative to the file
+-- they were imported from.
+fieldsToConfig :: ProjectConfigPath -> [Field Position] -> ParseResult ProjectFileSource ProjectConfig
+fieldsToConfig sourceConfigPath xs = do
+  let (fs, sectionGroups) = partitionFields xs
+      sections = concat sectionGroups
+  config <- parseFieldGrammarCheckingStanzas cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
+  config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
+  return config'
+  where
     programDb = defaultProgramDb
+
+parseProjectConfig :: FilePath -> BS.ByteString -> ParseResult ProjectFileSource ProjectConfig
+parseProjectConfig rootConfig bs =
+  fieldsToConfig (ProjectConfigPath $ rootConfig :| []) =<< readPreprocessFields bs
 
 startOfSection :: Position -> [SectionArg Position] -> Position
 -- The case where we have no args is the start of the section
