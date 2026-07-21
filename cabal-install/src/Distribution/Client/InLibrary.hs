@@ -88,17 +88,14 @@ libraryConfigureInputsFromElabPackage
   progDb
   -- NB: don't use the ProgramDb from the ElaboratedSharedConfig;
   -- that one is only for the compiler itself and not for the package.
-  ElaboratedSharedConfig
-    { pkgConfigPlatform = plat
-    , pkgConfigCompiler = compil
-    }
+  sharedConfig
   (ReadyPackage pkg)
   ipi
   userTargets =
     LibraryConfigureInputs
       { verbosityHandles = verbHandles
-      , compiler = compil
-      , platform = plat
+      , compiler = pkgConfigCompiler sharedConfig
+      , platform = pkgConfigPlatform sharedConfig
       , buildType =
           -- NB: don't get the build-type from 'pkgDescr',
           -- because for Configure build-type we rewrite the build-type

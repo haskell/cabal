@@ -196,10 +196,7 @@ buildAndRegisterUnpackedPackage
     }
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigCompilerProgs = progdb
-    }
+  pkgshared
   plan
   rpkg@(ReadyPackage pkg)
   ipiTVar
@@ -207,6 +204,8 @@ buildAndRegisterUnpackedPackage
   builddir
   mlogFile
   delegate = do
+    let compiler = pkgConfigCompiler pkgshared
+        progdb = pkgConfigCompilerProgs pkgshared
     -- Configure phase
     mbLBI <-
       timedDelegate $
@@ -549,13 +548,14 @@ buildInplaceUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingHaddockOpen}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
+  pkgshared
   plan
   rpkg@(ReadyPackage pkg)
   ipiTVar
   buildStatus
   srcdir
   builddir = do
+    let Platform _ os = pkgConfigPlatform pkgshared
     -- TODO: [code cleanup] there is duplication between the
     --      distdirlayout and the builddir here builddir is not
     --      enough, we also need the per-package cachedir
@@ -785,10 +785,7 @@ buildAndInstallUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingLogFile}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigPlatform = platform
-    }
+  pkgshared
   plan
   rpkg@(ReadyPackage pkg)
   ipiTVar
@@ -920,6 +917,9 @@ buildAndInstallUnpackedPackage
         }
     where
       uid = installedUnitId rpkg
+      compiler = pkgConfigCompiler pkgshared
+      platform = pkgConfigPlatform pkgshared
+
       pkgid = packageId rpkg
 
       dispname :: String
