@@ -21,18 +21,24 @@ import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.InstSolverPackage
 import           Distribution.Solver.Types.SourcePackage
+import           Distribution.Solver.Types.Stage (Staged, getStage)
 
 -- | Converts from the solver specific result @CP QPN@ into
 -- a 'ResolverPackage', which can then be converted into
 -- the install plan.
-convCP :: SI.InstalledPackageIndex ->
+--
+-- Installed (pre-existing) packages are looked up in the installed-package
+-- index for /their own stage/: a build-stage dependency resolves against the
+-- build toolchain's index, a host-stage dependency against the host index. In
+-- a non-cross build both stages share the same index.
+convCP :: Staged SI.InstalledPackageIndex ->
           CI.PackageIndex (SourcePackage loc) ->
           CP QPN -> ResolverPackage loc
-convCP iidx sidx (CP qpi fa es ds) =
+convCP iidxs sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting $
                   InstSolverPackage {
-                    instSolverPkgIPI = fromJust $ SI.lookupUnitId iidx pi,
+                    instSolverPkgIPI = fromJust $ SI.lookupUnitId (getStage iidxs stage) pi,
                     instSolverPkgLibDeps = fmap fst ds',
                     instSolverPkgExeDeps = fmap snd ds'
                   }
@@ -47,6 +53,11 @@ convCP iidx sidx (CP qpi fa es ds) =
       where
         srcpkg = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi
   where
+    -- The stage of this package, taken from its qualified name. Determines
+    -- which per-stage installed-package index a pre-existing package is
+    -- resolved against.
+    stage = case qpi of PI (Q (PackagePath s _ _) _) _ -> s
+
     ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
     ds' = fmap (partitionEithers . map convConfId) ds
 
