@@ -1721,8 +1721,12 @@ cabal report
 
 .. include:: references.inc
 
-Undocumented command line options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Undocumented options
+--------------------
+
+For the most part, these options are the command line versions of :ref:`project
+configuration<cabal-project-file>` field options.
+
 .. option::
     --allow-boot-library-installs
     --build-summary
