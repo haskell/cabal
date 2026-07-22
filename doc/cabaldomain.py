@@ -592,11 +592,17 @@ class CabalConfigSection(CabalObject):
 class ConfigField(CabalField):
     section_key = 'cabal:cfg-section'
     indextemplate = '%s ; cabal project option'
+    option_spec = dict(CabalField.option_spec,
+                       **{'command-line-options': lambda x: x})
 
     def get_signatures(self):
         signatures = super(ConfigField, self).get_signatures()
         long_options = []
         non_option_signatures = []
+
+        explicit_options = self.options.get('command-line-options')
+        if explicit_options:
+            long_options.extend(self._extract_long_options(explicit_options))
 
         for signature in signatures:
             stripped = signature.strip()
