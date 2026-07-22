@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Distribution.Simple.Compiler
@@ -454,6 +455,20 @@ parsecDebugInfoLevel = boolParser <|> intParser
     boolParser = bool NoDebugInfo NormalDebugInfo <$> parsec
     intParser = intToEnum "debug info level" <$> integral
 
+-- | Converts a string to a 'DebugInfoLevel'. The string can be either a boolean
+-- or 0-based integer for that enum. Evaluates to the default of 'NoDebugInfo'
+-- when there's no string or when the string is "False".  When the string is
+-- "True", the level is 'NormalDebugInfo'.  These string comparisons are
+-- case-insensitive.
+--
+-- >>> [flagToDebugInfoLevel (Just $ show n) | n <- [0 .. 3]]
+-- [NoDebugInfo,MinimalDebugInfo,NormalDebugInfo,MaximalDebugInfo]
+--
+-- >>> nub $ flagToDebugInfoLevel . Just <$> ["0", "False", "false"]
+-- [NoDebugInfo]
+--
+-- >>> nub $ flagToDebugInfoLevel <$> Nothing : (Just <$> ["2", "True",  "true"])
+-- [NormalDebugInfo]
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
 flagToDebugInfoLevel (Just s)
