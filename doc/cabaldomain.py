@@ -592,12 +592,68 @@ class CabalConfigSection(CabalObject):
 class ConfigField(CabalField):
     section_key = 'cabal:cfg-section'
     indextemplate = '%s ; cabal project option'
+
+    def get_signatures(self):
+        signatures = super(ConfigField, self).get_signatures()
+        long_options = []
+        non_option_signatures = []
+
+        for signature in signatures:
+            stripped = signature.strip()
+            if stripped.startswith('-'):
+                long_options.extend(self._extract_long_options(stripped))
+            elif stripped:
+                non_option_signatures.append(signature)
+
+        # Keep only the primary cfg-field signature and render command-line
+        # variants as links to standard command-line options.
+        if non_option_signatures:
+            self.command_line_options = self._deduplicate_long_options(long_options)
+            return [non_option_signatures[0]]
+
+        self.command_line_options = []
+        return signatures
+
+    def _extract_long_options(self, signature):
+        options = []
+        for match in re.findall(r'--[^,\s]+', signature):
+            target = match.split('[', 1)[0].split('=', 1)[0]
+            options.append((match, target))
+        return options
+
+    def _deduplicate_long_options(self, options):
+        unique = []
+        seen = set()
+        for option in options:
+            if option in seen:
+                continue
+            seen.add(option)
+            unique.append(option)
+        return unique
+
     def handle_signature(self, sig, signode):
         sig = sig.strip()
         if sig.startswith('-'):
             name = parse_flag(self, sig, signode)
         else:
             name = super(ConfigField, self).handle_signature(sig, signode)
+
+        options = getattr(self, 'command_line_options', [])
+        if options:
+            signode += addnodes.desc_addname(' ', ' ')
+            signode += addnodes.desc_annotation('(', '(')
+            for i, (label, target) in enumerate(options):
+                if i > 0:
+                    signode += addnodes.desc_annotation(', ', ', ')
+
+                refnode = addnodes.pending_xref('',
+                                                refdomain='std',
+                                                reftype='option',
+                                                reftarget=target)
+                refnode += nodes.literal(label, label)
+                signode += refnode
+
+            signode += addnodes.desc_annotation(')', ')')
 
         return name
 
