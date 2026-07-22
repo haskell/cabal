@@ -1,0 +1,10 @@
+# cabal build
+Warnings found while parsing the project file, cabal.numeric.project:
+ - cabal.numeric.project:2:1: The field "debug-info" is specified more than once at positions 2:1, 3:1, 4:1, 5:1
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - debug-info-0 (lib) (first run)
+# cabal build
+Warnings found while parsing the project file, cabal.boolean.project:
+ - cabal.boolean.project:2:1: The field "debug-info" is specified more than once at positions 2:1, 3:1

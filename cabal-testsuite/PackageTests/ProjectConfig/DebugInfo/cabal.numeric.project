@@ -1,0 +1,5 @@
+packages: .
+debug-info: 0
+debug-info: 1
+debug-info: 2
+debug-info: 3
