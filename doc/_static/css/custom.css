@@ -1,0 +1,17 @@
+.rst-content .cabal-command-line-options {
+  margin-top: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.rst-content .cabal-command-line-options .cabal-command-line-option {
+  margin-top: 0;
+  margin-bottom: 0.12rem;
+}
+
+.rst-content .cabal-command-line-options .cabal-command-line-option:last-child {
+  margin-bottom: 0;
+}
+
+.rst-content .cabal-command-line-options .cabal-command-line-icon {
+  opacity: 0.65;
+}
