@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Distribution.Simple.Compiler
@@ -373,8 +374,24 @@ instance Parsec DebugInfoLevel where
 parsecDebugInfoLevel :: CabalParsing m => m DebugInfoLevel
 parsecDebugInfoLevel = flagToDebugInfoLevel . pure <$> parsecToken
 
+-- | Converts a string to a 'DebugInfoLevel'. The string can be either a boolean
+-- or 0-based integer for that enum. Evaluates to the default of 'NoDebugInfo'
+-- when there's no string or when the string is "False".  When the string is
+-- "True", the level is 'NormalDebugInfo'.  These string comparisons are
+-- case-insensitive.
+--
+-- >>> [flagToDebugInfoLevel (Just $ show n) | n <- [0 .. 3]]
+-- [NoDebugInfo,MinimalDebugInfo,NormalDebugInfo,MaximalDebugInfo]
+--
+-- >>> nub $ flagToDebugInfoLevel . Just <$> ["0", "False", "false"]
+-- [NoDebugInfo]
+--
+-- >>> nub $ flagToDebugInfoLevel <$> Nothing : (Just <$> ["2", "True",  "true"])
+-- [NormalDebugInfo]
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
+flagToDebugInfoLevel (Just (fmap toLower -> "false")) = NoDebugInfo
+flagToDebugInfoLevel (Just (fmap toLower -> "true")) = NormalDebugInfo
 flagToDebugInfoLevel (Just s) = case reads s of
   [(i, "")]
     | i >= fromEnum (minBound :: DebugInfoLevel)
