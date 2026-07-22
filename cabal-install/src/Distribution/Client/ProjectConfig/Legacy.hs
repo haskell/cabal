@@ -777,6 +777,7 @@ convertLegacyPerPackageFlags
         , configDebugInfo = packageConfigDebugInfo
         , configDumpBuildInfo = packageConfigDumpBuildInfo
         , configRelocatable = packageConfigRelocatable
+        , configRelativeBuildTree = packageConfigRelativeBuildTree
         , configCoverageFor = _
         } = configFlags
       packageConfigExtraLibDirs = fmap getSymbolicPath $ configExtraLibDirs configFlags
@@ -1099,6 +1100,7 @@ convertToLegacyAllPackageConfig
           , configBenchmarks = mempty
           , configFlagError = mempty -- TODO: ???
           , configRelocatable = mempty
+          , configRelativeBuildTree = mempty
           , configDebugInfo = mempty
           , configUseResponseFiles = mempty
           , configDumpBuildInfo = mempty
@@ -1177,6 +1179,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configBenchmarks = packageConfigBenchmarks
         , configFlagError = mempty -- TODO: ???
         , configRelocatable = packageConfigRelocatable
+        , configRelativeBuildTree = packageConfigRelativeBuildTree
         , configDebugInfo = packageConfigDebugInfo
         , configUseResponseFiles = mempty
         , configDumpBuildInfo = packageConfigDumpBuildInfo
@@ -1563,6 +1566,7 @@ legacyPackageConfigFieldDescrs =
         , "coverage"
         , "library-coverage"
         , "relocatable"
+        , "relative-build-tree"
         -- not "extra-include-dirs", "extra-lib-dirs", "extra-framework-dirs"
         -- or "extra-prog-path". We use corrected ones above that parse
         -- as list fields.

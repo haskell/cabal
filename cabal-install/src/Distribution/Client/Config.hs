@@ -542,6 +542,7 @@ instance Semigroup SavedConfig where
           , configExactConfiguration = combine configExactConfiguration
           , configFlagError = combine configFlagError
           , configRelocatable = combine configRelocatable
+          , configRelativeBuildTree = combine configRelativeBuildTree
           , configUseResponseFiles = combine configUseResponseFiles
           , configDumpBuildInfo = combine configDumpBuildInfo
           , configAllowDependingOnPrivateLibs =

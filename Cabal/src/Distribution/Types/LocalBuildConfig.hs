@@ -185,6 +185,8 @@ data BuildOptions = BuildOptions
   -- ^ Whether to enable library program coverage
   , relocatable :: Bool
   -- ^ Whether to build a relocatable package
+  , relativeBuildTree :: Bool
+  -- ^ Whether to make the build tree relocatable
   , programPrefix :: Maybe PathTemplate
   -- ^ Installed executable prefix
   , programSuffix :: Maybe PathTemplate
@@ -224,6 +226,7 @@ buildOptionsConfigFlags (BuildOptions{..}) =
     , configCoverage = toFlag exeCoverage
     , configLibCoverage = mempty
     , configRelocatable = toFlag relocatable
+    , configRelativeBuildTree = toFlag relativeBuildTree
     , configOptimization = toFlag withOptimization
     , configSplitSections = toFlag splitSections
     , configSplitObjs = toFlag splitObjs

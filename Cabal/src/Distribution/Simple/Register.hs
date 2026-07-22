@@ -151,6 +151,7 @@ generateOne verbHandles pkg lib lbi clbi regFlags =
         clbi
         inplace
         reloc
+        relBuildTree
         distPref
         (registrationPackageDB absPackageDBs)
     info verbosity (IPI.showInstalledPackageInfo installedPkgInfo)
@@ -159,6 +160,7 @@ generateOne verbHandles pkg lib lbi clbi regFlags =
     common = registerCommonFlags regFlags
     inplace = fromFlag (regInPlace regFlags)
     reloc = relocatable lbi
+    relBuildTree = relativeBuildTree lbi
     -- FIXME: there's really no guarantee this will work.
     -- registering into a totally different db stack can
     -- fail if dependencies cannot be satisfied.
@@ -270,17 +272,29 @@ generateRegistrationInfo
   -> ComponentLocalBuildInfo
   -> Bool
   -> Bool
+  -> Bool
+  -- ^ Relocatable build tree
   -> SymbolicPath Pkg (Dir Dist)
   -> PackageDB
   -> IO InstalledPackageInfo
-generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packageDb = do
+generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc relBuildTree distPref packageDb = do
   inplaceDir <- absoluteWorkingDirLBI lbi
   installedPkgInfo <-
     if inplace
-      then -- NB: With an inplace installation, the user may run './Setup
-      -- build' to update the library files, without reregistering.
-      -- In this case, it is critical that the ABI hash not flip.
+      then do
+        -- NB: With an inplace installation, the user may run './Setup
+        -- build' to update the library files, without reregistering.
+        -- In this case, it is critical that the ABI hash not flip.
 
+        -- When a relative build tree is requested, emit ${pkgroot}-relative
+        -- paths (relative to the directory containing the package db) so that
+        -- the dist tree can be copied/relocated without invalidating the
+        -- registration. Only GHC understands the ${pkgroot} substitution, so
+        -- for other compilers we fall back to absolute paths.
+        maybePkgRoot <-
+          if relBuildTree && compilerFlavor (compiler lbi) == GHC
+            then Just <$> GHC.pkgRoot verbosity lbi packageDb
+            else return Nothing
         return
           ( inplaceInstalledPackageInfo
               inplaceDir
@@ -290,6 +304,7 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
               lib
               lbi
               clbi
+              maybePkgRoot
           )
       else do
         abi_hash <- abiHash verbosity pkg distPref lbi lib clbi
@@ -621,8 +636,13 @@ inplaceInstalledPackageInfo
   -> Library
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ If @Just pkgroot@, emit paths relative to @pkgroot@ using the
+  -- @${pkgroot}@ substitution variable (for relocatable inplace builds).
+  -- @pkgroot@ is the directory containing the package database (see
+  -- 'Distribution.Simple.GHC.pkgRoot'). If @Nothing@, emit absolute paths.
   -> InstalledPackageInfo
-inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
+inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi mb_pkgroot =
   generalInstalledPackageInfo
     adjustRelativeIncludeDirs
     pkg
@@ -633,25 +653,32 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     installDirs
   where
     i = interpretSymbolicPathAbsolute inplaceDir -- See Note [Symbolic paths] in Distribution.Utils.Path
+    -- Make an absolute path relative to ${pkgroot} when a relocatable build
+    -- was requested; otherwise leave it absolute.
+    relocate :: FilePath -> FilePath
+    relocate = case mb_pkgroot of
+      Nothing -> id
+      Just pkgroot -> ("${pkgroot}" </>) . shortRelativePath (getSymbolicPath pkgroot)
     adjustRelativeIncludeDirs = concatMap $ \d ->
-      [ i $ makeRelativePathEx d -- local include-dir
-      , i $ libTargetDir </> makeRelativePathEx d -- autogen include-dir
+      [ relocate $ i $ makeRelativePathEx d -- local include-dir
+      , relocate $ i $ libTargetDir </> makeRelativePathEx d -- autogen include-dir
       ]
     libTargetDir = componentBuildDir lbi clbi
     installDirs =
-      (absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest)
-        { libdir = i libTargetDir
-        , dynlibdir = i libTargetDir
-        , bytecodelibdir = i libTargetDir
-        , datadir =
-            let rawDataDir = dataDir pkg
-             in if null $ getSymbolicPath rawDataDir
-                  then i sameDirectory
-                  else i rawDataDir
-        , docdir = i inplaceDocdir
-        , htmldir = inplaceHtmldir
-        , haddockdir = inplaceHtmldir
-        }
+      fmap relocate $
+        (absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest)
+          { libdir = i libTargetDir
+          , dynlibdir = i libTargetDir
+          , bytecodelibdir = i libTargetDir
+          , datadir =
+              let rawDataDir = dataDir pkg
+               in if null $ getSymbolicPath rawDataDir
+                    then i sameDirectory
+                    else i rawDataDir
+          , docdir = i inplaceDocdir
+          , htmldir = inplaceHtmldir
+          , haddockdir = inplaceHtmldir
+          }
     inplaceDocdir = distPref </> makeRelativePathEx "doc"
     inplaceHtmldir =
       i $

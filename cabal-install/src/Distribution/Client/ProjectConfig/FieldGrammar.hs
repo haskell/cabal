@@ -145,6 +145,7 @@ packageConfigFieldGrammar knownPrograms = do
   packageConfigBenchmarks <- optionalFieldDef "benchmarks" L.packageConfigBenchmarks mempty
   packageConfigCoverage <- packageConfigCoverageGrammar
   packageConfigRelocatable <- optionalFieldDef "relocatable" L.packageConfigRelocatable mempty
+  packageConfigRelativeBuildTree <- optionalFieldDef "relative-build-tree" L.packageConfigRelativeBuildTree mempty
   packageConfigDebugInfo <- optionalFieldDef "debug-info" L.packageConfigDebugInfo mempty
   packageConfigDumpBuildInfo <- optionalFieldDef "build-info" L.packageConfigDumpBuildInfo mempty
   packageConfigRunTests <- optionalFieldDef "run-tests" L.packageConfigRunTests mempty

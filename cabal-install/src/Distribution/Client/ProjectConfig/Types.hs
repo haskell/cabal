@@ -311,6 +311,7 @@ data PackageConfig = PackageConfig
   , packageConfigBenchmarks :: Flag Bool
   , packageConfigCoverage :: Flag Bool
   , packageConfigRelocatable :: Flag Bool
+  , packageConfigRelativeBuildTree :: Flag Bool
   , packageConfigDebugInfo :: Flag DebugInfoLevel
   , packageConfigDumpBuildInfo :: Flag DumpBuildInfo
   , packageConfigRunTests :: Flag Bool -- TODO: [required eventually] use this

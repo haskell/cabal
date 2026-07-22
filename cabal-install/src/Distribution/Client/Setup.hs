@@ -713,6 +713,8 @@ filterConfigureFlags' flags cabalLibVersion
       flags_latest
         { configBytecodeLib = NoFlag
         , configInstallDirs = (configInstallDirs flags){bytecodelibdir = NoFlag}
+        , -- Cabal < 3.17 doesn't know about '--relative-build-tree'
+          configRelativeBuildTree = NoFlag
         }
 
     flags_3_13_0 =

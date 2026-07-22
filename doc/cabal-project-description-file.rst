@@ -1306,6 +1306,36 @@ Dynamic linking options
 
     The command line variant of this flag is ``--relocatable``.
 
+.. cfg-field:: relative-build-tree: boolean
+               --relative-build-tree
+    :synopsis: Make the build tree relocatable.
+    :since: 3.18
+
+    :default: False
+
+    Make the build tree relocatable. The absolute paths that Cabal would
+    otherwise bake into the build tree are made relative to the build tree
+    root (e.g. ``dist-newstyle``) instead:
+
+    - the inplace package registration files (``.conf``) use the
+      ``${pkgroot}`` variable rather than absolute directories,
+    - the filesystem paths recorded in ``plan.json`` are relative to the
+      build tree root.
+
+    In practice this means the whole build tree can be copied elsewhere
+    (for example into a ``git`` worktree) next to the same sources and
+    reused without rebuilding the local packages::
+
+        $ cabal build --relative-build-tree
+        $ git worktree add ../my-feature
+        $ cp -R dist-newstyle ../my-feature/
+        $ cd ../my-feature
+        $ cabal build --relative-build-tree
+        Up to date
+
+    The command line variant of this flag is ``--relative-build-tree`` (and
+    ``--no-relative-build-tree`` to disable).
+
 Static linking options
 ^^^^^^^^^^^^^^^^^^^^^^
 

@@ -736,6 +736,7 @@ instance Arbitrary PackageConfig where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+      <*> arbitrary
       <*> arbitraryFlag arbitraryShortToken
       <*> arbitrary
       <*> arbitrary
@@ -804,6 +805,7 @@ instance Arbitrary PackageConfig where
       , packageConfigBenchmarks = x24
       , packageConfigCoverage = x25
       , packageConfigRelocatable = x26
+      , packageConfigRelativeBuildTree = x60
       , packageConfigDebugInfo = x27
       , packageConfigDumpBuildInfo = x27_1
       , packageConfigRunTests = x28
@@ -870,6 +872,7 @@ instance Arbitrary PackageConfig where
         , packageConfigBenchmarks = x24'
         , packageConfigCoverage = x25'
         , packageConfigRelocatable = x26'
+        , packageConfigRelativeBuildTree = x60'
         , packageConfigDebugInfo = x27'
         , packageConfigDumpBuildInfo = x27_1'
         , packageConfigRunTests = x28'
@@ -908,7 +911,7 @@ instance Arbitrary PackageConfig where
             , (x15', x16', x53', x17', x18', x19')
             )
           , ( (x20', x20_1', x21', x22', x23', x24')
-              , (x25', x26', x27', x27_1', x28', x29')
+              , (x25', x26', x60', x27', x27_1', x28', x29')
               , (x30', x31', x32', (x33', x33_1'), x34')
               , (x35', x36', x37', x38', x59', x39')
               , (x40', x41')
@@ -934,7 +937,7 @@ instance Arbitrary PackageConfig where
               )
             ,
               ( (x20, x20_1, x21, x22, x23, x24)
-              , (x25, x26, x27, x27_1, x28, x29)
+              , (x25, x26, x60, x27, x27_1, x28, x29)
               , (x30, x31, x32, (x33, x33_1), x34)
               , (x35, x36, fmap NonEmpty x37, x38, x59, fmap NonEmpty x39)
               , (x40, x41)

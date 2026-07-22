@@ -573,6 +573,7 @@ buildComponent
                     lib'
                     lbi
                     clbi
+                    Nothing
               debug verbosity $ "Registering inplace:\n" ++ IPI.showInstalledPackageInfo installedPkgInfo
               registerPackage
                 verbosity
@@ -860,7 +861,7 @@ testSuiteLibV09AsLibAndExe
           , testSuites = []
           , subLibraries = [lib]
           }
-      ipi = inplaceInstalledPackageInfo inplaceDir distPref pkg (mkAbiHash "") lib lbi libClbi
+      ipi = inplaceInstalledPackageInfo inplaceDir distPref pkg (mkAbiHash "") lib lbi libClbi Nothing
       testLibDep =
         Dependency
           pkgName'

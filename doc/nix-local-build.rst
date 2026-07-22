@@ -104,6 +104,31 @@ for each package using :cfg-field:`profiling-detail`::
 Alternately, you can call ``cabal build --enable-profiling`` to
 temporarily build with profiling.
 
+How can I reuse a build tree in another directory (e.g. a ``git`` worktree)?
+----------------------------------------------------------------------------
+
+By default the build tree (``dist-newstyle``) records absolute paths, so
+copying it to a different location and building there rebuilds the local
+packages from scratch. Building with :cfg-field:`relative-build-tree` makes
+the build tree relocatable — all of the project-local paths it records are
+made relative to the build tree root — so it can be moved next to the same
+sources and reused::
+
+    $ cabal build --relative-build-tree
+    $ git worktree add ../my-feature
+    $ cp -R dist-newstyle ../my-feature/
+    $ cd ../my-feature
+    $ cabal build --relative-build-tree
+    Up to date
+
+This is handy for keeping several worktrees of the same project warm
+without recompiling shared local packages in each one. If your development
+workflow is heavily worktree-based, we recommend adding the following to
+your project file::
+
+    relative-build-tree: True
+
+
 .. _how reproducible:
 
 How can I have a reproducible set of versions for my dependencies?
@@ -296,6 +321,14 @@ this folder (the most important two are first):
     package provides a library for parsing ``plan.json`` files into a
     Haskell data structure as well as an example tool showing possible
     applications.
+
+    The filesystem paths in ``plan.json`` (such as ``dist-dir``,
+    ``bin-file`` and the local ``pkg-src`` path) are absolute by default.
+    When the plan is built with :cfg-field:`relative-build-tree` (that is,
+    ``--relative-build-tree``), the project-local paths are instead written
+    relative to the build tree root, so the plan stays valid if the build
+    tree is moved. Paths outside the build tree (such as the global store)
+    remain absolute in either case.
 
     .. todo::
 

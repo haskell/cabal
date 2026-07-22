@@ -43,6 +43,7 @@ module Distribution.Types.LocalBuildInfo
       , libCoverage
       , extraCoverageFor
       , relocatable
+      , relativeBuildTree
       , programPrefix
       , programSuffix
       , ..
@@ -186,6 +187,7 @@ pattern LocalBuildInfo
   -> Bool
   -> [UnitId]
   -> Bool
+  -> Bool
   -> Maybe PathTemplate
   -> Maybe PathTemplate
   -> LocalBuildInfo
@@ -227,6 +229,7 @@ pattern LocalBuildInfo
   , libCoverage
   , extraCoverageFor
   , relocatable
+  , relativeBuildTree
   , programPrefix
   , programSuffix
   } =
@@ -281,6 +284,7 @@ pattern LocalBuildInfo
             , exeCoverage
             , libCoverage
             , relocatable
+            , relativeBuildTree
             , programPrefix
             , programSuffix
             }

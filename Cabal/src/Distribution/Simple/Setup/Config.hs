@@ -209,6 +209,8 @@ data ConfigFlags = ConfigFlags
   -- ^ Halt and show an error message indicating an error in flag assignment
   , configRelocatable :: Flag Bool
   -- ^ Enable relocatable package built
+  , configRelativeBuildTree :: Flag Bool
+  -- ^ Make the build tree relocatable
   , configDebugInfo :: Flag DebugInfoLevel
   -- ^ Emit debug info.
   , configDumpBuildInfo :: Flag DumpBuildInfo
@@ -320,6 +322,7 @@ instance Eq ConfigFlags where
       && equal configExactConfiguration
       && equal configFlagError
       && equal configRelocatable
+      && equal configRelativeBuildTree
       && equal configDebugInfo
       && equal configDumpBuildInfo
       && equal configUseResponseFiles
@@ -368,6 +371,7 @@ defaultConfigFlags progDb =
     , configExactConfiguration = Flag False
     , configFlagError = NoFlag
     , configRelocatable = Flag False
+    , configRelativeBuildTree = Flag False
     , configDebugInfo = Flag NoDebugInfo
     , configDumpBuildInfo = NoFlag
     , configUseResponseFiles = NoFlag
@@ -838,6 +842,13 @@ configureOptions showOrParseArgs =
           configRelocatable
           (\v flags -> flags{configRelocatable = v})
           (boolOpt [] [])
+       , option
+          ""
+          ["relative-build-tree"]
+          "recording project-local paths relative to the build tree root, so the build tree can be relocated. (GHC only)"
+          configRelativeBuildTree
+          (\v flags -> flags{configRelativeBuildTree = v})
+          (boolOpt' ([], ["relative-build-tree"]) ([], ["no-relative-build-tree"]))
        , option
           ""
           ["response-files"]

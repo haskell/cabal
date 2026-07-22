@@ -440,6 +440,10 @@ packageConfigRelocatable :: Lens' PackageConfig (Flag Bool)
 packageConfigRelocatable f s = fmap (\x -> s{T.packageConfigRelocatable = x}) (f (T.packageConfigRelocatable s))
 {-# INLINEABLE packageConfigRelocatable #-}
 
+packageConfigRelativeBuildTree :: Lens' PackageConfig (Flag Bool)
+packageConfigRelativeBuildTree f s = fmap (\x -> s{T.packageConfigRelativeBuildTree = x}) (f (T.packageConfigRelativeBuildTree s))
+{-# INLINEABLE packageConfigRelativeBuildTree #-}
+
 packageConfigDebugInfo :: Lens' PackageConfig (Flag DebugInfoLevel)
 packageConfigDebugInfo f s = fmap (\x -> s{T.packageConfigDebugInfo = x}) (f (T.packageConfigDebugInfo s))
 {-# INLINEABLE packageConfigDebugInfo #-}

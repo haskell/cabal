@@ -907,6 +907,7 @@ buildOptionsFromConfigFlags verbosity cfg comp = do
         , exeCoverage = False
         , libCoverage = False
         , relocatable = fromFlagOrDefault False $ configRelocatable cfg
+        , relativeBuildTree = fromFlagOrDefault False $ configRelativeBuildTree cfg
         , programPrefix = flagToMaybe $ configProgPrefix cfg
         , programSuffix = flagToMaybe $ configProgSuffix cfg
         }

@@ -36,6 +36,7 @@ module Distribution.Client.ProjectPlanning.Types
   , BuildStyle (..)
   , MemoryOrDisk (..)
   , isInplaceBuildStyle
+  , Relocatable (..)
   , CabalFileText
   , NotPerComponentReason (..)
   , NotPerComponentBuildType (..)
@@ -828,6 +829,19 @@ data MemoryOrDisk
 isInplaceBuildStyle :: BuildStyle -> Bool
 isInplaceBuildStyle (BuildInplaceOnly{}) = True
 isInplaceBuildStyle BuildAndInstall = False
+
+-- | Whether generated build metadata should use project-relative paths,
+-- so that the whole build tree can be relocated to a
+-- different directory, or absolute paths (the traditional default).
+data Relocatable
+  = -- | Default behavior
+    NotRelocatable
+  | -- | All build artifacts use relative paths
+    Relocatable
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary Relocatable
+instance Structured Relocatable
 
 instance Binary MemoryOrDisk
 instance Structured MemoryOrDisk

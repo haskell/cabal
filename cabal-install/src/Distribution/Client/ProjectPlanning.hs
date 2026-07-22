@@ -981,7 +981,15 @@ rebuildInstallPlan
         -> Rebuild ()
       phaseMaintainPlanOutputs elaboratedPlan elaboratedShared = liftIO $ do
         debug verbosity "Updating plan.json"
+        let isRelBuildTree pp = case pp of
+              InstallPlan.Configured elab -> LBC.relativeBuildTree (elabBuildOptions elab)
+              InstallPlan.Installed elab -> LBC.relativeBuildTree (elabBuildOptions elab)
+              InstallPlan.PreExisting _ -> False
+            relocatable
+              | any isRelBuildTree (InstallPlan.toList elaboratedPlan) = Relocatable
+              | otherwise = NotRelocatable
         writePlanExternalRepresentation
+          relocatable
           distDirLayout
           elaboratedPlan
           elaboratedShared
@@ -2389,6 +2397,7 @@ elaborateInstallPlan
                 , stripExes = perPkgOptionFlag pkgid False packageConfigStripExes
                 , withDebugInfo = perPkgOptionFlag pkgid NoDebugInfo packageConfigDebugInfo
                 , relocatable = perPkgOptionFlag pkgid False packageConfigRelocatable
+                , relativeBuildTree = perPkgOptionFlag pkgid False packageConfigRelativeBuildTree
                 , withProfLibDetail = elabProfExeDetail
                 , withProfExeDetail = elabProfLibDetail
                 , programPrefix = elabProgPrefix
@@ -4129,6 +4138,7 @@ setupHsConfigureFlags
         , configCoverage
         , configLibCoverage
         , configRelocatable
+        , configRelativeBuildTree
         , configOptimization
         , configSplitSections
         , configSplitObjs
