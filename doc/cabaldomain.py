@@ -649,7 +649,8 @@ class ConfigField(CabalField):
                 refnode = addnodes.pending_xref('',
                                                 refdomain='std',
                                                 reftype='option',
-                                                reftarget=target)
+                                                reftarget=target,
+                                                refwarn=False)
                 refnode += nodes.literal(label, label)
                 signode += refnode
 
