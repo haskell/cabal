@@ -359,8 +359,10 @@ intToOptimisationLevel i
 -- level they do support.
 data DebugInfoLevel
   = NoDebugInfo
+  -- ^ The default and disabled level. Disabled by @--disable-debug-info@ or @debug-info: False@.
   | MinimalDebugInfo
   | NormalDebugInfo
+  -- ^ The enabled level when enabled by @--enable-debug-info@ or @debug-info: True@.
   | MaximalDebugInfo
   deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
