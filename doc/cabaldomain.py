@@ -644,25 +644,45 @@ class ConfigField(CabalField):
         else:
             name = super(ConfigField, self).handle_signature(sig, signode)
 
-        options = getattr(self, 'command_line_options', [])
-        if options:
-            signode += addnodes.desc_addname(' ', ' ')
-            signode += addnodes.desc_annotation('(', '(')
-            for i, (label, target) in enumerate(options):
-                if i > 0:
-                    signode += addnodes.desc_annotation(', ', ', ')
-
-                refnode = addnodes.pending_xref('',
-                                                refdomain='std',
-                                                reftype='option',
-                                                reftarget=target,
-                                                refwarn=False)
-                refnode += nodes.literal(label, label)
-                signode += refnode
-
-            signode += addnodes.desc_annotation(')', ')')
-
         return name
+
+    def _make_command_line_options_tip(self, options):
+        tip = nodes.container(classes=['admonition', 'tip', 'cabal-command-line-options'])
+        tip += nodes.paragraph('Command-line options', 'Command-line options',
+                               classes=['admonition-title'])
+
+        body = nodes.paragraph()
+        for i, (label, target) in enumerate(options):
+            if i > 0:
+                body += nodes.Text(', ')
+
+            refnode = addnodes.pending_xref('',
+                                            refdomain='std',
+                                            reftype='option',
+                                            reftarget=target,
+                                            refwarn=False)
+            refnode += nodes.literal(label, label)
+            body += refnode
+
+        tip += body
+        return tip
+
+    def run(self):
+        result = super(ConfigField, self).run()
+        options = getattr(self, 'command_line_options', [])
+        if not options:
+            return result
+
+        for item in result:
+            if not isinstance(item, addnodes.desc):
+                continue
+
+            for desc_item in item:
+                if isinstance(desc_item, addnodes.desc_content):
+                    desc_item.insert(0, self._make_command_line_options_tip(options))
+                    return result
+
+        return result
 
     def get_index_entry(self, env, name):
         if name.startswith('-'):
