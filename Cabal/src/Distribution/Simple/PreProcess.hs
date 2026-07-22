@@ -27,6 +27,7 @@ module Distribution.Simple.PreProcess
   , builtinHaskellSuffixes
   , builtinHaskellBootSuffixes
   , PreProcessor (..)
+  , PreProcessorKey (..)
   , mkSimplePreProcessor
   , runSimplePreProcessor
   , ppCpp
