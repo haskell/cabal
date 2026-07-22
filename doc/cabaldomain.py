@@ -646,15 +646,12 @@ class ConfigField(CabalField):
 
         return name
 
-    def _make_command_line_options_tip(self, options):
-        tip = nodes.container(classes=['admonition', 'tip', 'cabal-command-line-options'])
-        tip += nodes.paragraph('Command-line options', 'Command-line options',
-                               classes=['admonition-title'])
+    def _make_command_line_options_block(self, options):
+        block = nodes.container(classes=['cabal-command-line-options'])
 
-        body = nodes.paragraph()
-        for i, (label, target) in enumerate(options):
-            if i > 0:
-                body += nodes.Text(', ')
+        for label, target in options:
+            line = nodes.paragraph(classes=['cabal-command-line-option'])
+            line += nodes.inline('$ ', '$ ', classes=['cabal-command-line-icon'])
 
             refnode = addnodes.pending_xref('',
                                             refdomain='std',
@@ -662,10 +659,10 @@ class ConfigField(CabalField):
                                             reftarget=target,
                                             refwarn=False)
             refnode += nodes.literal(label, label)
-            body += refnode
+            line += refnode
+            block += line
 
-        tip += body
-        return tip
+        return block
 
     def run(self):
         result = super(ConfigField, self).run()
@@ -679,7 +676,7 @@ class ConfigField(CabalField):
 
             for desc_item in item:
                 if isinstance(desc_item, addnodes.desc_content):
-                    desc_item.insert(0, self._make_command_line_options_tip(options))
+                    desc_item.insert(0, self._make_command_line_options_block(options))
                     return result
 
         return result
