@@ -1696,62 +1696,101 @@ Undocumented options
 For the most part, these options are the command line versions of :ref:`project
 configuration<cabal-project-file>` field options.
 
+Global configuration options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. option::
-    --allow-boot-library-installs
-    --build-summary
-    --cabal-lib-version
+    --jobs
+    --keep-going
+    --semaphore, --no-semaphore
+
+Solver configuration options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option::
+    --constraint
+    --reject-unconstrained-dependencies
+
+Package configuration options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option::
     --compiler
     --configure-option
-    --constraint
-    --count-conflicts
-    --disable-coverage
-    --disable-debug-info
-    --disable-documentation
-    --disable-executable-dynamic
-    --disable-executable-profiling
-    --disable-executable-static
-    --disable-executable-stripping
-    --disable-library-bytecode
-    --disable-library-coverage
-    --disable-library-for-ghci
-    --disable-library-profiling
-    --disable-library-stripping
-    --disable-library-vanilla
-    --disable-optimization
-    --disable-profiling
-    --disable-shared
-    --disable-split-objs
-    --disable-split-sections
-    --disable-static
-    --doc-index-file
     --enable-benchmarks
-    --enable-coverage
-    --enable-debug-info
-    --enable-documentation
-    --enable-executable-dynamic
-    --enable-executable-profiling
-    --enable-executable-static
-    --enable-executable-stripping
-    --enable-library-bytecode
-    --enable-library-coverage
-    --enable-library-for-ghci
-    --enable-library-profiling
-    --enable-library-stripping
-    --enable-library-vanilla
-    --enable-optimization
-    --enable-profiling
-    --enable-shared
-    --enable-split-objs
-    --enable-split-sections
-    --enable-static
     --enable-tests
-    --extra-framework-dirs
+    --extra-prog-path
+    --flags
+    --run-tests
+    --with-hc-pkg
+
+Package object code options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option::
+    --enable-debug-info, --disable-debug-info
+    --enable-executable-stripping, --disable-executable-stripping
+    --enable-library-stripping, --disable-library-stripping
+    --enable-optimization, --disable-optimization
+    --enable-split-objs, --disable-split-objs
+    --enable-split-sections, --disable-split-sections
+
+Executable options
+^^^^^^^^^^^^^^^^^^
+
+.. option::
+    --program-prefix
+    --program-suffix
+
+Dynamic linking options
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option::
+    --enable-executable-dynamic, --disable-executable-dynamic
+    --enable-library-bytecode, --disable-library-bytecode
+    --enable-library-for-ghci, --disable-library-for-ghci
+    --enable-shared, --disable-shared
+    --relocatable
+
+Dynamic linking options
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option::
+    --enable-executable-static, --disable-executable-static
+    --enable-static, --disable-static
+
+Foreign function interface options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option::
     --extra-include-dirs
     --extra-lib-dirs
-    --extra-prog-path
-    --fine-grained-conflicts
-    --flags
-    --flags
+    --extra-framework-dirs
+
+Profiling options
+^^^^^^^^^^^^^^^^^
+
+.. option::
+    --enable-executable-profiling, --disable-executable-profiling
+    --enable-library-profiling, --disable-library-profiling
+    --enable-library-vanilla, --disable-library-vanilla
+    --enable-profiling, --disable-profiling
+    --library-profiling-detail
+    --profiling-detail
+
+Coverage options
+^^^^^^^^^^^^^^^^
+
+.. option::
+    --enable-coverage, --disable-coverage
+    --enable-library-coverage, --disable-library-coverage
+
+Haddock options
+^^^^^^^^^^^^^^^
+
+.. option::
+    --doc-index-file
+    --enable-documentation, --disable-documentation
     --haddock-all
     --haddock-benchmarks
     --haddock-contents-location
@@ -1768,35 +1807,30 @@ configuration<cabal-project-file>` field options.
     --haddock-resources-dir
     --haddock-tests
     --haddock-use-unicode
+    --open
+
+Advanced configuration options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option::
+    --build-summary
     --http-transport
     --ignore-expiry
-    --jobs
-    --keep-going
-    --library-profiling-detail
     --logs-dir
-    --max-backjumps
-    --minimize-conflict-set
-    --no-allow-boot-library-installs
-    --no-count-conflicts
-    --no-fine-grained-conflicts
-    --no-minimize-conflict-set
-    --no-prefer-oldest
-    --no-reorder-goals
-    --no-semaphore
-    --no-strong-flags
-    --open
-    --prefer-oldest
-    --prefer-oldest
-    --profiling-detail
-    --program-prefix
-    --program-suffix
-    --reject-unconstrained-dependencies
-    --relocatable
     --remote-repo-cache
-    --reorder-goals
-    --run-tests
-    --semaphore
-    --solver
-    --strong-flags
-    --with-hc-pkg
     --write-ghc-environment-files
+
+Advanced solver options
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option::
+    --allow-boot-library-installs, --no-allow-boot-library-installs
+    --cabal-lib-version
+    --count-conflicts, --no-count-conflicts
+    --fine-grained-conflicts, --no-fine-grained-conflicts
+    --max-backjumps
+    --minimize-conflict-set, --no-minimize-conflict-set
+    --prefer-oldest, --no-prefer-oldest
+    --reorder-goals, --no-reorder-goals
+    --solver
+    --strong-flags, --no-strong-flags
