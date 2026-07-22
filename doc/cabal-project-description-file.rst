@@ -1096,7 +1096,7 @@ feature was added.
 Object code options
 ^^^^^^^^^^^^^^^^^^^
 
-.. cfg-field:: debug-info: integer
+.. cfg-field:: debug-info: boolean | integer [0 .. 3]
                --enable-debug-info[=n]
                --disable-debug-info
     :synopsis: Build with debug info enabled.
@@ -1104,16 +1104,19 @@ Object code options
 
     :default: False
 
-    If the compiler (e.g., GHC 7.10 and later) supports outputting OS
-    native debug info (e.g., DWARF), setting ``debug-info: True`` will
-    instruct it to do so. See the GHC wiki page on :ghc-wiki:`DWARF`
-    for more information about this feature.
+    If the compiler supports outputting OS native debug info, setting
+    ``debug-info: True`` will instruct it to do so.  The command line variant of
+    this flag is ``--enable-debug-info`` and ``--disable-debug-info``.
 
-    (This field also accepts numeric syntax, but until GHC 8.2 this didn't
-    do anything.)
+    .. admonition:: GHC Behaviour
+        :class: tip
 
-    The command line variant of this flag is ``--enable-debug-info`` and
-    ``--disable-debug-info``.
+        Until GHC 8.2, GHC didn't do anything if this field was forwarded to it
+        in numeric syntax.
+
+        GHC 7.10 and later support outputting OS native debug info (e.g.,
+        DWARF). See the GHC wiki page on :ghc-wiki:`DWARF` for more information
+        about this feature.
 
 .. cfg-field:: split-sections: boolean
                --enable-split-sections
