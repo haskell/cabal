@@ -452,7 +452,7 @@ package, and thus apply globally:
     Specifies the name of the directory of the global package store.
 
 .. cfg-field:: package-dbs: package DB stack (comma separated)
-               --package-db=[clear, global, user, PATH]
+               --package-db=[clear,global,user,PATH]
     :synopsis: PackageDB stack manipulation
     :since: 3.7
 
