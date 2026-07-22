@@ -612,7 +612,7 @@ class ConfigField(CabalField):
                 non_option_signatures.append(signature)
 
         # Keep only the primary cfg-field signature and render command-line
-        # variants as links to standard command-line options.
+        # variants as plain literals in the field body.
         if non_option_signatures:
             self.command_line_options = self._deduplicate_long_options(long_options)
             return [non_option_signatures[0]]
@@ -644,8 +644,7 @@ class ConfigField(CabalField):
 
             label = signature[start:j].rstrip(',;')
             if len(label) > 2:
-                target = label.split('[', 1)[0].split('=', 1)[0]
-                options.append((label, target))
+                options.append(label)
 
             i = j + 1
         return options
@@ -672,17 +671,11 @@ class ConfigField(CabalField):
     def _make_command_line_options_block(self, options):
         block = nodes.container(classes=['cabal-cmdline-opts'])
 
-        for label, target in options:
+        for label in options:
             line = nodes.paragraph(classes=['cabal-command-line-option'])
             line += nodes.inline('$ ', '$ ', classes=['cabal-command-line-icon'])
 
-            refnode = addnodes.pending_xref('',
-                                            refdomain='std',
-                                            reftype='option',
-                                            reftarget=target,
-                                            refwarn=False)
-            refnode += nodes.literal(label, label)
-            line += refnode
+            line += nodes.literal(label, label)
             block += line
 
         return block
