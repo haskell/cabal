@@ -613,7 +613,7 @@ The following settings control the behavior of the dependency solver:
     the flag multiple times.
 
 .. cfg-field:: allow-newer: none, all or list of scoped package names (space or comma separated)
-    :command-line-options: --allow-newer, --allow-newer=[none,all,[scope:][^]pkg]
+    :cmdline-opts: --allow-newer, --allow-newer=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependencies upper bound constraints.
 
     :default: ``none``
@@ -706,7 +706,7 @@ The following settings control the behavior of the dependency solver:
     bare ``--allow-newer`` is equivalent to ``--allow-newer=all``.
 
 .. cfg-field:: allow-older: none, all, list of scoped package names (space or comma separated)
-    :command-line-options: --allow-older, --allow-older=[none,all,[scope:][^]pkg]
+    :cmdline-opts: --allow-older, --allow-older=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependency lower bound constraints.
     :since: 2.0
 
@@ -2014,8 +2014,9 @@ Most users generally won't need these.
     ``--cabal-lib-version=1.24.0.1``.
 
 .. cfg-field:: prefer-oldest: boolean
-               --prefer-oldest
-               --no-prefer-oldest
+    :cmdline-opts:
+        --prefer-oldest
+        --no-prefer-oldest
     :synopsis: Prefer the oldest versions of packages available.
     :since:    3.10
 

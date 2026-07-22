@@ -593,14 +593,14 @@ class ConfigField(CabalField):
     section_key = 'cabal:cfg-section'
     indextemplate = '%s ; cabal project option'
     option_spec = dict(CabalField.option_spec,
-                       **{'command-line-options': lambda x: x})
+                       **{'cmdline-opts': lambda x: x})
 
     def get_signatures(self):
         signatures = super(ConfigField, self).get_signatures()
         long_options = []
         non_option_signatures = []
 
-        explicit_options = self.options.get('command-line-options')
+        explicit_options = self.options.get('cmdline-opts')
         if explicit_options:
             long_options.extend(self._extract_long_options(explicit_options))
 
@@ -670,7 +670,7 @@ class ConfigField(CabalField):
         return name
 
     def _make_command_line_options_block(self, options):
-        block = nodes.container(classes=['cabal-command-line-options'])
+        block = nodes.container(classes=['cabal-cmdline-opts'])
 
         for label, target in options:
             line = nodes.paragraph(classes=['cabal-command-line-option'])
