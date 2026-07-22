@@ -622,9 +622,32 @@ class ConfigField(CabalField):
 
     def _extract_long_options(self, signature):
         options = []
-        for match in re.findall(r'--[^,\s]+', signature):
-            target = match.split('[', 1)[0].split('=', 1)[0]
-            options.append((match, target))
+        i = 0
+        n = len(signature)
+
+        while i < n:
+            start = signature.find('--', i)
+            if start < 0:
+                break
+
+            j = start + 2
+            bracket_depth = 0
+            while j < n:
+                ch = signature[j]
+                if ch == '[':
+                    bracket_depth += 1
+                elif ch == ']' and bracket_depth > 0:
+                    bracket_depth -= 1
+                elif bracket_depth == 0 and (ch == ',' or ch == ';' or ch.isspace()):
+                    break
+                j += 1
+
+            label = signature[start:j].rstrip(',;')
+            if len(label) > 2:
+                target = label.split('[', 1)[0].split('=', 1)[0]
+                options.append((label, target))
+
+            i = j + 1
         return options
 
     def _deduplicate_long_options(self, options):
