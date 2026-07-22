@@ -613,7 +613,7 @@ The following settings control the behavior of the dependency solver:
     the flag multiple times.
 
 .. cfg-field:: allow-newer: none, all or list of scoped package names (space or comma separated)
-               --allow-newer, --allow-newer=[none,all,[scope:][^]pkg]
+    :command-line-options: --allow-newer, --allow-newer=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependencies upper bound constraints.
 
     :default: ``none``
@@ -706,7 +706,7 @@ The following settings control the behavior of the dependency solver:
     bare ``--allow-newer`` is equivalent to ``--allow-newer=all``.
 
 .. cfg-field:: allow-older: none, all, list of scoped package names (space or comma separated)
-               --allow-older, --allow-older=[none,all,[scope:][^]pkg]
+    :command-line-options: --allow-older, --allow-older=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependency lower bound constraints.
     :since: 2.0
 
