@@ -1,13 +1,10 @@
 import Test.Cabal.Prelude
-import qualified Data.Map as Map
-import qualified Control.Monad.IO.Class as IO
-import System.Environment (getEnvironment)
+import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
 
 main = cabalTest $ recordMode DoNotRecord $ do
     -- First run cabal repl with the normal PATH
-    env <- IO.liftIO getEnvironment
-    let originalPath = fromMaybe "" (lookup "PATH" env)
+    originalPath <- fromMaybe "" <$> liftIO (lookupEnv "PATH")
 
     -- Run repl with original PATH
     cabalWithStdin "repl" ["lib:PathRecomp"] "" >>= assertOutputContains "module loaded"
