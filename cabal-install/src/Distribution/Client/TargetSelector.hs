@@ -319,14 +319,15 @@ parseTargetString :: String -> Maybe TargetString
 parseTargetString =
   readPToMaybe parseTargetApprox
   where
+    colon = Parse.char ':'
     parseTargetApprox :: Parse.ReadP TargetString
     parseTargetApprox =
       (TargetString1 <$> tokenQEnd)
-        +++ (TargetString2 <$> tokenQ0 <* Parse.char ':' <*> tokenQEnd)
-        +++ (TargetString3 <$> tokenQ0 <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQEnd)
-        +++ (TargetString4 <$> tokenQ0 <* Parse.char ':' <*> token <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQEnd)
-        +++ (TargetString5 <$> tokenQ0 <* Parse.char ':' <*> token <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQEnd)
-        +++ (TargetString7 <$> tokenQ0 <* Parse.char ':' <*> token <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQEnd)
+        +++ (TargetString2 <$> tokenQ0 <* colon <*> tokenQEnd)
+        +++ (TargetString3 <$> tokenQ0 <* colon <*> tokenQ <* colon <*> tokenQEnd)
+        +++ (TargetString4 <$> tokenQ0 <* colon <*> token <* colon <*> tokenQ <* colon <*> tokenQEnd)
+        +++ (TargetString5 <$> tokenQ0 <* colon <*> token <* colon <*> tokenQ <* colon <*> tokenQ <* colon <*> tokenQEnd)
+        +++ (TargetString7 <$> tokenQ0 <* colon <*> token <* colon <*> tokenQ <* colon <*> tokenQ <* colon <*> tokenQ <* colon <*> tokenQ <* colon <*> tokenQEnd)
 
     token = Parse.munch1 (\x -> not (isSpace x) && x /= ':')
     tokenQ = parseHaskellString <++ token
