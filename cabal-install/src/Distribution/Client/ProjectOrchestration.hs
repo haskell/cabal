@@ -708,9 +708,9 @@ resolveTargets
 
       -- We can ask to build any whole package, project-local or a dependency
       checkTarget bt@(TargetPackage _ (ordNub -> [pkgid]) mkfilter)
-        | Just ats <-
-            maybe id filterTargetsKind mkfilter <$> Map.lookup pkgid availableTargetsByPackageId =
-            componentTargets WholeComponent <$> selectPackageTargets bt ats
+        | Just ats <- Map.lookup pkgid availableTargetsByPackageId =
+            componentTargets WholeComponent
+              <$> selectPackageTargets bt (maybe id filterTargetsKind mkfilter ats)
         | otherwise =
             Left (TargetProblemNoSuchPackage pkgid)
       checkTarget (TargetPackage _ pkgids _) =
@@ -758,11 +758,9 @@ resolveTargets
         | otherwise =
             Left (TargetNotInProject pkgname)
       checkTarget bt@(TargetPackageNamed pkgname mkfilter)
-        | Just ats <-
-            maybe id filterTargetsKind mkfilter <$> Map.lookup pkgname availableTargetsByPackageName =
-            fmap (componentTargets WholeComponent)
-              . selectPackageTargets bt
-              $ ats
+        | Just ats <- Map.lookup pkgname availableTargetsByPackageName =
+            componentTargets WholeComponent
+              <$> selectPackageTargets bt (maybe id filterTargetsKind mkfilter ats)
         | Just SourcePackageDb{packageIndex} <- mPkgDb
         , let pkg = lookupPackageName packageIndex pkgname
         , not (null pkg) =
