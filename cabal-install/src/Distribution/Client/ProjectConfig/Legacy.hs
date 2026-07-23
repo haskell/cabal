@@ -1097,7 +1097,6 @@ convertToLegacyAllPackageConfig
           , configLibCoverage = mempty -- TODO: don't merge
           , configExactConfiguration = mempty
           , configBenchmarks = mempty
-          , configFlagError = mempty -- TODO: ???
           , configRelocatable = mempty
           , configDebugInfo = mempty
           , configUseResponseFiles = mempty
@@ -1175,7 +1174,6 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configLibCoverage = packageConfigCoverage -- TODO: don't merge
         , configExactConfiguration = mempty
         , configBenchmarks = packageConfigBenchmarks
-        , configFlagError = mempty -- TODO: ???
         , configRelocatable = packageConfigRelocatable
         , configDebugInfo = packageConfigDebugInfo
         , configUseResponseFiles = mempty
