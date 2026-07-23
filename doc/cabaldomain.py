@@ -69,9 +69,6 @@ Added directives
 
    References field added by `.. cfg-field`.
 
-.. rst::role:: cfg-flag
-
-   References flag added by `.. cfg-field`.
 
 
 All roles can be supplied with title as in standard sphinx references::
@@ -731,7 +728,6 @@ class ConfigFieldIndex(Index):
 
         # (title, section store, fields store)
         entries = [('cabal.project fields', 'cfg-section', 'cfg-field'),
-                   ('cabal project flags', 'cfg-section', 'cfg-flag'),
                    ('package.cabal fields', 'pkg-section', 'pkg-field')]
 
         result = []
@@ -781,7 +777,7 @@ def make_data_keys(typ, target, node):
         section = node.get('cabal:pkg-section')
         return [(section, target),
                 (None, target)]
-    elif typ in ('cfg-field', 'cfg-flag'):
+    elif typ == 'cfg-field':
         section = node.get('cabal:cfg-section')
         return [(section, target), (None, target)]
     else:
@@ -847,9 +843,7 @@ def make_title(typ, key, meta):
         section, name = key
         return "cabal.project " + name + " field " + render_meta_title(meta)
 
-    elif typ == 'cfg-flag':
-        section, name = key
-        return "cabal flag " + name + " " + render_meta_title(meta)
+
 
     else:
         raise ValueError("Unknown type: " + typ)
@@ -902,7 +896,6 @@ class CabalDomain(Domain):
         'pkg-field'  : CabalPackageFieldXRef(warn_dangling=True),
         'cfg-section': XRefRole(warn_dangling=True),
         'cfg-field'  : CabalConfigFieldXRef(warn_dangling=True),
-        'cfg-flag'   : CabalConfigFieldXRef(warn_dangling=True),
     }
     initial_data = {
         'pkg-sections': {},
@@ -911,7 +904,6 @@ class CabalDomain(Domain):
         'index-num'   : {}, #per document number of objects
                             # used to order references page
         'cfg-fields'  : {},
-        'cfg-flags'   : {},
     }
     indices = [
         ConfigFieldIndex
@@ -921,11 +913,10 @@ class CabalDomain(Domain):
         'pkg-field'  : 'pkg-fields',
         'cfg-section': 'cfg-sections',
         'cfg-field'  : 'cfg-fields',
-        'cfg-flag'   : 'cfg-flags',
     }
     def clear_doc(self, docname):
         for k in ['pkg-sections', 'pkg-fields', 'cfg-sections',
-                  'cfg-fields', 'cfg-flags']:
+                  'cfg-fields']:
             to_del = []
             for name, (fn, _, _) in self.data[k].items():
                 if fn == docname:
@@ -955,7 +946,7 @@ class CabalDomain(Domain):
         Used for search functionality
         '''
         for typ in ['pkg-section', 'pkg-field',
-                    'cfg-section', 'cfg-field', 'cfg-flag']:
+                    'cfg-section', 'cfg-field']:
             key = self.types[typ]
             for name, (fn, target, meta) in self.data[key].items():
                 title = make_title(typ, name, meta)
