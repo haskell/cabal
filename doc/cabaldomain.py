@@ -673,8 +673,8 @@ class ConfigField(CabalField):
         block = nodes.container(classes=['cabal-cmdline-opts'])
 
         for label, target in options:
-            line = nodes.paragraph(classes=['cabal-command-line-option'])
-            line += nodes.inline('$ ', '$ ', classes=['cabal-command-line-icon'])
+            line = nodes.paragraph(classes=['cabal-cmdline-option'])
+            line += nodes.inline('$ ', '$ ', classes=['cabal-cmdline-icon'])
 
             refnode = addnodes.pending_xref('',
                                             refdomain='std',
