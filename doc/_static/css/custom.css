@@ -3,22 +3,22 @@
   margin-bottom: 0.5rem;
 }
 
-.rst-content .cabal-cmdline-opts .cabal-command-line-option {
+.rst-content .cabal-cmdline-opts .cabal-cmdline-option {
   margin-top: 0;
   margin-bottom: 0.12rem;
 }
 
-.rst-content .cabal-cmdline-opts .cabal-command-line-option:last-child {
+.rst-content .cabal-cmdline-opts .cabal-cmdline-option:last-child {
   margin-bottom: 0;
 }
 
-.rst-content .cabal-cmdline-opts .cabal-command-line-icon {
+.rst-content .cabal-cmdline-opts .cabal-cmdline-icon {
   opacity: 0.65;
 }
 
-.rst-content .cabal-cmdline-opts .cabal-command-line-option code,
-.rst-content .cabal-cmdline-opts .cabal-command-line-option code.literal,
-.rst-content .cabal-cmdline-opts .cabal-command-line-option tt.literal {
+.rst-content .cabal-cmdline-opts .cabal-cmdline-option code,
+.rst-content .cabal-cmdline-opts .cabal-cmdline-option code.literal,
+.rst-content .cabal-cmdline-opts .cabal-cmdline-option tt.literal {
   border: 0;
   background: transparent;
   padding: 0;
