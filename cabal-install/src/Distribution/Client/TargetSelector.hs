@@ -322,53 +322,11 @@ parseTargetString =
     parseTargetApprox :: Parse.ReadP TargetString
     parseTargetApprox =
       (TargetString1 <$> tokenQEnd)
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                TargetString2 a <$> tokenQEnd
-            )
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                b <- tokenQ
-                _ <- Parse.char ':'
-                TargetString3 a b <$> tokenQEnd
-            )
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                b <- token
-                _ <- Parse.char ':'
-                c <- tokenQ
-                _ <- Parse.char ':'
-                TargetString4 a b c <$> tokenQEnd
-            )
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                b <- token
-                _ <- Parse.char ':'
-                c <- tokenQ
-                _ <- Parse.char ':'
-                d <- tokenQ
-                _ <- Parse.char ':'
-                TargetString5 a b c d <$> tokenQEnd
-            )
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                b <- token
-                _ <- Parse.char ':'
-                c <- tokenQ
-                _ <- Parse.char ':'
-                d <- tokenQ
-                _ <- Parse.char ':'
-                e <- tokenQ
-                _ <- Parse.char ':'
-                f <- tokenQ
-                _ <- Parse.char ':'
-                TargetString7 a b c d e f <$> tokenQEnd
-            )
+        +++ (TargetString2 <$> tokenQ0 <* Parse.char ':' <*> tokenQEnd)
+        +++ (TargetString3 <$> tokenQ0 <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQEnd)
+        +++ (TargetString4 <$> tokenQ0 <* Parse.char ':' <*> token <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQEnd)
+        +++ (TargetString5 <$> tokenQ0 <* Parse.char ':' <*> token <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQEnd)
+        +++ (TargetString7 <$> tokenQ0 <* Parse.char ':' <*> token <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQ <* Parse.char ':' <*> tokenQEnd)
 
     token = Parse.munch1 (\x -> not (isSpace x) && x /= ':')
     tokenQ = parseHaskellString <++ token
