@@ -299,7 +299,7 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
                    -- set to say that the reverse dependency also excluded this
                    -- version.
                    Just $ CS.singletonWithConflict (P reverseDep) (CS.VersionConstraintConflict currentQPN v)
-      in (CS.unions <$> traverse couldBeResolved (S.toList conflicts))
+      in CS.unions <$> traverse couldBeResolved (S.toList conflicts)
 
     logSkippedPackage :: QPN -> POption -> ConflictSet -> ExploreState -> ConflictSetLog a
     logSkippedPackage qpn pOption cs es =
