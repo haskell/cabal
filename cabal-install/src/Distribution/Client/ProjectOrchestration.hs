@@ -704,13 +704,16 @@ resolveTargets
             , (uid, ct) <- cts
             ]
 
+      filterWholeComponentTargets mkfilter bt ats =
+        componentTargets WholeComponent
+          <$> selectPackageTargets bt (maybe id filterTargetsKind mkfilter ats)
+
       checkTarget :: TargetSelector -> Either (TargetProblem err) [(u, ComponentTarget)]
 
       -- We can ask to build any whole package, project-local or a dependency
       checkTarget bt@(TargetPackage _ (ordNub -> [pkgid]) mkfilter)
         | Just ats <- Map.lookup pkgid availableTargetsByPackageId =
-            componentTargets WholeComponent
-              <$> selectPackageTargets bt (maybe id filterTargetsKind mkfilter ats)
+            filterWholeComponentTargets mkfilter bt ats
         | otherwise =
             Left (TargetProblemNoSuchPackage pkgid)
       checkTarget (TargetPackage _ pkgids _) =
@@ -759,8 +762,7 @@ resolveTargets
             Left (TargetNotInProject pkgname)
       checkTarget bt@(TargetPackageNamed pkgname mkfilter)
         | Just ats <- Map.lookup pkgname availableTargetsByPackageName =
-            componentTargets WholeComponent
-              <$> selectPackageTargets bt (maybe id filterTargetsKind mkfilter ats)
+            filterWholeComponentTargets mkfilter bt ats
         | Just SourcePackageDb{packageIndex} <- mPkgDb
         , let pkg = lookupPackageName packageIndex pkgname
         , not (null pkg) =
