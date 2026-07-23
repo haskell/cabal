@@ -1,0 +1,16 @@
+cabal-version: 3.0
+name: pkg-α
+  -- Cabal testsuite sadly chokes when copying files with
+  -- non-ASCII characters in them. So for this test, in
+  -- the output file, you will get an error for filename/
+  -- name mismatch, too.
+description: description
+synopsis: synopsis
+version: 0
+category: example
+maintainer: none@example.com
+license: GPL-3.0-or-later
+
+library
+  exposed-modules: Module
+  default-language: Haskell2010
