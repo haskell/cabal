@@ -594,6 +594,7 @@ class ConfigField(CabalField):
     indextemplate = '%s ; cabal project option'
     option_spec = dict(CabalField.option_spec,
                        **{'cmdline-opts': lambda x: x})
+    long_option_pattern = re.compile(r'--\S+')
 
     def get_signatures(self):
         signatures = super(ConfigField, self).get_signatures()
@@ -614,51 +615,21 @@ class ConfigField(CabalField):
         # Keep only the primary cfg-field signature and render command-line
         # variants as links to standard command-line options.
         if non_option_signatures:
-            self.command_line_options = self._deduplicate_long_options(long_options)
+            self.command_line_options = list(dict.fromkeys(long_options))
             return [non_option_signatures[0]]
 
         self.command_line_options = []
         return signatures
 
-    def _extract_long_options(self, signature):
+    def _extract_long_options(self, text):
         options = []
-        i = 0
-        n = len(signature)
-
-        while i < n:
-            start = signature.find('--', i)
-            if start < 0:
-                break
-
-            j = start + 2
-            bracket_depth = 0
-            while j < n:
-                ch = signature[j]
-                if ch == '[':
-                    bracket_depth += 1
-                elif ch == ']' and bracket_depth > 0:
-                    bracket_depth -= 1
-                elif bracket_depth == 0 and (ch == ',' or ch == ';' or ch.isspace()):
-                    break
-                j += 1
-
-            label = signature[start:j].rstrip(',;')
-            if len(label) > 2:
-                target = label.split('[', 1)[0].split('=', 1)[0]
-                options.append((label, target))
-
-            i = j + 1
-        return options
-
-    def _deduplicate_long_options(self, options):
-        unique = []
-        seen = set()
-        for option in options:
-            if option in seen:
+        for token in self.long_option_pattern.findall(text):
+            label = token.rstrip(',;')
+            if len(label) <= 2:
                 continue
-            seen.add(option)
-            unique.append(option)
-        return unique
+            target = label.split('[', 1)[0].split('=', 1)[0]
+            options.append((label, target))
+        return options
 
     def handle_signature(self, sig, signode):
         sig = sig.strip()
