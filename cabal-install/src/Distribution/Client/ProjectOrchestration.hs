@@ -730,11 +730,8 @@ resolveTargets
       -- .cabal files for a single package?
 
       checkTarget bt@(TargetAllPackages mkfilter) =
-        fmap (componentTargets WholeComponent)
-          . selectPackageTargets bt
-          . maybe id filterTargetsKind mkfilter
-          . filter availableTargetLocalToProject
-          $ concat (Map.elems availableTargetsByPackageId)
+        filterWholeComponentTargets mkfilter bt $
+          filter availableTargetLocalToProject (concat $ Map.elems availableTargetsByPackageId)
       checkTarget (TargetComponent pkgid cname subtarget)
         | Just ats <-
             Map.lookup
