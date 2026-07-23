@@ -594,41 +594,47 @@ class ConfigField(CabalField):
     indextemplate = '%s ; cabal project option'
     option_spec = dict(CabalField.option_spec,
                        **{'cmdline-opts': lambda x: x})
-    long_option_pattern = re.compile(r'--\S+')
 
     def get_signatures(self):
         signatures = super(ConfigField, self).get_signatures()
-        long_options = []
-        non_option_signatures = []
+        self.command_line_options = self._parse_cmdline_opts(self.options.get('cmdline-opts'))
 
-        explicit_options = self.options.get('cmdline-opts')
-        if explicit_options:
-            long_options.extend(self._extract_long_options(explicit_options))
-
-        for signature in signatures:
-            stripped = signature.strip()
-            if stripped.startswith('-'):
-                long_options.extend(self._extract_long_options(stripped))
-            elif stripped:
-                non_option_signatures.append(signature)
+        non_option_signatures = [
+            signature for signature in signatures
+            if signature.strip() and not signature.strip().startswith('-')
+        ]
 
         # Keep only the primary cfg-field signature and render command-line
         # variants as links to standard command-line options.
         if non_option_signatures:
-            self.command_line_options = list(dict.fromkeys(long_options))
             return [non_option_signatures[0]]
 
-        self.command_line_options = []
         return signatures
 
-    def _extract_long_options(self, text):
+    def _parse_cmdline_opts(self, text):
+        if not text:
+            return []
+
+        labels = [line.strip() for line in text.splitlines() if line.strip().startswith('-')]
+        if not labels:
+            return []
+
+        first_long_target = None
+        for label in labels:
+            if label.startswith('--'):
+                first_long_target = label.split('[', 1)[0].split('=', 1)[0]
+                break
+
         options = []
-        for token in self.long_option_pattern.findall(text):
-            label = token.rstrip(',;')
-            if len(label) <= 2:
-                continue
-            target = label.split('[', 1)[0].split('=', 1)[0]
+        last_long_target = None
+        for label in labels:
+            if label.startswith('--'):
+                target = label.split('[', 1)[0].split('=', 1)[0]
+                last_long_target = target
+            else:
+                target = last_long_target or first_long_target or label.split('[', 1)[0].split('=', 1)[0]
             options.append((label, target))
+
         return options
 
     def handle_signature(self, sig, signode):
