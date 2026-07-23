@@ -135,29 +135,6 @@ def parse_deprecated(txt):
     except ValueError:
         return True
 
-def parse_flag(env, sig, signode):
-    import re
-    names = []
-    for i, flag in enumerate(sig.split(',')):
-        flag = flag.strip()
-        sep = '='
-        parts = flag.split('=')
-        if len(parts) == 1:
-            sep=' '
-            parts = flag.split()
-        if len(parts) == 0: continue
-
-        name = parts[0]
-        names.append(name)
-        sig = sep + ' '.join(parts[1:])
-        sig = re.sub(r'<([-a-zA-Z ]+)>', r'⟨\1⟩', sig)
-        if i > 0:
-            signode += addnodes.desc_name(', ', ', ')
-        signode += addnodes.desc_name(name, name)
-        if len(sig) > 0:
-            signode += addnodes.desc_addname(sig, sig)
-
-    return names[0]
 
 
 class Meta(object):
@@ -638,13 +615,7 @@ class ConfigField(CabalField):
         return options
 
     def handle_signature(self, sig, signode):
-        sig = sig.strip()
-        if sig.startswith('-'):
-            name = parse_flag(self, sig, signode)
-        else:
-            name = super(ConfigField, self).handle_signature(sig, signode)
-
-        return name
+        return super(ConfigField, self).handle_signature(sig.strip(), signode)
 
     def _make_command_line_options_block(self, options):
         block = nodes.container(classes=['cabal-cmdline-opts'])
@@ -682,24 +653,10 @@ class ConfigField(CabalField):
         return result
 
     def get_index_entry(self, env, name):
-        if name.startswith('-'):
-            section = self.env.ref_context.get(self.section_key)
-            if section is not None:
-                parts = ('cfg-flag', section, name)
-                indexname = section + ':' + name
-            else:
-                parts = ('cfg-flag', name)
-                indexname = name
-            indexentry = name + '; cabal project option'
-            targetname = '-'.join(parts)
-            return indexentry, targetname
-        else:
-            return super(ConfigField,self).get_index_entry(env, name)
+        return super(ConfigField,self).get_index_entry(env, name)
 
     def get_env_key(self, env, name):
         section = self.env.ref_context.get(self.section_key)
-        if name.startswith('-'):
-            return (section, name), 'cfg-flags'
         return (section, name), 'cfg-fields'
 
 class CabalConfigFieldXRef(CabalFieldXRef):
