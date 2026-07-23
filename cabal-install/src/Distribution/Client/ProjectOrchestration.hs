@@ -731,7 +731,7 @@ resolveTargets
 
       checkTarget bt@(TargetAllPackages mkfilter) =
         filterWholeComponentTargets mkfilter bt $
-          filter availableTargetLocalToProject (concat $ Map.elems availableTargetsByPackageId)
+          concatMap (filter availableTargetLocalToProject) (Map.elems availableTargetsByPackageId)
       checkTarget (TargetComponent pkgid cname subtarget)
         | Just ats <-
             Map.lookup
