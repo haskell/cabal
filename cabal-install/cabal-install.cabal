@@ -243,7 +243,6 @@ library
       , async      >= 2.0      && < 2.3
       , array      >= 0.4      && < 0.6
       , base16-bytestring >= 1.0 && < 1.1
-      , binary     >= 0.7.3    && < 0.9
       , bytestring >= 0.10.6.0 && < 0.13
       , containers >= 0.5.6.2  && < 0.9
       , cryptohash-sha256 >= 0.11 && < 0.12
@@ -485,7 +484,6 @@ test-suite long-tests
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Described
     UnitTests.Distribution.Client.DescribedInstances
-    UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.VCS
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.QuickCheck
@@ -506,7 +504,6 @@ test-suite long-tests
     , tagged
     , tasty >= 1.2.3 && <1.6
     , tasty-expected-failure
-    , tasty-hunit >= 0.10
     , tasty-quickcheck <0.12
     , QuickCheck >= 2.14 && <2.19
     , pretty-show >= 1.6.15
