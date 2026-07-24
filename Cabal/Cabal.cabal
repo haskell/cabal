@@ -44,6 +44,7 @@ library
     , Cabal-syntax ^>= 3.19
     , array      >= 0.4.0.1  && < 0.6
     , base       >= 4.17     && < 5
+    , binary     >= 0.7.3    && < 0.9
     , bytestring >= 0.10.8   && < 0.13
     , containers >= 0.5.8.2  && < 0.9
     , deepseq    >= 1.4      && < 1.7
@@ -126,6 +127,7 @@ library
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.Errors
+    Distribution.Simple.FileMonitor
     Distribution.Simple.FileMonitor.Types
     Distribution.Simple.Flag
     Distribution.Simple.GHC
@@ -158,6 +160,7 @@ library
     Distribution.Simple.Program.Script
     Distribution.Simple.Program.Strip
     Distribution.Simple.Program.Types
+    Distribution.Simple.RebuildMonad
     Distribution.Simple.Register
     Distribution.Simple.Setup
     Distribution.Simple.ShowBuildInfo

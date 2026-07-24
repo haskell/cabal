@@ -1,23 +1,23 @@
 module Distribution.Client.HashValue
   ( HashValue
   , hashValue
-  , truncateHash
-  , showHashValue
-  , readFileHashValue
   , hashFromTUF
+  , rawHashValue
+  , readFileHashValue
+  , showHashValue
+  , truncateHash
   ) where
 
-import Control.Monad ((<=<))
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import qualified Hackage.Security.Client as Sec
 
+import Control.Monad ((<=<))
 import qualified Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
-
 import System.IO (IOMode (..), withBinaryFile)
 
 -----------------------------------------------
@@ -49,13 +49,27 @@ instance Structured HashValue
 hashValue :: LBS.ByteString -> HashValue
 hashValue = HashValue . SHA256.hashlazy
 
+-- | Convert a raw hash value, given as a bytestring, into a 'HashValue'. No
+-- well-formedness guarantees are provided; the caller is responsible for
+-- ensuring that the provided hash is valid.
+rawHashValue :: BS.ByteString -> HashValue
+rawHashValue = HashValue
+
 showHashValue :: HashValue -> String
 showHashValue (HashValue digest) = BS.unpack (Base16.encode digest)
 
 -- | Hash the content of a file. Uses SHA256.
 readFileHashValue :: FilePath -> IO HashValue
 readFileHashValue tarball =
-  withBinaryFile tarball ReadMode (evaluate . hashValue <=< LBS.hGetContents)
+  withBinaryFile tarball ReadMode $
+    evaluate . hashValue <=< LBS.hGetContents
+
+-- | Truncate a 32 byte SHA256 hash to
+--
+-- For example 20 bytes render as 40 hex chars, which we use for unit-ids.
+-- Or even 4 bytes for 'hashedInstalledPackageIdShort'
+truncateHash :: Int -> HashValue -> HashValue
+truncateHash n (HashValue h) = HashValue (BS.take n h)
 
 -- | Convert a hash from TUF metadata into a 'PackageSourceHash'.
 --
@@ -66,12 +80,5 @@ hashFromTUF (Sec.Hash hashstr) =
   -- TODO: [code cleanup] either we should get TUF to use raw bytestrings or
   -- perhaps we should also just use a base16 string as the internal rep.
   case Base16.decode (BS.pack hashstr) of
-    Right hash -> HashValue hash
+    Right hash -> rawHashValue hash
     Left _ -> error "hashFromTUF: cannot decode base16"
-
--- | Truncate a 32 byte SHA256 hash to
---
--- For example 20 bytes render as 40 hex chars, which we use for unit-ids.
--- Or even 4 bytes for 'hashedInstalledPackageIdShort'
-truncateHash :: Int -> HashValue -> HashValue
-truncateHash n (HashValue h) = HashValue (BS.take n h)
