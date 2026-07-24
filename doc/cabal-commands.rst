@@ -1689,3 +1689,344 @@ cabal report
    Package repository to which the report is to be uploaded.
 
 .. include:: references.inc
+
+Undocumented options
+--------------------
+
+For the most part, these options are the command line versions of :ref:`project
+configuration<cabal-project-file>` field options.
+
+Global configuration options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --jobs
+
+    See :cfg-field:`jobs` for more information.
+
+.. option:: --keep-going
+
+    See :cfg-field:`keep-going` for more information.
+
+.. option:: --semaphore, --no-semaphore
+
+    See :cfg-field:`semaphore` for more information.
+
+Solver configuration options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --constraint
+
+    See :cfg-field:`constraints` for more information.
+
+.. option:: --reject-unconstrained-dependencies
+
+    See :cfg-field:`reject-unconstrained-dependencies` for more information.
+
+Package configuration options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --compiler
+
+    See :cfg-field:`compiler` for more information.
+
+.. option:: --configure-option
+
+    See :cfg-field:`configure-options` for more information.
+
+.. option:: --enable-benchmarks
+
+    See :cfg-field:`benchmarks` for more information.
+
+.. option:: --enable-tests
+
+    See :cfg-field:`tests` for more information.
+
+.. option:: --extra-prog-path
+
+    See :cfg-field:`extra-prog-path` for more information.
+
+.. option:: --flags
+
+    See :cfg-field:`flags` for more information.
+
+.. option:: --run-tests
+
+    See :cfg-field:`run-tests` for more information.
+
+.. option:: --with-hc-pkg
+
+    See :cfg-field:`with-hc-pkg` for more information.
+
+Package object code options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --enable-debug-info, --disable-debug-info
+
+    See :cfg-field:`debug-info` for more information.
+
+.. option:: --enable-executable-stripping, --disable-executable-stripping
+
+    See :cfg-field:`executable-stripping` for more information.
+
+.. option:: --enable-library-stripping, --disable-library-stripping
+
+    See :cfg-field:`library-stripping` for more information.
+
+.. option:: --enable-optimization, --disable-optimization
+
+    See :cfg-field:`optimization` for more information.
+
+.. option:: --enable-split-objs, --disable-split-objs
+
+    See :cfg-field:`split-objs` for more information.
+
+.. option:: --enable-split-sections, --disable-split-sections
+
+    See :cfg-field:`split-sections` for more information.
+
+Executable options
+^^^^^^^^^^^^^^^^^^
+
+.. option:: --program-prefix
+
+    See :cfg-field:`program-prefix` for more information.
+
+.. option:: --program-suffix
+
+    See :cfg-field:`program-suffix` for more information.
+
+Dynamic linking options
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --enable-executable-dynamic, --disable-executable-dynamic
+
+    See :cfg-field:`executable-dynamic` for more information.
+
+.. option:: --enable-library-bytecode, --disable-library-bytecode
+
+    See :cfg-field:`library-bytecode` for more information.
+
+.. option:: --enable-library-for-ghci, --disable-library-for-ghci
+
+    See :cfg-field:`library-for-ghci` for more information.
+
+.. option:: --enable-shared, --disable-shared
+
+    See :cfg-field:`shared` for more information.
+
+.. option:: --relocatable
+
+    See :cfg-field:`relocatable` for more information.
+
+Dynamic linking options
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --enable-executable-static, --disable-executable-static
+
+    See :cfg-field:`executable-static` for more information.
+
+.. option:: --enable-static, --disable-static
+
+    See :cfg-field:`static` for more information.
+
+Foreign function interface options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --extra-include-dirs
+
+    See :cfg-field:`extra-include-dirs` for more information.
+
+.. option:: --extra-lib-dirs
+
+    See :cfg-field:`extra-lib-dirs` for more information.
+
+.. option:: --extra-framework-dirs
+
+    See :cfg-field:`extra-framework-dirs` for more information.
+
+Profiling options
+^^^^^^^^^^^^^^^^^
+
+.. option:: --enable-executable-profiling, --disable-executable-profiling
+
+    See :cfg-field:`executable-profiling` for more information.
+
+.. option:: --enable-library-profiling, --disable-library-profiling
+
+    See :cfg-field:`library-profiling` for more information.
+
+.. option:: --enable-library-vanilla, --disable-library-vanilla
+
+    See :cfg-field:`library-vanilla` for more information.
+
+.. option:: --enable-profiling, --disable-profiling
+
+    See :cfg-field:`profiling` for more information.
+
+.. option:: --library-profiling-detail
+
+    See :cfg-field:`library-profiling-detail` for more information.
+
+.. option:: --profiling-detail
+
+    See :cfg-field:`profiling-detail` for more information.
+
+Coverage options
+^^^^^^^^^^^^^^^^
+
+.. option:: --enable-coverage, --disable-coverage
+
+    See :cfg-field:`coverage` for more information.
+
+.. option:: --enable-library-coverage, --disable-library-coverage
+
+    See :cfg-field:`library-coverage` for more information.
+
+Haddock options
+^^^^^^^^^^^^^^^
+
+.. option:: --doc-index-file
+
+    See :cfg-field:`doc-index-file` for more information.
+
+.. option:: --enable-documentation, --disable-documentation
+
+    See :cfg-field:`documentation` for more information.
+
+.. option:: --haddock-all
+
+    See :cfg-field:`haddock-all` for more information.
+
+.. option:: --haddock-benchmarks
+
+    See :cfg-field:`haddock-benchmarks` for more information.
+
+.. option:: --haddock-contents-location
+
+    See :cfg-field:`haddock-contents-location` for more information.
+
+.. option:: --haddock-css
+
+    See :cfg-field:`haddock-css` for more information.
+
+.. option:: --haddock-executables
+
+    See :cfg-field:`haddock-executables` for more information.
+
+.. option:: --haddock-hoogle
+
+    See :cfg-field:`haddock-hoogle` for more information.
+
+.. option:: --haddock-hscolour-css
+
+    See :cfg-field:`haddock-hscolour-css` for more information.
+
+.. option:: --haddock-html
+
+    See :cfg-field:`haddock-html` for more information.
+
+.. option:: --haddock-html-location
+
+    See :cfg-field:`haddock-html-location` for more information.
+
+.. option:: --haddock-hyperlink-source
+
+    See :cfg-field:`haddock-hyperlink-source` for more information.
+
+.. option:: --haddock-internal
+
+    See :cfg-field:`haddock-internal` for more information.
+
+.. option:: --haddock-output-dir
+
+    See :cfg-field:`haddock-output-dir` for more information.
+
+.. option:: --haddock-quickjump
+
+    See :cfg-field:`haddock-quickjump` for more information.
+
+.. option:: --haddock-resources-dir
+
+    See :cfg-field:`haddock-resources-dir` for more information.
+
+.. option:: --haddock-tests
+
+    See :cfg-field:`haddock-tests` for more information.
+
+.. option:: --haddock-use-unicode
+
+    See :cfg-field:`haddock-use-unicode` for more information.
+
+.. option:: --open
+
+    See :cfg-field:`open` for more information.
+
+Advanced configuration options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --build-summary
+
+    See :cfg-field:`build-summary` for more information.
+
+.. option:: --http-transport
+
+    See :cfg-field:`http-transport` for more information.
+
+.. option:: --ignore-expiry
+
+    See :cfg-field:`ignore-expiry` for more information.
+
+.. option:: --logs-dir
+
+    See :cfg-field:`logs-dir` for more information.
+
+.. option:: --remote-repo-cache
+
+    See :cfg-field:`remote-repo-cache` for more information.
+
+.. option:: --write-ghc-environment-files
+
+    See :cfg-field:`write-ghc-environment-files` for more information.
+
+Advanced solver options
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. option:: --allow-boot-library-installs, --no-allow-boot-library-installs
+
+    See :cfg-field:`allow-boot-library-installs` for more information.
+
+.. option:: --cabal-lib-version
+
+    See :cfg-field:`cabal-lib-version` for more information.
+
+.. option:: --count-conflicts, --no-count-conflicts
+
+    See :cfg-field:`count-conflicts` for more information.
+
+.. option:: --fine-grained-conflicts, --no-fine-grained-conflicts
+
+    See :cfg-field:`fine-grained-conflicts` for more information.
+
+.. option:: --max-backjumps
+
+    See :cfg-field:`max-backjumps` for more information.
+
+.. option:: --minimize-conflict-set, --no-minimize-conflict-set
+
+    See :cfg-field:`minimize-conflict-set` for more information.
+
+.. option:: --prefer-oldest, --no-prefer-oldest
+
+    See :cfg-field:`prefer-oldest` for more information.
+
+.. option:: --reorder-goals, --no-reorder-goals
+
+    See :cfg-field:`reorder-goals` for more information.
+
+.. option:: --solver
+
+    See :cfg-field:`solver` for more information.
+
+.. option:: --strong-flags, --no-strong-flags
+
+    See :cfg-field:`strong-flags` for more information.
