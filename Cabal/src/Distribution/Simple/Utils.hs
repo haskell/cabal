@@ -206,6 +206,9 @@ module Distribution.Simple.Utils
   , isAbsoluteOnAnyPlatform
   , isRelativeOnAnyPlatform
   , exceptionWithCallStackPrefix
+
+    -- * Cross-process locking
+  , withFileLock
   ) where
 
 import Distribution.Compat.Async (waitCatch, withAsyncNF)
@@ -252,6 +255,7 @@ import qualified Data.Version as DV
 import Distribution.Compat.Process (proc)
 import Foreign.C.Error (Errno (..), ePIPE)
 import qualified GHC.IO.Exception as GHC
+import GHC.IO.Handle.Lock (LockMode (..), hLock, hTryLock, hUnlock)
 import GHC.Stack (HasCallStack)
 import Numeric (showFFloat)
 import System.Directory
@@ -284,6 +288,7 @@ import System.FilePath as FilePath
 import System.IO
   ( BufferMode (..)
   , Handle
+  , IOMode (..)
   , hClose
   , hFlush
   , hGetContents
@@ -291,6 +296,7 @@ import System.IO
   , hPutStrLn
   , hSetBinaryMode
   , hSetBuffering
+  , openFile
   , stderr
   , stdin
   , stdout
@@ -1612,6 +1618,24 @@ getDirectoryContentsRecursive topdir = recurseDirectories [""]
           if isDirectory
             then collect files (dirEntry : dirs') entries
             else collect (dirEntry : files) dirs' entries
+
+-- | Hold an exclusive cross-process lock on @lockPath@ for the duration of
+-- @action@, creating the lock file if it does not exist.
+withFileLock :: Verbosity -> FilePath -> String -> IO a -> IO a
+withFileLock verbosity lockPath waitMsg action =
+  Exception.bracket takeLock releaseLock (const action)
+  where
+    takeLock = do
+      h <- openFile lockPath ReadWriteMode
+      -- First try non-blocking, but if we would have to wait then
+      -- log an explanation and do it again in blocking mode.
+      gotlock <- hTryLock h ExclusiveLock
+      unless gotlock $ do
+        info verbosity waitMsg
+        hLock h ExclusiveLock
+      return h
+
+    releaseLock h = hUnlock h `Exception.finally` hClose h
 
 ------------------------
 -- Environment variables
