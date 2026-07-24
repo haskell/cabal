@@ -141,7 +141,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
           (parseImport pos importLines)
       (Section (Name pos "if") args xs') -> do
         subpcs <- go [] xs'
-        let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig source (reverse acc)
+        let fs = singletonProjectConfigSkeleton <$> fieldsToConfig source (reverse acc)
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
               (\c pcs e -> CondNode mempty [CondBranch c pcs e])

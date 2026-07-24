@@ -300,8 +300,8 @@ pruneInstallPlan installPlan pkgSpecifiers =
 freezePackages :: Package pkg => Verbosity -> GlobalFlags -> [pkg] -> IO ()
 freezePackages verbosity globalFlags pkgs = do
   pkgEnv <-
-    fmap (createPkgEnv . addFrozenConstraints) $
-      loadUserConfig
+    createPkgEnv . addFrozenConstraints
+      <$> loadUserConfig
         verbosity
         ""
         (flagToMaybe . globalConstraintsFile $ globalFlags)

@@ -786,8 +786,7 @@ requireProgramM program = do
 
 needProgramM :: String -> TestM (Maybe ConfiguredProgram)
 needProgramM program = do
-  env <- getTestEnv
-  return $ lookupProgramByName program (testProgramDb env)
+  lookupProgramByName program . testProgramDb <$> getTestEnv
 
 programPathM :: Program -> TestM FilePath
 programPathM program = do

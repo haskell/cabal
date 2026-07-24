@@ -428,15 +428,15 @@ enabledComponents pkg enabled = filter (componentEnabled enabled) $ pkgBuildable
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
 lookupComponent pkg (CLibName name) =
-  fmap CLib $ find ((name ==) . libName) (allLibraries pkg)
+  CLib <$> find ((name ==) . libName) (allLibraries pkg)
 lookupComponent pkg (CFLibName name) =
-  fmap CFLib $ find ((name ==) . foreignLibName) (foreignLibs pkg)
+  CFLib <$> find ((name ==) . foreignLibName) (foreignLibs pkg)
 lookupComponent pkg (CExeName name) =
-  fmap CExe $ find ((name ==) . exeName) (executables pkg)
+  CExe <$> find ((name ==) . exeName) (executables pkg)
 lookupComponent pkg (CTestName name) =
-  fmap CTest $ find ((name ==) . testName) (testSuites pkg)
+  CTest <$> find ((name ==) . testName) (testSuites pkg)
 lookupComponent pkg (CBenchName name) =
-  fmap CBench $ find ((name ==) . benchmarkName) (benchmarks pkg)
+  CBench <$> find ((name ==) . benchmarkName) (benchmarks pkg)
 
 getComponent :: PackageDescription -> ComponentName -> Component
 getComponent pkg cname = fromMaybe missingComponent (lookupComponent pkg cname)

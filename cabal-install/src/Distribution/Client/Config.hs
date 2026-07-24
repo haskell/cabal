@@ -1019,7 +1019,7 @@ data ConfigFileSource
 -- | Returns the config file path, without checking that the file exists.
 -- The order of precedence is: input flag, CABAL_CONFIG, default location.
 getConfigFilePath :: Verbosity -> Flag FilePath -> IO FilePath
-getConfigFilePath verbosity configFilePath = fmap snd $ getConfigFilePathAndSource verbosity configFilePath
+getConfigFilePath verbosity configFilePath = snd <$> getConfigFilePathAndSource verbosity configFilePath
 
 getConfigFilePathAndSource :: Verbosity -> Flag FilePath -> IO (ConfigFileSource, FilePath)
 getConfigFilePathAndSource verbosity configFileFlag =

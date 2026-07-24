@@ -20,7 +20,7 @@ main = setupTest $
                 void $ shell "C:\\msys64\\usr\\bin\\bash.exe" [ "-l", "-c", "cd $(cygpath -m '" <> testTmpDir env <> "') && autoreconf -i"]
                 setup_build []
     else do
-        hasAutoreconf <- liftIO $ fmap isJust $ findExecutable "autoreconf"
+        hasAutoreconf <- liftIO (isJust <$> findExecutable "autoreconf")
         skipUnless "no autoreconf" hasAutoreconf
         _ <- shell "autoreconf" ["-i"]
         setup_build []

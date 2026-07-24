@@ -156,13 +156,12 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
     -- Generate TestSuiteLog from executable exit code and a machine-
     -- readable test log
     suiteLog <-
-      fmap
-        ( \s ->
-            (\l -> l{logFile = finalLogName l})
-              . fromMaybe (error $ "panic! read @TestSuiteLog " ++ show s)
-              $ readMaybe s -- TODO: eradicateNoParse
+      ( \s ->
+          (\l -> l{logFile = finalLogName l})
+            . fromMaybe (error $ "panic! read @TestSuiteLog " ++ show s)
+            $ readMaybe s -- TODO: eradicateNoParse
         )
-        $ readFile tempLog
+        <$> readFile tempLog
 
     -- Write summary notice to log file indicating start of test suite
     appendFile (logFile suiteLog) $ summarizeSuiteStart testName'

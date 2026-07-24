@@ -156,7 +156,7 @@ cleanAction :: (ProjectFlags, CleanFlags) -> [String] -> GlobalFlags -> IO ()
 cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
   let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlagOrDefault normal cleanVerbosity
       saveConfig = fromFlagOrDefault False cleanSaveConfig
-      mdistDirectory = fmap getSymbolicPath $ flagToMaybe cleanDistDir
+      mdistDirectory = getSymbolicPath <$> flagToMaybe cleanDistDir
       mprojectDir = flagToMaybe flagProjectDir
       mprojectFile = flagToMaybe flagProjectFile
 

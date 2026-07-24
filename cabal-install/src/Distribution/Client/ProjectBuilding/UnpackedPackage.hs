@@ -659,8 +659,7 @@ buildInplaceUnpackedPackage
         let listSimple =
               execRebuild (getSymbolicPath srcdir) (needElaboratedConfiguredPackage pkg)
             listSdist =
-              fmap (map monitorFileHashed) $
-                allPackageSourceFiles verbosity (getSymbolicPath srcdir)
+              map monitorFileHashed <$> allPackageSourceFiles verbosity (getSymbolicPath srcdir)
             ifNullThen m m' = do
               xs <- m
               if null xs then m' else return xs

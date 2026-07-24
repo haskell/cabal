@@ -319,64 +319,15 @@ parseTargetString :: String -> Maybe TargetString
 parseTargetString =
   readPToMaybe parseTargetApprox
   where
+    colon = Parse.char ':'
     parseTargetApprox :: Parse.ReadP TargetString
     parseTargetApprox =
-      ( do
-          a <- tokenQEnd
-          return (TargetString1 a)
-      )
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                b <- tokenQEnd
-                return (TargetString2 a b)
-            )
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                b <- tokenQ
-                _ <- Parse.char ':'
-                c <- tokenQEnd
-                return (TargetString3 a b c)
-            )
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                b <- token
-                _ <- Parse.char ':'
-                c <- tokenQ
-                _ <- Parse.char ':'
-                d <- tokenQEnd
-                return (TargetString4 a b c d)
-            )
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                b <- token
-                _ <- Parse.char ':'
-                c <- tokenQ
-                _ <- Parse.char ':'
-                d <- tokenQ
-                _ <- Parse.char ':'
-                e <- tokenQEnd
-                return (TargetString5 a b c d e)
-            )
-        +++ ( do
-                a <- tokenQ0
-                _ <- Parse.char ':'
-                b <- token
-                _ <- Parse.char ':'
-                c <- tokenQ
-                _ <- Parse.char ':'
-                d <- tokenQ
-                _ <- Parse.char ':'
-                e <- tokenQ
-                _ <- Parse.char ':'
-                f <- tokenQ
-                _ <- Parse.char ':'
-                g <- tokenQEnd
-                return (TargetString7 a b c d e f g)
-            )
+      (TargetString1 <$> tokenQEnd)
+        +++ (TargetString2 <$> tokenQ0 <* colon <*> tokenQEnd)
+        +++ (TargetString3 <$> tokenQ0 <* colon <*> tokenQ <* colon <*> tokenQEnd)
+        +++ (TargetString4 <$> tokenQ0 <* colon <*> token <* colon <*> tokenQ <* colon <*> tokenQEnd)
+        +++ (TargetString5 <$> tokenQ0 <* colon <*> token <* colon <*> tokenQ <* colon <*> tokenQ <* colon <*> tokenQEnd)
+        +++ (TargetString7 <$> tokenQ0 <* colon <*> token <* colon <*> tokenQ <* colon <*> tokenQ <* colon <*> tokenQ <* colon <*> tokenQ <* colon <*> tokenQEnd)
 
     token = Parse.munch1 (\x -> not (isSpace x) && x /= ':')
     tokenQ = parseHaskellString <++ token
@@ -2107,9 +2058,7 @@ matchPackageDir ps = \str fstatus ->
   case fstatus of
     FileStatusExistsDir canondir ->
       orNoSuchThing "package directory" str (map (snd . fst) dirs) $
-        increaseConfidenceFor $
-          fmap snd $
-            matchExactly (fst . fst) dirs canondir
+        increaseConfidenceFor (snd <$> matchExactly (fst . fst) dirs canondir)
     _ -> mzero
   where
     dirs =
@@ -2122,9 +2071,7 @@ matchPackageFile ps = \str fstatus -> do
   case fstatus of
     FileStatusExistsFile canonfile ->
       orNoSuchThing "package .cabal file" str (map (snd . fst) files) $
-        increaseConfidenceFor $
-          fmap snd $
-            matchExactly (fst . fst) files canonfile
+        increaseConfidenceFor (snd <$> matchExactly (fst . fst) files canonfile)
     _ -> mzero
   where
     files =
