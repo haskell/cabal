@@ -3766,6 +3766,11 @@ pruneInstallPlanPass2 pkgs =
               elabBuildTargets elab
                 ++ libTargetsRequiredForRevDeps
                 ++ exeTargetsRequiredForRevDeps
+        , elabBuildStyle =
+            if installedUnitId elab `Set.member` mustBuildOnDisk
+              && elabBuildStyle elab == BuildInplaceOnly InMemory
+              then BuildInplaceOnly OnDisk
+              else elabBuildStyle elab
         , elabPkgOrComp =
             case elabPkgOrComp elab of
               ElabPackage pkg ->
@@ -3802,10 +3807,13 @@ pruneInstallPlanPass2 pkgs =
 
         libTargetsRequiredForRevDeps =
           [ c
-          | installedUnitId elab `Set.member` hasReverseLibDeps
+          | installedUnitId elab `Set.member` libDeps
           , let c = ComponentTarget (CLibName Cabal.defaultLibName) WholeComponent
-          , -- Don't enable building for anything which is being build in memory
+          , -- Don't enable building for anything which is being built in memory,
+          -- unless it is a (transitive) library dependency of an exe build tool,
+          -- in which case it must be compiled to disk so the exe can link against it.
           elabBuildStyle elab /= BuildInplaceOnly InMemory
+            || installedUnitId elab `Set.member` mustBuildOnDisk
           ]
         exeTargetsRequiredForRevDeps =
           -- TODO: allow requesting executable with different name
@@ -3817,35 +3825,73 @@ pruneInstallPlanPass2 pkgs =
                     elabPkgSourceId elab
             )
             WholeComponent
-          | installedUnitId elab `Set.member` hasReverseExeDeps
+          | installedUnitId elab `Set.member` exeDeps
           ]
 
     availablePkgs :: Set UnitId
     availablePkgs = Set.fromList (map installedUnitId pkgs)
 
     inMemoryTargets :: Set ConfiguredId
-    inMemoryTargets = do
+    inMemoryTargets =
       Set.fromList
         [ configuredId pkg
         | InstallPlan.Configured pkg <- pkgs
+        , -- Exclude packages that must be built on disk (for exe build tools).
+        -- Their dependents will receive a real -package-id, not a promise.
+        installedUnitId pkg `Set.notMember` mustBuildOnDisk
         , BuildInplaceOnly InMemory <- [elabBuildStyle pkg]
         ]
 
-    hasReverseLibDeps :: Set UnitId
-    hasReverseLibDeps =
-      Set.fromList
-        [ depid
-        | InstallPlan.Configured pkg <- pkgs
-        , depid <- elabOrderLibDependencies pkg
-        ]
+    -- Packages that must be built on disk because they are (transitively)
+    -- needed as library dependencies by an exe build-tool.  Even if such a
+    -- package was originally marked InMemory for the multi-repl session, it
+    -- must also produce real on-disk artifacts so the exe can link against it.
+    -- The repl phase still runs for these packages, so GHCi loads them from
+    -- source under the same package-id, preserving type identity.
+    mustBuildOnDisk :: Set UnitId
+    mustBuildOnDisk = go exeDeps Set.empty
+      where
+        go frontier visited
+          | Set.null frontier = visited
+          | otherwise =
+              let newVisited = visited <> frontier
+                  newFrontier =
+                    Set.fromList
+                      [ dep
+                      | uid <- Set.toList frontier
+                      , dep <- Map.findWithDefault [] uid planLibDepMap
+                      ]
+                      Set.\\ newVisited
+               in go newFrontier newVisited
 
-    hasReverseExeDeps :: Set UnitId
-    hasReverseExeDeps =
-      Set.fromList
-        [ depid
-        | InstallPlan.Configured pkg <- pkgs
-        , depid <- elabOrderExeDependencies pkg
-        ]
+    -- Lib and exe deps computed once per in-plan package, shared below.
+    -- Note: these must be the order-dependency UnitIds, which match the
+    -- 'installedUnitId' of the units in the plan; in particular for
+    -- Backpack-instantiated units they include the instantiation, unlike
+    -- the ComponentIds from 'elabLibDependencies'.
+    perPkgDeps :: [(UnitId, [UnitId], [UnitId])]
+    perPkgDeps =
+      [ ( installedUnitId pkg
+        , elabOrderLibDependencies pkg
+        , elabOrderExeDependencies pkg
+        )
+      | InstallPlan.Configured pkg <- pkgs
+      ]
+
+    -- Library-dependency adjacency for in-plan packages only.
+    planLibDepMap :: Map UnitId [UnitId]
+    planLibDepMap =
+      Map.fromList [(uid, ls) | (uid, ls, _) <- perPkgDeps]
+
+    -- All packages that appear as a library dep of any in-plan package.
+    libDeps :: Set UnitId
+    libDeps =
+      Set.fromList [d | (_, ls, _) <- perPkgDeps, d <- ls]
+
+    -- All packages that appear as an exe dep of any in-plan package.
+    exeDeps :: Set UnitId
+    exeDeps =
+      Set.fromList [d | (_, _, es) <- perPkgDeps, d <- es]
 
 mapConfiguredPackage
   :: (srcpkg -> srcpkg')
