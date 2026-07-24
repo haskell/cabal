@@ -653,6 +653,21 @@ labelMessage label (fromMaybe ": " -> punctuation) verbosity msg = withFrozenCal
   where
     flags = verbosityFlags verbosity
 
+ifLevelLogMsgWrap :: VerbosityLevel -> MarkWhen -> Verbosity -> String -> IO ()
+ifLevelLogMsgWrap level markWhen verbosity@(verbosityFlags -> flags) (wrapTextVerbosity flags -> msg) =
+  when (verbosityLevel verbosity >= level) (logMsg markWhen verbosity msg)
+
+ifLevelLogMsg :: VerbosityLevel -> MarkWhen -> Verbosity -> String -> IO ()
+ifLevelLogMsg level markWhen verbosity msg =
+  when (verbosityLevel verbosity >= level) (logMsg markWhen verbosity msg)
+
+logMsg :: MarkWhen -> Verbosity -> String -> IO ()
+logMsg markWhen verbosity@(verbosityChosenOutputHandle -> h) msg = withFrozenCallStack $ do
+  ts <- getPOSIXTime
+  hPutStr h $ withMetadata ts markWhen FlagTrace (verbosityFlags verbosity) msg
+  -- REVIEW: Should we always flush or only for the debug functions?
+  hFlush stdout
+
 -- | Useful status messages.
 --
 -- We display these at the 'normal' verbosity level.
@@ -660,91 +675,44 @@ labelMessage label (fromMaybe ": " -> punctuation) verbosity msg = withFrozenCal
 -- This is for the ordinary helpful status messages that users see. Just
 -- enough information to know that things are working but not floods of detail.
 notice :: Verbosity -> String -> IO ()
-notice verbosity msg = withFrozenCallStack $ do
-  when (verbosityLevel verbosity >= Normal) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NormalMark FlagTrace flags $
-        wrapTextVerbosity flags msg
+notice = ifLevelLogMsgWrap Normal NormalMark
 
 -- | Display a message at 'normal' verbosity level, but without
 -- wrapping.
 noticeNoWrap :: Verbosity -> String -> IO ()
-noticeNoWrap verbosity msg = withFrozenCallStack $ do
-  when (verbosityLevel verbosity >= Normal) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h . withMetadata ts NormalMark FlagTrace flags $ msg
+noticeNoWrap = ifLevelLogMsg Normal NormalMark
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
 noticeDoc :: Verbosity -> Disp.Doc -> IO ()
-noticeDoc verbosity msg = withFrozenCallStack $ do
-  when (verbosityLevel verbosity >= Normal) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NormalMark FlagTrace flags $
-        Disp.renderStyle defaultStyle msg
+noticeDoc verbosity (Disp.renderStyle defaultStyle -> msg) =
+  ifLevelLogMsg Normal NormalMark verbosity msg
 
 -- | Display a "setup status message".  Prefer using setupMessage'
 -- if possible.
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
-setupMessage verbosity msg pkgid = withFrozenCallStack $ do
+setupMessage verbosity msg pkgid = do
   noticeNoWrap verbosity (msg ++ ' ' : prettyShow pkgid ++ "...")
 
 -- | More detail on the operation of some action.
 --
 -- We display these messages when the verbosity level is 'verbose'
 info :: Verbosity -> String -> IO ()
-info verbosity msg = withFrozenCallStack $
-  when (verbosityLevel verbosity >= Verbose) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NeverMark FlagTrace flags $
-        wrapTextVerbosity flags msg
+info = ifLevelLogMsgWrap Verbose NeverMark
 
 infoNoWrap :: Verbosity -> String -> IO ()
-infoNoWrap verbosity msg = withFrozenCallStack $
-  when (verbosityLevel verbosity >= Verbose) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NeverMark FlagTrace flags msg
+infoNoWrap = ifLevelLogMsg Verbose NeverMark
 
 -- | Detailed internal debugging information
 --
 -- We display these messages when the verbosity level is 'deafening'
 debug :: Verbosity -> String -> IO ()
-debug verbosity msg = withFrozenCallStack $
-  when (verbosityLevel verbosity >= Deafening) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NeverMark FlagTrace flags $
-        wrapTextVerbosity flags msg
-    -- ensure that we don't lose output if we segfault/infinite loop
-    hFlush stdout
+debug = ifLevelLogMsgWrap Deafening NeverMark
 
 -- | A variant of 'debug' that doesn't perform the automatic line
 -- wrapping. Produces better output in some cases.
 debugNoWrap :: Verbosity -> String -> IO ()
-debugNoWrap verbosity msg = withFrozenCallStack $
-  when (verbosityLevel verbosity >= Deafening) $ do
-    let h = verbosityChosenOutputHandle verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NeverMark FlagTrace (verbosityFlags verbosity) msg
-    -- ensure that we don't lose output if we segfault/infinite loop
-    hFlush stdout
+debugNoWrap = ifLevelLogMsg Deafening NeverMark
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
 --   if one occurs.
