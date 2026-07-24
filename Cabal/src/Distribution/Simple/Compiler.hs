@@ -48,14 +48,6 @@ module Distribution.Simple.Compiler
   , coercePackageDBStack
   , readPackageDb
 
-    -- * Support for optimisation levels
-  , OptimisationLevel (..)
-  , flagToOptimisationLevel
-
-    -- * Support for debug info levels
-  , DebugInfoLevel (..)
-  , flagToDebugInfoLevel
-
     -- * Support for language extensions
   , CompilerFlag
   , languageToFlags
@@ -92,22 +84,30 @@ module Distribution.Simple.Compiler
   , showProfDetailLevel
   ) where
 
-import Distribution.Compat.CharParsing
 import Distribution.Compat.Prelude
-import Distribution.Parsec
-import Distribution.Pretty
+import Distribution.Parsec (CabalParsing, Parsec (..), parsecToken)
+import Distribution.Pretty (prettyShow)
 import Prelude ()
 
 import Distribution.Compiler
 import Distribution.Package (PackageName)
-import Distribution.Simple.Utils
+import Distribution.Simple.Utils (lowercase, safeLast)
 import Distribution.Types.UnitId (UnitId)
 import Distribution.Utils.Path
-import Distribution.Version
+  ( CWD
+  , FileOrDir (..)
+  , Pkg
+  , PkgDB
+  , SymbolicPath
+  , getSymbolicPath
+  , interpretSymbolicPath
+  , makeSymbolicPath
+  , symbolicPathRelative_maybe
+  )
+import Distribution.Version (Version, mkVersion)
 
-import Language.Haskell.Extension
+import Language.Haskell.Extension (Extension, Language (..))
 
-import Data.Bool (bool)
 import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
 
@@ -297,95 +297,6 @@ coercePackageDBStack
   :: [PackageDBCWD]
   -> [PackageDBX (SymbolicPath CWD (Dir PkgDB))]
 coercePackageDBStack = map coercePackageDB
-
--- ------------------------------------------------------------
-
--- * Optimisation levels
-
--- ------------------------------------------------------------
-
--- | Some compilers support optimising. Some have different levels.
--- For compilers that do not the level is just capped to the level
--- they do support.
-data OptimisationLevel
-  = NoOptimisation
-  | NormalOptimisation
-  | MaximumOptimisation
-  deriving (Bounded, Enum, Eq, Generic, Read, Show)
-
-instance Binary OptimisationLevel
-instance NFData OptimisationLevel
-instance Structured OptimisationLevel
-
-instance Parsec OptimisationLevel where
-  parsec = parsecOptimisationLevel
-
-parsecOptimisationLevel :: CabalParsing m => m OptimisationLevel
-parsecOptimisationLevel = boolParser <|> intParser
-  where
-    boolParser = bool NoOptimisation NormalOptimisation <$> parsec
-    intParser = intToOptimisationLevel <$> integral
-
-flagToOptimisationLevel :: Maybe String -> OptimisationLevel
-flagToOptimisationLevel Nothing = NormalOptimisation
-flagToOptimisationLevel (Just s) = case reads s of
-  [(i, "")] -> intToOptimisationLevel i
-  _ -> error $ "Can't parse optimisation level " ++ s
-
-intToOptimisationLevel :: Int -> OptimisationLevel
-intToOptimisationLevel i
-  | i >= minLevel && i <= maxLevel = toEnum i
-  | otherwise =
-      error $
-        "Bad optimisation level: "
-          ++ show i
-          ++ ". Valid values are "
-          ++ show minLevel
-          ++ ".."
-          ++ show maxLevel
-  where
-    minLevel = fromEnum (minBound :: OptimisationLevel)
-    maxLevel = fromEnum (maxBound :: OptimisationLevel)
-
--- ------------------------------------------------------------
-
--- * Debug info levels
-
--- ------------------------------------------------------------
-
--- | Some compilers support emitting debug info. Some have different
--- levels.  For compilers that do not the level is just capped to the
--- level they do support.
-data DebugInfoLevel
-  = NoDebugInfo
-  | MinimalDebugInfo
-  | NormalDebugInfo
-  | MaximalDebugInfo
-  deriving (Bounded, Enum, Eq, Generic, Read, Show)
-
-instance Binary DebugInfoLevel
-instance NFData DebugInfoLevel
-instance Structured DebugInfoLevel
-
-instance Parsec DebugInfoLevel where
-  parsec = parsecDebugInfoLevel
-
-parsecDebugInfoLevel :: CabalParsing m => m DebugInfoLevel
-parsecDebugInfoLevel = flagToDebugInfoLevel . pure <$> parsecToken
-
-flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
-flagToDebugInfoLevel Nothing = NormalDebugInfo
-flagToDebugInfoLevel (Just s) = case reads s of
-  [(i, "")]
-    | i >= fromEnum (minBound :: DebugInfoLevel)
-        && i <= fromEnum (maxBound :: DebugInfoLevel) ->
-        toEnum i
-    | otherwise ->
-        error $
-          "Bad debug info level: "
-            ++ show i
-            ++ ". Valid values are 0..3"
-  _ -> error $ "Can't parse debug info level " ++ s
 
 -- ------------------------------------------------------------
 

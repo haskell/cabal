@@ -1,5 +1,4 @@
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -134,7 +133,6 @@ import Distribution.Compiler
 import Distribution.Deprecated.ParseUtils
   ( FieldDescr (..)
   , PError (..)
-  , PWarning (..)
   , ParseResult (..)
   , liftField
   , lineNo
@@ -162,10 +160,7 @@ import Distribution.Simple.Command
   , ShowOrParseArgs (..)
   , commandDefaultFlags
   )
-import Distribution.Simple.Compiler
-  ( DebugInfoLevel (..)
-  , OptimisationLevel (..)
-  )
+import Distribution.Simple.Flag (Flag, flagElim, flagToMaybe, fromFlagOrDefault, toFlag, pattern Flag, pattern NoFlag)
 import Distribution.Simple.InstallDirs
   ( InstallDirs (..)
   , PathTemplate
@@ -179,7 +174,6 @@ import Distribution.Simple.Setup
   ( BenchmarkFlags (..)
   , CommonSetupFlags (..)
   , ConfigFlags (..)
-  , Flag
   , HaddockFlags (..)
   , TestFlags (..)
   , configureOptions
@@ -187,16 +181,11 @@ import Distribution.Simple.Setup
   , defaultConfigFlags
   , defaultHaddockFlags
   , defaultTestFlags
-  , flagToMaybe
-  , fromFlagOrDefault
   , haddockOptions
   , installDirsOptions
   , optionDistPref
   , programDbOptions
   , programDbPaths'
-  , toFlag
-  , pattern Flag
-  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( cabalVersion
@@ -208,6 +197,8 @@ import Distribution.Simple.Utils
   , writeFileAtomic
   )
 import Distribution.Solver.Types.ConstraintSource
+import qualified Distribution.Types.DebugInfoLevel as DebugInfoLevel
+import qualified Distribution.Types.OptimisationLevel as OptimisationLevel
 import Distribution.Utils.Path (getSymbolicPath, unsafeMakeSymbolicPath)
 import Distribution.Verbosity
   ( normal
@@ -1181,75 +1172,23 @@ configFieldDescriptions src =
           (Flag <$> parsec <|> pure NoFlag)
           configHcFlavor
           (\v flags -> flags{configHcFlavor = v})
-      , -- TODO: The following is a temporary fix. The "optimization"
-        -- and "debug-info" fields are OptArg, and viewAsFieldDescr
-        -- fails on that. Instead of a hand-written hackaged parser
-        -- and printer, we should handle this case properly in the
-        -- library.
-        liftField
-          configOptimization
-          ( \v flags ->
-              flags{configOptimization = v}
-          )
-          $ let name = "optimization"
-             in FieldDescr
-                  name
-                  ( \case
-                      Flag NoOptimisation -> Disp.text "False"
-                      Flag NormalOptimisation -> Disp.text "True"
-                      Flag MaximumOptimisation -> Disp.text "2"
-                      _ -> Disp.empty
-                  )
-                  ( \line str _ -> case () of
-                      _
-                        | str == "False" -> ParseOk [] (Flag NoOptimisation)
-                        | str == "True" -> ParseOk [] (Flag NormalOptimisation)
-                        | str == "0" -> ParseOk [] (Flag NoOptimisation)
-                        | str == "1" -> ParseOk [] (Flag NormalOptimisation)
-                        | str == "2" -> ParseOk [] (Flag MaximumOptimisation)
-                        | lstr == "false" -> ParseOk [caseWarning] (Flag NoOptimisation)
-                        | lstr == "true" ->
-                            ParseOk
-                              [caseWarning]
-                              (Flag NormalOptimisation)
-                        | otherwise -> ParseFailed (NoParse name line)
-                        where
-                          lstr = lowercase str
-                          caseWarning =
-                            PWarning $
-                              "The '"
-                                ++ name
-                                ++ "' field is case sensitive, use 'True' or 'False'."
-                  )
+      , liftField configOptimization (\v flags -> flags{configOptimization = v}) $
+          let name = "optimization"
+           in FieldDescr
+                name
+                (flagElim Disp.empty (Disp.text . OptimisationLevel.toString))
+                ( \line str _ -> case maybe NoFlag Flag (simpleParsec str) of
+                    NoFlag -> ParseFailed (NoParse name line)
+                    flag -> ParseOk [] flag
+                )
       , liftField configDebugInfo (\v flags -> flags{configDebugInfo = v}) $
           let name = "debug-info"
            in FieldDescr
                 name
-                ( \case
-                    Flag NoDebugInfo -> Disp.text "False"
-                    Flag MinimalDebugInfo -> Disp.text "1"
-                    Flag NormalDebugInfo -> Disp.text "True"
-                    Flag MaximalDebugInfo -> Disp.text "3"
-                    _ -> Disp.empty
-                )
-                ( \line str _ -> case () of
-                    _
-                      | str == "False" -> ParseOk [] (Flag NoDebugInfo)
-                      | str == "True" -> ParseOk [] (Flag NormalDebugInfo)
-                      | str == "0" -> ParseOk [] (Flag NoDebugInfo)
-                      | str == "1" -> ParseOk [] (Flag MinimalDebugInfo)
-                      | str == "2" -> ParseOk [] (Flag NormalDebugInfo)
-                      | str == "3" -> ParseOk [] (Flag MaximalDebugInfo)
-                      | lstr == "false" -> ParseOk [caseWarning] (Flag NoDebugInfo)
-                      | lstr == "true" -> ParseOk [caseWarning] (Flag NormalDebugInfo)
-                      | otherwise -> ParseFailed (NoParse name line)
-                      where
-                        lstr = lowercase str
-                        caseWarning =
-                          PWarning $
-                            "The '"
-                              ++ name
-                              ++ "' field is case sensitive, use 'True' or 'False'."
+                (flagElim Disp.empty (Disp.text . DebugInfoLevel.toString))
+                ( \line str _ -> case maybe NoFlag Flag (simpleParsec str) of
+                    NoFlag -> ParseFailed (NoParse name line)
+                    flag -> ParseOk [] flag
                 )
       ]
     ++ toSavedConfig
