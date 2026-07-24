@@ -981,7 +981,16 @@ rebuildInstallPlan
         -> Rebuild ()
       phaseMaintainPlanOutputs elaboratedPlan elaboratedShared = liftIO $ do
         debug verbosity "Updating plan.json"
+        -- #12137: Emit project-relative paths in plan.json for relocatable builds
+        let isReloc pp = case pp of
+              InstallPlan.Configured elab -> LBC.relocatable (elabBuildOptions elab)
+              InstallPlan.Installed elab -> LBC.relocatable (elabBuildOptions elab)
+              InstallPlan.PreExisting _ -> False
+            relocatable
+              | any isReloc (InstallPlan.toList elaboratedPlan) = Relocatable
+              | otherwise = NotRelocatable
         writePlanExternalRepresentation
+          relocatable
           distDirLayout
           elaboratedPlan
           elaboratedShared

@@ -1294,17 +1294,37 @@ Dynamic linking options
     The command line variant of this flag is
     ``--enable-library-bytecode`` and ``--disable-library-bytecode``.
 
-.. cfg-field:: relocatable:
-               --relocatable
-    :synopsis: Build relocatable package.
-    :since: 1.22
+.. cfg-field:: relocatable: boolean
+               --enable-relocatable
+               --disable-relocatable
+    :synopsis: Make the build tree relocatable.
+    :since: 3.18
 
     :default: False
 
-    :strike:`Build a package which is relocatable.` (TODO: It is not
-    clear what this actually does, or if it works at all.)
+    Build the package so that its build tree can be relocated. The
+    absolute paths that Cabal would otherwise bake into the build tree are
+    made relative to the build tree root (e.g. ``dist-newstyle``) instead.
+    This also changes ``plan.json``: the filesystem paths recorded therein
+    are relative to the build tree root.
 
-    The command line variant of this flag is ``--relocatable``.
+    In practice this means the whole build tree can be copied elsewhere
+    (for example into a ``git`` worktree) next to the same sources and
+    reused without rebuilding the local packages::
+
+        $ cabal build --enable-relocatable
+        $ git worktree add ../my-feature
+        $ cp -R dist-newstyle ../my-feature/
+        $ cd ../my-feature
+        $ cabal build --enable-relocatable
+        Up to date
+
+    This feature relies on ``RPATH`` support and is currently only
+    available with GHC on Linux, macOS and FreeBSD; it is not supported on
+    Windows.
+
+    The command line variant of this flag is ``--enable-relocatable`` and
+    ``--disable-relocatable``.
 
 Static linking options
 ^^^^^^^^^^^^^^^^^^^^^^
