@@ -1,20 +1,25 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.Utils.Parsec
-  ( remoteRepoGrammar
+  ( -- * NubList
+    NubList'
+    -- $alaNubList
+    -- $alaNubListFSepTokenDoctest
+    -- $alaNubListFSepTokenDoctestBroken
+  , alaNubList
+  , alaNubList'
 
-    -- ** Flag
+    -- * Flag
   , alaFlag
   , Flag'
 
-    -- ** NubList
-  , alaNubList
-  , alaNubList'
-  , NubList'
+    -- * Remote Repo
+  , remoteRepoGrammar
 
-    -- ** Newtype wrappers
+    -- * Newtype wrappers
   , module Distribution.Client.Utils.Newtypes
   ) where
 
@@ -30,13 +35,14 @@ import Distribution.Simple.Flag
 import Distribution.Utils.NubList (NubList (..))
 import qualified Distribution.Utils.NubList as NubList
 
--- | Like 'List' for usage with a 'FieldGrammar', but for 'Flag'.
--- This enables to parse type aliases such as 'FilePath' that do not have 'Parsec' instances
+-- | Like 'List' for usage with a 'FieldGrammar', but for a 'Flag'.
+-- This enables parsing type aliases such as 'FilePath' that do not have 'Parsec' instances
 -- by using newtype variants such as 'FilePathNT'.
--- For example, if you need to parse a 'Flag FilePath', you can use 'alaFlag' FilePathNT'.
+-- For example, if you need to parse a 'Flag' 'FilePath', you can use 'alaFlag' 'FilePathNT'.
 newtype Flag' b a = Flag' {_getFlag :: Flag a}
 
--- | 'Flag'' constructor, with additional phantom argument to constrain the resulting type
+-- | 'Flag'' constructor, with additional phantom argument to constrain the
+-- resulting type.
 alaFlag :: (a -> b) -> Flag a -> Flag' b a
 alaFlag _ = Flag'
 
@@ -51,18 +57,6 @@ instance (Newtype a b, Pretty b) => Pretty (Flag' b a) where
 -- | Like 'List' for usage with a 'FieldGrammar', but for 'NubList'.
 newtype NubList' sep b a = NubList' {_getNubList :: NubList a}
 
--- | 'alaNubList' and 'alaNubList'' are simply 'NubList'' constructor, with additional phantom
--- arguments to constrain the resulting type
---
--- >>> :t alaNubList VCat
--- alaNubList VCat :: NubList a -> NubList' VCat (Identity a) a
---
--- >>> :t alaNubList' FSep Token
--- alaNubList' FSep Token
---   :: NubList String -> NubList' FSep Token String
---
--- >>> unpack' (alaNubList' FSep Token) <$> eitherParsec "foo bar foo"
--- Right ["foo","bar"]
 alaNubList :: sep -> NubList a -> NubList' sep (Identity a) a
 alaNubList _ = NubList'
 
@@ -89,3 +83,27 @@ remoteRepoGrammar remoteRepoName = do
       { remoteRepoShouldTryHttps = False -- we don't parse remoteRepoShouldTryHttps
       , ..
       }
+
+-- $alaNubList
+-- 'alaNubList' and 'alaNubList'' are simply 'NubList'' constructor, with
+-- additional phantom arguments to constrain the resulting type.
+
+-- $alaNubListFSepTokenDoctest
+-- >>> :t alaNubList VCat
+-- alaNubList VCat :: NubList a -> NubList' VCat (Identity a) a
+--
+-- >>> unpack' (alaNubList' FSep Token) <$> eitherParsec "foo bar foo"
+-- Right ["foo","bar"]
+
+-- TODO: Find out why GHCi stops using the String type alias.
+#if MIN_VERSION_base(4,22,0)
+-- $alaNubListFSepTokenDoctestBroken
+-- >>> :t alaNubList' FSep Token
+-- alaNubList' FSep Token
+--   :: NubList [Char] -> NubList' FSep Token [Char]
+#else
+-- $alaNubListFSepTokenDoctestBroken
+-- >>> :t alaNubList' FSep Token
+-- alaNubList' FSep Token
+--   :: NubList String -> NubList' FSep Token String
+#endif
