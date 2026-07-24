@@ -1,0 +1,3 @@
+packages: .
+debug-info: False
+debug-info: True
