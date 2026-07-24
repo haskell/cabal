@@ -22,8 +22,6 @@ data PWarnType
     PWTOther
   | -- | Invalid UTF encoding
     PWTUTF
-  | -- | @true@ or @false@, not @True@ or @False@
-    PWTBoolCase
   | -- | there are version with tags
     PWTVersionTag
   | -- | New syntax used, but no @cabal-version: >= 1.2@ specified

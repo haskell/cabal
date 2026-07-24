@@ -1,0 +1,8 @@
+packages: .
+
+build-info: true
+optimization: tRuE
+
+package test
+  flags: -bar
+  flags: -baz
