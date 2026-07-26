@@ -1,0 +1,26 @@
+cabal-version:  3.0
+name:           test
+version:        0.1
+license:        BSD-3-Clause
+build-type:     Simple
+
+flag bar
+  default: true
+  manual: True
+
+flag baz
+  default: TRUE
+  manual: True
+
+flag quux
+  default: false
+  manual: False
+
+flag quuux
+  default: FALSE
+  manual: false
+
+Library
+  default-language: Haskell2010
+  if flag(bar) || flag (baz)
+    buildable: false
