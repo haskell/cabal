@@ -41,14 +41,14 @@ jobs:
           cabal --version
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
       - name: Get runner OS/version for cache keys
         id: get-osver
         run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         id: cache
         with:
           path: ~/.local/state/cabal
@@ -65,7 +65,7 @@ jobs:
           git status > /dev/null
           git diff-files -p --exit-code
       - name: Cache dependencies
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: always() && steps.cache.outputs.cache-hit != 'true'
         with:
           path: ~/.local/state/cabal
@@ -97,7 +97,7 @@ jobs:
         id: get-osver
         run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         id: cache
         with:
           path: ~/.local/state/cabal
@@ -105,14 +105,14 @@ jobs:
           restore-keys: ${{ steps.get-osver.outputs.osver }}-store-doctest
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install doctest
         run: make doctest-install
       - name: Doctest
         run: make doctest
       - name: Cache dependencies
         if: always() && steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ~/.local/state/cabal
           key: ${{ steps.cache.outputs.cache-primary-key }}
@@ -135,14 +135,14 @@ jobs:
           cabal --version
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
       - name: Get runner OS/version for cache keys
         id: get-osver
         run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         id: cache
         with:
           path: ~/.local/state/cabal
@@ -153,7 +153,7 @@ jobs:
       - name: Are buildinfo docs up to date?
         run: make doc/buildinfo-fields-reference.rst
       - name: Cache dependencies
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: always() && steps.cache.outputs.cache-hit != 'true'
         with:
           path: ~/.local/state/cabal
@@ -175,7 +175,7 @@ jobs:
           cabal --version
       - name: Update Hackage Index
         run: cabal v2-update
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Check Release with Pinned Hackage
         run: cabal build all --dry-run --project-file=cabal.release.project
       - name: Check Release with Latest Hackage
