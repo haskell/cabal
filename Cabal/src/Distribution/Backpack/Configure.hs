@@ -293,7 +293,7 @@ toComponentLocalBuildInfos
                         (text "installed package" <+> pretty (packageId pkg))
                         4
                         ( text "is broken due to missing package"
-                            <+> hsep (punctuate comma (map pretty deps))
+                            <+> hsep (punctuate comma (map pretty (toList deps)))
                         )
                       | (Left pkg, deps) <- broken
                       ]
@@ -303,7 +303,7 @@ toComponentLocalBuildInfos
                             ( vcat $
                                 text "is broken due to missing package"
                                   : [ nest 2 (dispMissingDep installedPackageSet depPkgMap dep)
-                                    | dep <- deps
+                                    | dep <- toList deps
                                     ]
                             )
                            | (Right pkg, deps) <- broken
