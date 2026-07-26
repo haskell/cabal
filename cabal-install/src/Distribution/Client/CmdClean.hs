@@ -37,6 +37,7 @@ import Distribution.Simple.Command
   , ShowOrParseArgs
   , liftOptionL
   , option
+  , usageAlternatives
   )
 import Distribution.Simple.Setup
   ( Flag
@@ -118,8 +119,7 @@ cleanCommand =
   CommandUI
     { commandName = "v2-clean"
     , commandSynopsis = "Clean the package store and remove temporary files."
-    , commandUsage = \pname ->
-        "Usage: " ++ pname ++ " new-clean [FLAGS]\n"
+    , commandUsage = usageAlternatives "v2-clean" ["[FLAGS]"]
     , commandDescription = Just $ \_ ->
         wrapText $
           "Removes all temporary files created during the building process "
