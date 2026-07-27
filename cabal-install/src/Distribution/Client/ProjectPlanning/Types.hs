@@ -32,6 +32,7 @@ module Distribution.Client.ProjectPlanning.Types
   , pkgOrderDependencies
   , ElaboratedPlanPackage
   , ElaboratedSharedConfig (..)
+  , pkgConfigStageToolchain
   , pkgConfigToolchain
   , pkgConfigCompiler
   , pkgConfigPlatform
@@ -41,6 +42,10 @@ module Distribution.Client.ProjectPlanning.Types
   , pkgConfigBuildPlatform
   , pkgConfigBuildProgs
   , setPkgConfigCompilerProgs
+  , elabToolchain
+  , elabCompiler
+  , elabPlatform
+  , elabProgramDb
   , ElaboratedReadyPackage
   , BuildStyle (..)
   , MemoryOrDisk (..)
@@ -266,6 +271,29 @@ setPkgConfigCompilerProgs progs shared =
         overStage Host (\tc -> tc{toolchainProgramDb = progs}) (pkgConfigToolchains shared)
     }
 
+-- | The 'Toolchain' that configures a given elaborated package: the toolchain
+-- of the package's own build 'Stage'. This is the only correct way to obtain
+-- the compiler, platform, or program database an 'ElaboratedConfiguredPackage'
+-- is built against — reaching for the host toolchain directly (e.g.
+-- 'pkgConfigCompiler') silently assumes the 'Host' stage, which is wrong for a
+-- build-stage package under cross-compilation. In a non-cross build every
+-- package is on the host stage, so this selects the host toolchain there.
+elabToolchain :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> Toolchain
+elabToolchain shared elab = pkgConfigStageToolchain shared (elabStage elab)
+
+-- | The compiler a package is built with; see 'elabToolchain'.
+elabCompiler :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> Compiler
+elabCompiler shared = toolchainCompiler . elabToolchain shared
+
+-- | The platform a package is built for; see 'elabToolchain'.
+elabPlatform :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> Platform
+elabPlatform shared = toolchainPlatform . elabToolchain shared
+
+-- | The program database of the toolchain a package is built with; see
+-- 'elabToolchain'.
+elabProgramDb :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> ProgramDb
+elabProgramDb shared = toolchainProgramDb . elabToolchain shared
+
 data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   { elabUnitId :: UnitId
   -- ^ The 'UnitId' which uniquely identifies this item in a build plan
@@ -281,6 +309,12 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   -- instantiations of it.
   , elabPkgSourceId :: PackageId
   -- ^ The 'PackageId' of the originating package
+  , elabStage :: Stage
+  -- ^ The build 'Stage' this package is elaborated for. Under
+  -- cross-compilation a package may appear on both the host and build
+  -- stages; the stage selects which toolchain (compiler, platform, program
+  -- database) configures it. In a non-cross build every package is on the
+  -- host stage.
   , elabModuleShape :: ModuleShape
   -- ^ Shape of the package/component, for Backpack.
   , elabFlagAssignment :: Cabal.FlagAssignment
@@ -411,7 +445,7 @@ normaliseConfiguredPackage
 normaliseConfiguredPackage shared pkg =
   pkg{elabProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg)}
   where
-    knownProgramDb = addKnownPrograms builtinPrograms (pkgConfigCompilerProgs shared)
+    knownProgramDb = addKnownPrograms builtinPrograms (elabProgramDb shared pkg)
 
     pkgDesc :: PackageDescription
     pkgDesc = elabPkgDescription pkg
@@ -603,8 +637,8 @@ elabDistDirParams shared elab =
     , distParamComponentName = case elabPkgOrComp elab of
         ElabComponent comp -> compComponentName comp
         ElabPackage _ -> Nothing
-    , distParamCompilerId = compilerId (pkgConfigCompiler shared)
-    , distParamPlatform = pkgConfigPlatform shared
+    , distParamCompilerId = compilerId (elabCompiler shared elab)
+    , distParamPlatform = elabPlatform shared elab
     , distParamOptimization = LBC.withOptimization $ elabBuildOptions elab
     }
 
