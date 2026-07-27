@@ -1,0 +1,12 @@
+module Distribution.Fields.Field.Lens where
+
+import Distribution.Compat.Lens
+import qualified Distribution.Fields.Field as T
+
+justComments :: Lens' (T.WithComments ann) [T.Comment ann]
+justComments f s = fmap (\x -> s{T.justComments=x}) (f (T.justComments s))
+{-# INLINE justComments #-}
+
+unComments :: Lens' (T.WithComments ann) ann
+unComments f s = fmap (\x -> s{T.unComments=x}) (f (T.unComments s))
+{-# INLINE unComments #-}
