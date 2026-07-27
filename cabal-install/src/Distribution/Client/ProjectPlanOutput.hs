@@ -18,6 +18,7 @@ module Distribution.Client.ProjectPlanOutput
 import Distribution.Client.DistDirLayout
 import Distribution.Client.HashValue (hashValue, showHashValue)
 import Distribution.Client.ProjectBuilding.Types
+import Distribution.Client.ProjectPlanning.Stage (WithStage (..), withoutStage)
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Types.ConfiguredId (confInstId)
 import Distribution.Client.Types.PackageLocation (PackageLocation (..))
@@ -125,7 +126,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     planPackageToJ :: ElaboratedPlanPackage -> J.Value
     planPackageToJ pkg =
       case pkg of
-        InstallPlan.PreExisting ipi -> installedPackageInfoToJ ipi
+        InstallPlan.PreExisting (WithStage _stage ipi) -> installedPackageInfoToJ ipi
         InstallPlan.Configured elab -> elaboratedPackageToJ False elab
         InstallPlan.Installed elab -> elaboratedPackageToJ True elab
     -- Note that the plan.json currently only uses the elaborated plan,
@@ -193,7 +194,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                       [ comp2str c
                         J..= J.object
                           ( [ "depends" J..= map ((jdisplay . confInstId) . fst) ldeps
-                            , "exe-depends" J..= map (jdisplay . confInstId) edeps
+                            , "exe-depends" J..= map (jdisplay . confInstId . withoutStage) edeps
                             ]
                               ++ bin_file c
                           )
@@ -206,7 +207,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                in ["components" J..= components]
             ElabComponent comp ->
               [ "depends" J..= map ((jdisplay . confInstId) . fst) (elabLibDependencies elab)
-              , "exe-depends" J..= map jdisplay (elabExeDependencies elab)
+              , "exe-depends" J..= map (jdisplay . withoutStage) (elabExeDependencies elab)
               , "component-name" J..= J.String (comp2str (compSolverName comp))
               ]
                 ++ bin_file (compSolverName comp)
@@ -577,26 +578,32 @@ postBuildProjectStatus
       -- The previous set of up-to-date packages will contain bogus package ids
       -- when the solver plan or config contributing to the hash changes.
       -- So keep only the ones where the package id (i.e. hash) is the same.
+      -- The post-build project status is tracked per 'UnitId' (build outcomes
+      -- and the monitoring cache are 'UnitId'-keyed), whereas the plan is keyed
+      -- by 'WithStage UnitId'. Project the plan's keys down to 'UnitId' at this
+      -- boundary; in a non-cross build the two coincide.
+      planUnitIds :: Set UnitId
+      planUnitIds = Set.fromList (map installedUnitId (InstallPlan.toList plan))
+
       previousPackagesUpToDate' =
         Set.intersection
           previousPackagesUpToDate
-          (InstallPlan.keysSet plan)
+          planUnitIds
 
       packagesUpToDatePreBuild =
         Set.filter
           (\ipkgid -> not (lookupBuildStatusRequiresBuild True ipkgid))
           -- For packages not in the plan subset we did the dry-run on we don't
           -- know anything about their status, so not known to be /up to date/.
-          (InstallPlan.keysSet plan)
+          planUnitIds
 
       packagesOutOfDatePreBuild =
         Set.fromList . map installedUnitId $
           InstallPlan.reverseDependencyClosure
             plan
-            [ ipkgid
+            [ Graph.nodeKey pkg
             | pkg <- InstallPlan.toList plan
-            , let ipkgid = installedUnitId pkg
-            , lookupBuildStatusRequiresBuild False ipkgid
+            , lookupBuildStatusRequiresBuild False (installedUnitId pkg)
             -- For packages not in the plan subset we did the dry-run on we don't
             -- know anything about their status, so not known to be /out of date/.
             ]
@@ -634,7 +641,7 @@ postBuildProjectStatus
           [ Graph.N pkg (installedUnitId pkg) libdeps
           | pkg <- InstallPlan.toList plan
           , let libdeps = case pkg of
-                  InstallPlan.PreExisting ipkg -> installedDepends ipkg
+                  InstallPlan.PreExisting (WithStage _ ipkg) -> installedDepends ipkg
                   InstallPlan.Configured srcpkg -> elabLibDeps srcpkg
                   InstallPlan.Installed srcpkg -> elabLibDeps srcpkg
           ]
@@ -685,14 +692,13 @@ postBuildProjectStatus
           InstallPlan.Configured _ -> False
 
       selectPlanPackageIdSet
-        :: ( InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage
-             -> Bool
-           )
+        :: (ElaboratedPlanPackage -> Bool)
         -> Set UnitId
       selectPlanPackageIdSet p =
-        Map.keysSet
-          . Map.filter p
-          $ InstallPlan.toMap plan
+        Set.fromList
+          . map installedUnitId
+          . filter p
+          $ InstallPlan.toList plan
 
 updatePostBuildProjectStatus
   :: Verbosity

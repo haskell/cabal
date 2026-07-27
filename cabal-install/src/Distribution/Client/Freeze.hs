@@ -51,7 +51,9 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
+import Distribution.Solver.Types.ResolverPackage (solverId)
 import Distribution.Solver.Types.SolverId
+import Distribution.Solver.Types.SolverPackage (SolverPackage (..))
 import Distribution.Solver.Types.Stage (always)
 
 import Distribution.Client.Errors
@@ -287,9 +289,16 @@ pruneInstallPlan installPlan pkgSpecifiers =
   removeSelf pkgIds $
     SolverInstallPlan.dependencyClosure installPlan pkgIds
   where
+    -- The source packages named by the (specific) package specifiers.
+    srcpkgs :: [UnresolvedSourcePackage]
+    srcpkgs = [pkg | SpecificSourcePackage pkg <- pkgSpecifiers]
+    -- The 'SolverId's of those packages, taken from the plan so that each
+    -- carries the build stage it was actually solved for.
+    pkgIds :: [SolverId]
     pkgIds =
-      [ PlannedId (packageId pkg)
-      | SpecificSourcePackage pkg <- pkgSpecifiers
+      [ solverId (SolverInstallPlan.Configured pkg)
+      | SolverInstallPlan.Configured pkg <- SolverInstallPlan.toList installPlan
+      , solverPkgSource pkg `elem` srcpkgs
       ]
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= packageId thisPkg)
     removeSelf _ =

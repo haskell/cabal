@@ -117,6 +117,7 @@ import Distribution.Client.ProjectPlanning hiding
 import qualified Distribution.Client.ProjectPlanning as ProjectPlanning
   ( pruneInstallPlanToTargets
   )
+import Distribution.Client.ProjectPlanning.Stage (WithStage (..))
 import Distribution.Client.ProjectPlanning.Types
 
 import Distribution.Client.DistDirLayout
@@ -161,9 +162,6 @@ import Distribution.Compiler
 import Distribution.Types.ComponentName
   ( componentNameString
   )
-import Distribution.Types.InstalledPackageInfo
-  ( InstalledPackageInfo
-  )
 import Distribution.Types.UnqualComponentName
   ( UnqualComponentName
   , packageNameToUnqualComponentName
@@ -178,6 +176,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors
+import qualified Distribution.Compat.Graph as Graph
 import Distribution.Package
 import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.Compiler
@@ -1297,7 +1296,7 @@ writeBuildReports settings buildContext plan buildOutcomes = do
                 TestsOk -> BuildReports.Ok
          in Just (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
       fromPlanPackage _ _ = Nothing
-      buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
+      buildReports = mapMaybe (\x -> fromPlanPackage x (Map.lookup (installedUnitId x) buildOutcomes)) $ InstallPlan.toList plan
 
   BuildReports.storeLocal
     (compilerInfo comp)
@@ -1363,8 +1362,10 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       , case buildFailureReason failure of
           DependentFailed{} -> verbosityLevel verbosity > Normal
           _ -> True
-      , InstallPlan.Configured pkg <-
-          maybeToList (InstallPlan.lookup plan pkgid)
+      , -- 'failures' is keyed by 'UnitId'; the plan is keyed by
+      -- 'WithStage UnitId', so match on the projected unit id.
+      InstallPlan.Configured pkg <-
+        filter ((== pkgid) . installedUnitId) (InstallPlan.toList plan)
       ]
 
     dieIfNotHaddockFailure :: Verbosity -> String -> IO ()
@@ -1431,19 +1432,24 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     rootpkgs =
       [ pkg
       | InstallPlan.Configured pkg <- InstallPlan.toList plan
-      , hasNoDependents pkg
+      , hasNoDependents (Graph.nodeKey pkg)
       ]
 
     ultimateDeps
       :: UnitId
-      -> [InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage]
+      -> [ElaboratedPlanPackage]
     ultimateDeps pkgid =
       filter
-        (\pkg -> hasNoDependents pkg && installedUnitId pkg /= pkgid)
-        (InstallPlan.reverseDependencyClosure plan [pkgid])
+        (\pkg -> hasNoDependents (Graph.nodeKey pkg) && installedUnitId pkg /= pkgid)
+        -- 'pkgid' is a plain 'UnitId'; the plan is keyed by 'WithStage UnitId',
+        -- so use the plan keys of any nodes carrying this unit as the roots.
+        ( InstallPlan.reverseDependencyClosure
+            plan
+            [Graph.nodeKey pkg | pkg <- InstallPlan.toList plan, installedUnitId pkg == pkgid]
+        )
 
-    hasNoDependents :: HasUnitId pkg => pkg -> Bool
-    hasNoDependents = null . InstallPlan.revDirectDeps plan . installedUnitId
+    hasNoDependents :: WithStage UnitId -> Bool
+    hasNoDependents = null . InstallPlan.revDirectDeps plan
 
     renderFailureDetail :: Bool -> ElaboratedConfiguredPackage -> BuildFailureReason -> String
     renderFailureDetail mentionDepOf pkg reason =

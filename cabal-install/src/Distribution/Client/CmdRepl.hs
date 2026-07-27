@@ -178,6 +178,7 @@ import Distribution.Client.ProjectConfig
   ( ProjectConfig (..)
   , ProjectConfigShared (..)
   )
+import Distribution.Client.ProjectPlanning.Stage (WithStage, withoutStage)
 import Distribution.Client.ReplFlags
   ( EnvFlags (envIncludeTransitive, envPackages)
   , ReplFlags (..)
@@ -185,6 +186,7 @@ import Distribution.Client.ReplFlags
   , topReplOptions
   )
 import Distribution.Compat.Binary (decode)
+import qualified Distribution.Compat.Graph as Graph
 import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
@@ -447,9 +449,12 @@ targetedRepl
 
           let
             (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
-            originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
+            -- The plan is keyed by 'WithStage UnitId'; recover the node for this
+            -- (host-stage) target unit to get at its key and dependencies.
+            targetPkg = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ find ((== unitId) . installedUnitId) (InstallPlan.toList elaboratedPlan)
+            originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan (Graph.nodeKey targetPkg)
             oci = OriginalComponentInfo unitId originalDeps
-            pkgId = maybe (error $ "cannot find " ++ prettyShow unitId) packageId (InstallPlan.lookup elaboratedPlan unitId)
+            pkgId = packageId targetPkg
             baseCtx'' = addDepsToProjectTarget (envPackages replEnvFlags) pkgId baseCtx'
 
           return (Just oci, baseCtx'')
@@ -739,17 +744,24 @@ addDepsToProjectTarget deps pkgId ctx =
 generateReplFlags :: Bool -> ElaboratedInstallPlan -> OriginalComponentInfo -> [String]
 generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = flags
   where
+    -- The plan is keyed by 'WithStage UnitId'; look a bare unit's key up in the
+    -- plan (it carries the stage that unit was solved for).
+    planKey :: UnitId -> WithStage UnitId
+    planKey uid =
+      maybe (error $ "generateReplFlags: cannot find " ++ prettyShow uid) Graph.nodeKey $
+        find ((== uid) . installedUnitId) (InstallPlan.toList elaboratedPlan)
+
     exeDeps :: [UnitId]
     exeDeps =
       foldMap
-        (InstallPlan.foldPlanPackage (const []) elabOrderExeDependencies)
-        (InstallPlan.dependencyClosure elaboratedPlan [ociUnitId])
+        (InstallPlan.foldPlanPackage (const []) (map withoutStage . elabOrderExeDependencies))
+        (InstallPlan.dependencyClosure elaboratedPlan [planKey ociUnitId])
 
     deps, deps', trans, trans' :: [UnitId]
     flags :: [String]
-    deps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan ociUnitId
+    deps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan (planKey ociUnitId)
     deps' = deps \\ ociOriginalDeps
-    trans = installedUnitId <$> InstallPlan.dependencyClosure elaboratedPlan deps'
+    trans = installedUnitId <$> InstallPlan.dependencyClosure elaboratedPlan (map planKey deps')
     trans' = trans \\ ociOriginalDeps
     flags =
       fmap (("-package-id " ++) . prettyShow) . (\\ exeDeps) $

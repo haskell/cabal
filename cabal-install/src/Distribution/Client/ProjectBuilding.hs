@@ -44,6 +44,7 @@ import Distribution.Client.ProjectBuilding.Types
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectPlanning
+import Distribution.Client.ProjectPlanning.Stage (withoutStage)
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Store
 
@@ -171,8 +172,10 @@ rebuildTargetsDryRun
   -> ElaboratedInstallPlan
   -> IO BuildStatusMap
 rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
-  -- Do the various checks to work out the 'BuildStatus' of each package
-  foldMInstallPlanDepOrder dryRunPkg
+  -- Do the various checks to work out the 'BuildStatus' of each package.
+  -- The plan is keyed by 'WithStage UnitId'; the build-status map is keyed by
+  -- 'UnitId', so project the keys at this boundary (a no-op for non-cross).
+  fmap (Map.mapKeys withoutStage) . foldMInstallPlanDepOrder dryRunPkg
   where
     dryRunPkg
       :: ElaboratedPlanPackage
@@ -297,7 +300,7 @@ improveInstallPlanWithUpToDatePackages pkgsBuildStatus =
   where
     canPackageBeImproved :: ElaboratedConfiguredPackage -> Bool
     canPackageBeImproved pkg =
-      case Map.lookup (nodeKey pkg) pkgsBuildStatus of
+      case Map.lookup (installedUnitId pkg) pkgsBuildStatus of
         Just BuildStatusUpToDate{} -> True
         Just _ -> False
         Nothing ->
@@ -390,15 +393,19 @@ rebuildTargets
             pkgsBuildStatus
             $ \downloadMap ->
               -- For each package in the plan, in dependency order, but in parallel...
-              InstallPlan.execute
-                jobControl
-                keepGoing
-                (BuildFailure Nothing . DependentFailed . packageId)
-                installPlan
+              -- The plan is keyed by 'WithStage UnitId'; 'BuildOutcomes' is keyed
+              -- by 'UnitId', so project the keys at this boundary (a no-op for
+              -- non-cross builds).
+              fmap (Map.mapKeys withoutStage)
+                $ InstallPlan.execute
+                  jobControl
+                  keepGoing
+                  (BuildFailure Nothing . DependentFailed . packageId)
+                  installPlan
                 $ \pkg ->
                   -- TODO: review exception handling
                   handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $ do
-                    let pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") (nodeKey pkg) pkgsBuildStatus
+                    let pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") (installedUnitId pkg) pkgsBuildStatus
 
                     rebuildTarget
                       verbosity

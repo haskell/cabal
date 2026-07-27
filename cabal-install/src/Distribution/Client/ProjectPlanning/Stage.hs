@@ -10,9 +10,11 @@
 -- distinct nodes in the plan graph.
 module Distribution.Client.ProjectPlanning.Stage
   ( WithStage (..)
+  , withoutStage
   , Stage (..)
   , HasStage (..)
   , Staged (..)
+  , prevStage
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -21,7 +23,7 @@ import Prelude ()
 import Distribution.Client.Types.ConfiguredId (HasConfiguredId (..))
 import Distribution.Compat.Graph (IsNode (..))
 import Distribution.Package (HasUnitId (..), Package (..))
-import Distribution.Solver.Types.Stage (Stage (..), Staged (..), showStage)
+import Distribution.Solver.Types.Stage (Stage (..), Staged (..), prevStage, showStage)
 import qualified Text.PrettyPrint as Disp
 
 -- | A value tagged with the build 'Stage' it belongs to.
@@ -31,6 +33,10 @@ import qualified Text.PrettyPrint as Disp
 -- distinct graph nodes.
 data WithStage a = WithStage Stage a
   deriving (Eq, Ord, Show, Generic, Functor, Foldable, Traversable)
+
+-- | Drop the stage tag.
+withoutStage :: WithStage a -> a
+withoutStage (WithStage _ a) = a
 
 instance Binary a => Binary (WithStage a)
 instance Structured a => Structured (WithStage a)

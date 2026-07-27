@@ -143,6 +143,7 @@ import Distribution.Client.ProjectPlanning.SetupPolicy
   , packageSetupScriptSpecVersion
   , packageSetupScriptStyle
   )
+import Distribution.Client.ProjectPlanning.Stage (HasStage (..), WithStage (..), withoutStage)
 import Distribution.Client.ProjectPlanning.Types as Ty
 import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup hiding (cabalVersion, packageName)
@@ -1922,7 +1923,7 @@ elaborateInstallPlan
         flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
           case planpkg of
             SolverInstallPlan.PreExisting pkg ->
-              return [InstallPlan.PreExisting (instSolverPkgIPI pkg)]
+              return [InstallPlan.PreExisting (WithStage (instSolverStage pkg) (instSolverPkgIPI pkg))]
             SolverInstallPlan.Configured pkg ->
               let inplace_doc
                     | shouldBuildInplaceOnly pkg = text "inplace"
@@ -1941,7 +1942,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ _ deps0 exe_deps0) =
+      elaborateSolverToComponents mapDep spkg@(SolverPackage solverPkgStage _ _ _ deps0 exe_deps0) =
         case mkComponentsGraph (elabEnabledSpec elab0) pd of
           Right g -> do
             let src_comps = componentsGraphToList g
@@ -1964,6 +1965,7 @@ elaborateInstallPlan
                 checkPerPackageOk comps notPerCompReasons
                 pkgComp <-
                   elaborateSolverToPackage
+                    mapDep
                     notPerCompReasons
                     spkg
                     g
@@ -2122,14 +2124,26 @@ elaborateInstallPlan
                             (\cid -> do_ cid)
                             (cc_includes cc0)
                         )
+                    -- Each executable dependency is tagged with the build
+                    -- 'Stage' it was solved for.  We keep exactly the set of
+                    -- executable dependencies the mix-in linking produced (so
+                    -- PATH wiring is unchanged) and only attach the stage: an
+                    -- external build-tool takes the stage of the plan node the
+                    -- solver resolved it to (the 'Build' stage under cross-
+                    -- compilation), looked up by its 'ComponentId'; an internal
+                    -- executable shares this package's own stage.
+                    exeDepStage cid =
+                      Map.findWithDefault solverPkgStage (confInstId cid) externalExeDepStages
                     compExeDependencies =
-                      map
-                        annotatedIdToConfiguredId
-                        (cc_exe_deps cc0)
+                      [ WithStage (exeDepStage confId) confId
+                      | aid <- cc_exe_deps cc0
+                      , let confId = annotatedIdToConfiguredId aid
+                      ]
                     compExeDependencyPaths =
-                      [ (annotatedIdToConfiguredId aid', path)
-                      | aid' <- cc_exe_deps cc0
-                      , Just paths <- [Map.lookup (ann_id aid') exe_map1]
+                      [ (WithStage (exeDepStage confId) confId, path)
+                      | aid <- cc_exe_deps cc0
+                      , let confId = annotatedIdToConfiguredId aid
+                      , Just paths <- [Map.lookup (ann_id aid) exe_map1]
                       , path <- paths
                       ]
                     elab_comp = ElaboratedComponent{..}
@@ -2247,6 +2261,15 @@ elaborateInstallPlan
                   ]
               exe_map1 = Map.union external_exe_map $ fmap (\x -> [x]) exe_map
 
+              -- The build 'Stage' the solver resolved each external executable
+              -- dependency to, keyed by 'ComponentId'.  Used to tag the
+              -- component's executable dependencies with their actual stage.
+              externalExeDepStages =
+                Map.fromList
+                  [ (getComponentId pkg, planPkgStage pkg)
+                  | pkg <- external_exe_dep_pkgs
+                  ]
+
               external_lib_cc_map =
                 Map.fromListWith Map.union $
                   map mkCCMapping external_lib_dep_pkgs
@@ -2323,19 +2346,21 @@ elaborateInstallPlan
               <$> executables
 
       elaborateSolverToPackage
-        :: NE.NonEmpty NotPerComponentReason
+        :: (SolverId -> [ElaboratedPlanPackage])
+        -> NE.NonEmpty NotPerComponentReason
         -> SolverPackage UnresolvedPkgLoc
         -> ComponentsGraph
         -> [ElaboratedConfiguredPackage]
         -> LogProgress ElaboratedConfiguredPackage
       elaborateSolverToPackage
+        mapDep
         pkgWhyNotPerComponent
         pkg@( SolverPackage
                 _stage
                 (SourcePackage pkgid _gpd _srcloc _descOverride)
                 _flags
                 _stanzas
-                _deps0
+                deps0
                 _exe_deps0
               )
         compGraph
@@ -2388,17 +2413,28 @@ elaborateInstallPlan
             -- Need to filter out internal dependencies, because they don't
             -- correspond to anything real anymore.
             isExt confid = confSrcId confid /= pkgid
-            filterExt = filter isExt
-
             filterExt' :: [(ConfiguredId, a)] -> [(ConfiguredId, a)]
             filterExt' = filter (isExt . fst)
+
+            -- Variants for the stage-tagged executable dependencies.
+            filterExtWs = filter (isExt . withoutStage)
+            filterExtWs' = filter (isExt . withoutStage . fst)
 
             pkgLibDependencies =
               buildComponentDeps (filterExt' . compLibDependencies)
             pkgExeDependencies =
-              buildComponentDeps (filterExt . compExeDependencies)
+              buildComponentDeps (filterExtWs . compExeDependencies)
             pkgExeDependencyPaths =
-              buildComponentDeps (filterExt' . compExeDependencyPaths)
+              buildComponentDeps (filterExtWs' . compExeDependencyPaths)
+
+            -- The library dependencies of the @Setup.hs@ script, each tagged
+            -- with the build 'Stage' the solver actually resolved it to (rather
+            -- than recomputing via 'prevStage', which is wrong for a non-cross
+            -- build).  See 'pkgSetupLibDependencies'.
+            pkgSetupLibDependencies =
+              [ WithStage (planPkgStage p) (configuredId p)
+              | p <- CD.setupDeps deps0 >>= elaborateLibSolverId mapDep
+              ]
 
             -- TODO: Why is this flat?
             pkgPkgConfigDependencies =
@@ -2763,7 +2799,13 @@ elaborateInstallPlan
           map packageId $
             SolverInstallPlan.reverseDependencyClosure
               solverPlan
-              (map PlannedId (Set.toList pkgsLocalToProject))
+              -- Take the roots straight from the plan so each 'SolverId' carries
+              -- the stage it was solved for; a local package used as a build
+              -- tool then contributes both its host and build copies.
+              [ Graph.nodeKey pkg
+              | pkg <- SolverInstallPlan.toList solverPlan
+              , isLocalToProject pkg
+              ]
 
       isLocalToProject :: Package pkg => pkg -> Bool
       isLocalToProject pkg =
@@ -2924,7 +2966,7 @@ shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of
 
 -- | Given a 'ElaboratedPlanPackage', report if it matches a 'ComponentName'.
 matchPlanPkg :: (ComponentName -> Bool) -> ElaboratedPlanPackage -> Bool
-matchPlanPkg p = InstallPlan.foldPlanPackage (p . ipiComponentName) (matchElabPkg p)
+matchPlanPkg p = InstallPlan.foldPlanPackage (p . ipiComponentName . withoutStage) (matchElabPkg p)
 
 -- | Get the appropriate 'ComponentName' which identifies an installed
 -- component.
@@ -2958,7 +3000,7 @@ mkCCMapping
   -> (PackageName, Map ComponentName (AnnotatedId ComponentId))
 mkCCMapping =
   InstallPlan.foldPlanPackage
-    ( \ipkg ->
+    ( \(WithStage _ ipkg) ->
         ( packageName ipkg
         , Map.singleton
             (ipiComponentName ipkg)
@@ -3002,7 +3044,7 @@ mkShapeMapping dpkg =
     (dcid, shape) =
       InstallPlan.foldPlanPackage
         -- Uses Monad (->)
-        (liftM2 (,) IPI.installedComponentId shapeInstalledPackage)
+        (liftM2 (,) IPI.installedComponentId shapeInstalledPackage . withoutStage)
         (liftM2 (,) elabComponentId elabModuleShape)
         dpkg
     indef_uid =
@@ -3045,13 +3087,23 @@ binDirectories layout config package = case elabBuildStyle package of
       distBuildDirectory layout (elabDistDirParams config package)
         </> "build"
 
-type InstS = Map UnitId ElaboratedPlanPackage
+-- | The instantiation state is keyed by 'WithStage UnitId': under
+-- cross-compilation the host and build copies of a component share a
+-- 'UnitId', so the stage keeps them distinct.
+type InstS = Map (WithStage UnitId) ElaboratedPlanPackage
+
 type InstM a = State InstS a
+
+-- | The build 'Stage' of an elaborated plan package.
+planPkgStage :: ElaboratedPlanPackage -> Stage
+planPkgStage (InstallPlan.PreExisting ipkg) = stageOf ipkg
+planPkgStage (InstallPlan.Configured elab) = elabStage elab
+planPkgStage (InstallPlan.Installed elab) = elabStage elab
 
 getComponentId
   :: ElaboratedPlanPackage
   -> ComponentId
-getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId dipkg
+getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId (withoutStage dipkg)
 getComponentId (InstallPlan.Configured elab) = elabComponentId elab
 getComponentId (InstallPlan.Installed elab) = elabComponentId elab
 
@@ -3113,23 +3165,24 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
   where
     pkgs = InstallPlan.toList plan
 
-    cmap = Map.fromList [(getComponentId pkg, pkg) | pkg <- pkgs]
+    cmap = Map.fromList [(WithStage (planPkgStage pkg) (getComponentId pkg), pkg) | pkg <- pkgs]
 
     instantiateUnitId
-      :: ComponentId
+      :: Stage
+      -> ComponentId
       -> Map ModuleName (Module, BuildStyle)
       -> InstM (DefUnitId, BuildStyle)
-    instantiateUnitId cid insts = state $ \s ->
-      case Map.lookup uid s of
+    instantiateUnitId stage cid insts = state $ \s ->
+      case Map.lookup (WithStage stage uid) s of
         Nothing ->
           -- Knot tied
           -- TODO: I don't think the knot tying actually does
           -- anything useful
           let (r, s') =
                 runState
-                  (instantiateComponent uid cid insts)
-                  (Map.insert uid r s)
-           in ((def_uid, extractElabBuildStyle r), Map.insert uid r s')
+                  (instantiateComponent uid stage cid insts)
+                  (Map.insert (WithStage stage uid) r s)
+           in ((def_uid, extractElabBuildStyle r), Map.insert (WithStage stage uid) r s')
         Just r -> ((def_uid, extractElabBuildStyle r), s)
       where
         def_uid = mkDefUnitId cid (fmap fst insts)
@@ -3139,18 +3192,19 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     -- the ElaboratedPlanPackage, so that will implicitly pass it on
     instantiateComponent
       :: UnitId
+      -> Stage
       -> ComponentId
       -> Map ModuleName (Module, BuildStyle)
       -> InstM ElaboratedPlanPackage
-    instantiateComponent uid cid insts
-      | Just planpkg <- Map.lookup cid cmap =
+    instantiateComponent uid stage cid insts
+      | Just planpkg <- Map.lookup (WithStage stage cid) cmap =
           case planpkg of
             InstallPlan.Configured
               elab0@ElaboratedConfiguredPackage
                 { elabPkgOrComp = ElabComponent comp
                 } -> do
                 deps <-
-                  traverse (fmap fst . substUnitId insts) (compLinkedLibDependencies comp)
+                  traverse (fmap fst . substUnitId stage insts) (compLinkedLibDependencies comp)
                 let build_style = fold (fmap snd insts)
                 let getDep (Module dep_uid _) = [dep_uid]
                     elab1 =
@@ -3185,42 +3239,43 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
             _ -> return planpkg
       | otherwise = error ("instantiateComponent: " ++ prettyShow cid)
 
-    substUnitId :: Map ModuleName (Module, BuildStyle) -> OpenUnitId -> InstM (DefUnitId, BuildStyle)
-    substUnitId _ (DefiniteUnitId uid) =
+    substUnitId :: Stage -> Map ModuleName (Module, BuildStyle) -> OpenUnitId -> InstM (DefUnitId, BuildStyle)
+    substUnitId _ _ (DefiniteUnitId uid) =
       -- This COULD actually, secretly, be an inplace package, but in
       -- that case it doesn't matter as it's already been recorded
       -- in the package that depends on this
       return (uid, BuildAndInstall)
-    substUnitId subst (IndefFullUnitId cid insts) = do
-      insts' <- substSubst subst insts
-      instantiateUnitId cid insts'
+    substUnitId stage subst (IndefFullUnitId cid insts) = do
+      insts' <- substSubst stage subst insts
+      instantiateUnitId stage cid insts'
 
     -- NB: NOT composition
     substSubst
-      :: Map ModuleName (Module, BuildStyle)
+      :: Stage
+      -> Map ModuleName (Module, BuildStyle)
       -> Map ModuleName OpenModule
       -> InstM (Map ModuleName (Module, BuildStyle))
-    substSubst subst insts = traverse (substModule subst) insts
+    substSubst stage subst insts = traverse (substModule stage subst) insts
 
-    substModule :: Map ModuleName (Module, BuildStyle) -> OpenModule -> InstM (Module, BuildStyle)
-    substModule subst (OpenModuleVar mod_name)
+    substModule :: Stage -> Map ModuleName (Module, BuildStyle) -> OpenModule -> InstM (Module, BuildStyle)
+    substModule _stage subst (OpenModuleVar mod_name)
       | Just m <- Map.lookup mod_name subst = return m
       | otherwise = error "substModule: non-closing substitution"
-    substModule subst (OpenModule uid mod_name) = do
-      (uid', build_style) <- substUnitId subst uid
+    substModule stage subst (OpenModule uid mod_name) = do
+      (uid', build_style) <- substUnitId stage subst uid
       return (Module uid' mod_name, build_style)
 
-    indefiniteUnitId :: ComponentId -> InstM UnitId
-    indefiniteUnitId cid = do
+    indefiniteUnitId :: Stage -> ComponentId -> InstM UnitId
+    indefiniteUnitId stage cid = do
       let uid = newSimpleUnitId cid
-      r <- indefiniteComponent uid cid
-      state $ \s -> (uid, Map.insert uid r s)
+      r <- indefiniteComponent stage uid cid
+      state $ \s -> (uid, Map.insert (WithStage stage uid) r s)
 
-    indefiniteComponent :: UnitId -> ComponentId -> InstM ElaboratedPlanPackage
-    indefiniteComponent _uid cid
+    indefiniteComponent :: Stage -> UnitId -> ComponentId -> InstM ElaboratedPlanPackage
+    indefiniteComponent stage _uid cid
       -- Only need Configured; this phase happens before improvement, so
       -- there shouldn't be any Installed packages here.
-      | Just (InstallPlan.Configured epkg) <- Map.lookup cid cmap
+      | Just (InstallPlan.Configured epkg) <- Map.lookup (WithStage stage cid) cmap
       , ElabComponent elab_comp <- elabPkgOrComp epkg =
           do
             -- We need to do a little more processing of the includes: some
@@ -3240,7 +3295,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
             -- DefiniteUnitId (that's what substUnitId does!)
             new_deps <- for (compLinkedLibDependencies elab_comp) $ \uid ->
               if Set.null (openUnitIdFreeHoles uid)
-                then fmap (DefiniteUnitId . fst) (substUnitId Map.empty uid)
+                then fmap (DefiniteUnitId . fst) (substUnitId stage Map.empty uid)
                 else return uid
             -- NB: no fixupBuildStyle needed here, as if the indefinite
             -- component depends on any inplace packages, it itself must
@@ -3262,7 +3317,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                                 ++ [unDefUnitId d | DefiniteUnitId d <- new_deps]
                         }
                 }
-      | Just planpkg <- Map.lookup cid cmap =
+      | Just planpkg <- Map.lookup (WithStage stage cid) cmap =
           return planpkg
       | otherwise = error ("indefiniteComponent: " ++ prettyShow cid)
 
@@ -3281,8 +3336,8 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     work = for_ pkgs $ \case
       InstallPlan.Configured elab
         | not (Map.null (elabLinkedInstantiatedWith elab)) ->
-            void $ indefiniteUnitId (elabComponentId elab)
-      pkg -> void $ instantiateUnitId (getComponentId pkg) Map.empty
+            void $ indefiniteUnitId (elabStage elab) (elabComponentId elab)
+      pkg -> void $ instantiateUnitId (planPkgStage pkg) (getComponentId pkg) Map.empty
 
 ---------------------------
 -- Build targets
@@ -3380,7 +3435,7 @@ availableTargets installPlan =
         [ (pkgid, cname, fake, target)
         | pkg <- InstallPlan.toList installPlan
         , (pkgid, cname, fake, target) <- case pkg of
-            InstallPlan.PreExisting ipkg -> availableInstalledTargets ipkg
+            InstallPlan.PreExisting ipkg -> availableInstalledTargets (withoutStage ipkg)
             InstallPlan.Installed elab -> availableSourceTargets elab
             InstallPlan.Configured elab -> availableSourceTargets elab
         ]
@@ -3649,16 +3704,16 @@ pruneInstallPlanToTargets targetActionType perPkgTargetsMap elaboratedPlan =
 --
 -- For 'ElaboratedComponent', this the cached unit IDs always
 -- coincide with the real thing.
-data PrunedPackage = PrunedPackage ElaboratedConfiguredPackage [UnitId]
+data PrunedPackage = PrunedPackage ElaboratedConfiguredPackage [WithStage UnitId]
 
 instance Package PrunedPackage where
   packageId (PrunedPackage elab _) = packageId elab
 
 instance HasUnitId PrunedPackage where
-  installedUnitId = Graph.nodeKey
+  installedUnitId (PrunedPackage elab _) = installedUnitId elab
 
 instance Graph.IsNode PrunedPackage where
-  type Key PrunedPackage = UnitId
+  type Key PrunedPackage = WithStage UnitId
   nodeKey (PrunedPackage elab _) = Graph.nodeKey elab
   nodeNeighbors (PrunedPackage _ deps) = deps
 
@@ -3732,7 +3787,7 @@ pruneInstallPlanPass1 pkgs
   -- otherwise we'll do less
   | otherwise = pruned_packages
   where
-    pkgs' :: [InstallPlan.GenericPlanPackage IPI.InstalledPackageInfo PrunedPackage]
+    pkgs' :: [InstallPlan.GenericPlanPackage ElaboratedInstalledPackageInfo PrunedPackage]
     pkgs' = map (mapConfiguredPackage prune) pkgs
 
     prune :: ElaboratedConfiguredPackage -> PrunedPackage
@@ -3742,7 +3797,7 @@ pruneInstallPlanPass1 pkgs
 
     graph = Graph.fromDistinctList pkgs'
 
-    roots :: [UnitId]
+    roots :: [WithStage UnitId]
     roots = mapMaybe find_root pkgs'
 
     -- Make a closed graph by calculating the closure from the roots
@@ -3782,7 +3837,7 @@ pruneInstallPlanPass1 pkgs
       | anyMultiReplTarget = map (mapConfiguredPackage add_repl_target) (Graph.toList closed_graph)
       | otherwise = Graph.toList closed_graph
 
-    is_root :: PrunedPackage -> Maybe UnitId
+    is_root :: PrunedPackage -> Maybe (WithStage UnitId)
     is_root (PrunedPackage elab _) =
       if not $
         and
@@ -3793,7 +3848,7 @@ pruneInstallPlanPass1 pkgs
           , null (elabReplTarget elab)
           , null (elabHaddockTargets elab)
           ]
-        then Just (installedUnitId elab)
+        then Just (Graph.nodeKey elab)
         else Nothing
 
     find_root (InstallPlan.Configured pkg) = is_root pkg
@@ -3850,12 +3905,15 @@ pruneInstallPlanPass1 pkgs
     -- the optional stanzas and we'll make further tweaks to the optional
     -- stanzas in the next pass.
     --
-    pruneOptionalDependencies :: ElaboratedConfiguredPackage -> [UnitId]
+    pruneOptionalDependencies :: ElaboratedConfiguredPackage -> [WithStage UnitId]
     pruneOptionalDependencies elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _} =
       InstallPlan.depends elab -- no pruning
-    pruneOptionalDependencies ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage pkg} =
-      (fold . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
+    pruneOptionalDependencies elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage pkg} =
+      -- Keep the (already stage-tagged) plan neighbours whose unit is still
+      -- needed after dropping optional-stanza-only dependencies.
+      filter ((`Set.member` keptUnitIds) . withoutStage) (InstallPlan.depends elab)
       where
+        keptUnitIds = Set.fromList $ (fold . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
         keepNeeded (CD.ComponentTest _) _ = TestStanzas `optStanzaSetMember` stanzas
         keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
         keepNeeded _ _ = True
@@ -3879,9 +3937,13 @@ pruneInstallPlanPass1 pkgs
                 CD.componentNameToComponent cname
         ]
 
+    -- Keyed by plan key, not bare 'UnitId': the installed packages of the
+    -- build and host stages come from different package databases and must
+    -- not be confused with one another.
+    availablePkgs :: Set (WithStage UnitId)
     availablePkgs =
       Set.fromList
-        [ installedUnitId pkg
+        [ Graph.nodeKey pkg
         | InstallPlan.PreExisting pkg <- pkgs
         ]
 
@@ -3917,7 +3979,7 @@ into the repl to uphold the closure property.
 -- all of the deps needed for the test suite, we go ahead and
 -- enable it always.
 optionalStanzasWithDepsAvailable
-  :: Set UnitId
+  :: Set (WithStage UnitId)
   -> ElaboratedConfiguredPackage
   -> ElaboratedPackage
   -> OptionalStanzaSet
@@ -3925,13 +3987,13 @@ optionalStanzasWithDepsAvailable availablePkgs elab pkg =
   optStanzaSetFromList
     [ stanza
     | stanza <- optStanzaSetToList (elabStanzasAvailable elab)
-    , let deps :: [UnitId]
+    , let deps :: [WithStage UnitId]
           deps =
             CD.select
               (optionalStanzaDeps stanza)
               -- TODO: probably need to select other
               -- dep types too eventually
-              (pkgOrderDependencies pkg)
+              (pkgStagedOrderDependencies (elabStage elab) pkg)
     , all (`Set.member` availablePkgs) deps
     ]
   where
@@ -3984,7 +4046,7 @@ pruneInstallPlanPass2 pkgs =
                 ++ libTargetsRequiredForRevDeps
                 ++ exeTargetsRequiredForRevDeps
         , elabBuildStyle =
-            if installedUnitId elab `Set.member` mustBuildOnDisk
+            if Graph.nodeKey elab `Set.member` mustBuildOnDisk
               && elabBuildStyle elab == BuildInplaceOnly InMemory
               then BuildInplaceOnly OnDisk
               else elabBuildStyle elab
@@ -4024,13 +4086,13 @@ pruneInstallPlanPass2 pkgs =
 
         libTargetsRequiredForRevDeps =
           [ c
-          | installedUnitId elab `Set.member` libDeps
+          | Graph.nodeKey elab `Set.member` libDeps
           , let c = ComponentTarget (CLibName Cabal.defaultLibName) WholeComponent
           , -- Don't enable building for anything which is being built in memory,
           -- unless it is a (transitive) library dependency of an exe build tool,
           -- in which case it must be compiled to disk so the exe can link against it.
           elabBuildStyle elab /= BuildInplaceOnly InMemory
-            || installedUnitId elab `Set.member` mustBuildOnDisk
+            || Graph.nodeKey elab `Set.member` mustBuildOnDisk
           ]
         exeTargetsRequiredForRevDeps =
           -- TODO: allow requesting executable with different name
@@ -4042,11 +4104,11 @@ pruneInstallPlanPass2 pkgs =
                     elabPkgSourceId elab
             )
             WholeComponent
-          | installedUnitId elab `Set.member` exeDeps
+          | Graph.nodeKey elab `Set.member` exeDeps
           ]
 
-    availablePkgs :: Set UnitId
-    availablePkgs = Set.fromList (map installedUnitId pkgs)
+    availablePkgs :: Set (WithStage UnitId)
+    availablePkgs = Set.fromList (map Graph.nodeKey pkgs)
 
     inMemoryTargets :: Set ConfiguredId
     inMemoryTargets =
@@ -4055,7 +4117,7 @@ pruneInstallPlanPass2 pkgs =
         | InstallPlan.Configured pkg <- pkgs
         , -- Exclude packages that must be built on disk (for exe build tools).
         -- Their dependents will receive a real -package-id, not a promise.
-        installedUnitId pkg `Set.notMember` mustBuildOnDisk
+        Graph.nodeKey pkg `Set.notMember` mustBuildOnDisk
         , BuildInplaceOnly InMemory <- [elabBuildStyle pkg]
         ]
 
@@ -4065,7 +4127,7 @@ pruneInstallPlanPass2 pkgs =
     -- must also produce real on-disk artifacts so the exe can link against it.
     -- The repl phase still runs for these packages, so GHCi loads them from
     -- source under the same package-id, preserving type identity.
-    mustBuildOnDisk :: Set UnitId
+    mustBuildOnDisk :: Set (WithStage UnitId)
     mustBuildOnDisk = go exeDeps Set.empty
       where
         go frontier visited
@@ -4082,31 +4144,41 @@ pruneInstallPlanPass2 pkgs =
                in go newFrontier newVisited
 
     -- Lib and exe deps computed once per in-plan package, shared below.
-    -- Note: these must be the order-dependency UnitIds, which match the
-    -- 'installedUnitId' of the units in the plan; in particular for
-    -- Backpack-instantiated units they include the instantiation, unlike
-    -- the ComponentIds from 'elabLibDependencies'.
-    perPkgDeps :: [(UnitId, [UnitId], [UnitId])]
+    -- Note: these must be the order dependencies, which match the plan key of
+    -- the units in the plan; in particular for Backpack-instantiated units
+    -- their unit ids include the instantiation, unlike the ComponentIds from
+    -- 'elabLibDependencies'.
+    --
+    -- They are keyed by plan key rather than bare 'UnitId' because the build
+    -- and host copies of a local package share an in-place unit id (in-place
+    -- unit ids do not mention the compiler). Projecting onto 'UnitId' would
+    -- merge the two nodes: 'planLibDepMap' would keep only one stage's
+    -- dependencies, and a package could be marked as needing an on-disk build,
+    -- or not, because of its twin at the other stage.
+    perPkgDeps :: [(WithStage UnitId, [WithStage UnitId], [WithStage UnitId])]
     perPkgDeps =
-      [ ( installedUnitId pkg
-        , elabOrderLibDependencies pkg
+      [ ( Graph.nodeKey pkg
+        , -- Library edges are stage-preserving, so a package's library
+          -- dependencies sit at its own stage; build-tool edges carry the
+          -- stage the solver assigned them.
+          map (WithStage (elabStage pkg)) (elabOrderLibDependencies pkg)
         , elabOrderExeDependencies pkg
         )
       | InstallPlan.Configured pkg <- pkgs
       ]
 
     -- Library-dependency adjacency for in-plan packages only.
-    planLibDepMap :: Map UnitId [UnitId]
+    planLibDepMap :: Map (WithStage UnitId) [WithStage UnitId]
     planLibDepMap =
       Map.fromList [(uid, ls) | (uid, ls, _) <- perPkgDeps]
 
     -- All packages that appear as a library dep of any in-plan package.
-    libDeps :: Set UnitId
+    libDeps :: Set (WithStage UnitId)
     libDeps =
       Set.fromList [d | (_, ls, _) <- perPkgDeps, d <- ls]
 
     -- All packages that appear as an exe dep of any in-plan package.
-    exeDeps :: Set UnitId
+    exeDeps :: Set (WithStage UnitId)
     exeDeps =
       Set.fromList [d | (_, _, es) <- perPkgDeps, d <- es]
 
@@ -4136,9 +4208,8 @@ pruneInstallPlanToDependencies
       ElaboratedInstallPlan
 pruneInstallPlanToDependencies pkgTargets installPlan =
   assert
-    ( all
-        (isJust . InstallPlan.lookup installPlan)
-        (Set.toList pkgTargets)
+    ( pkgTargets
+        `Set.isSubsetOf` Set.fromList (map installedUnitId (InstallPlan.toList installPlan))
     )
     $ fmap (InstallPlan.new (InstallPlan.planIndepGoals installPlan))
       . checkBrokenDeps
@@ -4767,16 +4838,13 @@ packageHashInputs
                 [ confInstId dep
                 | (dep, _) <- CD.select relevantDeps pkgLibDependencies
                 ]
-                  ++ [ confInstId dep
+                  ++ [ confInstId (withoutStage dep)
                      | dep <- CD.select relevantDeps pkgExeDependencies
                      ]
             ElabComponent comp ->
               Set.fromList
-                ( map
-                    confInstId
-                    ( map fst (compLibDependencies comp)
-                        ++ compExeDependencies comp
-                    )
+                ( map (confInstId . fst) (compLibDependencies comp)
+                    ++ map (confInstId . withoutStage) (compExeDependencies comp)
                 )
       , pkgHashOtherConfig = packageHashConfigInputs pkgshared elab
       }
