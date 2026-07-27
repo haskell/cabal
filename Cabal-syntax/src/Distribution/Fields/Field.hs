@@ -21,8 +21,6 @@ module Distribution.Fields.Field
     -- * Comment
   , Comment (..)
   , WithComments (..)
-  , mapComments
-  , mapCommentedData
 
     -- * Name
   , FieldName
@@ -63,12 +61,6 @@ data WithComments ann = WithComments
   -- ^ Extract the annotation.
   }
   deriving (Show, Generic, Eq, Ord, Functor)
-
-mapComments :: ([Comment ann] -> [Comment ann]) -> WithComments ann -> WithComments ann
-mapComments f (WithComments cs x) = WithComments (f cs) x
-
-mapCommentedData :: (ann -> ann) -> WithComments ann -> WithComments ann
-mapCommentedData f (WithComments cs x) = WithComments cs (f x)
 
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
