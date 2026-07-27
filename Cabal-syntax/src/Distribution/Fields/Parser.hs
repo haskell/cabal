@@ -33,9 +33,9 @@ module Distribution.Fields.Parser
   ) where
 {- FOURMOLU_ENABLE -}
 
-import qualified Distribution.Compat.Lens as L
 import qualified Data.ByteString.Char8 as B8
 import Data.Functor.Identity
+import qualified Distribution.Compat.Lens as L
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field
 import qualified Distribution.Fields.Field.Lens as L
