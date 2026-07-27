@@ -68,9 +68,9 @@ convPI (PI _ (I _ (Inst pi))) = Left pi
 convPI pi                     = Right (packageId (either id id (convConfId pi)))
 
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
-convConfId (PI (Q (PackagePath _s _ q) pn) (I v loc)) =
+convConfId (PI (Q (PackagePath s _ q) pn) (I v loc)) =
     case loc of
-        Inst pi -> Left (PreExistingId sourceId pi)
+        Inst pi -> Left (PreExistingId s sourceId pi)
         _otherwise
           | QualExe _ pn' <- q
           -- NB: the dependencies of the executable are also
@@ -79,7 +79,7 @@ convConfId (PI (Q (PackagePath _s _ q) pn) (I v loc)) =
           -- at the actual thing.  Fortunately for us, I was
           -- silly and didn't allow arbitrarily nested build-tools
           -- dependencies, so a shallow check works.
-          , pn == pn' -> Right (PlannedId sourceId)
-          | otherwise    -> Left  (PlannedId sourceId)
+          , pn == pn' -> Right (PlannedId s sourceId)
+          | otherwise    -> Left  (PlannedId s sourceId)
   where
     sourceId    = PackageIdentifier pn v
