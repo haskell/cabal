@@ -158,6 +158,7 @@ import Distribution.Client.Toolchain
   , getStage
   , isCross
   , overStage
+  , prevStage
   , traverseWithStage
   )
 import Distribution.Client.Types
@@ -1852,9 +1853,11 @@ elaborateInstallPlan
   :: HasCallStack
   => Verbosity
   -> Toolchains
-  -- ^ The per-stage toolchains. Its 'Host' stage supplies the platform,
-  -- compiler and __configured__ compiler program database (ghc, ghc-pkg,
-  -- haddock, ld, etc) used to elaborate the plan.
+  -- ^ The per-stage toolchains, each with a __configured__ compiler program
+  -- database (ghc, ghc-pkg, haddock, ld, etc). Every package is configured
+  -- against the toolchain of its own stage ('elabToolchain'); the 'Host'
+  -- stage additionally drives the project-wide decisions (package databases,
+  -- install dirs).
   -> Maybe PkgConfigDb
   -> DistDirLayout
   -> StoreDirLayout
@@ -1884,15 +1887,12 @@ elaborateInstallPlan
     x <- elaboratedInstallPlan
     return (x, elaboratedSharedConfig)
     where
-      -- The plan is elaborated against the host toolchain; the full 'Toolchains'
-      -- (host + build) are carried in 'ElaboratedSharedConfig'. A few local
-      -- bindings below name the host toolchain's parts (and the build
-      -- compiler) for convenience.
-      Toolchain
-        { toolchainCompiler = compiler
-        , toolchainPlatform = platform
-        , toolchainProgramDb = compilerProgDb
-        } = getStage toolchains Host
+      -- The full 'Toolchains' (host + build) are carried in
+      -- 'ElaboratedSharedConfig'. These bindings name the host and build
+      -- compilers for the project-wide computations below (e.g. which package
+      -- DBs to use, which build ways the compiler supports). Each package's own
+      -- stage toolchain is selected per-package in 'elaborateSolverToCommon'.
+      Toolchain{toolchainCompiler = compiler} = getStage toolchains Host
 
       Toolchain{toolchainCompiler = buildCompiler} = getStage toolchains Build
 
@@ -1941,7 +1941,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0) =
+      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ _ deps0 exe_deps0) =
         case mkComponentsGraph (elabEnabledSpec elab0) pd of
           Right g -> do
             let src_comps = componentsGraphToList g
@@ -2331,6 +2331,7 @@ elaborateInstallPlan
       elaborateSolverToPackage
         pkgWhyNotPerComponent
         pkg@( SolverPackage
+                _stage
                 (SourcePackage pkgid _gpd _srcloc _descOverride)
                 _flags
                 _stanzas
@@ -2436,6 +2437,7 @@ elaborateInstallPlan
         -> (ElaboratedConfiguredPackage, LogProgress ())
       elaborateSolverToCommon
         pkg@( SolverPackage
+                stage
                 (SourcePackage pkgid gdesc srcloc descOverride)
                 flags
                 stanzas
@@ -2446,11 +2448,24 @@ elaborateInstallPlan
           where
             elaboratedPackage = ElaboratedConfiguredPackage{..}
 
+            -- The stage this package is elaborated for, and the toolchain that
+            -- goes with it. Everything this package is configured against
+            -- (finalisation, build options, configured programs) uses its own
+            -- stage's toolchain rather than the host one. In a non-cross build
+            -- the build stage falls back to the host toolchain, so this
+            -- selects the same toolchain there.
+            elabStage = stage
+            Toolchain
+              { toolchainCompiler = stageCompiler
+              , toolchainPlatform = stagePlatform
+              , toolchainProgramDb = stageProgDb
+              } = getStage toolchains elabStage
+
             buildOptionsAdjustmentWarnings :: LogProgress ()
             buildOptionsAdjustmentWarnings =
               mapM_ (warnProgress . text) $
                 Cabal.buildOptionsAdjustmentWarnings
-                  compiler
+                  stageCompiler
                   elabBuildOptionsRaw
                   elabBuildOptions
 
@@ -2469,8 +2484,8 @@ elaborateInstallPlan
               flags
               elabEnabledSpec
               (const Satisfied)
-              platform
-              (compilerInfo compiler)
+              stagePlatform
+              (compilerInfo stageCompiler)
               []
               gdesc of
               Right (desc, _) -> desc
@@ -2601,10 +2616,10 @@ elaborateInstallPlan
                 , programPrefix = elabProgPrefix
                 , programSuffix = elabProgSuffix
                 }
-            okProfDyn = profilingDynamicSupportedOrUnknown compiler
+            okProfDyn = profilingDynamicSupportedOrUnknown stageCompiler
             profExe = perPkgOptionFlag False pkgid packageConfigProf
 
-            elabBuildOptions = Cabal.adjustBuildOptions compiler compilerProgDb elabBuildOptionsRaw
+            elabBuildOptions = Cabal.adjustBuildOptions stageCompiler stageProgDb elabBuildOptionsRaw
 
             ( elabProfExeDetail
               , elabProfLibDetail
@@ -2626,7 +2641,7 @@ elaborateInstallPlan
               getMapLast (perPkgOption pkgid packageConfigProgramPaths)
                 <> Map.fromList
                   [ (programId prog, programPath prog)
-                  | prog <- configuredPrograms compilerProgDb
+                  | prog <- configuredPrograms stageProgDb
                   ]
 
             elabProgramArgs =
@@ -2648,7 +2663,7 @@ elaborateInstallPlan
                   (++)
                   ( Map.fromList
                       [ (programId prog, args)
-                      | prog <- configuredPrograms compilerProgDb
+                      | prog <- configuredPrograms stageProgDb
                       , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
                       , not (null args)
                       ]
@@ -2656,7 +2671,7 @@ elaborateInstallPlan
                   (getMapMappend $ perPkgOption pkgid packageConfigProgramArgs)
 
             elabProgramPathExtra = fromNubList $ perPkgOption pkgid packageConfigProgramPathExtra
-            elabConfiguredPrograms = configuredPrograms compilerProgDb
+            elabConfiguredPrograms = configuredPrograms stageProgDb
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
             elabExtraLibDirsStatic = perPkgOptionList pkgid packageConfigExtraLibDirsStatic
@@ -4206,11 +4221,14 @@ setupHsScriptOptions
           if PD.buildType elabPkgDescription == PD.Hooks
             then Nothing
             else Just cliVersion
-      , -- The Setup.hs script runs on the /build/ machine, so it must be
-        -- compiled with the build toolchain (equal to the host toolchain
-        -- unless cross-compiling).
-        useCompiler = Just (pkgConfigBuildCompiler sharedConfig)
-      , usePlatform = Just (pkgConfigBuildPlatform sharedConfig)
+      , -- The Setup.hs script runs on the machine that /drives/ this
+        -- package's build, i.e. the stage before the package's own stage
+        -- ('prevStage' of 'elabStage'): a host-stage package's setup runs on
+        -- the build stage, and 'prevStage' clamps at the build stage. It is
+        -- therefore compiled with that stage's toolchain (equal to the host
+        -- toolchain unless cross-compiling).
+        useCompiler = Just (toolchainCompiler setupToolchain)
+      , usePlatform = Just (toolchainPlatform setupToolchain)
       , usePackageDB = elabSetupPackageDBStack
       , usePackageIndex = Nothing
       , useSetupDependencies =
@@ -4220,7 +4238,7 @@ setupHsScriptOptions
                 elabSetupDependencies elab
             ]
       , useVersionMacros = elabSetupScriptStyle == SetupCustomExplicitDeps
-      , useProgramDb = pkgConfigBuildProgs sharedConfig
+      , useProgramDb = toolchainProgramDb setupToolchain
       , useDistPref = builddir
       , useLoggingHandle = Nothing -- this gets set later
       , useWorkingDir = Just srcdir
@@ -4245,6 +4263,7 @@ setupHsScriptOptions
       }
     where
       cliVersion = setupCliVersion elabSetupScriptCliVersion
+      setupToolchain = pkgConfigStageToolchain sharedConfig (prevStage elabStage)
 
 -- | To be used for the input for elaborateInstallPlan.
 --
@@ -4317,9 +4336,9 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       ( InstallDirs.absoluteInstallDirs
           (elabPkgSourceId elab)
           (elabUnitId elab)
-          (compilerInfo (pkgConfigCompiler elaboratedShared))
+          (compilerInfo (elabCompiler elaboratedShared elab))
           InstallDirs.NoCopyDest
-          (pkgConfigPlatform elaboratedShared)
+          (elabPlatform elaboratedShared elab)
           defaultInstallDirs
       )
         { -- absoluteInstallDirs sets these as 'undefined' but we have
@@ -4332,7 +4351,7 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       -- use special simplified install dirs
       storePackageInstallDirs'
         storeDirLayout
-        (pkgConfigCompiler elaboratedShared)
+        (elabCompiler elaboratedShared elab)
         (elabUnitId elab)
 
 -- TODO: [code cleanup] perhaps reorder this code
@@ -4404,7 +4423,7 @@ setupHsConfigureFlags
       configProgramPaths = Map.toList elabProgramPaths
       configProgramArgs = Map.toList elabProgramArgs
       configProgramPathExtra = toNubList elabProgramPathExtra
-      configHcFlavor = toFlag (compilerFlavor (pkgConfigCompiler sharedConfig))
+      configHcFlavor = toFlag (compilerFlavor (elabCompiler sharedConfig elab))
       configHcPath = mempty -- we use configProgramPaths instead
       configHcPkg = mempty -- we use configProgramPaths instead
       configDumpBuildInfo = toFlag elabDumpBuildInfo
@@ -4462,7 +4481,7 @@ setupHsConfigureFlags
       configUserInstall = mempty -- don't rely on defaults
       configPrograms_ = mempty -- never use, shouldn't exist
       configUseResponseFiles = mempty
-      configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported (pkgConfigCompiler sharedConfig)
+      configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported (elabCompiler sharedConfig elab)
       configIgnoreBuildTools = mempty
 
       cidToGivenComponent :: ConfiguredId -> GivenComponent
@@ -4637,14 +4656,14 @@ setupHsHaddockFlags
   -> Cabal.CommonSetupFlags
   -> Cabal.HaddockFlags
 setupHsHaddockFlags
-  (ElaboratedConfiguredPackage{..})
+  elab@(ElaboratedConfiguredPackage{..})
   sharedConfig
   _buildTimeSettings
   common =
     Cabal.HaddockFlags
       { haddockCommonFlags = common
       , haddockProgramPaths =
-          case lookupProgram haddockProgram (pkgConfigCompilerProgs sharedConfig) of
+          case lookupProgram haddockProgram (elabProgramDb sharedConfig elab) of
             Nothing -> mempty
             Just prg ->
               [
@@ -4784,9 +4803,9 @@ packageHashConfigInputs
   -> PackageHashConfigInputs
 packageHashConfigInputs shared pkg =
   PackageHashConfigInputs
-    { pkgHashCompilerId = compilerId (pkgConfigCompiler shared)
-    , pkgHashCompilerABI = compilerAbiTag (pkgConfigCompiler shared)
-    , pkgHashPlatform = pkgConfigPlatform shared
+    { pkgHashCompilerId = compilerId (elabCompiler shared pkg)
+    , pkgHashCompilerABI = compilerAbiTag (elabCompiler shared pkg)
+    , pkgHashPlatform = elabPlatform shared pkg
     , pkgHashFlagAssignment = elabFlagAssignment
     , pkgHashConfigureScriptArgs = elabConfigureScriptArgs
     , pkgHashVanillaLib = withVanillaLib
