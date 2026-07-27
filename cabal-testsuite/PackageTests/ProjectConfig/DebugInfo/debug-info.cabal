@@ -1,0 +1,7 @@
+cabal-version: 3.0
+name: debug-info
+version: 0
+build-type: Simple
+
+library
+  default-language: Haskell2010
