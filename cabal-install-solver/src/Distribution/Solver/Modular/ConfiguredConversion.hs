@@ -38,12 +38,14 @@ convCP iidxs sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting $
                   InstSolverPackage {
+                    instSolverStage = stage,
                     instSolverPkgIPI = fromJust $ SI.lookupUnitId (getStage iidxs stage) pi,
                     instSolverPkgLibDeps = fmap fst ds',
                     instSolverPkgExeDeps = fmap snd ds'
                   }
     Right pi -> Configured $
                   SolverPackage {
+                      solverPkgStage = stage,
                       solverPkgSource = srcpkg,
                       solverPkgFlags = fa,
                       solverPkgStanzas = es,
