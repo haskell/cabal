@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Distribution.Solver.Types.ResolverPackage
     ( ResolverPackage(..)
+    , solverId
     , resolverPackageLibDeps
     , resolverPackageExeDeps
     ) where
@@ -34,6 +35,13 @@ instance Package (ResolverPackage loc) where
   packageId (PreExisting ipkg)     = packageId ipkg
   packageId (Configured  spkg)     = packageId spkg
 
+-- | The 'SolverId' (graph key) of a resolved package, carrying its build
+-- 'Stage' so that host and build copies of the same package remain distinct
+-- nodes.
+solverId :: ResolverPackage loc -> SolverId
+solverId (PreExisting ipkg) = PreExistingId (instSolverStage ipkg) (packageId ipkg) (installedUnitId ipkg)
+solverId (Configured spkg)  = PlannedId (solverPkgStage spkg) (packageId spkg)
+
 resolverPackageLibDeps :: ResolverPackage loc -> CD.ComponentDeps [SolverId]
 resolverPackageLibDeps (PreExisting ipkg) = instSolverPkgLibDeps ipkg
 resolverPackageLibDeps (Configured spkg) = solverPkgLibDeps spkg
@@ -44,8 +52,7 @@ resolverPackageExeDeps (Configured spkg) = solverPkgExeDeps spkg
 
 instance IsNode (ResolverPackage loc) where
   type Key (ResolverPackage loc) = SolverId
-  nodeKey (PreExisting ipkg) = PreExistingId (packageId ipkg) (installedUnitId ipkg)
-  nodeKey (Configured spkg) = PlannedId (packageId spkg)
+  nodeKey = solverId
   -- Use dependencies for ALL components
   nodeNeighbors pkg =
     ordNub $ fold (resolverPackageLibDeps pkg) ++

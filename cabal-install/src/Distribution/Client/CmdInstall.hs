@@ -86,6 +86,7 @@ import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Client.ProjectPlanning
   ( storePackageInstallDirs'
   )
+import Distribution.Client.ProjectPlanning.Stage (withoutStage)
 import Distribution.Client.ProjectPlanning.Types
   ( ElaboratedInstallPlan
   )
@@ -764,7 +765,7 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelector
         targetSelectors
 
     let
-      planMap = InstallPlan.toMap elaboratedPlan
+      planMap = Map.mapKeys withoutStage (InstallPlan.toMap elaboratedPlan)
 
       sdistize (SpecificSourcePackage spkg) =
         SpecificSourcePackage spkg'
