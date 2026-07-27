@@ -51,12 +51,16 @@ import qualified Data.Foldable1 as F1
 -- Cabal file
 -------------------------------------------------------------------------------
 
+-- | Store a line comment from field syntax files. @ann@ is usually instantiated as 'Position'.
 data Comment ann = Comment !ByteString !ann
   deriving (Show, Generic, Eq, Ord, Functor)
 
+-- | Hold a list of comments along side some annotation.
 data WithComments ann = WithComments
   { justComments :: ![Comment ann]
+  -- ^ Extract the comments.
   , unComments :: !ann
+  -- ^ Extract the annotation.
   }
   deriving (Show, Generic, Eq, Ord, Functor)
 
