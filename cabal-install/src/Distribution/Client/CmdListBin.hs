@@ -35,6 +35,7 @@ import Distribution.Client.NixStyleOptions
   )
 import Distribution.Client.ProjectOrchestration hiding (distDirLayout, targetsMap)
 import qualified Distribution.Client.ProjectOrchestration as Orchestration (distDirLayout, targetsMap)
+import Distribution.Client.ProjectPlanning.Stage (withoutStage)
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -144,7 +145,7 @@ listbinAction flags args globalFlags = do
 
     printPlan verbosity baseCtx buildCtx
 
-    binfiles <- case Map.lookup selectedUnitId $ IP.toMap (elaboratedPlanOriginal buildCtx) of
+    binfiles <- case Map.lookup selectedUnitId $ Map.mapKeys withoutStage $ IP.toMap (elaboratedPlanOriginal buildCtx) of
       Nothing -> dieWithException verbosity NoOrMultipleTargetsGiven
       Just gpp ->
         return $
