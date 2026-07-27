@@ -96,6 +96,7 @@ library
     Distribution.Fields
     Distribution.Fields.ConfVar
     Distribution.Fields.Field
+    Distribution.Fields.Field.Lens
     Distribution.Fields.Lexer
     Distribution.Fields.LexerMonad
     Distribution.Fields.ParseResult
