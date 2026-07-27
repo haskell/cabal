@@ -33,10 +33,12 @@ module Distribution.Fields.Parser
   ) where
 {- FOURMOLU_ENABLE -}
 
+import qualified Distribution.Compat.Lens as L
 import qualified Data.ByteString.Char8 as B8
 import Data.Functor.Identity
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field
+import qualified Distribution.Fields.Field.Lens as L
 import Distribution.Fields.Lexer
 import Distribution.Fields.LexerMonad
   ( LexResult (..)
@@ -279,8 +281,8 @@ prependCommentsFields cs fs = case fs of
 -- | We attach the comments to the name (foremost child) of 'Field', this hence cannot fail.
 prependCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 prependCommentsField cs f = case f of
-  (Field name fls) -> Field (mapComments (cs ++) <$> name) fls
-  (Section name args fs) -> Section (mapComments (cs ++) <$> name) args fs
+  (Field name fls) -> Field (L.over (traverse . L.justComments) (cs ++) name) fls
+  (Section name args fs) -> Section (L.over (traverse . L.justComments) (cs ++) name) args fs
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 appendCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
@@ -292,17 +294,17 @@ appendCommentsFields cs fs = case fs of
 appendCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 appendCommentsField cs f = case f of
   (Field name fls) -> case appendCommentsFieldLines cs fls of
-    Nothing -> Field (mapComments (++ cs) <$> name) []
+    Nothing -> Field (L.over (traverse . L.justComments) (++ cs) name) []
     Just fls' -> Field name fls'
   (Section name args fs) -> case appendCommentsFields cs fs of
-    Nothing -> Section (mapComments (++ cs) <$> name) args []
+    Nothing -> Section (L.over (traverse . L.justComments) (++ cs) name) args []
     Just fs' -> Section name args fs'
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 appendCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> Maybe [FieldLine (WithComments ann)]
 appendCommentsFieldLines cs fls = case fls of
   [] -> Nothing
-  [fl] -> Just [mapComments (++ cs) <$> fl]
+  [fl] -> Just [L.over (traverse . L.justComments) (++ cs) fl]
   (f : fls') -> (f :) <$> appendCommentsFieldLines cs fls'
 
 -- Elements that live at the top level or inside a section, i.e. fields
