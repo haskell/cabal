@@ -23,7 +23,6 @@ data Position
 
 instance Binary Position
 instance NFData Position
-instance Structured Position
 
 -- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position
