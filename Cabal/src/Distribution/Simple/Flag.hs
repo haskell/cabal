@@ -125,12 +125,12 @@ instance BooleanFlag Bool where
 
 -- | Flag is a Monoid, with 'NoFlag' as the identity element, and 'Flag' as the binary operation.
 --
--- @since 3.18.0.0
+-- @since 3.20.0.0
 class NoFlagValue a where
   noFlagValue :: a
 
 -- | Extracts a value from a 'Flag', and returns the 'noFlagValue' on 'NoFlag'.
 --
--- @since 3.18.0.0
+-- @since 3.20.0.0
 fromNoFlag :: NoFlagValue a => Flag a -> a
 fromNoFlag = fromFlagOrDefault noFlagValue

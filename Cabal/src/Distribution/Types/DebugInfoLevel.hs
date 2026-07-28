@@ -17,12 +17,6 @@ import Prelude ()
 import Data.Bool (bool)
 import Distribution.Simple.Flag (NoFlagValue (..))
 
--- ------------------------------------------------------------
-
--- * Debug info levels
-
--- ------------------------------------------------------------
-
 -- | Some compilers support emitting debug info. Some have different
 -- levels.  For compilers that do not the level is just capped to the
 -- level they do support.
