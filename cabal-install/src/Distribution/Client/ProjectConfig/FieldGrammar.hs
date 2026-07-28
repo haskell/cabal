@@ -17,7 +17,7 @@ import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
 import Distribution.Client.Utils.Parsec
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Compat.Newtype (Newtype)
+import Distribution.Compat.Lens (Lens')
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
 import Distribution.Parsec (CabalParsing, Parsec (..), parsecHaskellString)
@@ -32,8 +32,8 @@ import qualified Text.PrettyPrint as PP
 
 projectConfigFieldGrammar :: ProjectConfigPath -> [String] -> ParsecFieldGrammar' ProjectConfig
 projectConfigFieldGrammar source knownPrograms = do
-  projectPackages <- monoidalFieldAla "packages" (alaList' FSep PackageLocationToken) L.projectPackages
-  projectPackagesOptional <- monoidalFieldAla "optional-packages" (alaList' FSep PackageLocationToken) L.projectPackagesOptional
+  projectPackages <- getPackageLocationTokens <$> monoidalField "packages" ignoredLens
+  projectPackagesOptional <- getPackageLocationTokens <$> monoidalField "optional-packages" ignoredLens
   let projectPackagesRepo = mempty
   projectPackagesNamed <- monoidalFieldAla "extra-packages" formatPackageVersionConstraints L.projectPackagesNamed
   projectConfigBuildOnly <- blurFieldGrammar L.projectConfigBuildOnly projectConfigBuildOnlyFieldGrammar
@@ -44,15 +44,22 @@ projectConfigFieldGrammar source knownPrograms = do
   projectConfigLocalPackages <- blurFieldGrammar L.projectConfigLocalPackages (packageConfigFieldGrammar knownPrograms)
   pure ProjectConfig{..}
 
-newtype PackageLocationToken = PackageLocationToken {getPackageLocationToken :: String}
+newtype PackageLocationTokens = PackageLocationTokens {getPackageLocationTokens :: [String]}
 
-instance Newtype String PackageLocationToken
+instance Semigroup PackageLocationTokens where
+  PackageLocationTokens a <> PackageLocationTokens b = PackageLocationTokens (a <> b)
 
-instance Parsec PackageLocationToken where
-  parsec = PackageLocationToken <$> parsePackageLocationTokenQ
+instance Monoid PackageLocationTokens where
+  mempty = PackageLocationTokens mempty
 
-instance Pretty PackageLocationToken where
-  pretty = PP.text . renderPackageLocationToken . getPackageLocationToken
+instance Parsec PackageLocationTokens where
+  parsec = PackageLocationTokens <$> parseSep (Proxy :: Proxy FSep) parsePackageLocationTokenQ
+
+instance Pretty PackageLocationTokens where
+  pretty = prettySep (Proxy :: Proxy FSep) . map (PP.text . renderPackageLocationToken) . getPackageLocationTokens
+
+ignoredLens :: Lens' ProjectConfig PackageLocationTokens
+ignoredLens f s = s <$ f mempty
 
 -- | This matches legacy parsing for @packages@ and @optional-packages@:
 -- supports quoted strings, and for unquoted tokens allows commas only inside
