@@ -72,6 +72,7 @@ parserTests =
   testGroup
     "project files parsec tests"
     [ testCase "read packages" testPackages
+    , testCase "read packages glob" testPackagesGlob
     , testCase "read optional-packages" testOptionalPackages
     , testCase "read extra-packages" testExtraPackages
     , testCase "read source-repository-package" testSourceRepoList
@@ -99,6 +100,12 @@ testPackages :: Assertion
 testPackages = do
   let expected = [".", "packages/packages.cabal"]
   (config, legacy) <- readConfigDefault "packages"
+  assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
+
+testPackagesGlob :: Assertion
+testPackagesGlob = do
+  let expected = ["*/*.cabal", "../{foo,bar}/"]
+  (config, legacy) <- readConfig "packages" "cabal.glob.project"
   assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
 
 testOptionalPackages :: Assertion
