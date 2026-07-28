@@ -1,32 +1,39 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | This module provides @newtype@ wrappers to be used with "Distribution.FieldGrammar".
 module Distribution.FieldGrammar.Newtypes
-  ( -- * List
-    alaList
+  ( -- * Types
+    List
+  , Set'
+  , NonEmpty'
+
+    -- * List
+    -- $alaList
+    -- $alaListFSepTokenDoctest
+    -- $alaListFSepTokenDoctestBroken
+  , alaList
   , alaList'
 
-    -- ** Modifiers
+    -- * Set
+    -- $alaSet
+    -- $alaSetFSepTokenDoctest
+    -- $alaSetFSepTokenDoctestBroken
+  , alaSet
+  , alaSet'
+
+    -- * NonEmpty
+  , alaNonEmpty
+  , alaNonEmpty'
+
+    -- * Modifiers
   , CommaVCat (..)
   , CommaFSep (..)
   , VCat (..)
   , FSep (..)
   , NoCommaFSep (..)
   , Sep (..)
-
-    -- ** Type
-  , List
-
-    -- ** Set
-  , alaSet
-  , alaSet'
-  , Set'
-
-    -- ** NonEmpty
-  , alaNonEmpty
-  , alaNonEmpty'
-  , NonEmpty'
 
     -- * Version & License
   , SpecVersion (..)
@@ -72,10 +79,10 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 
--- | Vertical list with commas. Displayed with 'vcat'
+-- | Vertical list with commas. Displayed with 'vcat'.
 data CommaVCat = CommaVCat
 
--- | Paragraph fill list with commas. Displayed with 'fsep'
+-- | Paragraph fill list with commas. Displayed with 'fsep'.
 data CommaFSep = CommaFSep
 
 -- | Vertical list with optional commas. Displayed with 'vcat'.
@@ -130,14 +137,6 @@ instance Sep NoCommaFSep where
 -- type @a@ are parsed and pretty-printed as @b@.
 newtype List sep b a = List {_getList :: [a]}
 
--- | 'alaList' and 'alaList'' are simply 'List', with additional phantom
--- arguments to constrain the resulting type
---
--- >>> :t alaList VCat
--- alaList VCat :: [a] -> List VCat (Identity a) a
---
--- >>> :t alaList' FSep Token
--- alaList' FSep Token :: [String] -> List FSep Token String
 alaList :: sep -> [a] -> List sep (Identity a) a
 alaList _ = List
 
@@ -153,26 +152,12 @@ instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
 
---
-
 -- | Like 'List', but for 'Set'.
 --
 -- @since 3.2.0.0
 newtype Set' sep b a = Set' {_getSet :: Set a}
 
--- | 'alaSet' and 'alaSet'' are simply 'Set'' constructor, with additional phantom
--- arguments to constrain the resulting type
---
--- >>> :t alaSet VCat
--- alaSet VCat :: Set a -> Set' VCat (Identity a) a
---
--- >>> :t alaSet' FSep Token
--- alaSet' FSep Token :: Set String -> Set' FSep Token String
---
--- >>> unpack' (alaSet' FSep Token) <$> eitherParsec "foo bar foo"
--- Right (fromList ["bar","foo"])
---
--- @since 3.2.0.0
+-- | @since 3.2.0.0
 alaSet :: sep -> Set a -> Set' sep (Identity a) a
 alaSet _ = Set'
 
@@ -190,15 +175,13 @@ instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (Set' sep b a) where
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (Set' sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . Set.toList . unpack
 
---
-
 -- | Like 'List', but for 'NonEmpty'.
 --
 -- @since 3.2.0.0
 newtype NonEmpty' sep b a = NonEmpty' {_getNonEmpty :: NonEmpty a}
 
--- | 'alaNonEmpty' and 'alaNonEmpty'' are simply 'NonEmpty'' constructor, with additional phantom
--- arguments to constrain the resulting type
+-- | 'alaNonEmpty' and 'alaNonEmpty'' are simply 'NonEmpty'' constructor, with
+-- additional phantom arguments to constrain the resulting type.
 --
 -- >>> :t alaNonEmpty VCat
 -- alaNonEmpty VCat :: NonEmpty a -> NonEmpty' VCat (Identity a) a
@@ -228,7 +211,7 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (NonEmpty' sep b a) where
 -- Identifiers
 -------------------------------------------------------------------------------
 
--- | Haskell string or @[^ ,]+@
+-- | Haskell string or @[^ ,]+@.
 newtype Token = Token {getToken :: String}
 
 instance Newtype String Token
@@ -239,7 +222,7 @@ instance Parsec Token where
 instance Pretty Token where
   pretty = showToken . unpack
 
--- | Haskell string or @[^ ]+@
+-- | Haskell string or @[^ ]+@.
 newtype Token' = Token' {getToken' :: String}
 
 instance Newtype String Token'
@@ -292,9 +275,10 @@ instance Parsec (SymbolicPathNT from to) where
 instance Pretty (SymbolicPathNT from to) where
   pretty = showFilePath . getSymbolicPath . getSymbolicPathNT
 
--- | Newtype for 'RelativePath', with a different 'Parsec' instance
--- to disallow empty paths but allow non-relative paths (which get rejected
--- later with a different error message, see 'Distribution.PackageDescription.Check.Paths.checkPath')
+-- | Newtype for 'RelativePath', with a different 'Parsec' instance to disallow
+-- empty paths but allow non-relative paths (which get rejected later with a
+-- different error message, see
+-- 'Distribution.PackageDescription.Check.Paths.checkPath').
 newtype RelativePathNT from to = RelativePathNT {getRelativePathNT :: RelativePath from to}
 
 instance Newtype (RelativePath from to) (RelativePathNT from to)
@@ -315,14 +299,17 @@ instance Pretty (RelativePathNT from to) where
 -- SpecVersion
 -------------------------------------------------------------------------------
 
--- | Version range or just version, i.e. @cabal-version@ field.
+-- | An exact version of the Cabal specification as a value of the
+-- @cabal-version@ field. Earlier Cabal specifications allowed a version range
+-- here. For more details, see the
+-- [cabal-version](https://cabal.readthedocs.io/en/latest/cabal-package-description-file.html#pkg-field-cabal-version)
+-- section of the Cabal User Guide and
+-- [issue #4899](https://github.com/haskell/cabal/issues/4899).
 --
--- There are few things to consider:
+-- For @cabal-version: v@:
 --
--- * Starting with 2.2 the cabal-version field should be the first field in the
---   file and only exact version is accepted. Therefore if we get e.g.
---   @>= 2.2@, we fail.
---   See <https://github.com/haskell/cabal/issues/4899>
+--  * the @cabal-version@ field should be the first field in the file,
+--  * only an exact version is accepted for @v@.
 --
 -- We have this newtype, as writing Parsec and Pretty instances
 -- for CabalSpecVersion would cause cycle in modules:
@@ -411,7 +398,7 @@ instance Pretty SpecVersion where
 -- SpecLicense
 -------------------------------------------------------------------------------
 
--- | SPDX License expression or legacy license
+-- | SPDX License expression or legacy license.
 newtype SpecLicense = SpecLicense {getSpecLicense :: Either SPDX.License License}
   deriving (Show, Eq)
 
@@ -431,7 +418,7 @@ instance Pretty SpecLicense where
 -- TestedWith
 -------------------------------------------------------------------------------
 
--- | Version range or just version
+-- | Version range or just version.
 newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)}
 
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
@@ -448,3 +435,41 @@ parsecTestedWith = do
   name <- lexemeParsec
   ver <- parsec <|> pure anyVersion
   return (name, ver)
+
+-- $alaSet
+-- 'alaSet' and 'alaSet'' are simply 'Set'' constructor, with additional phantom
+-- arguments to constrain the resulting type.
+
+-- $alaSetFSepTokenDoctest
+-- >>> :t alaSet VCat
+-- alaSet VCat :: Set a -> Set' VCat (Identity a) a
+--
+-- >>> unpack' (alaSet' FSep Token) <$> eitherParsec "foo bar foo"
+-- Right (fromList ["bar","foo"])
+
+-- $alaList
+-- 'alaList' and 'alaList'' are simply 'List', with additional phantom arguments
+-- to constrain the resulting type.
+
+-- $alaListFSepTokenDoctest
+-- >>> :t alaList VCat
+-- alaList VCat :: [a] -> List VCat (Identity a) a
+
+-- TODO: Find out why GHCi stops using the String type alias.
+#if MIN_VERSION_base(4,22,0)
+-- $alaListFSepTokenDoctestBroken
+-- >>> :t alaList' FSep Token
+-- alaList' FSep Token :: [[Char]] -> List FSep Token [Char]
+
+-- $alaSetFSepTokenDoctestBroken
+-- >>> :t alaSet' FSep Token
+-- alaSet' FSep Token :: Set [Char] -> Set' FSep Token [Char]
+#else
+-- $alaListFSepTokenDoctestBroken
+-- >>> :t alaList' FSep Token
+-- alaList' FSep Token :: [String] -> List FSep Token String
+
+-- $alaSetFSepTokenDoctestBroken
+-- >>> :t alaSet' FSep Token
+-- alaSet' FSep Token :: Set String -> Set' FSep Token String
+#endif
