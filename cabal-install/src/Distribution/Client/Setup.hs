@@ -316,6 +316,8 @@ globalCommand commands =
               , "new-clean"
               , "new-sdist"
               , "new-haddock-project"
+              , "new-gen-bounds"
+              , "new-outdated"
               , "list-bin"
               , -- v1 commands, stateful style
                 "v1-build"
@@ -335,6 +337,7 @@ globalCommand commands =
               , "v1-copy"
               , "v1-register"
               , "v1-reconfigure"
+              , "v1-gen-bounds"
               , -- v2 commands, nix-style
                 "v2-target"
               , "v2-build"
@@ -351,6 +354,8 @@ globalCommand commands =
               , "v2-install"
               , "v2-clean"
               , "v2-sdist"
+              , "v2-gen-bounds"
+              , "v2-outdated"
               ]
           maxlen = maximum $ [length name | (name, _) <- cmdDescs]
           align str = str ++ replicate (maxlen - length str) ' '
@@ -424,6 +429,8 @@ globalCommand commands =
                 , addCmd "v2-install"
                 , addCmd "v2-clean"
                 , addCmd "v2-sdist"
+                , addCmd "v2-outdated"
+                , addCmd "v2-gen-bounds"
                 , par
                 , startGroup "legacy command aliases"
                 , addCmd "v1-build"
@@ -439,6 +446,7 @@ globalCommand commands =
                 , addCmd "v1-copy"
                 , addCmd "v1-register"
                 , addCmd "v1-reconfigure"
+                , addCmd "v1-gen-bounds"
                 ]
                   ++ if null otherCmds
                     then []
