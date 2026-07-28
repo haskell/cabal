@@ -1267,6 +1267,13 @@ showLegacyProjectConfig config =
     -- but requires re-work of how we annotate provenance.
     constraintSrc = ConstraintSourceProjectConfig nullProjectConfigPath
 
+-- |
+--
+-- :{
+-- fields <- readFields "packages: foo"
+-- parseFieldsAndSections (legacyProjectConfigFieldDescrs ConstraintSourceUnknown fields) mempty
+-- :}
+--
 legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs constraintSrc =
   [ newLineListField
