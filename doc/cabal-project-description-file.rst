@@ -323,8 +323,8 @@ The :ref:`VCS fields<vcs-fields>` of ``source-repository-package`` are:
 
     Run command in the checked out repository, prior sdisting.
 
-Global configuration options
-----------------------------
+Global options
+--------------
 
 The following top-level configuration options are not specific to any
 package, and thus apply globally.
@@ -571,8 +571,8 @@ Environment options
     The command line variant of this flag is ``--package-db=DB`` which can be
     specified multiple times.
 
-Solver configuration options
-----------------------------
+Solver options
+--------------
 
 The following settings control the behavior of the dependency solver:
 
@@ -1006,8 +1006,8 @@ Install options
 
     The command line variant of this field is ``--lib``.
 
-Package configuration options
------------------------------
+Package options
+---------------
 
 Package options affect the building of specific packages. There are three
 ways a package option can be specified:
@@ -1943,8 +1943,8 @@ built. On the other hand, the following snippet:
 
 will apply ``-Werror`` to all packages, local and remote.
 
-Advanced global configuration options
--------------------------------------
+Advanced global options
+-----------------------
 
 .. cfg-section:: None
 
