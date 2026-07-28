@@ -16,19 +16,24 @@ import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGram
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
 import Distribution.Client.Utils.Parsec
+import qualified Distribution.Compat.CharParsing as P
+import Distribution.Compat.Newtype (Newtype)
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
+import Distribution.Parsec (CabalParsing, Parsec (..), parsecHaskellString)
+import Distribution.Pretty (Pretty (..))
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Solver.Types.Settings (PreferVersion (..))
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
+import qualified Text.PrettyPrint as PP
 
 projectConfigFieldGrammar :: ProjectConfigPath -> [String] -> ParsecFieldGrammar' ProjectConfig
 projectConfigFieldGrammar source knownPrograms = do
-  projectPackages <- monoidalFieldAla "packages" (alaList' FSep Token) L.projectPackages
-  projectPackagesOptional <- monoidalFieldAla "optional-packages" (alaList' FSep Token) L.projectPackagesOptional
+  projectPackages <- monoidalFieldAla "packages" (alaList' FSep PackageLocationToken) L.projectPackages
+  projectPackagesOptional <- monoidalFieldAla "optional-packages" (alaList' FSep PackageLocationToken) L.projectPackagesOptional
   let projectPackagesRepo = mempty
   projectPackagesNamed <- monoidalFieldAla "extra-packages" formatPackageVersionConstraints L.projectPackagesNamed
   projectConfigBuildOnly <- blurFieldGrammar L.projectConfigBuildOnly projectConfigBuildOnlyFieldGrammar
@@ -38,6 +43,50 @@ projectConfigFieldGrammar source knownPrograms = do
       projectConfigSpecificPackage = mempty
   projectConfigLocalPackages <- blurFieldGrammar L.projectConfigLocalPackages (packageConfigFieldGrammar knownPrograms)
   pure ProjectConfig{..}
+
+newtype PackageLocationToken = PackageLocationToken {getPackageLocationToken :: String}
+
+instance Newtype String PackageLocationToken
+
+instance Parsec PackageLocationToken where
+  parsec = PackageLocationToken <$> parsePackageLocationTokenQ
+
+instance Pretty PackageLocationToken where
+  pretty = PP.text . renderPackageLocationToken . getPackageLocationToken
+
+-- | This matches legacy parsing for @packages@ and @optional-packages@:
+-- supports quoted strings, and for unquoted tokens allows commas only inside
+-- balanced braces (e.g. ../{foo,bar}/).
+parsePackageLocationTokenQ :: CabalParsing m => m String
+parsePackageLocationTokenQ = parsecHaskellString <|> parsePackageLocationToken
+  where
+    parsePackageLocationToken = concat <$> some outerTerm
+    outerTerm = outerToken <|> braces innerTerm
+    innerTerm = concat <$> many (innerToken <|> braces innerTerm)
+    outerToken = P.munch1 outerChar
+    innerToken = P.munch1 innerChar
+    outerChar c = not (isSpace c || c == '{' || c == '}' || c == ',')
+    innerChar c = not (isSpace c || c == '{' || c == '}')
+    braces p = ("{" <>) . (<> "}") <$> P.between (P.char '{') (P.char '}') p
+
+renderPackageLocationToken :: String -> String
+renderPackageLocationToken s
+  | needsQuoting = show s
+  | otherwise = s
+  where
+    needsQuoting =
+      not (ok 0 s)
+        || s == "." -- . on its own on a line has special meaning
+        || take 2 s == "--" -- on its own line is comment syntax
+    ok :: Int -> String -> Bool
+    ok n [] = n == 0
+    ok _ ('"' : _) = False
+    ok n ('{' : cs) = ok (n + 1) cs
+    ok n ('}' : cs) = ok (n - 1) cs
+    ok n (',' : cs) = (n > 0) && ok n cs
+    ok _ (c : _)
+      | isSpace c = False
+    ok n (_ : cs) = ok n cs
 
 formatPackageVersionConstraints :: [PackageVersionConstraint] -> List CommaVCat (Identity PackageVersionConstraint) PackageVersionConstraint
 formatPackageVersionConstraints = alaList CommaVCat
