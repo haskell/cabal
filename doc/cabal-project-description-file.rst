@@ -323,12 +323,14 @@ The :ref:`VCS fields<vcs-fields>` of ``source-repository-package`` are:
 
     Run command in the checked out repository, prior sdisting.
 
-Global configuration options
-----------------------------
+Global options
+--------------
 
 The following top-level configuration options are not specific to any
-package, and thus apply globally:
+package, and thus apply globally.
 
+Verbosity options
+^^^^^^^^^^^^^^^^^
 
 .. cfg-field:: verbose: nat
                -v[n], --verbose[=n]
@@ -341,6 +343,18 @@ package, and thus apply globally:
 
     The command line variant of this field is ``--verbose=2``; a short
     form ``-v2`` is also supported.
+
+.. cfg-field:: build-timings: boolean
+               --build-timings
+
+    Log timing information to stdout, in the following format::
+
+        [build-timings] configure aeson-2.2.3.0 0.042s
+        [build-timings] build     aeson-2.2.3.0 3.284s
+        [build-timings] install   aeson-2.2.3.0 0.123s
+
+Job and concurrency options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. cfg-field:: jobs: nat or $ncpus
                -j[NUM], --jobs[=NUM], --jobs=$ncpus
@@ -384,15 +398,8 @@ package, and thus apply globally:
 
     The command line variant of this field is ``--keep-going``.
 
-.. option:: --builddir=DIR
-
-    Specifies the name of the directory where build products for
-    build will be stored; defaults to ``dist-newstyle``.  If a
-    relative name is specified, this directory is resolved relative
-    to the root of the project (i.e., where the ``cabal.project``
-    file lives.)
-
-    This option can only be specified from the command line.
+Project options
+^^^^^^^^^^^^^^^
 
 .. _cmdoption-project-dir:
 .. option:: --project-dir=DIR
@@ -447,7 +454,35 @@ package, and thus apply globally:
     this flag will be ignored if either of the ``--project-dir`` or
     ``--project-file`` flags are also set.
 
-.. option:: --store-dir=DIR
+Environment options
+-------------------
+
+.. cfg-field:: offline: boolean
+               --offline
+               --no-offline
+    :synopsis: Disable package downloads from the network.
+
+    :default: ``False``
+
+    If ``True``, Cabal refuses to download packages from remote repositories.
+
+    The command line variant of this field is ``--offline``.
+
+.. cfg-field:: package-env: environment name or filepath
+               --package-env=ENV
+               --env=ENV
+    :synopsis: Package environment file to create or modify.
+
+    :default: unset
+
+    Set the package environment file that may be modified by
+    ``cabal install --lib``.
+
+    The command line variants of this field are ``--package-env=ENV`` and
+    ``--env=ENV``.
+
+.. cfg-field:: store-dir: filepath
+               --store-dir=DIR
 
     Specifies the name of the directory of the global package store.
 
@@ -511,16 +546,8 @@ package, and thus apply globally:
     The command line variant of this flag is ``--package-db=DB`` which can be
     specified multiple times.
 
-.. option:: --build-timings
-
-    Log timing information to stdout, in the following format::
-
-        [build-timings] configure aeson-2.2.3.0 0.042s
-        [build-timings] build     aeson-2.2.3.0 3.284s
-        [build-timings] install   aeson-2.2.3.0 0.123s
-
-Solver configuration options
-----------------------------
+Solver options
+--------------
 
 The following settings control the behavior of the dependency solver:
 
@@ -808,8 +835,154 @@ The following settings control the behavior of the dependency solver:
 
 .. _package-configuration-options:
 
-Package configuration options
------------------------------
+Build options
+-------------
+
+.. cfg-field:: builddir: directory
+               --builddir=DIR
+
+    Specifies the name of the directory where build products for
+    build will be stored; defaults to ``dist-newstyle``.  If a
+    relative name is specified, this directory is resolved relative
+    to the root of the project (i.e., where the ``cabal.project``
+    file lives.)
+
+    This option can only be specified from the command line.
+
+.. cfg-field:: build-info: boolean
+               --enable-build-info
+               --disable-build-info
+    :synopsis: Whether build information for each individual component should be
+               written in a machine readable format.
+
+    :default: ``False``
+
+    Enable generation of build information for Cabal components. Contains very
+    detailed information on how to build an individual component, such as
+    compiler version, modules of a component and how to compile the component.
+
+    The output format is in JSON, and the exact location can be discovered from
+    ``plan.json``, where it is identified by ``build-info`` within the items in
+    the ``install-plan``.
+    Note, that this field in ``plan.json`` can be ``null``, if and only if
+    ``build-type: Custom`` is set, and the ``Cabal`` version is too
+    old (i.e. ``< 3.7``).
+    If the field is missing entirely, the component is not a local one, thus,
+    no ``build-info`` exists for that particular component within the
+    ``install-plan``.
+
+    .. note::
+        The format and fields of the generated build information is currently experimental,
+        in the future we might add or remove fields, depending on the needs of other tooling.
+
+.. cfg-field:: logs-dir: directory
+               --logs-dir=DIR
+    :synopsis: Directory to store build logs.
+
+    :default: ``~/.cabal/logs``
+
+    :strike:`The location where build logs for packages are stored.`
+    Not implemented yet.
+
+    The command line variant of this flag is ``--logs-dir=DIR``.
+
+.. cfg-field:: build-summary: template filepath
+               --build-summary=TEMPLATE
+    :synopsis: Build summaries location.
+
+    :default: ``~/.cabal/logs/build.log``
+
+    :strike:`The file to save build summaries.` Not implemented yet.
+
+    Valid variables which can be used in the path are ``$pkgid``,
+    ``$compiler``, ``$os`` and ``$arch``.
+
+    The command line variant of this flag is
+    ``--build-summary=TEMPLATE``.
+
+.. cfg-field:: build-log: template filepath
+               --build-log=TEMPLATE
+    :synopsis: Build log location template.
+
+    :default: unset
+
+    Log all builds to file. Valid variables which can be used in the path are
+    ``$pkgid``, ``$compiler``, ``$os`` and ``$arch``.
+
+    The command line variant of this flag is ``--build-log=TEMPLATE``.
+
+.. cfg-field:: remote-build-reporting: none, anonymous, or detailed
+               --remote-build-reporting=LEVEL
+    :synopsis: Build report level for remote reporting.
+
+    :default: ``none``
+
+    Generate build reports to send to a remote server.
+
+    The command line variant of this flag is
+    ``--remote-build-reporting=LEVEL``.
+
+Install options
+---------------
+
+.. cfg-field:: overwrite-policy: always, never, or prompt
+               --overwrite-policy=POLICY
+    :synopsis: How to handle existing executable links.
+
+    :default: ``never``
+
+    Controls what ``cabal install`` does when an executable already exists in
+    the target installation directory.
+
+    The command line variant of this field is
+    ``--overwrite-policy=POLICY``.
+
+.. cfg-field:: install-method: copy or symlink
+               --install-method=METHOD
+    :synopsis: How to install executables.
+
+    :default: platform dependent
+
+    Controls whether executables are installed by copying or by creating
+    symlinks.
+
+    The command line variant of this field is ``--install-method=METHOD``.
+
+.. cfg-field:: installdir: directory
+               --installdir=DIR
+    :synopsis: Target directory for installed executables.
+
+    :default: platform dependent
+
+    Where ``cabal install`` places installed executables (by symlinking or
+    copying, depending on :cfg-field:`install-method`).
+
+    The command line variant of this field is ``--installdir=DIR``.
+
+.. cfg-field:: symlink-bindir: directory
+               --symlink-bindir=DIR
+    :synopsis: Add symlinks to installed executables into this directory.
+
+    :default: unset
+
+    This is a legacy option. Prefer :cfg-field:`installdir` for current
+    ``cabal install`` workflows.
+
+    The command line variant of this field is ``--symlink-bindir=DIR``.
+
+.. cfg-field:: lib: boolean
+               --lib
+    :synopsis: Install libraries instead of executables.
+
+    :default: ``False``
+
+    For ``cabal install``, install libraries from target packages (rather than
+    executable components).
+
+    The command line variant of this field is ``--lib``.
+
+Package options
+---------------
 
 Package options affect the building of specific packages. There are three
 ways a package option can be specified:
@@ -1745,8 +1918,8 @@ built. On the other hand, the following snippet:
 
 will apply ``-Werror`` to all packages, local and remote.
 
-Advanced global configuration options
--------------------------------------
+Advanced global options
+-----------------------
 
 .. cfg-section:: None
 
@@ -1765,32 +1938,6 @@ Advanced global configuration options
     <https://gitlab.haskell.org/ghc/ghc/-/issues/13753>`_ that supports
     the ``-package-env -`` option that allows ignoring the package
     environment files).
-
-.. cfg-field:: build-info: True, False
-               --enable-build-info
-               --disable-build-info
-    :synopsis: Whether build information for each individual component should be
-               written in a machine readable format.
-
-    :default: ``False``
-
-    Enable generation of build information for Cabal components. Contains very
-    detailed information on how to build an individual component, such as
-    compiler version, modules of a component and how to compile the component.
-
-    The output format is in json, and the exact location can be discovered from
-    ``plan.json``, where it is identified by ``build-info`` within the items in
-    the ``install-plan``.
-    Note, that this field in ``plan.json`` can be ``null``, if and only if
-    ``build-type: Custom`` is set, and the ``Cabal`` version is too
-    old (i.e. ``< 3.7``).
-    If the field is missing entirely, the component is not a local one, thus,
-    no ``build-info`` exists for that particular component within the
-    ``install-plan``.
-
-    .. note::
-        The format and fields of the generated build information is currently experimental,
-        in the future we might add or remove fields, depending on the needs of other tooling.
 
 .. _cmdoption-http-transport:
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
@@ -1836,34 +1983,6 @@ Advanced global configuration options
 
     The command line variant of this flag is
     ``--remote-repo-cache=DIR``.
-
-.. cfg-field:: logs-dir: directory
-               --logs-dir=DIR
-    :synopsis: Directory to store build logs.
-
-    :default: ``~/.cabal/logs``
-
-    :strike:`The location where build logs for packages are stored.`
-    Not implemented yet.
-
-    The command line variant of this flag is ``--logs-dir=DIR``.
-
-.. cfg-field:: build-summary: template filepath
-               --build-summary=TEMPLATE
-    :synopsis: Build summaries location.
-
-    :default: ``~/.cabal/logs/build.log``
-
-    :strike:`The file to save build summaries.` Not implemented yet.
-
-    Valid variables which can be used in the path are ``$pkgid``,
-    ``$compiler``, ``$os`` and ``$arch``.
-
-    The command line variant of this flag is
-    ``--build-summary=TEMPLATE``.
-
-Undocumented fields: ``root-cmd``, ``symlink-bindir``, ``build-log``,
-``remote-build-reporting``, ``report-planning-failure``, ``offline``.
 
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -2025,5 +2144,19 @@ Most users generally won't need these.
 
     The primary use case of picking the oldest package is to help users in
     establishing lower bounds of upstream dependencies.
+
+Specialised logging options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. cfg-field:: report-planning-failure: boolean
+               --report-planning-failure
+    :synopsis: Report dependency solving failures.
+
+    :default: ``False``
+
+    Generate build reports when the dependency solver fails. This is used by
+    the Hackage build bot.
+
+    The command line variant of this field is ``--report-planning-failure``.
 
 .. include:: references.inc
