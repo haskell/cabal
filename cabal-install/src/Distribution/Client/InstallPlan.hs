@@ -314,10 +314,14 @@ instance
       , planIndepGoals = indepGoals
       } = put graph >> put indepGoals
 
+  -- Reconstruct the plan directly rather than routing through 'mkInstallPlan':
+  -- the bytes were serialised from a valid plan, so re-running the invariant
+  -- check on decode is redundant (and would 'error' rather than fail the
+  -- decode). This keeps 'get' the inverse of 'put'.
   get = do
     graph <- get
     indepGoals <- get
-    return $! mkInstallPlan "(instance Binary)" graph indepGoals
+    pure $! GenericInstallPlan graph indepGoals
 
 data ShowPlanNode = ShowPlanNode
   { showPlanHerald :: Doc
