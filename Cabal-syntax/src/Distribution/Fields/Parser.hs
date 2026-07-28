@@ -258,9 +258,7 @@ cabalStyleFile = do
     Right es' -> pure es'
 
 -- | Collect in annotation one or more comments after a parser succeeds
--- Careful with the 'Functor' instance!
--- If you use this with Field you might attach the same comments everywhere
-commentsAfter :: Functor f => Parser (f Position) -> Parser (f (WithComments Position))
+commentsAfter :: Parser (FieldLine Position) -> Parser (FieldLine (WithComments Position))
 commentsAfter p = do
   x <- p
   postCmts <- many tokComment
