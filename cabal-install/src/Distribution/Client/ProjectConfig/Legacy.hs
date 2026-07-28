@@ -1240,6 +1240,13 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
 
 parseLegacyProjectConfigFields :: ProjectConfigPath -> [ParseUtils.Field] -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfigFields (ConstraintSourceProjectConfig -> constraintSrc) =
+  parseLegacyProjectConfigFieldsWithConstraintSource constraintSrc
+
+parseLegacyProjectConfigFieldsWithConstraintSource
+  :: ConstraintSource
+  -> [ParseUtils.Field]
+  -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfigFieldsWithConstraintSource constraintSrc =
   parseFieldsAndSections
     (legacyProjectConfigFieldDescrs constraintSrc)
     legacyPackageConfigSectionDescrs
@@ -1266,12 +1273,14 @@ showLegacyProjectConfig config =
     constraintSrc = ConstraintSourceProjectConfig nullProjectConfigPath
 
 -- |
+-- >>> parseLegacyPackages "foo"
+-- ParseOk [] ["foo"]
 --
--- :{
--- fields <- readFields "packages: foo"
--- parseFieldsAndSections (legacyProjectConfigFieldDescrs ConstraintSourceUnknown fields) mempty
--- :}
+-- >>> parseLegacyPackages "xL{4,IE-,eK<}fE?e"
+-- ParseOk [] ["xL{4,IE-,eK<}fE?e"]
 --
+-- >>> parseLegacyPackages "7{u,{h,{=n}}}"
+-- ParseOk [] ["7{u,{h,{=n}}}"]
 legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs constraintSrc =
   [ newLineListField
@@ -2060,3 +2069,11 @@ showTokenQ "" = Disp.empty
 showTokenQ x@('-' : '-' : _) = Disp.text (show x)
 showTokenQ x@['.'] = Disp.text (show x)
 showTokenQ x = showToken x
+
+-- $setup
+-- >>> :{
+-- parseLegacyPackages s = legacyPackages <$>
+--   parseLegacyProjectConfigFieldsWithConstraintSource
+--     ConstraintSourceUnknown
+--     [ParseUtils.F 1 "packages" s]
+-- :}
