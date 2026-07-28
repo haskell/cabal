@@ -13,6 +13,7 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGrammar)
+import Distribution.Client.ProjectConfig.Legacy (renderPackageLocationToken)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
 import Distribution.Client.Utils.Parsec
@@ -75,25 +76,6 @@ parsePackageLocationTokenQ = parsecHaskellString <|> parsePackageLocationToken
     outerChar c = not (isSpace c || c == '{' || c == '}' || c == ',')
     innerChar c = not (isSpace c || c == '{' || c == '}')
     braces p = ("{" <>) . (<> "}") <$> P.between (P.char '{') (P.char '}') p
-
-renderPackageLocationToken :: String -> String
-renderPackageLocationToken s
-  | needsQuoting = show s
-  | otherwise = s
-  where
-    needsQuoting =
-      not (ok 0 s)
-        || s == "." -- . on its own on a line has special meaning
-        || take 2 s == "--" -- on its own line is comment syntax
-    ok :: Int -> String -> Bool
-    ok n [] = n == 0
-    ok _ ('"' : _) = False
-    ok n ('{' : cs) = ok (n + 1) cs
-    ok n ('}' : cs) = ok (n - 1) cs
-    ok n (',' : cs) = (n > 0) && ok n cs
-    ok _ (c : _)
-      | isSpace c = False
-    ok n (_ : cs) = ok n cs
 
 formatPackageVersionConstraints :: [PackageVersionConstraint] -> List CommaVCat (Identity PackageVersionConstraint) PackageVersionConstraint
 formatPackageVersionConstraints = alaList CommaVCat
