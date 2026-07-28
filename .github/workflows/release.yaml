@@ -15,6 +15,7 @@ on:
 
 permissions:
   pull-requests: read
+  contents: write
 
 env:
   BUILD_LABEL: "run release build"
