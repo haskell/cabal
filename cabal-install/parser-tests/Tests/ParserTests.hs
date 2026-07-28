@@ -72,6 +72,7 @@ parserTests =
   testGroup
     "project files parsec tests"
     [ testCase "read packages" testPackages
+    , testCase "read packages comma separated" testPackagesCommaSeparated
     , testCase "read optional-packages" testOptionalPackages
     , testCase "read extra-packages" testExtraPackages
     , testCase "read source-repository-package" testSourceRepoList
@@ -97,8 +98,15 @@ parserTests =
 
 testPackages :: Assertion
 testPackages = do
-  let expected = [".", "packages/packages.cabal"]
+  let expected = [".", "packages/packages.cabal","a","b"]
   (config, legacy) <- readConfigDefault "packages"
+  assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
+
+testPackagesCommaSeparated :: Assertion
+testPackagesCommaSeparated = do
+  let expected = ["xL{4,IE-,eK<}fE?e"]
+  --let expected = ["xL{4","IE-","eK<}fE?e"]
+  (config, legacy) <- readConfig "packages" "cabal.comma-separated.project"
   assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
 
 testOptionalPackages :: Assertion
