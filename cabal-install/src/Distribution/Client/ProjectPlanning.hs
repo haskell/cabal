@@ -1250,8 +1250,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
         -- the hashes for the packages
         --
         hashesFromRepoMetadata <-
-          Sec.uncheckClientErrors $ -- TODO: [code cleanup] wrap in our own exceptions -- TODO: [code cleanup] wrap in our own exceptions
-          -- TODO: [code cleanup] wrap in our own exceptions
+          Sec.uncheckClientErrors $ -- TODO: [code cleanup] wrap in our own exceptions
             fmap (Map.fromList . concat) $
               sequence
                 -- Reading the repo index is expensive so we group the packages by repo
