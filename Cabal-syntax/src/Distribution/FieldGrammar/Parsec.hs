@@ -65,13 +65,13 @@ module Distribution.FieldGrammar.Parsec
   , freeTextIgnoreDotlineVers
   ) where
 
-import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
 import Prelude ()
 
 import qualified Data.ByteString as BS
+import Data.Coerce (Coercible, coerce)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -80,6 +80,7 @@ import qualified Text.Parsec as P
 import qualified Text.Parsec.Error as P
 
 import Distribution.CabalSpecVersion
+import Distribution.Compat.Lens (ALens')
 import Distribution.FieldGrammar.Class
 import Distribution.Fields.Field
 import Distribution.Fields.ParseResult
@@ -166,8 +167,16 @@ warnMultipleSingularFields fn (x : xs) = do
 instance FieldGrammar Parsec ParsecFieldGrammar where
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
+  uniqueFieldAla
+    :: forall s proxy a b
+     . (Coercible a b, Parsec b)
+    => FieldName
+    -> proxy a b
+    -> ALens' s a
+    -> ParsecFieldGrammar s a
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
+      parser :: CabalSpecVersion -> Map FieldName [NamelessField Position] -> ParseResult src a
       parser v fields = case Map.lookup fn fields of
         Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
@@ -176,8 +185,9 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src a
       parseOne v (MkNamelessField pos fls) =
-        unpack' _pack <$> runFieldParser pos parsec v fls
+        coerce @b @a <$> runFieldParser pos parsec v fls
 
   booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -191,8 +201,16 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
+  optionalFieldAla
+    :: forall s proxy a b
+     . (Coercible a b, Parsec b)
+    => FieldName
+    -> proxy a b
+    -> ALens' s (Maybe a)
+    -> ParsecFieldGrammar s (Maybe a)
   optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
+      parser :: CabalSpecVersion -> Map FieldName [NamelessField Position] -> ParseResult src (Maybe a)
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure Nothing
         Just [] -> pure Nothing
@@ -201,12 +219,22 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Maybe a)
       parseOne v (MkNamelessField pos fls)
         | null fls = pure Nothing
-        | otherwise = Just . unpack' _pack <$> runFieldParser pos parsec v fls
+        | otherwise = Just . coerce @b @a <$> runFieldParser pos parsec v fls
 
+  optionalFieldDefAla
+    :: forall s proxy a b
+     . (Coercible a b, Parsec b)
+    => FieldName
+    -> proxy a b
+    -> ALens' s a
+    -> a
+    -> ParsecFieldGrammar s a
   optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
+      parser :: CabalSpecVersion -> Map FieldName [NamelessField Position] -> ParseResult src a
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure def
         Just [] -> pure def
@@ -215,9 +243,10 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src a
       parseOne v (MkNamelessField pos fls)
         | null fls = pure def
-        | otherwise = unpack' _pack <$> runFieldParser pos parsec v fls
+        | otherwise = coerce @b @a <$> runFieldParser pos parsec v fls
 
   freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -267,12 +296,21 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           | v >= freeTextIgnoreDotlineVers -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
           | otherwise -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
 
+  monoidalFieldAla
+    :: forall s proxy a b
+     . (Monoid a, Coercible a b, Parsec b)
+    => FieldName
+    -> proxy a b
+    -> ALens' s a
+    -> ParsecFieldGrammar s a
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
+      parser :: CabalSpecVersion -> Map FieldName [NamelessField Position] -> ParseResult src a
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
-        Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
+        Just xs -> foldMap (coerce @b @a) <$> traverse (parseOne v) xs
 
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src b
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))

@@ -3,9 +3,9 @@ module Distribution.FieldGrammar.Pretty
   , prettyFieldGrammar
   ) where
 
+import Data.Coerce (Coercible, coerce)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
-import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
@@ -35,8 +35,15 @@ prettyFieldGrammar = flip fieldGrammarPretty
 instance FieldGrammar Pretty PrettyFieldGrammar where
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v -> pp v . aview f)
 
+  uniqueFieldAla
+    :: forall s proxy a b
+     . (Coercible a b, Pretty b)
+    => FieldName
+    -> proxy a b
+    -> ALens' s a
+    -> PrettyFieldGrammar s a
   uniqueFieldAla fn _pack l = PrettyFG $ \_v s ->
-    ppField fn (pretty (pack' _pack (aview l s)))
+    ppField fn (pretty (coerce @a @b (aview l s)))
 
   booleanFieldDef fn l def = PrettyFG pp
     where
@@ -46,17 +53,32 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
         where
           b = aview l s
 
+  optionalFieldAla
+    :: forall s proxy a b
+     . (Coercible a b, Pretty b)
+    => FieldName
+    -> proxy a b
+    -> ALens' s (Maybe a)
+    -> PrettyFieldGrammar s (Maybe a)
   optionalFieldAla fn _pack l = PrettyFG pp
     where
       pp v s = case aview l s of
         Nothing -> mempty
-        Just a -> ppField fn (prettyVersioned v (pack' _pack a))
+        Just a -> ppField fn (prettyVersioned v (coerce @a @b a))
 
+  optionalFieldDefAla
+    :: forall s proxy a b
+     . (Coercible a b, Eq a, Pretty b)
+    => FieldName
+    -> proxy a b
+    -> ALens' s a
+    -> a
+    -> PrettyFieldGrammar s a
   optionalFieldDefAla fn _pack l def = PrettyFG pp
     where
       pp v s
         | x == def = mempty
-        | otherwise = ppField fn (prettyVersioned v (pack' _pack x))
+        | otherwise = ppField fn (prettyVersioned v (coerce @a @b x))
         where
           x = aview l s
 
@@ -79,9 +101,16 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   freeTextFieldDefST = defaultFreeTextFieldDefST
 
+  monoidalFieldAla
+    :: forall s proxy a b
+     . (Coercible a b, Pretty b)
+    => FieldName
+    -> proxy a b
+    -> ALens' s a
+    -> PrettyFieldGrammar s a
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
-      pp v s = ppField fn (prettyVersioned v (pack' _pack (aview l s)))
+      pp v s = ppField fn (prettyVersioned v (coerce @a @b (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ -> pp . aview l)
     where
