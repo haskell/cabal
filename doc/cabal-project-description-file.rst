@@ -886,7 +886,7 @@ Build options
     detailed information on how to build an individual component, such as
     compiler version, modules of a component and how to compile the component.
 
-    The output format is in json, and the exact location can be discovered from
+    The output format is in JSON, and the exact location can be discovered from
     ``plan.json``, where it is identified by ``build-info`` within the items in
     the ``install-plan``.
     Note, that this field in ``plan.json`` can be ``null``, if and only if
