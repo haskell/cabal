@@ -1435,8 +1435,11 @@ withShorterPathForNewBuildStore test =
     "cabal-test-store"
     (`withStoreDir` test)
 
--- | Find where a package locates in the store dir. This works only if there is exactly one 1 ghc version
--- and exactly 1 directory for the given package in the store dir.
+-- | Find where a package locates in the store dir. The store is laid out as
+-- @\<root\>\/\<machine\>\/\<platform\>\/\<unit-id\>@ and a package a test depends
+-- on is a host-machine artifact, so this works only if there is exactly 1
+-- platform directory under the host machine and exactly 1 directory for the given
+-- package under it.
 findDependencyInStore
   :: String
   -- ^ package name prefix
@@ -1445,8 +1448,15 @@ findDependencyInStore
 findDependencyInStore pkgName = do
   storeDir <- testStoreDir <$> getTestEnv
   liftIO $ do
-    storeDirForGhcVersion : _ <- listDirectory storeDir
-    packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
+    -- The store is laid out store/<machine>/<platform>/<compiler-id>-<abi>/,
+    -- so package directories sit three levels below the store root. These
+    -- libs are host-machine artifacts.
+    let hostStoreDir = storeDir </> "host"
+    platformDir : _ <- listDirectory hostStoreDir
+    let storeDirForPlatform = hostStoreDir </> platformDir
+    compilerDir : _ <- listDirectory storeDirForPlatform
+    let storeDirForPlatformAndGhc = storeDirForPlatform </> compilerDir
+    packageDirs <- listDirectory storeDirForPlatformAndGhc
     -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
     -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
     let pkgName' =
@@ -1457,7 +1467,7 @@ findDependencyInStore pkgName = do
     let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
           [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
           (dir : _) -> dir
-    pure (storeDir </> storeDirForGhcVersion </> libDir)
+    pure (storeDirForPlatformAndGhc </> libDir)
 
 -- | It can be easier to paste expected output verbatim into a text file,
 -- especially if it is a multiline string, rather than encoding it as a multiline

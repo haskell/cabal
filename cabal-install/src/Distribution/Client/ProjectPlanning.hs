@@ -1274,11 +1274,18 @@ rebuildInstallPlan
         -> Rebuild ElaboratedInstallPlan
       phaseImprovePlan elaboratedPlan elaboratedShared = do
         liftIO $ debug verbosity "Improving the install plan..."
-        -- Each machine's compiler has its own store; read them all. Unit ids
-        -- hash the compiler, so a plain union cannot confuse the machines.
+        -- Each machine has its own store, so read them separately and tag the
+        -- entries with the machine they came from: a package present in the host
+        -- store says nothing about the build store, even when the two would
+        -- agree on its 'UnitId'.
         storePkgIdSet <-
-          fmap (Set.unions . toList) . for toolchains $ \toolchain ->
-            getStoreEntries cabalStoreDirLayout (toolchainCompiler toolchain)
+          fmap fold $
+            traverseWithMachine
+              ( \machine toolchain ->
+                  Set.map (WithMachine machine)
+                    <$> getStoreEntries cabalStoreDirLayout machine toolchain
+              )
+              toolchains
         let improvedPlan =
               improveInstallPlanWithInstalledPackages
                 storePkgIdSet
@@ -2882,12 +2889,15 @@ elaborateInstallPlan
       projectPackageDbs = projectPackageDbsFor sharedPackageConfig
 
       -- The package databases of a build machine: the store database of that
-      -- machine's compiler, and for in-place builds that compiler's dist
-      -- database too, on top of whichever project databases apply to the
-      -- machine. Equal for both machines unless cross-compiling.
+      -- machine's compiler and the platform it targets, and for in-place builds
+      -- that compiler's dist database too, on top of whichever project
+      -- databases apply to the machine.
       machineCorePackageDbs :: Machine -> PackageDBStackCWD
       machineCorePackageDbs s =
-        storePackageDBStack (machineCompilerOf s) (projectPackageDbs s)
+        storePackageDBStack
+          s
+          (onMachine toolchains s)
+          (projectPackageDbs s)
 
       machineInplacePackageDbs :: Machine -> PackageDBStackCWD
       machineInplacePackageDbs s =
@@ -4605,15 +4615,17 @@ userInstallDirTemplates compiler = do
 
 storePackageInstallDirs
   :: StoreDirLayout
-  -> Compiler
+  -> Machine
+  -> Toolchain
   -> InstalledPackageId
   -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs storeDirLayout compiler ipkgid =
-  storePackageInstallDirs' storeDirLayout compiler $ newSimpleUnitId ipkgid
+storePackageInstallDirs storeDirLayout machine toolchain ipkgid =
+  storePackageInstallDirs' storeDirLayout machine toolchain $ newSimpleUnitId ipkgid
 
 storePackageInstallDirs'
   :: StoreDirLayout
-  -> Compiler
+  -> Machine
+  -> Toolchain
   -> UnitId
   -> InstallDirs.InstallDirs FilePath
 storePackageInstallDirs'
@@ -4621,12 +4633,13 @@ storePackageInstallDirs'
     { storePackageDirectory
     , storeDirectory
     }
-  compiler
+  machine
+  toolchain
   unitid =
     InstallDirs.InstallDirs{..}
     where
-      store = storeDirectory compiler
-      prefix = storePackageDirectory compiler unitid
+      store = storeDirectory machine toolchain
+      prefix = storePackageDirectory machine toolchain unitid
       bindir = prefix </> "bin"
       libdir = prefix </> "lib"
       libsubdir = ""
@@ -4677,7 +4690,8 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       -- use special simplified install dirs
       storePackageInstallDirs'
         storeDirLayout
-        (elabCompiler elaboratedShared elab)
+        (elabMachine elab)
+        (elabToolchain elaboratedShared elab)
         (elabUnitId elab)
 
 -- TODO: [code cleanup] perhaps reorder this code
@@ -5183,14 +5197,15 @@ packageHashConfigInputs shared pkg =
 -- 'ElaboratedInstallPlan', replace configured source packages by installed
 -- packages from the store whenever they exist.
 improveInstallPlanWithInstalledPackages
-  :: Set UnitId
+  :: Set (WithMachine UnitId)
   -> ElaboratedInstallPlan
   -> ElaboratedInstallPlan
 improveInstallPlanWithInstalledPackages installedPkgIdSet =
   InstallPlan.installed canPackageBeImproved
   where
+    -- The set is tagged with the machine each store belongs to.
     canPackageBeImproved pkg =
-      installedUnitId pkg `Set.member` installedPkgIdSet
+      WithMachine (elabMachine pkg) (installedUnitId pkg) `Set.member` installedPkgIdSet
 
 -- TODO: sanity checks:
 -- \* the installed package must have the expected deps etc

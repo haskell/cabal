@@ -89,6 +89,7 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Machine (WithMachine (..))
 import Distribution.Client.ProjectPlanning.Types
   ( ElaboratedInstallPlan
+  , pkgConfigToolchain
   )
 import Distribution.Client.RebuildMonad
   ( runRebuild
@@ -98,7 +99,7 @@ import Distribution.Client.Setup
   , GlobalFlags (..)
   , InstallFlags (..)
   )
-import Distribution.Client.Toolchain (Machine (..))
+import Distribution.Client.Toolchain (Machine (..), Toolchain (..))
 import Distribution.Client.Types
   ( PackageLocation (..)
   , PackageSpecifier (..)
@@ -267,7 +268,6 @@ data InstallCfg = InstallCfg
   , baseCtx :: ProjectBaseContext
   , buildCtx :: ProjectBuildContext
   , platform :: Platform
-  , compiler :: Compiler
   , installConfigFlags :: ConfigFlags
   , installClientFlags :: ClientInstallFlags
   }
@@ -450,10 +450,17 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   let
     GhcImplInfo{supportsPkgEnvFiles} = getImplInfo compiler
 
+  let hostToolchain =
+        Toolchain
+          { toolchainCompiler = compiler
+          , toolchainPlatform = platform
+          , toolchainProgramDb = progDb
+          }
+
   (usedPackageEnvFlag, envFile) <- getEnvFile clientInstallFlags platform compilerVersion
   (usedExistingPkgEnvFile, existingEnvEntries) <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
-  packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
+  packageDbs <- getPackageDbStack hostToolchain projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let
@@ -515,7 +522,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
     buildCtx <- constructProjectBuildContext verbosity (baseCtx{installedPackages = Just installedIndex'}) targetSelectors
 
     printPlan verbosity baseCtx buildCtx
-    let installCfg = InstallCfg verbosity baseCtx buildCtx platform compiler configFlags clientInstallFlags
+    let installCfg = InstallCfg verbosity baseCtx buildCtx platform configFlags clientInstallFlags
 
     let
       dryRun =
@@ -917,7 +924,7 @@ constructProjectBuildContext verbosity baseCtx targetSelectors = do
 -- actually perform its installation.
 prepareExeInstall :: InstallCfg -> IO InstallExe
 prepareExeInstall
-  InstallCfg{verbosity, baseCtx, buildCtx, platform, compiler, installConfigFlags, installClientFlags} = do
+  InstallCfg{verbosity, baseCtx, buildCtx, platform, installConfigFlags, installClientFlags} = do
     installPath <- defaultInstallPath
     let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
 
@@ -927,7 +934,11 @@ prepareExeInstall
         mkUnitBinDir :: UnitId -> FilePath
         mkUnitBinDir =
           InstallDirs.bindir
-            . storePackageInstallDirs' storeDirLayout compiler
+            -- Installable exes are host-machine artifacts.
+            . storePackageInstallDirs'
+              storeDirLayout
+              Host
+              (pkgConfigToolchain (elaboratedShared buildCtx))
 
         mkExeName :: UnqualComponentName -> FilePath
         mkExeName exe = unUnqualComponentName exe <.> exeExtension platform
@@ -1335,17 +1346,18 @@ getLocalEnv dir platform compilerVersion =
     <> ghcPlatformAndVersionString platform compilerVersion
 
 getPackageDbStack
-  :: Compiler
+  :: Toolchain
   -> Flag FilePath
   -> Flag FilePath
   -> [Maybe PackageDBCWD]
   -> IO PackageDBStackCWD
-getPackageDbStack compiler storeDirFlag logsDirFlag packageDbs = do
+getPackageDbStack toolchain storeDirFlag logsDirFlag packageDbs = do
   mstoreDir <- traverse makeAbsolute $ flagToMaybe storeDirFlag
   let
     mlogsDir = flagToMaybe logsDirFlag
   cabalLayout <- mkCabalDirLayout mstoreDir mlogsDir
-  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compiler packageDbs
+  -- Installing puts artifacts on the host, so this is the host machine's store.
+  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) Host toolchain packageDbs
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

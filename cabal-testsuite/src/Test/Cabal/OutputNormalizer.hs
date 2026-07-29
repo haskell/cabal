@@ -73,6 +73,12 @@ normalizeOutput nenv =
       "/incoming/new-<RAND>"
     -- Normalize architecture
     . resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
+    -- Store and build paths spell the platform the way the compiler does
+    -- (e.g. x86_64-unknown-linux), not the way cabal does (x86_64-linux).
+    . maybe
+      id
+      (\triple -> resub (posixRegexEscape triple) "<ARCH>")
+      (normalizerTargetPlatform nenv)
     -- Some GHC versions are chattier than others
     . resub "^ignoring \\(possibly broken\\) abi-depends field for packages" ""
     -- Normalize the current GHC version.  Apply this BEFORE packageIdRegex,
@@ -177,6 +183,9 @@ data NormalizerEnv = NormalizerEnv
   , normalizerGhcPath :: FilePath
   , normalizerKnownPackages :: [PackageId]
   , normalizerPlatform :: Platform
+  , normalizerTargetPlatform :: Maybe String
+  -- ^ The platform triple as the compiler spells it (its @Target platform@
+  -- property), which is what appears in store and build paths.
   , normalizerCabalVersion :: Version
   , normalizerCabalInstallVersion :: Maybe Version
   }

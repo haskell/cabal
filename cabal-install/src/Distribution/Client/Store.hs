@@ -23,9 +23,9 @@ import Prelude ()
 
 import Distribution.Client.DistDirLayout
 import Distribution.Client.RebuildMonad
+import Distribution.Client.Toolchain (Machine, Toolchain)
 
 import Distribution.Package (UnitId, mkUnitId)
-import Distribution.Simple.Compiler (Compiler (..))
 
 import Distribution.Simple.Utils
   ( debug
@@ -114,19 +114,19 @@ import System.FilePath
 -- or replace, i.e. not failing if the db entry already exists.
 
 -- | Check if a particular 'UnitId' exists in the store.
-doesStoreEntryExist :: StoreDirLayout -> Compiler -> UnitId -> IO Bool
-doesStoreEntryExist StoreDirLayout{storePackageDirectory} compiler unitid =
-  doesDirectoryExist (storePackageDirectory compiler unitid)
+doesStoreEntryExist :: StoreDirLayout -> Machine -> Toolchain -> UnitId -> IO Bool
+doesStoreEntryExist StoreDirLayout{storePackageDirectory} machine toolchain unitid =
+  doesDirectoryExist (storePackageDirectory machine toolchain unitid)
 
 -- | Return the 'UnitId's of all packages\/components already installed in the
 -- store.
-getStoreEntries :: StoreDirLayout -> Compiler -> Rebuild (Set UnitId)
-getStoreEntries StoreDirLayout{storeDirectory} compiler = do
-  paths <- getDirectoryContentsMonitored (storeDirectory compiler)
+getStoreEntries :: StoreDirLayout -> Machine -> Toolchain -> Rebuild (Set UnitId)
+getStoreEntries StoreDirLayout{storeDirectory} machine toolchain = do
+  paths <- getDirectoryContentsMonitored (storeDirectory machine toolchain)
   return $! mkEntries paths
   where
     mkEntries =
-      Set.delete (mkUnitId "package.db")
+      Set.delete (mkUnitId "package.conf.d")
         . Set.delete (mkUnitId "incoming")
         . Set.fromList
         . map mkUnitId
@@ -159,7 +159,8 @@ data NewStoreEntryOutcome
 newStoreEntry
   :: Verbosity
   -> StoreDirLayout
-  -> Compiler
+  -> Machine
+  -> Toolchain
   -> UnitId
   -> (FilePath -> IO (FilePath, [FilePath]))
   -- ^ Action to place files.
@@ -169,20 +170,21 @@ newStoreEntry
 newStoreEntry
   verbosity
   storeDirLayout@StoreDirLayout{..}
-  compiler
+  machine
+  toolchain
   unitid
   copyFiles
   register =
     -- See $concurrency above for an explanation of the concurrency protocol
 
-    withTempIncomingDir storeDirLayout compiler $ \incomingTmpDir -> do
+    withTempIncomingDir storeDirLayout machine toolchain $ \incomingTmpDir -> do
       -- Write all store entry files within the temp dir and return the prefix.
       (incomingEntryDir, otherFiles) <- copyFiles incomingTmpDir
 
       -- Take a lock named after the 'UnitId' in question.
-      withIncomingUnitIdLock verbosity storeDirLayout compiler unitid $ do
+      withIncomingUnitIdLock verbosity storeDirLayout machine toolchain unitid $ do
         -- Check for the existence of the final store entry directory.
-        exists <- doesStoreEntryExist storeDirLayout compiler unitid
+        exists <- doesStoreEntryExist storeDirLayout machine toolchain unitid
 
         if exists
           then -- If the entry exists then we lost the race and we must abandon,
@@ -191,8 +193,7 @@ newStoreEntry
             info verbosity $
               "Concurrent build race: abandoning build in favour of existing "
                 ++ "store entry "
-                ++ prettyShow compid
-                </> prettyShow unitid
+                ++ finalEntryDir
             return UseExistingStoreEntry
           else -- If the entry does not exist then we won the race and can proceed.
           do
@@ -202,46 +203,44 @@ newStoreEntry
             -- Atomically rename the temp dir to the final store entry location.
             renameDirectory incomingEntryDir finalEntryDir
             for_ otherFiles $ \file -> do
-              let finalStoreFile = storeDirectory compiler </> makeRelative (normalise $ incomingTmpDir </> dropDrive (storeDirectory compiler)) file
+              let storeDir = storeDirectory machine toolchain
+                  finalStoreFile = storeDir </> makeRelative (normalise $ incomingTmpDir </> dropDrive storeDir) file
               createDirectoryIfMissing True (takeDirectory finalStoreFile)
               renameFile file finalStoreFile
 
-            debug verbosity $
-              "Installed store entry " ++ prettyShow compid </> prettyShow unitid
+            debug verbosity $ "Installed store entry " ++ finalEntryDir
             return UseNewStoreEntry
     where
-      compid = compilerId compiler
-
-      finalEntryDir = storePackageDirectory compiler unitid
+      finalEntryDir = storePackageDirectory machine toolchain unitid
 
 withTempIncomingDir
   :: StoreDirLayout
-  -> Compiler
+  -> Machine
+  -> Toolchain
   -> (FilePath -> IO a)
   -> IO a
-withTempIncomingDir StoreDirLayout{storeIncomingDirectory} compiler action = do
+withTempIncomingDir StoreDirLayout{storeIncomingDirectory} machine toolchain action = do
   createDirectoryIfMissing True incomingDir
   withTempDirectory incomingDir "new" action
   where
-    incomingDir = storeIncomingDirectory compiler
+    incomingDir = storeIncomingDirectory machine toolchain
 
 withIncomingUnitIdLock
   :: Verbosity
   -> StoreDirLayout
-  -> Compiler
+  -> Machine
+  -> Toolchain
   -> UnitId
   -> IO a
   -> IO a
 withIncomingUnitIdLock
   verbosity
   StoreDirLayout{storeIncomingLock}
-  compiler
+  machine
+  toolchain
   unitid
   action =
-    withFileLock verbosity (storeIncomingLock compiler unitid) waitMsg action
+    withFileLock verbosity lockFile waitMsg action
     where
-      compid = compilerId compiler
-      waitMsg =
-        "Waiting for file lock on store entry "
-          ++ prettyShow compid
-          </> prettyShow unitid
+      lockFile = storeIncomingLock machine toolchain unitid
+      waitMsg = "Waiting for file lock on store entry " ++ lockFile

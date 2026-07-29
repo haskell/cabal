@@ -46,6 +46,7 @@ import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup
   ( yesNoOpt
   )
+import Distribution.Client.Toolchain (Machine (..), Toolchain (..))
 import Distribution.Client.Utils.Json
   ( (.=)
   )
@@ -245,14 +246,20 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
     if not $ fromFlagOrDefault False (pathCompiler pathFlags)
       then pure Nothing
       else do
-        (compiler, _, progDb) <-
+        (compiler, platform, progDb) <-
           runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
             configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
         compilerProg <- requireCompilerProg verbosity compiler
         (configuredCompilerProg, _) <- requireProgram verbosity compilerProg progDb
 
-        let compilerInfo' =
-              mkCompilerInfo configuredCompilerProg compiler $
+        let toolchain =
+              Toolchain
+                { toolchainCompiler = compiler
+                , toolchainPlatform = platform
+                , toolchainProgramDb = progDb
+                }
+            compilerInfo' =
+              mkCompilerInfo configuredCompilerProg toolchain $
                 cabalStoreDirLayout (cabalDirLayout baseCtx)
 
         pure $ Just compilerInfo'
@@ -330,15 +337,19 @@ data PathCompilerInfo = PathCompilerInfo
   }
   deriving (Show, Eq, Ord)
 
-mkCompilerInfo :: ConfiguredProgram -> Compiler -> StoreDirLayout -> PathCompilerInfo
-mkCompilerInfo compilerProgram compiler storeLayout =
+mkCompilerInfo :: ConfiguredProgram -> Toolchain -> StoreDirLayout -> PathCompilerInfo
+mkCompilerInfo compilerProgram toolchain storeLayout =
   PathCompilerInfo
     { pathCompilerInfoFlavour = compilerFlavor compiler
     , pathCompilerInfoId = compilerId compiler
     , pathCompilerInfoAbiTag = showCompilerIdWithAbi compiler
     , pathCompilerInfoPath = programPath compilerProgram
-    , pathCompilerInfoStorePath = storeDirectory storeLayout compiler
+    , -- @cabal path --compiler-info@ reports the compiler the project builds
+      -- /for/, i.e. the host machine.
+      pathCompilerInfoStorePath = storeDirectory storeLayout Host toolchain
     }
+  where
+    compiler = toolchainCompiler toolchain
 
 -- ----------------------------------------------------------------------------
 -- JSON

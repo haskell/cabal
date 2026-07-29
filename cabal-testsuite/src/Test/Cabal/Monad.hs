@@ -90,6 +90,7 @@ import Distribution.Simple.Compiler
   , PackageDBStackCWD
   , PackageDBX (..)
   , compilerFlavor
+  , compilerProperties
   , compilerVersion
   , showCompilerIdWithAbi
   )
@@ -114,6 +115,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.Reader
 import Data.ByteString.Char8 qualified as C
 import Data.List
+import qualified Data.Map as Map
 import Data.Maybe
 import Data.Monoid (mempty)
 import Distribution.Simple.Utils hiding (info)
@@ -794,6 +796,8 @@ mkNormalizerEnv = do
           mapMaybe simpleParse (words list_out)
       , normalizerPlatform =
           testPlatform env
+      , normalizerTargetPlatform =
+          Map.lookup "Target platform" (compilerProperties (testCompiler env))
       , normalizerCabalVersion =
           cabalVersionLibrary
       , normalizerCabalInstallVersion =

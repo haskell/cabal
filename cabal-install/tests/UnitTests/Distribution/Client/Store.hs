@@ -11,12 +11,15 @@ import System.FilePath
 
 import Distribution.Package (UnitId, mkUnitId)
 import Distribution.Simple.Compiler (AbiTag (..), Compiler (..), CompilerFlavor (..), CompilerId (..))
+import Distribution.Simple.Program.Db (emptyProgramDb)
 import Distribution.Simple.Utils (withTempDirectory)
+import Distribution.System (buildPlatform)
 import Distribution.Verbosity
 import Distribution.Version (mkVersion)
 
 import Distribution.Client.RebuildMonad
 import Distribution.Client.Store
+import Distribution.Client.Toolchain (Machine (..), Toolchain (..))
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -34,21 +37,9 @@ testListEmpty =
   withTempDirectory "." "store-" $ \tmp -> do
     let storeDirLayout = defaultStoreDirLayout (tmp </> "store")
 
-    assertStoreEntryExists storeDirLayout compiler unitid False
-    assertStoreContent tmp storeDirLayout compiler Set.empty
+    assertStoreEntryExists storeDirLayout toolchain unitid False
+    assertStoreContent tmp storeDirLayout toolchain Set.empty
   where
-    compiler :: Compiler
-    compiler =
-      Compiler
-        { compilerId = CompilerId GHC (mkVersion [1, 0])
-        , compilerAbiTag = NoAbiTag
-        , compilerCompat = []
-        , compilerLanguages = []
-        , compilerExtensions = []
-        , compilerProperties = mempty
-        , compilerWiredInUnitIds = Nothing
-        }
-
     unitid = mkUnitId "foo-1.0-xyz"
 
 testInstallSerial :: Assertion
@@ -65,7 +56,7 @@ testInstallSerial =
     assertNewStoreEntry
       tmp
       storeDirLayout
-      compiler
+      toolchain
       unitid1
       (copyFiles "file1" "content-foo")
       (return ())
@@ -74,7 +65,7 @@ testInstallSerial =
     assertNewStoreEntry
       tmp
       storeDirLayout
-      compiler
+      toolchain
       unitid1
       (copyFiles "file1" "content-foo")
       (return ())
@@ -83,29 +74,17 @@ testInstallSerial =
     assertNewStoreEntry
       tmp
       storeDirLayout
-      compiler
+      toolchain
       unitid2
       (copyFiles "file2" "content-bar")
       (return ())
       UseNewStoreEntry
 
     let pkgDir :: UnitId -> FilePath
-        pkgDir = storePackageDirectory storeDirLayout compiler
+        pkgDir = storePackageDirectory storeDirLayout Host toolchain
     assertFileEqual (pkgDir unitid1 </> "file1") "content-foo"
     assertFileEqual (pkgDir unitid2 </> "file2") "content-bar"
   where
-    compiler :: Compiler
-    compiler =
-      Compiler
-        { compilerId = CompilerId GHC (mkVersion [1, 0])
-        , compilerAbiTag = NoAbiTag
-        , compilerCompat = []
-        , compilerLanguages = []
-        , compilerExtensions = []
-        , compilerProperties = mempty
-        , compilerWiredInUnitIds = Nothing
-        }
-
     unitid1 = mkUnitId "foo-1.0-xyz"
     unitid2 = mkUnitId "bar-2.0-xyz"
 
@@ -169,10 +148,30 @@ testInstallParallel =
 -------------
 -- Utils
 
+-- | A dummy toolchain: the store layout only reads the compiler's @Target
+-- platform@ property (absent here, so 'betterPlatform' falls back to the
+-- toolchain's platform).
+toolchain :: Toolchain
+toolchain =
+  Toolchain
+    { toolchainCompiler =
+        Compiler
+          { compilerId = CompilerId GHC (mkVersion [1, 0])
+          , compilerAbiTag = NoAbiTag
+          , compilerCompat = []
+          , compilerLanguages = []
+          , compilerExtensions = []
+          , compilerProperties = mempty
+          , compilerWiredInUnitIds = Nothing
+          }
+    , toolchainPlatform = buildPlatform
+    , toolchainProgramDb = emptyProgramDb
+    }
+
 assertNewStoreEntry
   :: FilePath
   -> StoreDirLayout
-  -> Compiler
+  -> Toolchain
   -> UnitId
   -> (FilePath -> IO (FilePath, [FilePath]))
   -> IO ()
@@ -181,43 +180,44 @@ assertNewStoreEntry
 assertNewStoreEntry
   tmp
   storeDirLayout
-  compiler
+  tc
   unitid
   copyFiles
   register
   expectedOutcome = do
-    entries <- runRebuild tmp $ getStoreEntries storeDirLayout compiler
+    entries <- runRebuild tmp $ getStoreEntries storeDirLayout Host tc
     outcome <-
       newStoreEntry
         verbosity
         storeDirLayout
-        compiler
+        Host
+        tc
         unitid
         copyFiles
         register
     assertEqual "newStoreEntry outcome" expectedOutcome outcome
-    assertStoreEntryExists storeDirLayout compiler unitid True
+    assertStoreEntryExists storeDirLayout tc unitid True
     let expected = Set.insert unitid entries
-    assertStoreContent tmp storeDirLayout compiler expected
+    assertStoreContent tmp storeDirLayout tc expected
 
 assertStoreEntryExists
   :: StoreDirLayout
-  -> Compiler
+  -> Toolchain
   -> UnitId
   -> Bool
   -> Assertion
-assertStoreEntryExists storeDirLayout compiler unitid expected = do
-  actual <- doesStoreEntryExist storeDirLayout compiler unitid
+assertStoreEntryExists storeDirLayout tc unitid expected = do
+  actual <- doesStoreEntryExist storeDirLayout Host tc unitid
   assertEqual "store entry exists" expected actual
 
 assertStoreContent
   :: FilePath
   -> StoreDirLayout
-  -> Compiler
+  -> Toolchain
   -> Set.Set UnitId
   -> Assertion
-assertStoreContent tmp storeDirLayout compiler expected = do
-  actual <- runRebuild tmp $ getStoreEntries storeDirLayout compiler
+assertStoreContent tmp storeDirLayout tc expected = do
+  actual <- runRebuild tmp $ getStoreEntries storeDirLayout Host tc
   assertEqual "store content" actual expected
 
 assertFileEqual :: FilePath -> String -> Assertion

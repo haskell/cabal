@@ -46,6 +46,7 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Machine (withoutMachine)
 import Distribution.Client.ProjectPlanning.Types
   ( elabDistDirParams
+  , elabToolchain
   )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -314,7 +315,8 @@ haddockProjectAction flags _extraArgs globalFlags = do
                       packageDir =
                         storePackageDirectory
                           (cabalStoreDirLayout cabalLayout)
-                          (pkgConfigCompiler sharedConfig')
+                          (elabMachine package)
+                          (elabToolchain sharedConfig' package)
                           (elabUnitId package)
                       -- TODO: use `InstallDirTemplates`
                       docDir = packageDir </> "share" </> "doc" </> "html"

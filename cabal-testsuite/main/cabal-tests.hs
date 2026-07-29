@@ -160,13 +160,34 @@ buildCabalLibsProject projString verb mbGhc dir = do
       , "Cabal", "Cabal-syntax", "Cabal-hooks", "hooks-exe"
       ] ) { progInvokeCwd = Just dir })
 
-  -- Determine the path to the packagedb in the store for this ghc version
-  storesByGhc <- listDirectory storeRoot
-  case filter (prettyShow pv `isInfixOf`) storesByGhc of
-    [] -> return [final_package_db]
-    storeForGhc:_ -> do
-      let storePackageDB = storeRoot </> storeForGhc </> "package.db"
-      return [storePackageDB, final_package_db]
+  -- Determine the path to the package db in the store. Note that these libs
+  -- were built by the cabal on PATH, not the cabal under test, so we have to
+  -- cope with either store layout: <root>/<compiler-id>-<abi>/package.db as
+  -- older cabals lay it out, or
+  -- <root>/<machine>/<platform>/<compiler-id>-<abi>/package.conf.d as newer ones
+  -- do (the Cabal libs being host-machine artifacts).
+  storeEntries <- listDirectoryIfExists storeRoot
+  legacyDbs <-
+    filterM
+      doesDirectoryExist
+      [storeRoot </> e </> "package.db" | e <- storeEntries, prettyShow pv `isInfixOf` e]
+  let hostStoreRoot = storeRoot </> "host"
+  machineDbs <- do
+    platforms <- listDirectoryIfExists hostStoreRoot
+    fmap concat . forM platforms $ \p -> do
+      let platformDir = hostStoreRoot </> p
+      compilers <- listDirectoryIfExists platformDir
+      filterM
+        doesDirectoryExist
+        [ platformDir </> c </> "package.conf.d"
+        | c <- compilers
+        , prettyShow pv `isInfixOf` c
+        ]
+  return (legacyDbs ++ machineDbs ++ [final_package_db])
+  where
+    listDirectoryIfExists d = do
+      exists <- doesDirectoryExist d
+      if exists then listDirectory d else return []
 
 
 
