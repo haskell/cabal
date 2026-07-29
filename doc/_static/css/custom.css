@@ -13,7 +13,9 @@
 }
 
 .rst-content .cabal-cmdline-opts .cabal-cmdline-icon {
-  opacity: 0.65;
+  opacity: 0.5;
+  font-family: monospace;
+  font-size: 0.8rem;
 }
 
 .rst-content .cabal-cmdline-opts .cabal-cmdline-option code,
