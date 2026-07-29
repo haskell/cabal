@@ -98,6 +98,13 @@ import Distribution.FieldGrammar
   ( parseFieldGrammar
   , takeFields
   )
+import Distribution.FieldGrammar.Newtypes
+  ( MQuoted (..)
+  , RelativePathNT (..)
+  , SymbolicPathNT (..)
+  , Token (..)
+  , Token' (..)
+  )
 import Distribution.Fields
   ( ParseResult
   , parseFatalFailure
