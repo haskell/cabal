@@ -2480,7 +2480,7 @@ elaborateInstallPlan
                 deps0
                 _exe_deps0
               ) =
-          (elaboratedPackage, wayWarnings pkgid >> buildOptionsAdjustmentWarnings)
+          (elaboratedPackage, libraryWayWarnings toolchains perPkgOption elabStage pkgid >> buildOptionsAdjustmentWarnings)
           where
             elaboratedPackage = ElaboratedConfiguredPackage{..}
 
@@ -2624,7 +2624,7 @@ elaborateInstallPlan
             elabBuildOptionsRaw =
               LBC.BuildOptions
                 { withVanillaLib = perPkgOptionFlag True pkgid packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
-                , withSharedLib = canBuildSharedLibs && pkgid `Set.member` pkgsUseSharedLibrary
+                , withSharedLib = (elabStage, pkgid) `Set.member` pkgsUseSharedLibrary libWays
                 , withStaticLib = perPkgOptionFlag False pkgid packageConfigStaticLib
                 , withDynExe =
                     perPkgOptionFlag False pkgid packageConfigDynExe
@@ -2635,8 +2635,8 @@ elaborateInstallPlan
                 , withFullyStaticExe = perPkgOptionFlag False pkgid packageConfigFullyStaticExe
                 , withGHCiLib = perPkgOptionFlag False pkgid packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
                 , withProfExe = profExe
-                , withProfLib = canBuildProfilingLibs && pkgid `Set.member` pkgsUseProfilingLibrary
-                , withProfLibShared = canBuildProfilingSharedLibs && pkgid `Set.member` pkgsUseProfilingLibraryShared
+                , withProfLib = (elabStage, pkgid) `Set.member` pkgsUseProfilingLibrary libWays
+                , withProfLibShared = (elabStage, pkgid) `Set.member` pkgsUseProfilingLibraryShared libWays
                 , withBytecodeLib = perPkgOptionFlag False pkgid packageConfigBytecodeLib
                 , exeCoverage = perPkgOptionFlag False pkgid packageConfigCoverage
                 , libCoverage = perPkgOptionFlag False pkgid packageConfigCoverage
@@ -2819,136 +2819,14 @@ elaborateInstallPlan
       -- TODO: localPackages is a misnomer, it's all project packages
       -- here is where we decide which ones will be local!
 
-      pkgsUseSharedLibrary :: Set PackageId
-      pkgsUseSharedLibrary =
-        packagesWithLibDepsDownwardClosedProperty needsSharedLib
-
-      needsSharedLib pkgid =
-        fromMaybe
-          compilerShouldUseSharedLibByDefault
-          -- Case 1: --enable-shared or --disable-shared is passed explicitly, honour that.
-          ( case pkgSharedLib of
-              Just v -> Just v
-              Nothing -> case pkgDynExe of
-                -- case 2: If --enable-executable-dynamic is passed then turn on
-                -- shared library generation.
-                Just True ->
-                  -- Case 3: If --enable-profiling is passed, then we are going to
-                  -- build profiled dynamic, so no need for shared libraries.
-                  case pkgProf of
-                    Just True -> if canBuildProfilingSharedLibs then Nothing else Just True
-                    _ -> Just True
-                -- But don't necessarily turn off shared library generation if
-                -- --disable-executable-dynamic is passed. The shared objects might
-                -- be needed for something different.
-                _ -> Nothing
-          )
-        where
-          pkgSharedLib = perPkgOptionMaybe pkgid packageConfigSharedLib
-          pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
-          pkgProf = perPkgOptionMaybe pkgid packageConfigProf
-
-      -- TODO: [code cleanup] move this into the Cabal lib. It's currently open
-      -- coded in Distribution.Simple.Configure, but should be made a proper
-      -- function of the Compiler or CompilerInfo.
-      compilerShouldUseSharedLibByDefault =
-        case compilerFlavor compiler of
-          GHC -> GHC.compilerBuildWay compiler == DynWay && canBuildSharedLibs
-          GHCJS -> GHCJS.isDynamic compiler
-          _ -> False
-
-      compilerShouldUseProfilingLibByDefault =
-        case compilerFlavor compiler of
-          GHC -> GHC.compilerBuildWay compiler == ProfWay && canBuildProfilingLibs
-          _ -> False
-
-      compilerShouldUseProfilingSharedLibByDefault =
-        case compilerFlavor compiler of
-          GHC -> GHC.compilerBuildWay compiler == ProfDynWay && canBuildProfilingSharedLibs
-          _ -> False
-
-      -- Returns False if we definitely can't build shared libs
-      canBuildWayLibs predicate = case predicate compiler of
-        Just can_build -> can_build
-        -- If we don't know for certain, just assume we can
-        -- which matches behaviour in previous cabal releases
-        Nothing -> True
-
-      canBuildSharedLibs = canBuildWayLibs dynamicSupported
-      canBuildProfilingLibs = canBuildWayLibs profilingVanillaSupported
-      canBuildProfilingSharedLibs = canBuildWayLibs profilingDynamicSupported
-
-      wayWarnings pkg = do
-        when
-          (needsProfilingLib pkg && not canBuildProfilingLibs)
-          (warnProgress (text "Compiler does not support building p libraries, profiling is disabled"))
-        when
-          (needsSharedLib pkg && not canBuildSharedLibs)
-          (warnProgress (text "Compiler does not support building dyn libraries, dynamic libraries are disabled"))
-        when
-          (needsProfilingLibShared pkg && not canBuildProfilingSharedLibs)
-          (warnProgress (text "Compiler does not support building p_dyn libraries, profiling dynamic libraries are disabled."))
-
-      pkgsUseProfilingLibrary :: Set PackageId
-      pkgsUseProfilingLibrary =
-        packagesWithLibDepsDownwardClosedProperty needsProfilingLib
-
-      needsProfilingLib pkg =
-        fromFlagOrDefault compilerShouldUseProfilingLibByDefault (profBothFlag <> profLibFlag)
-        where
-          pkgid = packageId pkg
-          profBothFlag = perPkgOption pkgid packageConfigProf
-          profLibFlag = perPkgOption pkgid packageConfigProfLib
-
-      pkgsUseProfilingLibraryShared :: Set PackageId
-      pkgsUseProfilingLibraryShared =
-        packagesWithLibDepsDownwardClosedProperty needsProfilingLibShared
-
-      needsProfilingLibShared pkg =
-        fromMaybe
-          compilerShouldUseProfilingSharedLibByDefault
-          -- case 1: If --enable-profiling-shared is passed explicitly, honour that
-          ( case profLibSharedFlag of
-              Just v -> Just v
-              Nothing -> case pkgDynExe of
-                Just True ->
-                  case pkgProf of
-                    -- case 2: --enable-executable-dynamic + --enable-profiling
-                    -- turn on shared profiling libraries
-                    Just True -> if canBuildProfilingSharedLibs then Just True else Nothing
-                    _ -> Nothing
-                -- But don't necessarily turn off shared library generation is
-                -- --disable-executable-dynamic is passed. The shared objects might
-                -- be needed for something different.
-                _ -> Nothing
-          )
-        where
-          pkgid = packageId pkg
-          profLibSharedFlag = perPkgOptionMaybe pkgid packageConfigProfShared
-          pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
-          pkgProf = perPkgOptionMaybe pkgid packageConfigProf
-
-      -- TODO: [code cleanup] unused: the old deprecated packageConfigProfExe
+      libWays :: LibraryWays
+      libWays = elaborateLibraryWays toolchains libDepGraph perPkgOption
 
       libDepGraph =
         Graph.fromDistinctList $
           map
             NonSetupLibDepSolverPlanPackage
             (SolverInstallPlan.toList solverPlan)
-
-      packagesWithLibDepsDownwardClosedProperty property =
-        Set.fromList
-          . maybe [] (map packageId)
-          $ Graph.closure
-            libDepGraph
-            [ Graph.nodeKey pkg
-            | pkg <- SolverInstallPlan.toList solverPlan
-            , property (packageId pkg) -- just the packages that satisfy the property
-            -- TODO: [nice to have] this does not check the config consistency,
-            -- e.g. a package explicitly turning off profiling, but something
-            -- depending on it that needs profiling. This really needs a separate
-            -- package config validation/resolution pass.
-            ]
 
 -- TODO: [nice to have] config consistency checking:
 -- + profiling libs & exes, exe needs lib, recursive
@@ -2957,6 +2835,217 @@ elaborateInstallPlan
 -- + ghci or shared lib needed by TH, recursive, ghc version dependent
 
 -- TODO: Drop matchPlanPkg/matchElabPkg in favor of mkCCMapping
+
+-- | The set of build ways that each @(stage, package)@ should have its library
+-- built in (shared, profiling, profiling+shared).
+--
+-- Way selection is downward-closed over /library/ dependencies: if a package is
+-- built a given way, the libraries it links against must be available that way
+-- too. Capability and default-way decisions are made against each package's own
+-- /stage/ compiler, and the sets are keyed by @(Stage, PackageId)@ so that,
+-- when cross-compiling, a host package's way need does not leak onto the
+-- build-stage copy of the same package (or vice versa).
+data LibraryWays = LibraryWays
+  { pkgsUseSharedLibrary :: Set (Stage, PackageId)
+  , pkgsUseProfilingLibrary :: Set (Stage, PackageId)
+  , pkgsUseProfilingLibraryShared :: Set (Stage, PackageId)
+  }
+
+-- | A per-package project-config lookup, specialised to the @Flag Bool@ fields
+-- the way selection reads. This is 'perPkgOption' from
+-- 'elaborateInstallPlan', which merges the all\/local\/named config layers.
+type PerPkgConfigFlag = PackageId -> (PackageConfig -> Flag Bool) -> Flag Bool
+
+-- | Look up a per-package boolean option, as 'Nothing' when it is unset.
+perPkgConfigMaybe :: PerPkgConfigFlag -> PackageId -> (PackageConfig -> Flag Bool) -> Maybe Bool
+perPkgConfigMaybe lookupFlag pkgid f = flagToMaybe (lookupFlag pkgid f)
+
+-- The capability and default-way helpers below are pure functions of a single
+-- 'Compiler'; they do not look at dependencies. They used to close over the
+-- host compiler inside 'elaborateInstallPlan'; pulling them out lets each
+-- package consult its own stage compiler instead.
+
+-- | Returns 'False' only if we definitely cannot build libraries the given way;
+-- if the compiler does not say for certain we optimistically assume we can
+-- (matching the behaviour of previous cabal releases).
+-- | Whether a compiler supports building libraries in a given way, taking an
+-- unknown answer ('Nothing') as support.
+compilerCanBuildWayLibs :: (Compiler -> Maybe Bool) -> Compiler -> Bool
+compilerCanBuildWayLibs predicate compiler = fromMaybe True (predicate compiler)
+
+-- | Whether a compiler can build shared libraries.
+compilerCanBuildSharedLibs :: Compiler -> Bool
+compilerCanBuildSharedLibs = compilerCanBuildWayLibs dynamicSupported
+
+-- | Whether a compiler can build profiling libraries.
+compilerCanBuildProfilingLibs :: Compiler -> Bool
+compilerCanBuildProfilingLibs = compilerCanBuildWayLibs profilingVanillaSupported
+
+-- | Whether a compiler can build profiled shared libraries.
+compilerCanBuildProfilingSharedLibs :: Compiler -> Bool
+compilerCanBuildProfilingSharedLibs = compilerCanBuildWayLibs profilingDynamicSupported
+
+-- | Whether a compiler links against shared libraries by default (so that
+-- packages it builds need shared libraries of their dependencies).
+--
+-- TODO: [code cleanup] move these into the Cabal lib. They are currently open
+-- coded in Distribution.Simple.Configure, but should be made proper functions
+-- of the Compiler or CompilerInfo.
+compilerShouldUseSharedLibByDefault :: Compiler -> Bool
+compilerShouldUseSharedLibByDefault compiler =
+  case compilerFlavor compiler of
+    GHC -> GHC.compilerBuildWay compiler == DynWay && compilerCanBuildSharedLibs compiler
+    GHCJS -> GHCJS.isDynamic compiler
+    _ -> False
+
+-- | Whether a compiler builds profiled code by default (so that packages it
+-- builds need profiling libraries of their dependencies).
+compilerShouldUseProfilingLibByDefault :: Compiler -> Bool
+compilerShouldUseProfilingLibByDefault compiler =
+  case compilerFlavor compiler of
+    GHC -> GHC.compilerBuildWay compiler == ProfWay && compilerCanBuildProfilingLibs compiler
+    _ -> False
+
+-- | Whether a compiler builds profiled dynamic code by default (so that
+-- packages it builds need profiled shared libraries of their dependencies).
+compilerShouldUseProfilingSharedLibByDefault :: Compiler -> Bool
+compilerShouldUseProfilingSharedLibByDefault compiler =
+  case compilerFlavor compiler of
+    GHC -> GHC.compilerBuildWay compiler == ProfDynWay && compilerCanBuildProfilingSharedLibs compiler
+    _ -> False
+
+-- The @needs*@ predicates below are flat per-package checks (project config +
+-- the compiler's default way); they do not traverse dependencies. The downward
+-- closure over library deps is applied separately in 'elaborateLibraryWays'.
+
+-- | Does this package itself want a shared library build, given its own
+-- options and the compiler it is built with?
+needsSharedLib :: PerPkgConfigFlag -> Compiler -> PackageId -> Bool
+needsSharedLib lookupFlag compiler pkgid =
+  fromMaybe
+    (compilerShouldUseSharedLibByDefault compiler)
+    -- Case 1: --enable-shared or --disable-shared is passed explicitly, honour that.
+    ( case pkgSharedLib of
+        Just v -> Just v
+        Nothing -> case pkgDynExe of
+          -- case 2: If --enable-executable-dynamic is passed then turn on
+          -- shared library generation.
+          Just True ->
+            -- Case 3: If --enable-profiling is passed, then we are going to
+            -- build profiled dynamic, so no need for shared libraries.
+            case pkgProf of
+              Just True -> if compilerCanBuildProfilingSharedLibs compiler then Nothing else Just True
+              _ -> Just True
+          -- But don't necessarily turn off shared library generation if
+          -- --disable-executable-dynamic is passed. The shared objects might
+          -- be needed for something different.
+          _ -> Nothing
+    )
+  where
+    pkgSharedLib = perPkgConfigMaybe lookupFlag pkgid packageConfigSharedLib
+    pkgDynExe = perPkgConfigMaybe lookupFlag pkgid packageConfigDynExe
+    pkgProf = perPkgConfigMaybe lookupFlag pkgid packageConfigProf
+
+-- | Does this package itself want a profiling library build?
+needsProfilingLib :: PerPkgConfigFlag -> Compiler -> PackageId -> Bool
+needsProfilingLib lookupFlag compiler pkgid =
+  fromFlagOrDefault
+    (compilerShouldUseProfilingLibByDefault compiler)
+    (lookupFlag pkgid packageConfigProf <> lookupFlag pkgid packageConfigProfLib)
+
+-- | Does this package itself want a profiled shared library build?
+needsProfilingLibShared :: PerPkgConfigFlag -> Compiler -> PackageId -> Bool
+needsProfilingLibShared lookupFlag compiler pkgid =
+  fromMaybe
+    (compilerShouldUseProfilingSharedLibByDefault compiler)
+    -- case 1: If --enable-profiling-shared is passed explicitly, honour that
+    ( case profLibSharedFlag of
+        Just v -> Just v
+        Nothing -> case pkgDynExe of
+          Just True ->
+            case pkgProf of
+              -- case 2: --enable-executable-dynamic + --enable-profiling
+              -- turn on shared profiling libraries
+              Just True -> if compilerCanBuildProfilingSharedLibs compiler then Just True else Nothing
+              _ -> Nothing
+          -- But don't necessarily turn off shared library generation if
+          -- --disable-executable-dynamic is passed. The shared objects might
+          -- be needed for something different.
+          _ -> Nothing
+    )
+  where
+    profLibSharedFlag = perPkgConfigMaybe lookupFlag pkgid packageConfigProfShared
+    pkgDynExe = perPkgConfigMaybe lookupFlag pkgid packageConfigDynExe
+    pkgProf = perPkgConfigMaybe lookupFlag pkgid packageConfigProf
+
+-- | The build 'Stage' of a solver-plan node, read from its stage-carrying
+-- 'SolverId' graph key.
+solverNodeStage :: (Graph.IsNode a, Graph.Key a ~ SolverId) => a -> Stage
+solverNodeStage = solverStage . Graph.nodeKey
+
+-- | Decide, for every @(stage, package)@ in the plan, which library ways it
+-- should be built in. See 'LibraryWays'.
+--
+-- The graph passed in only follows /library/ dependencies (setup and exe deps,
+-- the two stage-crossing dep kinds, are excluded), keyed by stage-carrying
+-- 'SolverId'. Edges therefore never cross a stage boundary, so a single closure
+-- over the whole plan partitions cleanly by stage.
+elaborateLibraryWays
+  :: Toolchains
+  -> Graph.Graph NonSetupLibDepSolverPlanPackage
+  -> PerPkgConfigFlag
+  -> LibraryWays
+elaborateLibraryWays toolchains libDepGraph lookupFlag =
+  LibraryWays
+    { pkgsUseSharedLibrary =
+        downwardClosedProperty compilerCanBuildSharedLibs needsSharedLib
+    , pkgsUseProfilingLibrary =
+        downwardClosedProperty compilerCanBuildProfilingLibs needsProfilingLib
+    , pkgsUseProfilingLibraryShared =
+        downwardClosedProperty compilerCanBuildProfilingSharedLibs needsProfilingLibShared
+    }
+  where
+    compilerFor :: Stage -> Compiler
+    compilerFor s = toolchainCompiler (getStage toolchains s)
+
+    -- Seed the closure with every node whose own stage compiler makes it want
+    -- the way, take the downward (library-dependency) closure, key the result
+    -- by (stage, package), and keep only stages whose compiler can build it.
+    downwardClosedProperty
+      :: (Compiler -> Bool)
+      -> (PerPkgConfigFlag -> Compiler -> PackageId -> Bool)
+      -> Set (Stage, PackageId)
+    downwardClosedProperty capable needs =
+      Set.fromList
+        . filter (\(s, _) -> capable (compilerFor s))
+        . maybe [] (map (\pkg -> (solverNodeStage pkg, packageId pkg)))
+        $ Graph.closure
+          libDepGraph
+          [ Graph.nodeKey pkg
+          | pkg <- Graph.toList libDepGraph
+          , needs lookupFlag (compilerFor (solverNodeStage pkg)) (packageId pkg)
+          -- TODO: [nice to have] this does not check config consistency, e.g. a
+          -- package explicitly turning off profiling but something depending on
+          -- it that needs profiling. That needs a separate config
+          -- validation/resolution pass.
+          ]
+
+-- | Warn when a package requests a library way its stage compiler cannot build.
+-- Uses the flat per-package predicates (not the downward closure) — we only
+-- warn about packages that themselves request the way.
+libraryWayWarnings :: Toolchains -> PerPkgConfigFlag -> Stage -> PackageId -> LogProgress ()
+libraryWayWarnings toolchains lookupFlag stage pkgid = do
+  when
+    (needsProfilingLib lookupFlag compiler pkgid && not (compilerCanBuildProfilingLibs compiler))
+    (warnProgress (text "Compiler does not support building p libraries, profiling is disabled"))
+  when
+    (needsSharedLib lookupFlag compiler pkgid && not (compilerCanBuildSharedLibs compiler))
+    (warnProgress (text "Compiler does not support building dyn libraries, dynamic libraries are disabled"))
+  when
+    (needsProfilingLibShared lookupFlag compiler pkgid && not (compilerCanBuildProfilingSharedLibs compiler))
+    (warnProgress (text "Compiler does not support building p_dyn libraries, profiling dynamic libraries are disabled."))
+  where
+    compiler = toolchainCompiler (getStage toolchains stage)
 
 shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
 shouldBeLocal NamedPackage{} = Nothing
