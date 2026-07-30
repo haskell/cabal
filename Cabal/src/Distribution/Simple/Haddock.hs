@@ -437,6 +437,7 @@ haddock_setupHooks
                   lib
                   lbi'
                   clbi
+                  Nothing
 
             debug verbosity $
               "Registering inplace:\n"
