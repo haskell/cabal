@@ -203,6 +203,30 @@ fieldsToConfig sourceConfigPath xs = do
   where
     programDb = defaultProgramDb
 
+-- |
+-- >>> parseParsec projectPackages "packages" "foo"
+-- ([],Right ["foo"])
+--
+-- >>> parseParsec projectPackages "packages" "xL{4,IE-,eK<}fE?e"
+-- ([],Right ["xL{4,IE-,eK<}fE?e"])
+--
+-- >>> parseParsec projectPackages "packages" "7{u,{h,{=n}}}"
+-- ([],Right ["7{u,{h,{=n}}}"])
+--
+-- >>> parseParsec projectPackages "test-log" ""
+-- ([],Right [])
+--
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " "
+-- ([],Right (Last {getLast = Nothing}))
+--
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " \n"
+-- ([],Right (Last {getLast = Nothing}))
+
+-- >>> parseParsec (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" ""
+-- ([],Right (Last {getLast = Nothing}))
+
+-- >>> parseParsec (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" " "
+-- ([],Right (Last {getLast = Nothing}))
 parseProjectConfig :: FilePath -> BS.ByteString -> ParseResult ProjectFileSource ProjectConfig
 parseProjectConfig rootConfig bs =
   fieldsToConfig (ProjectConfigPath $ rootConfig :| []) =<< readPreprocessFields bs
@@ -411,3 +435,15 @@ warnUnknownFields fieldName fieldLines = for_ fieldLines (\field -> parseWarning
 
 cabalSpec :: CabalSpecVersion
 cabalSpec = cabalSpecLatest
+
+-- $setup
+-- >>> :set -XViewPatterns
+-- >>> instance (Show a, Show b) => Show (ParseResult a b) where show = show . runParseResult
+--
+-- >>> :{
+-- parseParsec :: (ProjectConfig -> a) -> String -> String -> ParseResult ProjectFileSource a
+-- parseParsec f (toUTF8BS -> field) (toUTF8BS -> s) = f <$>
+--   fieldsToConfig
+--     nullProjectConfigPath
+--     [Field (Name zeroPos field) [FieldLine zeroPos s]]
+-- :}
