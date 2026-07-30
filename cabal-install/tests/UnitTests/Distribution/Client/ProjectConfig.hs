@@ -258,17 +258,19 @@ prop_roundtrip_legacytypes_specific config =
 --
 
 roundtrip_printparse :: ProjectConfig -> Property
-roundtrip_printparse config =
+roundtrip_printparse config = countering $
   case runParseResult $ parseProjectConfig "unused" (toUTF8BS str) of
     (_, Right result) ->
-      counterexample ("shown:\n" ++ str) $
         ediffEq
           result{projectConfigProvenance = mempty}
           config{projectConfigProvenance = mempty}
-    (_, Left err) -> counterexample ("shown:\n" ++ str ++ "\nERROR: " ++ show err) False
+    (_, Left err) -> counterexample ("ERROR: " ++ show err) False
   where
     str :: String
     str = showLegacyProjectConfig (convertToLegacyProjectConfig config)
+    countering =
+      counterexample ("shown:\n" ++ str) .
+      counterexample ("shown by line:\n" ++ unlines (map (\s -> "'" ++ s ++ "'") (lines str)))
 
 prop_roundtrip_printparse_all :: ProjectConfig -> Property
 prop_roundtrip_printparse_all config =
