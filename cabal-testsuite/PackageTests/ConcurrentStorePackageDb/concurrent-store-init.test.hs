@@ -15,7 +15,8 @@ import System.Directory (createDirectoryIfMissing, removePathForcibly)
 import System.Exit (ExitCode (..))
 import Test.Cabal.Prelude
 
-main = cabalTest $ do
+-- Can't seem to hit the race window reliably on a loaded CI runner.
+main = cabalTest . flakyIfCI 11329 $ do
   env <- getTestEnv
   cabalPath <- programPath <$> requireProgramM cabalProgram
   -- The condition we need to test is the small window where multiple cabal
