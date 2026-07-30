@@ -18,6 +18,7 @@ import Distribution.Verbosity
 
 import Distribution.Compiler (CompilerInfo)
 
+import Distribution.Version 
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
@@ -41,8 +42,10 @@ import Distribution.Solver.Modular.PSQ (PSQ)
 import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.PSQ as PSQ
+import Distribution.Solver.Types.PackageConstraint
 
 import Distribution.Simple.Setup (BooleanFlag(..))
+import Distribution.Types.Flag
 
 #ifdef DEBUG_TRACETREE
 import qualified Distribution.Solver.Modular.ConflictSet as CS
@@ -138,17 +141,14 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
-                       (case onlyConstrained sc of
-                          OnlyConstrainedAll ->
-                            P.onlyConstrained pkgIsExplicit
-                          OnlyConstrainedNone ->
-                            id)
+                       (case onlyConstrained sc  of
+                          OnlyConstrainedAll -> P.onlyConstrained (`S.member` allExplicit)
+                          OnlyConstrainedNone -> id)
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
-    allExplicit = M.keysSet userConstraints `S.union` userGoals
-
-    pkgIsExplicit :: PN -> Bool
-    pkgIsExplicit pn = S.member pn allExplicit
+    userConstraintsNotAny = filterVersion isVersionConstrained userConstraints
+    userConstraintKeysNotAny = M.keysSet userConstraintsNotAny
+    allExplicit = userConstraintKeysNotAny `S.union` userGoals
 
     -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
     -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
@@ -165,6 +165,38 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     goalChoiceHeuristics
       | asBool (reorderGoals sc) = P.preferReallyEasyGoalChoices
       | otherwise                = id {- P.firstGoal -}
+
+-- | Keep constraints that satisfy the predicate. In practice, we're only
+-- interested in the keys of the map, when checking that all packages are
+-- constrained.
+filterVersion :: (LabeledPackageConstraint -> Bool) -> M.Map PN [LabeledPackageConstraint] -> M.Map PN [LabeledPackageConstraint]
+filterVersion versionFilter = M.filter (not . null) . M.map (filter versionFilter)
+
+normalise :: VersionRange -> VersionRange
+normalise = fromVersionIntervals . toVersionIntervals
+
+-- | Checks for @-any@ and @-none@ flags in the flag assignment and says whether
+-- a package with that flag assignment would be version-constrained. The @-any@
+-- flag is considered unconstrained, while the @-none@ flag is considered
+-- constrained.
+isVersionConstrainedWithFlags :: FlagAssignment -> Bool
+isVersionConstrainedWithFlags fs =
+    case (hasFlag "none", hasFlag "any") of
+      (Just False, _) -> True
+      (_, Just False) -> False
+      _ -> False
+  where
+    hasFlag flagName = mkFlagName flagName `lookupFlagAssignment` fs
+
+-- | Unconstrained with the flag @-any@ or version @>=0@. Other versions ranges
+-- or the @-none@ flag are taken to be version constraints.
+isVersionConstrained :: LabeledPackageConstraint -> Bool
+isVersionConstrained lpc
+  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion vr)) _ <- lpc =
+    not (isAnyVersion $ normalise vr)
+  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyFlags fs)) _ <- lpc =
+    isVersionConstrainedWithFlags fs
+  | otherwise = False
 
 -- | Dump solver tree to a file (in debugging mode)
 --
