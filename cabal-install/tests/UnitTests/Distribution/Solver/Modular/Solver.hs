@@ -242,33 +242,117 @@ tests =
             mkTest dbBaseOld "Refuse to install very old base" ["base"] $
               solverFailure (isInfixOf "rejecting: base-1 (constraint from non-reinstallable package requires >=4.22)")
       ]
-  , testGroup
+  , -- reject-unconstrained-dependencies=all requires all non-goals to be
+    -- version constrained. Goals don't need constraints and flag constraints
+    -- are not enough.
+    testGroup
       "reject-unconstrained"
-      [ runTest $
-          onlyConstrained $
-            mkTest db12 "missing syb" ["E"] $
-              solverFailure (isInfixOf "not a user-provided goal")
-      , runTest $
-          onlyConstrained $
-            mkTest db12 "all goals" ["E", "syb"] $
-              solverSuccess [("E", 1), ("syb", 2)]
-      , runTest $
-          onlyConstrained $
-            mkTest db17 "backtracking" ["A", "B"] $
-              solverSuccess [("A", 2), ("B", 1)]
-      , runTest $
-          onlyConstrained $
-            mkTest db17 "failure message" ["A"] $
-              solverFailure $
-                isInfixOf $
-                  "Could not resolve dependencies:\n"
-                    ++ "[__0] trying: A-3 (user goal)\n"
-                    ++ "[__1] next goal: C (dependency of A)\n"
-                    ++ "[__1] fail (not a user-provided goal nor mentioned as a constraint, "
-                    ++ "but reject-unconstrained-dependencies was set)\n"
-                    ++ "[__1] fail (backjumping, conflict set: A, C)\n"
-                    ++ "After searching the rest of the dependency tree exhaustively, "
-                    ++ "these were the goals I've had most trouble fulfilling: A, C, B"
+      [ testGroup
+          "[A, B]"
+          [ runTest $
+              onlyConstrained $
+                mkTest db17 "accept backtracking finds all goals closed set" ["A", "B"] $
+                  solverSuccess [("A", 2), ("B", 1)]
+          , runTest $
+              constraints [ExVersionConstraint (ScopeAnyQualifier "B") (V.thisVersion (V.mkVersion [1]))] $
+                onlyConstrained $
+                  mkTest db17 "accept non-goal 'B' version-constrained" ["A"] $
+                    solverSuccess [("A", 2), ("B", 1)]
+          , runTest $
+              constraints [ExFlagConstraint (ScopeAnyQualifier "B") "flag" False] $
+                onlyConstrained $
+                  mkTest db17 "reject non-goal 'B' flag-constrained" ["A", "C"] $
+                    solverFailure $
+                      isInfixOf
+                        "Could not resolve dependencies:\n\
+                        \[__0] trying: C-1 (user goal)\n\
+                        \[__1] next goal: B (dependency of C)\n\
+                        \[__1] fail (not a user-provided goal nor mentioned as a constraint when reject-unconstrained-dependencies=all)\n\
+                        \[__1] fail (backjumping, conflict set: B, C)\n\
+                        \After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: C, B"
+          , runTest $
+              onlyConstrained $
+                mkTest db17 "reject non-goal 'C' unconstrained" ["A"] $
+                  solverFailure $
+                    isInfixOf
+                      "Could not resolve dependencies:\n\
+                      \[__0] trying: A-3 (user goal)\n\
+                      \[__1] next goal: C (dependency of A)\n\
+                      \[__1] fail (not a user-provided goal nor mentioned as a constraint when reject-unconstrained-dependencies=all)\n\
+                      \[__1] fail (backjumping, conflict set: A, C)\n\
+                      \After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: A, C, B"
+          ]
+      , testGroup
+          "[base, syb, E]"
+          [ runTest $
+              onlyConstrained $
+                mkTest db12 "accept all goals, no other dependencies" ["base", "E", "syb"] $
+                  solverSuccess [("E", 1), ("syb", 2)]
+          , runTest $
+              constraints [ExVersionConstraint (ScopeAnyQualifier "base") (V.thisVersion (V.mkVersion [4]))] $
+                onlyConstrained $
+                  mkTest db12 "accept non-goal 'base' version-constrained" ["E", "syb"] $
+                    solverSuccess [("E", 1), ("syb", 2)]
+          , runTest $
+              constraints [ExVersionConstraint (ScopeAnyQualifier "syb") (V.thisVersion (V.mkVersion [2]))] $
+                onlyConstrained $
+                  mkTest db12 "accept non-goal 'syb' version-constrained" ["base", "E"] $
+                    solverSuccess [("E", 1), ("syb", 2)]
+          , runTest
+              $ constraints
+                [ ExVersionConstraint (ScopeAnyQualifier "base") (V.thisVersion (V.mkVersion [4]))
+                , ExVersionConstraint (ScopeAnyQualifier "syb") (V.thisVersion (V.mkVersion [2]))
+                ]
+              $ onlyConstrained
+              $ mkTest db12 "accept non-goals 'base' and 'syb' version-unconstrained" ["E"]
+              $ solverSuccess [("E", 1), ("syb", 2)]
+          , runTest $
+              onlyConstrained $
+                mkTest db12 "reject non-goal 'base' unconstrained" ["E", "syb"] $
+                  solverFailure $
+                    isInfixOf
+                      "Could not resolve dependencies:\n\
+                      \[__0] trying: E-1 (user goal)\n\
+                      \[__1] next goal: E.base (dependency of E)\n\
+                      \[__1] fail (not a user-provided goal nor mentioned as a constraint when reject-unconstrained-dependencies=all)\n\
+                      \[__1] fail (backjumping, conflict set: E, E.base)\n\
+                      \After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: E, E.base"
+          , runTest $
+              onlyConstrained $
+                mkTest db12 "reject non-goal 'syb' unconstrained" ["base", "E"] $
+                  solverFailure $
+                    isInfixOf
+                      "Could not resolve dependencies:\n\
+                      \[__0] trying: E-1 (user goal)\n\
+                      \[__1] next goal: syb (dependency of E)\n\
+                      \[__1] fail (not a user-provided goal nor mentioned as a constraint when reject-unconstrained-dependencies=all)\n\
+                      \[__1] fail (backjumping, conflict set: E, syb)\n\
+                      \After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: E, syb"
+          , runTest $
+              constraints [ExFlagConstraint (ScopeAnyQualifier "base") "flag" True] $
+                onlyConstrained $
+                  mkTest db12 "reject non-goal 'base' only flag-constrained" ["E", "syb"] $
+                    solverFailure $
+                      isInfixOf
+                        "Could not resolve dependencies:\n\
+                        \[__0] trying: E-1 (user goal)\n\
+                        \[__1] next goal: E.base (dependency of E)\n\
+                        \[__1] fail (not a user-provided goal nor mentioned as a constraint when reject-unconstrained-dependencies=all)\n\
+                        \[__1] fail (backjumping, conflict set: E, E.base)\n\
+                        \After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: E, E.base"
+          , runTest $
+              constraints [ExStanzaConstraint (ScopeAnyQualifier "base") [TestStanzas]] $
+                onlyConstrained $
+                  mkTest db12 "reject non-goal 'base' only stanza-constrained" ["E", "syb"] $
+                    solverFailure $
+                      isInfixOf
+                        "Could not resolve dependencies:\n\
+                        \[__0] trying: E-1 (user goal)\n\
+                        \[__1] next goal: E.base (dependency of E)\n\
+                        \[__1] fail (not a user-provided goal nor mentioned as a constraint when reject-unconstrained-dependencies=all)\n\
+                        \[__1] fail (backjumping, conflict set: E, E.base)\n\
+                        \After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: E, E.base"
+          ]
       ]
   , testGroup
       "Cycles"
