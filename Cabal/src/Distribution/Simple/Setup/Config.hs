@@ -571,12 +571,12 @@ configureOptions showOrParseArgs =
           "optimization"
           configOptimization
           (\v flags -> flags{configOptimization = v})
-          [ reqArg'
+          [ optArg'
               "n"
-              (Flag . fromString)
+              (Flag . maybe noFlagValue fromString)
               ( \case
                   NoFlag -> []
-                  Flag flag -> [O.toString flag]
+                  Flag flag -> [Just $ O.toString flag]
               )
               "O"
               ["enable-optimization", "enable-optimisation"]
@@ -591,16 +591,16 @@ configureOptions showOrParseArgs =
           "debug-info"
           configDebugInfo
           (\v flags -> flags{configDebugInfo = v})
-          [ reqArg'
+          [ optArg'
               "n"
-              (Flag . fromString)
+              (Flag . maybe noFlagValue fromString)
               ( \case
                   NoFlag -> []
-                  Flag flag -> [D.toString flag]
+                  Flag flag -> [Just $ D.toString flag]
               )
               "g"
               ["enable-debug-info"]
-              (printf "Emit debug info (n is  %s--%s, default is %s)" (D.toString minBound) (D.toString maxBound) (D.toString noFlagValue))
+              (printf "Emit debug info (n is %s--%s, default is %s)" (D.toString minBound) (D.toString maxBound) (D.toString NoDebugInfo))
           , noArg
               (Flag NoDebugInfo)
               []
