@@ -1264,10 +1264,7 @@ filterReplFlags :: ReplFlags -> Version -> ReplFlags
 filterReplFlags flags cabalLibVersion =
   flags
     { replCommonFlags =
-        (filterCommonFlags (replCommonFlags flags) cabalLibVersion)
-          { -- `cabal repl` knew about `--keep-temp-files` before other commands did.
-            setupKeepTempFiles = setupKeepTempFiles (replCommonFlags flags)
-          }
+        filterCommonFlags (replCommonFlags flags) cabalLibVersion
     }
 
 -- ------------------------------------------------------------
