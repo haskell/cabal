@@ -1273,14 +1273,29 @@ showLegacyProjectConfig config =
     constraintSrc = ConstraintSourceProjectConfig nullProjectConfigPath
 
 -- |
--- >>> parseLegacyPackages "foo"
+-- >>> parseLegacyConvert projectPackages "packages" "foo"
 -- ParseOk [] ["foo"]
 --
--- >>> parseLegacyPackages "xL{4,IE-,eK<}fE?e"
+-- >>> parseLegacyConvert projectPackages "packages" "xL{4,IE-,eK<}fE?e"
 -- ParseOk [] ["xL{4,IE-,eK<}fE?e"]
 --
--- >>> parseLegacyPackages "7{u,{h,{=n}}}"
+-- >>> parseLegacyConvert projectPackages "packages" "7{u,{h,{=n}}}"
 -- ParseOk [] ["7{u,{h,{=n}}}"]
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" ""
+-- ParseOk [] (Last {getLast = Nothing})
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " "
+-- ParseOk [] (Last {getLast = Nothing})
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " \n"
+-- ParseOk [] (Last {getLast = Nothing})
+--
+-- >>> parseLegacyConvert (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" ""
+-- ParseOk [] (Last {getLast = Nothing})
+--
+-- >>> parseLegacyConvert (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" " "
+-- ParseOk [] (Last {getLast = Nothing})
 legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs constraintSrc =
   [ newLineListField
@@ -2073,8 +2088,17 @@ showTokenQ x = showToken x
 
 -- $setup
 -- >>> :{
--- parseLegacyPackages s = legacyPackages <$>
+-- parseLegacy :: (LegacyProjectConfig -> a) -> String -> String -> ParseResult a
+-- parseLegacy f field s =  f <$>
 --   parseLegacyProjectConfigFieldsWithConstraintSource
 --     ConstraintSourceUnknown
---     [ParseUtils.F 1 "packages" s]
+--     [ParseUtils.F 1 field s]
+-- :}
+--
+-- >>> :{
+-- parseLegacyConvert :: (ProjectConfig -> a) -> String -> String -> ParseResult a
+-- parseLegacyConvert f field s =  (f . convertLegacyProjectConfig) <$>
+--   parseLegacyProjectConfigFieldsWithConstraintSource
+--     ConstraintSourceUnknown
+--     [ParseUtils.F 1 field s]
 -- :}
