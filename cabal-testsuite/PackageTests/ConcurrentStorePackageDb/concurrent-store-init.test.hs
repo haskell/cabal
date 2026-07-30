@@ -72,8 +72,8 @@ main = cabalTest $ do
       contended (_, r) =
         "Waiting for file lock on package database" `isInfixOf` resultOutput r
 
-      -- Try the test some times, if they all manage to miss the window. Emit a
-      -- `skip`, as the test is inconclusive.
+      -- Try the test some times. If they all manage to miss the window, emit a
+      -- `fail` as we missed the testing condition.
       go attempt = do
         results <- burst
         liftIO $ forM_ results $ \(i, r) -> do
@@ -89,7 +89,7 @@ main = cabalTest $ do
           if attempt < attempts
             then go (attempt + 1)
             else
-              skip $
+              assertFailure $
                 "no build contended for the store package db lock in "
                   ++ show attempts
                   ++ " attempts"
