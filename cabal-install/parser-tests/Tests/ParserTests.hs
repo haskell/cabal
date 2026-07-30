@@ -86,6 +86,7 @@ parserTests =
     , testCase "read local-no-index-repos" testLocalNoIndexRepos
     , testCase "set explicit provenance" testProjectConfigProvenance
     , testCase "read project-config-local-packages" testProjectConfigLocalPackages
+    , testCase "read project-config-local-packages-empty-string" testProjectConfigLocalPackagesEmptyString
     , testCase "read project-config-all-packages" testProjectConfigAllPackages
     , testCase "read project-config-specific-packages" testProjectConfigSpecificPackages
     , testCase "test projectConfigAllPackages concatenation" testAllPackagesConcat
@@ -418,6 +419,14 @@ testProjectConfigLocalPackages = do
     packageConfigTestFailWhenNoTestSuites = Flag True
     packageConfigTestTestOptions = [toPathTemplate "--some-option", toPathTemplate "42"]
     packageConfigBenchmarkOptions = [toPathTemplate "--some-benchmark-option", toPathTemplate "--another-option"]
+
+testProjectConfigLocalPackagesEmptyString :: Assertion
+testProjectConfigLocalPackagesEmptyString = do
+  (config, legacy) <- readConfig "project-config-local-packages" "cabal.empty-string.project"
+  assertConfigEquals expected config legacy (field . projectConfigLocalPackages . snd . condTreeData)
+  where
+    field = packageConfigTestHumanLog
+    expected = NoFlag
 
 testProjectConfigAllPackages :: Assertion
 testProjectConfigAllPackages = do
