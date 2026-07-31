@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ViewPatterns #-}
 #ifdef DEBUG_TRACETREE
 {-# OPTIONS_GHC -Wno-orphans #-}
 #endif
@@ -182,7 +183,7 @@ normalise = fromVersionIntervals . toVersionIntervals
 isVersionConstrainedWithFlags :: FlagAssignment -> Bool
 isVersionConstrainedWithFlags fs =
     case (hasFlag "none", hasFlag "any") of
-      (Just False, _) -> True
+      (Just False, _) -> False
       (_, Just False) -> False
       _ -> False
   where
@@ -192,8 +193,12 @@ isVersionConstrainedWithFlags fs =
 -- or the @-none@ flag are taken to be version constraints.
 isVersionConstrained :: LabeledPackageConstraint -> Bool
 isVersionConstrained lpc
-  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion vr)) _ <- lpc =
-    not (isAnyVersion $ normalise vr)
+  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion (normalise -> vr))) _ <- lpc =
+    not $
+         isAnyVersion vr -- Don't need an extra vr == anyVersion check, as isAnyVersion already checks for that
+      || isNoVersion vr
+      || vr == noVersion
+      || vr == anyVersion
   | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyFlags fs)) _ <- lpc =
     isVersionConstrainedWithFlags fs
   | otherwise = False
