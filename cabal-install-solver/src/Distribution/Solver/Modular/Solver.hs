@@ -18,7 +18,7 @@ import Distribution.Verbosity
 
 import Distribution.Compiler (CompilerInfo)
 
-import Distribution.Version 
+import Distribution.Version
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
