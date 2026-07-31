@@ -141,9 +141,11 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
-                       (case onlyConstrained sc  of
-                          OnlyConstrainedAll -> P.onlyConstrained (`S.member` versionConstrainedGoals)
-                          OnlyConstrainedNone -> id)
+                       (case onlyConstrained sc of
+                          OnlyConstrainedAll ->
+                            P.onlyConstrained (`S.member` versionConstrainedGoals)
+                          OnlyConstrainedNone ->
+                            id)
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
     versionConstrainedConstraints = filterVersion isVersionConstrained userConstraints
