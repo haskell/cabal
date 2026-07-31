@@ -149,7 +149,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
     versionConstrainedConstraints = filterVersion isVersionConstrained userConstraints
-    versionConstrainedGoals = M.keysSet versionConstrainedConstraints `S.union` userGoals
+    versionConstrainedGoals = versionConstrainedConstraints `S.union` userGoals
 
     -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
     -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
@@ -167,11 +167,9 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
       | asBool (reorderGoals sc) = P.preferReallyEasyGoalChoices
       | otherwise                = id {- P.firstGoal -}
 
--- | Keep constraints that satisfy the predicate. In practice, we're only
--- interested in the keys of the map, when checking that all packages are
--- constrained.
-filterVersion :: (LabeledPackageConstraint -> Bool) -> M.Map PN [LabeledPackageConstraint] -> M.Map PN [LabeledPackageConstraint]
-filterVersion versionFilter = M.filter (not . null) . M.map (filter versionFilter)
+-- | Keep package names of constraints that satisfy the predicate.
+filterVersion :: (LabeledPackageConstraint -> Bool) -> M.Map PN [LabeledPackageConstraint] -> Set PN
+filterVersion versionFilter = M.keysSet . M.filter (not . null) . M.map (filter versionFilter)
 
 normalise :: VersionRange -> VersionRange
 normalise = fromVersionIntervals . toVersionIntervals
