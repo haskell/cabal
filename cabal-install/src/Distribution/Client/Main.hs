@@ -164,7 +164,7 @@ import Distribution.Client.Signal
   ( installTerminationHandler
   )
 import Distribution.Client.Tar (createTarGzFile)
-import Distribution.Client.Types.Credentials (Password (..))
+import Distribution.Client.Types.Credentials (Password (..), Token (..))
 import qualified Distribution.Client.Upload as Upload
 import Distribution.Client.Utils
   ( determineNumJobs
@@ -1349,6 +1349,14 @@ uploadAction uploadFlags extraArgs globalFlags = do
   when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
     dieWithException verbosity UploadAction
   checkTarFiles extraArgs
+  maybe_token <-
+    case uploadTokenCmd uploadFlags' of
+      Flag (xs : xss) ->
+        Just . Token
+          <$> getProgramInvocationOutput
+            verbosity
+            (simpleProgramInvocation xs xss)
+      _ -> pure $ flagToMaybe $ uploadToken uploadFlags'
   maybe_password <-
     case uploadPasswordCmd uploadFlags' of
       Flag (xs : xss) ->
@@ -1367,7 +1375,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
         Upload.uploadDoc
           verbosity
           filteredRepoContext
-          (flagToMaybe $ uploadToken uploadFlags')
+          maybe_token
           (flagToMaybe $ uploadUsername uploadFlags')
           maybe_password
           (fromFlag (uploadCandidate uploadFlags'))
@@ -1376,7 +1384,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
         Upload.upload
           verbosity
           filteredRepoContext
-          (flagToMaybe $ uploadToken uploadFlags')
+          maybe_token
           (flagToMaybe $ uploadUsername uploadFlags')
           maybe_password
           (fromFlag (uploadCandidate uploadFlags'))

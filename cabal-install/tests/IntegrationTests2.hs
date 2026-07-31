@@ -2646,6 +2646,7 @@ testConfigOptionComments = do
   "-- install-method" `assertHasCommentLine` "install-method"
   "installdir" `assertHasLine` "installdir"
   "-- token" `assertHasCommentLine` "token"
+  "-- token-command" `assertHasCommentLine` "token-command"
   "-- username" `assertHasCommentLine` "username"
   "-- password" `assertHasCommentLine` "password"
   "-- password-command" `assertHasCommentLine` "password-command"
