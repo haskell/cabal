@@ -182,13 +182,10 @@ normalise = fromVersionIntervals . toVersionIntervals
 -- don't actually constrain the version of the package. The @-any@ flag allows
 -- any version, and the @-none@ flag effectively excludes a package.
 isVersionConstrained :: LabeledPackageConstraint -> Bool
-isVersionConstrained lpc
-  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion (normalise -> vr))) _ <- lpc =
-    not (isAnyVersion vr || isNoVersion vr)
-  -- The @-any@ and @-none@ flags are `PackagePropertyFlags`. This pattern match
-  -- is not really needed, but it makes the intention clearer.
-  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyFlags _)) _ <- lpc = False
-  | otherwise = False
+isVersionConstrained (LabeledPackageConstraint (PackageConstraint _ c) _) = case c of
+    PackagePropertyVersion (normalise -> vr) -> not (isAnyVersion vr || isNoVersion vr)
+    -- `PackagePropertyFlags` @-any@ and @-none@ are covered below.
+    _ -> False
 
 -- | Dump solver tree to a file (in debugging mode)
 --
