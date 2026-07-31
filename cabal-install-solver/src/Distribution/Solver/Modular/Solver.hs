@@ -142,13 +142,12 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        (case onlyConstrained sc  of
-                          OnlyConstrainedAll -> P.onlyConstrained (`S.member` allExplicit)
+                          OnlyConstrainedAll -> P.onlyConstrained (`S.member` versionConstrainedGoals)
                           OnlyConstrainedNone -> id)
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
-    userConstraintsNotAny = filterVersion isVersionConstrained userConstraints
-    userConstraintKeysNotAny = M.keysSet userConstraintsNotAny
-    allExplicit = userConstraintKeysNotAny `S.union` userGoals
+    versionConstrainedConstraints = filterVersion isVersionConstrained userConstraints
+    versionConstrainedGoals = M.keysSet versionConstrainedConstraints `S.union` userGoals
 
     -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
     -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
