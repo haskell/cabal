@@ -108,7 +108,7 @@ import Distribution.Types.VersionRange
 -- | This is the converse of 'isAnyVersion'. It check if the version range is
 -- empty, if there is no possible version that satisfies the version range.
 --
--- For example this is @True@ (for all @v@):
+-- For example, @\<v && >v@ is no version for all @v@.
 --
 -- >>> ordNub [isNoVersion (earlierVersion v `intersectVersionRanges` laterVersion v) | v <- mkVersion <$> [[0],[1]]]
 -- [True]
@@ -122,7 +122,7 @@ isNoVersion vr = case asVersionIntervals vr of
 
 -- | Is this version range in fact just a specific version?
 --
--- For example the version range @\">= 3 && <= 3\"@ contains only the version
+-- For example the version range @\>= 3 && <= 3@ contains only the version
 -- @3@.
 --
 -- >>> isSpecificVersion (orLaterVersion (mkVersion [3]) `intersectVersionRanges` orEarlierVersion (mkVersion [3]))
