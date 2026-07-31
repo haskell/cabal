@@ -1,0 +1,11 @@
+# tar
+# tar
+# tar
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - some-lib-1.0 (lib) (requires build)
+ - a-0 (lib) (first run)

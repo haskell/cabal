@@ -1,0 +1,14 @@
+# tar
+# tar
+# tar
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal v2-build
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: a-0 (user goal)
+[__1] next goal: some-lib (dependency of a)
+[__1] rejecting: some-lib-1.0 (constraint from command line flag requires <0)
+[__1] fail (backjumping, conflict set: a, some-lib)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: a (2), some-lib (2)
