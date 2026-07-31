@@ -46,7 +46,6 @@ import qualified Distribution.Solver.Modular.PSQ as PSQ
 import Distribution.Solver.Types.PackageConstraint
 
 import Distribution.Simple.Setup (BooleanFlag(..))
-import Distribution.Types.Flag
 
 #ifdef DEBUG_TRACETREE
 import qualified Distribution.Solver.Modular.ConflictSet as CS
@@ -176,31 +175,19 @@ filterVersion versionFilter = M.filter (not . null) . M.map (filter versionFilte
 normalise :: VersionRange -> VersionRange
 normalise = fromVersionIntervals . toVersionIntervals
 
--- | Checks for @-any@ and @-none@ flags in the flag assignment and says whether
--- a package with that flag assignment would be version-constrained. The @-any@
--- flag is considered unconstrained, while the @-none@ flag is considered
--- constrained.
-isVersionConstrainedWithFlags :: FlagAssignment -> Bool
-isVersionConstrainedWithFlags fs =
-    case (hasFlag "none", hasFlag "any") of
-      (Just False, _) -> False
-      (_, Just False) -> False
-      _ -> False
-  where
-    hasFlag flagName = mkFlagName flagName `lookupFlagAssignment` fs
-
--- | Unconstrained with the flag @-any@ or version @>=0@. Other versions ranges
--- or the @-none@ flag are taken to be version constraints.
+-- | Unconstrained with a version range @>=0@ or @<0@ or their flag equivalents
+-- and constrained by other versions ranges.
+--
+-- Both the @-any@ and @-none@ flags are considered unconstrained, because they
+-- don't actually constrain the version of the package. The @-any@ flag allows
+-- any version, and the @-none@ flag effectively excludes a package.
 isVersionConstrained :: LabeledPackageConstraint -> Bool
 isVersionConstrained lpc
   | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion (normalise -> vr))) _ <- lpc =
-    not $
-         isAnyVersion vr -- Don't need an extra vr == anyVersion check, as isAnyVersion already checks for that
-      || isNoVersion vr
-      || vr == noVersion
-      || vr == anyVersion
-  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyFlags fs)) _ <- lpc =
-    isVersionConstrainedWithFlags fs
+    not (isAnyVersion vr || isNoVersion vr)
+  -- The @-any@ and @-none@ flags are `PackagePropertyFlags`. This pattern match
+  -- is not really needed, but it makes the intention clearer.
+  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyFlags _)) _ <- lpc = False
   | otherwise = False
 
 -- | Dump solver tree to a file (in debugging mode)
