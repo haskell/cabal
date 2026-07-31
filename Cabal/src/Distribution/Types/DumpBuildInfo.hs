@@ -1,27 +1,24 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE LambdaCase #-}
 
 module Distribution.Types.DumpBuildInfo
   ( DumpBuildInfo (..)
   , toString
+  , defaultDumpBuildInfo
   ) where
 
 import Distribution.Compat.Prelude (Binary, Generic, NFData, Structured)
 import Distribution.Parsec (CabalParsing, Parsec (..))
-import Distribution.Simple.Flag (NoFlagValue (..))
 
 data DumpBuildInfo
   = NoDumpBuildInfo
   | DumpBuildInfo
   deriving stock (Read, Show, Eq, Ord, Enum, Bounded, Generic)
+  deriving anyclass (Binary, NFData, Structured)
 
-instance Binary DumpBuildInfo
-instance NFData DumpBuildInfo
-instance Structured DumpBuildInfo
-
-instance NoFlagValue DumpBuildInfo where
-  noFlagValue :: DumpBuildInfo
-  noFlagValue = NoDumpBuildInfo
+defaultDumpBuildInfo :: DumpBuildInfo
+defaultDumpBuildInfo = NoDumpBuildInfo
 
 instance Parsec DumpBuildInfo where
   parsec :: CabalParsing m => m DumpBuildInfo

@@ -1,11 +1,10 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE InstanceSigs #-}
 
 module Distribution.Types.OptimisationLevel
   ( OptimisationLevel (..)
   , toString
+  , defaultOptimisationLevel
   )
 where
 
@@ -15,7 +14,6 @@ import Distribution.Parsec (CabalParsing, Parsec (..))
 import Prelude ()
 
 import Data.Bool (bool)
-import Distribution.Simple.Flag (NoFlagValue (..))
 
 -- | Some compilers support optimising. Some have different levels.
 -- For compilers that do not the level is just capped to the level
@@ -25,14 +23,10 @@ data OptimisationLevel
   | NormalOptimisation
   | MaximumOptimisation
   deriving stock (Bounded, Enum, Eq, Generic, Read, Show)
+  deriving anyclass (Binary, NFData, Structured)
 
-instance Binary OptimisationLevel
-instance NFData OptimisationLevel
-instance Structured OptimisationLevel
-
-instance NoFlagValue OptimisationLevel where
-  noFlagValue :: OptimisationLevel
-  noFlagValue = NormalOptimisation
+defaultOptimisationLevel :: OptimisationLevel
+defaultOptimisationLevel = NormalOptimisation
 
 instance Parsec OptimisationLevel where
   parsec :: CabalParsing m => m OptimisationLevel
