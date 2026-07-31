@@ -975,7 +975,8 @@ instance f ~ [] => Arbitrary (SourceRepositoryPackage f) where
 
   shrink SourceRepositoryPackage{..} =
     runShrinker $
-      (SourceRepositoryPackage <$> shrinker srpType)
+      SourceRepositoryPackage
+        <$> shrinker srpType
         <*> shrinkerAla ShortToken srpLocation
         <*> shrinkerAla (fmap ShortToken) srpTag
         <*> shrinkerAla (fmap ShortToken) srpBranch
