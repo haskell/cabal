@@ -28,8 +28,6 @@ module Distribution.Simple.Flag
   , maybeToFlag
   , mergeListFlag
   , BooleanFlag (..)
-  , NoFlagValue (..)
-  , fromNoFlag
   ) where
 
 import Data.Monoid (Last (..))
@@ -122,15 +120,3 @@ class BooleanFlag a where
 
 instance BooleanFlag Bool where
   asBool = id
-
--- | Flag is a Monoid, with 'NoFlag' as the identity element, and 'Flag' as the binary operation.
---
--- @since 3.20.0.0
-class NoFlagValue a where
-  noFlagValue :: a
-
--- | Extracts a value from a 'Flag', and returns the 'noFlagValue' on 'NoFlag'.
---
--- @since 3.20.0.0
-fromNoFlag :: NoFlagValue a => Flag a -> a
-fromNoFlag = fromFlagOrDefault noFlagValue

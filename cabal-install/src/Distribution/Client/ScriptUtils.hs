@@ -128,7 +128,7 @@ import Distribution.Simple.Compiler
   )
 import Distribution.Simple.Flag
   ( flagToMaybe
-  , fromNoFlag
+  , fromFlagOrDefault
   )
 import Distribution.Simple.PackageDescription
   ( parseString
@@ -166,6 +166,7 @@ import Distribution.Types.GenericPackageDescription as GPD
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription
   )
+import qualified Distribution.Types.OptimisationLevel as O
 import Distribution.Types.PackageDescription
   ( PackageDescription (..)
   , emptyPackageDescription
@@ -439,7 +440,7 @@ scriptDistDirParams scriptPath ctx compiler platform =
     , distParamComponentName = Just $ CExeName cn
     , distParamCompilerId = compilerId compiler
     , distParamPlatform = platform
-    , distParamOptimization = fromNoFlag optimization
+    , distParamOptimization = fromFlagOrDefault O.defaultOptimisationLevel optimization
     }
   where
     cn = scriptComponentName scriptPath

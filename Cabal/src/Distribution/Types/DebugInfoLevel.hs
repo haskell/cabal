@@ -1,11 +1,10 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE InstanceSigs #-}
 
 module Distribution.Types.DebugInfoLevel
   ( DebugInfoLevel (..)
   , toString
+  , defaultDebugInfo
   )
 where
 
@@ -15,7 +14,6 @@ import Distribution.Parsec (CabalParsing, Parsec (..))
 import Prelude ()
 
 import Data.Bool (bool)
-import Distribution.Simple.Flag (NoFlagValue (..))
 
 -- | Some compilers support emitting debug info. Some have different
 -- levels.  For compilers that do not the level is just capped to the
@@ -26,14 +24,10 @@ data DebugInfoLevel
   | NormalDebugInfo
   | MaximalDebugInfo
   deriving stock (Bounded, Enum, Eq, Generic, Read, Show)
+  deriving anyclass (Binary, NFData, Structured)
 
-instance Binary DebugInfoLevel
-instance NFData DebugInfoLevel
-instance Structured DebugInfoLevel
-
-instance NoFlagValue DebugInfoLevel where
-  noFlagValue :: DebugInfoLevel
-  noFlagValue = NoDebugInfo
+defaultDebugInfo :: DebugInfoLevel
+defaultDebugInfo = NoDebugInfo
 
 instance Parsec DebugInfoLevel where
   parsec :: CabalParsing m => m DebugInfoLevel

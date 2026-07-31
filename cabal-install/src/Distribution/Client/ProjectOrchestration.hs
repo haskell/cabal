@@ -187,7 +187,7 @@ import Distribution.Simple.Compiler
   , showCompilerId
   )
 import Distribution.Simple.Configure (computeEffectiveProfiling)
-import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, fromNoFlag)
+import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   , pkgComponents
@@ -211,7 +211,7 @@ import Distribution.Types.Flag
   , diffFlagAssignment
   , showFlagAssignment
   )
-import qualified Distribution.Types.OptimisationLevel as OptimisationLevel
+import qualified Distribution.Types.OptimisationLevel as O
 import Distribution.Utils.NubList
   ( fromNubList
   )
@@ -1252,7 +1252,7 @@ printPlan
         "Build profile: "
           ++ unwords
             [ "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared
-            , "-O" ++ (OptimisationLevel.toString . fromNoFlag) (globalOptimization <> localOptimization)
+            , "-O" ++ (O.toString . fromFlagOrDefault O.defaultOptimisationLevel) (globalOptimization <> localOptimization)
             ]
           ++ "\n"
 
