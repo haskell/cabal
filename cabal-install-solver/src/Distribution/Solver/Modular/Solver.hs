@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ViewPatterns #-}
 #ifdef DEBUG_TRACETREE
 {-# OPTIONS_GHC -Wno-orphans #-}
 #endif
@@ -143,13 +144,16 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        (let oc = onlyConstrained sc in oc & \case
-                          OnlyConstrainedEq -> P.onlyConstrained oc (`S.member` allExplicitEq)
-                          OnlyConstrainedAll -> P.onlyConstrained oc (`S.member` allExplicit)
+                          OnlyConstrainedEq -> P.onlyConstrained oc (`S.member` versionEqOrGoals)
+                          OnlyConstrainedAll -> P.onlyConstrained oc (`S.member` versionConstrainedOrGoals)
                           OnlyConstrainedNone -> id)
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
-    allExplicitEq = M.keysSet (filterThisVersion userConstraints) `S.union` userGoals
-    allExplicit = M.keysSet userConstraints `S.union` userGoals
+    versionEq = filterVersion isThisVersion userConstraints
+    versionEqOrGoals = versionEq `S.union` userGoals
+
+    versionConstrained = filterVersion isVersionConstrained userConstraints
+    versionConstrainedOrGoals = versionConstrained `S.union` userGoals
 
     -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
     -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
@@ -167,14 +171,31 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
       | asBool (reorderGoals sc) = P.preferReallyEasyGoalChoices
       | otherwise                = id {- P.firstGoal -}
 
--- | Keep version ranges that normalise to equality version constraints (== v).
-filterThisVersion :: M.Map PN [LabeledPackageConstraint] -> M.Map PN [LabeledPackageConstraint]
-filterThisVersion = M.filter (not . null) . M.map (filter isThisVersion) where
-  normalise = fromVersionIntervals . toVersionIntervals
-  isThisVersion lpc
-    | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion vr)) _ <- lpc
-    , ThisVersionF _ <- projectVersionRange $ normalise vr = True
-    | otherwise = False
+-- | Keep package names of constraints that satisfy the predicate.
+filterVersion :: (LabeledPackageConstraint -> Bool) -> M.Map PN [LabeledPackageConstraint] -> Set PN
+filterVersion versionFilter = M.keysSet . M.filter (not . null) . M.map (filter versionFilter)
+
+normalise :: VersionRange -> VersionRange
+normalise = fromVersionIntervals . toVersionIntervals
+
+-- | Unconstrained with a version range @>=0@ or @<0@ or their flag equivalents
+-- and constrained by other versions ranges.
+--
+-- Both the @-any@ and @-none@ flags are considered unconstrained, because they
+-- don't actually constrain the version of the package. The @-any@ flag allows
+-- any version, and the @-none@ flag effectively excludes a package.
+isVersionConstrained :: LabeledPackageConstraint -> Bool
+isVersionConstrained (LabeledPackageConstraint (PackageConstraint _ c) _) = case c of
+    PackagePropertyVersion (normalise -> vr) -> not (isAnyVersion vr || isNoVersion vr)
+    -- `PackagePropertyFlags` @-any@ and @-none@ are covered below.
+    _ -> False
+
+-- | Is this an equality version constraint @== v@?
+isThisVersion :: LabeledPackageConstraint -> Bool
+isThisVersion lpc
+  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion vr)) _ <- lpc
+  , ThisVersionF _ <- projectVersionRange $ normalise vr = True
+  | otherwise = False
 
 -- | Dump solver tree to a file (in debugging mode)
 --
