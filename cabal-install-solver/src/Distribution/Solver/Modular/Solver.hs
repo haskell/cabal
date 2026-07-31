@@ -192,9 +192,8 @@ isVersionConstrained (LabeledPackageConstraint (PackageConstraint _ c) _) = case
 
 -- | Is this an equality version constraint @== v@?
 isThisVersion :: LabeledPackageConstraint -> Bool
-isThisVersion lpc
-  | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion vr)) _ <- lpc
-  , ThisVersionF _ <- projectVersionRange $ normalise vr = True
+isThisVersion (LabeledPackageConstraint (PackageConstraint _ constraint) _)
+  | PackagePropertyVersion (projectVersionRange . normalise -> ThisVersionF _) <- constraint = True
   | otherwise = False
 
 -- | Dump solver tree to a file (in debugging mode)
