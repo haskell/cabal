@@ -5,11 +5,11 @@ set -o pipefail
 
 RELEASE=$1
 VERSION=${RELEASE#cabal-install-v}
-URL=https://downloads.haskell.org
+URL=cabal@downloads-origin.haskell.org
 
 cd "gh-release-artifacts/cabal-${VERSION}"
 
-sftp -b - $URL <<EOF
+sftp -P 2222 -b - $URL <<EOF
 cd cabal
 
 mkdir cabal-install-$VERSION
