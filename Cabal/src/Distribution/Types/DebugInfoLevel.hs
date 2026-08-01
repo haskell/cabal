@@ -4,7 +4,6 @@
 module Distribution.Types.DebugInfoLevel
   ( DebugInfoLevel (..)
   , toString
-  , defaultDebugInfo
   )
 where
 
@@ -25,9 +24,6 @@ data DebugInfoLevel
   | MaximalDebugInfo
   deriving stock (Bounded, Enum, Eq, Generic, Read, Show)
   deriving anyclass (Binary, NFData, Structured)
-
-defaultDebugInfo :: DebugInfoLevel
-defaultDebugInfo = NoDebugInfo
 
 instance Parsec DebugInfoLevel where
   parsec :: CabalParsing m => m DebugInfoLevel

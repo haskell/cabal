@@ -5,7 +5,6 @@
 module Distribution.Types.DumpBuildInfo
   ( DumpBuildInfo (..)
   , toString
-  , defaultDumpBuildInfo
   ) where
 
 import Distribution.Compat.Prelude (Binary, Generic, NFData, Structured)
@@ -16,9 +15,6 @@ data DumpBuildInfo
   | DumpBuildInfo
   deriving stock (Read, Show, Eq, Ord, Enum, Bounded, Generic)
   deriving anyclass (Binary, NFData, Structured)
-
-defaultDumpBuildInfo :: DumpBuildInfo
-defaultDumpBuildInfo = NoDumpBuildInfo
 
 instance Parsec DumpBuildInfo where
   parsec :: CabalParsing m => m DumpBuildInfo
