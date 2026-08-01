@@ -211,6 +211,7 @@ import Distribution.Types.Flag
   , diffFlagAssignment
   , showFlagAssignment
   )
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import qualified Distribution.Types.OptimisationLevel as O
 import Distribution.Utils.NubList
   ( fromNubList
@@ -1252,7 +1253,7 @@ printPlan
         "Build profile: "
           ++ unwords
             [ "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared
-            , "-O" ++ (O.toString . fromFlagOrDefault O.defaultOptimisationLevel) (globalOptimization <> localOptimization)
+            , "-O" ++ (O.toString . fromFlagOrDefault NormalOptimisation) (globalOptimization <> localOptimization)
             ]
           ++ "\n"
 

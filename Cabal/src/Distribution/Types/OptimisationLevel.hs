@@ -4,7 +4,6 @@
 module Distribution.Types.OptimisationLevel
   ( OptimisationLevel (..)
   , toString
-  , defaultOptimisationLevel
   )
 where
 
@@ -24,9 +23,6 @@ data OptimisationLevel
   | MaximumOptimisation
   deriving stock (Bounded, Enum, Eq, Generic, Read, Show)
   deriving anyclass (Binary, NFData, Structured)
-
-defaultOptimisationLevel :: OptimisationLevel
-defaultOptimisationLevel = NormalOptimisation
 
 instance Parsec OptimisationLevel where
   parsec :: CabalParsing m => m OptimisationLevel
