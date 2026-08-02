@@ -8,24 +8,18 @@ on:
 
 jobs:
   notify-matrix:
-    # Only execute if the label matching "priority: high 🔥" was just applied
-    if: "github.event.label.name == 'priority: high 🔥'"
+    if: "github.event.label.name == 'priority: high :fire:'"
     runs-on: ubuntu-latest
 
     steps:
       - name: Send Notification to Matrix
         uses: Cadair/matrix-notify-action@main
         with:
-          # Your secure access token stored in GitHub Secrets
+          # matrix_token for @cabal-notification-bot:matrix.org (owned by Artem)
           matrix_token: ${{ secrets.MATRIX_TOKEN }}
-
-          # The homeserver URL (change if you are using a self-hosted instance)
           homeserver: 'https://matrix.org'
-
-          # The internal ID of your target Matrix room
+          # roomid for #hcakage:matrix.org
           roomid: '!YWYQDCuIpuQHzGrLzd:matrix.org'
-
-          # Custom markdown message delivered to the room
           message: |
             @${{ github.actor }} marked as a high priority item:
 
