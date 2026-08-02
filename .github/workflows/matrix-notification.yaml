@@ -13,13 +13,13 @@ jobs:
 
     steps:
       - name: Send Notification to Matrix
-        uses: Cadair/matrix-notify-action@main
+        uses: tobiasge/action-send-matrix-message@v2
         with:
           # token for @cabal-notification-bot:matrix.org (owned by Artem)
           token: ${{ secrets.MATRIX_TOKEN }}
           homeserver: 'https://matrix.org'
           # roomid for #hcakage:matrix.org
-          roomid: '!YWYQDCuIpuQHzGrLzd:matrix.org'
+          channel: '!YWYQDCuIpuQHzGrLzd:matrix.org'
           message: |
             @${{ github.actor }} marked as a high priority item:
 
