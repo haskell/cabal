@@ -199,6 +199,7 @@ import Distribution.Simple.Command
   , CommandUI (..)
   , commandAddAction
   , commandFromSpec
+  , commandParseArgs
   , commandShowOptions
   , commandsRunWithFallback
   , defaultCommandFallback
@@ -344,7 +345,7 @@ warnIfAssertionsAreEnabled =
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
-    command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
+    command <- commandsRunBuildOptparseFirst args
     case command of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
@@ -376,6 +377,24 @@ mainWorker args = do
             warnIfAssertionsAreEnabled
             action globalFlags
   where
+    commandsRunBuildOptparseFirst :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
+    commandsRunBuildOptparseFirst argv =
+      case parseBuildWithOptparse argv of
+        Just parsed -> pure parsed
+        Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
+
+    parseBuildWithOptparse :: [String] -> Maybe (CommandParse (GlobalFlags, CommandParse Action))
+    parseBuildWithOptparse argv =
+      case commandParseArgs globalCmd True argv of
+        CommandReadyToGo (mkGlobalFlags, cmdArgs0) ->
+          case cmdArgs0 of
+            (cmdName : cmdArgs)
+              | CmdBuild.isBuildCommandName cmdName ->
+                  let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
+                   in Just $ CommandReadyToGo (globalFlags, CmdBuild.parseBuildCommand cmdName cmdArgs)
+            _ -> Nothing
+        _ -> Nothing
+
     delegateToExternal
       :: [Command Action]
       -> String
@@ -453,6 +472,8 @@ mainWorker args = do
           | null cabalGitInfo && null cabalInstallGitInfo = ""
           | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
           | otherwise = cabalGitInfo
+
+    globalCmd = globalCommand commands
 
     commands = map commandFromSpec commandSpecs
     commandSpecs =
