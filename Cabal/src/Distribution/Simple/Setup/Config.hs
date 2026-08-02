@@ -434,7 +434,7 @@ configureOptions showOrParseArgs =
         configHcFlavor
         (\v flags -> flags{configHcFlavor = v})
         ( choiceOpt
-            [ (Flag GHC, ("g", ["ghc"]), "Compile with GHC")
+            [ (Flag GHC, ([], ["ghc"]), "Compile with GHC")
             , (Flag UHC, ([], ["uhc"]), "Compile with UHC")
             ]
         )
@@ -598,7 +598,7 @@ configureOptions showOrParseArgs =
                   Flag MaximalDebugInfo -> [Just "3"]
                   _ -> []
               )
-              ""
+              "g"
               ["enable-debug-info"]
               "Emit debug info (n is 0--3, default is 0)"
           , noArg
