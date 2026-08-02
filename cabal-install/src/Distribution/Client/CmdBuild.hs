@@ -1,8 +1,12 @@
+{-# LANGUAGE LambdaCase #-}
+
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI and action
     buildCommand
   , buildAction
+  , parseBuildCommand
+  , isBuildCommandName
   , BuildFlags (..)
   , defaultBuildFlags
 
@@ -25,6 +29,7 @@ import Distribution.Client.TargetProblem
   )
 
 import qualified Data.Map as Map
+import Data.Monoid (Endo (..), appEndo)
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -43,7 +48,12 @@ import Distribution.Client.Setup
   , yesNoOpt
   )
 import Distribution.Simple.Command
-  ( CommandUI (..)
+  ( CommandParse (..)
+  , CommandUI (..)
+  , OptDescr (..)
+  , OptionField (..)
+  , ShowOrParseArgs (ParseArgs)
+  , commandParseArgs
   , option
   , usageAlternatives
   )
@@ -55,6 +65,10 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
   ( normal
   )
+
+import Distribution.ReadE (runReadE)
+
+import qualified Options.Applicative as O
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand =
@@ -236,3 +250,123 @@ reportBuildTargetProblems verbosity problems =
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
   dieWithException verbosity . ReportCannotPruneDependencies . renderCannotPruneDependencies
+
+buildCommandNames :: [String]
+buildCommandNames = ["build", "new-build", commandName buildCommand]
+
+isBuildCommandName :: String -> Bool
+isBuildCommandName name = name `elem` buildCommandNames
+
+buildListOptions :: [String]
+buildListOptions =
+  case commandParseArgs buildCommand False ["--list-options"] of
+    CommandList opts -> opts
+    _ -> []
+
+parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
+parseBuildCommand invokedName cmdArgs =
+  case O.execParserPure O.defaultPrefs (buildParserInfo invokedName) cmdArgs of
+    O.Success parsed ->
+      if parsedListOptions parsed
+        then CommandList buildListOptions
+        else
+          let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags buildCommand)
+           in CommandReadyToGo (buildAction flags (parsedTargets parsed))
+    O.Failure failure ->
+      let (msg, exitCode) = O.renderFailure failure ("cabal " ++ invokedName)
+       in if exitCode == ExitSuccess
+            then CommandHelp (const msg)
+            else CommandErrors [msg]
+    O.CompletionInvoked _ ->
+      CommandErrors ["Shell completion is not supported by this parser path."]
+
+buildParserInfo :: String -> O.ParserInfo ParsedBuildCommand
+buildParserInfo invokedName =
+  O.info
+    (parsedBuildCommandParser O.<**> O.helper)
+    ( O.fullDesc
+        <> O.progDesc (commandSynopsis buildCommand)
+        <> O.header ("cabal " ++ invokedName)
+    )
+
+data ParsedBuildCommand = ParsedBuildCommand
+  { parsedFlagEdits :: Endo (NixStyleFlags BuildFlags)
+  , parsedTargets :: [String]
+  , parsedListOptions :: Bool
+  }
+
+data BuildItem
+  = BuildItemFlag (Endo (NixStyleFlags BuildFlags))
+  | BuildItemTarget String
+  | BuildItemListOptions
+
+parsedBuildCommandParser :: O.Parser ParsedBuildCommand
+parsedBuildCommandParser = toParsed <$> O.many buildItemParser
+  where
+    toParsed items =
+      let edits = [e | BuildItemFlag e <- items]
+          targets = [t | BuildItemTarget t <- items]
+          listOptionsSeen = any isListOptions items
+       in ParsedBuildCommand
+            { parsedFlagEdits = mconcat edits
+            , parsedTargets = targets
+            , parsedListOptions = listOptionsSeen
+            }
+
+    isListOptions BuildItemListOptions = True
+    isListOptions _ = False
+
+buildItemParser :: O.Parser BuildItem
+buildItemParser =
+  O.asum
+    ( buildOptionParsers
+        ++ [ BuildItemListOptions
+               <$ O.flag'
+                 ()
+                 (O.long "list-options" <> O.help "Print a list of command line flags")
+           , BuildItemTarget <$> O.strArgument (O.metavar "TARGET")
+           ]
+    )
+
+buildOptionParsers :: [O.Parser BuildItem]
+buildOptionParsers =
+  concatMap optionFieldParsers (commandOptions buildCommand ParseArgs)
+
+optionFieldParsers :: OptionField (NixStyleFlags BuildFlags) -> [O.Parser BuildItem]
+optionFieldParsers (OptionField _ descrs) = concatMap optDescrParsers descrs
+
+optDescrParsers :: OptDescr (NixStyleFlags BuildFlags) -> [O.Parser BuildItem]
+optDescrParsers = \case
+  ReqArg desc optFlags placeHolder reader _show ->
+    [ BuildItemFlag . Endo
+        <$> O.option
+          (O.eitherReader (runReadE reader))
+          (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
+    ]
+  OptArg desc optFlags placeHolder reader (_defaultText, defaultFn) _show ->
+    [ BuildItemFlag . Endo
+        <$> ( O.option
+                (O.eitherReader (runReadE reader))
+                (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
+                <|> O.flag' defaultFn (flagMods optFlags <> O.internal)
+            )
+    ]
+  ChoiceOpt choices ->
+    [ BuildItemFlag (Endo setFn)
+        <$ O.flag' () (flagMods optFlags <> O.help desc)
+    | (desc, optFlags, setFn, _get) <- choices
+    ]
+  BoolOpt desc trueFlags falseFlags setFn _get ->
+    [ BuildItemFlag (Endo (setFn True))
+        <$ O.flag' () (flagMods trueFlags <> O.help desc)
+    , BuildItemFlag (Endo (setFn False))
+        <$ O.flag' () (flagMods falseFlags <> O.help desc)
+    ]
+
+optionMods :: (String, [String]) -> O.Mod O.OptionFields a
+optionMods (shortFlags, longFlags) =
+  mconcat (map O.short shortFlags) <> mconcat (map O.long longFlags)
+
+flagMods :: (String, [String]) -> O.Mod O.FlagFields a
+flagMods (shortFlags, longFlags) =
+  mconcat (map O.short shortFlags) <> mconcat (map O.long longFlags)
