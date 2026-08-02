@@ -289,13 +289,13 @@ buildHelpText :: String -> String -> String
 buildHelpText invokedName pname =
   commandSynopsis buildCommand
     <> "\n\n"
-    <> replaceBuildAlias invokedName (commandUsage buildCommand pname)
+    <> colorizeUsageHeader (replaceBuildAlias invokedName (commandUsage buildCommand pname))
     <> maybe "" (('\n' :) . ($ pname)) (commandDescription buildCommand)
     <> "\n"
     <> colorizeHeader "Flags for build:"
     <> GetOpt.usageInfo "" (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
     <> concatMap renderGroup buildOptionGroups
-    <> maybe "" (('\n' :) . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
+    <> maybe "" (('\n' :) . colorizeExamplesHeader . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
   where
     commonHelpOptions :: [GetOpt.OptDescr ()]
     commonHelpOptions =
@@ -407,6 +407,12 @@ replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack
 
 colorizeHeader :: String -> String
 colorizeHeader text = "\ESC[32m" <> text <> "\ESC[0m"
+
+colorizeUsageHeader :: String -> String
+colorizeUsageHeader = T.unpack . T.replace (T.pack "Usage:") (T.pack $ colorizeHeader "Usage:") . T.pack
+
+colorizeExamplesHeader :: String -> String
+colorizeExamplesHeader = T.unpack . T.replace (T.pack "Examples:") (T.pack $ colorizeHeader "Examples:") . T.pack
 
 parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseBuildCommand invokedName cmdArgs =
