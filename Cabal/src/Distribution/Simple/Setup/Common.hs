@@ -400,7 +400,7 @@ optionVerbosity get set =
     ( optArg
         "n"
         (fmap Flag flagToVerbosity)
-        (show verbose, Flag verbose) -- default Value if no n is given
+        (Flag verbose)
         (fmap (Just . showForCabal) . flagToList)
     )
 
@@ -418,7 +418,7 @@ optionNumJobs get set =
     ( optArg
         "NUM"
         (fmap Flag numJobsParser)
-        ("$ncpus", Flag Nothing)
+        (Flag Nothing)
         (map (Just . maybe "$ncpus" show) . flagToList)
     )
   where
