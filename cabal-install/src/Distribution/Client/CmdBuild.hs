@@ -294,7 +294,7 @@ buildHelpText invokedName pname =
     <> "\n"
     <> colorizeHeader "Flags for build:"
     <> "\n"
-    <> renderOptionRows maxFlagColumnWidth descColumn (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
+    <> renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
     <> concatMap renderGroup buildOptionGroups
     <> maybe "" (('\n' :) . colorizeExamplesHeader . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
   where
@@ -304,6 +304,9 @@ buildHelpText invokedName pname =
 
     maxFlagColumnWidth :: Int
     maxFlagColumnWidth = 50
+
+    helpOutputWidth :: Int
+    helpOutputWidth = 100
 
     descColumn :: Int
     descColumn =
@@ -327,7 +330,7 @@ buildHelpText invokedName pname =
           "\n"
             <> colorizeHeader (title <> ":")
             <> "\n"
-            <> renderOptionRows maxFlagColumnWidth descColumn (concatMap optionFieldToGetOpt options)
+            <> renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth (concatMap optionFieldToGetOpt options)
 
 buildOptionGroups :: [(String, [BuildOptionField])]
 buildOptionGroups =
@@ -402,17 +405,52 @@ splitBy
   -> ([BuildOptionField], [BuildOptionField])
 splitBy keepPred = partition (not . keepPred)
 
-renderOptionRows :: Int -> Int -> [GetOpt.OptDescr ()] -> String
-renderOptionRows maxFlagColumnWidth descColumn = concatMap renderOption
+renderOptionRows :: Int -> Int -> Int -> [GetOpt.OptDescr ()] -> String
+renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth = concatMap renderOption
   where
+    descriptionIndent = replicate (2 + descColumn) ' '
+    descriptionWidth = max 20 (helpOutputWidth - (2 + descColumn))
+
     renderOption opt =
       let (flagColumn, description) = getOptToColumns opt
-          padding = max 1 (descColumn - length flagColumn)
-          descriptionIndent = replicate (2 + descColumn) ' '
+          wrappedDescription = wrapDescription descriptionWidth description
        in
           if length flagColumn <= maxFlagColumnWidth
-            then "  " <> flagColumn <> replicate padding ' ' <> description <> "\n"
-            else "  " <> flagColumn <> "\n" <> descriptionIndent <> description <> "\n"
+            then renderInline flagColumn wrappedDescription
+            else renderStacked flagColumn wrappedDescription
+
+    renderInline flagColumn descriptionLines =
+      let padding = max 1 (descColumn - length flagColumn)
+       in case descriptionLines of
+            [] -> "  " <> flagColumn <> "\n"
+            firstLineText : continuation ->
+              let firstLine = "  " <> flagColumn <> replicate padding ' ' <> firstLineText <> "\n"
+                  continuationLines = [descriptionIndent <> line <> "\n" | line <- continuation]
+               in firstLine <> concat continuationLines
+
+    renderStacked flagColumn descriptionLines =
+      "  "
+        <> flagColumn
+        <> "\n"
+        <> concat [descriptionIndent <> line <> "\n" | line <- descriptionLines]
+
+wrapDescription :: Int -> String -> [String]
+wrapDescription width description =
+  case concatMap wrapParagraph (lines description) of
+    [] -> [""]
+    wrapped -> wrapped
+  where
+    wrapParagraph paragraph
+      | null ws = [""]
+      | otherwise = reverse (foldl' step [""] ws)
+      where
+        ws = words paragraph
+
+        step (current : previous) word
+          | null current = word : previous
+          | length current + 1 + length word <= width = (current <> " " <> word) : previous
+          | otherwise = word : current : previous
+        step [] _ = []
 
 getOptToColumns :: GetOpt.OptDescr () -> (String, String)
 getOptToColumns (GetOpt.Option shortFlags longFlags argDescr description) =
