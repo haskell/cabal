@@ -303,7 +303,7 @@ buildHelpText invokedName pname =
       [GetOpt.Option ['h'] ["help"] (GetOpt.NoArg ()) "Show this help text"]
 
     maxFlagColumnWidth :: Int
-    maxFlagColumnWidth = 50
+    maxFlagColumnWidth = 30
 
     helpOutputWidth :: Int
     helpOutputWidth = 100
