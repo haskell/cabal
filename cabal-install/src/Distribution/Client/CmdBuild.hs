@@ -292,7 +292,7 @@ buildHelpText invokedName pname =
     <> replaceBuildAlias invokedName (commandUsage buildCommand pname)
     <> maybe "" (('\n' :) . ($ pname)) (commandDescription buildCommand)
     <> "\n"
-    <> "Flags for build:"
+    <> colorizeHeader "Flags for build:"
     <> GetOpt.usageInfo "" (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
     <> concatMap renderGroup buildOptionGroups
     <> maybe "" (('\n' :) . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
@@ -304,7 +304,7 @@ buildHelpText invokedName pname =
     renderGroup :: (String, [BuildOptionField]) -> String
     renderGroup (title, options)
       | null options = ""
-      | otherwise = "\n" <> title <> ":" <> GetOpt.usageInfo "" (concatMap optionFieldToGetOpt options)
+      | otherwise = "\n" <> colorizeHeader (title <> ":") <> GetOpt.usageInfo "" (concatMap optionFieldToGetOpt options)
 
 buildOptionGroups :: [(String, [BuildOptionField])]
 buildOptionGroups =
@@ -404,6 +404,9 @@ optDescrToGetOpt = \case
 
 replaceBuildAlias :: String -> String -> String
 replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
+
+colorizeHeader :: String -> String
+colorizeHeader text = "\ESC[32m" <> text <> "\ESC[0m"
 
 parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseBuildCommand invokedName cmdArgs =
