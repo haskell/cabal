@@ -408,8 +408,10 @@ splitBy keepPred = partition (not . keepPred)
 renderOptionRows :: Int -> Int -> Int -> [GetOpt.OptDescr ()] -> String
 renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth = concatMap renderOption
   where
+    descriptionMarker = "• "
+    markerPadding = replicate (length descriptionMarker) ' '
     descriptionIndent = replicate (2 + descColumn) ' '
-    descriptionWidth = max 20 (helpOutputWidth - (2 + descColumn))
+    descriptionWidth = max 20 (helpOutputWidth - (2 + descColumn) - length descriptionMarker)
 
     renderOption opt =
       let (flagColumn, description) = getOptToColumns opt
@@ -424,15 +426,22 @@ renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth = concatMap rende
        in case descriptionLines of
             [] -> "  " <> flagColumn <> "\n"
             firstLineText : continuation ->
-              let firstLine = "  " <> flagColumn <> replicate padding ' ' <> firstLineText <> "\n"
-                  continuationLines = [descriptionIndent <> line <> "\n" | line <- continuation]
+              let firstLine = "  " <> flagColumn <> replicate padding ' ' <> descriptionMarker <> firstLineText <> "\n"
+                  continuationLines = [descriptionIndent <> markerPadding <> line <> "\n" | line <- continuation]
                in firstLine <> concat continuationLines
 
     renderStacked flagColumn descriptionLines =
-      "  "
-        <> flagColumn
-        <> "\n"
-        <> concat [descriptionIndent <> line <> "\n" | line <- descriptionLines]
+      case descriptionLines of
+        [] -> "  " <> flagColumn <> "\n"
+        firstLineText : continuation ->
+          "  "
+            <> flagColumn
+            <> "\n"
+            <> descriptionIndent
+            <> descriptionMarker
+            <> firstLineText
+            <> "\n"
+            <> concat [descriptionIndent <> markerPadding <> line <> "\n" | line <- continuation]
 
 wrapDescription :: Int -> String -> [String]
 wrapDescription width description =
