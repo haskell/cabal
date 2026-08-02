@@ -31,12 +31,31 @@ import Distribution.Client.TargetProblem
 import qualified Data.Map as Map
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
+import qualified System.Console.GetOpt as GetOpt
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
+  , removeBenchOptions
+  , removeCompilerOptions
+  , removeConfigureOptions
+  , removeCoverageOptions
+  , removeExeOptions
+  , removeHaddockOptions
+  , removeIncludeOptions
+  , removeInstallOptions
+  , removeIrrelevantOptions
+  , removeLibOptions
+  , removeLoggingOptions
+  , removeOutputOptions
+  , removePhaseOptions
+  , removeProgOptions
+  , removeProfilingOptions
+  , removeSolvingOptions
+  , removeTestOptions
+  , removeUnsupportedOptions
   )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -53,7 +72,7 @@ import Distribution.Simple.Command
   , CommandUI (..)
   , OptDescr (..)
   , OptionField (..)
-  , ShowOrParseArgs (ParseArgs)
+  , ShowOrParseArgs (ParseArgs, ShowArgs)
   , commandParseArgs
   , option
   , usageAlternatives
@@ -264,12 +283,127 @@ buildListOptions =
     CommandList opts -> opts
     _ -> []
 
+type BuildOptionField = OptionField (NixStyleFlags BuildFlags)
+
 buildHelpText :: String -> String -> String
 buildHelpText invokedName pname =
-  case commandParseArgs buildCommand False ["--help"] of
-    CommandHelp mkHelp ->
-      T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack $ mkHelp pname
-    _ -> "Usage: " <> pname <> " " <> invokedName <> " [TARGETS] [FLAGS]\n"
+  commandSynopsis buildCommand
+    <> "\n\n"
+    <> replaceBuildAlias invokedName (commandUsage buildCommand pname)
+    <> maybe "" (('\n' :) . ($ pname)) (commandDescription buildCommand)
+    <> "\n"
+    <> "Flags for build:"
+    <> GetOpt.usageInfo "" (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
+    <> concatMap renderGroup buildOptionGroups
+    <> maybe "" (('\n' :) . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
+  where
+    commonHelpOptions :: [GetOpt.OptDescr ()]
+    commonHelpOptions =
+      [GetOpt.Option ['h'] ["help"] (GetOpt.NoArg ()) "Show this help text"]
+
+    renderGroup :: (String, [BuildOptionField]) -> String
+    renderGroup (title, options)
+      | null options = ""
+      | otherwise = "\n" <> title <> ":" <> GetOpt.usageInfo "" (concatMap optionFieldToGetOpt options)
+
+buildOptionGroups :: [(String, [BuildOptionField])]
+buildOptionGroups =
+  [ ("Unsupported options", unsupported)
+  , ("Install layout options", install)
+  , ("Irrelevant options", irrelevant)
+  , ("Haddock options", haddock)
+  , ("Test options", test)
+  , ("Benchmark options", bench)
+  , ("Profiling options", profiling)
+  , ("Dependency solving options", solving)
+  , ("Executable build options", exe)
+  , ("Library build options", lib)
+  , ("Coverage options", coverage)
+  , ("Output and artifact options", output)
+  , ("Configure-phase options", configure)
+  , ("Build phase control options", phase)
+  , ("Compiler and parallelism options", compiler)
+  , ("Logging and reporting options", logging)
+  , ("Include and linker path options", includePaths)
+  , ("Program override options", prog)
+  ]
+  where
+    opts0 = commandOptions buildCommand ShowArgs
+
+    (unsupported, opts1) = splitBy removeUnsupportedOptions opts0
+    (install, opts2) = splitBy removeInstallOptions opts1
+    (irrelevant, opts3) = splitBy removeIrrelevantOptions opts2
+    (haddock, opts4) = splitBy removeHaddockOptions opts3
+    (test, opts5) = splitBy removeTestOptions opts4
+    (bench, opts6) = splitBy removeBenchOptions opts5
+    (profiling, opts7) = splitBy removeProfilingOptions opts6
+    (solving, opts8) = splitBy removeSolvingOptions opts7
+    (exe, opts9) = splitBy removeExeOptions opts8
+    (lib, opts10) = splitBy removeLibOptions opts9
+    (coverage, opts11) = splitBy removeCoverageOptions opts10
+    (output, opts12) = splitBy removeOutputOptions opts11
+    (configure, opts13) = splitBy removeConfigureOptions opts12
+    (phase, opts14) = splitBy removePhaseOptions opts13
+    (compiler, opts15) = splitBy removeCompilerOptions opts14
+    (logging, opts16) = splitBy removeLoggingOptions opts15
+    (includePaths, opts17) = splitBy removeIncludeOptions opts16
+    (prog, _opts18) = splitBy removeProgOptions opts17
+
+buildUngroupedOptions :: [BuildOptionField]
+buildUngroupedOptions =
+  opts18
+  where
+    opts0 = commandOptions buildCommand ShowArgs
+    (_, opts1) = splitBy removeUnsupportedOptions opts0
+    (_, opts2) = splitBy removeInstallOptions opts1
+    (_, opts3) = splitBy removeIrrelevantOptions opts2
+    (_, opts4) = splitBy removeHaddockOptions opts3
+    (_, opts5) = splitBy removeTestOptions opts4
+    (_, opts6) = splitBy removeBenchOptions opts5
+    (_, opts7) = splitBy removeProfilingOptions opts6
+    (_, opts8) = splitBy removeSolvingOptions opts7
+    (_, opts9) = splitBy removeExeOptions opts8
+    (_, opts10) = splitBy removeLibOptions opts9
+    (_, opts11) = splitBy removeCoverageOptions opts10
+    (_, opts12) = splitBy removeOutputOptions opts11
+    (_, opts13) = splitBy removeConfigureOptions opts12
+    (_, opts14) = splitBy removePhaseOptions opts13
+    (_, opts15) = splitBy removeCompilerOptions opts14
+    (_, opts16) = splitBy removeLoggingOptions opts15
+    (_, opts17) = splitBy removeIncludeOptions opts16
+    (_, opts18) = splitBy removeProgOptions opts17
+
+splitBy
+  :: (BuildOptionField -> Bool)
+  -> [BuildOptionField]
+  -> ([BuildOptionField], [BuildOptionField])
+splitBy keepPred = partition (not . keepPred)
+
+optionFieldToGetOpt :: BuildOptionField -> [GetOpt.OptDescr ()]
+optionFieldToGetOpt (OptionField _ descrs) = concatMap optDescrToGetOpt descrs
+
+optDescrToGetOpt :: OptDescr (NixStyleFlags BuildFlags) -> [GetOpt.OptDescr ()]
+optDescrToGetOpt = \case
+  ReqArg desc (shortFlags, longFlags) placeHolder _reader _showFlag ->
+    [GetOpt.Option shortFlags longFlags (GetOpt.ReqArg (const ()) placeHolder) desc]
+  OptArg desc (shortFlags, longFlags) placeHolder _reader (_defaultValue, _defaultSetter) _showFlag ->
+    [GetOpt.Option shortFlags longFlags (GetOpt.OptArg (const ()) placeHolder) desc]
+  ChoiceOpt choices ->
+    [ GetOpt.Option shortFlags longFlags (GetOpt.NoArg ()) desc
+    | (desc, (shortFlags, longFlags), _setFn, _getFn) <- choices
+    ]
+  BoolOpt desc (shortTrue, longTrue) (shortFalse, longFalse) _setFn _getFn
+    | null shortFalse && null longFalse ->
+        [GetOpt.Option shortTrue longTrue (GetOpt.NoArg ()) desc]
+    | null shortTrue && null longTrue ->
+        [GetOpt.Option shortFalse longFalse (GetOpt.NoArg ()) desc]
+    | otherwise ->
+        [ GetOpt.Option shortTrue longTrue (GetOpt.NoArg ()) ("Enable " <> desc)
+        , GetOpt.Option shortFalse longFalse (GetOpt.NoArg ()) ("Disable " <> desc)
+        ]
+
+replaceBuildAlias :: String -> String -> String
+replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
 
 parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseBuildCommand invokedName cmdArgs =
