@@ -30,6 +30,7 @@ import Distribution.Client.TargetProblem
 
 import qualified Data.Map as Map
 import Data.Monoid (Endo (..), appEndo)
+import qualified Data.Text as T
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -90,27 +91,27 @@ buildCommand =
             ++ "'cabal.project.local' and other files."
     , commandNotes = Just $ \pname ->
         "Examples:\n"
-          ++ "  "
+          ++ "  - "
           ++ pname
           ++ " v2-build\n"
-          ++ "    Build the package in the current directory "
+          ++ "      Build the package in the current directory "
           ++ "or all packages in the project\n"
-          ++ "  "
+          ++ "  - "
           ++ pname
           ++ " v2-build pkgname\n"
-          ++ "    Build the package named pkgname in the project\n"
-          ++ "  "
+          ++ "      Build the package named pkgname in the project\n"
+          ++ "  - "
           ++ pname
           ++ " v2-build ./pkgfoo\n"
-          ++ "    Build the package in the ./pkgfoo directory\n"
-          ++ "  "
+          ++ "      Build the package in the ./pkgfoo directory\n"
+          ++ "  - "
           ++ pname
           ++ " v2-build cname\n"
-          ++ "    Build the component named cname in the project\n"
-          ++ "  "
+          ++ "      Build the component named cname in the project\n"
+          ++ "  - "
           ++ pname
           ++ " v2-build cname --enable-profiling\n"
-          ++ "    Build the component in profiling mode "
+          ++ "      Build the component in profiling mode "
           ++ "(including dependencies as needed)\n"
     , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
     , commandOptions =
@@ -263,6 +264,13 @@ buildListOptions =
     CommandList opts -> opts
     _ -> []
 
+buildHelpText :: String -> String -> String
+buildHelpText invokedName pname =
+  case commandParseArgs buildCommand False ["--help"] of
+    CommandHelp mkHelp ->
+      T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack $ mkHelp pname
+    _ -> "Usage: " <> pname <> " " <> invokedName <> " [TARGETS] [FLAGS]\n"
+
 parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseBuildCommand invokedName cmdArgs =
   case O.execParserPure O.defaultPrefs (buildParserInfo invokedName) cmdArgs of
@@ -275,7 +283,7 @@ parseBuildCommand invokedName cmdArgs =
     O.Failure failure ->
       let (msg, exitCode) = O.renderFailure failure ("cabal " ++ invokedName)
        in if exitCode == ExitSuccess
-            then CommandHelp (const msg)
+            then CommandHelp (buildHelpText invokedName)
             else CommandErrors [msg]
     O.CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
@@ -285,9 +293,32 @@ buildParserInfo invokedName =
   O.info
     (parsedBuildCommandParser O.<**> O.helper)
     ( O.fullDesc
-        <> O.progDesc (commandSynopsis buildCommand)
+        <> O.progDesc (buildHelpDescription)
         <> O.header ("cabal " ++ invokedName)
+        <> O.footer (buildExamplesSection invokedName)
     )
+
+buildHelpDescription :: String
+buildHelpDescription =
+  case commandDescription buildCommand of
+    Nothing -> commandSynopsis buildCommand
+    Just mkDescription -> mkDescription "cabal"
+
+buildExamplesSection :: String -> String
+buildExamplesSection invokedName =
+  unlines
+    [ "Examples:"
+    , "  - " <> invokedName
+    , "      Build the package in the current directory or all packages in the project"
+    , "  - " <> invokedName <> " pkgname"
+    , "      Build the package named pkgname in the project"
+    , "  - " <> invokedName <> " ./pkgfoo"
+    , "      Build the package in the ./pkgfoo directory"
+    , "  - " <> invokedName <> " cname"
+    , "      Build the component named cname in the project"
+    , "  - " <> invokedName <> " cname --enable-profiling"
+    , "      Build the component in profiling mode (including dependencies as needed)"
+    ]
 
 data ParsedBuildCommand = ParsedBuildCommand
   { parsedFlagEdits :: Endo (NixStyleFlags BuildFlags)
