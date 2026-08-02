@@ -15,8 +15,8 @@ jobs:
       - name: Send Notification to Matrix
         uses: Cadair/matrix-notify-action@main
         with:
-          # matrix_token for @cabal-notification-bot:matrix.org (owned by Artem)
-          matrix_token: ${{ secrets.MATRIX_TOKEN }}
+          # token for @cabal-notification-bot:matrix.org (owned by Artem)
+          token: ${{ secrets.MATRIX_TOKEN }}
           homeserver: 'https://matrix.org'
           # roomid for #hcakage:matrix.org
           roomid: '!YWYQDCuIpuQHzGrLzd:matrix.org'
