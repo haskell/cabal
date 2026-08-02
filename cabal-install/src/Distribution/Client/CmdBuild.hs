@@ -293,7 +293,8 @@ buildHelpText invokedName pname =
     <> maybe "" (('\n' :) . ($ pname)) (commandDescription buildCommand)
     <> "\n"
     <> colorizeHeader "Flags for build:"
-    <> GetOpt.usageInfo "" (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
+    <> "\n"
+    <> renderOptionRows maxFlagColumnWidth descColumn (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
     <> concatMap renderGroup buildOptionGroups
     <> maybe "" (('\n' :) . colorizeExamplesHeader . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
   where
@@ -301,10 +302,32 @@ buildHelpText invokedName pname =
     commonHelpOptions =
       [GetOpt.Option ['h'] ["help"] (GetOpt.NoArg ()) "Show this help text"]
 
+    maxFlagColumnWidth :: Int
+    maxFlagColumnWidth = 56
+
+    descColumn :: Int
+    descColumn =
+      min maxFlagColumnWidth
+        ( maximum
+            ( 0
+                : map
+                  (length . fst . getOptToColumns)
+                  ( commonHelpOptions
+                      ++ concatMap optionFieldToGetOpt buildUngroupedOptions
+                      ++ concatMap (concatMap optionFieldToGetOpt . snd) buildOptionGroups
+                  )
+            )
+        )
+        + 2
+
     renderGroup :: (String, [BuildOptionField]) -> String
     renderGroup (title, options)
       | null options = ""
-      | otherwise = "\n" <> colorizeHeader (title <> ":") <> GetOpt.usageInfo "" (concatMap optionFieldToGetOpt options)
+      | otherwise =
+          "\n"
+            <> colorizeHeader (title <> ":")
+            <> "\n"
+            <> renderOptionRows maxFlagColumnWidth descColumn (concatMap optionFieldToGetOpt options)
 
 buildOptionGroups :: [(String, [BuildOptionField])]
 buildOptionGroups =
@@ -378,6 +401,38 @@ splitBy
   -> [BuildOptionField]
   -> ([BuildOptionField], [BuildOptionField])
 splitBy keepPred = partition (not . keepPred)
+
+renderOptionRows :: Int -> Int -> [GetOpt.OptDescr ()] -> String
+renderOptionRows maxFlagColumnWidth descColumn = concatMap renderOption
+  where
+    renderOption opt =
+      let (flagColumn, description) = getOptToColumns opt
+          padding = max 1 (descColumn - length flagColumn)
+          descriptionIndent = replicate (2 + descColumn) ' '
+       in
+          if length flagColumn <= maxFlagColumnWidth
+            then "  " <> flagColumn <> replicate padding ' ' <> description <> "\n"
+            else "  " <> flagColumn <> "\n" <> descriptionIndent <> description <> "\n"
+
+getOptToColumns :: GetOpt.OptDescr () -> (String, String)
+getOptToColumns (GetOpt.Option shortFlags longFlags argDescr description) =
+  (intercalate ", " (renderShortFlags ++ renderLongFlags), description)
+  where
+    renderShortFlags = map renderShortFlag shortFlags
+
+    renderShortFlag shortFlag =
+      case argDescr of
+        GetOpt.NoArg _ -> "-" <> [shortFlag]
+        GetOpt.ReqArg _ metaVar -> "-" <> [shortFlag] <> " " <> metaVar
+        GetOpt.OptArg _ metaVar -> "-" <> [shortFlag] <> "[" <> metaVar <> "]"
+
+    renderLongFlags = map renderLongFlag longFlags
+
+    renderLongFlag longFlag =
+      case argDescr of
+        GetOpt.NoArg _ -> "--" <> longFlag
+        GetOpt.ReqArg _ metaVar -> "--" <> longFlag <> "=" <> metaVar
+        GetOpt.OptArg _ metaVar -> "--" <> longFlag <> "[=" <> metaVar <> "]"
 
 optionFieldToGetOpt :: BuildOptionField -> [GetOpt.OptDescr ()]
 optionFieldToGetOpt (OptionField _ descrs) = concatMap optDescrToGetOpt descrs
