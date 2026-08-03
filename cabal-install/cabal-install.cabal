@@ -106,6 +106,7 @@ library
         Distribution.Client.CmdClean
         Distribution.Client.CmdConfigure
         Distribution.Client.CmdErrorMessages
+        Distribution.Client.CommandUIOptParse
         Distribution.Client.CmdExec
         Distribution.Client.CmdFreeze
         Distribution.Client.CmdHaddock

@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI and action
@@ -29,10 +27,10 @@ import Distribution.Client.TargetProblem
   )
 
 import qualified Data.Map as Map
-import Data.Char (isLower)
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
 import qualified System.Console.GetOpt as GetOpt
+import qualified Distribution.Client.CommandUIOptParse as CommandUIOpt
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -71,8 +69,7 @@ import Distribution.Client.Setup
 import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandUI (..)
-  , OptDescr (..)
-  , OptionField (..)
+  , OptionField
   , ShowOrParseArgs (ParseArgs, ShowArgs)
   , commandParseArgs
   , option
@@ -86,8 +83,6 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
   ( normal
   )
-
-import Distribution.ReadE (runReadE)
 
 import qualified Options.Applicative as O
 
@@ -316,17 +311,17 @@ buildHelpText invokedName pname =
         ( maximum
             ( 0
                 : map
-                  (length . fst . getOptToColumns)
+                  (length . fst . CommandUIOpt.getOptToColumns)
                   ( commonHelpOptions
-                      ++ concatMap optionFieldToGetOpt buildUngroupedOptions
-                      ++ concatMap (concatMap optionFieldToGetOpt . snd) buildOptionGroups
+                      ++ concatMap CommandUIOpt.optionFieldToGetOpt buildUngroupedOptions
+                      ++ concatMap (concatMap CommandUIOpt.optionFieldToGetOpt . snd) buildOptionGroups
                   )
             )
         )
         + 2
 
     (ungroupedRows, ungroupedWarnings) =
-      renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
+      CommandUIOpt.renderOptionRows colorizeWarningHeader maxFlagColumnWidth descColumn helpOutputWidth (commonHelpOptions ++ concatMap CommandUIOpt.optionFieldToGetOpt buildUngroupedOptions)
 
     renderedGroups = map renderGroup buildOptionGroups
 
@@ -348,7 +343,7 @@ buildHelpText invokedName pname =
       | null options = ("", [])
       | otherwise =
           let (rows, warnings) =
-                renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth (concatMap optionFieldToGetOpt options)
+                CommandUIOpt.renderOptionRows colorizeWarningHeader maxFlagColumnWidth descColumn helpOutputWidth (concatMap CommandUIOpt.optionFieldToGetOpt options)
            in
             ( "\n"
                 <> colorizeHeader (title <> ":")
@@ -381,196 +376,50 @@ buildOptionGroups =
   where
     opts0 = commandOptions buildCommand ShowArgs
 
-    (unsupported, opts1) = splitBy removeUnsupportedOptions opts0
-    (install, opts2) = splitBy removeInstallOptions opts1
-    (irrelevant, opts3) = splitBy removeIrrelevantOptions opts2
-    (haddock, opts4) = splitBy removeHaddockOptions opts3
-    (test, opts5) = splitBy removeTestOptions opts4
-    (bench, opts6) = splitBy removeBenchOptions opts5
-    (profiling, opts7) = splitBy removeProfilingOptions opts6
-    (solving, opts8) = splitBy removeSolvingOptions opts7
-    (exe, opts9) = splitBy removeExeOptions opts8
-    (lib, opts10) = splitBy removeLibOptions opts9
-    (coverage, opts11) = splitBy removeCoverageOptions opts10
-    (output, opts12) = splitBy removeOutputOptions opts11
-    (configure, opts13) = splitBy removeConfigureOptions opts12
-    (phase, opts14) = splitBy removePhaseOptions opts13
-    (compiler, opts15) = splitBy removeCompilerOptions opts14
-    (logging, opts16) = splitBy removeLoggingOptions opts15
-    (includePaths, opts17) = splitBy removeIncludeOptions opts16
-    (prog, _opts18) = splitBy removeProgOptions opts17
+    (unsupported, opts1) = CommandUIOpt.splitBy removeUnsupportedOptions opts0
+    (install, opts2) = CommandUIOpt.splitBy removeInstallOptions opts1
+    (irrelevant, opts3) = CommandUIOpt.splitBy removeIrrelevantOptions opts2
+    (haddock, opts4) = CommandUIOpt.splitBy removeHaddockOptions opts3
+    (test, opts5) = CommandUIOpt.splitBy removeTestOptions opts4
+    (bench, opts6) = CommandUIOpt.splitBy removeBenchOptions opts5
+    (profiling, opts7) = CommandUIOpt.splitBy removeProfilingOptions opts6
+    (solving, opts8) = CommandUIOpt.splitBy removeSolvingOptions opts7
+    (exe, opts9) = CommandUIOpt.splitBy removeExeOptions opts8
+    (lib, opts10) = CommandUIOpt.splitBy removeLibOptions opts9
+    (coverage, opts11) = CommandUIOpt.splitBy removeCoverageOptions opts10
+    (output, opts12) = CommandUIOpt.splitBy removeOutputOptions opts11
+    (configure, opts13) = CommandUIOpt.splitBy removeConfigureOptions opts12
+    (phase, opts14) = CommandUIOpt.splitBy removePhaseOptions opts13
+    (compiler, opts15) = CommandUIOpt.splitBy removeCompilerOptions opts14
+    (logging, opts16) = CommandUIOpt.splitBy removeLoggingOptions opts15
+    (includePaths, opts17) = CommandUIOpt.splitBy removeIncludeOptions opts16
+    (prog, _opts18) = CommandUIOpt.splitBy removeProgOptions opts17
 
 buildUngroupedOptions :: [BuildOptionField]
 buildUngroupedOptions =
   opts18
   where
     opts0 = commandOptions buildCommand ShowArgs
-    (_, opts1) = splitBy removeUnsupportedOptions opts0
-    (_, opts2) = splitBy removeInstallOptions opts1
-    (_, opts3) = splitBy removeIrrelevantOptions opts2
-    (_, opts4) = splitBy removeHaddockOptions opts3
-    (_, opts5) = splitBy removeTestOptions opts4
-    (_, opts6) = splitBy removeBenchOptions opts5
-    (_, opts7) = splitBy removeProfilingOptions opts6
-    (_, opts8) = splitBy removeSolvingOptions opts7
-    (_, opts9) = splitBy removeExeOptions opts8
-    (_, opts10) = splitBy removeLibOptions opts9
-    (_, opts11) = splitBy removeCoverageOptions opts10
-    (_, opts12) = splitBy removeOutputOptions opts11
-    (_, opts13) = splitBy removeConfigureOptions opts12
-    (_, opts14) = splitBy removePhaseOptions opts13
-    (_, opts15) = splitBy removeCompilerOptions opts14
-    (_, opts16) = splitBy removeLoggingOptions opts15
-    (_, opts17) = splitBy removeIncludeOptions opts16
-    (_, opts18) = splitBy removeProgOptions opts17
+    (_, opts1) = CommandUIOpt.splitBy removeUnsupportedOptions opts0
+    (_, opts2) = CommandUIOpt.splitBy removeInstallOptions opts1
+    (_, opts3) = CommandUIOpt.splitBy removeIrrelevantOptions opts2
+    (_, opts4) = CommandUIOpt.splitBy removeHaddockOptions opts3
+    (_, opts5) = CommandUIOpt.splitBy removeTestOptions opts4
+    (_, opts6) = CommandUIOpt.splitBy removeBenchOptions opts5
+    (_, opts7) = CommandUIOpt.splitBy removeProfilingOptions opts6
+    (_, opts8) = CommandUIOpt.splitBy removeSolvingOptions opts7
+    (_, opts9) = CommandUIOpt.splitBy removeExeOptions opts8
+    (_, opts10) = CommandUIOpt.splitBy removeLibOptions opts9
+    (_, opts11) = CommandUIOpt.splitBy removeCoverageOptions opts10
+    (_, opts12) = CommandUIOpt.splitBy removeOutputOptions opts11
+    (_, opts13) = CommandUIOpt.splitBy removeConfigureOptions opts12
+    (_, opts14) = CommandUIOpt.splitBy removePhaseOptions opts13
+    (_, opts15) = CommandUIOpt.splitBy removeCompilerOptions opts14
+    (_, opts16) = CommandUIOpt.splitBy removeLoggingOptions opts15
+    (_, opts17) = CommandUIOpt.splitBy removeIncludeOptions opts16
+    (_, opts18) = CommandUIOpt.splitBy removeProgOptions opts17
 
-splitBy
-  :: (BuildOptionField -> Bool)
-  -> [BuildOptionField]
-  -> ([BuildOptionField], [BuildOptionField])
-splitBy keepPred = partition (not . keepPred)
 
-renderOptionRows :: Int -> Int -> Int -> [GetOpt.OptDescr ()] -> (String, [String])
-renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth options =
-  let rendered = [renderOption (index == 0) opt | (index, opt) <- zip [0 :: Int ..] options]
-   in (concatMap fst rendered, concatMap snd rendered)
-  where
-    descriptionMarker = "• "
-    markerPadding = replicate (length descriptionMarker) ' '
-    descriptionIndent = replicate (2 + descColumn) ' '
-    descriptionWidth = max 20 (helpOutputWidth - (2 + descColumn) - length descriptionMarker)
-
-    renderOption isFirstInGroup opt =
-      let (flagColumn, description) = getOptToColumns opt
-          (capitalizedDescription, wasAutoCapitalized) = capitalizeDescription description
-          wrappedDescription = wrapDescription descriptionWidth capitalizedDescription
-          displayDescription =
-            if wasAutoCapitalized
-              then colorizeFirstAlphaRed wrappedDescription
-              else wrappedDescription
-          isStacked = length flagColumn > maxFlagColumnWidth
-          spacer = if isStacked && not isFirstInGroup then "\n" else ""
-          warning =
-            if wasAutoCapitalized
-              then ["Auto-capitalized help text for " <> flagColumn]
-              else []
-          renderedRow =
-            spacer
-              <> if isStacked
-                then renderStacked flagColumn displayDescription
-                else renderInline flagColumn displayDescription
-       in (renderedRow, warning)
-
-    renderInline flagColumn descriptionLines =
-      let padding = max 1 (descColumn - length flagColumn)
-       in case descriptionLines of
-            [] -> "  " <> flagColumn <> "\n"
-            firstLineText : continuation ->
-              let firstLine = "  " <> flagColumn <> replicate padding ' ' <> descriptionMarker <> firstLineText <> "\n"
-                  continuationLines = [descriptionIndent <> markerPadding <> line <> "\n" | line <- continuation]
-               in firstLine <> concat continuationLines
-
-    renderStacked flagColumn descriptionLines =
-      case descriptionLines of
-        [] -> "  " <> flagColumn <> "\n"
-        firstLineText : continuation ->
-          "  "
-            <> flagColumn
-            <> "\n"
-            <> descriptionIndent
-            <> descriptionMarker
-            <> firstLineText
-            <> "\n"
-            <> concat [descriptionIndent <> markerPadding <> line <> "\n" | line <- continuation]
-
-wrapDescription :: Int -> String -> [String]
-wrapDescription width description =
-  case concatMap wrapParagraph (lines description) of
-    [] -> [""]
-    wrapped -> wrapped
-  where
-    wrapParagraph paragraph
-      | null ws = [""]
-      | otherwise = reverse (foldl' step [""] ws)
-      where
-        ws = words paragraph
-
-        step (current : previous) word
-          | null current = word : previous
-          | length current + 1 + length word <= width = (current <> " " <> word) : previous
-          | otherwise = word : current : previous
-        step [] _ = []
-
-capitalizeDescription :: String -> (String, Bool)
-capitalizeDescription = go []
-  where
-    go acc [] = (reverse acc, False)
-    go acc (ch : rest)
-      | isAlpha ch =
-          if isLower ch
-            then (reverse acc <> (toUpper ch : rest), True)
-            else (reverse acc <> (ch : rest), False)
-      | otherwise = go (ch : acc) rest
-
-colorizeFirstAlphaRed :: [String] -> [String]
-colorizeFirstAlphaRed = go
-  where
-    go [] = []
-    go (line : rest) =
-      case colorizeFirstAlphaInLine line of
-        Nothing -> line : go rest
-        Just colored -> colored : rest
-
-    colorizeFirstAlphaInLine :: String -> Maybe String
-    colorizeFirstAlphaInLine = scan []
-      where
-        scan _ [] = Nothing
-        scan acc (ch : cs)
-          | isAlpha ch = Just (reverse acc <> colorizeWarningHeader [ch] <> cs)
-          | otherwise = scan (ch : acc) cs
-
-getOptToColumns :: GetOpt.OptDescr () -> (String, String)
-getOptToColumns (GetOpt.Option shortFlags longFlags argDescr description) =
-  (intercalate ", " (renderShortFlags ++ renderLongFlags), description)
-  where
-    renderShortFlags = map renderShortFlag shortFlags
-
-    renderShortFlag shortFlag =
-      case argDescr of
-        GetOpt.NoArg _ -> "-" <> [shortFlag]
-        GetOpt.ReqArg _ metaVar -> "-" <> [shortFlag] <> " " <> metaVar
-        GetOpt.OptArg _ metaVar -> "-" <> [shortFlag] <> "[" <> metaVar <> "]"
-
-    renderLongFlags = map renderLongFlag longFlags
-
-    renderLongFlag longFlag =
-      case argDescr of
-        GetOpt.NoArg _ -> "--" <> longFlag
-        GetOpt.ReqArg _ metaVar -> "--" <> longFlag <> "=" <> metaVar
-        GetOpt.OptArg _ metaVar -> "--" <> longFlag <> "[=" <> metaVar <> "]"
-
-optionFieldToGetOpt :: BuildOptionField -> [GetOpt.OptDescr ()]
-optionFieldToGetOpt (OptionField _ descrs) = concatMap optDescrToGetOpt descrs
-
-optDescrToGetOpt :: OptDescr (NixStyleFlags BuildFlags) -> [GetOpt.OptDescr ()]
-optDescrToGetOpt = \case
-  ReqArg desc (shortFlags, longFlags) placeHolder _reader _showFlag ->
-    [GetOpt.Option shortFlags longFlags (GetOpt.ReqArg (const ()) placeHolder) desc]
-  OptArg desc (shortFlags, longFlags) placeHolder _reader (_defaultValue, _defaultSetter) _showFlag ->
-    [GetOpt.Option shortFlags longFlags (GetOpt.OptArg (const ()) placeHolder) desc]
-  ChoiceOpt choices ->
-    [ GetOpt.Option shortFlags longFlags (GetOpt.NoArg ()) desc
-    | (desc, (shortFlags, longFlags), _setFn, _getFn) <- choices
-    ]
-  BoolOpt desc (shortTrue, longTrue) (shortFalse, longFalse) _setFn _getFn
-    | null shortFalse && null longFalse ->
-        [GetOpt.Option shortTrue longTrue (GetOpt.NoArg ()) desc]
-    | null shortTrue && null longTrue ->
-        [GetOpt.Option shortFalse longFalse (GetOpt.NoArg ()) desc]
-    | otherwise ->
-        [ GetOpt.Option shortTrue longTrue (GetOpt.NoArg ()) ("Enable " <> desc)
-        , GetOpt.Option shortFalse longFalse (GetOpt.NoArg ()) ("Disable " <> desc)
-        ]
 
 replaceBuildAlias :: String -> String -> String
 replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
@@ -677,43 +526,4 @@ buildItemParser =
 
 buildOptionParsers :: [O.Parser BuildItem]
 buildOptionParsers =
-  concatMap optionFieldParsers (commandOptions buildCommand ParseArgs)
-
-optionFieldParsers :: OptionField (NixStyleFlags BuildFlags) -> [O.Parser BuildItem]
-optionFieldParsers (OptionField _ descrs) = concatMap optDescrParsers descrs
-
-optDescrParsers :: OptDescr (NixStyleFlags BuildFlags) -> [O.Parser BuildItem]
-optDescrParsers = \case
-  ReqArg desc optFlags placeHolder reader _show ->
-    [ BuildItemFlag . Endo
-        <$> O.option
-          (O.eitherReader (runReadE reader))
-          (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
-    ]
-  OptArg desc optFlags placeHolder reader (_defaultText, defaultFn) _show ->
-    [ BuildItemFlag . Endo
-        <$> ( O.option
-                (O.eitherReader (runReadE reader))
-                (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
-                <|> O.flag' defaultFn (flagMods optFlags <> O.internal)
-            )
-    ]
-  ChoiceOpt choices ->
-    [ BuildItemFlag (Endo setFn)
-        <$ O.flag' () (flagMods optFlags <> O.help desc)
-    | (desc, optFlags, setFn, _get) <- choices
-    ]
-  BoolOpt desc trueFlags falseFlags setFn _get ->
-    [ BuildItemFlag (Endo (setFn True))
-        <$ O.flag' () (flagMods trueFlags <> O.help desc)
-    , BuildItemFlag (Endo (setFn False))
-        <$ O.flag' () (flagMods falseFlags <> O.help desc)
-    ]
-
-optionMods :: (String, [String]) -> O.Mod O.OptionFields a
-optionMods (shortFlags, longFlags) =
-  mconcat (map O.short shortFlags) <> mconcat (map O.long longFlags)
-
-flagMods :: (String, [String]) -> O.Mod O.FlagFields a
-flagMods (shortFlags, longFlags) =
-  mconcat (map O.short shortFlags) <> mconcat (map O.long longFlags)
+  map (BuildItemFlag <$>) (CommandUIOpt.optionFieldFlagParsers (commandOptions buildCommand ParseArgs))
