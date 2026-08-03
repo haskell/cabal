@@ -457,9 +457,19 @@ dependOnWiredIns compiler params = addConstraints extraConstraints params
         -- Old versions of `base` must be excluded from build plans still as they do not depend on any version of a wired-in unit.
         -- If we do not do this then we will get confusing error messages about old versions of `base` being unbuildable.
         -- Newer versions of `base` will be handled gracefully as they were designed to be reinstallable.
+        --
+        -- This only makes sense when the wired-in unit ids above are actually
+        -- in force: it is those constraints that pin the new, reinstallable
+        -- `base`, leaving old `base` to be excluded explicitly. A compiler
+        -- that reports no wired-in unit ids (e.g. GHC < 9.14) has no
+        -- installed `base` satisfying this bound, so adding it
+        -- unconditionally makes such a compiler's plans unsolvable whenever
+        -- this branch is taken (which `allow-boot-library-installs` alone is
+        -- enough to do).
         [ LabeledPackageConstraint
-            (PackageConstraint (ScopeAnyQualifier $ mkPackageName "base") (PackagePropertyVersion (orLaterVersion (mkVersion [4, 22]))))
-            ConstraintSourceNonReinstallablePackage
+          (PackageConstraint (ScopeAnyQualifier $ mkPackageName "base") (PackagePropertyVersion (orLaterVersion (mkVersion [4, 22]))))
+          ConstraintSourceNonReinstallablePackage
+        | isJust (compilerInfoWiredInUnitIds compiler)
         ]
 
 -- | Some packages are specific to a given compiler version and should never be
