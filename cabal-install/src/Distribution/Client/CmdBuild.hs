@@ -339,7 +339,8 @@ buildHelpText invokedName pname =
         [] -> ""
         warnings ->
           "\n"
-            <> "Warnings:\n"
+            <> colorizeWarningHeader "Warnings:"
+            <> "\n"
             <> concat ["  - " <> warning <> "\n" | warning <- warnings]
 
     renderGroup :: (String, [BuildOptionField]) -> (String, [String])
@@ -555,6 +556,9 @@ replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack
 
 colorizeHeader :: String -> String
 colorizeHeader text = "\ESC[32m" <> text <> "\ESC[0m"
+
+colorizeWarningHeader :: String -> String
+colorizeWarningHeader text = "\ESC[31m" <> text <> "\ESC[0m"
 
 colorizeUsageHeader :: String -> String
 colorizeUsageHeader = T.unpack . T.replace (T.pack "Usage:") (T.pack $ colorizeHeader "Usage:") . T.pack
