@@ -29,6 +29,7 @@ import Distribution.Client.TargetProblem
   )
 
 import qualified Data.Map as Map
+import Data.Char (isLower)
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
 import qualified System.Console.GetOpt as GetOpt
@@ -294,8 +295,9 @@ buildHelpText invokedName pname =
     <> "\n"
     <> colorizeHeader "Flags for build:"
     <> "\n"
-    <> renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
-    <> concatMap renderGroup buildOptionGroups
+    <> ungroupedRows
+    <> groupedRows
+    <> warningSection
     <> maybe "" (('\n' :) . colorizeExamplesHeader . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
   where
     commonHelpOptions :: [GetOpt.OptDescr ()]
@@ -323,14 +325,36 @@ buildHelpText invokedName pname =
         )
         + 2
 
-    renderGroup :: (String, [BuildOptionField]) -> String
-    renderGroup (title, options)
-      | null options = ""
-      | otherwise =
+    (ungroupedRows, ungroupedWarnings) =
+      renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth (commonHelpOptions ++ concatMap optionFieldToGetOpt buildUngroupedOptions)
+
+    renderedGroups = map renderGroup buildOptionGroups
+
+    groupedRows = concatMap fst renderedGroups
+
+    groupedWarnings = concatMap snd renderedGroups
+
+    warningSection =
+      case ungroupedWarnings ++ groupedWarnings of
+        [] -> ""
+        warnings ->
           "\n"
-            <> colorizeHeader (title <> ":")
-            <> "\n"
-            <> renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth (concatMap optionFieldToGetOpt options)
+            <> "Warnings:\n"
+            <> concat ["  - " <> warning <> "\n" | warning <- warnings]
+
+    renderGroup :: (String, [BuildOptionField]) -> (String, [String])
+    renderGroup (title, options)
+      | null options = ("", [])
+      | otherwise =
+          let (rows, warnings) =
+                renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth (concatMap optionFieldToGetOpt options)
+           in
+            ( "\n"
+                <> colorizeHeader (title <> ":")
+                <> "\n"
+                <> rows
+            , warnings
+            )
 
 buildOptionGroups :: [(String, [BuildOptionField])]
 buildOptionGroups =
@@ -405,21 +429,32 @@ splitBy
   -> ([BuildOptionField], [BuildOptionField])
 splitBy keepPred = partition (not . keepPred)
 
-renderOptionRows :: Int -> Int -> Int -> [GetOpt.OptDescr ()] -> String
-renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth = concatMap renderOption
+renderOptionRows :: Int -> Int -> Int -> [GetOpt.OptDescr ()] -> (String, [String])
+renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth options =
+  let rendered = [renderOption (index == 0) opt | (index, opt) <- zip [0 :: Int ..] options]
+   in (concatMap fst rendered, concatMap snd rendered)
   where
     descriptionMarker = "• "
     markerPadding = replicate (length descriptionMarker) ' '
     descriptionIndent = replicate (2 + descColumn) ' '
     descriptionWidth = max 20 (helpOutputWidth - (2 + descColumn) - length descriptionMarker)
 
-    renderOption opt =
+    renderOption isFirstInGroup opt =
       let (flagColumn, description) = getOptToColumns opt
-          wrappedDescription = wrapDescription descriptionWidth description
-       in
-          if length flagColumn <= maxFlagColumnWidth
-            then renderInline flagColumn wrappedDescription
-            else renderStacked flagColumn wrappedDescription
+          (capitalizedDescription, wasAutoCapitalized) = capitalizeDescription description
+          wrappedDescription = wrapDescription descriptionWidth capitalizedDescription
+          isStacked = length flagColumn > maxFlagColumnWidth
+          spacer = if isStacked && not isFirstInGroup then "\n" else ""
+          warning =
+            if wasAutoCapitalized
+              then ["Auto-capitalized help text for " <> flagColumn]
+              else []
+          renderedRow =
+            spacer
+              <> if isStacked
+                then renderStacked flagColumn wrappedDescription
+                else renderInline flagColumn wrappedDescription
+       in (renderedRow, warning)
 
     renderInline flagColumn descriptionLines =
       let padding = max 1 (descColumn - length flagColumn)
@@ -460,6 +495,17 @@ wrapDescription width description =
           | length current + 1 + length word <= width = (current <> " " <> word) : previous
           | otherwise = word : current : previous
         step [] _ = []
+
+capitalizeDescription :: String -> (String, Bool)
+capitalizeDescription = go []
+  where
+    go acc [] = (reverse acc, False)
+    go acc (ch : rest)
+      | isAlpha ch =
+          if isLower ch
+            then (reverse acc <> (toUpper ch : rest), True)
+            else (reverse acc <> (ch : rest), False)
+      | otherwise = go (ch : acc) rest
 
 getOptToColumns :: GetOpt.OptDescr () -> (String, String)
 getOptToColumns (GetOpt.Option shortFlags longFlags argDescr description) =
