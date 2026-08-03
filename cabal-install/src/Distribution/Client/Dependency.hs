@@ -445,13 +445,16 @@ setSolverVerbosity verbosity params =
     }
 
 dependOnWiredIns :: CompilerInfo -> DepResolverParams -> DepResolverParams
-dependOnWiredIns compiler params = addConstraints extraConstraints params
+dependOnWiredIns compiler params =
+  case compilerInfoWiredInUnitIds compiler of
+    Nothing -> params
+    Just wiredInUnitIds -> addConstraints (extraConstraints wiredInUnitIds) params
   where
-    extraConstraints =
+    extraConstraints wiredInUnitIds =
       [ LabeledPackageConstraint
         (PackageConstraint (ScopeAnyQualifier pkgName) (PackagePropertyInstalledSpecificUnitId unitId))
         ConstraintSourceNonReinstallablePackage
-      | (pkgName, unitId) <- fromMaybe [] $ compilerInfoWiredInUnitIds compiler
+      | (pkgName, unitId) <- wiredInUnitIds
       ]
         ++
         -- Old versions of `base` must be excluded from build plans still as they do not depend on any version of a wired-in unit.

@@ -218,6 +218,13 @@ tests =
           allowBootLibInstalls $
             mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
               solverSuccess [("base", 5), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+      , -- The base >= 4.22 constraint only makes sense alongside the wired-in
+        -- unit id constraints. A compiler that reports none has no installed
+        -- base satisfying it, so it must not be added here.
+        runTest $
+          allowBootLibInstalls $
+            mkTest dbBaseOld "Install old base with --allow-boot-library-installs" ["base"] $
+              solverSuccess [("base", 1)]
       ]
   , testGroup
       "Reinstallable base, template-haskell, but not ghc{,-internal} (GHC with wiredInUnitIds)"
