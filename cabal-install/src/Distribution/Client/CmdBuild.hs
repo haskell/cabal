@@ -444,6 +444,10 @@ renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth options =
       let (flagColumn, description) = getOptToColumns opt
           (capitalizedDescription, wasAutoCapitalized) = capitalizeDescription description
           wrappedDescription = wrapDescription descriptionWidth capitalizedDescription
+          displayDescription =
+            if wasAutoCapitalized
+              then colorizeFirstAlphaRed wrappedDescription
+              else wrappedDescription
           isStacked = length flagColumn > maxFlagColumnWidth
           spacer = if isStacked && not isFirstInGroup then "\n" else ""
           warning =
@@ -453,8 +457,8 @@ renderOptionRows maxFlagColumnWidth descColumn helpOutputWidth options =
           renderedRow =
             spacer
               <> if isStacked
-                then renderStacked flagColumn wrappedDescription
-                else renderInline flagColumn wrappedDescription
+                then renderStacked flagColumn displayDescription
+                else renderInline flagColumn displayDescription
        in (renderedRow, warning)
 
     renderInline flagColumn descriptionLines =
@@ -507,6 +511,23 @@ capitalizeDescription = go []
             then (reverse acc <> (toUpper ch : rest), True)
             else (reverse acc <> (ch : rest), False)
       | otherwise = go (ch : acc) rest
+
+colorizeFirstAlphaRed :: [String] -> [String]
+colorizeFirstAlphaRed = go
+  where
+    go [] = []
+    go (line : rest) =
+      case colorizeFirstAlphaInLine line of
+        Nothing -> line : go rest
+        Just colored -> colored : rest
+
+    colorizeFirstAlphaInLine :: String -> Maybe String
+    colorizeFirstAlphaInLine = scan []
+      where
+        scan _ [] = Nothing
+        scan acc (ch : cs)
+          | isAlpha ch = Just (reverse acc <> colorizeWarningHeader [ch] <> cs)
+          | otherwise = scan (ch : acc) cs
 
 getOptToColumns :: GetOpt.OptDescr () -> (String, String)
 getOptToColumns (GetOpt.Option shortFlags longFlags argDescr description) =
