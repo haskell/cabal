@@ -47,7 +47,7 @@ jobs:
           key: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-${{ hashFiles(format('bootstrap/linux-{0}.json', matrix.ghc)) }}-${{ github.sha }}
           restore-keys: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-${{ hashFiles(format('bootstrap/linux-{0}.json', matrix.ghc)) }}-
 
-      - uses: haskell-actions/setup@v2
+      - uses: haskell-actions/setup@v2.11.0
         with:
           ghc-version: ${{ matrix.ghc }}
 

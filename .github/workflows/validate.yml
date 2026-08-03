@@ -95,7 +95,7 @@ jobs:
         run: |
           echo "constraints: ${{ github.event.inputs.constraints }}" >> cabal.validate.project
 
-      - uses: haskell-actions/setup@v2
+      - uses: haskell-actions/setup@v2.11.0
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -263,7 +263,7 @@ jobs:
         run: cat /usr/local/.ghcup/logs/*
 
       - name: Install primary compiler
-        uses: haskell-actions/setup@v2
+        uses: haskell-actions/setup@v2.11.0
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_RELEASE }}
@@ -327,7 +327,7 @@ jobs:
           echo "allow-newer: ${ALLOWNEWER}"  >> cabal.validate.project
           echo "constraints: ${CONSTRAINTS}" >> cabal.validate.project
 
-      - uses: haskell-actions/setup@v2
+      - uses: haskell-actions/setup@v2.11.0
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_RELEASE }}
@@ -414,7 +414,7 @@ jobs:
 
       - uses: actions/checkout@v7
 
-      - uses: haskell-actions/setup@v2
+      - uses: haskell-actions/setup@v2.11.0
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
