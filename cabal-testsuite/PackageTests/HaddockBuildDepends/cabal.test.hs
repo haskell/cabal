@@ -1,21 +1,25 @@
 import Test.Cabal.Prelude
 
 
-main = cabalTest . withRepo "repo" $ do
-    cabal "build" ["--enable-documentation"]
+main = cabalTest $ withRepo "repo" $ do
 
-    env <- getTestEnv
+    -- See also discussion in #11510
+    expectBrokenIfOSXAndGhc "<= 8.10.7" 7209 $ do
 
-    -- Check properties of executable component
-    libDir <- findDependencyInStore "exe"
-    -- Documentation is enabled..
-    assertFileDoesContain (libDir </> "cabal-hash.txt") "documentation: True"
-    -- But not built
-    shouldDirectoryNotExist (  libDir </> "share" </> "doc" )
+        cabal "build" ["--enable-documentation"]
 
-    -- Check properties of library
-    libDir <- findDependencyInStore "lib"
-    -- Documentation is enabled..
-    assertFileDoesContain (libDir </> "cabal-hash.txt") "documentation: True"
-    -- and has been built
-    shouldDirectoryExist (  libDir </> "share" </> "doc" )
+        env <- getTestEnv
+
+        -- Check properties of executable component
+        exeDir <- findDependencyInStore "exe"
+        -- Documentation is enabled..
+        assertFileDoesContain (exeDir </> "cabal-hash.txt") "documentation: True"
+        -- But not built
+        shouldDirectoryNotExist (exeDir </> "share" </> "doc")
+
+        -- Check properties of library
+        libDir <- findDependencyInStore "lib"
+        -- Documentation is enabled..
+        assertFileDoesContain (libDir </> "cabal-hash.txt") "documentation: True"
+        -- and has been built
+        shouldDirectoryExist (libDir </> "share" </> "doc")

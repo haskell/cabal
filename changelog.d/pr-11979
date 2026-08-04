@@ -1,0 +1,8 @@
+---
+synopsis: Do not shorten names on macOS
+packages: [cabal-install]
+prs: 11979
+---
+
+Stop shortening names by removing vowels on macOS.  `cabal-install` user
+will not be impacted by this, but directory names in the store will change.
