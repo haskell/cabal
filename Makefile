@@ -294,7 +294,7 @@ bootstrap-subr-%: phony
 	cd bootstrap && $(CABALCONF) $(CABALRUN) -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 9.2.8 9.4.8 9.6.7 9.8.4 9.10.3 9.12.2
+BOOTSTRAP_GHC_VERSIONS := 9.6.7 9.8.4 9.10.3 9.12.4
 
 .PHONY: bootstrap-jsons
 bootstrap-jsons: ## Generate bootstrap JSONs for Linux (autodetects method).
@@ -372,7 +372,7 @@ users-guide-typos: ## Find typos in users guide.
 
 .PHONY: users-guide-fix-typos
 users-guide-fix-typos: ## Fix typos in users guide.
-	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --config ../.typos-docs.toml --write-changes --force-exclude 
+	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --config ../.typos-docs.toml --write-changes --force-exclude
 
 .PHONY: markdown-typos
 markdown-typos: ## Find typos in markdown files.

@@ -15,6 +15,7 @@ on:
 
 permissions:
   pull-requests: read
+  contents: write
 
 env:
   BUILD_LABEL: "run release build"
@@ -59,7 +60,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download artifacts
         uses: actions/download-artifact@v8

@@ -2947,7 +2947,7 @@ checkPackageProblems verbosity dir gpkg pkg = do
       (errors, warnings) =
         partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
   if null errors
-    then traverse_ (warn verbosity . ppPackageCheck) warnings
+    then traverse_ (warnPackage . ppPackageCheck) warnings
     else dieWithException verbosity $ CheckPackageProblems (map ppPackageCheck errors)
   where
     -- Classify error/warnings. Left: error, Right: warning.
@@ -2957,6 +2957,9 @@ checkPackageProblems verbosity dir gpkg pkg = do
     classEW (PackageDistSuspicious _) = Nothing
     classEW (PackageDistSuspiciousWarn _) = Nothing
     classEW (PackageDistInexcusable _) = Nothing
+
+    pkgName = prettyShow $ packageName pkg
+    warnPackage = labelMessage "Warning" (Just $ ": " ++ pkgName ++ " ") verbosity
 
 -- | Perform checks if a shared executable can be built
 checkSharedExes

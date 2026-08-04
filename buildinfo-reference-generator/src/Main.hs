@@ -3,11 +3,14 @@ module Main (main) where
 import Data.Map.Strict (Map)
 
 import Data.Bifunctor                  (first)
+import Data.Coerce                     (Coercible, coerce)
+import Data.Functor.Identity           (Identity(..))
 import Data.Proxy                      (Proxy (..))
 import Data.Void                       (Void)
 import Distribution.CabalSpecVersion   (CabalSpecVersion, showCabalSpecVersion)
-import Distribution.Compat.Newtype     (pack')
+import Distribution.Compat.Lens        (ALens')
 import Distribution.FieldGrammar.Class (FieldGrammar (..))
+import Distribution.FieldGrammar.Newtypes (MQuoted (..), RelativePathNT (..), SymbolicPathNT (..), TestedWith (..), Token (..), Token' (..))
 import Distribution.Fields.Field       (FieldName)
 import Distribution.Pretty             (pretty)
 import Distribution.Simple.Utils       (fromUTF8BS)
@@ -246,10 +249,13 @@ instance FieldGrammar Described Reference where
     optionalFieldAla fn pack _l =
         reference fn $ OptionalFieldAla (describeDoc pack)
 
+    optionalFieldDefAla
+        :: forall s proxy a b. (Coercible a b, Described b)
+        => FieldName -> proxy a b -> ALens' s a -> a -> Reference s a
     optionalFieldDefAla fn pack _l def =
         reference fn $ OptionalFieldDefAla
             (describeDoc pack)
-            (pretty $ pack' pack def)
+            (pretty $ coerce @a @b def)
 
     freeTextField fn _l = reference fn FreeTextField
 

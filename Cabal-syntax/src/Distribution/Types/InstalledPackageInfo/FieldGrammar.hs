@@ -12,7 +12,6 @@ import Prelude ()
 import Distribution.Backpack
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens (Lens', (&), (.~))
-import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.FieldDescrs
 import Distribution.License
@@ -196,8 +195,6 @@ maybePackageName ipi = case sourceLibName ipi of
 
 newtype ExposedModules = ExposedModules {getExposedModules :: [ExposedModule]}
 
-instance Newtype [ExposedModule] ExposedModules
-
 instance Parsec ExposedModules where
   parsec = ExposedModules <$> parsecOptCommaList parsec
 
@@ -205,8 +202,6 @@ instance Pretty ExposedModules where
   pretty = showExposedModules . getExposedModules
 
 newtype CompatPackageKey = CompatPackageKey {getCompatPackageKey :: String}
-
-instance Newtype String CompatPackageKey
 
 instance Pretty CompatPackageKey where
   pretty = Disp.text . getCompatPackageKey
@@ -218,8 +213,6 @@ instance Parsec CompatPackageKey where
 
 newtype InstWith = InstWith {getInstWith :: [(ModuleName, OpenModule)]}
 
-instance Newtype [(ModuleName, OpenModule)] InstWith
-
 instance Pretty InstWith where
   pretty = dispOpenModuleSubst . Map.fromList . getInstWith
 
@@ -228,8 +221,6 @@ instance Parsec InstWith where
 
 -- | SPDX License expression or legacy license. Lenient parser, accepts either.
 newtype SpecLicenseLenient = SpecLicenseLenient {getSpecLicenseLenient :: Either SPDX.License License}
-
-instance Newtype (Either SPDX.License License) SpecLicenseLenient
 
 instance Parsec SpecLicenseLenient where
   parsec = fmap SpecLicenseLenient $ Left <$> P.try parsec <|> Right <$> parsec
