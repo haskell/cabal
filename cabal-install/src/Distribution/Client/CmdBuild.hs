@@ -49,10 +49,10 @@ import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup (GlobalFlags, yesNoOpt)
 import Distribution.Simple.Command
   ( CommandParse (..)
-  , CommandUI (..)
   , CommandSpec (..)
-  , ShowOrParseArgs (ParseArgs)
   , CommandType (..)
+  , CommandUI (..)
+  , ShowOrParseArgs (ParseArgs)
   , commandAddAction
   , commandParseArgs
   , option
@@ -61,7 +61,27 @@ import Distribution.Simple.Command
 import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
 import Distribution.Simple.Utils (dieWithException, wrapText)
 import Distribution.Verbosity (normal)
-import qualified Options.Applicative as O
+import Options.Applicative
+  ( Parser
+  , ParserInfo
+  , ParserResult (..)
+  , asum
+  , defaultPrefs
+  , execParserPure
+  , flag'
+  , footer
+  , fullDesc
+  , header
+  , help
+  , helper
+  , info
+  , long
+  , metavar
+  , progDesc
+  , renderFailure
+  , strArgument
+  , (<**>)
+  )
 
 cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
 cmdSpec = [cmd defaultUi, cmd newUi, cmd origUi]
@@ -285,29 +305,29 @@ replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack
 
 parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseBuildCommand invokedName cmdArgs =
-  case O.execParserPure O.defaultPrefs (buildParserInfo invokedName) cmdArgs of
-    O.Success parsed ->
+  case execParserPure defaultPrefs (buildParserInfo invokedName) cmdArgs of
+    Success parsed ->
       if parsedListOptions parsed
         then CommandList buildListOptions
         else
           let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags buildCommand)
            in CommandReadyToGo (buildAction flags (parsedTargets parsed))
-    O.Failure failure ->
-      let (msg, exitCode) = O.renderFailure failure ("cabal " ++ invokedName)
+    Failure failure ->
+      let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
        in if exitCode == ExitSuccess
             then CommandHelp (CommandUIOpt.helpText replaceBuildAlias buildCommand invokedName)
             else CommandErrors [msg]
-    O.CompletionInvoked _ ->
+    CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
 
-buildParserInfo :: String -> O.ParserInfo ParsedBuildCommand
+buildParserInfo :: String -> ParserInfo ParsedBuildCommand
 buildParserInfo invokedName =
-  O.info
-    (parsedBuildCommandParser O.<**> O.helper)
-    ( O.fullDesc
-        <> O.progDesc buildHelpDescription
-        <> O.header ("cabal " ++ invokedName)
-        <> O.footer (examples invokedName)
+  info
+    (parsedBuildCommandParser <**> helper)
+    ( fullDesc
+        <> progDesc buildHelpDescription
+        <> header ("cabal " ++ invokedName)
+        <> footer (examples invokedName)
     )
 
 buildHelpDescription :: String
@@ -327,8 +347,8 @@ data BuildItem
   | BuildItemTarget String
   | BuildItemListOptions
 
-parsedBuildCommandParser :: O.Parser ParsedBuildCommand
-parsedBuildCommandParser = toParsed <$> O.many buildItemParser
+parsedBuildCommandParser :: Parser ParsedBuildCommand
+parsedBuildCommandParser = toParsed <$> many buildItemParser
   where
     toParsed items =
       let edits = [e | BuildItemFlag e <- items]
@@ -343,19 +363,19 @@ parsedBuildCommandParser = toParsed <$> O.many buildItemParser
     isListOptions BuildItemListOptions = True
     isListOptions _ = False
 
-buildItemParser :: O.Parser BuildItem
+buildItemParser :: Parser BuildItem
 buildItemParser =
-  O.asum
+  asum
     ( buildOptionParsers
         ++ [ BuildItemListOptions
-              <$ O.flag'
+              <$ flag'
                 ()
-                (O.long "list-options" <> O.help "Print a list of command line flags")
-           , BuildItemTarget <$> O.strArgument (O.metavar "TARGET")
+                (long "list-options" <> help "Print a list of command line flags")
+           , BuildItemTarget <$> strArgument (metavar "TARGET")
            ]
     )
 
-buildOptionParsers :: [O.Parser BuildItem]
+buildOptionParsers :: [Parser BuildItem]
 buildOptionParsers =
   (fmap . fmap)
     BuildItemFlag
