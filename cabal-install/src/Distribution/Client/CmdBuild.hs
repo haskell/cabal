@@ -462,7 +462,7 @@ buildParserInfo invokedName =
   O.info
     (parsedBuildCommandParser O.<**> O.helper)
     ( O.fullDesc
-        <> O.progDesc (buildHelpDescription)
+        <> O.progDesc buildHelpDescription
         <> O.header ("cabal " ++ invokedName)
         <> O.footer (buildExamplesSection invokedName)
     )
