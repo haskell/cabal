@@ -326,4 +326,6 @@ buildItemParser =
 
 buildOptionParsers :: [O.Parser BuildItem]
 buildOptionParsers =
-  map (BuildItemFlag <$>) (CommandUIOpt.optionFieldFlagParsers (commandOptions buildCommand ParseArgs))
+  (fmap . fmap)
+    BuildItemFlag
+    (CommandUIOpt.optionFieldFlagParsers $ commandOptions buildCommand ParseArgs)
