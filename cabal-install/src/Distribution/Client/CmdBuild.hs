@@ -300,17 +300,22 @@ buildHelpText invokedName pname =
                 : map
                   (length . fst . CommandUIOpt.getOptToColumns)
                   ( commonHelpOptions
-                      ++ concatMap CommandUIOpt.optionFieldToGetOpt buildUngroupedOptions
-                      ++ concatMap (concatMap CommandUIOpt.optionFieldToGetOpt . snd) buildOptionGroups
+                      ++ concatMap CommandUIOpt.optionFieldToGetOpt optsUngrouped
+                      ++ concatMap (concatMap CommandUIOpt.optionFieldToGetOpt . snd) optsGrouped
                   )
             )
         )
         + 2
 
     (ungroupedRows, ungroupedWarnings) =
-      CommandUIOpt.renderOptionRows colorizeWarningHeader maxFlagColumnWidth descColumn helpOutputWidth (commonHelpOptions ++ concatMap CommandUIOpt.optionFieldToGetOpt buildUngroupedOptions)
+      CommandUIOpt.renderOptionRows
+        colorizeWarningHeader
+        maxFlagColumnWidth
+        descColumn
+        helpOutputWidth
+        (commonHelpOptions ++ concatMap CommandUIOpt.optionFieldToGetOpt optsUngrouped)
 
-    renderedGroups = map renderGroup buildOptionGroups
+    renderedGroups = map renderGroup optsGrouped
 
     groupedRows = concatMap fst renderedGroups
 
@@ -338,13 +343,8 @@ buildHelpText invokedName pname =
               , warnings
               )
 
-buildOptionGroups :: [(String, [BuildOptionField])]
-buildOptionGroups =
-  fst $ CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) CommandUIOpt.groupPredicates
-
-buildUngroupedOptions :: [BuildOptionField]
-buildUngroupedOptions =
-  snd $ CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) CommandUIOpt.groupPredicates
+    (optsGrouped, optsUngrouped) =
+      CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) CommandUIOpt.groupPredicates
 
 replaceBuildAlias :: String -> String -> String
 replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
