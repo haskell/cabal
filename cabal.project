@@ -15,3 +15,6 @@ package Cabal
 
 package semaphore-compat
   flags: -build-testing
+
+package cabal-testsuite
+  ghc-options: -Wno-unused-packages
