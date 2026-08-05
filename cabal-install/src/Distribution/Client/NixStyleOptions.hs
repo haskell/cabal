@@ -12,24 +12,24 @@ module Distribution.Client.NixStyleOptions
   , cfgVerbosity
 
     -- * Option filtering/grouping predicates
-  , removeUnsupportedOptions
-  , removeInstallOptions
-  , removeIrrelevantOptions
-  , removeHaddockOptions
-  , removeTestOptions
-  , removeBenchOptions
-  , removeProfilingOptions
-  , removeSolvingOptions
-  , removeExeOptions
-  , removeLibOptions
-  , removeCoverageOptions
-  , removeOutputOptions
-  , removeConfigureOptions
-  , removePhaseOptions
-  , removeCompilerOptions
-  , removeLoggingOptions
-  , removeIncludeOptions
-  , removeProgOptions
+  , keepUnsupportedOptions
+  , keepInstallOptions
+  , keepIrrelevantOptions
+  , keepHaddockOptions
+  , keepTestOptions
+  , keepBenchOptions
+  , keepProfilingOptions
+  , keepSolvingOptions
+  , keepExeOptions
+  , keepLibOptions
+  , keepCoverageOptions
+  , keepOutputOptions
+  , keepConfigureOptions
+  , keepPhaseOptions
+  , keepCompilerOptions
+  , keepLoggingOptions
+  , keepIncludeOptions
+  , keepProgOptions
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -186,159 +186,133 @@ cfgVerbosity v flags =
   mkVerbosity defaultVerbosityHandles $
     fromFlagOrDefault v (setupVerbosity . configCommonFlags $ configFlags flags)
 
-removeUnsupportedOptions :: OptionField a -> Bool
-removeUnsupportedOptions (optionName -> o) = not ("root-cmd" == o || "allow-boot-library-installs" == o)
+keepUnsupportedOptions :: OptionField a -> Bool
+keepUnsupportedOptions (optionName -> o) = "root-cmd" == o || "allow-boot-library-installs" == o
 
-removeInstallOptions :: OptionField a -> Bool
-removeInstallOptions (optionName -> o) =
-  not
-    ( "dir" `isSuffixOf` o
-        || "reinstall" `isInfixOf` o
-        || "run-tests" == o
-        || "root-cmd" == o
-        || "allow-boot-library-installs" == o
-        || "program-prefix" == o
-        || "program-suffix" == o
-        || "ipid" == o
-        || "cid" == o
-        || "user" == o
-        || "global" == o
-        || "prefix" == o
-    )
+keepInstallOptions :: OptionField a -> Bool
+keepInstallOptions (optionName -> o) =
+  "dir" `isSuffixOf` o
+    || "reinstall" `isInfixOf` o
+    || "run-tests" == o
+    || "root-cmd" == o
+    || "allow-boot-library-installs" == o
+    || "program-prefix" == o
+    || "program-suffix" == o
+    || "ipid" == o
+    || "cid" == o
+    || "user" == o
+    || "global" == o
+    || "prefix" == o
 
-removeIrrelevantOptions :: OptionField a -> Bool
-removeIrrelevantOptions (optionName -> o) = not ("per-component" `isSuffixOf` o)
+keepIrrelevantOptions :: OptionField a -> Bool
+keepIrrelevantOptions (optionName -> o) = "per-component" `isSuffixOf` o
 
-removeHaddockOptions :: OptionField a -> Bool
-removeHaddockOptions (optionName -> o) =
-  not
-    ( "haddock" `isPrefixOf` o
-        || "documentation" `isSuffixOf` o
-        || "doc-index-file" == o
-    )
+keepHaddockOptions :: OptionField a -> Bool
+keepHaddockOptions (optionName -> o) =
+  "haddock" `isPrefixOf` o
+    || "documentation" `isSuffixOf` o
+    || "doc-index-file" == o
 
-removeTestOptions :: OptionField a -> Bool
-removeTestOptions (optionName -> o) = not ("test" `isPrefixOf` o)
+keepTestOptions :: OptionField a -> Bool
+keepTestOptions (optionName -> o) = "test" `isPrefixOf` o
 
-removeBenchOptions :: OptionField a -> Bool
-removeBenchOptions (optionName -> o) = not ("bench" `isPrefixOf` o)
+keepBenchOptions :: OptionField a -> Bool
+keepBenchOptions (optionName -> o) = "bench" `isPrefixOf` o
 
-removeProfilingOptions :: OptionField a -> Bool
-removeProfilingOptions (optionName -> o) = not ("profiling" `isInfixOf` o)
+keepProfilingOptions :: OptionField a -> Bool
+keepProfilingOptions (optionName -> o) = "profiling" `isInfixOf` o
 
-removeSolvingOptions :: OptionField a -> Bool
-removeSolvingOptions (optionName -> o) =
-  not
-    ( "max-backjumps" == o
-        || "conflicts" `isInfixOf` o
-        || "goals" `isInfixOf` o
-        || "index-state" == o
-        || "upgrade-dependencies" == o
-        || "reject-unconstrained-dependencies" == o
-        || "prefer-oldest" == o
-        || "allow-older" == o
-        || "allow-newer" == o
-        || "preference" == o
-        || "shadow-installed-packages" == o
-        || "ignore-build-tools" == o
-        || "solver" == o
-        || "only-dependencies" == o
-        || "dependencies-only" == o
-        || "minimize-conflict-set" == o
-        || "allow-depending-on-private-libs" == o
-    )
+keepSolvingOptions :: OptionField a -> Bool
+keepSolvingOptions (optionName -> o) =
+  "max-backjumps" == o
+    || "conflicts" `isInfixOf` o
+    || "goals" `isInfixOf` o
+    || "index-state" == o
+    || "upgrade-dependencies" == o
+    || "reject-unconstrained-dependencies" == o
+    || "prefer-oldest" == o
+    || "allow-older" == o
+    || "allow-newer" == o
+    || "preference" == o
+    || "shadow-installed-packages" == o
+    || "ignore-build-tools" == o
+    || "solver" == o
+    || "only-dependencies" == o
+    || "dependencies-only" == o
+    || "minimize-conflict-set" == o
+    || "allow-depending-on-private-libs" == o
 
-removeExeOptions :: OptionField a -> Bool
-removeExeOptions (optionName -> o) =
-  not
-    ( "executable" `isInfixOf` o
-        || "split" `isInfixOf` o
-        || "stripping" `isInfixOf` o
-    )
+keepExeOptions :: OptionField a -> Bool
+keepExeOptions (optionName -> o) =
+  "executable" `isInfixOf` o
+    || "split" `isInfixOf` o
+    || "stripping" `isInfixOf` o
 
-removeLibOptions :: OptionField a -> Bool
-removeLibOptions (optionName -> o) =
-  not
-    ( "vanilla" `isSuffixOf` o
-        || "shared" `isSuffixOf` o
-        || "static" `isSuffixOf` o
-        || "bytecode" `isSuffixOf` o
-        || "ghci" `isSuffixOf` o
-    )
+keepLibOptions :: OptionField a -> Bool
+keepLibOptions (optionName -> o) =
+  "vanilla" `isSuffixOf` o
+    || "shared" `isSuffixOf` o
+    || "static" `isSuffixOf` o
+    || "bytecode" `isSuffixOf` o
+    || "ghci" `isSuffixOf` o
 
-removeCoverageOptions :: OptionField a -> Bool
-removeCoverageOptions (optionName -> o) =
-  not
-    ( "coverage" `isSuffixOf` o
-        || "coverage" `isPrefixOf` o
-    )
+keepCoverageOptions :: OptionField a -> Bool
+keepCoverageOptions (optionName -> o) =
+  "coverage" `isSuffixOf` o
+    || "coverage" `isPrefixOf` o
 
-removeOutputOptions :: OptionField a -> Bool
-removeOutputOptions (optionName -> o) =
-  not
-    ( "build-info" `isSuffixOf` o
-        || "debug-info" `isSuffixOf` o
-        || "deterministic" `isSuffixOf` o
-        || "relocatable" `isSuffixOf` o
-        || "write-ghc-environment-files" == o
-    )
+keepOutputOptions :: OptionField a -> Bool
+keepOutputOptions (optionName -> o) =
+  "build-info" `isSuffixOf` o
+    || "debug-info" `isSuffixOf` o
+    || "deterministic" `isSuffixOf` o
+    || "relocatable" `isSuffixOf` o
+    || "write-ghc-environment-files" == o
 
-removeConfigureOptions :: OptionField a -> Bool
-removeConfigureOptions (optionName -> o) =
-  not
-    ( "append" `isSuffixOf` o
-        || "backup" `isSuffixOf` o
-        || "configure-option" == o
-    )
+keepConfigureOptions :: OptionField a -> Bool
+keepConfigureOptions (optionName -> o) =
+  "append" `isSuffixOf` o
+    || "backup" `isSuffixOf` o
+    || "configure-option" == o
 
-removePhaseOptions :: OptionField a -> Bool
-removePhaseOptions (optionName -> o) =
-  not
-    ( "only-configure" == o
-        || "only-download" == o
-        || "dry-run" == o
-    )
+keepPhaseOptions :: OptionField a -> Bool
+keepPhaseOptions (optionName -> o) =
+  "only-configure" == o
+    || "only-download" == o
+    || "dry-run" == o
 
-removeCompilerOptions :: OptionField a -> Bool
-removeCompilerOptions (optionName -> o) =
-  not
-    ( "ghc" == o
-        || "ghcjs" == o
-        || "uhc" == o
-        || "with-compiler" == o
-        || "cabal-lib-version" == o
-        || "optimization" `isSuffixOf` o
-        || "semaphore" == o
-        || "jobs" == o
-        || "keep-going" == o
-        || "offline" == o
-    )
+keepCompilerOptions :: OptionField a -> Bool
+keepCompilerOptions (optionName -> o) =
+  "ghc" == o
+    || "ghcjs" == o
+    || "uhc" == o
+    || "with-compiler" == o
+    || "cabal-lib-version" == o
+    || "optimization" `isSuffixOf` o
+    || "semaphore" == o
+    || "jobs" == o
+    || "keep-going" == o
+    || "offline" == o
 
-removeLoggingOptions :: OptionField a -> Bool
-removeLoggingOptions (optionName -> o) =
-  not
-    ( "verbose" == o
-        || "keep-temp-files" == o
-        || "build-summary" == o
-        || "build-log" == o
-        || "build-timings" == o
-        || "remote-build-reporting" == o
-        || "report-planning-failure" == o
-    )
+keepLoggingOptions :: OptionField a -> Bool
+keepLoggingOptions (optionName -> o) =
+  "verbose" == o
+    || "keep-temp-files" == o
+    || "build-summary" == o
+    || "build-log" == o
+    || "build-timings" == o
+    || "remote-build-reporting" == o
+    || "report-planning-failure" == o
 
-removeIncludeOptions :: OptionField a -> Bool
-removeIncludeOptions (optionName -> o) =
-  not
-    ( "extra-include-dirs" == o
-        || "extra-lib-dirs" == o
-        || "extra-framework-dirs" == o
-        || "extra-prog-path" == o
-        || "disable-response-files" == o
-    )
+keepIncludeOptions :: OptionField a -> Bool
+keepIncludeOptions (optionName -> o) =
+  "extra-include-dirs" == o
+    || "extra-lib-dirs" == o
+    || "extra-framework-dirs" == o
+    || "extra-prog-path" == o
+    || "disable-response-files" == o
 
-removeProgOptions :: OptionField a -> Bool
-removeProgOptions (optionName -> o) =
-  not
-    ( "with-PROG" == o
-        || "PROG-option" `isPrefixOf` o
-    )
+keepProgOptions :: OptionField a -> Bool
+keepProgOptions (optionName -> o) =
+  "with-PROG" == o
+    || "PROG-option" `isPrefixOf` o
