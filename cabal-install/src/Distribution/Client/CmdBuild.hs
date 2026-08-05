@@ -35,24 +35,6 @@ import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
   , defaultNixStyleFlags
-  , keepBenchOptions
-  , keepCompilerOptions
-  , keepConfigureOptions
-  , keepCoverageOptions
-  , keepExeOptions
-  , keepHaddockOptions
-  , keepIncludeOptions
-  , keepInstallOptions
-  , keepIrrelevantOptions
-  , keepLibOptions
-  , keepLoggingOptions
-  , keepOutputOptions
-  , keepPhaseOptions
-  , keepProfilingOptions
-  , keepProgOptions
-  , keepSolvingOptions
-  , keepTestOptions
-  , keepUnsupportedOptions
   , nixStyleOptions
   )
 import Distribution.Client.ScriptUtils
@@ -356,35 +338,13 @@ buildHelpText invokedName pname =
               , warnings
               )
 
-buildOptionGroupSpecs :: [(String, BuildOptionField -> Bool)]
-buildOptionGroupSpecs =
-  [ ("Unsupported options", keepUnsupportedOptions)
-  , ("Install layout options", keepInstallOptions)
-  , ("Irrelevant options", keepIrrelevantOptions)
-  , ("Haddock options", keepHaddockOptions)
-  , ("Test options", keepTestOptions)
-  , ("Benchmark options", keepBenchOptions)
-  , ("Profiling options", keepProfilingOptions)
-  , ("Dependency solving options", keepSolvingOptions)
-  , ("Executable build options", keepExeOptions)
-  , ("Library build options", keepLibOptions)
-  , ("Coverage options", keepCoverageOptions)
-  , ("Output and artifact options", keepOutputOptions)
-  , ("Configure-phase options", keepConfigureOptions)
-  , ("Build phase control options", keepPhaseOptions)
-  , ("Compiler and parallelism options", keepCompilerOptions)
-  , ("Logging and reporting options", keepLoggingOptions)
-  , ("Include and linker path options", keepIncludeOptions)
-  , ("Program override options", keepProgOptions)
-  ]
-
 buildOptionGroups :: [(String, [BuildOptionField])]
 buildOptionGroups =
-  fst $ CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) buildOptionGroupSpecs
+  fst $ CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) CommandUIOpt.groupPredicates
 
 buildUngroupedOptions :: [BuildOptionField]
 buildUngroupedOptions =
-  snd $ CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) buildOptionGroupSpecs
+  snd $ CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) CommandUIOpt.groupPredicates
 
 replaceBuildAlias :: String -> String -> String
 replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
