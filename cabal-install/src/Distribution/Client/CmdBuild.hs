@@ -380,48 +380,48 @@ buildOptionGroups =
   where
     opts0 = commandOptions buildCommand ShowArgs
 
-    (unsupported, opts1) = CommandUIOpt.splitByKeep keepUnsupportedOptions opts0
-    (install, opts2) = CommandUIOpt.splitByKeep keepInstallOptions opts1
-    (irrelevant, opts3) = CommandUIOpt.splitByKeep keepIrrelevantOptions opts2
-    (haddock, opts4) = CommandUIOpt.splitByKeep keepHaddockOptions opts3
-    (test, opts5) = CommandUIOpt.splitByKeep keepTestOptions opts4
-    (bench, opts6) = CommandUIOpt.splitByKeep keepBenchOptions opts5
-    (profiling, opts7) = CommandUIOpt.splitByKeep keepProfilingOptions opts6
-    (solving, opts8) = CommandUIOpt.splitByKeep keepSolvingOptions opts7
-    (exe, opts9) = CommandUIOpt.splitByKeep keepExeOptions opts8
-    (lib, opts10) = CommandUIOpt.splitByKeep keepLibOptions opts9
-    (coverage, opts11) = CommandUIOpt.splitByKeep keepCoverageOptions opts10
-    (output, opts12) = CommandUIOpt.splitByKeep keepOutputOptions opts11
-    (configure, opts13) = CommandUIOpt.splitByKeep keepConfigureOptions opts12
-    (phase, opts14) = CommandUIOpt.splitByKeep keepPhaseOptions opts13
-    (compiler, opts15) = CommandUIOpt.splitByKeep keepCompilerOptions opts14
-    (logging, opts16) = CommandUIOpt.splitByKeep keepLoggingOptions opts15
-    (includePaths, opts17) = CommandUIOpt.splitByKeep keepIncludeOptions opts16
-    (prog, _opts18) = CommandUIOpt.splitByKeep keepProgOptions opts17
+    (unsupported, opts1) = partition keepUnsupportedOptions opts0
+    (install, opts2) = partition keepInstallOptions opts1
+    (irrelevant, opts3) = partition keepIrrelevantOptions opts2
+    (haddock, opts4) = partition keepHaddockOptions opts3
+    (test, opts5) = partition keepTestOptions opts4
+    (bench, opts6) = partition keepBenchOptions opts5
+    (profiling, opts7) = partition keepProfilingOptions opts6
+    (solving, opts8) = partition keepSolvingOptions opts7
+    (exe, opts9) = partition keepExeOptions opts8
+    (lib, opts10) = partition keepLibOptions opts9
+    (coverage, opts11) = partition keepCoverageOptions opts10
+    (output, opts12) = partition keepOutputOptions opts11
+    (configure, opts13) = partition keepConfigureOptions opts12
+    (phase, opts14) = partition keepPhaseOptions opts13
+    (compiler, opts15) = partition keepCompilerOptions opts14
+    (logging, opts16) = partition keepLoggingOptions opts15
+    (includePaths, opts17) = partition keepIncludeOptions opts16
+    (prog, _opts18) = partition keepProgOptions opts17
 
 buildUngroupedOptions :: [BuildOptionField]
 buildUngroupedOptions =
   opts18
   where
     opts0 = commandOptions buildCommand ShowArgs
-    (_, opts1) = CommandUIOpt.splitByKeep keepUnsupportedOptions opts0
-    (_, opts2) = CommandUIOpt.splitByKeep keepInstallOptions opts1
-    (_, opts3) = CommandUIOpt.splitByKeep keepIrrelevantOptions opts2
-    (_, opts4) = CommandUIOpt.splitByKeep keepHaddockOptions opts3
-    (_, opts5) = CommandUIOpt.splitByKeep keepTestOptions opts4
-    (_, opts6) = CommandUIOpt.splitByKeep keepBenchOptions opts5
-    (_, opts7) = CommandUIOpt.splitByKeep keepProfilingOptions opts6
-    (_, opts8) = CommandUIOpt.splitByKeep keepSolvingOptions opts7
-    (_, opts9) = CommandUIOpt.splitByKeep keepExeOptions opts8
-    (_, opts10) = CommandUIOpt.splitByKeep keepLibOptions opts9
-    (_, opts11) = CommandUIOpt.splitByKeep keepCoverageOptions opts10
-    (_, opts12) = CommandUIOpt.splitByKeep keepOutputOptions opts11
-    (_, opts13) = CommandUIOpt.splitByKeep keepConfigureOptions opts12
-    (_, opts14) = CommandUIOpt.splitByKeep keepPhaseOptions opts13
-    (_, opts15) = CommandUIOpt.splitByKeep keepCompilerOptions opts14
-    (_, opts16) = CommandUIOpt.splitByKeep keepLoggingOptions opts15
-    (_, opts17) = CommandUIOpt.splitByKeep keepIncludeOptions opts16
-    (_, opts18) = CommandUIOpt.splitByKeep keepProgOptions opts17
+    (_, opts1) = partition keepUnsupportedOptions opts0
+    (_, opts2) = partition keepInstallOptions opts1
+    (_, opts3) = partition keepIrrelevantOptions opts2
+    (_, opts4) = partition keepHaddockOptions opts3
+    (_, opts5) = partition keepTestOptions opts4
+    (_, opts6) = partition keepBenchOptions opts5
+    (_, opts7) = partition keepProfilingOptions opts6
+    (_, opts8) = partition keepSolvingOptions opts7
+    (_, opts9) = partition keepExeOptions opts8
+    (_, opts10) = partition keepLibOptions opts9
+    (_, opts11) = partition keepCoverageOptions opts10
+    (_, opts12) = partition keepOutputOptions opts11
+    (_, opts13) = partition keepConfigureOptions opts12
+    (_, opts14) = partition keepPhaseOptions opts13
+    (_, opts15) = partition keepCompilerOptions opts14
+    (_, opts16) = partition keepLoggingOptions opts15
+    (_, opts17) = partition keepIncludeOptions opts16
+    (_, opts18) = partition keepProgOptions opts17
 
 
 
