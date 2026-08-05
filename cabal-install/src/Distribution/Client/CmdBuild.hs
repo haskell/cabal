@@ -63,18 +63,7 @@ buildCommand =
     { commandName = "v2-build"
     , commandSynopsis = "Compile targets within the project."
     , commandUsage = usageAlternatives "v2-build" ["[TARGETS] [FLAGS]"]
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Build one or more targets from within the project. The available "
-            ++ "targets are the packages in the project as well as individual "
-            ++ "components within those packages, including libraries, executables, "
-            ++ "test-suites or benchmarks. Targets can be specified by name or "
-            ++ "location. If no target is specified then the default is to build "
-            ++ "the package in the current directory.\n\n"
-            ++ "Dependencies are built or rebuilt as necessary. Additional "
-            ++ "configuration flags can be specified on the command line and these "
-            ++ "extend the project configuration from the 'cabal.project', "
-            ++ "'cabal.project.local' and other files."
+    , commandDescription = Just $ \_ -> wrapText description
     , commandNotes = Just examples
     , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
     , commandOptions =
@@ -91,6 +80,19 @@ buildCommand =
                 ]
             )
     }
+
+description :: String
+description =
+  "Build one or more targets from within the project. The available "
+    ++ "targets are the packages in the project as well as individual "
+    ++ "components within those packages, including libraries, executables, "
+    ++ "test-suites or benchmarks. Targets can be specified by name or "
+    ++ "location. If no target is specified then the default is to build "
+    ++ "the package in the current directory.\n\n"
+    ++ "Dependencies are built or rebuilt as necessary. Additional "
+    ++ "configuration flags can be specified on the command line and these "
+    ++ "extend the project configuration from the 'cabal.project', "
+    ++ "'cabal.project.local' and other files."
 
 examples :: String -> String
 examples invokedName =
