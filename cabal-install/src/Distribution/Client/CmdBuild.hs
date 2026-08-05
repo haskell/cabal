@@ -84,24 +84,13 @@ import Options.Applicative
   )
 
 cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
-cmdSpec = [cmd defaultUi, cmd newUi, cmd origUi]
+cmdSpec = [CommandSpec ui (`commandAddAction` buildAction) NormalCommand]
   where
-    origUi@CommandUI{..} = buildCommand
-
-    cmd ui = CommandSpec ui (`commandAddAction` buildAction) NormalCommand
-
-    newMsg = T.unpack . T.replace "v2-" "new-" . T.pack
-    newUi =
-      origUi
-        { commandName = newMsg commandName
-        , commandUsage = newMsg . commandUsage
-        , commandDescription = (newMsg .) <$> commandDescription
-        , commandNotes = (newMsg .) <$> commandNotes
-        }
-
     defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
-    defaultUi =
-      origUi
+    CommandUI{..} = buildCommand
+
+    ui =
+      buildCommand
         { commandName = defaultMsg commandName
         , commandUsage = defaultMsg . commandUsage
         , commandDescription = (defaultMsg .) <$> commandDescription
