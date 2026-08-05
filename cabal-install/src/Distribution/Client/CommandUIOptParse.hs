@@ -20,6 +20,7 @@ module Distribution.Client.CommandUIOptParse
 
     -- * Utility helpers
   , splitBy
+  , splitByKeep
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -223,3 +224,6 @@ getOptToColumns (GetOpt.Option shortFlags longFlags argDescr description) =
 
 splitBy :: (a -> Bool) -> [a] -> ([a], [a])
 splitBy keepPred = partition (not . keepPred)
+
+splitByKeep :: (a -> Bool) -> [a] -> ([a], [a])
+splitByKeep keepPred = partition keepPred
