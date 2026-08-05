@@ -18,12 +18,15 @@ module Distribution.Client.CommandUIOptParse
   , wrapDescription
   , capitalizeDescription
 
+    -- * Option grouping helpers
+  , groupSequentially
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Data.Char (isLower)
+import Data.List (mapAccumL)
 import Data.Monoid (Endo (..))
 import qualified System.Console.GetOpt as GetOpt
 
@@ -59,7 +62,7 @@ optDescrParser = \case
     ]
   ChoiceOpt choices ->
     [ Endo setFn
-        <$ O.flag' () (flagMods optFlags <> O.help desc)
+      <$ O.flag' () (flagMods optFlags <> O.help desc)
     | (desc, optFlags, setFn, _get) <- choices
     ]
   BoolOpt desc trueFlags falseFlags setFn _get ->
@@ -219,4 +222,10 @@ getOptToColumns (GetOpt.Option shortFlags longFlags argDescr description) =
         GetOpt.ReqArg _ metaVar -> "--" <> longFlag <> "=" <> metaVar
         GetOpt.OptArg _ metaVar -> "--" <> longFlag <> "[=" <> metaVar <> "]"
 
-
+groupSequentially :: [a] -> [(groupName, a -> Bool)] -> ([(groupName, [a])], [a])
+groupSequentially options groupingSpecs =
+  let step remaining (groupName, keepPred) =
+        let (groupMembers, leftovers) = partition keepPred remaining
+         in (leftovers, (groupName, groupMembers))
+      (leftoverOptions, groupedBuckets) = mapAccumL step options groupingSpecs
+   in (groupedBuckets, leftoverOptions)
