@@ -75,30 +75,7 @@ buildCommand =
             ++ "configuration flags can be specified on the command line and these "
             ++ "extend the project configuration from the 'cabal.project', "
             ++ "'cabal.project.local' and other files."
-    , commandNotes = Just $ \pname ->
-        "Examples:\n"
-          ++ "  - "
-          ++ pname
-          ++ " v2-build\n"
-          ++ "      Build the package in the current directory "
-          ++ "or all packages in the project\n"
-          ++ "  - "
-          ++ pname
-          ++ " v2-build pkgname\n"
-          ++ "      Build the package named pkgname in the project\n"
-          ++ "  - "
-          ++ pname
-          ++ " v2-build ./pkgfoo\n"
-          ++ "      Build the package in the ./pkgfoo directory\n"
-          ++ "  - "
-          ++ pname
-          ++ " v2-build cname\n"
-          ++ "      Build the component named cname in the project\n"
-          ++ "  - "
-          ++ pname
-          ++ " v2-build cname --enable-profiling\n"
-          ++ "      Build the component in profiling mode "
-          ++ "(including dependencies as needed)\n"
+    , commandNotes = Just examples
     , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
     , commandOptions =
         removeIgnoreProjectOption
