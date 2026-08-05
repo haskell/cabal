@@ -338,7 +338,12 @@ buildHelpText invokedName pname =
       | null options = ("", [])
       | otherwise =
           let (rows, warnings) =
-                CommandUIOpt.renderOptionRows colorizeWarningHeader maxFlagColumnWidth descColumn helpOutputWidth (concatMap CommandUIOpt.optionFieldToGetOpt options)
+                CommandUIOpt.renderOptionRows
+                  colorizeWarningHeader
+                  maxFlagColumnWidth
+                  descColumn
+                  helpOutputWidth
+                  (concatMap CommandUIOpt.optionFieldToGetOpt options)
            in ( "\n"
                   <> colorizeHeader (title <> ":")
                   <> "\n"
