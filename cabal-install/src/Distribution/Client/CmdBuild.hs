@@ -115,7 +115,7 @@ buildCommand =
     , commandSynopsis = "Compile targets within the project."
     , commandUsage = usageAlternatives "v2-build" ["[TARGETS] [FLAGS]"]
     , commandDescription = Just $ \_ -> wrapText description
-    , commandNotes = Just examples
+    , commandNotes = Just $ \pname -> examples pname "v2-build"
     , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
     , commandOptions =
         removeIgnoreProjectOption
@@ -145,19 +145,19 @@ description =
     ++ "extend the project configuration from the 'cabal.project', "
     ++ "'cabal.project.local' and other files."
 
-examples :: String -> String
-examples invokedName =
+examples :: String -> String -> String
+examples pname invokedName =
   unlines
     [ "Examples:"
-    , "  - " <> invokedName
+    , "  - " <> pname <> " " <> invokedName
     , "      Build the package in the current directory or all packages in the project"
-    , "  - " <> invokedName <> " pkgname"
+    , "  - " <> pname <> " " <> invokedName <> " pkgname"
     , "      Build the package named pkgname in the project"
-    , "  - " <> invokedName <> " ./pkgfoo"
+    , "  - " <> pname <> " " <> invokedName <> " ./pkgfoo"
     , "      Build the package in the ./pkgfoo directory"
-    , "  - " <> invokedName <> " cname"
+    , "  - " <> pname <> " " <> invokedName <> " cname"
     , "      Build the component named cname in the project"
-    , "  - " <> invokedName <> " cname --enable-profiling"
+    , "  - " <> pname <> " " <> invokedName <> " cname --enable-profiling"
     , "      Build the component in profiling mode (including dependencies as needed)"
     ]
 
@@ -327,7 +327,7 @@ buildParserInfo invokedName =
     ( fullDesc
         <> progDesc buildHelpDescription
         <> header ("cabal " ++ invokedName)
-        <> footer (examples invokedName)
+        <> footer (examples "cabal" invokedName)
     )
 
 buildHelpDescription :: String
