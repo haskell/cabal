@@ -18,9 +18,6 @@ module Distribution.Client.CommandUIOptParse
   , wrapDescription
   , capitalizeDescription
 
-    -- * Utility helpers
-  , splitBy
-  , splitByKeep
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -222,8 +219,4 @@ getOptToColumns (GetOpt.Option shortFlags longFlags argDescr description) =
         GetOpt.ReqArg _ metaVar -> "--" <> longFlag <> "=" <> metaVar
         GetOpt.OptArg _ metaVar -> "--" <> longFlag <> "[=" <> metaVar <> "]"
 
-splitBy :: (a -> Bool) -> [a] -> ([a], [a])
-splitBy keepPred = partition (not . keepPred)
 
-splitByKeep :: (a -> Bool) -> [a] -> ([a], [a])
-splitByKeep keepPred = partition keepPred
