@@ -43,29 +43,18 @@ import Distribution.Client.ScriptUtils
   , updateContextAndWriteProjectFile
   , withContextAndSelectors
   )
-import Distribution.Client.Setup
-  ( GlobalFlags
-  , yesNoOpt
-  )
+import Distribution.Client.Setup (GlobalFlags, yesNoOpt)
 import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandUI (..)
-  , OptionField
-  , ShowOrParseArgs (ParseArgs, ShowArgs)
+  , ShowOrParseArgs (ParseArgs)
   , commandParseArgs
   , option
   , usageAlternatives
   )
 import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
-import Distribution.Simple.Utils
-  ( dieWithException
-  , wrapText
-  )
-import Distribution.Verbosity
-  ( normal
-  )
-import qualified System.Console.GetOpt as GetOpt
-
+import Distribution.Simple.Utils (dieWithException, wrapText)
+import Distribution.Verbosity (normal)
 import qualified Options.Applicative as O
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
@@ -265,109 +254,8 @@ buildListOptions =
     CommandList opts -> opts
     _ -> []
 
-type BuildOptionField = OptionField (NixStyleFlags BuildFlags)
-
-buildHelpText :: String -> String -> String
-buildHelpText invokedName pname =
-  commandSynopsis buildCommand
-    <> "\n\n"
-    <> colorizeUsageHeader (replaceBuildAlias invokedName (commandUsage buildCommand pname))
-    <> maybe "" (('\n' :) . ($ pname)) (commandDescription buildCommand)
-    <> "\n"
-    <> colorizeHeader "Flags for build:"
-    <> "\n"
-    <> ungroupedRows
-    <> groupedRows
-    <> warningSection
-    <> maybe "" (('\n' :) . colorizeExamplesHeader . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
-  where
-    commonHelpOptions :: [GetOpt.OptDescr ()]
-    commonHelpOptions =
-      [GetOpt.Option ['h'] ["help"] (GetOpt.NoArg ()) "Show this help text"]
-
-    maxFlagColumnWidth :: Int
-    maxFlagColumnWidth = 30
-
-    helpOutputWidth :: Int
-    helpOutputWidth = 100
-
-    allOptions :: [GetOpt.OptDescr ()]
-    allOptions =
-      commonHelpOptions
-        ++ concatMap CommandUIOpt.optionFieldToGetOpt optsUngrouped
-        ++ concatMap (concatMap CommandUIOpt.optionFieldToGetOpt . snd) optsGrouped
-
-    descColumn :: Int
-    descColumn =
-      min
-        maxFlagColumnWidth
-        ( maximum
-            ( 0
-                : map
-                  (length . fst . CommandUIOpt.getOptToColumns)
-                  allOptions
-            )
-        )
-        + 2
-
-    (ungroupedRows, ungroupedWarnings) =
-      CommandUIOpt.renderOptionRows
-        colorizeWarningHeader
-        maxFlagColumnWidth
-        descColumn
-        helpOutputWidth
-        (commonHelpOptions ++ concatMap CommandUIOpt.optionFieldToGetOpt optsUngrouped)
-
-    renderedGroups = map renderGroup optsGrouped
-
-    groupedRows = concatMap fst renderedGroups
-
-    groupedWarnings = concatMap snd renderedGroups
-
-    warningSection =
-      case ungroupedWarnings ++ groupedWarnings of
-        [] -> ""
-        warnings ->
-          "\n"
-            <> colorizeWarningHeader "Warnings:"
-            <> "\n"
-            <> concat ["  - " <> warning <> "\n" | warning <- warnings]
-
-    renderGroup :: (String, [BuildOptionField]) -> (String, [String])
-    renderGroup (title, options)
-      | null options = ("", [])
-      | otherwise =
-          let (rows, warnings) =
-                CommandUIOpt.renderOptionRows
-                  colorizeWarningHeader
-                  maxFlagColumnWidth
-                  descColumn
-                  helpOutputWidth
-                  (concatMap CommandUIOpt.optionFieldToGetOpt options)
-           in ( "\n"
-                  <> colorizeHeader (title <> ":")
-                  <> "\n"
-                  <> rows
-              , warnings
-              )
-
-    (optsGrouped, optsUngrouped) =
-      CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) CommandUIOpt.groupPredicates
-
 replaceBuildAlias :: String -> String -> String
 replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
-
-colorizeHeader :: String -> String
-colorizeHeader text = "\ESC[32m" <> text <> "\ESC[0m"
-
-colorizeWarningHeader :: String -> String
-colorizeWarningHeader text = "\ESC[31m" <> text <> "\ESC[0m"
-
-colorizeUsageHeader :: String -> String
-colorizeUsageHeader = T.unpack . T.replace (T.pack "Usage:") (T.pack $ colorizeHeader "Usage:") . T.pack
-
-colorizeExamplesHeader :: String -> String
-colorizeExamplesHeader = T.unpack . T.replace (T.pack "Examples:") (T.pack $ colorizeHeader "Examples:") . T.pack
 
 parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseBuildCommand invokedName cmdArgs =
@@ -381,7 +269,7 @@ parseBuildCommand invokedName cmdArgs =
     O.Failure failure ->
       let (msg, exitCode) = O.renderFailure failure ("cabal " ++ invokedName)
        in if exitCode == ExitSuccess
-            then CommandHelp (buildHelpText invokedName)
+            then CommandHelp (CommandUIOpt.helpText replaceBuildAlias buildCommand invokedName)
             else CommandErrors [msg]
     O.CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
