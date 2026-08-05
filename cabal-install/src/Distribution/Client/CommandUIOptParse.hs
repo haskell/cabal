@@ -19,6 +19,7 @@ module Distribution.Client.CommandUIOptParse
   , capitalizeDescription
 
     -- * Option grouping helpers
+  , groupPredicates
   , groupSequentially
   ) where
 
@@ -34,6 +35,26 @@ import Distribution.ReadE (runReadE)
 import Distribution.Simple.Command
   ( OptDescr (..)
   , OptionField (..)
+  )
+import Distribution.Client.NixStyleOptions
+  ( keepBenchOptions
+  , keepCompilerOptions
+  , keepConfigureOptions
+  , keepCoverageOptions
+  , keepExeOptions
+  , keepHaddockOptions
+  , keepIncludeOptions
+  , keepInstallOptions
+  , keepIrrelevantOptions
+  , keepLibOptions
+  , keepLoggingOptions
+  , keepOutputOptions
+  , keepPhaseOptions
+  , keepProfilingOptions
+  , keepProgOptions
+  , keepSolvingOptions
+  , keepTestOptions
+  , keepUnsupportedOptions
   )
 
 import qualified Options.Applicative as O
@@ -229,3 +250,25 @@ groupSequentially options groupingSpecs =
          in (leftovers, (groupName, groupMembers))
       (leftoverOptions, groupedBuckets) = mapAccumL step options groupingSpecs
    in (groupedBuckets, leftoverOptions)
+
+groupPredicates :: [(String, OptionField a -> Bool)]
+groupPredicates =
+  [ ("Unsupported options", keepUnsupportedOptions)
+  , ("Install layout options", keepInstallOptions)
+  , ("Irrelevant options", keepIrrelevantOptions)
+  , ("Haddock options", keepHaddockOptions)
+  , ("Test options", keepTestOptions)
+  , ("Benchmark options", keepBenchOptions)
+  , ("Profiling options", keepProfilingOptions)
+  , ("Dependency solving options", keepSolvingOptions)
+  , ("Executable build options", keepExeOptions)
+  , ("Library build options", keepLibOptions)
+  , ("Coverage options", keepCoverageOptions)
+  , ("Output and artifact options", keepOutputOptions)
+  , ("Configure-phase options", keepConfigureOptions)
+  , ("Build phase control options", keepPhaseOptions)
+  , ("Compiler and parallelism options", keepCompilerOptions)
+  , ("Logging and reporting options", keepLoggingOptions)
+  , ("Include and linker path options", keepIncludeOptions)
+  , ("Program override options", keepProgOptions)
+  ]
