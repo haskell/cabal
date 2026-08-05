@@ -149,10 +149,7 @@ renderOptionRows colorizeWarning maxFlagColumnWidth descColumn helpOutputWidth o
               else wrappedDescription
           isStacked = length flagColumn > maxFlagColumnWidth
           spacer = if isStacked && not isFirstInGroup then "\n" else ""
-          warning =
-            if wasAutoCapitalized
-              then ["Auto-capitalized help text for " <> flagColumn]
-              else []
+          warning = ["Auto-capitalized help text for " <> flagColumn | wasAutoCapitalized]
           renderedRow =
             spacer
               <> if isStacked
