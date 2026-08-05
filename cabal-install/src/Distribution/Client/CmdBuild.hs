@@ -29,14 +29,12 @@ import Distribution.Client.TargetProblem
 import qualified Data.Map as Map
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
-import qualified System.Console.GetOpt as GetOpt
 import qualified Distribution.Client.CommandUIOptParse as CommandUIOpt
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
   , defaultNixStyleFlags
-  , nixStyleOptions
   , keepBenchOptions
   , keepCompilerOptions
   , keepConfigureOptions
@@ -50,11 +48,12 @@ import Distribution.Client.NixStyleOptions
   , keepLoggingOptions
   , keepOutputOptions
   , keepPhaseOptions
-  , keepProgOptions
   , keepProfilingOptions
+  , keepProgOptions
   , keepSolvingOptions
   , keepTestOptions
   , keepUnsupportedOptions
+  , nixStyleOptions
   )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -83,6 +82,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
   ( normal
   )
+import qualified System.Console.GetOpt as GetOpt
 
 import qualified Options.Applicative as O
 
@@ -311,7 +311,8 @@ buildHelpText invokedName pname =
 
     descColumn :: Int
     descColumn =
-      min maxFlagColumnWidth
+      min
+        maxFlagColumnWidth
         ( maximum
             ( 0
                 : map
@@ -348,82 +349,42 @@ buildHelpText invokedName pname =
       | otherwise =
           let (rows, warnings) =
                 CommandUIOpt.renderOptionRows colorizeWarningHeader maxFlagColumnWidth descColumn helpOutputWidth (concatMap CommandUIOpt.optionFieldToGetOpt options)
-           in
-            ( "\n"
-                <> colorizeHeader (title <> ":")
-                <> "\n"
-                <> rows
-            , warnings
-            )
+           in ( "\n"
+                  <> colorizeHeader (title <> ":")
+                  <> "\n"
+                  <> rows
+              , warnings
+              )
+
+buildOptionGroupSpecs :: [(String, BuildOptionField -> Bool)]
+buildOptionGroupSpecs =
+  [ ("Unsupported options", keepUnsupportedOptions)
+  , ("Install layout options", keepInstallOptions)
+  , ("Irrelevant options", keepIrrelevantOptions)
+  , ("Haddock options", keepHaddockOptions)
+  , ("Test options", keepTestOptions)
+  , ("Benchmark options", keepBenchOptions)
+  , ("Profiling options", keepProfilingOptions)
+  , ("Dependency solving options", keepSolvingOptions)
+  , ("Executable build options", keepExeOptions)
+  , ("Library build options", keepLibOptions)
+  , ("Coverage options", keepCoverageOptions)
+  , ("Output and artifact options", keepOutputOptions)
+  , ("Configure-phase options", keepConfigureOptions)
+  , ("Build phase control options", keepPhaseOptions)
+  , ("Compiler and parallelism options", keepCompilerOptions)
+  , ("Logging and reporting options", keepLoggingOptions)
+  , ("Include and linker path options", keepIncludeOptions)
+  , ("Program override options", keepProgOptions)
+  ]
 
 buildOptionGroups :: [(String, [BuildOptionField])]
 buildOptionGroups =
-  [ ("Unsupported options", unsupported)
-  , ("Install layout options", install)
-  , ("Irrelevant options", irrelevant)
-  , ("Haddock options", haddock)
-  , ("Test options", test)
-  , ("Benchmark options", bench)
-  , ("Profiling options", profiling)
-  , ("Dependency solving options", solving)
-  , ("Executable build options", exe)
-  , ("Library build options", lib)
-  , ("Coverage options", coverage)
-  , ("Output and artifact options", output)
-  , ("Configure-phase options", configure)
-  , ("Build phase control options", phase)
-  , ("Compiler and parallelism options", compiler)
-  , ("Logging and reporting options", logging)
-  , ("Include and linker path options", includePaths)
-  , ("Program override options", prog)
-  ]
-  where
-    opts0 = commandOptions buildCommand ShowArgs
-
-    (unsupported, opts1) = partition keepUnsupportedOptions opts0
-    (install, opts2) = partition keepInstallOptions opts1
-    (irrelevant, opts3) = partition keepIrrelevantOptions opts2
-    (haddock, opts4) = partition keepHaddockOptions opts3
-    (test, opts5) = partition keepTestOptions opts4
-    (bench, opts6) = partition keepBenchOptions opts5
-    (profiling, opts7) = partition keepProfilingOptions opts6
-    (solving, opts8) = partition keepSolvingOptions opts7
-    (exe, opts9) = partition keepExeOptions opts8
-    (lib, opts10) = partition keepLibOptions opts9
-    (coverage, opts11) = partition keepCoverageOptions opts10
-    (output, opts12) = partition keepOutputOptions opts11
-    (configure, opts13) = partition keepConfigureOptions opts12
-    (phase, opts14) = partition keepPhaseOptions opts13
-    (compiler, opts15) = partition keepCompilerOptions opts14
-    (logging, opts16) = partition keepLoggingOptions opts15
-    (includePaths, opts17) = partition keepIncludeOptions opts16
-    (prog, _opts18) = partition keepProgOptions opts17
+  fst $ CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) buildOptionGroupSpecs
 
 buildUngroupedOptions :: [BuildOptionField]
 buildUngroupedOptions =
-  opts18
-  where
-    opts0 = commandOptions buildCommand ShowArgs
-    (_, opts1) = partition keepUnsupportedOptions opts0
-    (_, opts2) = partition keepInstallOptions opts1
-    (_, opts3) = partition keepIrrelevantOptions opts2
-    (_, opts4) = partition keepHaddockOptions opts3
-    (_, opts5) = partition keepTestOptions opts4
-    (_, opts6) = partition keepBenchOptions opts5
-    (_, opts7) = partition keepProfilingOptions opts6
-    (_, opts8) = partition keepSolvingOptions opts7
-    (_, opts9) = partition keepExeOptions opts8
-    (_, opts10) = partition keepLibOptions opts9
-    (_, opts11) = partition keepCoverageOptions opts10
-    (_, opts12) = partition keepOutputOptions opts11
-    (_, opts13) = partition keepConfigureOptions opts12
-    (_, opts14) = partition keepPhaseOptions opts13
-    (_, opts15) = partition keepCompilerOptions opts14
-    (_, opts16) = partition keepLoggingOptions opts15
-    (_, opts17) = partition keepIncludeOptions opts16
-    (_, opts18) = partition keepProgOptions opts17
-
-
+  snd $ CommandUIOpt.groupSequentially (commandOptions buildCommand ShowArgs) buildOptionGroupSpecs
 
 replaceBuildAlias :: String -> String -> String
 replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
@@ -521,9 +482,9 @@ buildItemParser =
   O.asum
     ( buildOptionParsers
         ++ [ BuildItemListOptions
-               <$ O.flag'
-                 ()
-                 (O.long "list-options" <> O.help "Print a list of command line flags")
+              <$ O.flag'
+                ()
+                (O.long "list-options" <> O.help "Print a list of command line flags")
            , BuildItemTarget <$> O.strArgument (O.metavar "TARGET")
            ]
     )
