@@ -267,6 +267,10 @@ reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
   dieWithException verbosity . ReportCannotPruneDependencies . renderCannotPruneDependencies
 
+-- | The command name and aliases for the @build@ command.
+--
+-- >>> buildCommandNames
+-- ["build","new-build","v2-build"]
 buildCommandNames :: [String]
 buildCommandNames = ["build", "new-build", commandName buildCommand]
 
