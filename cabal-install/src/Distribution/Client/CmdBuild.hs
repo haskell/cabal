@@ -291,6 +291,12 @@ buildHelpText invokedName pname =
     helpOutputWidth :: Int
     helpOutputWidth = 100
 
+    allOptions :: [GetOpt.OptDescr ()]
+    allOptions =
+      commonHelpOptions
+        ++ concatMap CommandUIOpt.optionFieldToGetOpt optsUngrouped
+        ++ concatMap (concatMap CommandUIOpt.optionFieldToGetOpt . snd) optsGrouped
+
     descColumn :: Int
     descColumn =
       min
@@ -299,10 +305,7 @@ buildHelpText invokedName pname =
             ( 0
                 : map
                   (length . fst . CommandUIOpt.getOptToColumns)
-                  ( commonHelpOptions
-                      ++ concatMap CommandUIOpt.optionFieldToGetOpt optsUngrouped
-                      ++ concatMap (concatMap CommandUIOpt.optionFieldToGetOpt . snd) optsGrouped
-                  )
+                  allOptions
             )
         )
         + 2
