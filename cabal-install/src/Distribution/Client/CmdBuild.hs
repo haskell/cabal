@@ -115,6 +115,22 @@ buildCommand =
             )
     }
 
+examples :: String -> String
+examples invokedName =
+  unlines
+    [ "Examples:"
+    , "  - " <> invokedName
+    , "      Build the package in the current directory or all packages in the project"
+    , "  - " <> invokedName <> " pkgname"
+    , "      Build the package named pkgname in the project"
+    , "  - " <> invokedName <> " ./pkgfoo"
+    , "      Build the package in the ./pkgfoo directory"
+    , "  - " <> invokedName <> " cname"
+    , "      Build the component named cname in the project"
+    , "  - " <> invokedName <> " cname --enable-profiling"
+    , "      Build the component in profiling mode (including dependencies as needed)"
+    ]
+
 data BuildFlags = BuildFlags
   { buildOnlyConfigure :: Flag Bool
   }
@@ -281,7 +297,7 @@ buildParserInfo invokedName =
     ( O.fullDesc
         <> O.progDesc buildHelpDescription
         <> O.header ("cabal " ++ invokedName)
-        <> O.footer (buildExamplesSection invokedName)
+        <> O.footer (examples invokedName)
     )
 
 buildHelpDescription :: String
@@ -289,22 +305,6 @@ buildHelpDescription =
   case commandDescription buildCommand of
     Nothing -> commandSynopsis buildCommand
     Just mkDescription -> mkDescription "cabal"
-
-buildExamplesSection :: String -> String
-buildExamplesSection invokedName =
-  unlines
-    [ "Examples:"
-    , "  - " <> invokedName
-    , "      Build the package in the current directory or all packages in the project"
-    , "  - " <> invokedName <> " pkgname"
-    , "      Build the package named pkgname in the project"
-    , "  - " <> invokedName <> " ./pkgfoo"
-    , "      Build the package in the ./pkgfoo directory"
-    , "  - " <> invokedName <> " cname"
-    , "      Build the component named cname in the project"
-    , "  - " <> invokedName <> " cname --enable-profiling"
-    , "      Build the component in profiling mode (including dependencies as needed)"
-    ]
 
 data ParsedBuildCommand = ParsedBuildCommand
   { parsedFlagEdits :: Endo (NixStyleFlags BuildFlags)
