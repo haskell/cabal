@@ -37,24 +37,24 @@ import Distribution.Client.NixStyleOptions
   , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
-  , removeBenchOptions
-  , removeCompilerOptions
-  , removeConfigureOptions
-  , removeCoverageOptions
-  , removeExeOptions
-  , removeHaddockOptions
-  , removeIncludeOptions
-  , removeInstallOptions
-  , removeIrrelevantOptions
-  , removeLibOptions
-  , removeLoggingOptions
-  , removeOutputOptions
-  , removePhaseOptions
-  , removeProgOptions
-  , removeProfilingOptions
-  , removeSolvingOptions
-  , removeTestOptions
-  , removeUnsupportedOptions
+  , keepBenchOptions
+  , keepCompilerOptions
+  , keepConfigureOptions
+  , keepCoverageOptions
+  , keepExeOptions
+  , keepHaddockOptions
+  , keepIncludeOptions
+  , keepInstallOptions
+  , keepIrrelevantOptions
+  , keepLibOptions
+  , keepLoggingOptions
+  , keepOutputOptions
+  , keepPhaseOptions
+  , keepProgOptions
+  , keepProfilingOptions
+  , keepSolvingOptions
+  , keepTestOptions
+  , keepUnsupportedOptions
   )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -380,48 +380,48 @@ buildOptionGroups =
   where
     opts0 = commandOptions buildCommand ShowArgs
 
-    (unsupported, opts1) = CommandUIOpt.splitBy removeUnsupportedOptions opts0
-    (install, opts2) = CommandUIOpt.splitBy removeInstallOptions opts1
-    (irrelevant, opts3) = CommandUIOpt.splitBy removeIrrelevantOptions opts2
-    (haddock, opts4) = CommandUIOpt.splitBy removeHaddockOptions opts3
-    (test, opts5) = CommandUIOpt.splitBy removeTestOptions opts4
-    (bench, opts6) = CommandUIOpt.splitBy removeBenchOptions opts5
-    (profiling, opts7) = CommandUIOpt.splitBy removeProfilingOptions opts6
-    (solving, opts8) = CommandUIOpt.splitBy removeSolvingOptions opts7
-    (exe, opts9) = CommandUIOpt.splitBy removeExeOptions opts8
-    (lib, opts10) = CommandUIOpt.splitBy removeLibOptions opts9
-    (coverage, opts11) = CommandUIOpt.splitBy removeCoverageOptions opts10
-    (output, opts12) = CommandUIOpt.splitBy removeOutputOptions opts11
-    (configure, opts13) = CommandUIOpt.splitBy removeConfigureOptions opts12
-    (phase, opts14) = CommandUIOpt.splitBy removePhaseOptions opts13
-    (compiler, opts15) = CommandUIOpt.splitBy removeCompilerOptions opts14
-    (logging, opts16) = CommandUIOpt.splitBy removeLoggingOptions opts15
-    (includePaths, opts17) = CommandUIOpt.splitBy removeIncludeOptions opts16
-    (prog, _opts18) = CommandUIOpt.splitBy removeProgOptions opts17
+    (unsupported, opts1) = CommandUIOpt.splitBy (not . keepUnsupportedOptions) opts0
+    (install, opts2) = CommandUIOpt.splitBy (not . keepInstallOptions) opts1
+    (irrelevant, opts3) = CommandUIOpt.splitBy (not . keepIrrelevantOptions) opts2
+    (haddock, opts4) = CommandUIOpt.splitBy (not . keepHaddockOptions) opts3
+    (test, opts5) = CommandUIOpt.splitBy (not . keepTestOptions) opts4
+    (bench, opts6) = CommandUIOpt.splitBy (not . keepBenchOptions) opts5
+    (profiling, opts7) = CommandUIOpt.splitBy (not . keepProfilingOptions) opts6
+    (solving, opts8) = CommandUIOpt.splitBy (not . keepSolvingOptions) opts7
+    (exe, opts9) = CommandUIOpt.splitBy (not . keepExeOptions) opts8
+    (lib, opts10) = CommandUIOpt.splitBy (not . keepLibOptions) opts9
+    (coverage, opts11) = CommandUIOpt.splitBy (not . keepCoverageOptions) opts10
+    (output, opts12) = CommandUIOpt.splitBy (not . keepOutputOptions) opts11
+    (configure, opts13) = CommandUIOpt.splitBy (not . keepConfigureOptions) opts12
+    (phase, opts14) = CommandUIOpt.splitBy (not . keepPhaseOptions) opts13
+    (compiler, opts15) = CommandUIOpt.splitBy (not . keepCompilerOptions) opts14
+    (logging, opts16) = CommandUIOpt.splitBy (not . keepLoggingOptions) opts15
+    (includePaths, opts17) = CommandUIOpt.splitBy (not . keepIncludeOptions) opts16
+    (prog, _opts18) = CommandUIOpt.splitBy (not . keepProgOptions) opts17
 
 buildUngroupedOptions :: [BuildOptionField]
 buildUngroupedOptions =
   opts18
   where
     opts0 = commandOptions buildCommand ShowArgs
-    (_, opts1) = CommandUIOpt.splitBy removeUnsupportedOptions opts0
-    (_, opts2) = CommandUIOpt.splitBy removeInstallOptions opts1
-    (_, opts3) = CommandUIOpt.splitBy removeIrrelevantOptions opts2
-    (_, opts4) = CommandUIOpt.splitBy removeHaddockOptions opts3
-    (_, opts5) = CommandUIOpt.splitBy removeTestOptions opts4
-    (_, opts6) = CommandUIOpt.splitBy removeBenchOptions opts5
-    (_, opts7) = CommandUIOpt.splitBy removeProfilingOptions opts6
-    (_, opts8) = CommandUIOpt.splitBy removeSolvingOptions opts7
-    (_, opts9) = CommandUIOpt.splitBy removeExeOptions opts8
-    (_, opts10) = CommandUIOpt.splitBy removeLibOptions opts9
-    (_, opts11) = CommandUIOpt.splitBy removeCoverageOptions opts10
-    (_, opts12) = CommandUIOpt.splitBy removeOutputOptions opts11
-    (_, opts13) = CommandUIOpt.splitBy removeConfigureOptions opts12
-    (_, opts14) = CommandUIOpt.splitBy removePhaseOptions opts13
-    (_, opts15) = CommandUIOpt.splitBy removeCompilerOptions opts14
-    (_, opts16) = CommandUIOpt.splitBy removeLoggingOptions opts15
-    (_, opts17) = CommandUIOpt.splitBy removeIncludeOptions opts16
-    (_, opts18) = CommandUIOpt.splitBy removeProgOptions opts17
+    (_, opts1) = CommandUIOpt.splitBy (not . keepUnsupportedOptions) opts0
+    (_, opts2) = CommandUIOpt.splitBy (not . keepInstallOptions) opts1
+    (_, opts3) = CommandUIOpt.splitBy (not . keepIrrelevantOptions) opts2
+    (_, opts4) = CommandUIOpt.splitBy (not . keepHaddockOptions) opts3
+    (_, opts5) = CommandUIOpt.splitBy (not . keepTestOptions) opts4
+    (_, opts6) = CommandUIOpt.splitBy (not . keepBenchOptions) opts5
+    (_, opts7) = CommandUIOpt.splitBy (not . keepProfilingOptions) opts6
+    (_, opts8) = CommandUIOpt.splitBy (not . keepSolvingOptions) opts7
+    (_, opts9) = CommandUIOpt.splitBy (not . keepExeOptions) opts8
+    (_, opts10) = CommandUIOpt.splitBy (not . keepLibOptions) opts9
+    (_, opts11) = CommandUIOpt.splitBy (not . keepCoverageOptions) opts10
+    (_, opts12) = CommandUIOpt.splitBy (not . keepOutputOptions) opts11
+    (_, opts13) = CommandUIOpt.splitBy (not . keepConfigureOptions) opts12
+    (_, opts14) = CommandUIOpt.splitBy (not . keepPhaseOptions) opts13
+    (_, opts15) = CommandUIOpt.splitBy (not . keepCompilerOptions) opts14
+    (_, opts16) = CommandUIOpt.splitBy (not . keepLoggingOptions) opts15
+    (_, opts17) = CommandUIOpt.splitBy (not . keepIncludeOptions) opts16
+    (_, opts18) = CommandUIOpt.splitBy (not . keepProgOptions) opts17
 
 
 
