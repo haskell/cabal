@@ -497,7 +497,7 @@ mainWorker args = do
         ++ concat
           [ newCmd CmdConfigure.configureCommand CmdConfigure.configureAction
           , newCmd CmdUpdate.updateCommand CmdUpdate.updateAction
-          , newCmd CmdBuild.buildCommand CmdBuild.buildAction
+          , CmdBuild.cmdSpec
           , newCmd CmdRepl.replCommand CmdRepl.replAction
           , newCmd CmdFreeze.freezeCommand CmdFreeze.freezeAction
           , newCmd CmdHaddock.haddockCommand CmdHaddock.haddockAction

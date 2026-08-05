@@ -1,7 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI and action
-    buildCommand
+    cmdSpec
   , buildAction
   , parseBuildCommand
   , isBuildCommandName
@@ -47,7 +50,10 @@ import Distribution.Client.Setup (GlobalFlags, yesNoOpt)
 import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandUI (..)
+  , CommandSpec (..)
   , ShowOrParseArgs (ParseArgs)
+  , CommandType (..)
+  , commandAddAction
   , commandParseArgs
   , option
   , usageAlternatives
@@ -56,6 +62,31 @@ import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
 import Distribution.Simple.Utils (dieWithException, wrapText)
 import Distribution.Verbosity (normal)
 import qualified Options.Applicative as O
+
+cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
+cmdSpec = [cmd defaultUi, cmd newUi, cmd origUi]
+  where
+    origUi@CommandUI{..} = buildCommand
+
+    cmd ui = CommandSpec ui (`commandAddAction` buildAction) NormalCommand
+
+    newMsg = T.unpack . T.replace "v2-" "new-" . T.pack
+    newUi =
+      origUi
+        { commandName = newMsg commandName
+        , commandUsage = newMsg . commandUsage
+        , commandDescription = (newMsg .) <$> commandDescription
+        , commandNotes = (newMsg .) <$> commandNotes
+        }
+
+    defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
+    defaultUi =
+      origUi
+        { commandName = defaultMsg commandName
+        , commandUsage = defaultMsg . commandUsage
+        , commandDescription = (defaultMsg .) <$> commandDescription
+        , commandNotes = (defaultMsg .) <$> commandNotes
+        }
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand =
