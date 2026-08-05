@@ -17,6 +17,7 @@ module Distribution.Client.CommandUIOptParse
   , getOptToColumns
   , wrapDescription
   , capitalizeDescription
+  , helpText
 
     -- * Option grouping helpers
   , groupPredicates
@@ -26,6 +27,7 @@ module Distribution.Client.CommandUIOptParse
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import qualified Data.Text as T
 import Data.Char (isLower)
 import Data.List (mapAccumL)
 import Data.Monoid (Endo (..))
@@ -35,6 +37,8 @@ import Distribution.ReadE (runReadE)
 import Distribution.Simple.Command
   ( OptDescr (..)
   , OptionField (..)
+  , ShowOrParseArgs (ShowArgs)
+  , CommandUI (..)
   )
 import Distribution.Client.NixStyleOptions
   ( keepBenchOptions
@@ -55,6 +59,7 @@ import Distribution.Client.NixStyleOptions
   , keepSolvingOptions
   , keepTestOptions
   , keepUnsupportedOptions
+  , NixStyleFlags(..)
   )
 
 import qualified Options.Applicative as O
@@ -272,3 +277,104 @@ groupPredicates =
   , ("Include and linker path options", keepIncludeOptions)
   , ("Program override options", keepProgOptions)
   ]
+
+type ReplaceCommandAlias = String -> String -> String
+
+helpText :: ReplaceCommandAlias -> CommandUI (NixStyleFlags a) -> String -> String -> String
+helpText replaceBuildAlias buildCommand invokedName pname =
+  commandSynopsis buildCommand
+    <> "\n\n"
+    <> colorizeUsageHeader (replaceBuildAlias invokedName (commandUsage buildCommand pname))
+    <> maybe "" (('\n' :) . ($ pname)) (commandDescription buildCommand)
+    <> "\n"
+    <> colorizeHeader "Flags for build:"
+    <> "\n"
+    <> ungroupedRows
+    <> groupedRows
+    <> warningSection
+    <> maybe "" (('\n' :) . colorizeExamplesHeader . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
+  where
+    commonHelpOptions :: [GetOpt.OptDescr ()]
+    commonHelpOptions =
+      [GetOpt.Option ['h'] ["help"] (GetOpt.NoArg ()) "Show this help text"]
+
+    maxFlagColumnWidth :: Int
+    maxFlagColumnWidth = 30
+
+    helpOutputWidth :: Int
+    helpOutputWidth = 100
+
+    allOptions :: [GetOpt.OptDescr ()]
+    allOptions =
+      commonHelpOptions
+        ++ concatMap optionFieldToGetOpt optsUngrouped
+        ++ concatMap (concatMap optionFieldToGetOpt . snd) optsGrouped
+
+    descColumn :: Int
+    descColumn =
+      min
+        maxFlagColumnWidth
+        ( maximum
+            ( 0
+                : map
+                  (length . fst . getOptToColumns)
+                  allOptions
+            )
+        )
+        + 2
+
+    (ungroupedRows, ungroupedWarnings) =
+      renderOptionRows
+        colorizeWarningHeader
+        maxFlagColumnWidth
+        descColumn
+        helpOutputWidth
+        (commonHelpOptions ++ concatMap optionFieldToGetOpt optsUngrouped)
+
+    renderedGroups = map renderGroup optsGrouped
+
+    groupedRows = concatMap fst renderedGroups
+
+    groupedWarnings = concatMap snd renderedGroups
+
+    warningSection =
+      case ungroupedWarnings ++ groupedWarnings of
+        [] -> ""
+        warnings ->
+          "\n"
+            <> colorizeWarningHeader "Warnings:"
+            <> "\n"
+            <> concat ["  - " <> warning <> "\n" | warning <- warnings]
+
+    renderGroup :: (String, [OptionField a]) -> (String, [String])
+    renderGroup (title, options)
+      | null options = ("", [])
+      | otherwise =
+          let (rows, warnings) =
+                renderOptionRows
+                  colorizeWarningHeader
+                  maxFlagColumnWidth
+                  descColumn
+                  helpOutputWidth
+                  (concatMap optionFieldToGetOpt options)
+           in ( "\n"
+                  <> colorizeHeader (title <> ":")
+                  <> "\n"
+                  <> rows
+              , warnings
+              )
+
+    (optsGrouped, optsUngrouped) =
+      groupSequentially (commandOptions buildCommand ShowArgs) groupPredicates
+
+colorizeHeader :: String -> String
+colorizeHeader text = "\ESC[32m" <> text <> "\ESC[0m"
+
+colorizeWarningHeader :: String -> String
+colorizeWarningHeader text = "\ESC[31m" <> text <> "\ESC[0m"
+
+colorizeUsageHeader :: String -> String
+colorizeUsageHeader = T.unpack . T.replace (T.pack "Usage:") (T.pack $ colorizeHeader "Usage:") . T.pack
+
+colorizeExamplesHeader :: String -> String
+colorizeExamplesHeader = T.unpack . T.replace (T.pack "Examples:") (T.pack $ colorizeHeader "Examples:") . T.pack
