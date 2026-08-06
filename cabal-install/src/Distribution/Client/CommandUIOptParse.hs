@@ -266,26 +266,66 @@ groupSequentially options groupingSpecs =
       (leftoverOptions, groupedBuckets) = mapAccumL step options groupingSpecs
    in (groupedBuckets, leftoverOptions)
 
-groupPredicates :: [(String, OptionField a -> Bool)]
+data OptionGroupKey
+  = UnsupportedOptions
+  | InstallLayoutOptions
+  | IrrelevantOptions
+  | HaddockOptions
+  | TestOptions
+  | BenchmarkOptions
+  | ProfilingOptions
+  | DependencySolvingOptions
+  | ExecutableBuildOptions
+  | LibraryBuildOptions
+  | CoverageOptions
+  | OutputAndArtifactOptions
+  | ConfigurePhaseOptions
+  | BuildPhaseControlOptions
+  | CompilerAndParallelismOptions
+  | LoggingAndReportingOptions
+  | IncludeAndLinkerPathOptions
+  | ProgramOverrideOptions
+
+instance Show OptionGroupKey where
+  show UnsupportedOptions = "Unsupported options"
+  show InstallLayoutOptions = "Install layout options"
+  show IrrelevantOptions = "Irrelevant options"
+  show HaddockOptions = "Haddock options"
+  show TestOptions = "Test options"
+  show BenchmarkOptions = "Benchmark options"
+  show ProfilingOptions = "Profiling options"
+  show DependencySolvingOptions = "Dependency solving options"
+  show ExecutableBuildOptions = "Executable build options"
+  show LibraryBuildOptions = "Library build options"
+  show CoverageOptions = "Coverage options"
+  show OutputAndArtifactOptions = "Output and artifact options"
+  show ConfigurePhaseOptions = "Configure-phase options"
+  show BuildPhaseControlOptions = "Build phase control options"
+  show CompilerAndParallelismOptions = "Compiler and parallelism options"
+  show LoggingAndReportingOptions = "Logging and reporting options"
+  show IncludeAndLinkerPathOptions = "Include and linker path options"
+  show ProgramOverrideOptions = "Program override options"
+
+groupPredicates :: [(OptionGroupKey, OptionField a -> Bool)]
 groupPredicates =
-  [ ("Unsupported options", keepUnsupportedOptions)
-  , ("Install layout options", keepInstallOptions)
-  , ("Irrelevant options", keepIrrelevantOptions)
-  , ("Haddock options", keepHaddockOptions)
-  , ("Test options", keepTestOptions)
-  , ("Benchmark options", keepBenchOptions)
-  , ("Profiling options", keepProfilingOptions)
-  , ("Dependency solving options", keepSolvingOptions)
-  , ("Executable build options", keepExeOptions)
-  , ("Library build options", keepLibOptions)
-  , ("Coverage options", keepCoverageOptions)
-  , ("Output and artifact options", keepOutputOptions)
-  , ("Configure-phase options", keepConfigureOptions)
-  , ("Build phase control options", keepPhaseOptions)
-  , ("Compiler and parallelism options", keepCompilerOptions)
-  , ("Logging and reporting options", keepLoggingOptions)
-  , ("Include and linker path options", keepIncludeOptions)
-  , ("Program override options", keepProgOptions)
+  [ (UnsupportedOptions, keepUnsupportedOptions)
+  , (InstallLayoutOptions, keepInstallOptions)
+  , (IrrelevantOptions, keepIrrelevantOptions)
+  , (HaddockOptions, keepHaddockOptions)
+  , (TestOptions, keepTestOptions)
+  , (BenchmarkOptions, keepBenchOptions)
+  , (ProfilingOptions, keepProfilingOptions)
+  , (DependencySolvingOptions, keepSolvingOptions)
+  , (ExecutableBuildOptions, keepExeOptions)
+  , (LibraryBuildOptions, keepLibOptions)
+  , (CoverageOptions, keepCoverageOptions)
+  , (OutputAndArtifactOptions, keepOutputOptions)
+  , (ConfigurePhaseOptions, keepConfigureOptions)
+  , (BuildPhaseControlOptions, keepPhaseOptions)
+  , (CompilerAndParallelismOptions, keepCompilerOptions)
+  , (LoggingAndReportingOptions, keepLoggingOptions)
+  , (IncludeAndLinkerPathOptions, keepIncludeOptions)
+  , (ProgramOverrideOptions, keepProgOptions)
   ]
 
 type ReplaceCommandAlias = String -> String -> String
@@ -356,7 +396,7 @@ helpText replaceBuildAlias buildCommand invokedName pname =
             <> "\n"
             <> concat ["  - " <> warning <> "\n" | warning <- warnings]
 
-    renderGroup :: (String, [OptionField a]) -> (String, [String])
+    renderGroup :: (OptionGroupKey, [OptionField a]) -> (String, [String])
     renderGroup (title, options)
       | null options = ("", [])
       | otherwise =
@@ -368,7 +408,7 @@ helpText replaceBuildAlias buildCommand invokedName pname =
                   helpOutputWidth
                   (concatMap optionFieldToGetOpt options)
            in ( "\n"
-                  <> colorizeHeader (title <> ":")
+                  <> colorizeHeader (show title <> ":")
                   <> "\n"
                   <> rows
               , warnings
