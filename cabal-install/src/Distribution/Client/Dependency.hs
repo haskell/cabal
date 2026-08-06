@@ -461,9 +461,15 @@ dependOnWiredIns compiler params =
     Nothing -> params
     Just wiredInUnitIds -> addConstraints (extraConstraints wiredInUnitIds) params
   where
+    -- A wired-in package ("ghc", "ghc-internal") is supplied pre-built by
+    -- the compiler, so we pin it to the exact unit id the compiler already
+    -- has installed. The unit ids come from the /host/ compiler, so the pins
+    -- are scoped to the Host stage: a Build-stage goal is resolved against
+    -- the build compiler's own wired-in units, and pinning it to the host's
+    -- would be unsatisfiable.
     extraConstraints wiredInUnitIds =
       [ LabeledPackageConstraint
-        (PackageConstraint (ConstraintScope Nothing (ScopeAnyQualifier pkgName)) (PackagePropertyInstalledSpecificUnitId unitId))
+        (PackageConstraint (ConstraintScope (Just Host) (ScopeAnyQualifier pkgName)) (PackagePropertyInstalledSpecificUnitId unitId))
         ConstraintSourceNonReinstallablePackage
       | (pkgName, unitId) <- wiredInUnitIds
       ]
@@ -471,8 +477,17 @@ dependOnWiredIns compiler params =
         -- Old versions of `base` must be excluded from build plans still as they do not depend on any version of a wired-in unit.
         -- If we do not do this then we will get confusing error messages about old versions of `base` being unbuildable.
         -- Newer versions of `base` will be handled gracefully as they were designed to be reinstallable.
+        --
+        -- Scoped to the Host stage only: a Build-stage/Setup component is
+        -- compiled and run by the fixed boot toolchain (e.g. an older
+        -- external GHC via --with-build-compiler), which supplies its own,
+        -- older `base` and was never going to satisfy this bound anyway.
+        -- Applying it there too (as a stage-blind constraint previously did)
+        -- forces Setup dependencies onto the new, reinstallable `base`
+        -- source package -- which then requires `ghc-internal`, which the
+        -- old boot toolchain can never have installed.
         [ LabeledPackageConstraint
-            (PackageConstraint (ConstraintScope Nothing (ScopeAnyQualifier $ mkPackageName "base")) (PackagePropertyVersion (orLaterVersion (mkVersion [4, 22]))))
+            (PackageConstraint (ConstraintScope (Just Host) (ScopeAnyQualifier $ mkPackageName "base")) (PackagePropertyVersion (orLaterVersion (mkVersion [4, 22]))))
             ConstraintSourceNonReinstallablePackage
         ]
 
