@@ -350,10 +350,10 @@ commandGetOpts
   -> CommandUI flags
   -> [GetOpt.OptDescr (flags -> flags)]
 commandGetOpts showOrParse command =
-  concatMap viewAsGetOpt (commandOptions command showOrParse)
+  concatMap (viewAsGetOpt showOrParse) (commandOptions command showOrParse)
 
-viewAsGetOpt :: OptionField a -> [GetOpt.OptDescr (a -> a)]
-viewAsGetOpt (OptionField _n aa) = concatMap optDescrToGetOpt aa
+viewAsGetOpt :: ShowOrParseArgs -> OptionField a -> [GetOpt.OptDescr (a -> a)]
+viewAsGetOpt showOrParse (OptionField _n aa) = concatMap optDescrToGetOpt aa
   where
     optDescrToGetOpt (ReqArg d (cs, ss) arg_desc set _) =
       [GetOpt.Option cs ss (GetOpt.ReqArg (runReadE set) arg_desc) d]
@@ -368,10 +368,27 @@ viewAsGetOpt (OptionField _n aa) = concatMap optDescrToGetOpt aa
       [GetOpt.Option sfT lfT (GetOpt.NoArg (set True)) d]
     optDescrToGetOpt (BoolOpt d ([], []) (sfF, lfF) set _) =
       [GetOpt.Option sfF lfF (GetOpt.NoArg (set False)) d]
-    optDescrToGetOpt (BoolOpt d (sfT, lfT) (sfF, lfF) set _) =
-      [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True)) ("Enable " ++ d)
-      , GetOpt.Option sfF lfF (GetOpt.NoArg (set False)) ("Disable " ++ d)
-      ]
+    optDescrToGetOpt (BoolOpt d trueFlags@(sfT, lfT) falseFlags@(sfF, lfF) set _) =
+      case showOrParse of
+        ShowArgs
+          | Just groupedLongFlag <- mkGroupedBoolLongFlag trueFlags falseFlags ->
+              [ GetOpt.Option [] [groupedLongFlag] (GetOpt.NoArg (set True)) ("Enable or disable " ++ d)
+              ]
+        _ ->
+          [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True)) ("Enable " ++ d)
+          , GetOpt.Option sfF lfF (GetOpt.NoArg (set False)) ("Disable " ++ d)
+          ]
+
+    mkGroupedBoolLongFlag :: OptFlags -> OptFlags -> Maybe String
+    mkGroupedBoolLongFlag ([], [longA]) ([], [longB]) =
+      checkPair longA longB <|> checkPair longB longA
+      where
+        checkPair longEnable longDisable = do
+          suffixEnable <- List.stripPrefix "enable-" longEnable
+          suffixDisable <- List.stripPrefix "disable-" longDisable
+          guard (suffixEnable == suffixDisable)
+          pure ("[enable|disable]-" ++ suffixEnable)
+    mkGroupedBoolLongFlag _ _ = Nothing
 
 getCurrentChoice :: OptDescr a -> a -> [String]
 getCurrentChoice (ChoiceOpt alts) a =
