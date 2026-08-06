@@ -32,7 +32,7 @@ import Distribution.Client.TargetProblem
 import qualified Data.Map as Map
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
-import qualified Distribution.Client.CommandUIOptParse as CommandUIOpt
+import Distribution.Client.Cmd.UI (optionFieldFlagParsers, helpText)
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -304,7 +304,7 @@ parseBuildCommand invokedName cmdArgs =
     Failure failure ->
       let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
        in if exitCode == ExitSuccess
-            then CommandHelp (CommandUIOpt.helpText replaceBuildAlias buildCommand invokedName)
+            then CommandHelp (helpText replaceBuildAlias buildCommand invokedName)
             else CommandErrors [msg]
     CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
@@ -368,4 +368,4 @@ buildOptionParsers :: [Parser BuildItem]
 buildOptionParsers =
   (fmap . fmap)
     BuildItemFlag
-    (CommandUIOpt.optionFieldFlagParsers $ commandOptions buildCommand ParseArgs)
+    (optionFieldFlagParsers $ commandOptions buildCommand ParseArgs)

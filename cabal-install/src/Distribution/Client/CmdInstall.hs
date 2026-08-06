@@ -120,7 +120,7 @@ import Distribution.Package
 import Distribution.Simple.BuildPaths
   ( exeExtension
   )
-import qualified Distribution.Client.CommandUIOptParse as CommandUIOpt
+import Distribution.Client.Cmd.UI (optionFieldFlagParsers, helpText)
 import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandSpec (..)
@@ -1469,7 +1469,7 @@ parseInstallCommand invokedName cmdArgs =
     Failure failure ->
       let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
        in if exitCode == ExitSuccess
-            then CommandHelp (CommandUIOpt.helpText replaceInstallAlias installCommand invokedName)
+            then CommandHelp (helpText replaceInstallAlias installCommand invokedName)
             else CommandErrors [msg]
     CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
@@ -1545,4 +1545,4 @@ installOptionParsers :: [Parser InstallItem]
 installOptionParsers =
   (fmap . fmap)
     InstallItemFlag
-    (CommandUIOpt.optionFieldFlagParsers $ commandOptions installCommand ParseArgs)
+    (optionFieldFlagParsers $ commandOptions installCommand ParseArgs)
