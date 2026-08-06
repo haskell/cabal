@@ -125,7 +125,7 @@ optDescrToGetOpt = \case
     | null shortTrue && null longTrue ->
         [GetOpt.Option shortFalse longFalse (GetOpt.NoArg ()) desc]
     | Just groupedLongFlag <- mkGroupedBoolLongFlag trueFlags falseFlags ->
-        [GetOpt.Option [] [groupedLongFlag] (GetOpt.NoArg ()) ("Enable or disable " <> desc)]
+        [GetOpt.Option [] [groupedLongFlag] (GetOpt.NoArg ()) ("Toggle " <> desc)]
     | otherwise ->
         [ GetOpt.Option shortTrue longTrue (GetOpt.NoArg ()) ("Enable " <> desc)
         , GetOpt.Option shortFalse longFalse (GetOpt.NoArg ()) ("Disable " <> desc)

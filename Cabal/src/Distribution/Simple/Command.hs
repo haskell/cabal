@@ -372,7 +372,7 @@ viewAsGetOpt showOrParse (OptionField _n aa) = concatMap optDescrToGetOpt aa
       case showOrParse of
         ShowArgs
           | Just groupedLongFlag <- mkGroupedBoolLongFlag trueFlags falseFlags ->
-              [ GetOpt.Option [] [groupedLongFlag] (GetOpt.NoArg (set True)) ("Enable or disable " ++ d)
+              [ GetOpt.Option [] [groupedLongFlag] (GetOpt.NoArg (set True)) ("Toggle " ++ d)
               ]
         _ ->
           [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True)) ("Enable " ++ d)
