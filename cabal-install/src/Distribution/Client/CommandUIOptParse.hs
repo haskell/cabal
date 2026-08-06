@@ -27,21 +27,15 @@ module Distribution.Client.CommandUIOptParse
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import qualified Data.Text as T
 import Data.Char (isLower)
 import Data.List (mapAccumL, stripPrefix)
 import Data.Monoid (Endo (..))
+import qualified Data.Text as T
 import qualified System.Console.GetOpt as GetOpt
 
-import Distribution.ReadE (runReadE)
-import Distribution.Simple.Command
-  ( OptDescr (..)
-  , OptionField (..)
-  , ShowOrParseArgs (ShowArgs)
-  , CommandUI (..)
-  )
 import Distribution.Client.NixStyleOptions
-  ( keepBenchOptions
+  ( NixStyleFlags (..)
+  , keepBenchOptions
   , keepCompilerOptions
   , keepConfigureOptions
   , keepCoverageOptions
@@ -59,7 +53,13 @@ import Distribution.Client.NixStyleOptions
   , keepSolvingOptions
   , keepTestOptions
   , keepUnsupportedOptions
-  , NixStyleFlags(..)
+  )
+import Distribution.ReadE (runReadE)
+import Distribution.Simple.Command
+  ( CommandUI (..)
+  , OptDescr (..)
+  , OptionField (..)
+  , ShowOrParseArgs (ShowArgs)
   )
 
 import qualified Options.Applicative as O
@@ -381,7 +381,8 @@ helpText replaceBuildAlias buildCommand invokedName pname =
         helpOutputWidth
         (commonHelpOptions ++ concatMap optionFieldToGetOpt optsUngrouped)
 
-    renderedGroups = map renderGroup optsGrouped
+    renderGroupToWidth = renderGroup maxFlagColumnWidth descColumn helpOutputWidth
+    renderedGroups = map renderGroupToWidth optsGrouped
 
     groupedRows = concatMap fst renderedGroups
 
@@ -396,26 +397,26 @@ helpText replaceBuildAlias buildCommand invokedName pname =
             <> "\n"
             <> concat ["  - " <> warning <> "\n" | warning <- warnings]
 
-    renderGroup :: (OptionGroupKey, [OptionField a]) -> (String, [String])
-    renderGroup (title, options)
-      | null options = ("", [])
-      | otherwise =
-          let (rows, warnings) =
-                renderOptionRows
-                  colorizeWarningHeader
-                  maxFlagColumnWidth
-                  descColumn
-                  helpOutputWidth
-                  (concatMap optionFieldToGetOpt options)
-           in ( "\n"
-                  <> colorizeHeader (show title <> ":")
-                  <> "\n"
-                  <> rows
-              , warnings
-              )
-
     (optsGrouped, optsUngrouped) =
       groupSequentially (commandOptions buildCommand ShowArgs) groupPredicates
+
+renderGroup :: Int -> Int -> Int -> (OptionGroupKey, [OptionField a]) -> (String, [String])
+renderGroup maxFlagColumnWidth descColumn helpOutputWidth (title, options)
+  | null options = ("", [])
+  | otherwise =
+      let (rows, warnings) =
+            renderOptionRows
+              colorizeWarningHeader
+              maxFlagColumnWidth
+              descColumn
+              helpOutputWidth
+              (concatMap optionFieldToGetOpt options)
+       in ( "\n"
+              <> colorizeHeader (show title <> ":")
+              <> "\n"
+              <> rows
+          , warnings
+          )
 
 colorizeHeader :: String -> String
 colorizeHeader text = "\ESC[32m" <> text <> "\ESC[0m"
