@@ -379,12 +379,12 @@ mainWorker args = do
   where
     commandsRunBuildOptparseFirst :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
     commandsRunBuildOptparseFirst argv =
-      case parseBuildWithOptparse argv of
+      case parseBuildOrInstallWithOptparse argv of
         Just parsed -> pure parsed
         Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
 
-    parseBuildWithOptparse :: [String] -> Maybe (CommandParse (GlobalFlags, CommandParse Action))
-    parseBuildWithOptparse argv =
+    parseBuildOrInstallWithOptparse :: [String] -> Maybe (CommandParse (GlobalFlags, CommandParse Action))
+    parseBuildOrInstallWithOptparse argv =
       case commandParseArgs globalCmd True argv of
         CommandReadyToGo (mkGlobalFlags, cmdArgs0) ->
           case cmdArgs0 of
@@ -392,6 +392,9 @@ mainWorker args = do
               | CmdBuild.isBuildCommandName cmdName ->
                   let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
                    in Just $ CommandReadyToGo (globalFlags, CmdBuild.parseBuildCommand cmdName cmdArgs)
+              | CmdInstall.isInstallCommandName cmdName ->
+                  let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
+                   in Just $ CommandReadyToGo (globalFlags, CmdInstall.parseInstallCommand cmdName cmdArgs)
             _ -> Nothing
         _ -> Nothing
 
@@ -504,7 +507,7 @@ mainWorker args = do
           , newCmd
               CmdHaddockProject.haddockProjectCommand
               CmdHaddockProject.haddockProjectAction
-          , newCmd CmdInstall.installCommand CmdInstall.installAction
+          , CmdInstall.cmdSpec
           , newCmd CmdRun.runCommand CmdRun.runAction
           , newCmd CmdTest.testCommand CmdTest.testAction
           , newCmd CmdBench.benchCommand CmdBench.benchAction
