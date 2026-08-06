@@ -5,8 +5,11 @@
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdInstall
   ( -- * The @build@ CLI and action
-    installCommand
+    cmdSpec
+  , installCommand
   , installAction
+  , parseInstallCommand
+  , isInstallCommandName
 
     -- * Internals exposed for testing
   , selectPackageTargets
@@ -117,8 +120,15 @@ import Distribution.Package
 import Distribution.Simple.BuildPaths
   ( exeExtension
   )
+import qualified Distribution.Client.CommandUIOptParse as CommandUIOpt
 import Distribution.Simple.Command
-  ( CommandUI (..)
+  ( CommandParse (..)
+  , CommandSpec (..)
+  , CommandType (..)
+  , CommandUI (..)
+  , ShowOrParseArgs (ParseArgs)
+  , commandAddAction
+  , commandParseArgs
   , optionName
   , usageAlternatives
   )
@@ -219,6 +229,8 @@ import Distribution.Verbosity
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
+import Data.Monoid (Endo (..), appEndo)
+import qualified Data.Text as T
 import Data.Ord
   ( Down (..)
   )
@@ -228,6 +240,27 @@ import Distribution.Utils.NubList
   ( fromNubList
   )
 import Network.URI (URI)
+import Options.Applicative
+  ( Parser
+  , ParserInfo
+  , ParserResult (..)
+  , asum
+  , defaultPrefs
+  , execParserPure
+  , flag'
+  , footer
+  , fullDesc
+  , header
+  , help
+  , helper
+  , info
+  , long
+  , metavar
+  , progDesc
+  , renderFailure
+  , strArgument
+  , (<**>)
+  )
 import System.Directory
   ( copyFile
   , createDirectoryIfMissing
@@ -284,6 +317,20 @@ data InstallExe = InstallExe
   -- ^ A function to get an exe's final possibly different to the name in the
   -- store.
   }
+
+cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
+cmdSpec = [CommandSpec ui (`commandAddAction` installAction) NormalCommand]
+  where
+    defaultMsg = T.unpack . T.replace (T.pack "v2-") (T.pack "") . T.pack
+    CommandUI{..} = installCommand
+
+    ui =
+      installCommand
+        { commandName = defaultMsg commandName
+        , commandUsage = defaultMsg . commandUsage
+        , commandDescription = (defaultMsg .) <$> commandDescription
+        , commandNotes = (defaultMsg .) <$> commandNotes
+        }
 
 installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
 installCommand =
@@ -1389,3 +1436,113 @@ reportBuildTargetProblems verbosity problems = reportTargetProblems verbosity "b
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
   dieWithException verbosity . SelectComponentTargetError . renderCannotPruneDependencies
+
+-- | The command name and aliases for the @install@ command.
+--
+-- >>> installCommandNames
+-- ["install","new-install","v2-install"]
+installCommandNames :: [String]
+installCommandNames = ["install", "new-install", commandName installCommand]
+
+isInstallCommandName :: String -> Bool
+isInstallCommandName name = name `elem` installCommandNames
+
+installListOptions :: [String]
+installListOptions =
+  case commandParseArgs installCommand False ["--list-options"] of
+    CommandList opts -> opts
+    _ -> []
+
+replaceInstallAlias :: String -> String -> String
+replaceInstallAlias invokedName =
+  T.unpack . T.replace (T.pack "v2-install") (T.pack invokedName) . T.pack
+
+parseInstallCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
+parseInstallCommand invokedName cmdArgs =
+  case execParserPure defaultPrefs (installParserInfo invokedName) cmdArgs of
+    Success parsed ->
+      if parsedListOptions parsed
+        then CommandList installListOptions
+        else
+          let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags installCommand)
+           in CommandReadyToGo (installAction flags (parsedTargets parsed))
+    Failure failure ->
+      let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
+       in if exitCode == ExitSuccess
+            then CommandHelp (CommandUIOpt.helpText replaceInstallAlias installCommand invokedName)
+            else CommandErrors [msg]
+    CompletionInvoked _ ->
+      CommandErrors ["Shell completion is not supported by this parser path."]
+
+installParserInfo :: String -> ParserInfo ParsedInstallCommand
+installParserInfo invokedName =
+  info
+    (parsedInstallCommandParser <**> helper)
+    ( fullDesc
+        <> progDesc installHelpDescription
+        <> header ("cabal " ++ invokedName)
+        <> footer (installExamples invokedName)
+    )
+
+installHelpDescription :: String
+installHelpDescription =
+  case commandDescription installCommand of
+    Nothing -> commandSynopsis installCommand
+    Just mkDescription -> mkDescription "cabal"
+
+installExamples :: String -> String
+installExamples invokedName =
+  unlines
+    [ "Examples:"
+    , "  - cabal " <> invokedName
+    , "      Install the package in the current directory"
+    , "  - cabal " <> invokedName <> " pkgname"
+    , "      Install the package named pkgname (fetching it from hackage if necessary)"
+    , "  - cabal " <> invokedName <> " ./pkgfoo"
+    , "      Install the package in the ./pkgfoo directory"
+    ]
+
+data ParsedInstallCommand = ParsedInstallCommand
+  { parsedFlagEdits :: Endo (NixStyleFlags ClientInstallFlags)
+  , parsedTargets :: [String]
+  , parsedListOptions :: Bool
+  }
+
+data InstallItem
+  = InstallItemFlag (Endo (NixStyleFlags ClientInstallFlags))
+  | InstallItemTarget String
+  | InstallItemListOptions
+
+parsedInstallCommandParser :: Parser ParsedInstallCommand
+parsedInstallCommandParser = toParsed <$> many installItemParser
+  where
+    toParsed items =
+      let edits = [e | InstallItemFlag e <- items]
+          targets = [t | InstallItemTarget t <- items]
+          listOptionsSeen = any isListOptions items
+       in ParsedInstallCommand
+            { parsedFlagEdits = mconcat edits
+            , parsedTargets = targets
+            , parsedListOptions = listOptionsSeen
+            }
+
+    isListOptions InstallItemListOptions = True
+    isListOptions _ = False
+
+installItemParser :: Parser InstallItem
+installItemParser =
+  asum
+    ( installOptionParsers
+        ++ [ InstallItemListOptions
+              <$ flag'
+                ()
+                (long "list-options" <> help "Print a list of command line flags")
+           , InstallItemTarget <$> strArgument (metavar "TARGET")
+           ]
+    )
+
+installOptionParsers :: [Parser InstallItem]
+installOptionParsers =
+  (fmap . fmap)
+    InstallItemFlag
+    (CommandUIOpt.optionFieldFlagParsers $ commandOptions installCommand ParseArgs)
