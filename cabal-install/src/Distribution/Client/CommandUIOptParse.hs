@@ -61,6 +61,7 @@ import Distribution.Simple.Command
   , OptionField (..)
   , ShowOrParseArgs (ShowArgs)
   )
+import Distribution.Simple.Utils (ordNub)
 
 import qualified Options.Applicative as O
 
@@ -285,6 +286,7 @@ data OptionGroupKey
   | LoggingAndReportingOptions
   | IncludeAndLinkerPathOptions
   | ProgramOverrideOptions
+  deriving (Eq)
 
 instance Show OptionGroupKey where
   show UnsupportedOptions = "Unsupported options"
@@ -403,6 +405,7 @@ helpText replaceBuildAlias buildCommand invokedName pname =
 renderGroup :: Int -> Int -> Int -> (OptionGroupKey, [OptionField a]) -> (String, [String])
 renderGroup maxFlagColumnWidth descColumn helpOutputWidth (title, options)
   | null options = ("", [])
+  | title == InstallLayoutOptions = renderInstallLayoutGroupCompact helpOutputWidth options
   | otherwise =
       let (rows, warnings) =
             renderOptionRows
@@ -417,6 +420,20 @@ renderGroup maxFlagColumnWidth descColumn helpOutputWidth (title, options)
               <> rows
           , warnings
           )
+
+renderInstallLayoutGroupCompact :: Int -> [OptionField a] -> (String, [String])
+renderInstallLayoutGroupCompact helpOutputWidth options =
+  ( "\n"
+      <> colorizeHeader (show InstallLayoutOptions <> ":")
+      <> "\n"
+      <> concat ["  " <> line <> "\n" | line <- wrappedFlagLines]
+  , []
+  )
+  where
+    flagColumns = map (fst . getOptToColumns) (concatMap optionFieldToGetOpt options)
+    compactFlags = ordNub flagColumns
+    flagsLine = intercalate ", " compactFlags
+    wrappedFlagLines = wrapDescription (max 40 (helpOutputWidth - 2)) flagsLine
 
 colorizeHeader :: String -> String
 colorizeHeader text = "\ESC[32m" <> text <> "\ESC[0m"
