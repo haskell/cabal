@@ -1962,7 +1962,7 @@ programDbOptions progDb showOrParseArgs get' set =
       option
         ""
         [prog ++ "-options"]
-        ("give extra options to " ++ prog)
+        ("Give extra options to " ++ prog)
         get'
         set
         ( reqArg'

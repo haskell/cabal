@@ -434,22 +434,22 @@ configureOptions showOrParseArgs =
         configHcFlavor
         (\v flags -> flags{configHcFlavor = v})
         ( choiceOpt
-            [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
-            , (Flag GHCJS, ([], ["ghcjs"]), "compile with GHCJS")
-            , (Flag UHC, ([], ["uhc"]), "compile with UHC")
+            [ (Flag GHC, ("g", ["ghc"]), "Compile with GHC")
+            , (Flag GHCJS, ([], ["ghcjs"]), "Compile with GHCJS")
+            , (Flag UHC, ([], ["uhc"]), "Compile with UHC")
             ]
         )
     , option
         "w"
         ["with-compiler"]
-        "give the path to a particular compiler"
+        "Give the path to a particular compiler"
         configHcPath
         (\v flags -> flags{configHcPath = v})
         (reqArgFlag "PATH")
     , option
         ""
         ["with-hc-pkg"]
-        "give the path to the package tool"
+        "Give the path to the package tool"
         configHcPkg
         (\v flags -> flags{configHcPkg = v})
         (reqArgFlag "PATH")
@@ -458,14 +458,14 @@ configureOptions showOrParseArgs =
     ++ [ option
           ""
           ["program-prefix"]
-          "prefix to be applied to installed executables"
+          "Prefix to be applied to installed executables"
           configProgPrefix
           (\v flags -> flags{configProgPrefix = v})
           (reqPathTemplateArgFlag "PREFIX")
        , option
           ""
           ["program-suffix"]
-          "suffix to be applied to installed executables"
+          "Suffix to be applied to installed executables"
           configProgSuffix
           (\v flags -> flags{configProgSuffix = v})
           (reqPathTemplateArgFlag "SUFFIX")
@@ -841,7 +841,7 @@ configureOptions showOrParseArgs =
        , option
           ""
           ["response-files"]
-          "enable workaround for old versions of programs like \"ar\" that do not support @file arguments"
+          "Enable workaround for old versions of programs like \"ar\" that do not support @file arguments"
           configUseResponseFiles
           (\v flags -> flags{configUseResponseFiles = v})
           (boolOpt' ([], ["disable-response-files"]) ([], []))
@@ -963,98 +963,98 @@ installDirsOptions =
   [ option
       ""
       ["prefix"]
-      "bake this prefix in preparation of installation"
+      "Bake this prefix in preparation of installation"
       prefix
       (\v flags -> flags{prefix = v})
       installDirArg
   , option
       ""
       ["bindir"]
-      "installation directory for executables"
+      "Installation directory for executables"
       bindir
       (\v flags -> flags{bindir = v})
       installDirArg
   , option
       ""
       ["libdir"]
-      "installation directory for libraries"
+      "Installation directory for libraries"
       libdir
       (\v flags -> flags{libdir = v})
       installDirArg
   , option
       ""
       ["libsubdir"]
-      "subdirectory of libdir in which libs are installed"
+      "Subdirectory of libdir in which libs are installed"
       libsubdir
       (\v flags -> flags{libsubdir = v})
       installDirArg
   , option
       ""
       ["dynlibdir"]
-      "installation directory for dynamic libraries"
+      "Installation directory for dynamic libraries"
       dynlibdir
       (\v flags -> flags{dynlibdir = v})
       installDirArg
   , option
       ""
       ["bytecodelibdir"]
-      "installation directory for bytecode libraries"
+      "Installation directory for bytecode libraries"
       bytecodelibdir
       (\v flags -> flags{bytecodelibdir = v})
       installDirArg
   , option
       ""
       ["libexecdir"]
-      "installation directory for program executables"
+      "Installation directory for program executables"
       libexecdir
       (\v flags -> flags{libexecdir = v})
       installDirArg
   , option
       ""
       ["libexecsubdir"]
-      "subdirectory of libexecdir in which private executables are installed"
+      "Subdirectory of libexecdir in which private executables are installed"
       libexecsubdir
       (\v flags -> flags{libexecsubdir = v})
       installDirArg
   , option
       ""
       ["datadir"]
-      "installation directory for read-only data"
+      "Installation directory for read-only data"
       datadir
       (\v flags -> flags{datadir = v})
       installDirArg
   , option
       ""
       ["datasubdir"]
-      "subdirectory of datadir in which data files are installed"
+      "Subdirectory of datadir in which data files are installed"
       datasubdir
       (\v flags -> flags{datasubdir = v})
       installDirArg
   , option
       ""
       ["docdir"]
-      "installation directory for documentation"
+      "Installation directory for documentation"
       docdir
       (\v flags -> flags{docdir = v})
       installDirArg
   , option
       ""
       ["htmldir"]
-      "installation directory for HTML documentation"
+      "Installation directory for HTML documentation"
       htmldir
       (\v flags -> flags{htmldir = v})
       installDirArg
   , option
       ""
       ["haddockdir"]
-      "installation directory for haddock interfaces"
+      "Installation directory for haddock interfaces"
       haddockdir
       (\v flags -> flags{haddockdir = v})
       installDirArg
   , option
       ""
       ["sysconfdir"]
-      "installation directory for configuration files"
+      "Installation directory for configuration files"
       sysconfdir
       (\v flags -> flags{sysconfdir = v})
       installDirArg
