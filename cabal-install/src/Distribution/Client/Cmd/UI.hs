@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Distribution.Client.CommandUIOptParse
+module Distribution.Client.Cmd.UI
   ( -- * Converting CommandUI options to optparse-applicative parsers
     optionFieldFlagParsers
   , optionFieldParser
