@@ -29,7 +29,7 @@ import Prelude ()
 
 import qualified Data.Text as T
 import Data.Char (isLower)
-import Data.List (mapAccumL)
+import Data.List (mapAccumL, stripPrefix)
 import Data.Monoid (Endo (..))
 import qualified System.Console.GetOpt as GetOpt
 
@@ -119,15 +119,28 @@ optDescrToGetOpt = \case
     [ GetOpt.Option shortFlags longFlags (GetOpt.NoArg ()) desc
     | (desc, (shortFlags, longFlags), _setFn, _getFn) <- choices
     ]
-  BoolOpt desc (shortTrue, longTrue) (shortFalse, longFalse) _setFn _getFn
+  BoolOpt desc trueFlags@(shortTrue, longTrue) falseFlags@(shortFalse, longFalse) _setFn _getFn
     | null shortFalse && null longFalse ->
         [GetOpt.Option shortTrue longTrue (GetOpt.NoArg ()) desc]
     | null shortTrue && null longTrue ->
         [GetOpt.Option shortFalse longFalse (GetOpt.NoArg ()) desc]
+    | Just groupedLongFlag <- mkGroupedBoolLongFlag trueFlags falseFlags ->
+        [GetOpt.Option [] [groupedLongFlag] (GetOpt.NoArg ()) ("Enable or disable " <> desc)]
     | otherwise ->
         [ GetOpt.Option shortTrue longTrue (GetOpt.NoArg ()) ("Enable " <> desc)
         , GetOpt.Option shortFalse longFalse (GetOpt.NoArg ()) ("Disable " <> desc)
         ]
+
+mkGroupedBoolLongFlag :: (String, [String]) -> (String, [String]) -> Maybe String
+mkGroupedBoolLongFlag ([], [longA]) ([], [longB]) =
+  checkPair longA longB <|> checkPair longB longA
+  where
+    checkPair longEnable longDisable = do
+      suffixEnable <- stripPrefix "enable-" longEnable
+      suffixDisable <- stripPrefix "disable-" longDisable
+      guard (suffixEnable == suffixDisable)
+      pure ("[enable|disable]-" <> suffixEnable)
+mkGroupedBoolLongFlag _ _ = Nothing
 
 renderOptionRows :: (String -> String) -> Int -> Int -> Int -> [GetOpt.OptDescr ()] -> (String, [String])
 renderOptionRows colorizeWarning maxFlagColumnWidth descColumn helpOutputWidth options =
