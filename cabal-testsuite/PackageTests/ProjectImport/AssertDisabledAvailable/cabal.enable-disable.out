@@ -1,0 +1,6 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - exe-test-0.1.0.0 (exe:exe) (first run)
+ - exe-test-0.1.0.0 (test:test) (first run)
