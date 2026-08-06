@@ -15,6 +15,7 @@ Welcome to the Cabal User Guide
 
    how-to-package-haskell-code
    how-to-source-packages
+   how-to-freeze-versions
    how-to-enable-profiling
    how-to-build-like-nix
    how-to-run-in-windows
