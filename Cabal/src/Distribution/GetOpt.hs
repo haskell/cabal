@@ -34,7 +34,10 @@ module Distribution.GetOpt
   ) where
 
 import Distribution.Compat.Prelude
+import Distribution.Simple.Utils (isInfixOf)
 import Prelude ()
+
+import System.IO (localeEncoding)
 
 -- | What to do with options following non-options
 data ArgOrder a
@@ -120,12 +123,16 @@ usageInfo header optDescr = unlines (header : table)
     renderColumns xs ys =
       case zipDefault "" "" xs ys of
         [] -> []
-        (xy : xys) -> renderLine "*" xy : map (renderLine " ") xys
+        (xy : xys) -> renderLine helpMarker xy : map (renderLine " ") xys
       where
         renderLine marker (x, y) =
           " " ++ padTo (maxOptNameWidth - 2) x ++ " " ++ marker ++ " " ++ y
 
     padTo n x = take n (x ++ repeat ' ')
+
+    helpMarker
+      | "UTF-8" `isInfixOf` show localeEncoding = "•"
+      | otherwise = "*"
 
 zipDefault :: a -> b -> [a] -> [b] -> [(a, b)]
 zipDefault _ _ [] [] = []
