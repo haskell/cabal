@@ -110,7 +110,7 @@ usageInfo header optDescr = unlines (header : table)
     table = do
       OptHelp{optNames, optHelp} <- options
       let wrappedHelp = wrapText descolWidth optHelp
-      if length optNames >= (maxOptNameWidth - 1)
+      if length optNames >= maxOptNameWidth - 1
         then
           [" " ++ optNames]
             ++ renderColumns [] wrappedHelp
