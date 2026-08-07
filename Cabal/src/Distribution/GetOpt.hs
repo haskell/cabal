@@ -101,7 +101,7 @@ usageInfo header optDescr = unlines (header : table)
         }
 
     maxOptNameWidth = 30
-    descolWidth = 80 - (maxOptNameWidth + 5)
+    descolWidth = 80 - (maxOptNameWidth + 3)
 
     table :: [String]
     table = do
@@ -123,7 +123,7 @@ usageInfo header optDescr = unlines (header : table)
         (xy : xys) -> renderLine "*" xy : map (renderLine " ") xys
       where
         renderLine marker (x, y) =
-          " " ++ padTo maxOptNameWidth x ++ " " ++ marker ++ " " ++ y
+          " " ++ padTo (maxOptNameWidth - 1) x ++ marker ++ " " ++ y
 
     padTo n x = take n (x ++ repeat ' ')
 
