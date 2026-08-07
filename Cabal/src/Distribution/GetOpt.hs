@@ -107,7 +107,7 @@ usageInfo header optDescr = unlines (header : table)
     table = do
       OptHelp{optNames, optHelp} <- options
       let wrappedHelp = wrapText descolWidth optHelp
-      if length optNames >= maxOptNameWidth
+      if length optNames >= (maxOptNameWidth - 1)
         then
           [" " ++ optNames]
             ++ renderColumns [] wrappedHelp
@@ -123,7 +123,7 @@ usageInfo header optDescr = unlines (header : table)
         (xy : xys) -> renderLine "*" xy : map (renderLine " ") xys
       where
         renderLine marker (x, y) =
-          " " ++ padTo (maxOptNameWidth - 1) x ++ marker ++ " " ++ y
+          " " ++ padTo (maxOptNameWidth - 2) x ++ " " ++ marker ++ " " ++ y
 
     padTo n x = take n (x ++ repeat ' ')
 
