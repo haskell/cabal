@@ -50,7 +50,7 @@ library
     , directory  >= 1.2.7    && < 1.4
     , filepath   >= 1.4.2    && < 1.6
     , pretty     >= 1.1.1    && < 1.2
-    , process    >= 1.6.20.0 && < 1.6.24 || == 1.6.26.0 || >= 1.6.26.2 && < 1.7
+    , process    >= 1.6.29.0 && < 1.7
     , time       >= 1.4.0.1  && < 1.17
 
   if os(windows)
@@ -59,10 +59,6 @@ library
   else
     build-depends:
       , unix  >= 2.8.6.0 && < 2.9
-
-  if os(darwin)
-    build-depends:
-      , process >= 1.6.29.0
 
   if flag(git-rev)
     build-depends:
