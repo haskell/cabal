@@ -131,7 +131,7 @@ usageInfo header optDescr = unlines (header : table)
     padTo n x = take n (x ++ repeat ' ')
 
     helpMarker
-      | "UTF-8" `isInfixOf` show localeEncoding = "•"
+      | "utf-8" `isInfixOf` (toLower <$> show localeEncoding) = "•"
       | otherwise = "*"
 
 zipDefault :: a -> b -> [a] -> [b] -> [(a, b)]
