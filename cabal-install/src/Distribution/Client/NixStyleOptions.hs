@@ -12,6 +12,7 @@ module Distribution.Client.NixStyleOptions
   , cfgVerbosity
 
     -- * Option filtering/grouping predicates
+  , keepDeprecatedOptions
   , keepUnsupportedOptions
   , keepInstallOptions
   , keepIrrelevantOptions
@@ -185,6 +186,9 @@ cfgVerbosity :: VerbosityFlags -> NixStyleFlags a -> Verbosity
 cfgVerbosity v flags =
   mkVerbosity defaultVerbosityHandles $
     fromFlagOrDefault v (setupVerbosity . configCommonFlags $ configFlags flags)
+
+keepDeprecatedOptions :: OptionField a -> Bool
+keepDeprecatedOptions (optionName -> o) = "prefer-oldest" == o
 
 keepUnsupportedOptions :: OptionField a -> Bool
 keepUnsupportedOptions (optionName -> o) = "root-cmd" == o || "allow-boot-library-installs" == o

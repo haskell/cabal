@@ -53,6 +53,7 @@ import Distribution.Client.NixStyleOptions
   , keepSolvingOptions
   , keepTestOptions
   , keepUnsupportedOptions
+  , keepDeprecatedOptions
   )
 import Distribution.ReadE (runReadE)
 import Distribution.Simple.Command
@@ -268,7 +269,8 @@ groupSequentially options groupingSpecs =
    in (groupedBuckets, leftoverOptions)
 
 data OptionGroupKey
-  = UnsupportedOptions
+  = DeprecatedOptions
+  | UnsupportedOptions
   | InstallLayoutOptions
   | IrrelevantOptions
   | HaddockOptions
@@ -289,6 +291,7 @@ data OptionGroupKey
   deriving (Eq)
 
 instance Show OptionGroupKey where
+  show DeprecatedOptions = "Deprecated options"
   show UnsupportedOptions = "Unsupported options"
   show InstallLayoutOptions = "Install layout options"
   show IrrelevantOptions = "Irrelevant options"
@@ -310,7 +313,8 @@ instance Show OptionGroupKey where
 
 groupPredicates :: [(OptionGroupKey, OptionField a -> Bool)]
 groupPredicates =
-  [ (UnsupportedOptions, keepUnsupportedOptions)
+  [ (DeprecatedOptions, keepDeprecatedOptions)
+  , (UnsupportedOptions, keepUnsupportedOptions)
   , (InstallLayoutOptions, keepInstallOptions)
   , (IrrelevantOptions, keepIrrelevantOptions)
   , (HaddockOptions, keepHaddockOptions)
