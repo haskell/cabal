@@ -334,6 +334,77 @@ you push a fix of a whitespace violation, please do so in a _separate commit_. F
   #endif
   ```
 
+## Adding or changing a `.cabal` file format field
+
+Any change that lets a `.cabal` file express something a previously released
+`Cabal` could not parse (or would parse with different semantics) **must** be
+guarded behind `cabal-version`. Otherwise an older `Cabal`/`cabal-install`
+silently accepts the field and does the wrong thing, or a newer field leaks
+into a package that claims an old `cabal-version`. This is the class of bug
+described in [#9331](https://github.com/haskell/cabal/issues/9331): features
+that influence generated files (`Paths_*.hs`, `cabal_macros.h`, autogen
+sources, …) are especially dangerous when ungated.
+
+The mechanism is the `CabalSpecVersion` enum in
+`Cabal-syntax/src/Distribution/CabalSpecVersion.hs`. The full checklist when
+introducing a new field (or otherwise changing the accepted syntax):
+
+1. **Make sure a `CabalSpecVersion` constructor exists for the next
+   *unreleased* spec version.** Published spec versions track even `Cabal`
+   library versions (3.14, 3.16, 3.18, …); odd versions (e.g. 3.17) are
+   unreleased development branches. New features land under the next *even*
+   version that has not shipped yet — so if the library is at `3.17.x` the new
+   field belongs to `CabalSpecV3_18`.
+
+   If that constructor does not yet exist, add it. **Adding a constructor to
+   `CabalSpecVersion` is an API-breaking change and requires a major version
+   bump** of `Cabal-syntax` (and, transitively, its reverse dependencies).
+   When you add a constructor, also extend the total functions that pattern
+   match on it: `showCabalSpecVersion`, `cabalSpecFromVersionDigits`,
+   `cabalSpecToVersionDigits`, and `cabalSpecVersionToSPDXListVersion` in
+   `Cabal-syntax/src/Distribution/SPDX/LicenseListVersion.hs`.
+
+2. **Bump `cabalSpecLatest`** (in the same module) to that constructor, in the
+   *same change* that adds it. The constructor and `cabalSpecLatest` should
+   never drift apart: a constructor for an unreleased spec version that is not
+   yet `cabalSpecLatest` is a latent bug. (As of this writing the tree is in
+   exactly that state — `CabalSpecV3_18` was added this cycle for the
+   `build-type: Make` removal, but `cabalSpecLatest` was left at
+   `CabalSpecV3_16` — which is why new fields were misgated. If you add a
+   field now, also fix the bump.)
+
+3. **Gate the field in the grammar.** In
+   `Cabal-syntax/src/Distribution/PackageDescription/FieldGrammar.hs` mark the
+   field with `availableSince <Constructor> []`.
+
+   > ⚠️ Use the **literal constructor whose value equals `cabalSpecLatest`
+   > today** (e.g. `availableSince CabalSpecV3_18 []`) — **not** the name
+   > `cabalSpecLatest`. `cabalSpecLatest` is bumped on every new spec version,
+   > so writing the name would retroactively (and wrongly) move the field's
+   > introduction version forward each time the spec advances. Hard-code the
+   > value; it must stay pinned to the version in which the field actually
+   > appeared.
+
+   Picking an *already published* version here (as an earlier draft of the
+   `autogen-cmm-sources` field did, by annotating it `CabalSpecV3_16`) defeats
+   the purpose: shipped `Cabal`s claiming that version do not understand the
+   field.
+
+4. **Add the corresponding spec-version check.** The grammar's
+   `availableSince` is not the only gate — `cabal check` independently reports
+   fields used below their introduction version. Add a `checkSpecVer
+   <Constructor> …` (or equivalent) for the new field in
+   `Cabal/src/Distribution/PackageDescription/Check/Target.hs` (see the
+   `checkCVSources` / `checkSpecVer` uses there), so that using the field with
+   an older `cabal-version` produces a diagnostic instead of silently building.
+
+5. **Document the change** in `doc/file-format-changelog.rst` under the
+   matching `cabal-version: X.Y` heading, and add a `changelog.d/` entry.
+
+If you are only loosening or extending an existing field's syntax (not adding
+a brand-new field), the same versioning discipline applies: bump the spec
+version and gate the new behaviour behind it.
+
 ## Proposal Process
 
 For larger changes which require additional discussion or consensus building,
