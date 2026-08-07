@@ -101,12 +101,12 @@ usageInfo header optDescr = unlines (header : table)
         }
 
     maxOptNameWidth = 30
-    descolWidth = 80 - (maxOptNameWidth + 3)
+    descolWidth = 80 - (maxOptNameWidth + 5)
 
     table :: [String]
     table = do
       OptHelp{optNames, optHelp} <- options
-      let wrappedHelp = wrapText descolWidth ("* " ++ optHelp)
+      let wrappedHelp = wrapText descolWidth optHelp
       if length optNames >= maxOptNameWidth
         then
           [" " ++ optNames]
@@ -114,9 +114,16 @@ usageInfo header optDescr = unlines (header : table)
         else renderColumns [optNames] wrappedHelp
 
     renderColumns :: [String] -> [String] -> [String]
-    renderColumns xs ys = do
-      (x, y) <- zipDefault "" "" xs ys
-      return $ " " ++ padTo maxOptNameWidth x ++ " " ++ y
+    renderColumns xs [] = do
+      x <- xs
+      return $ " " ++ padTo maxOptNameWidth x
+    renderColumns xs ys =
+      case zipDefault "" "" xs ys of
+        [] -> []
+        (xy : xys) -> renderLine "*" xy : map (renderLine " ") xys
+      where
+        renderLine marker (x, y) =
+          " " ++ padTo maxOptNameWidth x ++ " " ++ marker ++ " " ++ y
 
     padTo n x = take n (x ++ repeat ' ')
 
