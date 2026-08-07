@@ -106,7 +106,7 @@ usageInfo header optDescr = unlines (header : table)
     table :: [String]
     table = do
       OptHelp{optNames, optHelp} <- options
-      let wrappedHelp = wrapText descolWidth optHelp
+      let wrappedHelp = wrapText descolWidth ("* " ++ optHelp)
       if length optNames >= maxOptNameWidth
         then
           [" " ++ optNames]
