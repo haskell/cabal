@@ -1,8 +1,13 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI and action
-    buildCommand
+    cmdSpec
   , buildAction
+  , parseBuildCommand
+  , isBuildCommandName
   , BuildFlags (..)
   , defaultBuildFlags
 
@@ -25,6 +30,9 @@ import Distribution.Client.TargetProblem
   )
 
 import qualified Data.Map as Map
+import Data.Monoid (Endo (..), appEndo)
+import qualified Data.Text as T
+import Distribution.Client.Cmd.UI (optionFieldFlagParsers, helpText)
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -38,23 +46,56 @@ import Distribution.Client.ScriptUtils
   , updateContextAndWriteProjectFile
   , withContextAndSelectors
   )
-import Distribution.Client.Setup
-  ( GlobalFlags
-  , yesNoOpt
-  )
+import Distribution.Client.Setup (GlobalFlags, yesNoOpt)
 import Distribution.Simple.Command
-  ( CommandUI (..)
+  ( CommandParse (..)
+  , CommandSpec (..)
+  , CommandType (..)
+  , CommandUI (..)
+  , ShowOrParseArgs (ParseArgs)
+  , commandAddAction
+  , commandParseArgs
   , option
   , usageAlternatives
   )
 import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
-import Distribution.Simple.Utils
-  ( dieWithException
-  , wrapText
+import Distribution.Simple.Utils (dieWithException, wrapText)
+import Distribution.Verbosity (normal)
+import Options.Applicative
+  ( Parser
+  , ParserInfo
+  , ParserResult (..)
+  , asum
+  , defaultPrefs
+  , execParserPure
+  , flag'
+  , footer
+  , fullDesc
+  , header
+  , help
+  , helper
+  , info
+  , long
+  , metavar
+  , progDesc
+  , renderFailure
+  , strArgument
+  , (<**>)
   )
-import Distribution.Verbosity
-  ( normal
-  )
+
+cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
+cmdSpec = [CommandSpec ui (`commandAddAction` buildAction) NormalCommand]
+  where
+    defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
+    CommandUI{..} = buildCommand
+
+    ui =
+      buildCommand
+        { commandName = defaultMsg commandName
+        , commandUsage = defaultMsg . commandUsage
+        , commandDescription = (defaultMsg .) <$> commandDescription
+        , commandNotes = (defaultMsg .) <$> commandNotes
+        }
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand =
@@ -62,42 +103,8 @@ buildCommand =
     { commandName = "v2-build"
     , commandSynopsis = "Compile targets within the project."
     , commandUsage = usageAlternatives "v2-build" ["[TARGETS] [FLAGS]"]
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Build one or more targets from within the project. The available "
-            ++ "targets are the packages in the project as well as individual "
-            ++ "components within those packages, including libraries, executables, "
-            ++ "test-suites or benchmarks. Targets can be specified by name or "
-            ++ "location. If no target is specified then the default is to build "
-            ++ "the package in the current directory.\n\n"
-            ++ "Dependencies are built or rebuilt as necessary. Additional "
-            ++ "configuration flags can be specified on the command line and these "
-            ++ "extend the project configuration from the 'cabal.project', "
-            ++ "'cabal.project.local' and other files."
-    , commandNotes = Just $ \pname ->
-        "Examples:\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-build\n"
-          ++ "    Build the package in the current directory "
-          ++ "or all packages in the project\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-build pkgname\n"
-          ++ "    Build the package named pkgname in the project\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-build ./pkgfoo\n"
-          ++ "    Build the package in the ./pkgfoo directory\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-build cname\n"
-          ++ "    Build the component named cname in the project\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-build cname --enable-profiling\n"
-          ++ "    Build the component in profiling mode "
-          ++ "(including dependencies as needed)\n"
+    , commandDescription = Just $ \_ -> wrapText description
+    , commandNotes = Just $ \pname -> examples pname "v2-build"
     , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
     , commandOptions =
         removeIgnoreProjectOption
@@ -113,6 +120,35 @@ buildCommand =
                 ]
             )
     }
+
+description :: String
+description =
+  "Build one or more targets from within the project. The available "
+    ++ "targets are the packages in the project as well as individual "
+    ++ "components within those packages, including libraries, executables, "
+    ++ "test-suites or benchmarks. Targets can be specified by name or "
+    ++ "location. If no target is specified then the default is to build "
+    ++ "the package in the current directory.\n\n"
+    ++ "Dependencies are built or rebuilt as necessary. Additional "
+    ++ "configuration flags can be specified on the command line and these "
+    ++ "extend the project configuration from the 'cabal.project', "
+    ++ "'cabal.project.local' and other files."
+
+examples :: String -> String -> String
+examples pname invokedName =
+  unlines
+    [ "Examples:"
+    , "  - " <> pname <> " " <> invokedName
+    , "      Build the package in the current directory or all packages in the project"
+    , "  - " <> pname <> " " <> invokedName <> " pkgname"
+    , "      Build the package named pkgname in the project"
+    , "  - " <> pname <> " " <> invokedName <> " ./pkgfoo"
+    , "      Build the package in the ./pkgfoo directory"
+    , "  - " <> pname <> " " <> invokedName <> " cname"
+    , "      Build the component named cname in the project"
+    , "  - " <> pname <> " " <> invokedName <> " cname --enable-profiling"
+    , "      Build the component in profiling mode (including dependencies as needed)"
+    ]
 
 data BuildFlags = BuildFlags
   { buildOnlyConfigure :: Flag Bool
@@ -236,3 +272,100 @@ reportBuildTargetProblems verbosity problems =
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
   dieWithException verbosity . ReportCannotPruneDependencies . renderCannotPruneDependencies
+
+-- | The command name and aliases for the @build@ command.
+--
+-- >>> buildCommandNames
+-- ["build","new-build","v2-build"]
+buildCommandNames :: [String]
+buildCommandNames = ["build", "new-build", commandName buildCommand]
+
+isBuildCommandName :: String -> Bool
+isBuildCommandName name = name `elem` buildCommandNames
+
+buildListOptions :: [String]
+buildListOptions =
+  case commandParseArgs buildCommand False ["--list-options"] of
+    CommandList opts -> opts
+    _ -> []
+
+replaceBuildAlias :: String -> String -> String
+replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
+
+parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
+parseBuildCommand invokedName cmdArgs =
+  case execParserPure defaultPrefs (buildParserInfo invokedName) cmdArgs of
+    Success parsed ->
+      if parsedListOptions parsed
+        then CommandList buildListOptions
+        else
+          let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags buildCommand)
+           in CommandReadyToGo (buildAction flags (parsedTargets parsed))
+    Failure failure ->
+      let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
+       in if exitCode == ExitSuccess
+            then CommandHelp (helpText replaceBuildAlias buildCommand invokedName)
+            else CommandErrors [msg]
+    CompletionInvoked _ ->
+      CommandErrors ["Shell completion is not supported by this parser path."]
+
+buildParserInfo :: String -> ParserInfo ParsedBuildCommand
+buildParserInfo invokedName =
+  info
+    (parsedBuildCommandParser <**> helper)
+    ( fullDesc
+        <> progDesc buildHelpDescription
+        <> header ("cabal " ++ invokedName)
+        <> footer (examples "cabal" invokedName)
+    )
+
+buildHelpDescription :: String
+buildHelpDescription =
+  case commandDescription buildCommand of
+    Nothing -> commandSynopsis buildCommand
+    Just mkDescription -> mkDescription "cabal"
+
+data ParsedBuildCommand = ParsedBuildCommand
+  { parsedFlagEdits :: Endo (NixStyleFlags BuildFlags)
+  , parsedTargets :: [String]
+  , parsedListOptions :: Bool
+  }
+
+data BuildItem
+  = BuildItemFlag (Endo (NixStyleFlags BuildFlags))
+  | BuildItemTarget String
+  | BuildItemListOptions
+
+parsedBuildCommandParser :: Parser ParsedBuildCommand
+parsedBuildCommandParser = toParsed <$> many buildItemParser
+  where
+    toParsed items =
+      let edits = [e | BuildItemFlag e <- items]
+          targets = [t | BuildItemTarget t <- items]
+          listOptionsSeen = any isListOptions items
+       in ParsedBuildCommand
+            { parsedFlagEdits = mconcat edits
+            , parsedTargets = targets
+            , parsedListOptions = listOptionsSeen
+            }
+
+    isListOptions BuildItemListOptions = True
+    isListOptions _ = False
+
+buildItemParser :: Parser BuildItem
+buildItemParser =
+  asum
+    ( buildOptionParsers
+        ++ [ BuildItemListOptions
+              <$ flag'
+                ()
+                (long "list-options" <> help "Print a list of command line flags")
+           , BuildItemTarget <$> strArgument (metavar "TARGET")
+           ]
+    )
+
+buildOptionParsers :: [Parser BuildItem]
+buildOptionParsers =
+  (fmap . fmap)
+    BuildItemFlag
+    (optionFieldFlagParsers $ commandOptions buildCommand ParseArgs)

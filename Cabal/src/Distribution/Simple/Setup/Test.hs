@@ -194,11 +194,14 @@ testOptions' showOrParseArgs =
     , option
         []
         ["show-details"]
-        ( "'always': always show results of individual test cases. "
-            ++ "'never': never show results of individual test cases. "
-            ++ "'failures': show results of failing test cases. "
-            ++ "'streaming': show results of test cases in real time."
-            ++ "'direct': send results of test cases in real time; no log file."
+        ( unlines
+            [ "Allowed values:"
+            , "- always: always show results of individual test cases."
+            , "- never: never show results of individual test cases."
+            , "- failures: show results of failing test cases."
+            , "- streaming: show results of test cases in real time."
+            , "- direct: send results of test cases in real time; no log file."
+            ]
         )
         testShowDetails
         (\v flags -> flags{testShowDetails = v})
@@ -218,7 +221,7 @@ testOptions' showOrParseArgs =
     , option
         []
         ["keep-tix-files"]
-        "keep .tix files for HPC between test runs"
+        "Keep .tix files for HPC between test runs"
         testKeepTix
         (\v flags -> flags{testKeepTix = v})
         trueArg
@@ -243,7 +246,7 @@ testOptions' showOrParseArgs =
     , option
         []
         ["test-options"]
-        ( "give extra options to test executables "
+        ( "Give extra options to test executables "
             ++ "(split on spaces, use \"\" to prevent splitting; "
             ++ "name templates can use $pkgid, $compiler, "
             ++ "$os, $arch, $test-suite)"
@@ -258,7 +261,7 @@ testOptions' showOrParseArgs =
     , option
         []
         ["test-option"]
-        ( "give extra option to test executables "
+        ( "Give extra option to test executables "
             ++ "(passed directly as a single argument; "
             ++ "name template can use $pkgid, $compiler, "
             ++ "$os, $arch, $test-suite)"

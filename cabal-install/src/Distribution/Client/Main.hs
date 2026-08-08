@@ -199,6 +199,7 @@ import Distribution.Simple.Command
   , CommandUI (..)
   , commandAddAction
   , commandFromSpec
+  , commandParseArgs
   , commandShowOptions
   , commandsRunWithFallback
   , defaultCommandFallback
@@ -344,7 +345,7 @@ warnIfAssertionsAreEnabled =
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
-    command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
+    command <- commandsRunBuildOptparseFirst args
     case command of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
@@ -376,6 +377,27 @@ mainWorker args = do
             warnIfAssertionsAreEnabled
             action globalFlags
   where
+    commandsRunBuildOptparseFirst :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
+    commandsRunBuildOptparseFirst argv =
+      case parseBuildOrInstallWithOptparse argv of
+        Just parsed -> pure parsed
+        Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
+
+    parseBuildOrInstallWithOptparse :: [String] -> Maybe (CommandParse (GlobalFlags, CommandParse Action))
+    parseBuildOrInstallWithOptparse argv =
+      case commandParseArgs globalCmd True argv of
+        CommandReadyToGo (mkGlobalFlags, cmdArgs0) ->
+          case cmdArgs0 of
+            (cmdName : cmdArgs)
+              | CmdBuild.isBuildCommandName cmdName ->
+                  let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
+                   in Just $ CommandReadyToGo (globalFlags, CmdBuild.parseBuildCommand cmdName cmdArgs)
+              | CmdInstall.isInstallCommandName cmdName ->
+                  let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
+                   in Just $ CommandReadyToGo (globalFlags, CmdInstall.parseInstallCommand cmdName cmdArgs)
+            _ -> Nothing
+        _ -> Nothing
+
     delegateToExternal
       :: [Command Action]
       -> String
@@ -454,6 +476,8 @@ mainWorker args = do
           | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
           | otherwise = cabalGitInfo
 
+    globalCmd = globalCommand commands
+
     commands = map commandFromSpec commandSpecs
     commandSpecs =
       [ regularCmd listCommand listAction
@@ -476,14 +500,14 @@ mainWorker args = do
         ++ concat
           [ newCmd CmdConfigure.configureCommand CmdConfigure.configureAction
           , newCmd CmdUpdate.updateCommand CmdUpdate.updateAction
-          , newCmd CmdBuild.buildCommand CmdBuild.buildAction
+          , CmdBuild.cmdSpec
           , newCmd CmdRepl.replCommand CmdRepl.replAction
           , newCmd CmdFreeze.freezeCommand CmdFreeze.freezeAction
           , newCmd CmdHaddock.haddockCommand CmdHaddock.haddockAction
           , newCmd
               CmdHaddockProject.haddockProjectCommand
               CmdHaddockProject.haddockProjectAction
-          , newCmd CmdInstall.installCommand CmdInstall.installAction
+          , CmdInstall.cmdSpec
           , newCmd CmdRun.runCommand CmdRun.runAction
           , newCmd CmdTest.testCommand CmdTest.testAction
           , newCmd CmdBench.benchCommand CmdBench.benchAction

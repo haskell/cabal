@@ -434,22 +434,22 @@ configureOptions showOrParseArgs =
         configHcFlavor
         (\v flags -> flags{configHcFlavor = v})
         ( choiceOpt
-            [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
-            , (Flag GHCJS, ([], ["ghcjs"]), "compile with GHCJS")
-            , (Flag UHC, ([], ["uhc"]), "compile with UHC")
+            [ (Flag GHC, ("g", ["ghc"]), "Compile with GHC")
+            , (Flag GHCJS, ([], ["ghcjs"]), "Compile with GHCJS")
+            , (Flag UHC, ([], ["uhc"]), "Compile with UHC")
             ]
         )
     , option
         "w"
         ["with-compiler"]
-        "give the path to a particular compiler"
+        "Give the path to a particular compiler"
         configHcPath
         (\v flags -> flags{configHcPath = v})
         (reqArgFlag "PATH")
     , option
         ""
         ["with-hc-pkg"]
-        "give the path to the package tool"
+        "Give the path to the package tool"
         configHcPkg
         (\v flags -> flags{configHcPkg = v})
         (reqArgFlag "PATH")
@@ -841,7 +841,7 @@ configureOptions showOrParseArgs =
        , option
           ""
           ["response-files"]
-          "enable workaround for old versions of programs like \"ar\" that do not support @file arguments"
+          "Enable workaround for old versions of programs like \"ar\" that do not support @file arguments"
           configUseResponseFiles
           (\v flags -> flags{configUseResponseFiles = v})
           (boolOpt' ([], ["disable-response-files"]) ([], []))
