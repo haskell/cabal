@@ -62,8 +62,7 @@ instance Parsec Mixin where
       versionGuardMultilibs
       LSubLibName <$> parsec
     P.spaces
-    incl <- parsec
-    return (mkMixin pn ln incl)
+    mkMixin pn ln <$> parsec
 
 versionGuardMultilibs :: CabalParsing m => m ()
 versionGuardMultilibs = do

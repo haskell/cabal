@@ -364,8 +364,7 @@ versionRangeParser digitParser csv = expr
         _ <- P.string "||"
         checkOp
         P.spaces
-        e <- expr
-        return (unionVersionRanges t e)
+        unionVersionRanges t <$> expr
         <|> return t
     term = do
       f <- factor
@@ -374,8 +373,7 @@ versionRangeParser digitParser csv = expr
         _ <- P.string "&&"
         checkOp
         P.spaces
-        t <- term
-        return (intersectVersionRanges f t)
+        intersectVersionRanges f <$> term
         <|> return f
     factor = parens expr <|> prim
 
