@@ -1829,7 +1829,7 @@ Advanced global configuration options
                --remote-repo-cache=DIR
     :synopsis: Location of packages cache.
 
-    :default: ``~/.cabal/packages``
+    :default: ``~/.cache/cabal/packages``
 
     The location where packages downloaded from remote repositories will be
     cached.
@@ -1841,7 +1841,7 @@ Advanced global configuration options
                --logs-dir=DIR
     :synopsis: Directory to store build logs.
 
-    :default: ``~/.cabal/logs``
+    :default: ``~/.local/state/cabal/logs``
 
     :strike:`The location where build logs for packages are stored.`
     Not implemented yet.
@@ -1852,7 +1852,7 @@ Advanced global configuration options
                --build-summary=TEMPLATE
     :synopsis: Build summaries location.
 
-    :default: ``~/.cabal/logs/build.log``
+    :default: ``~/.local/state/cabal/logs/build.log``
 
     :strike:`The file to save build summaries.` Not implemented yet.
 
