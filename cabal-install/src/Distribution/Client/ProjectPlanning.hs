@@ -234,6 +234,8 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors
 import Distribution.Solver.Types.ProjectConfigPath
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import GHC.Stack (HasCallStack)
 import System.Directory (getCurrentDirectory)
 import System.FilePath

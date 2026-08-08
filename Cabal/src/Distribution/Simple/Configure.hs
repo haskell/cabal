@@ -157,6 +157,7 @@ import Distribution.Pretty
   )
 import Distribution.Simple.Errors
 import Distribution.Types.AnnotatedId
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
 import Distribution.Utils.Path
 import Distribution.Utils.Structured (structuredDecodeOrFailIO, structuredEncode)
 import System.Directory
