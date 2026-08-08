@@ -30,7 +30,7 @@ jobs:
         gen-spdx-exc
     steps:
       - name: Install primary compiler
-        uses: haskell-actions/setup@v2
+        uses: haskell-actions/setup@v2.11.0
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install primary compiler
-        uses: haskell-actions/setup@v2
+        uses: haskell-actions/setup@v2.11.0
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
@@ -124,7 +124,7 @@ jobs:
       cabal_build: cabal build buildinfo-reference-generator
     steps:
       - name: Install primary compiler
-        uses: haskell-actions/setup@v2
+        uses: haskell-actions/setup@v2.11.0
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
@@ -164,7 +164,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install primary compiler
-        uses: haskell-actions/setup@v2
+        uses: haskell-actions/setup@v2.11.0
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
