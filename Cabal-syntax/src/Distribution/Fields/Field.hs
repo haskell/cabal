@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
@@ -14,6 +17,10 @@ module Distribution.Fields.Field
   , fieldLineBS
   , SectionArg (..)
   , sectionArgAnn
+
+    -- * Comment
+  , Comment (..)
+  , WithComments (..)
 
     -- * Name
   , FieldName
@@ -42,11 +49,24 @@ import qualified Data.Foldable1 as F1
 -- Cabal file
 -------------------------------------------------------------------------------
 
+-- | Store a line comment from field syntax files. @ann@ is usually instantiated as 'Position'.
+data Comment ann = Comment !ByteString !ann
+  deriving (Show, Generic, Eq, Ord, Functor)
+
+-- | Hold a list of comments along side some annotation.
+data WithComments ann = WithComments
+  { justComments :: ![Comment ann]
+  -- ^ Extract the comments.
+  , unComments :: !ann
+  -- ^ Extract the annotation.
+  }
+  deriving (Show, Generic, Eq, Ord, Functor)
+
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
   = Field !(Name ann) [FieldLine ann]
   | Section !(Name ann) [SectionArg ann] [Field ann]
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Field ann)
@@ -71,7 +91,7 @@ fieldUniverse f@(Field _ _) = [f]
 --
 -- /Invariant:/ 'ByteString' has no newlines.
 data FieldLine ann = FieldLine !ann !ByteString
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (FieldLine ann)
@@ -92,7 +112,7 @@ data SectionArg ann
     SecArgStr !ann !ByteString
   | -- | everything else, mm. operators (e.g. in if-section conditionals)
     SecArgOther !ann !ByteString
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (SectionArg ann)
@@ -113,7 +133,7 @@ type FieldName = ByteString
 --
 -- /Invariant/: 'ByteString' is lower-case ASCII.
 data Name ann = Name !ann !FieldName
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Name ann)
