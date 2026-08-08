@@ -96,13 +96,7 @@ instance Pretty Version where
       )
 
 instance Parsec Version where
-  parsec = (mkVersion . toList <$> P.sepByNonEmpty versionDigitParser (P.char '.')) <* tags
-    where
-      tags = do
-        ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
-        case ts of
-          [] -> pure ()
-          (_ : _) -> parsecWarning PWTVersionTag "version with tags"
+  parsec = mkVersion . toList <$> P.sepByNonEmpty versionDigitParser (P.char '.')
 
 -- | An integral without leading zeroes.
 --
