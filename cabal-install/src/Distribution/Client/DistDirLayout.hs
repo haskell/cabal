@@ -144,6 +144,7 @@ data StoreDirLayout = StoreDirLayout
   , storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
   , storeIncomingDirectory :: Compiler -> FilePath
   , storeIncomingLock :: Compiler -> UnitId -> FilePath
+  , storeGcRootsDirectory :: FilePath
   }
 
 -- TODO: move to another module, e.g. CabalDirLayout?
@@ -320,6 +321,10 @@ defaultStoreDirLayout storeRoot =
     storeIncomingLock :: Compiler -> UnitId -> FilePath
     storeIncomingLock compiler unitid =
       storeIncomingDirectory compiler </> prettyShow unitid <.> "lock"
+
+    storeGcRootsDirectory :: FilePath
+    storeGcRootsDirectory =
+      storeRoot </> "gc-roots"
 
 defaultCabalDirLayout :: IO CabalDirLayout
 defaultCabalDirLayout =
