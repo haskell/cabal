@@ -34,7 +34,10 @@ module Distribution.GetOpt
   ) where
 
 import Distribution.Compat.Prelude
+import Distribution.Simple.Utils (isInfixOf)
 import Prelude ()
+
+import System.IO (localeEncoding)
 
 -- | What to do with options following non-options
 data ArgOrder a
@@ -107,18 +110,29 @@ usageInfo header optDescr = unlines (header : table)
     table = do
       OptHelp{optNames, optHelp} <- options
       let wrappedHelp = wrapText descolWidth optHelp
-      if length optNames >= maxOptNameWidth
+      if length optNames >= maxOptNameWidth - 1
         then
           [" " ++ optNames]
             ++ renderColumns [] wrappedHelp
         else renderColumns [optNames] wrappedHelp
 
     renderColumns :: [String] -> [String] -> [String]
-    renderColumns xs ys = do
-      (x, y) <- zipDefault "" "" xs ys
-      return $ " " ++ padTo maxOptNameWidth x ++ " " ++ y
+    renderColumns xs [] = do
+      x <- xs
+      return $ " " ++ padTo maxOptNameWidth x
+    renderColumns xs ys =
+      case zipDefault "" "" xs ys of
+        [] -> []
+        (xy : xys) -> renderLine helpMarker xy : map (renderLine " ") xys
+      where
+        renderLine marker (x, y) =
+          " " ++ padTo (maxOptNameWidth - 2) x ++ " " ++ marker ++ " " ++ y
 
     padTo n x = take n (x ++ repeat ' ')
+
+    helpMarker
+      | "utf-8" `isInfixOf` (toLower <$> show localeEncoding) = "•"
+      | otherwise = "*"
 
 zipDefault :: a -> b -> [a] -> [b] -> [(a, b)]
 zipDefault _ _ [] [] = []
