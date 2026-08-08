@@ -90,12 +90,15 @@ module Distribution.Simple.Program
   , userSpecifiedArgs
   , lookupProgram
   , lookupProgramVersion
+  , lookupAndConfigureProgramVersion
+  , lookupConfiguredProgramVersion
   , updateProgram
   , configureProgram
   , configureAllKnownPrograms
   , reconfigurePrograms
   , requireProgram
   , requireProgramVersion
+  , requireConfiguredProgramVersion
   , needProgram
   , runDbProgram
   , runDbProgramCwd
