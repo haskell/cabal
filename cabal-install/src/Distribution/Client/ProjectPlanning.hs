@@ -136,7 +136,7 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup hiding (cabalVersion, packageName)
 import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
-import Distribution.Client.Targets (userToPackageConstraint, UserConstraint)
+import Distribution.Client.Targets (UserConstraint, userToPackageConstraint)
 import Distribution.Client.Types
 import Distribution.Client.Utils (concatMapM, duplicatesBy, incVersion)
 
@@ -864,28 +864,29 @@ rebuildInstallPlan
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
             sourcePackages :: [SourcePackage UnresolvedPkgLoc]
-            sourcePackages = [ pkg | SpecificSourcePackage pkg <- localPackages ]
+            sourcePackages = [pkg | SpecificSourcePackage pkg <- localPackages]
 
             Platform arch os = platform
 
             pair lpc =
-                  let PackageConstraint scope _ = unlabelPackageConstraint lpc
-                  in (scopeToPackageName scope, [lpc])
+              let PackageConstraint scope _ = unlabelPackageConstraint lpc
+               in (scopeToPackageName scope, [lpc])
 
             pinfos :: [PInfo]
-            pinfos = [ pinfo
-                     | (_, _, pinfo) <-
-                          map
-                            (convSP os arch
-                              (compilerInfo compiler)
-                              (Map.fromListWith (++) $ map (pair . settingConstraintToLPC) $ solverSettingConstraints solverSettings)
-                              (solverSettingStrongFlags solverSettings)
-                              (SolveExecutables True)
-                            )
-                            sourcePackages
-                     ]
-                     
-              -- TODO: project localPackages down to PInfo
+            pinfos =
+              [ pinfo
+              | (_, _, pinfo) <-
+                  map
+                    ( convSP
+                        os
+                        arch
+                        (compilerInfo compiler)
+                        (Map.fromListWith (++) $ map (pair . settingConstraintToLPC) $ solverSettingConstraints solverSettings)
+                        (solverSettingStrongFlags solverSettings)
+                        (SolveExecutables True)
+                    )
+                    sourcePackages
+              ]
 
             corePackageDbs :: PackageDBStackCWD
             corePackageDbs =
