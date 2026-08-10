@@ -538,7 +538,7 @@ curlTransport prog =
             , "--form"
             , "package=@" ++ path
             , "--write-out"
-            , "\n%{http_code}"
+            , "%{http_code}"
             , "--user-agent"
             , userAgent
             , "--silent"
@@ -564,7 +564,7 @@ curlTransport prog =
             , "--data-binary"
             , "@" ++ path
             , "--write-out"
-            , "\n%{http_code}"
+            , "%{http_code}"
             , "--user-agent"
             , userAgent
             , "--silent"
