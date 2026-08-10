@@ -12,6 +12,9 @@ module Distribution.Client.Cmd.UI
   , optionFieldToGetOpt
   , optDescrToGetOpt
 
+    -- * Command data types
+  , CmdItem (..)
+
     -- * Help text layout helpers
   , renderOptionRows
   , getOptToColumns
@@ -39,6 +42,7 @@ import Distribution.Client.NixStyleOptions
   , keepCompilerOptions
   , keepConfigureOptions
   , keepCoverageOptions
+  , keepDeprecatedOptions
   , keepExeOptions
   , keepHaddockOptions
   , keepIncludeOptions
@@ -53,7 +57,6 @@ import Distribution.Client.NixStyleOptions
   , keepSolvingOptions
   , keepTestOptions
   , keepUnsupportedOptions
-  , keepDeprecatedOptions
   )
 import Distribution.ReadE (runReadE)
 import Distribution.Simple.Command
@@ -65,6 +68,11 @@ import Distribution.Simple.Command
 import Distribution.Simple.Utils (ordNub)
 
 import qualified Options.Applicative as O
+
+data CmdItem a
+  = CmdItemFlag (Endo (NixStyleFlags a))
+  | CmdItemTarget String
+  | CmdItemListOptions
 
 optionFieldFlagParsers :: [OptionField flags] -> [O.Parser (Endo flags)]
 optionFieldFlagParsers = concatMap optionFieldParser

@@ -34,6 +34,7 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
+import Distribution.Client.Cmd.UI (CmdItem (..), helpText, optionFieldFlagParsers)
 import Distribution.Client.Config
   ( SavedConfig (..)
   , defaultInstallPath
@@ -120,7 +121,6 @@ import Distribution.Package
 import Distribution.Simple.BuildPaths
   ( exeExtension
   )
-import Distribution.Client.Cmd.UI (optionFieldFlagParsers, helpText)
 import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandSpec (..)
@@ -230,11 +230,11 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import Data.Monoid (Endo (..), appEndo)
-import qualified Data.Text as T
 import Data.Ord
   ( Down (..)
   )
 import qualified Data.Set as S
+import qualified Data.Text as T
 import Distribution.Client.Errors
 import Distribution.Utils.NubList
   ( fromNubList
@@ -1508,17 +1508,14 @@ data ParsedInstallCommand = ParsedInstallCommand
   , parsedListOptions :: Bool
   }
 
-data InstallItem
-  = InstallItemFlag (Endo (NixStyleFlags ClientInstallFlags))
-  | InstallItemTarget String
-  | InstallItemListOptions
+type InstallCmdItem = CmdItem ClientInstallFlags
 
 parsedInstallCommandParser :: Parser ParsedInstallCommand
 parsedInstallCommandParser = toParsed <$> many installItemParser
   where
     toParsed items =
-      let edits = [e | InstallItemFlag e <- items]
-          targets = [t | InstallItemTarget t <- items]
+      let edits = [e | CmdItemFlag e <- items]
+          targets = [t | CmdItemTarget t <- items]
           listOptionsSeen = any isListOptions items
        in ParsedInstallCommand
             { parsedFlagEdits = mconcat edits
@@ -1526,23 +1523,23 @@ parsedInstallCommandParser = toParsed <$> many installItemParser
             , parsedListOptions = listOptionsSeen
             }
 
-    isListOptions InstallItemListOptions = True
+    isListOptions CmdItemListOptions = True
     isListOptions _ = False
 
-installItemParser :: Parser InstallItem
+installItemParser :: Parser InstallCmdItem
 installItemParser =
   asum
     ( installOptionParsers
-        ++ [ InstallItemListOptions
+        ++ [ CmdItemListOptions
               <$ flag'
                 ()
                 (long "list-options" <> help "Print a list of command line flags")
-           , InstallItemTarget <$> strArgument (metavar "TARGET")
+           , CmdItemTarget <$> strArgument (metavar "TARGET")
            ]
     )
 
-installOptionParsers :: [Parser InstallItem]
+installOptionParsers :: [Parser InstallCmdItem]
 installOptionParsers =
   (fmap . fmap)
-    InstallItemFlag
+    CmdItemFlag
     (optionFieldFlagParsers $ commandOptions installCommand ParseArgs)

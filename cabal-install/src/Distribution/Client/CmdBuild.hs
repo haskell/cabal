@@ -32,7 +32,7 @@ import Distribution.Client.TargetProblem
 import qualified Data.Map as Map
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
-import Distribution.Client.Cmd.UI (optionFieldFlagParsers, helpText)
+import Distribution.Client.Cmd.UI (CmdItem (..), helpText, optionFieldFlagParsers)
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -331,17 +331,14 @@ data ParsedBuildCommand = ParsedBuildCommand
   , parsedListOptions :: Bool
   }
 
-data BuildItem
-  = BuildItemFlag (Endo (NixStyleFlags BuildFlags))
-  | BuildItemTarget String
-  | BuildItemListOptions
+type BuildCmdItem = CmdItem BuildFlags
 
 parsedBuildCommandParser :: Parser ParsedBuildCommand
 parsedBuildCommandParser = toParsed <$> many buildItemParser
   where
     toParsed items =
-      let edits = [e | BuildItemFlag e <- items]
-          targets = [t | BuildItemTarget t <- items]
+      let edits = [e | CmdItemFlag e <- items]
+          targets = [t | CmdItemTarget t <- items]
           listOptionsSeen = any isListOptions items
        in ParsedBuildCommand
             { parsedFlagEdits = mconcat edits
@@ -349,23 +346,23 @@ parsedBuildCommandParser = toParsed <$> many buildItemParser
             , parsedListOptions = listOptionsSeen
             }
 
-    isListOptions BuildItemListOptions = True
+    isListOptions CmdItemListOptions = True
     isListOptions _ = False
 
-buildItemParser :: Parser BuildItem
+buildItemParser :: Parser BuildCmdItem
 buildItemParser =
   asum
     ( buildOptionParsers
-        ++ [ BuildItemListOptions
+        ++ [ CmdItemListOptions
               <$ flag'
                 ()
                 (long "list-options" <> help "Print a list of command line flags")
-           , BuildItemTarget <$> strArgument (metavar "TARGET")
+           , CmdItemTarget <$> strArgument (metavar "TARGET")
            ]
     )
 
-buildOptionParsers :: [Parser BuildItem]
+buildOptionParsers :: [Parser BuildCmdItem]
 buildOptionParsers =
   (fmap . fmap)
-    BuildItemFlag
+    CmdItemFlag
     (optionFieldFlagParsers $ commandOptions buildCommand ParseArgs)
