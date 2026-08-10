@@ -343,6 +343,7 @@ test-suite unit-tests
       UnitTests.Distribution.Client.FetchUtils
       UnitTests.Distribution.Client.Get
       UnitTests.Distribution.Client.Glob
+      UnitTests.Distribution.Client.HttpUtils
       UnitTests.Distribution.Client.GZipUtils
       UnitTests.Distribution.Client.IndexUtils
       UnitTests.Distribution.Client.IndexUtils.ActiveRepos
