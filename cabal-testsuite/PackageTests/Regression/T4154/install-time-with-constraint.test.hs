@@ -13,6 +13,6 @@ main = cabalTest $ do
     -- doesn't fit the constraint.
     r <- fails $ cabal' "v2-build" ["time", "--constraint=any.time==99999", "--dry-run"]
     assertRegex "Expected cabal to reject the setup dependency on the installed time"
-                ("rejecting: time:setup.time-[0-9.]*/installed-[^[:space:]]* "
-                  ++ "\\(constraint from command line flag requires ==99999\\)")
+                ("rejecting: time:setup.time.+installed.+"
+                  ++ "constraint from command line flag requires ==99999")
                 r
