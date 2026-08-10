@@ -44,7 +44,7 @@ import Distribution.Solver.Types.Settings
   , IndependentGoals (..)
   , MinimizeConflictSet (..)
   , OnlyConstrained (..)
-  , PreferOldest (..)
+  , PreferVersion (..)
   , ReorderGoals (..)
   , StrongFlags (..)
   )
@@ -59,6 +59,7 @@ import Distribution.Types.Version (mkVersion)
 import Distribution.Types.VersionRange.Internal (VersionRange (..))
 import Distribution.Utils.NubList
 import Distribution.Verbosity
+import GHC.Stack (HasCallStack)
 import Network.URI (parseURI)
 import System.Directory (canonicalizePath, doesFileExist)
 import System.FilePath ((</>))
@@ -228,7 +229,7 @@ testProjectConfigShared = do
     projectConfigOnlyConstrained = Flag OnlyConstrainedAll
     projectConfigPerComponent = Flag True
     projectConfigIndependentGoals = Flag (IndependentGoals True)
-    projectConfigPreferOldest = Flag (PreferOldest True)
+    projectConfigPreferVersion = Flag PreferOldest
     projectConfigProgPathExtra = toNubList ["/foo/bar", "/baz/quux"]
     projectConfigMultiRepl = toFlag True
 
@@ -578,7 +579,7 @@ readConfig testSubDir projectFileName = do
         readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout ProjectFileKeyMain
   return (parsec, legacy)
 
-assertConfigEquals :: (Eq a, Show a) => a -> ProjectConfigSkeleton -> ProjectConfigSkeleton -> (ProjectConfigSkeleton -> a) -> Assertion
+assertConfigEquals :: (Eq a, Show a, HasCallStack) => a -> ProjectConfigSkeleton -> ProjectConfigSkeleton -> (ProjectConfigSkeleton -> a) -> Assertion
 assertConfigEquals expected config configLegacy access = do
   assertEqual "Expectation does not match result of Legacy parser" expected actualLegacy
   assertEqual "Parsed Config does not match expected" expected actual
