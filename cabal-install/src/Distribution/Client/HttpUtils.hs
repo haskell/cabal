@@ -586,9 +586,10 @@ curlTransport prog =
       (code, err, _etag) <- parseResponse verbosity uri resp ""
       return (code, err)
 
-    -- The --write-out option appends the HTTP status code directly to
-    -- the response body (e.g. "<body>200"). We extract the last 3
-    -- characters as the status code.
+    -- On success these curl invocations produce an output like "200" (or body ending in "200"),
+    -- and on failure it has the server error response first followed by the HTTP status code.
+    -- The --write-out option appends the 3-digit HTTP status code directly to
+    -- the response body (e.g. "<body>200"). We extract the last 3 characters as the status code.
     parseResponse :: Verbosity -> URI -> String -> String -> IO (Int, String, Maybe ETag)
     parseResponse verbosity uri resp headers =
       let respLen = length resp
