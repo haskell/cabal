@@ -461,7 +461,7 @@ ppGhcCpp extraArgs _bi lbi clbi =
     u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
 
-    runPreProcessor (prog, version) =
+    runPreProcessor (prog, _version) =
       mkSimplePreProcessor $ \inFile outFile verbosity -> do
         runProgramCwd verbosity (mbWorkDirLBI lbi) prog $
           ["-E", "-cpp"]
@@ -482,7 +482,7 @@ ppGhcCpp extraArgs _bi lbi clbi =
       (prog, version) <-
         requireConfiguredProgramVersion
           verbosity
-          program
+          cppProgram
           anyVersion
           (withPrograms lbi)
       return (prog, version)

@@ -215,9 +215,10 @@ data CompilerInfo = CompilerInfo
   -- For instance, when using GHC plugins, one wants to use the exact same
   -- version of the `ghc` package as the one the compiler was linked against.
   }
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
 instance Binary CompilerInfo
+instance Structured CompilerInfo
 
 data AbiTag
   = NoAbiTag

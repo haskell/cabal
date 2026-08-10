@@ -1,6 +1,12 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Distribution.Solver.Types.PackagePreferences
     ( PackagePreferences(..)
     ) where
+
+import GHC.Generics
+import Data.Binary (Binary)
 
 import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.OptionalStanza
@@ -20,3 +26,4 @@ import Distribution.Version (VersionRange)
 data PackagePreferences = PackagePreferences [VersionRange]
                                              InstalledPreference
                                              [OptionalStanza]
+  deriving (Generic, Binary)
