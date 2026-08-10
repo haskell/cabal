@@ -65,7 +65,10 @@ import Distribution.Types.UnqualComponentName
 -- | Constrained instance. It represents the allowed instances for a package,
 -- which can be either a fixed instance or a version range.
 data CI = Fixed I | Constrained VR
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance Structured CI
+instance Binary CI
 
 {-------------------------------------------------------------------------------
   Flagged dependencies
@@ -92,6 +95,10 @@ data FlaggedDep qpn =
   | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
     -- | Dependencies which are always enabled, for the component 'comp'.
   | Simple (LDep qpn) Component
+  deriving (Eq, Generic)
+
+instance Structured qpn => Structured (FlaggedDep qpn)
+instance Binary qpn => Binary (FlaggedDep qpn)
 
 -- | Conservatively flatten out flagged dependencies
 --
@@ -114,6 +121,10 @@ type FalseFlaggedDeps qpn = FlaggedDeps qpn
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'LDep' ought to have two type variables.)
 data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
+  deriving (Eq, Generic)
+
+instance Structured qpn => Structured (LDep qpn)
+instance Binary qpn => Binary (LDep qpn)
 
 -- | A dependency (constraint) associates a package name with a constrained
 -- instance. It can also represent other types of dependencies, such as
@@ -122,26 +133,38 @@ data Dep qpn = Dep (PkgComponent qpn) CI  -- ^ dependency on a package component
              | Ext Extension              -- ^ dependency on a language extension
              | Lang Language              -- ^ dependency on a language version
              | Pkg PkgconfigName PkgconfigVersionRange  -- ^ dependency on a pkg-config package
-  deriving Functor
+  deriving (Functor, Eq, Generic)
+
+instance Structured qpn => Structured (Dep qpn)
+instance Binary qpn => Binary (Dep qpn)
 
 -- | An exposed component within a package. This type is used to represent
 -- build-depends and build-tool-depends dependencies.
 data PkgComponent qpn = PkgComponent qpn ExposedComponent
-  deriving (Eq, Ord, Functor, Show)
+  deriving (Eq, Ord, Functor, Show, Generic)
+
+instance Structured qpn => Structured (PkgComponent qpn)
+instance Binary qpn => Binary (PkgComponent qpn)
 
 -- | A component that can be depended upon by another package, i.e., a library
 -- or an executable.
 data ExposedComponent =
     ExposedLib LibraryName
   | ExposedExe UnqualComponentName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Structured ExposedComponent
+instance Binary ExposedComponent
 
 -- | The reason that a dependency is active. It identifies the package and any
 -- flag and stanza choices that introduced the dependency. It contains
 -- everything needed for creating ConflictSets or describing conflicts in solver
 -- log messages.
 data DependencyReason qpn = DependencyReason qpn (Map Flag FlagValue) (S.Set Stanza)
-  deriving (Functor, Eq, Show)
+  deriving (Functor, Eq, Show, Generic)
+
+instance Structured qpn => Structured (DependencyReason qpn)
+instance Binary qpn => Binary (DependencyReason qpn)
 
 -- | Print the reason that a dependency was introduced.
 showDependencyReason :: DependencyReason QPN -> String
