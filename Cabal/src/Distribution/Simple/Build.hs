@@ -102,6 +102,7 @@ import Distribution.Simple.Register
 import Distribution.Simple.Setup.Build
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
+import Distribution.Simple.Setup.Haddock (HaddockTarget (ForDevelopment))
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.SetupHooks.Internal
   ( BuildingWhat (..)
@@ -564,6 +565,7 @@ buildComponent
                 -- The in place registration uses the "-inplace" suffix, not an ABI hash
                 installedPkgInfo =
                   inplaceInstalledPackageInfo
+                    ForDevelopment
                     inplaceDir
                     distPref
                     pkg_descr
@@ -860,7 +862,7 @@ testSuiteLibV09AsLibAndExe
           , testSuites = []
           , subLibraries = [lib]
           }
-      ipi = inplaceInstalledPackageInfo inplaceDir distPref pkg (mkAbiHash "") lib lbi libClbi
+      ipi = inplaceInstalledPackageInfo ForDevelopment inplaceDir distPref pkg (mkAbiHash "") lib lbi libClbi
       testLibDep =
         Dependency
           pkgName'
