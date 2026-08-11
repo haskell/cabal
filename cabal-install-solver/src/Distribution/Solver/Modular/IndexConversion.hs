@@ -62,7 +62,7 @@ convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
 convPIs os arch comp constraints sip strfl solveExes iidx sidx =
   mkIndex $
        groupInstalledSublibs (convIPI' sip iidx)
-    ++ (convSPI' os arch comp constraints strfl solveExes sidx)
+    ++ convSPI' os arch comp constraints strfl solveExes sidx
 
 -- | Group packages with the same package name and version,
 -- merge their sub-libraries and dependencies so we get
@@ -118,7 +118,7 @@ groupInstalledSublibs xs =
               ip@(Inst _pId) ->
                 pure (ip, ip)
               g@(InstGroup pId subPIds) ->
-                (Inst pId, g):(map (\x -> (Inst x, g)) (S.toList subPIds))
+                (Inst pId, g) : map (\x -> (Inst x, g)) (S.toList subPIds)
               InRepo ->
                 pure (InRepo, InRepo)
             )
@@ -127,7 +127,7 @@ groupInstalledSublibs xs =
       remapDep :: FlaggedDep PN -> FlaggedDep PN
       remapDep (D.Simple (LDep dr (Dep depComp (Fixed (I ver loc)))) comp) =
         let newLoc = Data.Maybe.fromJust $ M.lookup loc locMap
-        in  (D.Simple (LDep dr (Dep depComp (Fixed (I ver newLoc)))) comp)
+         in D.Simple (LDep dr (Dep depComp (Fixed (I ver newLoc)))) comp
       remapDep x = x
 
     in map

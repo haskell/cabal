@@ -1700,7 +1700,7 @@ elaborateInstallPlan
                           (IPI.installedComponentId x)
                           (Map.fromList (IPI.instantiatedWith x))
                       )
-                 in Just $ (mkEntry ipkg) : (map mkEntry (IPI.installedSublibs ipkg))
+                 in Just $ mkEntry ipkg : map mkEntry (IPI.installedSublibs ipkg)
           f _ = Nothing
 
       elaboratedInstallPlan :: LogProgress ElaboratedInstallPlan
@@ -1737,7 +1737,7 @@ elaborateInstallPlan
         let
           assignAll instanceUnitId = map (\x -> x{elabInstanceUnitId = instanceUnitId}) elabPkgs
          in
-          case find (matchElabPkg (== (CLibName LMainLibName))) elabPkgs of
+          case find (matchElabPkg (== CLibName LMainLibName)) elabPkgs of
             Nothing ->
               -- no main library, use arbitrary (first one) for elabInstanceUnitID assignment
               assignAll (elabInstanceUnitId elabPkg)
@@ -3194,7 +3194,7 @@ availableInstalledTargets ipkg =
       status = TargetBuildable (unitid, cname) TargetRequestedByDefault
       target = AvailableTarget (packageId ipkg) cname status False
       fake = False
-   in (packageId ipkg, cname, fake, target) : (concatMap availableInstalledTargets (IPI.installedSublibs ipkg))
+   in (packageId ipkg, cname, fake, target) : concatMap availableInstalledTargets (IPI.installedSublibs ipkg)
 
 availableSourceTargets
   :: ElaboratedConfiguredPackage
@@ -3658,7 +3658,7 @@ pruneInstallPlanPass1 pkgs
     availablePkgs =
       Set.fromList $
         concat
-          [ (installedUnitId pkg) : (map installedUnitId (IPI.installedSublibs pkg))
+          [ installedUnitId pkg : map installedUnitId (IPI.installedSublibs pkg)
           | InstallPlan.PreExisting pkg <- pkgs
           ]
 
