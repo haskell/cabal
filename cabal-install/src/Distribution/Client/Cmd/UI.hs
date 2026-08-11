@@ -18,6 +18,7 @@ module Distribution.Client.Cmd.UI
   , parsedCommandParser
   , cmdItemParser
   , cmdOptionParsers
+  , helpDescriptionOrSynopsis
 
     -- * Help text layout helpers
   , renderOptionRows
@@ -80,6 +81,12 @@ import Options.Applicative
   , strArgument
   )
 import qualified Options.Applicative as O
+
+helpDescriptionOrSynopsis :: CommandUI flags -> String
+helpDescriptionOrSynopsis x =
+  case commandDescription x of
+    Nothing -> commandSynopsis x
+    Just mkDescription -> mkDescription "cabal"
 
 data CmdItem a
   = CmdItemFlag (Endo (NixStyleFlags a))

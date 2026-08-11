@@ -35,6 +35,7 @@ import qualified Data.Text as T
 import Distribution.Client.Cmd.UI
   ( ParsedCommand (..)
   , cmdOptionParsers
+  , helpDescriptionOrSynopsis
   , helpText
   , parsedCommandParser
   )
@@ -312,15 +313,9 @@ buildParserInfo invokedName =
   info
     (parsedCommandParser flagParsers <**> helper)
     ( fullDesc
-        <> progDesc buildHelpDescription
+        <> progDesc (helpDescriptionOrSynopsis buildCommand)
         <> header ("cabal " ++ invokedName)
         <> footer (examples "cabal" invokedName)
     )
   where
     flagParsers = cmdOptionParsers (commandOptions buildCommand ParseArgs)
-
-buildHelpDescription :: String
-buildHelpDescription =
-  case commandDescription buildCommand of
-    Nothing -> commandSynopsis buildCommand
-    Just mkDescription -> mkDescription "cabal"
