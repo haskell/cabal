@@ -66,8 +66,8 @@ ignoredLens f s = s <$ f mempty
 -- supports quoted strings, and for unquoted tokens allows commas only inside
 -- balanced braces (e.g. ../{foo,bar}/).
 --
--- >>> prettyShow <$> (simpleParsec "packages: */*.cabal ../{foo,bar}/" :: Maybe PackageLocationTokens)
--- Just "packages: */*.cabal ../{foo,bar}/"
+-- >>> getPackageLocationTokens <$> (simpleParsec "*/*.cabal ../{foo,bar}/" :: Maybe PackageLocationTokens)
+-- Just ["*/*.cabal","../{foo,bar}/"]
 parsePackageLocationTokenQ :: CabalParsing m => m String
 parsePackageLocationTokenQ = parsecHaskellString <|> parsePackageLocationToken
   where
@@ -251,4 +251,3 @@ packageConfigPreferVersion =
 
 -- $setup
 -- >>> import Distribution.Parsec (simpleParsec)
--- >>> import Distribution.Pretty (prettyShow)
