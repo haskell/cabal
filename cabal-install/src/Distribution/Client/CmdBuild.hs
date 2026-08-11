@@ -32,7 +32,12 @@ import Distribution.Client.TargetProblem
 import qualified Data.Map as Map
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
-import Distribution.Client.Cmd.UI (CmdItem (..), cmdItemParser, cmdOptionParsers, helpText)
+import Distribution.Client.Cmd.UI
+  ( ParsedCommand (..)
+  , cmdOptionParsers
+  , helpText
+  , parsedCommandParser
+  )
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -62,8 +67,7 @@ import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
 import Distribution.Simple.Utils (dieWithException, wrapText)
 import Distribution.Verbosity (normal)
 import Options.Applicative
-  ( Parser
-  , ParserInfo
+  ( ParserInfo
   , ParserResult (..)
   , defaultPrefs
   , execParserPure
@@ -303,42 +307,20 @@ parseBuildCommand invokedName cmdArgs =
     CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
 
-buildParserInfo :: String -> ParserInfo ParsedBuildCommand
+buildParserInfo :: String -> ParserInfo (ParsedCommand BuildFlags)
 buildParserInfo invokedName =
   info
-    (parsedBuildCommandParser <**> helper)
+    (parsedCommandParser flagParsers <**> helper)
     ( fullDesc
         <> progDesc buildHelpDescription
         <> header ("cabal " ++ invokedName)
         <> footer (examples "cabal" invokedName)
     )
+  where
+    flagParsers = cmdOptionParsers (commandOptions buildCommand ParseArgs)
 
 buildHelpDescription :: String
 buildHelpDescription =
   case commandDescription buildCommand of
     Nothing -> commandSynopsis buildCommand
     Just mkDescription -> mkDescription "cabal"
-
-data ParsedBuildCommand = ParsedBuildCommand
-  { parsedFlagEdits :: Endo (NixStyleFlags BuildFlags)
-  , parsedTargets :: [String]
-  , parsedListOptions :: Bool
-  }
-
-parsedBuildCommandParser :: Parser ParsedBuildCommand
-parsedBuildCommandParser = toParsed <$> many (cmdItemParser flagParsers)
-  where
-    flagParsers = cmdOptionParsers (commandOptions buildCommand ParseArgs)
-
-    toParsed items =
-      let edits = [e | CmdItemFlag e <- items]
-          targets = [t | CmdItemTarget t <- items]
-          listOptionsSeen = any isListOptions items
-       in ParsedBuildCommand
-            { parsedFlagEdits = mconcat edits
-            , parsedTargets = targets
-            , parsedListOptions = listOptionsSeen
-            }
-
-    isListOptions CmdItemListOptions = True
-    isListOptions _ = False

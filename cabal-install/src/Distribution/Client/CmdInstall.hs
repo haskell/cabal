@@ -34,7 +34,12 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
-import Distribution.Client.Cmd.UI (CmdItem (..), cmdItemParser, cmdOptionParsers, helpText)
+import Distribution.Client.Cmd.UI
+  ( ParsedCommand (..)
+  , cmdOptionParsers
+  , helpText
+  , parsedCommandParser
+  )
 import Distribution.Client.Config
   ( SavedConfig (..)
   , defaultInstallPath
@@ -242,8 +247,7 @@ import Distribution.Utils.NubList
   )
 import Network.URI (URI)
 import Options.Applicative
-  ( Parser
-  , ParserInfo
+  ( ParserInfo
   , ParserResult (..)
   , defaultPrefs
   , execParserPure
@@ -1469,15 +1473,17 @@ parseInstallCommand invokedName cmdArgs =
     CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
 
-installParserInfo :: String -> ParserInfo ParsedInstallCommand
+installParserInfo :: String -> ParserInfo (ParsedCommand ClientInstallFlags)
 installParserInfo invokedName =
   info
-    (parsedInstallCommandParser <**> helper)
+    (parsedCommandParser flagParsers <**> helper)
     ( fullDesc
         <> progDesc installHelpDescription
         <> header ("cabal " ++ invokedName)
         <> footer (installExamples invokedName)
     )
+  where
+    flagParsers = cmdOptionParsers (commandOptions installCommand ParseArgs)
 
 installHelpDescription :: String
 installHelpDescription =
@@ -1496,27 +1502,3 @@ installExamples invokedName =
     , "  - cabal " <> invokedName <> " ./pkgfoo"
     , "      Install the package in the ./pkgfoo directory"
     ]
-
-data ParsedInstallCommand = ParsedInstallCommand
-  { parsedFlagEdits :: Endo (NixStyleFlags ClientInstallFlags)
-  , parsedTargets :: [String]
-  , parsedListOptions :: Bool
-  }
-
-parsedInstallCommandParser :: Parser ParsedInstallCommand
-parsedInstallCommandParser = toParsed <$> many (cmdItemParser flagParsers)
-  where
-    flagParsers = cmdOptionParsers (commandOptions installCommand ParseArgs)
-
-    toParsed items =
-      let edits = [e | CmdItemFlag e <- items]
-          targets = [t | CmdItemTarget t <- items]
-          listOptionsSeen = any isListOptions items
-       in ParsedInstallCommand
-            { parsedFlagEdits = mconcat edits
-            , parsedTargets = targets
-            , parsedListOptions = listOptionsSeen
-            }
-
-    isListOptions CmdItemListOptions = True
-    isListOptions _ = False
