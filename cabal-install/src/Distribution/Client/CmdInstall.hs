@@ -37,9 +37,8 @@ import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 import Distribution.Client.Cmd.UI
   ( ParsedCommand (..)
   , cmdOptionParsers
-  , helpDescriptionOrSynopsis
   , helpText
-  , parsedCommandParser
+  , parserInfo
   )
 import Distribution.Client.Config
   ( SavedConfig (..)
@@ -204,7 +203,7 @@ import Distribution.System
   , Platform
   , buildOS
   )
-import Distribution.Types.InstalledPackageInfo
+import qualified Distribution.Types.InstalledPackageInfo as IPI
   ( InstalledPackageInfo (..)
   )
 import Distribution.Types.PackageId
@@ -248,18 +247,10 @@ import Distribution.Utils.NubList
   )
 import Network.URI (URI)
 import Options.Applicative
-  ( ParserInfo
-  , ParserResult (..)
+  ( ParserResult (..)
   , defaultPrefs
   , execParserPure
-  , footer
-  , fullDesc
-  , header
-  , helper
-  , info
-  , progDesc
   , renderFailure
-  , (<**>)
   )
 import System.Directory
   ( copyFile
@@ -337,37 +328,9 @@ installCommand =
   CommandUI
     { commandName = "v2-install"
     , commandSynopsis = "Install packages."
-    , commandUsage =
-        usageAlternatives
-          "v2-install"
-          ["[TARGETS] [FLAGS]"]
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Installs one or more packages. This is done by installing them "
-            ++ "in the store and symlinking or copying the executables in the directory "
-            ++ "specified by the --installdir flag (`~/.local/bin/` by default). "
-            ++ "If you want the installed executables to be available globally, "
-            ++ "make sure that the PATH environment variable contains that directory. "
-            ++ "\n\n"
-            ++ "If TARGET is a library and --lib (provisional) is used, "
-            ++ "it will be added to the global environment. "
-            ++ "When doing this, cabal will try to build a plan that includes all "
-            ++ "the previously installed libraries. This is currently not implemented."
-    , commandNotes = Just $ \pname ->
-        "Examples:\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-install\n"
-          ++ "    Install the package in the current directory\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-install pkgname\n"
-          ++ "    Install the package named pkgname"
-          ++ " (fetching it from hackage if necessary)\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-install ./pkgfoo\n"
-          ++ "    Install the package in the ./pkgfoo directory\n"
+    , commandUsage = usageAlternatives "v2-install" ["[TARGETS] [FLAGS]"]
+    , commandDescription = Just $ \_ -> wrapText description
+    , commandNotes = Just $ \pname -> examples pname "v2-install"
     , commandOptions = \x -> filter notInstallDirOpt $ nixStyleOptions clientInstallOptions x
     , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
     }
@@ -375,6 +338,31 @@ installCommand =
     -- install doesn't take installDirs flags, since it always installs into the store in a fixed way.
     notInstallDirOpt x = optionName x `notElem` installDirOptNames
     installDirOptNames = map optionName installDirsOptions
+
+description :: String
+description =
+  "Installs one or more packages. This is done by installing them "
+    ++ "in the store and symlinking or copying the executables in the directory "
+    ++ "specified by the --installdir flag (`~/.local/bin/` by default). "
+    ++ "If you want the installed executables to be available globally, "
+    ++ "make sure that the PATH environment variable contains that directory. "
+    ++ "\n\n"
+    ++ "If TARGET is a library and --lib (provisional) is used, "
+    ++ "it will be added to the global environment. "
+    ++ "When doing this, cabal will try to build a plan that includes all "
+    ++ "the previously installed libraries. This is currently not implemented."
+
+examples :: String -> String -> String
+examples pname invokedName =
+  unlines
+    [ "Examples:"
+    , "  - " <> pname <> " " <> invokedName
+    , "      Install the package in the current directory"
+    , "  - " <> pname <> " " <> invokedName <> " pkgname"
+    , "      Install the package named pkgname (fetching it from hackage if necessary)"
+    , "  - " <> pname <> " " <> invokedName <> " ./pkgfoo"
+    , "      Install the package in the ./pkgfoo directory"
+    ]
 
 -- | The @install@ command actually serves four different needs. It installs:
 -- * exes:
@@ -1003,7 +991,7 @@ prepareExeInstall
 installLibraries
   :: Verbosity
   -> ProjectBuildContext
-  -> PI.PackageIndex InstalledPackageInfo
+  -> PI.PackageIndex IPI.InstalledPackageInfo
   -> Compiler
   -> PackageDBStackCWD
   -> FilePath
@@ -1036,7 +1024,7 @@ installLibraries
               . sortBy (comparing (Down . fst))
               . PI.lookupPackageName installedIndex
           globalLatest = concatMap getLatest globalPackages
-          globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
+          globalEntries = GhcEnvFilePackageId . IPI.installedUnitId <$> globalLatest
           baseEntries =
             GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
           pkgEntries =
@@ -1125,7 +1113,7 @@ environmentFileToSpecifiers
 environmentFileToSpecifiers ipi = foldMap $ \case
   (GhcEnvFilePackageId unitId)
     | Just
-        InstalledPackageInfo
+        IPI.InstalledPackageInfo
           { sourcePackageId = PackageIdentifier{..}
           , installedUnitId
           } <-
@@ -1459,7 +1447,7 @@ replaceInstallAlias invokedName =
 
 parseInstallCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseInstallCommand invokedName cmdArgs =
-  case execParserPure defaultPrefs (installParserInfo invokedName) cmdArgs of
+  case execParserPure defaultPrefs info cmdArgs of
     Success parsed ->
       if parsedListOptions parsed
         then CommandList installListOptions
@@ -1473,27 +1461,6 @@ parseInstallCommand invokedName cmdArgs =
             else CommandErrors [msg]
     CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
-
-installParserInfo :: String -> ParserInfo (ParsedCommand ClientInstallFlags)
-installParserInfo invokedName =
-  info
-    (parsedCommandParser flagParsers <**> helper)
-    ( fullDesc
-        <> progDesc (helpDescriptionOrSynopsis installCommand)
-        <> header ("cabal " ++ invokedName)
-        <> footer (installExamples invokedName)
-    )
   where
+    info = parserInfo invokedName examples flagParsers installCommand
     flagParsers = cmdOptionParsers (commandOptions installCommand ParseArgs)
-
-installExamples :: String -> String
-installExamples invokedName =
-  unlines
-    [ "Examples:"
-    , "  - cabal " <> invokedName
-    , "      Install the package in the current directory"
-    , "  - cabal " <> invokedName <> " pkgname"
-    , "      Install the package named pkgname (fetching it from hackage if necessary)"
-    , "  - cabal " <> invokedName <> " ./pkgfoo"
-    , "      Install the package in the ./pkgfoo directory"
-    ]

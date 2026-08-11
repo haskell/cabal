@@ -35,9 +35,8 @@ import qualified Data.Text as T
 import Distribution.Client.Cmd.UI
   ( ParsedCommand (..)
   , cmdOptionParsers
-  , helpDescriptionOrSynopsis
   , helpText
-  , parsedCommandParser
+  , parserInfo
   )
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
@@ -68,18 +67,10 @@ import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
 import Distribution.Simple.Utils (dieWithException, wrapText)
 import Distribution.Verbosity (normal)
 import Options.Applicative
-  ( ParserInfo
-  , ParserResult (..)
+  ( ParserResult (..)
   , defaultPrefs
   , execParserPure
-  , footer
-  , fullDesc
-  , header
-  , helper
-  , info
-  , progDesc
   , renderFailure
-  , (<**>)
   )
 
 cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
@@ -293,7 +284,7 @@ replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack
 
 parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseBuildCommand invokedName cmdArgs =
-  case execParserPure defaultPrefs (buildParserInfo invokedName) cmdArgs of
+  case execParserPure defaultPrefs info cmdArgs of
     Success parsed ->
       if parsedListOptions parsed
         then CommandList buildListOptions
@@ -307,15 +298,6 @@ parseBuildCommand invokedName cmdArgs =
             else CommandErrors [msg]
     CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
-
-buildParserInfo :: String -> ParserInfo (ParsedCommand BuildFlags)
-buildParserInfo invokedName =
-  info
-    (parsedCommandParser flagParsers <**> helper)
-    ( fullDesc
-        <> progDesc (helpDescriptionOrSynopsis buildCommand)
-        <> header ("cabal " ++ invokedName)
-        <> footer (examples "cabal" invokedName)
-    )
   where
+    info = parserInfo invokedName examples flagParsers buildCommand
     flagParsers = cmdOptionParsers (commandOptions buildCommand ParseArgs)
