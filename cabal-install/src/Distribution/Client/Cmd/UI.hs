@@ -14,6 +14,7 @@ module Distribution.Client.Cmd.UI
 
     -- * Command data types
   , CmdItem (..)
+  , cmdItemParser
   , cmdOptionParsers
 
     -- * Help text layout helpers
@@ -68,12 +69,32 @@ import Distribution.Simple.Command
   )
 import Distribution.Simple.Utils (ordNub)
 
+import Options.Applicative
+  ( asum
+  , flag'
+  , help
+  , long
+  , metavar
+  , strArgument
+  )
 import qualified Options.Applicative as O
 
 data CmdItem a
   = CmdItemFlag (Endo (NixStyleFlags a))
   | CmdItemTarget String
   | CmdItemListOptions
+
+cmdItemParser :: [O.Parser (CmdItem a)] -> O.Parser (CmdItem a)
+cmdItemParser flags =
+  asum
+    ( flags
+        ++ [ CmdItemListOptions
+              <$ flag'
+                ()
+                (long "list-options" <> help "Print a list of command line flags")
+           , CmdItemTarget <$> strArgument (metavar "TARGET")
+           ]
+    )
 
 cmdOptionParsers :: [OptionField (NixStyleFlags a)] -> [O.Parser (CmdItem a)]
 cmdOptionParsers fields = (fmap . fmap) CmdItemFlag (optionFieldFlagParsers fields)

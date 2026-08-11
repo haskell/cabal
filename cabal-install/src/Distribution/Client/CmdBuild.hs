@@ -32,7 +32,7 @@ import Distribution.Client.TargetProblem
 import qualified Data.Map as Map
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
-import Distribution.Client.Cmd.UI (CmdItem (..), cmdOptionParsers, helpText)
+import Distribution.Client.Cmd.UI (CmdItem (..), cmdItemParser, cmdOptionParsers, helpText)
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -65,21 +65,15 @@ import Options.Applicative
   ( Parser
   , ParserInfo
   , ParserResult (..)
-  , asum
   , defaultPrefs
   , execParserPure
-  , flag'
   , footer
   , fullDesc
   , header
-  , help
   , helper
   , info
-  , long
-  , metavar
   , progDesc
   , renderFailure
-  , strArgument
   , (<**>)
   )
 
@@ -331,11 +325,11 @@ data ParsedBuildCommand = ParsedBuildCommand
   , parsedListOptions :: Bool
   }
 
-type BuildCmdItem = CmdItem BuildFlags
-
 parsedBuildCommandParser :: Parser ParsedBuildCommand
-parsedBuildCommandParser = toParsed <$> many buildItemParser
+parsedBuildCommandParser = toParsed <$> many (cmdItemParser flagParsers)
   where
+    flagParsers = cmdOptionParsers (commandOptions buildCommand ParseArgs)
+
     toParsed items =
       let edits = [e | CmdItemFlag e <- items]
           targets = [t | CmdItemTarget t <- items]
@@ -348,15 +342,3 @@ parsedBuildCommandParser = toParsed <$> many buildItemParser
 
     isListOptions CmdItemListOptions = True
     isListOptions _ = False
-
-buildItemParser :: Parser BuildCmdItem
-buildItemParser =
-  asum
-    ( cmdOptionParsers (commandOptions buildCommand ParseArgs)
-        ++ [ CmdItemListOptions
-              <$ flag'
-                ()
-                (long "list-options" <> help "Print a list of command line flags")
-           , CmdItemTarget <$> strArgument (metavar "TARGET")
-           ]
-    )

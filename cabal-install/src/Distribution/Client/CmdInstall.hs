@@ -34,7 +34,7 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
-import Distribution.Client.Cmd.UI (CmdItem (..), cmdOptionParsers, helpText)
+import Distribution.Client.Cmd.UI (CmdItem (..), cmdItemParser, cmdOptionParsers, helpText)
 import Distribution.Client.Config
   ( SavedConfig (..)
   , defaultInstallPath
@@ -245,21 +245,15 @@ import Options.Applicative
   ( Parser
   , ParserInfo
   , ParserResult (..)
-  , asum
   , defaultPrefs
   , execParserPure
-  , flag'
   , footer
   , fullDesc
   , header
-  , help
   , helper
   , info
-  , long
-  , metavar
   , progDesc
   , renderFailure
-  , strArgument
   , (<**>)
   )
 import System.Directory
@@ -1509,11 +1503,11 @@ data ParsedInstallCommand = ParsedInstallCommand
   , parsedListOptions :: Bool
   }
 
-type InstallCmdItem = CmdItem ClientInstallFlags
-
 parsedInstallCommandParser :: Parser ParsedInstallCommand
-parsedInstallCommandParser = toParsed <$> many installItemParser
+parsedInstallCommandParser = toParsed <$> many (cmdItemParser flagParsers)
   where
+    flagParsers = cmdOptionParsers (commandOptions installCommand ParseArgs)
+
     toParsed items =
       let edits = [e | CmdItemFlag e <- items]
           targets = [t | CmdItemTarget t <- items]
@@ -1526,15 +1520,3 @@ parsedInstallCommandParser = toParsed <$> many installItemParser
 
     isListOptions CmdItemListOptions = True
     isListOptions _ = False
-
-installItemParser :: Parser InstallCmdItem
-installItemParser =
-  asum
-    ( cmdOptionParsers (commandOptions installCommand ParseArgs)
-        ++ [ CmdItemListOptions
-              <$ flag'
-                ()
-                (long "list-options" <> help "Print a list of command line flags")
-           , CmdItemTarget <$> strArgument (metavar "TARGET")
-           ]
-    )
