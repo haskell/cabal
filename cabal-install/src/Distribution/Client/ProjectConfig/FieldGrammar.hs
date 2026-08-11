@@ -65,6 +65,9 @@ ignoredLens f s = s <$ f mempty
 -- | This matches legacy parsing for @packages@ and @optional-packages@:
 -- supports quoted strings, and for unquoted tokens allows commas only inside
 -- balanced braces (e.g. ../{foo,bar}/).
+--
+-- >>> prettyShow <$> (simpleParsec "packages: */*.cabal ../{foo,bar}/" :: Maybe PackageLocationTokens)
+-- Just "packages: */*.cabal ../{foo,bar}/"
 parsePackageLocationTokenQ :: CabalParsing m => m String
 parsePackageLocationTokenQ = parsecHaskellString <|> parsePackageLocationToken
   where
@@ -245,3 +248,7 @@ packageConfigPreferVersion =
     <$> optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty
       ^^^ deprecatedSince CabalSpecV3_20 "Please use 'prefer-version' field instead."
     <*> optionalFieldDef "prefer-version" L.projectConfigPreferVersion mempty
+
+-- $setup
+-- >>> import Distribution.Parsec (simpleParsec)
+-- >>> import Distribution.Pretty (prettyShow)
