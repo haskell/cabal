@@ -19,6 +19,7 @@ module Distribution.Client.Cmd.UI
   , cmdItemParser
   , cmdOptionParsers
   , helpDescriptionOrSynopsis
+  , parserInfo
 
     -- * Help text layout helpers
   , renderOptionRows
@@ -73,12 +74,20 @@ import Distribution.Simple.Command
 import Distribution.Simple.Utils (ordNub)
 
 import Options.Applicative
-  ( asum
+  ( ParserInfo
+  , asum
   , flag'
+  , footer
+  , fullDesc
+  , header
   , help
+  , helper
+  , info
   , long
   , metavar
+  , progDesc
   , strArgument
+  , (<**>)
   )
 import qualified Options.Applicative as O
 
@@ -98,6 +107,18 @@ data ParsedCommand a = ParsedCommand
   , parsedTargets :: [String]
   , parsedListOptions :: Bool
   }
+
+type Examples = String -> String -> String
+
+parserInfo :: String -> Examples -> [O.Parser (CmdItem a)] -> CommandUI flags -> ParserInfo (ParsedCommand a)
+parserInfo invokedName examples flagParsers cmdui =
+  info
+    (parsedCommandParser flagParsers <**> helper)
+    ( fullDesc
+        <> progDesc (helpDescriptionOrSynopsis cmdui)
+        <> header ("cabal " ++ invokedName)
+        <> footer (examples "cabal" invokedName)
+    )
 
 parsedCommandParser :: [O.Parser (CmdItem a)] -> O.Parser (ParsedCommand a)
 parsedCommandParser flagParsers = toParsed <$> many (cmdItemParser flagParsers)
