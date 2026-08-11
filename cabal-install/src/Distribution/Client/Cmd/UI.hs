@@ -14,6 +14,8 @@ module Distribution.Client.Cmd.UI
 
     -- * Command data types
   , CmdItem (..)
+  , ParsedCommand (..)
+  , parsedCommandParser
   , cmdItemParser
   , cmdOptionParsers
 
@@ -83,6 +85,28 @@ data CmdItem a
   = CmdItemFlag (Endo (NixStyleFlags a))
   | CmdItemTarget String
   | CmdItemListOptions
+
+data ParsedCommand a = ParsedCommand
+  { parsedFlagEdits :: Endo (NixStyleFlags a)
+  , parsedTargets :: [String]
+  , parsedListOptions :: Bool
+  }
+
+parsedCommandParser :: [O.Parser (CmdItem a)] -> O.Parser (ParsedCommand a)
+parsedCommandParser flagParsers = toParsed <$> many (cmdItemParser flagParsers)
+  where
+    toParsed items =
+      let edits = [e | CmdItemFlag e <- items]
+          targets = [t | CmdItemTarget t <- items]
+          listOptionsSeen = any isListOptions items
+       in ParsedCommand
+            { parsedFlagEdits = mconcat edits
+            , parsedTargets = targets
+            , parsedListOptions = listOptionsSeen
+            }
+
+    isListOptions CmdItemListOptions = True
+    isListOptions _ = False
 
 cmdItemParser :: [O.Parser (CmdItem a)] -> O.Parser (CmdItem a)
 cmdItemParser flags =
