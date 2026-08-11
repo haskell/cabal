@@ -52,6 +52,7 @@ import Distribution.Simple.Command
   , CommandSpec (..)
   , CommandType (..)
   , CommandUI (..)
+  , OptionField (..)
   , ShowOrParseArgs (ParseArgs)
   , commandAddAction
   , commandParseArgs
@@ -352,7 +353,7 @@ parsedBuildCommandParser = toParsed <$> many buildItemParser
 buildItemParser :: Parser BuildCmdItem
 buildItemParser =
   asum
-    ( buildOptionParsers
+    ( buildOptionParsers (commandOptions buildCommand ParseArgs)
         ++ [ CmdItemListOptions
               <$ flag'
                 ()
@@ -361,8 +362,6 @@ buildItemParser =
            ]
     )
 
-buildOptionParsers :: [Parser BuildCmdItem]
-buildOptionParsers =
-  (fmap . fmap)
-    CmdItemFlag
-    (optionFieldFlagParsers $ commandOptions buildCommand ParseArgs)
+buildOptionParsers
+  :: [OptionField (NixStyleFlags a)] -> [Parser (CmdItem a)]
+buildOptionParsers fields = (fmap . fmap) CmdItemFlag (optionFieldFlagParsers fields)

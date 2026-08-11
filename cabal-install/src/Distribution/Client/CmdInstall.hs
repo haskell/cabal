@@ -126,6 +126,7 @@ import Distribution.Simple.Command
   , CommandSpec (..)
   , CommandType (..)
   , CommandUI (..)
+  , OptionField (..)
   , ShowOrParseArgs (ParseArgs)
   , commandAddAction
   , commandParseArgs
@@ -1529,7 +1530,7 @@ parsedInstallCommandParser = toParsed <$> many installItemParser
 installItemParser :: Parser InstallCmdItem
 installItemParser =
   asum
-    ( installOptionParsers
+    ( installOptionParsers (commandOptions installCommand ParseArgs)
         ++ [ CmdItemListOptions
               <$ flag'
                 ()
@@ -1538,8 +1539,5 @@ installItemParser =
            ]
     )
 
-installOptionParsers :: [Parser InstallCmdItem]
-installOptionParsers =
-  (fmap . fmap)
-    CmdItemFlag
-    (optionFieldFlagParsers $ commandOptions installCommand ParseArgs)
+installOptionParsers :: [OptionField (NixStyleFlags a)] -> [Parser (CmdItem a)]
+installOptionParsers fields = (fmap . fmap) CmdItemFlag (optionFieldFlagParsers fields)
