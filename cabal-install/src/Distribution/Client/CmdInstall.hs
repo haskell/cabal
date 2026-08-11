@@ -37,6 +37,7 @@ import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 import Distribution.Client.Cmd.UI
   ( ParsedCommand (..)
   , cmdOptionParsers
+  , helpDescriptionOrSynopsis
   , helpText
   , parsedCommandParser
   )
@@ -1478,18 +1479,12 @@ installParserInfo invokedName =
   info
     (parsedCommandParser flagParsers <**> helper)
     ( fullDesc
-        <> progDesc installHelpDescription
+        <> progDesc (helpDescriptionOrSynopsis installCommand)
         <> header ("cabal " ++ invokedName)
         <> footer (installExamples invokedName)
     )
   where
     flagParsers = cmdOptionParsers (commandOptions installCommand ParseArgs)
-
-installHelpDescription :: String
-installHelpDescription =
-  case commandDescription installCommand of
-    Nothing -> commandSynopsis installCommand
-    Just mkDescription -> mkDescription "cabal"
 
 installExamples :: String -> String
 installExamples invokedName =
