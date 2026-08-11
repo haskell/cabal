@@ -32,7 +32,7 @@ import Distribution.Client.TargetProblem
 import qualified Data.Map as Map
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
-import Distribution.Client.Cmd.UI (CmdItem (..), helpText, optionFieldFlagParsers)
+import Distribution.Client.Cmd.UI (CmdItem (..), cmdOptionParsers, helpText)
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -52,7 +52,6 @@ import Distribution.Simple.Command
   , CommandSpec (..)
   , CommandType (..)
   , CommandUI (..)
-  , OptionField (..)
   , ShowOrParseArgs (ParseArgs)
   , commandAddAction
   , commandParseArgs
@@ -353,7 +352,7 @@ parsedBuildCommandParser = toParsed <$> many buildItemParser
 buildItemParser :: Parser BuildCmdItem
 buildItemParser =
   asum
-    ( buildOptionParsers (commandOptions buildCommand ParseArgs)
+    ( cmdOptionParsers (commandOptions buildCommand ParseArgs)
         ++ [ CmdItemListOptions
               <$ flag'
                 ()
@@ -361,7 +360,3 @@ buildItemParser =
            , CmdItemTarget <$> strArgument (metavar "TARGET")
            ]
     )
-
-buildOptionParsers
-  :: [OptionField (NixStyleFlags a)] -> [Parser (CmdItem a)]
-buildOptionParsers fields = (fmap . fmap) CmdItemFlag (optionFieldFlagParsers fields)

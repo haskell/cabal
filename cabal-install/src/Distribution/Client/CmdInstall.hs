@@ -34,7 +34,7 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
-import Distribution.Client.Cmd.UI (CmdItem (..), helpText, optionFieldFlagParsers)
+import Distribution.Client.Cmd.UI (CmdItem (..), cmdOptionParsers, helpText)
 import Distribution.Client.Config
   ( SavedConfig (..)
   , defaultInstallPath
@@ -1530,7 +1530,7 @@ parsedInstallCommandParser = toParsed <$> many installItemParser
 installItemParser :: Parser InstallCmdItem
 installItemParser =
   asum
-    ( installOptionParsers (commandOptions installCommand ParseArgs)
+    ( cmdOptionParsers (commandOptions installCommand ParseArgs)
         ++ [ CmdItemListOptions
               <$ flag'
                 ()
@@ -1538,6 +1538,3 @@ installItemParser =
            , CmdItemTarget <$> strArgument (metavar "TARGET")
            ]
     )
-
-installOptionParsers :: [OptionField (NixStyleFlags a)] -> [Parser (CmdItem a)]
-installOptionParsers fields = (fmap . fmap) CmdItemFlag (optionFieldFlagParsers fields)

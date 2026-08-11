@@ -14,6 +14,7 @@ module Distribution.Client.Cmd.UI
 
     -- * Command data types
   , CmdItem (..)
+  , cmdOptionParsers
 
     -- * Help text layout helpers
   , renderOptionRows
@@ -73,6 +74,9 @@ data CmdItem a
   = CmdItemFlag (Endo (NixStyleFlags a))
   | CmdItemTarget String
   | CmdItemListOptions
+
+cmdOptionParsers :: [OptionField (NixStyleFlags a)] -> [O.Parser (CmdItem a)]
+cmdOptionParsers fields = (fmap . fmap) CmdItemFlag (optionFieldFlagParsers fields)
 
 optionFieldFlagParsers :: [OptionField flags] -> [O.Parser (Endo flags)]
 optionFieldFlagParsers = concatMap optionFieldParser
