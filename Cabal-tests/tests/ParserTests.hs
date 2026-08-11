@@ -115,12 +115,12 @@ warningTest wt fp = testCase (show wt) $ do
 -- comment
 -------------------------------------------------------------------------------
 
-
-#ifdef MIN_VERSION_tree_diff
 -- Verify that comments are parsed correctly
 commentTests :: TestTree
 commentTests = testGroup "comments"
-    [ readFieldTest "layout-complex-indented-comments.cabal" -- Imported from hackage integration test
+    [
+#ifdef MIN_VERSION_tree_diff
+      readFieldTest "layout-complex-indented-comments.cabal" -- Imported from hackage integration test
     , readFieldTest "layout-comment-in-fieldline.cabal" -- Aligned leading comma after comment
 
     , commentTest "layout-nosections-before.cabal"
@@ -131,8 +131,10 @@ commentTests = testGroup "comments"
     , commentTest "layout-fieldline-is-flag.cabal"
 
     , commentTest "hasktorch.cabal" -- Taken from regression, has a lot of comments
+#endif
     ]
 
+#ifdef MIN_VERSION_tree_diff
 -- | Assert the field structure of a given Cabal file.
 readFieldTest :: FilePath -> TestTree
 readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
@@ -148,7 +150,9 @@ readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
   where
     input = "tests" </> "ParserTests" </> "comments" </> fname
     exprFile = replaceExtension input "expr"
+#endif
 
+#ifdef MIN_VERSION_tree_diff
 -- | Only assert the comment structure of a given cabal file.
 commentTest :: FilePath -> TestTree
 commentTest fname = ediffGolden goldenTest fname exprFile $ do
@@ -164,11 +168,15 @@ commentTest fname = ediffGolden goldenTest fname exprFile $ do
   where
     input = "tests" </> "ParserTests" </> "comments" </> fname
     exprFile = replaceExtension input "expr"
+#endif
 
+#ifdef MIN_VERSION_tree_diff
 -- Extract comments to reduce the golden file's size, make it easier to verify reduce diff size.
 extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
 extractComments = Bi.first mconcat . unzip . map extractCommentsStep
+#endif
 
+#ifdef MIN_VERSION_tree_diff
 extractCommentsStep :: (Foldable f, Functor f) => f (WithComments ann) -> ([Comment ann], f ann)
 extractCommentsStep f = (foldMap justComments f, fmap unComments f)
 #endif
