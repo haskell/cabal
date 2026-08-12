@@ -1,0 +1,9 @@
+cabal-version: 2.4
+name: UnparsableWarning
+version: 0.1.0.0
+
+executable UnparsableWarning
+    main-is: Main.hs
+    hs-source-dirs: app
+    build-depends: base
+    default-language: Haskell2010

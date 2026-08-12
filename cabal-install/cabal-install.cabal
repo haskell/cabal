@@ -1,7 +1,7 @@
 Cabal-Version:      3.8
 
 Name:               cabal-install
-Version:            3.17.0.0
+Version:            3.19.0.0
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
@@ -61,19 +61,19 @@ common warnings
 
 common base-dep
     build-depends:
-      , base >=4.17 && <4.23
+      , base >=4.17 && <4.24
 
 common cabal-dep
     build-depends:
-      , Cabal ^>=3.17
+      , Cabal ^>=3.19
 
 common cabal-syntax-dep
     build-depends:
-      , Cabal-syntax ^>=3.17
+      , Cabal-syntax ^>=3.19
 
 common cabal-install-solver-dep
     build-depends:
-      , cabal-install-solver ^>=3.17
+      , cabal-install-solver ^>=3.19
 
 library
     import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
@@ -252,12 +252,12 @@ library
       , edit-distance >= 0.2.2 && < 0.3
       , exceptions >= 0.10.4   && < 0.11
       , filepath   >= 1.4.0.0  && < 1.6
-      , hooks-exe ^>= 0.1
+      , hooks-exe ^>= 3.19
       , HTTP       >= 4000.1.5 && < 4000.6
       , mtl        >= 2.0      && < 2.4
       , network-uri >= 2.6.2.0 && < 2.7
       , pretty     >= 1.1      && < 1.2
-      , process    >= 1.2.3.0  && < 1.6.24 || == 1.6.26.0 || >= 1.6.26.2 && < 1.7
+      , process    >= 1.6.29.0 && < 1.7
       , random     >= 1.2      && < 1.4
       , stm        >= 2.0      && < 2.6
       , tar        >= 0.5.0.3  && < 0.8
@@ -286,15 +286,6 @@ library
     else
       build-depends:
         , unix >= 2.5 && < 2.8 || >= 2.8.6.0 && < 2.9
-
-    -- pull in process version with fixed waitForProcess error
-    if impl(ghc >=8.2)
-      build-depends:
-        , process >= 1.6.15.0
-
-    if os(darwin)
-      build-depends:
-        , process >= 1.6.29.0
 
     if flag(git-rev)
       build-depends: githash ^>= 0.1.7.0

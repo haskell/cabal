@@ -834,6 +834,37 @@ and fully-qualified.
 
 .. _command-group-build:
 
+Build action phase control
+--------------------------
+
+The following settings apply to commands that result in build actions
+(``build``, ``run``, ``repl``, ``test``...), and control which phases of the
+build are executed.
+
+.. option:: --dry-run
+
+    Do not download, build, or install anything, only print what would happen.
+
+.. option:: --only-configure
+
+    Instead of performing a full build just run the configure step.
+    Only accepted by the ``build`` command.
+
+.. option:: --only-download
+
+    Do not build anything, only fetch the packages.
+
+.. option:: --only-dependencies
+            --dependencies-only
+
+    Install only the dependencies necessary to build the given packages.
+    Not accepted by the ``repl`` command.
+
+.. tip::
+
+    ``--dependencies-only`` is a synonym for ``--only-dependencies`` but the
+    latter is preferred as it follows the pattern of other ``--only-*`` flags.
+
 Project building and installing
 -------------------------------
 

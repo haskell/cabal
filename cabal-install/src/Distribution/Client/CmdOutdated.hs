@@ -100,8 +100,7 @@ outdatedCommand =
           "Checks for outdated dependencies in the package description file "
             ++ "or freeze file"
     , commandNotes = Nothing
-    , commandUsage = \pname ->
-        "Usage: " ++ pname ++ " outdated [FLAGS] [PACKAGES]\n"
+    , commandUsage = usageAlternatives "v2-outdated" ["[FLAGS] [PACKAGES]"]
     , commandDefaultFlags = defaultNixStyleFlags defaultOutdatedFlags
     , commandOptions = nixStyleOptions $ \showOrParseArgs ->
         outdatedOptions showOrParseArgs

@@ -712,7 +712,7 @@ pruneInstallPlan pkgSpecifiers =
           ordNub
             [ depid
             | SolverInstallPlan.PackageMissingDeps _ depids <- problems
-            , depid <- depids
+            , depid <- toList depids
             , packageName depid `elem` targetnames
             ]
 

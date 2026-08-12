@@ -80,15 +80,16 @@ computer architecture and user-specified configuration flags.
 
 ::
 
-    name:     Foo
-    version:  1.0
+    cabal-version: 3.0
+    name:          Foo
+    version:       1.0
 
     library
-      default-language: Haskell2010
-      build-depends:    base >= 4 && < 5
-      exposed-modules:  Foo
-      extensions:       ForeignFunctionInterface
-      ghc-options:      -Wall
+      default-language:   Haskell2010
+      build-depends:      base >= 4 && < 5
+      exposed-modules:    Foo
+      default-extensions: ForeignFunctionInterface
+      ghc-options:        -Wall
       if os(windows)
         build-depends: Win32 >= 2.1 && < 2.6
 
@@ -3342,7 +3343,7 @@ use different versions of the API?
 
 Haskell lets you preprocess your code using the C preprocessor (either
 the real C preprocessor, or ``cpphs``). To enable this, add
-``extensions: CPP`` to your package description. When using CPP, Cabal
+``default-extensions: CPP`` to your package description. When using CPP, Cabal
 provides some pre-defined macros to let you test the version of
 dependent packages; for example, suppose your package works with either
 version 3 or version 4 of the ``base`` package, you could select the
