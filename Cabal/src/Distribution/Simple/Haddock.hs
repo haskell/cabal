@@ -1439,15 +1439,23 @@ haddockPackagePaths ipkgs mkHtmlPath = do
     -- computed by 'haddockDirName'. When the registered path uses one naming
     -- but the file was generated with the other, this produces the alternate
     -- path. See #12212.
+    --
+    -- Only the matching component nearest the interface file is the haddock
+    -- output directory, so ancestors that happen to carry the same name are
+    -- left alone: the output always lives under @doc\/html@, so a package
+    -- named @html@ would otherwise have both components rewritten.
     alternateHaddockInterfacePath :: PackageIdentifier -> FilePath -> FilePath
     alternateHaddockInterfacePath pkgid path =
       let devDir = prettyShow (pkgName pkgid)
           hackageDir = prettyShow pkgid ++ "-docs"
-          replaceDir d
-            | d == devDir = hackageDir
-            | d == hackageDir = devDir
-            | otherwise = d
-       in joinPath (map replaceDir (splitDirectories path))
+          -- Operates on the components in reverse order, stopping at the
+          -- first match.
+          replaceLastDir [] = []
+          replaceLastDir (d : ds)
+            | d == devDir = hackageDir : ds
+            | d == hackageDir = devDir : ds
+            | otherwise = d : replaceLastDir ds
+       in joinPath (reverse (replaceLastDir (reverse (splitDirectories path))))
 
 haddockPackageFlags
   :: Verbosity
