@@ -72,11 +72,13 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.BuildInfo
 import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
 import Distribution.Types.GivenComponent
 import qualified Distribution.Types.InstalledPackageInfo as IPI
 import Distribution.Types.Library
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ModuleRenaming
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import Distribution.Types.PackageName
 import Distribution.Types.TargetInfo
 import Distribution.Types.UnitId

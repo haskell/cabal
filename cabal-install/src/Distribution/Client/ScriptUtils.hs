@@ -125,7 +125,6 @@ import Distribution.Parsec
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.Simple.Compiler
   ( Compiler (..)
-  , OptimisationLevel (..)
   )
 import Distribution.Simple.Flag
   ( flagToMaybe
@@ -167,6 +166,7 @@ import Distribution.Types.GenericPackageDescription as GPD
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription
   )
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import Distribution.Types.PackageDescription
   ( PackageDescription (..)
   , emptyPackageDescription
