@@ -356,7 +356,7 @@ haddockOptions showOrParseArgs =
     , option
         ""
         ["resources-dir"]
-        "location of Haddocks static / auxiliary files"
+        "Location of Haddocks static / auxiliary files"
         haddockResourcesDir
         (\v flags -> flags{haddockResourcesDir = v})
         (reqArgFlag "DIR")
@@ -609,7 +609,7 @@ haddockProjectOptions showOrParseArgs =
     , option
         ""
         ["resources-dir"]
-        "location of Haddocks static / auxiliary files"
+        "Location of Haddocks static / auxiliary files"
         haddockProjectResourcesDir
         (\v flags -> flags{haddockProjectResourcesDir = v})
         (reqArgFlag "DIR")
