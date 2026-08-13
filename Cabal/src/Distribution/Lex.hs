@@ -16,11 +16,19 @@ import Prelude ()
 -- | A simple parser supporting quoted strings.
 --
 -- Please be aware that this will only split strings when seeing whitespace
--- outside of quotation marks, i.e, @"foo\"bar baz\"qux quux"@ will be
--- converted to @["foobar bazqux", "quux"]@.
+-- outside of quotation marks;
 --
--- This behavior can be useful when parsing text like
--- @"ghc-options: -Wl,\"some option with spaces\""@, for instance.
+-- > foo"bar baz"qux quux
+--
+-- >>> tokenizeQuotedWords "foo\"bar baz\"qux quux"
+-- ["foobar bazqux","quux"]
+--
+-- This behavior can be useful when parsing text like;
+--
+-- > ghc-options: -Wl,"some option with spaces"
+--
+-- >>> tokenizeQuotedWords "ghc-options: -Wl,\"some option with spaces\""
+-- ["ghc-options:","-Wl,some option with spaces"]
 tokenizeQuotedWords :: String -> [String]
 tokenizeQuotedWords xs = repack $ foldr alg (const ([] :| [])) xs False
   where
