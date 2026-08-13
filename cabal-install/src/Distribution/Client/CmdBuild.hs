@@ -8,7 +8,7 @@ module Distribution.Client.CmdBuild
   , BuildFlags (..)
   , defaultBuildFlags
 
-  -- * The @build@ CLI command spec and parser
+    -- * The @build@ CLI command spec and parser
   , cmdSpec
   , isCommandName
   , parseCommand

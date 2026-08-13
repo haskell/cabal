@@ -8,7 +8,7 @@ module Distribution.Client.CmdInstall
     installCommand
   , installAction
 
-  -- * The @install@ CLI command spec and parser
+    -- * The @install@ CLI command spec and parser
   , cmdSpec
   , isCommandName
   , parseCommand
