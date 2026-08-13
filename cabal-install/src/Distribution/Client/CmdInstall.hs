@@ -4,12 +4,14 @@
 
 -- | cabal-install CLI command: install
 module Distribution.Client.CmdInstall
-  ( -- * The @install@ CLI and action
-    cmdSpec
-  , installCommand
+  ( -- * The @install@ CLI command UI and action
+    installCommand
   , installAction
-  , parseInstallCommand
+
+  -- * The @install@ CLI command spec and parser
+  , cmdSpec
   , isCommandName
+  , parseCommand
 
     -- * Internals exposed for testing
   , selectPackageTargets
@@ -1445,8 +1447,8 @@ replaceInstallAlias :: String -> String -> String
 replaceInstallAlias invokedName =
   T.unpack . T.replace (T.pack "v2-install") (T.pack invokedName) . T.pack
 
-parseInstallCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
-parseInstallCommand invokedName cmdArgs =
+parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
+parseCommand invokedName cmdArgs =
   case execParserPure defaultPrefs info cmdArgs of
     Success parsed ->
       if parsedListOptions parsed

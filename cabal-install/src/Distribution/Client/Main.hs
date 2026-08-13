@@ -391,10 +391,10 @@ mainWorker args = do
             (cmdName : cmdArgs)
               | CmdBuild.isCommandName cmdName ->
                   let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
-                   in Just $ CommandReadyToGo (globalFlags, CmdBuild.parseBuildCommand cmdName cmdArgs)
+                   in Just $ CommandReadyToGo (globalFlags, CmdBuild.parseCommand cmdName cmdArgs)
               | CmdInstall.isCommandName cmdName ->
                   let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
-                   in Just $ CommandReadyToGo (globalFlags, CmdInstall.parseInstallCommand cmdName cmdArgs)
+                   in Just $ CommandReadyToGo (globalFlags, CmdInstall.parseCommand cmdName cmdArgs)
             _ -> Nothing
         _ -> Nothing
 
