@@ -386,16 +386,14 @@ mainWorker args = do
     parseBuildOrInstallWithOptparse :: [String] -> Maybe (CommandParse (GlobalFlags, CommandParse Action))
     parseBuildOrInstallWithOptparse argv =
       case commandParseArgs globalCmd True argv of
-        CommandReadyToGo (mkGlobalFlags, cmdArgs0) ->
-          case cmdArgs0 of
-            (cmdName : cmdArgs)
-              | CmdBuild.isCommandName cmdName ->
-                  let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
-                   in Just $ CommandReadyToGo (globalFlags, CmdBuild.parseCommand cmdName cmdArgs)
-              | CmdInstall.isCommandName cmdName ->
-                  let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
-                   in Just $ CommandReadyToGo (globalFlags, CmdInstall.parseCommand cmdName cmdArgs)
+        CommandReadyToGo (mkGlobalFlags, cmdArgs0) -> do
+          (cmdParser, cmdName : cmdArgs) <- case cmdArgs0 of
+            x@(n : _)
+              | CmdBuild.isCommandName n -> Just (CmdBuild.parseCommand, x)
+              | CmdInstall.isCommandName n -> Just (CmdInstall.parseCommand, x)
             _ -> Nothing
+          let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
+          return $ CommandReadyToGo (globalFlags, cmdParser cmdName cmdArgs)
         _ -> Nothing
 
     delegateToExternal
