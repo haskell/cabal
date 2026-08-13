@@ -7,7 +7,7 @@ module Distribution.Client.CmdBuild
     cmdSpec
   , buildAction
   , parseBuildCommand
-  , isBuildCommandName
+  , isCommandName
   , BuildFlags (..)
   , defaultBuildFlags
 
@@ -265,13 +265,13 @@ reportCannotPruneDependencies verbosity =
 
 -- | The command name and aliases for the @build@ command.
 --
--- >>> buildCommandNames
+-- >>> commandNames
 -- ["build","new-build","v2-build"]
-buildCommandNames :: [String]
-buildCommandNames = ["build", "new-build", commandName buildCommand]
+commandNames :: [String]
+commandNames = ["build", "new-build", commandName buildCommand]
 
-isBuildCommandName :: String -> Bool
-isBuildCommandName name = name `elem` buildCommandNames
+isCommandName :: String -> Bool
+isCommandName name = name `elem` commandNames
 
 buildListOptions :: [String]
 buildListOptions =

@@ -9,7 +9,7 @@ module Distribution.Client.CmdInstall
   , installCommand
   , installAction
   , parseInstallCommand
-  , isInstallCommandName
+  , isCommandName
 
     -- * Internals exposed for testing
   , selectPackageTargets
@@ -1427,13 +1427,13 @@ reportCannotPruneDependencies verbosity =
 
 -- | The command name and aliases for the @install@ command.
 --
--- >>> installCommandNames
+-- >>> commandNames
 -- ["install","new-install","v2-install"]
-installCommandNames :: [String]
-installCommandNames = ["install", "new-install", commandName installCommand]
+commandNames :: [String]
+commandNames = ["install", "new-install", commandName installCommand]
 
-isInstallCommandName :: String -> Bool
-isInstallCommandName name = name `elem` installCommandNames
+isCommandName :: String -> Bool
+isCommandName name = name `elem` commandNames
 
 installListOptions :: [String]
 installListOptions =
