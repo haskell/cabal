@@ -3,13 +3,15 @@
 
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdBuild
-  ( -- * The @build@ CLI and action
-    cmdSpec
-  , buildAction
-  , parseBuildCommand
-  , isCommandName
+  ( -- * The @build@ CLI command UI and action
+    buildAction
   , BuildFlags (..)
   , defaultBuildFlags
+
+  -- * The @build@ CLI command spec and parser
+  , cmdSpec
+  , isCommandName
+  , parseCommand
 
     -- * Internals exposed for testing
   , selectPackageTargets
@@ -282,8 +284,8 @@ buildListOptions =
 replaceBuildAlias :: String -> String -> String
 replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
 
-parseBuildCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
-parseBuildCommand invokedName cmdArgs =
+parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
+parseCommand invokedName cmdArgs =
   case execParserPure defaultPrefs info cmdArgs of
     Success parsed ->
       if parsedListOptions parsed
