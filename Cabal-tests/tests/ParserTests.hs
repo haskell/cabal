@@ -27,9 +27,7 @@ import Distribution.PackageDescription
   , condTestSuites
   , condBenchmarks
   )
-import Distribution.PackageDescription.Parsec
-  ( parseGenericPackageDescription
-  )
+import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
@@ -153,7 +151,7 @@ readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
 #endif
 
 #ifdef MIN_VERSION_tree_diff
--- | Only assert the comment structure of a given cabal file.
+-- | Assert the comment structure of a given cabal file.
 commentTest :: FilePath -> TestTree
 commentTest fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input
@@ -171,7 +169,7 @@ commentTest fname = ediffGolden goldenTest fname exprFile $ do
 #endif
 
 #ifdef MIN_VERSION_tree_diff
--- Extract comments to reduce the golden file's size, make it easier to verify reduce diff size.
+-- Extract comments to reduce the golden file's size and make it easier to verify.
 extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
 extractComments = Bi.first mconcat . unzip . map extractCommentsStep
 #endif
