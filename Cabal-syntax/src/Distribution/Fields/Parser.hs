@@ -355,8 +355,8 @@ elementInLayoutContext ilevel name =
             elems <- sectionLayoutOrBraces ilevel
             case elems of
               -- If there are no elements but comments, we attach them to the name (args can be multiple)
-              Left onlyCmts -> return (Section (WithComments onlyCmts <$> name) (noComments <$> args) [])
-              Right elems' -> return (Section (noComments name) (noComments <$> args) elems')
+              Left onlyCmts -> return (Section (WithComments onlyCmts <$> name) (map noComments args) [])
+              Right elems' -> return (Section (noComments name) (map noComments args) elems')
         )
 
 -- An element (field or section) that is valid in a non-layout context.
@@ -376,8 +376,8 @@ elementInNonLayoutContext name =
             closeBrace
 
             case elems of
-              Left elementCmts -> return (Section (WithComments elementCmts <$> name) (noComments <$> args) [])
-              Right elems' -> return (Section (noComments name) (noComments <$> args) elems')
+              Left elementCmts -> return (Section (WithComments elementCmts <$> name) (map noComments args) [])
+              Right elems' -> return (Section (noComments name) (map noComments args) elems')
         )
 
 -- The body of a field, using either layout style or braces style.
@@ -395,6 +395,7 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
       closeBrace
       return $ Field (WithComments preCmts <$> name) ls
 
+    -- Here, we run 'fieldContent' twice separately because only the second time it is subject to the indentation constraint.
     fieldLayout :: Parser (Field (WithComments Position))
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
       preCmts <- many tokComment
