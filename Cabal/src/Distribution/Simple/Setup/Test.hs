@@ -206,7 +206,7 @@ testOptions' showOrParseArgs =
         testShowDetails
         (\v flags -> flags{testShowDetails = v})
         ( reqArg
-            "FILTER"
+            "always|never|failures|streaming|direct"
             ( parsecToReadE
                 ( \_ ->
                     "--show-details flag expects one of "
