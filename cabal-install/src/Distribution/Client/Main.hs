@@ -232,6 +232,7 @@ import Distribution.Simple.Utils
   , createDirectoryIfMissingVerbose
   , die'
   , dieNoVerbosity
+  , dieNoWrap
   , dieWithException
   , findPackageDesc
   , info
@@ -1572,9 +1573,14 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
             Simple.autoconfSetupHooks
             defaultVerbosityHandles
             args
-        Make -> error "actAsSetupAction Main"
-        Hooks -> error "actAsSetupAction Hooks"
-        Custom -> error "actAsSetupAction Custom"
+        Make -> unsupportedBuildType
+        Hooks -> unsupportedBuildType
+        Custom -> unsupportedBuildType
+  where
+    verbosity = mkVerbosity defaultVerbosityHandles normal
+    unsupportedBuildType = do
+      warn verbosity "act-as-setup accepts --build-type=Simple|Configure, case-sensitively."
+      dieNoWrap verbosity "act-as-setup doesn't accept --build-type=Make|Hooks|Custom."
 
 manpageAction :: [CommandSpec action] -> ManpageFlags -> [String] -> Action
 manpageAction commands flags extraArgs _ = do
