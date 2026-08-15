@@ -2743,7 +2743,7 @@ installOptions showOrParseArgs =
           installBuildReports
           (\v flags -> flags{installBuildReports = v})
           ( reqArg
-              "LEVEL"
+              "none|anonymous|detailed"
               ( parsecToReadE
                   ( const $
                       "report level must be 'none', "
