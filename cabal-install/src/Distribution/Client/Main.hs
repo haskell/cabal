@@ -232,6 +232,7 @@ import Distribution.Simple.Utils
   , cabalVersion
   , createDirectoryIfMissingVerbose
   , die'
+  , dieNoWrap
   , dieNoVerbosity
   , dieNoWrap
   , dieWithException
