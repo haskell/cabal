@@ -2739,7 +2739,13 @@ installOptions showOrParseArgs =
        , option
           []
           ["remote-build-reporting"]
-          "Generate build reports to send to a remote server (none, anonymous or detailed)."
+          ( unlines
+              [ "Generate build reports to send to a remote server:"
+              , "- none: do not report,"
+              , "- anonymous: report without identifying information,"
+              , "- detailed: report with full details."
+              ]
+          )
           installBuildReports
           (\v flags -> flags{installBuildReports = v})
           ( reqArg
