@@ -20,6 +20,7 @@ module Distribution.Client.Cmd.UI
   , cmdItemParser
   , cmdOptionParsers
   , cmdSpec
+  , cmdListOptions
   , parseCommand
   , replaceCommandAlias
   , helpDescriptionOrSynopsis
@@ -78,6 +79,7 @@ import Distribution.Simple.Command
   , OptionField (..)
   , ShowOrParseArgs (ShowArgs)
   , commandAddAction
+  , commandParseArgs
   )
 import Distribution.Simple.Utils (ordNub)
 
@@ -141,6 +143,12 @@ cmdSpec command action =
         , commandDescription = (defaultMsg .) <$> commandDescription command
         , commandNotes = (defaultMsg .) <$> commandNotes command
         }
+
+cmdListOptions :: CommandUI flags -> [String]
+cmdListOptions command =
+  case commandParseArgs command False ["--list-options"] of
+    CommandList opts -> opts
+    _ -> []
 
 parseCommand
   :: String

@@ -33,7 +33,8 @@ import Distribution.Client.TargetProblem
 
 import qualified Data.Map as Map
 import Distribution.Client.Cmd.UI
-  ( cmdOptionParsers
+  ( cmdListOptions
+  , cmdOptionParsers
   , replaceCommandAlias
   )
 import qualified Distribution.Client.Cmd.UI as Cmd.UI
@@ -55,7 +56,6 @@ import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandUI (..)
   , ShowOrParseArgs (ParseArgs)
-  , commandParseArgs
   , option
   , usageAlternatives
   )
@@ -249,12 +249,6 @@ commandNames = ["build", "new-build", commandName buildCommand]
 isCommandName :: String -> Bool
 isCommandName name = name `elem` commandNames
 
-buildListOptions :: [String]
-buildListOptions =
-  case commandParseArgs buildCommand False ["--list-options"] of
-    CommandList opts -> opts
-    _ -> []
-
 parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseCommand invokedName cmdArgs =
   Cmd.UI.parseCommand
@@ -263,6 +257,6 @@ parseCommand invokedName cmdArgs =
     examples
     (cmdOptionParsers (commandOptions buildCommand ParseArgs))
     buildCommand
-    buildListOptions
+    (cmdListOptions buildCommand)
     buildAction
     (replaceCommandAlias (commandName buildCommand))
