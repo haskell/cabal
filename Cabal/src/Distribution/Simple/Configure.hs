@@ -73,6 +73,7 @@ module Distribution.Simple.Configure
 
 import Control.Monad
 import Distribution.Compat.Prelude
+import GHC.Stack (HasCallStack)
 import Prelude ()
 
 import Distribution.Backpack.Configure
@@ -81,7 +82,6 @@ import Distribution.Backpack.DescribeUnitId
 import Distribution.Backpack.Id
 import Distribution.Backpack.PreExistingComponent
 import qualified Distribution.Compat.Graph as Graph
-import Distribution.Compat.Stack
 import Distribution.Compiler
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -253,7 +253,8 @@ instance Exception ConfigStateFileError
 -- missing, if the file cannot be read, or if the file was created by an older
 -- version of Cabal.
 getConfigStateFile
-  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  :: HasCallStack
+  => Maybe (SymbolicPath CWD (Dir Pkg))
   -> SymbolicPath Pkg File
   -- ^ The file path of the @setup-config@ file.
   -> IO LocalBuildInfo
@@ -279,8 +280,6 @@ getConfigStateFile mbWorkDir setupConfigFile = do
             throwIO $ ConfigStateFileBadVersion cabalId compId eResult
         | otherwise = act
   deferErrorIfBadVersion getStoredValue
-  where
-    _ = callStack -- TODO: attach call stack to exception
 
 -- | Read the 'localBuildInfoFile', returning either an error or the local build
 -- info.
