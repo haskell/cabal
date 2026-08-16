@@ -36,9 +36,7 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Cmd.UI
-  ( cmdListOptions
-  , cmdOptionParsers
-  , replaceCommandAlias
+  ( replaceCommandAlias
   )
 import qualified Distribution.Client.Cmd.UI as Cmd.UI
 import Distribution.Client.Config
@@ -131,7 +129,6 @@ import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandUI (..)
   , OptionField (..)
-  , ShowOrParseArgs (ParseArgs)
   , optionName
   , usageAlternatives
   )
@@ -1411,13 +1408,9 @@ isCommandName :: String -> Bool
 isCommandName name = name `elem` commandNames
 
 parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
-parseCommand invokedName cmdArgs =
+parseCommand =
   Cmd.UI.parseCommand
-    invokedName
-    cmdArgs
     examples
-    (cmdOptionParsers (commandOptions installCommand ParseArgs))
     installCommand
-    (cmdListOptions installCommand)
     installAction
     (replaceCommandAlias (commandName installCommand))
