@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Distribution.Client.Cmd.UI
   ( -- * Converting CommandUI options to optparse-applicative parsers
@@ -18,6 +19,7 @@ module Distribution.Client.Cmd.UI
   , parsedCommandParser
   , cmdItemParser
   , cmdOptionParsers
+  , cmdSpec
   , helpDescriptionOrSynopsis
   , parserInfo
 
@@ -66,10 +68,13 @@ import Distribution.Client.NixStyleOptions
   )
 import Distribution.ReadE (runReadE)
 import Distribution.Simple.Command
-  ( CommandUI (..)
+  ( CommandSpec (..)
+  , CommandType (NormalCommand)
+  , CommandUI (..)
   , OptDescr (..)
   , OptionField (..)
   , ShowOrParseArgs (ShowArgs)
+  , commandAddAction
   )
 import Distribution.Simple.Utils (ordNub)
 
@@ -109,6 +114,22 @@ data ParsedCommand a = ParsedCommand
   }
 
 type Examples = String -> String -> String
+
+cmdSpec
+  :: CommandUI flags
+  -> (flags -> [String] -> action)
+  -> [CommandSpec action]
+cmdSpec command action =
+  [CommandSpec ui (`commandAddAction` action) NormalCommand]
+  where
+    defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
+    ui =
+      command
+        { commandName = defaultMsg (commandName command)
+        , commandUsage = defaultMsg . commandUsage command
+        , commandDescription = (defaultMsg .) <$> commandDescription command
+        , commandNotes = (defaultMsg .) <$> commandNotes command
+        }
 
 parserInfo :: String -> Examples -> [O.Parser (CmdItem a)] -> CommandUI flags -> ParserInfo (ParsedCommand a)
 parserInfo invokedName examples flagParsers cmdui =

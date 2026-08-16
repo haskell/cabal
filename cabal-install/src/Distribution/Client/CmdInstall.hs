@@ -33,6 +33,7 @@ import Distribution.Client.TargetProblem
   , TargetProblem'
   )
 
+import qualified Distribution.Client.Cmd.UI as UI
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
@@ -131,11 +132,9 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandSpec (..)
-  , CommandType (..)
   , CommandUI (..)
   , OptionField (..)
   , ShowOrParseArgs (ParseArgs)
-  , commandAddAction
   , commandParseArgs
   , optionName
   , usageAlternatives
@@ -312,18 +311,7 @@ data InstallExe = InstallExe
   }
 
 cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
-cmdSpec = [CommandSpec ui (`commandAddAction` installAction) NormalCommand]
-  where
-    defaultMsg = T.unpack . T.replace (T.pack "v2-") (T.pack "") . T.pack
-    CommandUI{..} = installCommand
-
-    ui =
-      installCommand
-        { commandName = defaultMsg commandName
-        , commandUsage = defaultMsg . commandUsage
-        , commandDescription = (defaultMsg .) <$> commandDescription
-        , commandNotes = (defaultMsg .) <$> commandNotes
-        }
+cmdSpec = UI.cmdSpec installCommand installAction
 
 installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
 installCommand =
