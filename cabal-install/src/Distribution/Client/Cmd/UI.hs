@@ -21,6 +21,7 @@ module Distribution.Client.Cmd.UI
   , cmdOptionParsers
   , cmdSpec
   , cmdListOptions
+  , commandNames
   , parseCommand
   , replaceCommandAlias
   , helpDescriptionOrSynopsis
@@ -124,9 +125,21 @@ data ParsedCommand a = ParsedCommand
 
 type Examples = String -> String -> String
 
+replaceText :: String -> String -> String -> String
+replaceText old new = T.unpack . T.replace (T.pack old) (T.pack new) . T.pack
+
+commandNames :: CommandUI flags -> [String]
+commandNames command =
+  [ replaceText "v2-" "" name
+  , replaceText "v2-" "new-" name
+  , name
+  ]
+  where
+    name = commandName command
+
 replaceCommandAlias :: String -> ReplaceCommandAlias
 replaceCommandAlias commandName invokedName =
-  T.unpack . T.replace (T.pack commandName) (T.pack invokedName) . T.pack
+  replaceText commandName invokedName
 
 cmdSpec
   :: CommandUI flags
@@ -135,7 +148,7 @@ cmdSpec
 cmdSpec command action =
   [CommandSpec ui (`commandAddAction` action) NormalCommand]
   where
-    defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
+    defaultMsg = replaceText "v2-" ""
     ui =
       command
         { commandName = defaultMsg (commandName command)
