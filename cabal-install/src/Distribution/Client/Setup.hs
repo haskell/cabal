@@ -3467,7 +3467,7 @@ actAsSetupCommand =
             actAsSetupBuildType
             (\v flags -> flags{actAsSetupBuildType = v})
             ( reqArg
-                "BUILD-TYPE"
+                placeholder
                 ( parsecToReadE
                     ("Cannot parse build type: " ++)
                     (fmap toFlag parsec)
@@ -3476,6 +3476,9 @@ actAsSetupCommand =
             )
         ]
     }
+  where
+    placeholder = intercalate "|" $ map show setupBuildTypes
+    setupBuildTypes = [Simple, Configure]
 
 -- ------------------------------------------------------------
 
