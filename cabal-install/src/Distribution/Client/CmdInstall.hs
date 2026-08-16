@@ -9,7 +9,6 @@ module Distribution.Client.CmdInstall
   , installAction
 
     -- * The @install@ CLI command spec and parser
-  , cmdSpec
   , isCommandName
   , parseCommand
 
@@ -33,7 +32,6 @@ import Distribution.Client.TargetProblem
   , TargetProblem'
   )
 
-import qualified Distribution.Client.Cmd.UI as UI
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
@@ -131,7 +129,6 @@ import Distribution.Simple.BuildPaths
   )
 import Distribution.Simple.Command
   ( CommandParse (..)
-  , CommandSpec (..)
   , CommandUI (..)
   , OptionField (..)
   , ShowOrParseArgs (ParseArgs)
@@ -309,9 +306,6 @@ data InstallExe = InstallExe
   -- ^ A function to get an exe's final possibly different to the name in the
   -- store.
   }
-
-cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
-cmdSpec = UI.cmdSpec installCommand installAction
 
 installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
 installCommand =

@@ -4,12 +4,12 @@
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI command UI and action
-    buildAction
+    buildCommand
+  , buildAction
   , BuildFlags (..)
   , defaultBuildFlags
 
     -- * The @build@ CLI command spec and parser
-  , cmdSpec
   , isCommandName
   , parseCommand
 
@@ -40,7 +40,6 @@ import Distribution.Client.Cmd.UI
   , helpText
   , parserInfo
   )
-import qualified Distribution.Client.Cmd.UI as UI
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -57,7 +56,6 @@ import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup (GlobalFlags, yesNoOpt)
 import Distribution.Simple.Command
   ( CommandParse (..)
-  , CommandSpec (..)
   , CommandUI (..)
   , ShowOrParseArgs (ParseArgs)
   , commandParseArgs
@@ -73,9 +71,6 @@ import Options.Applicative
   , execParserPure
   , renderFailure
   )
-
-cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
-cmdSpec = UI.cmdSpec buildCommand buildAction
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand =
