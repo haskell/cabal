@@ -182,6 +182,7 @@ import Distribution.PackageDescription
   , buildable
   )
 
+import Distribution.Client.Cmd.UI (cmdSpec)
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import Distribution.PackageDescription.PrettyPrint
@@ -232,8 +233,8 @@ import Distribution.Simple.Utils
   , cabalVersion
   , createDirectoryIfMissingVerbose
   , die'
-  , dieNoWrap
   , dieNoVerbosity
+  , dieNoWrap
   , dieWithException
   , findPackageDesc
   , info
@@ -499,14 +500,14 @@ mainWorker args = do
         ++ concat
           [ newCmd CmdConfigure.configureCommand CmdConfigure.configureAction
           , newCmd CmdUpdate.updateCommand CmdUpdate.updateAction
-          , CmdBuild.cmdSpec
+          , cmdSpec CmdBuild.buildCommand CmdBuild.buildAction
           , newCmd CmdRepl.replCommand CmdRepl.replAction
           , newCmd CmdFreeze.freezeCommand CmdFreeze.freezeAction
           , newCmd CmdHaddock.haddockCommand CmdHaddock.haddockAction
           , newCmd
               CmdHaddockProject.haddockProjectCommand
               CmdHaddockProject.haddockProjectAction
-          , CmdInstall.cmdSpec
+          , cmdSpec CmdInstall.installCommand CmdInstall.installAction
           , newCmd CmdRun.runCommand CmdRun.runAction
           , newCmd CmdTest.testCommand CmdTest.testAction
           , newCmd CmdBench.benchCommand CmdBench.benchAction
