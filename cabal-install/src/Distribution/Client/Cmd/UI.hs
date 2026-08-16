@@ -124,6 +124,7 @@ data ParsedCommand a = ParsedCommand
   }
 
 type Examples = String -> String -> String
+type ReplaceCommandAlias = String -> String -> String
 
 -- SEE: generic-sop-lens.hs
 replaceText :: String -> String -> String -> String
@@ -150,8 +151,7 @@ commandNames command =
     name = commandName command
 
 replaceCommandAlias :: String -> ReplaceCommandAlias
-replaceCommandAlias commandName invokedName =
-  replaceText commandName invokedName
+replaceCommandAlias = replaceText
 
 cmdSpec
   :: CommandUI flags
@@ -509,8 +509,6 @@ groupPredicates =
   , (IncludeAndLinkerPathOptions, keepIncludeOptions)
   , (ProgramOverrideOptions, keepProgOptions)
   ]
-
-type ReplaceCommandAlias = String -> String -> String
 
 helpText :: ReplaceCommandAlias -> CommandUI (NixStyleFlags a) -> String -> String -> String
 helpText replaceBuildAlias buildCommand invokedName pname =
