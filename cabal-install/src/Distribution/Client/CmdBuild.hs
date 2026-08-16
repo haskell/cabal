@@ -58,16 +58,6 @@ import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
 import Distribution.Simple.Utils (dieWithException, wrapText)
 import Distribution.Verbosity (normal)
 
--- | The command name and aliases for the @build@ command.
---
--- >>> commandNames
--- ["build","new-build","v2-build"]
-commandNames :: [String]
-commandNames = ["build", "new-build", commandName buildCommand]
-
-isCommandName :: String -> Bool
-isCommandName name = name `elem` commandNames
-
 parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseCommand =
   Cmd.UI.parseCommand

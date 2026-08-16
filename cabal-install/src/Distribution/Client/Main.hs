@@ -182,7 +182,7 @@ import Distribution.PackageDescription
   , buildable
   )
 
-import Distribution.Client.Cmd.UI (cmdSpec)
+import Distribution.Client.Cmd.UI (cmdSpec, commandNames)
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import Distribution.PackageDescription.PrettyPrint
@@ -396,8 +396,8 @@ mainWorker args = do
         _ -> Nothing
       where
         parserForCommand name
-          | name `elem` ["build", "new-build", commandName CmdBuild.buildCommand] = Just CmdBuild.parseCommand
-          | name `elem` ["install", "new-install", commandName CmdInstall.installCommand] = Just CmdInstall.parseCommand
+          | name `elem` commandNames CmdBuild.buildCommand = Just CmdBuild.parseCommand
+          | name `elem` commandNames CmdInstall.installCommand = Just CmdInstall.parseCommand
           | otherwise = Nothing
 
     delegateToExternal
