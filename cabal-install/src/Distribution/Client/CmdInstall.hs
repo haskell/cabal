@@ -295,21 +295,23 @@ data InstallExe = InstallExe
   -- store.
   }
 
-installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
-installCommand =
-  CommandUI
-    { commandName = "v2-install"
-    , commandSynopsis = "Install packages."
-    , commandUsage = usageAlternatives "v2-install" ["[TARGETS] [FLAGS]"]
-    , commandDescription = Just $ \_ -> wrapText description
-    , commandNotes = Just $ \pname -> examples pname "v2-install"
-    , commandOptions = \x -> filter notInstallDirOpt $ nixStyleOptions clientInstallOptions x
-    , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
-    }
-  where
-    -- install doesn't take installDirs flags, since it always installs into the store in a fixed way.
-    notInstallDirOpt x = optionName x `notElem` installDirOptNames
-    installDirOptNames = map optionName installDirsOptions
+-- | The command name and aliases for the @install@ command.
+--
+-- >>> commandNames
+-- ["install","new-install","v2-install"]
+commandNames :: [String]
+commandNames = ["install", "new-install", commandName installCommand]
+
+isCommandName :: String -> Bool
+isCommandName name = name `elem` commandNames
+
+parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
+parseCommand =
+  Cmd.UI.parseCommand
+    examples
+    installCommand
+    installAction
+    (replaceCommandAlias (commandName installCommand))
 
 description :: String
 description =
@@ -335,6 +337,22 @@ examples pname invokedName =
     , "  - " <> pname <> " " <> invokedName <> " ./pkgfoo"
     , "      Install the package in the ./pkgfoo directory"
     ]
+
+installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
+installCommand =
+  CommandUI
+    { commandName = "v2-install"
+    , commandSynopsis = "Install packages."
+    , commandUsage = usageAlternatives "v2-install" ["[TARGETS] [FLAGS]"]
+    , commandDescription = Just $ \_ -> wrapText description
+    , commandNotes = Just $ \pname -> examples pname "v2-install"
+    , commandOptions = \x -> filter notInstallDirOpt $ nixStyleOptions clientInstallOptions x
+    , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
+    }
+  where
+    -- install doesn't take installDirs flags, since it always installs into the store in a fixed way.
+    notInstallDirOpt x = optionName x `notElem` installDirOptNames
+    installDirOptNames = map optionName installDirsOptions
 
 -- | The @install@ command actually serves four different needs. It installs:
 -- * exes:
@@ -1396,21 +1414,3 @@ reportBuildTargetProblems verbosity problems = reportTargetProblems verbosity "b
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
   dieWithException verbosity . SelectComponentTargetError . renderCannotPruneDependencies
-
--- | The command name and aliases for the @install@ command.
---
--- >>> commandNames
--- ["install","new-install","v2-install"]
-commandNames :: [String]
-commandNames = ["install", "new-install", commandName installCommand]
-
-isCommandName :: String -> Bool
-isCommandName name = name `elem` commandNames
-
-parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
-parseCommand =
-  Cmd.UI.parseCommand
-    examples
-    installCommand
-    installAction
-    (replaceCommandAlias (commandName installCommand))
