@@ -9,7 +9,6 @@ module Distribution.Client.CmdInstall
   , installAction
 
     -- * The @install@ CLI command spec and parser
-  , isCommandName
   , parseCommand
 
     -- * Internals exposed for testing
@@ -294,16 +293,6 @@ data InstallExe = InstallExe
   -- ^ A function to get an exe's final possibly different to the name in the
   -- store.
   }
-
--- | The command name and aliases for the @install@ command.
---
--- >>> commandNames
--- ["install","new-install","v2-install"]
-commandNames :: [String]
-commandNames = ["install", "new-install", commandName installCommand]
-
-isCommandName :: String -> Bool
-isCommandName name = name `elem` commandNames
 
 parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseCommand =

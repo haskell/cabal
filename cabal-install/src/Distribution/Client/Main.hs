@@ -396,8 +396,8 @@ mainWorker args = do
         _ -> Nothing
       where
         parserForCommand name
-          | CmdBuild.isCommandName name = Just CmdBuild.parseCommand
-          | CmdInstall.isCommandName name = Just CmdInstall.parseCommand
+          | name `elem` ["build", "new-build", commandName CmdBuild.buildCommand] = Just CmdBuild.parseCommand
+          | name `elem` ["install", "new-install", commandName CmdInstall.installCommand] = Just CmdInstall.parseCommand
           | otherwise = Nothing
 
     delegateToExternal

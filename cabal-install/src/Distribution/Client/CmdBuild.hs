@@ -9,7 +9,6 @@ module Distribution.Client.CmdBuild
   , defaultBuildFlags
 
     -- * The @build@ CLI command spec and parser
-  , isCommandName
   , parseCommand
 
     -- * Internals exposed for testing
