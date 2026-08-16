@@ -20,6 +20,7 @@ module Distribution.Client.Cmd.UI
   , cmdItemParser
   , cmdOptionParsers
   , cmdSpec
+  , parseCommand
   , helpDescriptionOrSynopsis
   , parserInfo
 
@@ -68,7 +69,8 @@ import Distribution.Client.NixStyleOptions
   )
 import Distribution.ReadE (runReadE)
 import Distribution.Simple.Command
-  ( CommandSpec (..)
+  ( CommandParse (..)
+  , CommandSpec (..)
   , CommandType (NormalCommand)
   , CommandUI (..)
   , OptDescr (..)
@@ -80,7 +82,10 @@ import Distribution.Simple.Utils (ordNub)
 
 import Options.Applicative
   ( ParserInfo
+  , ParserResult (..)
   , asum
+  , defaultPrefs
+  , execParserPure
   , flag'
   , footer
   , fullDesc
@@ -91,6 +96,7 @@ import Options.Applicative
   , long
   , metavar
   , progDesc
+  , renderFailure
   , strArgument
   , (<**>)
   )
@@ -130,6 +136,34 @@ cmdSpec command action =
         , commandDescription = (defaultMsg .) <$> commandDescription command
         , commandNotes = (defaultMsg .) <$> commandNotes command
         }
+
+parseCommand
+  :: String
+  -> [String]
+  -> Examples
+  -> [O.Parser (CmdItem a)]
+  -> CommandUI (NixStyleFlags a)
+  -> [String]
+  -> (NixStyleFlags a -> [String] -> action)
+  -> ReplaceCommandAlias
+  -> CommandParse action
+parseCommand invokedName cmdArgs examples flagParsers cmdui listOptions action replaceAlias =
+  case execParserPure defaultPrefs pInfo cmdArgs of
+    Success parsed ->
+      if parsedListOptions parsed
+        then CommandList listOptions
+        else
+          let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags cmdui)
+           in CommandReadyToGo (action flags (parsedTargets parsed))
+    Failure failure ->
+      let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
+       in if exitCode == ExitSuccess
+            then CommandHelp (helpText replaceAlias cmdui invokedName)
+            else CommandErrors [msg]
+    CompletionInvoked _ ->
+      CommandErrors ["Shell completion is not supported by this parser path."]
+  where
+    pInfo = parserInfo invokedName examples flagParsers cmdui
 
 parserInfo :: String -> Examples -> [O.Parser (CmdItem a)] -> CommandUI flags -> ParserInfo (ParsedCommand a)
 parserInfo invokedName examples flagParsers cmdui =

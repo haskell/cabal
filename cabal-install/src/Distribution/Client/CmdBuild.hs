@@ -32,14 +32,11 @@ import Distribution.Client.TargetProblem
   )
 
 import qualified Data.Map as Map
-import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text as T
 import Distribution.Client.Cmd.UI
-  ( ParsedCommand (..)
-  , cmdOptionParsers
-  , helpText
-  , parserInfo
+  ( cmdOptionParsers
   )
+import qualified Distribution.Client.Cmd.UI as Cmd.UI
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -65,12 +62,6 @@ import Distribution.Simple.Command
 import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
 import Distribution.Simple.Utils (dieWithException, wrapText)
 import Distribution.Verbosity (normal)
-import Options.Applicative
-  ( ParserResult (..)
-  , defaultPrefs
-  , execParserPure
-  , renderFailure
-  )
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand =
@@ -269,20 +260,12 @@ replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack
 
 parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseCommand invokedName cmdArgs =
-  case execParserPure defaultPrefs info cmdArgs of
-    Success parsed ->
-      if parsedListOptions parsed
-        then CommandList buildListOptions
-        else
-          let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags buildCommand)
-           in CommandReadyToGo (buildAction flags (parsedTargets parsed))
-    Failure failure ->
-      let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
-       in if exitCode == ExitSuccess
-            then CommandHelp (helpText replaceBuildAlias buildCommand invokedName)
-            else CommandErrors [msg]
-    CompletionInvoked _ ->
-      CommandErrors ["Shell completion is not supported by this parser path."]
-  where
-    info = parserInfo invokedName examples flagParsers buildCommand
-    flagParsers = cmdOptionParsers (commandOptions buildCommand ParseArgs)
+  Cmd.UI.parseCommand
+    invokedName
+    cmdArgs
+    examples
+    (cmdOptionParsers (commandOptions buildCommand ParseArgs))
+    buildCommand
+    buildListOptions
+    buildAction
+    replaceBuildAlias
