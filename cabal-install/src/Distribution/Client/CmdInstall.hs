@@ -36,11 +36,9 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Cmd.UI
-  ( ParsedCommand (..)
-  , cmdOptionParsers
-  , helpText
-  , parserInfo
+  ( cmdOptionParsers
   )
+import qualified Distribution.Client.Cmd.UI as Cmd.UI
 import Distribution.Client.Config
   ( SavedConfig (..)
   , defaultInstallPath
@@ -233,7 +231,6 @@ import Distribution.Verbosity
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
-import Data.Monoid (Endo (..), appEndo)
 import Data.Ord
   ( Down (..)
   )
@@ -244,12 +241,6 @@ import Distribution.Utils.NubList
   ( fromNubList
   )
 import Network.URI (URI)
-import Options.Applicative
-  ( ParserResult (..)
-  , defaultPrefs
-  , execParserPure
-  , renderFailure
-  )
 import System.Directory
   ( copyFile
   , createDirectoryIfMissing
@@ -1431,20 +1422,12 @@ replaceInstallAlias invokedName =
 
 parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseCommand invokedName cmdArgs =
-  case execParserPure defaultPrefs info cmdArgs of
-    Success parsed ->
-      if parsedListOptions parsed
-        then CommandList installListOptions
-        else
-          let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags installCommand)
-           in CommandReadyToGo (installAction flags (parsedTargets parsed))
-    Failure failure ->
-      let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
-       in if exitCode == ExitSuccess
-            then CommandHelp (helpText replaceInstallAlias installCommand invokedName)
-            else CommandErrors [msg]
-    CompletionInvoked _ ->
-      CommandErrors ["Shell completion is not supported by this parser path."]
-  where
-    info = parserInfo invokedName examples flagParsers installCommand
-    flagParsers = cmdOptionParsers (commandOptions installCommand ParseArgs)
+  Cmd.UI.parseCommand
+    invokedName
+    cmdArgs
+    examples
+    (cmdOptionParsers (commandOptions installCommand ParseArgs))
+    installCommand
+    installListOptions
+    installAction
+    replaceInstallAlias
