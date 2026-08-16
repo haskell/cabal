@@ -77,7 +77,7 @@ import Distribution.Simple.Command
   , CommandUI (..)
   , OptDescr (..)
   , OptionField (..)
-  , ShowOrParseArgs (ShowArgs)
+  , ShowOrParseArgs (..)
   , commandAddAction
   , commandParseArgs
   )
@@ -151,20 +151,18 @@ cmdListOptions command =
     _ -> []
 
 parseCommand
-  :: String
-  -> [String]
-  -> Examples
-  -> [O.Parser (CmdItem a)]
+  :: Examples
   -> CommandUI (NixStyleFlags a)
-  -> [String]
   -> (NixStyleFlags a -> [String] -> action)
   -> ReplaceCommandAlias
+  -> String
+  -> [String]
   -> CommandParse action
-parseCommand invokedName cmdArgs examples flagParsers cmdui listOptions action replaceAlias =
+parseCommand examples cmdui action replaceAlias invokedName cmdArgs =
   case execParserPure defaultPrefs pInfo cmdArgs of
     Success parsed ->
       if parsedListOptions parsed
-        then CommandList listOptions
+        then CommandList (cmdListOptions cmdui)
         else
           let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags cmdui)
            in CommandReadyToGo (action flags (parsedTargets parsed))
@@ -177,6 +175,7 @@ parseCommand invokedName cmdArgs examples flagParsers cmdui listOptions action r
       CommandErrors ["Shell completion is not supported by this parser path."]
   where
     pInfo = parserInfo invokedName examples flagParsers cmdui
+    flagParsers = cmdOptionParsers (commandOptions cmdui ParseArgs)
 
 parserInfo :: String -> Examples -> [O.Parser (CmdItem a)] -> CommandUI flags -> ParserInfo (ParsedCommand a)
 parserInfo invokedName examples flagParsers cmdui =

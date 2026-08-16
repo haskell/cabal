@@ -33,9 +33,7 @@ import Distribution.Client.TargetProblem
 
 import qualified Data.Map as Map
 import Distribution.Client.Cmd.UI
-  ( cmdListOptions
-  , cmdOptionParsers
-  , replaceCommandAlias
+  ( replaceCommandAlias
   )
 import qualified Distribution.Client.Cmd.UI as Cmd.UI
 import Distribution.Client.Errors
@@ -55,7 +53,6 @@ import Distribution.Client.Setup (GlobalFlags, yesNoOpt)
 import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandUI (..)
-  , ShowOrParseArgs (ParseArgs)
   , option
   , usageAlternatives
   )
@@ -250,13 +247,9 @@ isCommandName :: String -> Bool
 isCommandName name = name `elem` commandNames
 
 parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
-parseCommand invokedName cmdArgs =
+parseCommand =
   Cmd.UI.parseCommand
-    invokedName
-    cmdArgs
     examples
-    (cmdOptionParsers (commandOptions buildCommand ParseArgs))
     buildCommand
-    (cmdListOptions buildCommand)
     buildAction
     (replaceCommandAlias (commandName buildCommand))
