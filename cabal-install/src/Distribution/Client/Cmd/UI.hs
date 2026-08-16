@@ -21,6 +21,7 @@ module Distribution.Client.Cmd.UI
   , cmdOptionParsers
   , cmdSpec
   , parseCommand
+  , replaceCommandAlias
   , helpDescriptionOrSynopsis
   , parserInfo
 
@@ -120,6 +121,10 @@ data ParsedCommand a = ParsedCommand
   }
 
 type Examples = String -> String -> String
+
+replaceCommandAlias :: String -> ReplaceCommandAlias
+replaceCommandAlias commandName invokedName =
+  T.unpack . T.replace (T.pack commandName) (T.pack invokedName) . T.pack
 
 cmdSpec
   :: CommandUI flags
