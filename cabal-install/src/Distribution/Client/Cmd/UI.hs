@@ -125,13 +125,22 @@ data ParsedCommand a = ParsedCommand
 
 type Examples = String -> String -> String
 
+-- SEE: generic-sop-lens.hs
 replaceText :: String -> String -> String -> String
-replaceText old new = T.unpack . T.replace (T.pack old) (T.pack new) . T.pack
+replaceText needle replacement = go
+  where
+    go [] = []
+    go input@(char : rest)
+      | Just remainder <- stripPrefix needle input = replacement ++ go remainder
+      | otherwise = char : go rest
+
+replaceV2 :: String -> String -> String
+replaceV2 = replaceText "v2-"
 
 commandNames :: CommandUI flags -> [String]
 commandNames command =
-  [ replaceText "v2-" "" name
-  , replaceText "v2-" "new-" name
+  [ replaceV2 "" name
+  , replaceV2 "new-" name
   , name
   ]
   where
@@ -148,7 +157,7 @@ cmdSpec
 cmdSpec command action =
   [CommandSpec ui (`commandAddAction` action) NormalCommand]
   where
-    defaultMsg = replaceText "v2-" ""
+    defaultMsg = replaceV2 ""
     ui =
       command
         { commandName = defaultMsg (commandName command)
