@@ -37,6 +37,7 @@ import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Cmd.UI
   ( cmdOptionParsers
+  , replaceCommandAlias
   )
 import qualified Distribution.Client.Cmd.UI as Cmd.UI
 import Distribution.Client.Config
@@ -235,7 +236,6 @@ import Data.Ord
   ( Down (..)
   )
 import qualified Data.Set as S
-import qualified Data.Text as T
 import Distribution.Client.Errors
 import Distribution.Utils.NubList
   ( fromNubList
@@ -1416,10 +1416,6 @@ installListOptions =
     CommandList opts -> opts
     _ -> []
 
-replaceInstallAlias :: String -> String -> String
-replaceInstallAlias invokedName =
-  T.unpack . T.replace (T.pack "v2-install") (T.pack invokedName) . T.pack
-
 parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseCommand invokedName cmdArgs =
   Cmd.UI.parseCommand
@@ -1430,4 +1426,4 @@ parseCommand invokedName cmdArgs =
     installCommand
     installListOptions
     installAction
-    replaceInstallAlias
+    (replaceCommandAlias (commandName installCommand))

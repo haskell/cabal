@@ -32,9 +32,9 @@ import Distribution.Client.TargetProblem
   )
 
 import qualified Data.Map as Map
-import qualified Data.Text as T
 import Distribution.Client.Cmd.UI
   ( cmdOptionParsers
+  , replaceCommandAlias
   )
 import qualified Distribution.Client.Cmd.UI as Cmd.UI
 import Distribution.Client.Errors
@@ -255,9 +255,6 @@ buildListOptions =
     CommandList opts -> opts
     _ -> []
 
-replaceBuildAlias :: String -> String -> String
-replaceBuildAlias invokedName = T.unpack . T.replace (T.pack "v2-build") (T.pack invokedName) . T.pack
-
 parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
 parseCommand invokedName cmdArgs =
   Cmd.UI.parseCommand
@@ -268,4 +265,4 @@ parseCommand invokedName cmdArgs =
     buildCommand
     buildListOptions
     buildAction
-    replaceBuildAlias
+    (replaceCommandAlias (commandName buildCommand))
