@@ -59,29 +59,23 @@ import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
 import Distribution.Simple.Utils (dieWithException, wrapText)
 import Distribution.Verbosity (normal)
 
-buildCommand :: CommandUI (NixStyleFlags BuildFlags)
-buildCommand =
-  CommandUI
-    { commandName = "v2-build"
-    , commandSynopsis = "Compile targets within the project."
-    , commandUsage = usageAlternatives "v2-build" ["[TARGETS] [FLAGS]"]
-    , commandDescription = Just $ \_ -> wrapText description
-    , commandNotes = Just $ \pname -> examples pname "v2-build"
-    , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
-    , commandOptions =
-        removeIgnoreProjectOption
-          . nixStyleOptions
-            ( \showOrParseArgs ->
-                [ option
-                    []
-                    ["only-configure"]
-                    "Instead of performing a full build just run the configure step"
-                    buildOnlyConfigure
-                    (\v flags -> flags{buildOnlyConfigure = v})
-                    (yesNoOpt showOrParseArgs)
-                ]
-            )
-    }
+-- | The command name and aliases for the @build@ command.
+--
+-- >>> commandNames
+-- ["build","new-build","v2-build"]
+commandNames :: [String]
+commandNames = ["build", "new-build", commandName buildCommand]
+
+isCommandName :: String -> Bool
+isCommandName name = name `elem` commandNames
+
+parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
+parseCommand =
+  Cmd.UI.parseCommand
+    examples
+    buildCommand
+    buildAction
+    (replaceCommandAlias (commandName buildCommand))
 
 description :: String
 description =
@@ -111,6 +105,30 @@ examples pname invokedName =
     , "  - " <> pname <> " " <> invokedName <> " cname --enable-profiling"
     , "      Build the component in profiling mode (including dependencies as needed)"
     ]
+
+buildCommand :: CommandUI (NixStyleFlags BuildFlags)
+buildCommand =
+  CommandUI
+    { commandName = "v2-build"
+    , commandSynopsis = "Compile targets within the project."
+    , commandUsage = usageAlternatives "v2-build" ["[TARGETS] [FLAGS]"]
+    , commandDescription = Just $ \_ -> wrapText description
+    , commandNotes = Just $ \pname -> examples pname "v2-build"
+    , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
+    , commandOptions =
+        removeIgnoreProjectOption
+          . nixStyleOptions
+            ( \showOrParseArgs ->
+                [ option
+                    []
+                    ["only-configure"]
+                    "Instead of performing a full build just run the configure step"
+                    buildOnlyConfigure
+                    (\v flags -> flags{buildOnlyConfigure = v})
+                    (yesNoOpt showOrParseArgs)
+                ]
+            )
+    }
 
 data BuildFlags = BuildFlags
   { buildOnlyConfigure :: Flag Bool
@@ -234,21 +252,3 @@ reportBuildTargetProblems verbosity problems =
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
   dieWithException verbosity . ReportCannotPruneDependencies . renderCannotPruneDependencies
-
--- | The command name and aliases for the @build@ command.
---
--- >>> commandNames
--- ["build","new-build","v2-build"]
-commandNames :: [String]
-commandNames = ["build", "new-build", commandName buildCommand]
-
-isCommandName :: String -> Bool
-isCommandName name = name `elem` commandNames
-
-parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
-parseCommand =
-  Cmd.UI.parseCommand
-    examples
-    buildCommand
-    buildAction
-    (replaceCommandAlias (commandName buildCommand))
