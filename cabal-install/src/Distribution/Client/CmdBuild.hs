@@ -40,6 +40,7 @@ import Distribution.Client.Cmd.UI
   , helpText
   , parserInfo
   )
+import qualified Distribution.Client.Cmd.UI as UI
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -57,10 +58,8 @@ import Distribution.Client.Setup (GlobalFlags, yesNoOpt)
 import Distribution.Simple.Command
   ( CommandParse (..)
   , CommandSpec (..)
-  , CommandType (..)
   , CommandUI (..)
   , ShowOrParseArgs (ParseArgs)
-  , commandAddAction
   , commandParseArgs
   , option
   , usageAlternatives
@@ -76,18 +75,7 @@ import Options.Applicative
   )
 
 cmdSpec :: [CommandSpec (GlobalFlags -> IO ())]
-cmdSpec = [CommandSpec ui (`commandAddAction` buildAction) NormalCommand]
-  where
-    defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
-    CommandUI{..} = buildCommand
-
-    ui =
-      buildCommand
-        { commandName = defaultMsg commandName
-        , commandUsage = defaultMsg . commandUsage
-        , commandDescription = (defaultMsg .) <$> commandDescription
-        , commandNotes = (defaultMsg .) <$> commandNotes
-        }
+cmdSpec = UI.cmdSpec buildCommand buildAction
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand =
