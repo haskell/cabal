@@ -137,9 +137,12 @@ replaceText needle replacement = go
 replaceV2 :: String -> String -> String
 replaceV2 = replaceText "v2-"
 
+stripVersionPrefix :: String -> String
+stripVersionPrefix = replaceV2 ""
+
 commandNames :: CommandUI flags -> [String]
 commandNames command =
-  [ replaceV2 "" name
+  [ stripVersionPrefix name
   , replaceV2 "new-" name
   , name
   ]
@@ -157,13 +160,12 @@ cmdSpec
 cmdSpec command action =
   [CommandSpec ui (`commandAddAction` action) NormalCommand]
   where
-    defaultMsg = replaceV2 ""
     ui =
       command
-        { commandName = defaultMsg (commandName command)
-        , commandUsage = defaultMsg . commandUsage command
-        , commandDescription = (defaultMsg .) <$> commandDescription command
-        , commandNotes = (defaultMsg .) <$> commandNotes command
+        { commandName = stripVersionPrefix (commandName command)
+        , commandUsage = stripVersionPrefix . commandUsage command
+        , commandDescription = (stripVersionPrefix .) <$> commandDescription command
+        , commandNotes = (stripVersionPrefix .) <$> commandNotes command
         }
 
 cmdListOptions :: CommandUI flags -> [String]
