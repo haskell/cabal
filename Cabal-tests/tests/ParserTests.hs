@@ -480,7 +480,7 @@ splitFieldLinesTest :: TestTree
 splitFieldLinesTest = testCase "splitFieldLines" $ do
   let input =
         FieldLine (Position 2 3) "  base > 4.8\n, megaparsec > 5\n,  containers > 0.6"
-  let output = splitFieldLines zeroPos input
+  let output = splitFieldLines input
   assertEqDiff "output is correct" output
         [ FieldLine (Position 2 3) "  base > 4.8"
         , FieldLine (Position 3 3) ", megaparsec > 5"
@@ -757,29 +757,19 @@ readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
 commentTest :: FilePath -> TestTree
 commentTest fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input
-  let res = Bi.first (fst . extractComments) <$> readFieldsConcrete' contents
+  let res = readFieldsConcrete' contents
 
   case res of
     Left perr -> fail $ formatError contents perr
-    Right (cmts, warns) -> do
+    Right (ok, warns) -> do
       unless (null warns) (fail $ unlines (map show warns))
-      pure cmts
+      pure (foldMap extractComments ok)
 
   where
     input = "tests" </> "ParserTests" </> "comments" </> fname
     exprFile = replaceExtension input "expr"
 #endif
 
-#ifdef MIN_VERSION_tree_diff
--- Extract comments to reduce the golden file's size and make it easier to verify.
-extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
-extractComments = Bi.first mconcat . unzip . map extractCommentsStep
-#endif
-
-#ifdef MIN_VERSION_tree_diff
-extractCommentsStep :: (Foldable f, Functor f) => f (WithComments ann) -> ([Comment ann], f ann)
-extractCommentsStep f = (foldMap justComments f, fmap unComments f)
-#endif
 -------------------------------------------------------------------------------
 -- Errors
 -------------------------------------------------------------------------------
