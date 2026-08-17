@@ -11,7 +11,10 @@ module Distribution.Fields.Transform where
 
 import qualified Text.Parsec as P
 
-import Distribution.FieldGrammar.Parsec (joinFieldLines, splitFieldLines)
+import Distribution.FieldGrammar.Parsec
+  ( joinFieldLines, splitFieldLines, extractComments, removeComments
+  , interleaveComments
+  )
 import Distribution.Fields.Field
 import Distribution.Parsec.Position
 import Distribution.Pretty
@@ -57,8 +60,6 @@ data ModifyConfig = ModifyFirst | ModifyLast
 -- TODO(leana8959): do we need to provide all fields in the predicate
 type MatchField ann = Name ann -> [FieldLine ann] -> Bool
 type MatchSection ann = Name ann -> [SectionArg ann] -> [Field ann] -> Bool
-
--- TODO(leana8959): add a state for position
 
 data EditResult a
   = EditOk a
@@ -155,6 +156,8 @@ offsetFieldRow n = \case
     incrementRowN :: L.HasPosition ann => ann -> ann
     incrementRowN = L.over L.positionRow (+n)
 
+-- TODO(leana8959): rewrite this by simply asking the user to provide some comments and we put it at a fixed position.
+-- The fact that WithComments holds comments with positions makes it very hard to reason with.
 addField
   :: AddConfig
   -> Name (WithComments ())
@@ -309,13 +312,16 @@ modifyValueAtomAla
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
   -> ([FieldLine (WithComments Position)] -> [FieldLine (WithComments Position)])
-modifyValueAtomAla transformA fls = case joinFieldLines <$> NE.nonEmpty fls of
-  -- no original data
-  Nothing -> fls
-  Just (FieldLine ann0 bs0) ->
-    let bs = modifyValueAtomBSAla @b @a transformA bs0
-        fls' = splitFieldLines (WithComments [] zeroPos) (FieldLine ann0 bs)
-     in fls'
+modifyValueAtomAla transformA fls0 =
+  let comments = foldMap extractComments fls0
+      fls = fmap removeComments fls0
+  in  case joinFieldLines <$> NE.nonEmpty fls of
+        -- no original data
+        Nothing -> fls0
+        Just (FieldLine ann0 bs0) ->
+          let bs = modifyValueAtomBSAla @b @a transformA bs0
+              fls' = interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
+           in fls'
 
 -- | The position is (1, 1)-indexed. The second element of the pair starts at the position.
 splitBSAtPosition :: Position -> BS.ByteString -> (BS.ByteString, BS.ByteString)
@@ -389,13 +395,16 @@ modifyValueList
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
   -> ([FieldLine (WithComments Position)] -> [FieldLine (WithComments Position)])
-modifyValueList transformA fls = case joinFieldLines <$> NE.nonEmpty fls of
-  -- no original data
-  Nothing -> fls
-  Just (FieldLine ann0 bs0) ->
-    let bs = modifyValueListBS @sep @b @a transformA bs0
-        fls' = splitFieldLines (WithComments [] zeroPos) (FieldLine ann0 bs)
-     in fls'
+modifyValueList transformA fls0 =
+  let comments = foldMap extractComments fls0
+      fls = fmap removeComments fls0
+  in  case joinFieldLines <$> NE.nonEmpty fls of
+    -- no original data
+    Nothing -> fls0
+    Just (FieldLine ann0 bs0) ->
+      let bs = modifyValueListBS @sep @b @a transformA bs0
+          fls' = interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
+       in fls'
 
 prependValueListBS
   :: forall (sep :: Type) (b :: Type) (a :: Type)

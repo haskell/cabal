@@ -68,6 +68,9 @@ module Distribution.FieldGrammar.Parsec
   , freeTextIgnoreDotlineVers
   , joinFieldLines
   , splitFieldLines
+  , extractComments
+  , removeComments
+  , interleaveComments
   ) where
 
 
@@ -76,7 +79,6 @@ import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
 import Prelude ()
 
-import Data.Function
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Foldable1
@@ -507,9 +509,26 @@ fieldLinesToStream [] = fieldLineStreamEnd
 fieldLinesToStream [FieldLine _ bs] = FLSLast bs
 fieldLinesToStream (FieldLine _ bs : fs) = FLSCons bs (fieldLinesToStream fs)
 
+-- | Take all comments out from a structure
+extractComments :: Foldable t => t (WithComments ann) -> [Comment ann]
+extractComments = foldMap justComments
+
+-- | Remove all comments from a structure
+removeComments :: Functor f => f (WithComments ann) -> f ann
+removeComments = fmap unComments
+
+-- | Biased to put comments as trailing.
+--   Precondition: both list are sorted by 'Position' (asc).
+interleaveComments :: [FieldLine Position] -> [Comment Position] -> [FieldLine (WithComments Position)]
+interleaveComments [] _ = [] -- We have nothing to attach the comment to, considered it deleted.
+interleaveComments [FieldLine pos bs] cmts = [FieldLine (WithComments cmts pos) bs]
+interleaveComments (FieldLine pos bs : fls) cmts =
+  let (pre, post) = span (\(Comment _ cpos) -> pos < cpos) cmts
+  in  FieldLine (WithComments pre pos) bs : interleaveComments fls post
+
 -- TODO(leana8959): this will lose all the comments
 -- TODO(leana8959): should we add a trailing newline
-joinFieldLines :: L.HasPosition ann => NonEmpty (FieldLine ann) -> FieldLine ann
+joinFieldLines :: NonEmpty (FieldLine Position) -> FieldLine Position
 -- No indentation needed
 joinFieldLines (FieldLine ann bs :| []) = FieldLine ann bs
 -- Fixup missing whitespaces, then join
@@ -538,12 +557,12 @@ toBSWithNewlines row0 = mconcat . mealy go row0
 
 -- | Lines the inner 'ByteString', remove empty lines, distributing start colomn numbers and enumerate row numbers.
 --   We assume that the joined field lines have been aligned to the same column.
-splitFieldLines :: (L.HasPosition ann) => ann -> FieldLine ann -> [FieldLine ann]
-splitFieldLines emptyAnn (FieldLine ann bs0) =
+splitFieldLines :: FieldLine Position -> [FieldLine Position]
+splitFieldLines (FieldLine ann bs0) =
   let ls = BS8.lines bs0
       Position startRow startCol = L.view L.position ann
       rowNs = [startRow..]
   in
       zipWith
-        ( \ bs row -> FieldLine (emptyAnn & L.set L.position ( Position row startCol )) bs
+        ( \ bs row -> FieldLine (Position row startCol) bs
         ) ls rowNs
