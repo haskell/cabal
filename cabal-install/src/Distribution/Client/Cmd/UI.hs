@@ -15,6 +15,7 @@ module Distribution.Client.Cmd.UI
 
     -- * Command data types
   , Examples
+  , ReplaceCommandAlias
   , CmdItem (..)
   , ParsedCommand (..)
   , parsedCommandParser
@@ -124,12 +125,20 @@ data ParsedCommand a = ParsedCommand
   , parsedListOptions :: Bool
   }
 
+-- | Examples text for a command, given the program name and command name.
 type Examples
   = String -- ^ program name
   -> String -- ^ command name
   -> String -- ^ examples text
 
-type ReplaceCommandAlias = String -> String -> String
+-- | Replacements for v2- prefixed commands, such as;
+--
+-- * v2-build -> new-build or
+-- * v2-build -> build.
+type ReplaceCommandAlias
+  = String -- ^ the new prefix
+  -> String -- ^ the command
+  -> String -- ^ the command name with the prefix replaced
 
 -- SEE: generic-sop-lens.hs
 replaceText :: String -> String -> String -> String
