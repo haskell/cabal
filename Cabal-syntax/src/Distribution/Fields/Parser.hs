@@ -20,10 +20,10 @@ module Distribution.Fields.Parser
     -- $grammar
   , readFields
   , readFields'
-  , readFieldsWithComments
-  , readFieldsWithComments'
-#ifdef CABAL_PARSEC_DEBUG
+  , readFieldsConcrete
+  , readFieldsConcrete'
 
+#ifdef CABAL_PARSEC_DEBUG
     -- * Internal
   , parseFile
   , parseStr
@@ -480,17 +480,22 @@ fieldInlineOrBraces name colonPos =
 -- >>> readFields' "\xc2\xa0 foo: bar"
 -- Right ([Field (Name (Position 1 3) "foo") [FieldLine (Position 1 8) "bar"]],[LexWarning LexWarningNBSP (Position 1 1)])
 readFields :: B8.ByteString -> Either ParseError [Field Position]
-readFields = (fmap . map . fmap) unComments . readFieldsWithComments
+readFields = (fmap . map) (normalizeFieldName . fmap unComments) . readFieldsConcrete
 
 -- | Like 'readFields' but also return lexer warnings.
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
-readFields' = (fmap . Bi.first . map . fmap) unComments . readFieldsWithComments'
+readFields' = (fmap . Bi.first . map) (normalizeFieldName . fmap unComments) . readFieldsConcrete'
 
-readFieldsWithComments :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
-readFieldsWithComments = fmap fst . readFieldsWithComments'
+normalizeFieldName :: Field ann -> Field ann
+normalizeFieldName (Field colonPos fname fls) = Field colonPos (toLowerCase fname) fls
+normalizeFieldName (Section sname sargs fs) = Section (toLowerCase sname) sargs (map normalizeFieldName fs)
 
-readFieldsWithComments' :: B8.ByteString -> Either ParseError ([Field (WithComments Position)], [LexWarning])
-readFieldsWithComments' s = do
+-- Read fields with the original casing and comments ("concrete syntax"), useful for exactprint or formatting.
+readFieldsConcrete :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
+readFieldsConcrete = fmap fst . readFieldsConcrete'
+
+readFieldsConcrete' :: B8.ByteString -> Either ParseError ([Field (WithComments Position)], [LexWarning])
+readFieldsConcrete' s = do
   parse parser "the input" lexSt
   where
     parser = do

@@ -28,6 +28,7 @@ module Distribution.Fields.Field
   , mkName
   , getName
   , nameAnn
+  , toLowerCase
 
     -- * Conversions to String
   , sectionArgsToString
@@ -36,9 +37,7 @@ module Distribution.Fields.Field
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
-import qualified Data.Char as Char
 import Distribution.Compat.Prelude
-import Distribution.Parsec.Position.Lens (HasPosition (..))
 import Distribution.Pretty (showTokenStr)
 import Distribution.Utils.Generic (fromUTF8BS)
 import Prelude ()
@@ -133,10 +132,11 @@ sectionArgAnn (SecArgOther ann _) = ann
 type FieldName = ByteString
 
 -- | A field name.
---
--- /Invariant/: 'ByteString' is lower-case ASCII.
 data Name ann = Name !ann !FieldName
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+toLowerCase :: Name ann -> Name ann
+toLowerCase (Name ann fname) = Name ann (B.map toLower fname)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Name ann)
