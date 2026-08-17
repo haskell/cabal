@@ -21,6 +21,7 @@
         "hackage.haskell.org"]
     [
       Field
+        (Position 7 6)
         (Name
           WithComments {
             justComments = [],
@@ -45,6 +46,7 @@
               unComments = Position 7 8}
             "http://hackage.haskell.org/"]],
   Field
+    (Position 13 18)
     (Name
       WithComments {
         justComments = [],
@@ -63,6 +65,7 @@
           unComments = Position 13 20}
         "/home/foo/.cache/cabal/packages"],
   Field
+    (Position 16 14)
     (Name
       WithComments {
         justComments = [],
@@ -78,6 +81,7 @@
           unComments = Position 16 16}
         "/home/foo/.cache/cabal/logs/build.log"],
   Field
+    (Position 18 23)
     (Name
       WithComments {
         justComments = [],
@@ -96,6 +100,7 @@
           unComments = Position 18 25}
         "none"],
   Field
+    (Position 21 5)
     (Name
       WithComments {
         justComments = [],
@@ -114,6 +119,7 @@
           unComments = Position 21 7}
         "$ncpus"],
   Field
+    (Position 24 11)
     (Name
       WithComments {
         justComments = [],
