@@ -883,9 +883,6 @@ sectionizeFields fs = case classifyFields fs of
     convert :: [(Name ann, [FieldLine ann])] -> [Field ann]
     convert fields =
       let
-        -- TODO(leana8959): this is a hack
-        -- Eventually we want to separate a cased-name preserving, colon position preserving Field ann, and another one that is not.
-        -- This will guarantee compatibility.
         toField (name, ls) = Field zeroPos name ls
         -- "build-depends" is a local field now.  To be backwards
         -- compatible, we still allow it as a global field in old-style
