@@ -149,16 +149,21 @@ replaceText needle replacement = go
       | Just remainder <- stripPrefix needle input = replacement ++ go remainder
       | otherwise = char : go rest
 
-replaceV2 :: String -> String -> String
-replaceV2 = replaceText "v2-"
+-- | Puts a prefix before a bare command name.
+affixVersionPrefix :: String -> String -> String
+affixVersionPrefix = replaceText "v2-"
 
+-- | Removes the v2- prefix from a command name, leaving the bare command name.
 stripVersionPrefix :: String -> String
-stripVersionPrefix = replaceV2 ""
+stripVersionPrefix = affixVersionPrefix ""
 
+-- | Assuming a v2- prefix for a command name, for the 'commandName' of the
+-- given command, makes a list that includes the bare name, the new- prefixed
+-- name, and the v2- prefixed name.
 commandNames :: CommandUI flags -> [String]
 commandNames command =
   [ stripVersionPrefix name
-  , replaceV2 "new-" name
+  , affixVersionPrefix "new-" name
   , name
   ]
   where
