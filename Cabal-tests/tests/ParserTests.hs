@@ -75,7 +75,7 @@ import qualified Distribution.Compat.NonEmptySet as NES
 import Distribution.Parsec.Position
 import Distribution.Annotation
 import Data.Kind
-import Distribution.Compat.Newtype
+import Data.Coerce
 import Distribution.Parsec
 import Distribution.Pretty
 import Language.Haskell.Extension
@@ -229,7 +229,7 @@ mkEditFieldPrintedTest name fname edit = ediffGolden goldenTest name exprFile $ 
 
   case editResult of
     EditOk ok -> pure $ toExpr (runRenderFields ok)
-    EditUnchanged u -> pure (toExpr "unchanged")
+    EditUnchanged u -> pure (toExpr @String "unchanged")
     EditErr err -> pure (toExpr err)
 
   where
@@ -252,7 +252,7 @@ modifyValueAtomBSAlaTest = testGroup "modifyValueAtomBSAla"
 
 mkModifyValueAtomAlaBSTest
   :: forall (b :: Type) (a :: Type)
-   . (Newtype a b, Parsec b, Pretty b)
+   . (Coercible a b, Parsec b, Pretty b)
   => String
   -> BS.ByteString
   -> (a -> Maybe a)
@@ -400,7 +400,7 @@ modifyValueListBSTest = testGroup "modifyValueListBS"
 
 mkModifyValueListTest
   :: forall (sep :: Type) (b :: Type) (a :: Type)
-   . ( Newtype a b
+   . ( Coercible a b
      , Sep sep
      , Pretty b
      , Parsec b
@@ -449,7 +449,7 @@ prependValueListBSTest = testGroup "prependValueListBS"
 
 mkPrependValueListBSTest
   :: forall (sep :: Type) (b :: Type) (a :: Type)
-   . ( Newtype a b
+   . ( Coercible a b
      , Sep sep
      , Pretty b
      , Parsec b
