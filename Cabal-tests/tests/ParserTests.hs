@@ -19,7 +19,7 @@ import Control.Monad                               (void, unless)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
-import Distribution.Fields.Parser                  (readFieldsWithComments', formatError)
+import Distribution.Fields.Parser                  (readFieldsConcrete', formatError)
 import Distribution.PackageDescription
   ( GenericPackageDescription
   , packageDescription
@@ -32,10 +32,7 @@ import Distribution.PackageDescription
   , condTestSuites
   , condBenchmarks
   )
-import Distribution.PackageDescription.Parsec
-  ( parseGenericPackageDescription
-  , parseCommentedGenericPackageDescription
-  )
+import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
@@ -188,7 +185,7 @@ editFieldGoldenTests = testGroup "edit-golden"
 mkEditFieldGoldenTest :: String -> FilePath -> Edit [Field (WithComments Position)] -> TestTree
 mkEditFieldGoldenTest name fname edit = ediffGolden goldenTest name exprFile $ do
   contents <- BS.readFile input
-  let res = readFieldsWithComments' contents
+  let res = readFieldsConcrete' contents
 
   case res of
     Left perr -> fail $ formatError contents perr
@@ -216,7 +213,7 @@ editFieldPrintedTests = testGroup "edit-printed"
 mkEditFieldPrintedTest :: String -> FilePath -> Edit [Field (WithComments Position)] -> TestTree
 mkEditFieldPrintedTest name fname edit = ediffGolden goldenTest name exprFile $ do
   contents <- BS.readFile input
-  let res = readFieldsWithComments' contents
+  let res = readFieldsConcrete' contents
 
   editResult <- case res of
     Left perr -> fail $ formatError contents perr
@@ -672,7 +669,7 @@ exactPrettyFieldTests =
 exactPrettyFieldTest :: FilePath -> TestTree
 exactPrettyFieldTest input = testCase "exact-pretty" $ do
   contents <- patchUpCasesWeDon'tHandle <$> BS.readFile input
-  let res = readFieldsWithComments' contents
+  let res = readFieldsConcrete' contents
 
   fs <- case res of
     Left perr -> fail $ formatError contents perr
@@ -741,7 +738,7 @@ commentTests = testGroup "comments"
 readFieldTest :: FilePath -> TestTree
 readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input
-  let res = readFieldsWithComments' contents
+  let res = readFieldsConcrete' contents
 
   case res of
     Left perr -> fail $ formatError contents perr
@@ -759,7 +756,7 @@ readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
 commentTest :: FilePath -> TestTree
 commentTest fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input
-  let res = Bi.first (fst . extractComments) <$> readFieldsWithComments' contents
+  let res = Bi.first (fst . extractComments) <$> readFieldsConcrete' contents
 
   case res of
     Left perr -> fail $ formatError contents perr
