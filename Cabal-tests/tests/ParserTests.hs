@@ -770,6 +770,7 @@ commentTest fname = ediffGolden goldenTest fname exprFile $ do
   where
     input = "tests" </> "ParserTests" </> "comments" </> fname
     exprFile = replaceExtension input "expr"
+#endif
 
 #ifdef MIN_VERSION_tree_diff
 -- Extract comments to reduce the golden file's size and make it easier to verify.
