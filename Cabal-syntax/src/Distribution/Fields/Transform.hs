@@ -19,6 +19,7 @@ import Distribution.Pretty
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe
 import GHC.Generics
+import Data.Coerce
 import Control.Monad
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -27,13 +28,13 @@ import Data.Kind
 import qualified Data.List.NonEmpty as NE
 import Data.Proxy
 import Distribution.Annotation
-import Distribution.Compat.Newtype
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
 
 import Debug.Trace
 import qualified Distribution.Parsec.Position.Lens as L
+import qualified Distribution.Fields.Field.Lens as L
 import qualified Distribution.Compat.Lens as L
 
 -- TODO(leana8959): possible failures:
@@ -284,13 +285,13 @@ newtype Edit a = Edit { runEdit :: a -> EditResult a }
 -- currently we do nothing.
 modifyValueAtomBSAla
   :: forall (b :: Type) (a :: Type)
-   . (Newtype a b, Parsec b, Pretty b)
+   . (Coercible a b, Parsec b, Pretty b)
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
   -> (BS.ByteString -> BS.ByteString)
 modifyValueAtomBSAla transformA bs0 =
   let parsed =
-        (unpack @a @b)
+        (coerce @b @a)
           . fromRight (error "modifyValueAtomAla failed to parse")
           . runParsecParser (parsec @b) "<modifyValueAtomAla>"
           . fieldLineStreamFromBS
@@ -298,13 +299,13 @@ modifyValueAtomBSAla transformA bs0 =
 
       transformed = transformA parsed
 
-      bs = maybe bs0 (BS8.pack . show . pretty @b . pack @a @b) transformed
+      bs = maybe bs0 (BS8.pack . show . pretty @b . coerce @a @b) transformed
    in bs
 
 -- | Build a @[FieldLine Position]@ modification function given a function @a -> a@, parsed as @b@.
 modifyValueAtomAla
   :: forall (b :: Type) (a :: Type)
-   . (Newtype a b, Parsec b, Pretty b)
+   . (Coercible a b, Parsec b, Pretty b)
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
   -> ([FieldLine (WithComments Position)] -> [FieldLine (WithComments Position)])
@@ -341,7 +342,7 @@ appendNewLines (SrcSpan begin end) =
 -- | Primitive function that edits the joined ByteString of a Field
 modifyValueListBS
   :: forall (sep :: Type) (b :: Type) (a :: Type)
-   . ( Newtype a b
+   . ( Coercible a b
      , Pretty b
      , Parsec (List sep (Located b) (Located a))
      )
@@ -350,7 +351,7 @@ modifyValueListBS
   -> (BS.ByteString -> BS.ByteString)
 modifyValueListBS transformA bs0 =
   let parsed =
-        unpack @[Located a] @_
+        coerce @_ @[Located a]
           . fromRight (error "modifyValueList failed to parse")
           -- NOTE(leana8959): Eh, the parser doesn't like leading spaces.
           . runParsecParser (liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))) "<modifyValueList>"
@@ -364,7 +365,7 @@ modifyValueListBS transformA bs0 =
       editsWithinList =
         sortBySrcSpanDes transformed >>= \case
           MkLocated _ Nothing -> []
-          MkLocated spn (Just newItem) -> [(spn, BS8.pack $ show $ pretty @b $ pack @a @b newItem)]
+          MkLocated spn (Just newItem) -> [(spn, BS8.pack $ show $ pretty @b $ coerce @a @b newItem)]
 
       -- TODO(leana8959): think about performance later. Rope?
       performEditsWithinList = foldl' go
@@ -381,7 +382,7 @@ modifyValueListBS transformA bs0 =
 -- | Build a @[FieldLine Position]@ modification function given a function @a -> Maybe a@, parsed as @List sep b a@.
 modifyValueList
   :: forall (sep :: Type) (b :: Type) (a :: Type)
-   . ( Newtype a b
+   . ( Coercible a b
      , Pretty b
      , Parsec (List sep (Located b) (Located a))
      )
@@ -398,7 +399,7 @@ modifyValueList transformA fls = case joinFieldLines <$> NE.nonEmpty fls of
 
 prependValueListBS
   :: forall (sep :: Type) (b :: Type) (a :: Type)
-   . ( Newtype a b
+   . ( Coercible a b
      , Sep sep
      , Pretty b
      , Parsec (List sep (Located b) (Located a))
@@ -408,7 +409,7 @@ prependValueListBS
   -> (BS.ByteString -> BS.ByteString)
 prependValueListBS newItem bs0 =
   let parsed =
-        unpack @[Located a] @_
+        coerce @_ @[Located a]
           . fromRight (error "modifyValueList failed to parse")
           -- NOTE(leana8959): Eh, the parser doesn't like leading spaces.
           . runParsecParser (liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))) "<modifyValueList>"
@@ -416,7 +417,7 @@ prependValueListBS newItem bs0 =
           . fieldLineStreamFromBS
           $ bs0
 
-      newItemBS = BS8.pack $ show $ pretty @b $ pack @a @b newItem
+      newItemBS = BS8.pack $ show $ pretty @b $ coerce @a @b newItem
 
       printed = case parsed of
         [] -> newItemBS
