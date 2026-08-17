@@ -126,19 +126,30 @@ data ParsedCommand a = ParsedCommand
   }
 
 -- | Examples text for a command, given the program name and command name.
-type Examples
-  = String -- ^ program name
-  -> String -- ^ command name
-  -> String -- ^ examples text
+type Examples =
+  String
+  -- ^ program name
+  -> String
+  -- ^ command name
+  -> String
+  -- ^ examples text
 
 -- | Replacements for v2- prefixed commands, such as;
 --
 -- * v2-build -> new-build or
 -- * v2-build -> build.
-type ReplaceCommandAlias
-  = String -- ^ the new prefix
-  -> String -- ^ the command
-  -> String -- ^ the command name with the prefix replaced
+type ReplaceCommandAlias =
+  String
+  -- ^ the new prefix
+  -> String
+  -- ^ the command
+  -> String
+  -- ^ the command name with the prefix replaced
+
+-- | Given a v2- prefixed command name, returns a function for replacing that
+-- prefix with a new prefix.
+replaceCommandAlias :: String -> ReplaceCommandAlias
+replaceCommandAlias = replaceText
 
 -- SEE: generic-sop-lens.hs
 replaceText :: String -> String -> String -> String
@@ -168,9 +179,6 @@ commandNames command =
   ]
   where
     name = commandName command
-
-replaceCommandAlias :: String -> ReplaceCommandAlias
-replaceCommandAlias = replaceText
 
 cmdSpec
   :: CommandUI flags
