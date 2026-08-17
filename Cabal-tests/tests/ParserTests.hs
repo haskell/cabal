@@ -170,13 +170,14 @@ editFieldGoldenTests = testGroup "edit-golden"
                 _ -> Nothing
             )
 
+  -- The example doesn't have the field "depends" but "build-depends" to demonstrate what would happen if the matcher doesn't match anything.
   , mkEditFieldGoldenTest "remove-field-unchanged" "simple.cabal" $
       modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) id $
-        removeField RemoveAll (\fname _ -> getName fname == "meow-meow")
+        removeField RemoveAll (\fname _ -> getName fname == "depends")
 
   , mkEditFieldGoldenTest "remove-field-alternative" "simple.cabal" $
      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) id
-      ( removeField RemoveAll (\fname _ -> getName fname == "meow-meow")
+      ( removeField RemoveAll (\fname _ -> getName fname == "depends")
         `orFallback`
         removeField RemoveAll (\fname _ -> getName fname == "build-depends")
       )
