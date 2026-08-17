@@ -45,21 +45,17 @@ import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>), dropExtension, addExtension)
 import Distribution.Parsec.Source
-
 import Data.Function ((&))
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
 import Data.List.NonEmpty (NonEmpty (..))
-
 import qualified Distribution.InstalledPackageInfo as IPI
-
 #ifdef MIN_VERSION_tree_diff
 import Data.TreeDiff                 (ansiWlEditExpr, ediff, toExpr, ToExpr)
 import Data.TreeDiff.Golden          (ediffGolden)
 import Data.TreeDiff.Instances.Cabal ()
 #endif
-
 import Distribution.FieldGrammar.Parsec
 import Data.Functor.Identity
 import Distribution.FieldGrammar.Newtypes
@@ -83,12 +79,11 @@ import Distribution.Pretty
 import Language.Haskell.Extension
 import qualified Text.PrettyPrint as PP
 import Debug.Trace
-
 import Distribution.Fields.ExactPretty
-
 import qualified Data.Text.Lazy.IO as TIO
 import Text.Pretty.Simple
 import System.IO (hPutStr, stderr, stdout)
+import qualified Data.Bifunctor        as Bi
 
 tests :: TestTree
 tests = testGroup "parsec tests"
@@ -120,7 +115,6 @@ warningTests = testGroup "warnings triggered"
     , warningTest PWTLexNBSP           "nbsp.cabal"
     , warningTest PWTLexTab            "tab.cabal"
     , warningTest PWTUTF               "utf8.cabal"
-    , warningTest PWTBoolCase          "bool.cabal"
     , warningTest PWTVersionTag        "versiontag.cabal"
     , warningTest PWTNewSyntax         "newsyntax.cabal"
     , warningTest PWTOldSyntax         "oldsyntax.cabal"
@@ -723,13 +717,11 @@ exactPrettyFieldTest input = testCase "exact-pretty" $ do
 -- comment
 -------------------------------------------------------------------------------
 
-
-#ifdef MIN_VERSION_tree_diff
 -- Verify that comments are parsed correctly
 commentTests :: TestTree
 commentTests = testGroup "comments"
     [
-    -- Imported from hackage integration test
+#ifdef MIN_VERSION_tree_diff
       readFieldTest "layout-complex-indented-comments.cabal"
     , readFieldTest "layout-comment-in-fieldline.cabal" -- aligned leading comma after comment
 
@@ -741,8 +733,10 @@ commentTests = testGroup "comments"
     , commentTest "layout-fieldline-is-flag.cabal"
 
     , commentTest "hasktorch.cabal" -- Imported from regression test, has a lot of comments
+#endif
     ]
 
+#ifdef MIN_VERSION_tree_diff
 -- Use this test to bypass the more sophisticated checks of whether a cabal file is valid
 readFieldTest :: FilePath -> TestTree
 readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
@@ -758,27 +752,35 @@ readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
   where
     input = "tests" </> "ParserTests" </> "comments" </> fname
     exprFile = replaceExtension input "expr"
+#endif
 
+#ifdef MIN_VERSION_tree_diff
+-- | Assert the comment structure of a given cabal file.
 commentTest :: FilePath -> TestTree
 commentTest fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input
-  let res = withSource (PCabalFile (input, contents)) $ parseCommentedGenericPackageDescription contents
-  let (warns, x) = runParseResult res
+  let res = Bi.first (fst . extractComments) <$> readFieldsWithComments' contents
 
-  unless (null warns) (fail $
-      unlines (map (showPWarningWithSource . fmap renderCabalFileSource) warns)
-    )
+  case res of
+    Left perr -> fail $ formatError contents perr
+    Right (cmts, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure cmts
 
-  case x of
-    Right (cmts, _) -> pure (toExpr cmts)
-    Left (v, errs) ->
-      fail $
-        unlines $ ("VERSION: " ++ show v) : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "comments" </> fname
     exprFile = replaceExtension input "expr"
+
+#ifdef MIN_VERSION_tree_diff
+-- Extract comments to reduce the golden file's size and make it easier to verify.
+extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
+extractComments = Bi.first mconcat . unzip . map extractCommentsStep
 #endif
 
+#ifdef MIN_VERSION_tree_diff
+extractCommentsStep :: (Foldable f, Functor f) => f (WithComments ann) -> ([Comment ann], f ann)
+extractCommentsStep f = (foldMap justComments f, fmap unComments f)
+#endif
 -------------------------------------------------------------------------------
 -- Errors
 -------------------------------------------------------------------------------

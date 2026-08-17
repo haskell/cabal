@@ -8,6 +8,7 @@ module Distribution.Client.ProjectConfig.FieldGrammar
   , packageConfigFieldGrammar
   ) where
 
+import Data.Bool (bool)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
@@ -21,6 +22,7 @@ import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Solver.Types.ProjectConfigPath
+import Distribution.Solver.Types.Settings (PreferVersion (..))
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
 
 projectConfigFieldGrammar :: ProjectConfigPath -> [String] -> ParsecFieldGrammar' ProjectConfig
@@ -102,7 +104,7 @@ projectConfigSharedFieldGrammar source = do
   projectConfigOnlyConstrained <- optionalFieldDef "reject-unconstrained-dependencies" L.projectConfigOnlyConstrained mempty
   projectConfigPerComponent <- optionalFieldDef "per-component" L.projectConfigPerComponent mempty
   projectConfigIndependentGoals <- optionalFieldDef "independent-goals" L.projectConfigIndependentGoals mempty
-  projectConfigPreferOldest <- optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty
+  projectConfigPreferVersion <- packageConfigPreferVersion
   projectConfigProgPathExtra <- monoidalFieldAla "extra-prog-path-shared-only" (alaNubList' FSep FilePathNT) L.projectConfigProgPathExtra
   projectConfigMultiRepl <- optionalFieldDef "multi-repl" L.projectConfigMultiRepl mempty
   pure ProjectConfigShared{..}
@@ -198,3 +200,10 @@ packageConfigCoverageGrammar =
     <$> optionalFieldDef "coverage" L.packageConfigCoverage mempty
     <*> optionalFieldDef "library-coverage" L.packageConfigCoverage mempty
       ^^^ deprecatedSince CabalSpecV1_22 "Please use 'coverage' field instead."
+
+packageConfigPreferVersion :: ParsecFieldGrammar ProjectConfigShared (Flag PreferVersion)
+packageConfigPreferVersion =
+  mappend . fmap (bool PreferInstalledOrLatest PreferOldest)
+    <$> optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty
+      ^^^ deprecatedSince CabalSpecV3_20 "Please use 'prefer-version' field instead."
+    <*> optionalFieldDef "prefer-version" L.projectConfigPreferVersion mempty

@@ -1,6 +1,6 @@
 cabal-version: 3.6
 name:          Cabal-syntax
-version:       3.17.0.0
+version:       3.19.0.0
 copyright:     2003-2026, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
@@ -86,7 +86,6 @@ library
     Distribution.Compat.Exception
     Distribution.Compat.Graph
     Distribution.Compat.Lens
-    Distribution.Compat.Newtype
     Distribution.Compat.NonEmptySet
     Distribution.Compat.Parsing
     Distribution.Compat.Prelude
@@ -100,6 +99,7 @@ library
     Distribution.Fields
     Distribution.Fields.ConfVar
     Distribution.Fields.Field
+    Distribution.Fields.Field.Lens
     Distribution.Fields.Lexer
     Distribution.Fields.LexerMonad
     Distribution.Fields.Transform

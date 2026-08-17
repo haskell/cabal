@@ -153,7 +153,6 @@ import Distribution.Client.ParseUtils
 import Distribution.Client.ReplFlags (multiReplOption)
 import Distribution.Deprecated.ParseUtils
   ( PError (..)
-  , PWarning (..)
   , ParseResult (..)
   , commaNewLineListFieldParsec
   , newLineListField
@@ -713,7 +712,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , installMinimizeConflictSet = projectConfigMinimizeConflictSet
       , installPerComponent = projectConfigPerComponent
       , installIndependentGoals = projectConfigIndependentGoals
-      , installPreferOldest = projectConfigPreferOldest
+      , installPreferVersion = projectConfigPreferVersion
       , -- installShadowPkgs         = projectConfigShadowPkgs,
       installStrongFlags = projectConfigStrongFlags
       , installAllowBootLibInstalls = projectConfigAllowBootLibInstalls
@@ -999,7 +998,7 @@ convertToLegacySharedConfig
           , installFineGrainedConflicts = projectConfigFineGrainedConflicts
           , installMinimizeConflictSet = projectConfigMinimizeConflictSet
           , installIndependentGoals = projectConfigIndependentGoals
-          , installPreferOldest = projectConfigPreferOldest
+          , installPreferVersion = projectConfigPreferVersion
           , installShadowPkgs = mempty -- projectConfigShadowPkgs,
           , installStrongFlags = projectConfigStrongFlags
           , installAllowBootLibInstalls = projectConfigAllowBootLibInstalls
@@ -1465,6 +1464,7 @@ legacySharedConfigFieldDescrs constraintSrc =
           , "minimize-conflict-set"
           , "independent-goals"
           , "prefer-oldest"
+          , "prefer-version"
           , "strong-flags"
           , "allow-boot-library-installs"
           , "reject-unconstrained-dependencies"
@@ -1688,10 +1688,8 @@ legacyPackageConfigFieldDescrs =
                 )
                 ( \line str _ -> case () of
                     _
-                      | str == "False" -> ParseOk [] (Flag NoDumpBuildInfo)
-                      | str == "True" -> ParseOk [] (Flag DumpBuildInfo)
-                      | lstr == "false" -> ParseOk [caseWarning name] (Flag NoDumpBuildInfo)
-                      | lstr == "true" -> ParseOk [caseWarning name] (Flag DumpBuildInfo)
+                      | lstr == "false" -> ParseOk [] (Flag NoDumpBuildInfo)
+                      | lstr == "true" -> ParseOk [] (Flag DumpBuildInfo)
                       | otherwise -> ParseFailed (NoParse name line)
                       where
                         lstr = lowercase str
@@ -1717,13 +1715,11 @@ legacyPackageConfigFieldDescrs =
                 )
                 ( \line str _ -> case () of
                     _
-                      | str == "False" -> ParseOk [] (Flag NoOptimisation)
-                      | str == "True" -> ParseOk [] (Flag NormalOptimisation)
                       | str == "0" -> ParseOk [] (Flag NoOptimisation)
                       | str == "1" -> ParseOk [] (Flag NormalOptimisation)
                       | str == "2" -> ParseOk [] (Flag MaximumOptimisation)
-                      | lstr == "false" -> ParseOk [caseWarning name] (Flag NoOptimisation)
-                      | lstr == "true" -> ParseOk [caseWarning name] (Flag NormalOptimisation)
+                      | lstr == "false" -> ParseOk [] (Flag NoOptimisation)
+                      | lstr == "true" -> ParseOk [] (Flag NormalOptimisation)
                       | otherwise -> ParseFailed (NoParse name line)
                       where
                         lstr = lowercase str
@@ -1743,22 +1739,16 @@ legacyPackageConfigFieldDescrs =
               )
               ( \line str _ -> case () of
                   _
-                    | str == "False" -> ParseOk [] (Flag NoDebugInfo)
-                    | str == "True" -> ParseOk [] (Flag NormalDebugInfo)
                     | str == "0" -> ParseOk [] (Flag NoDebugInfo)
                     | str == "1" -> ParseOk [] (Flag MinimalDebugInfo)
                     | str == "2" -> ParseOk [] (Flag NormalDebugInfo)
                     | str == "3" -> ParseOk [] (Flag MaximalDebugInfo)
-                    | lstr == "false" -> ParseOk [caseWarning name] (Flag NoDebugInfo)
-                    | lstr == "true" -> ParseOk [caseWarning name] (Flag NormalDebugInfo)
+                    | lstr == "false" -> ParseOk [] (Flag NoDebugInfo)
+                    | lstr == "true" -> ParseOk [] (Flag NormalDebugInfo)
                     | otherwise -> ParseFailed (NoParse name line)
                     where
                       lstr = lowercase str
               )
-
-    caseWarning name =
-      PWarning $
-        "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'."
 
     prefixTest name
       | "test-" `isPrefixOf` name = name
@@ -1972,7 +1962,7 @@ programDbOptions progDb showOrParseArgs get' set =
       option
         ""
         [prog ++ "-options"]
-        ("give extra options to " ++ prog)
+        ("Give extra options to " ++ prog)
         get'
         set
         ( reqArg'

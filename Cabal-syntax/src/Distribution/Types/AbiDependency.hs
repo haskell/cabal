@@ -31,11 +31,7 @@ instance Pretty AbiDependency where
     pretty uid <<>> Disp.char '=' <<>> pretty abi
 
 instance Parsec AbiDependency where
-  parsec = do
-    uid <- parsec
-    _ <- P.char '='
-    abi <- parsec
-    return (AbiDependency uid abi)
+  parsec = AbiDependency <$> parsec <* P.char '=' <*> parsec
 
 instance Binary AbiDependency
 instance Structured AbiDependency

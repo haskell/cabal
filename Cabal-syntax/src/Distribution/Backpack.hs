@@ -180,17 +180,8 @@ instance Pretty OpenModule where
 instance Parsec OpenModule where
   parsec = parsecModuleVar <|> parsecOpenModule
     where
-      parsecOpenModule = do
-        uid <- parsec
-        _ <- P.char ':'
-        mod_name <- parsec
-        return (OpenModule uid mod_name)
-
-      parsecModuleVar = do
-        _ <- P.char '<'
-        mod_name <- parsec
-        _ <- P.char '>'
-        return (OpenModuleVar mod_name)
+      parsecOpenModule = OpenModule <$> parsec <* P.char ':' <*> parsec
+      parsecModuleVar = OpenModuleVar <$ P.char '<' <*> parsec <* P.char '>'
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'Module'.
 openModuleFreeHoles :: OpenModule -> Set ModuleName

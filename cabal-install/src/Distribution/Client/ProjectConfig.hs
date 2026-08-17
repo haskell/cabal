@@ -56,7 +56,6 @@ module Distribution.Client.ProjectConfig
   , fetchAndReadSourcePackages
 
     -- * Resolving configuration
-  , lookupLocalPackageConfig
   , projectConfigWithBuilderRepoContext
   , projectConfigWithSolverRepoContext
   , SolverSettings (..)
@@ -259,28 +258,6 @@ import Distribution.Solver.Types.ProjectConfigPath
 -- Resolving configuration to settings
 --
 
--- | Look up a 'PackageConfig' field in the 'ProjectConfig' for a specific
--- 'PackageName'. This returns the configuration that applies to all local
--- packages plus any package-specific configuration for this package.
-lookupLocalPackageConfig
-  :: Monoid a
-  => (PackageConfig -> a)
-  -> ProjectConfig
-  -> PackageName
-  -> a
-lookupLocalPackageConfig
-  field
-  ProjectConfig
-    { projectConfigLocalPackages
-    , projectConfigSpecificPackage
-    }
-  pkgname =
-    field projectConfigLocalPackages
-      <> maybe
-        mempty
-        field
-        (Map.lookup pkgname (getMapMappend projectConfigSpecificPackage))
-
 -- | Use a 'RepoContext' based on the 'BuildTimeSettings'.
 projectConfigWithBuilderRepoContext
   :: Verbosity
@@ -390,7 +367,7 @@ resolveSolverSettings
       solverSettingIndexState = flagToMaybe projectConfigIndexState
       solverSettingActiveRepos = flagToMaybe projectConfigActiveRepos
       solverSettingIndependentGoals = fromFlag projectConfigIndependentGoals
-      solverSettingPreferOldest = fromFlag projectConfigPreferOldest
+      solverSettingPreferVersion = fromFlag projectConfigPreferVersion
       -- solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
       -- solverSettingReinstall         = fromFlag projectConfigReinstall
       -- solverSettingAvoidReinstalls   = fromFlag projectConfigAvoidReinstalls
@@ -413,7 +390,7 @@ resolveSolverSettings
           , projectConfigAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
           , projectConfigOnlyConstrained = Flag OnlyConstrainedNone
           , projectConfigIndependentGoals = Flag (IndependentGoals False)
-          , projectConfigPreferOldest = Flag (PreferOldest False)
+          , projectConfigPreferVersion = Flag PreferInstalledOrLatest
           -- projectConfigShadowPkgs        = Flag False,
           -- projectConfigReinstall         = Flag False,
           -- projectConfigAvoidReinstalls   = Flag False,

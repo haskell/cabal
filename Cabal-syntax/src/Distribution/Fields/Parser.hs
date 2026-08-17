@@ -35,8 +35,10 @@ module Distribution.Fields.Parser
 
 import qualified Data.ByteString.Char8 as B8
 import Data.Functor.Identity
+import qualified Distribution.Compat.Lens as L
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field
+import qualified Distribution.Fields.Field.Lens as L
 import Distribution.Fields.Lexer
 import Distribution.Fields.LexerMonad
   ( LexResult (..)
@@ -77,9 +79,6 @@ instance Stream LexState' Identity LToken where
     case tok of
       L _ EOF -> return Nothing
       _ -> return (Just (tok, st'))
-
--- | A strict either for parser performance
-data Either' a b = Left' !a | Right' !b
 
 -- | Get lexer warnings accumulated so far
 getLexerWarnings :: Parser [LexWarning]
@@ -180,9 +179,21 @@ newtype LexerMode = LexerMode Int
 -- This has the benefit of providing more exact error message by having more
 -- knowledge about what symbol should follow in the input stream.
 --
--- This lexer never switches to some of the states itself.
--- Instead, the parser inspects the token stream it got, and switches the lexer state.
--- Running the lexer on its own will not produce a correct token stream.
+-- The lexer states are as illustrated below.
+-- The lexer doesn't control the transitions between @in_section@, @in_field_layout@ and @in_field_braces@.
+-- Instead, the parser inspects the token stream it got, and switches the lexer state:
+-- these transitions are uniquely invoked with 'inLexerMode'.
+-- For this reason, running the lexer on its own will not produce a correct token stream.
+--
+-- @
+--                                                   .---> in_field_layout  <--->  bol_field_layout
+--                                                  /
+--                                                 /
+-- start (0) ---> bol_section <-->  in_section <--(
+--                                                 \
+--                                                  \
+--                                                   `---> in_field_braces  <--->  bol_field_braces
+-- @
 --
 -- The parser instructs the lexer to change state using the function 'inLexerMode'.
 -- It runs a parser with the given mode, and then switches back to in_section.
@@ -257,13 +268,11 @@ cabalStyleFile = do
   es <- elements zeroIndentLevel
   eof
   case es of
-    Left' _ -> pure [] -- We discard the comments here, because it is not a valid cabal file
-    Right' es' -> pure es'
+    Left _ -> pure [] -- We discard the comments here, because it is not a valid cabal file
+    Right es' -> pure es'
 
 -- | Collect in annotation one or more comments after a parser succeeds
--- Careful with the 'Functor' instance!
--- If you use this with Field you might attach the same comments everywhere
-commentsAfter :: Functor f => Parser (f Position) -> Parser (f (WithComments Position))
+commentsAfter :: Parser (FieldLine Position) -> Parser (FieldLine (WithComments Position))
 commentsAfter p = do
   x <- p
   postCmts <- many tokComment
@@ -281,8 +290,8 @@ prependCommentsFields cs fs = case fs of
 -- | We attach the comments to the name (foremost child) of 'Field', this hence cannot fail.
 prependCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 prependCommentsField cs f = case f of
-  (Field colonPos name fls) -> Field colonPos (mapComments (cs ++) <$> name) fls
-  (Section name args fs) -> Section (mapComments (cs ++) <$> name) args fs
+  (Field colonPos name fls) -> Field colonPos (L.over (traverse . L.justComments) (cs ++) name) fls
+  (Section name args fs) -> Section (L.over (traverse . L.justComments) (cs ++) name) args fs
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 appendCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
@@ -294,17 +303,17 @@ appendCommentsFields cs fs = case fs of
 appendCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 appendCommentsField cs f = case f of
   (Field colonPos name fls) -> case appendCommentsFieldLines cs fls of
-    Nothing -> Field colonPos (mapComments (++ cs) <$> name) []
+    Nothing -> Field colonPos (L.over (traverse . L.justComments) (++ cs) name) []
     Just fls' -> Field colonPos name fls'
   (Section name args fs) -> case appendCommentsFields cs fs of
-    Nothing -> Section (mapComments (++ cs) <$> name) args []
+    Nothing -> Section (L.over (traverse . L.justComments) (++ cs) name) args []
     Just fs' -> Section name args fs'
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 appendCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> Maybe [FieldLine (WithComments ann)]
 appendCommentsFieldLines cs fls = case fls of
   [] -> Nothing
-  [fl] -> Just [mapComments (++ cs) <$> fl]
+  [fl] -> Just [L.over (traverse . L.justComments) (++ cs) fl]
   (f : fls') -> (f :) <$> appendCommentsFieldLines cs fls'
 
 -- Elements that live at the top level or inside a section, i.e. fields
@@ -316,7 +325,7 @@ appendCommentsFieldLines cs fls = case fls of
 -- elements isn't a valid cabal file.
 --
 -- elements ::= comment* (element comment*)*
-elements :: IndentLevel -> Parser (Either' [Comment Position] [Field (WithComments Position)])
+elements :: IndentLevel -> Parser (Either [Comment Position] [Field (WithComments Position)])
 elements ilevel = do
   preCmts <- many tokComment
   es <- many $ do
@@ -325,8 +334,8 @@ elements ilevel = do
     pure $ appendCommentsField postCmts e
 
   case prependCommentsFields preCmts es of
-    Nothing -> pure $ Left' preCmts
-    Just es' -> pure $ Right' es'
+    Nothing -> pure $ Left preCmts
+    Just es' -> pure $ Right es'
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
@@ -360,8 +369,8 @@ elementInLayoutContext ilevel name =
             elems <- sectionLayoutOrBraces ilevel
             case elems of
               -- If there are no elements but comments, we attach them to the name (args can be multiple)
-              Left' onlyCmts -> return (Section (WithComments onlyCmts <$> name) (noComments <$> args) [])
-              Right' elems' -> return (Section (noComments name) (noComments <$> args) elems')
+              Left onlyCmts -> return (Section (WithComments onlyCmts <$> name) (map noComments args) [])
+              Right elems' -> return (Section (noComments name) (map noComments args) elems')
         )
 
 -- An element (field or section) that is valid in a non-layout context.
@@ -381,8 +390,8 @@ elementInNonLayoutContext name =
             closeBrace
 
             case elems of
-              Left' elementCmts -> return (Section (WithComments elementCmts <$> name) (noComments <$> args) [])
-              Right' elems' -> return (Section (noComments name) (noComments <$> args) elems')
+              Left elementCmts -> return (Section (WithComments elementCmts <$> name) (map noComments args) [])
+              Right elems' -> return (Section (noComments name) (map noComments args) elems')
         )
 
 -- The body of a field, using either layout style or braces style.
@@ -400,6 +409,7 @@ fieldLayoutOrBraces ilevel name colonPos = braces <|> fieldLayout
       closeBrace
       return $ Field colonPos (WithComments preCmts <$> name) ls
 
+    -- Here, we run 'fieldContent' twice separately because only the second time it is subject to the indentation constraint.
     fieldLayout :: Parser (Field (WithComments Position))
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
       preCmts <- many tokComment
@@ -415,7 +425,7 @@ fieldLayoutOrBraces ilevel name colonPos = braces <|> fieldLayout
 --
 -- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
-sectionLayoutOrBraces :: IndentLevel -> Parser (Either' [Comment Position] [Field (WithComments Position)])
+sectionLayoutOrBraces :: IndentLevel -> Parser (Either [Comment Position] [Field (WithComments Position)])
 sectionLayoutOrBraces ilevel =
   ( do
       openBrace

@@ -6,7 +6,6 @@ module Distribution.Annotation where
 
 import Data.List (sortOn)
 import Data.Ord (Down (..))
-import Distribution.Compat.Newtype
 import Distribution.Parsec
 import Distribution.Parsec.Position
 
@@ -17,10 +16,6 @@ data SrcSpan = SrcSpan {-# UNPACK #-} !Position {-# UNPACK #-} !Position
 
 data Located a = MkLocated {getSrcSpan :: !SrcSpan, unLocated :: !a}
   deriving (Show, Functor, Foldable, Traversable)
-
-instance Newtype o n => Newtype (Located o) (Located n) where
-  pack = fmap pack
-  unpack = fmap unpack
 
 sortBySrcSpanAsc :: [Located a] -> [Located a]
 sortBySrcSpanAsc = sortOn getSrcSpan

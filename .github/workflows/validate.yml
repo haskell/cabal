@@ -82,7 +82,7 @@ jobs:
         run: |
            echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
       - name: Add manually supplied allow-newer
@@ -109,7 +109,7 @@ jobs:
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           # validate.sh uses a special build dir
           path: |
@@ -248,7 +248,7 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install prerequisites for old GHCs
         run: |
@@ -282,7 +282,7 @@ jobs:
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
       # including the cabal executable and the test suite
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
@@ -318,7 +318,7 @@ jobs:
       # that Alpine's git doesn't like. Hack around it.
       - run: git config --global --add safe.directory $(pwd)
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
       - name: Manually supplied constraints/allow-newer
@@ -335,7 +335,7 @@ jobs:
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           # validate.sh uses a special build dir
           path: |
@@ -412,7 +412,7 @@ jobs:
         run: |
            echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: haskell-actions/setup@v2
         id: setup-haskell

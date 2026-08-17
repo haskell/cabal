@@ -58,9 +58,9 @@ import Distribution.Version (Version, mkVersion, versionNumbers)
 import qualified Data.Bifunctor as Bi
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
+import Data.Coerce (coerce)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import qualified Distribution.Compat.Newtype as Newtype
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.Executable.Lens as L
@@ -202,7 +202,7 @@ parseCommentedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs =
         -- version will be parsed twice, therefore we parse without warnings.
         v <-
           withoutWarnings $
-            Newtype.unpack' SpecVersion
+            coerce @SpecVersion @CabalSpecVersion
               <$>
               -- Use version with || and && but before addition of ^>= and removal of -any
               runFieldParser pos parsec CabalSpecV1_24 fls
@@ -683,7 +683,7 @@ processImports v fromBuildInfo commonStanzas = go []
     hasCommonStanzas = specHasCommonStanzas v
 
     getList' :: List CommaFSep Token String -> [String]
-    getList' = Newtype.unpack
+    getList' = coerce
 
     go acc (Field _ (Name pos name) _ : fields)
       | name == "import"

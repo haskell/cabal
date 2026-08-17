@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 -- |
 -- Module      :  Distribution.GetOpt
 -- Copyright   :  (c) Sven Panne 2002-2005
@@ -82,49 +84,55 @@ data OptHelp = OptHelp
   , optHelp :: String
   }
 
--- | Return a string describing the usage of a command, derived from
--- the header (first argument) and the options described by the
--- second argument.
-usageInfo
-  :: String -- header
-  -> [OptDescr a] -- option descriptors
-  -> String -- nicely formatted description of options
-usageInfo header optDescr = unlines (header : table)
+-- | Lays out the header followed with a formatted table of options.
+--
+-- An item in the table consists of the option and its help.  The option line is
+-- a comma-separated list with all of the short options followed by only the
+-- first long option.  No attempt is made to wrap this option line.
+--
+-- If space allows, the option help text is placed on the same line as the
+-- option line.  If the option line is too long, the help text is placed on the
+-- next line.  The help text is wrapped to fit within 80 columns and always
+-- starts at the same column, column 33. Its first line is prefixed with a @#@
+-- herald.
+usageInfo :: String -> [OptDescr a] -> String
+usageInfo header (map flattenNames -> options) = unlines (header : table)
   where
-    options = flip map optDescr $ \(Option sos los ad d) ->
-      OptHelp
-        { optNames =
-            intercalate ", " $
-              map (fmtShort ad) sos
-                ++ map (fmtLong ad) (take 1 los)
-        , optHelp = d
-        }
+    (nameWidth, helpWidth) = let w = 30 in (w, 80 - (w + 3))
+    indent = ' '
 
-    maxOptNameWidth = 30
-    descolWidth = 80 - (maxOptNameWidth + 3)
-
-    table :: [String]
     table = do
       OptHelp{optNames, optHelp} <- options
-      let wrappedHelp = wrapText descolWidth optHelp
-      if length optNames >= maxOptNameWidth
-        then
-          [" " ++ optNames]
-            ++ renderColumns [] wrappedHelp
-        else renderColumns [optNames] wrappedHelp
+      let wrappedHelp = wrapText helpWidth optHelp
+      if length optNames >= nameWidth - 1
+        then rows optNames [] ++ rows "" wrappedHelp
+        else rows optNames wrappedHelp
 
-    renderColumns :: [String] -> [String] -> [String]
-    renderColumns xs ys = do
-      (x, y) <- zipDefault "" "" xs ys
-      return $ " " ++ padTo maxOptNameWidth x ++ " " ++ y
+    rows x [] = [indent : x]
+    rows x (y : ys) = markedRow x y : map unmarkedRow ys
 
-    padTo n x = take n (x ++ repeat ' ')
+    markedRow name help = rowOption name ++ ' ' : '#' : ' ' : help
+    unmarkedRow help = rowOption "" ++ "   " ++ help
 
-zipDefault :: a -> b -> [a] -> [b] -> [(a, b)]
-zipDefault _ _ [] [] = []
-zipDefault _ bd (a : as) [] = (a, bd) : map (,bd) as
-zipDefault ad _ [] (b : bs) = (ad, b) : map (ad,) bs
-zipDefault ad bd (a : as) (b : bs) = (a, b) : zipDefault ad bd as bs
+    rowOption name = indent : padTo (nameWidth - 2) name
+
+-- | Pad a string to a given length with spaces.
+-- >>> padTo 5 "123"
+-- "123  "
+--
+-- If the string is longer than the given length, it is not truncated.
+-- >>> padTo 3 "12345"
+-- "12345"
+padTo :: Int -> String -> String
+padTo = flip $ foldr (\ch rest n -> ch : rest (n - 1)) (`replicate` ' ')
+
+-- | Flatten the short and long option names into a single string for display.
+flattenNames :: OptDescr a -> OptHelp
+flattenNames (Option sos los ad help) =
+  OptHelp
+    { optNames = intercalate ", " $ map (fmtShort ad) sos ++ map (fmtLong ad) (take 1 los)
+    , optHelp = help
+    }
 
 -- | Pretty printing of short options.
 -- * With required arguments can be given as:

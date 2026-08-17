@@ -1,6 +1,6 @@
 cabal-version: 3.8
 name:          Cabal
-version:       3.17.0.0
+version:       3.19.0.0
 copyright:     2003-2026, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
@@ -41,7 +41,7 @@ library
   hs-source-dirs: src
 
   build-depends:
-    , Cabal-syntax ^>= 3.17
+    , Cabal-syntax ^>= 3.19
     , array      >= 0.4.0.1  && < 0.6
     , base       >= 4.17     && < 5
     , bytestring >= 0.10.8   && < 0.13
@@ -50,7 +50,7 @@ library
     , directory  >= 1.2.7    && < 1.4
     , filepath   >= 1.4.2    && < 1.6
     , pretty     >= 1.1.1    && < 1.2
-    , process    >= 1.6.20.0 && < 1.6.24 || == 1.6.26.0 || >= 1.6.26.2 && < 1.7
+    , process    >= 1.6.29.0 && < 1.7
     , time       >= 1.4.0.1  && < 1.17
 
   if os(windows)
@@ -59,10 +59,6 @@ library
   else
     build-depends:
       , unix  >= 2.8.6.0 && < 2.9
-
-  if os(darwin)
-    build-depends:
-      , process >= 1.6.29.0
 
   if flag(git-rev)
     build-depends:
@@ -202,7 +198,6 @@ library
     Distribution.Compat.Exception,
     Distribution.Compat.Graph,
     Distribution.Compat.Lens,
-    Distribution.Compat.Newtype,
     Distribution.Compat.NonEmptySet,
     Distribution.Compat.Parsing,
     Distribution.Compat.Prelude,

@@ -1,6 +1,6 @@
 # Changelog for `Cabal-hooks`
 
-## 3.18.0.0 — July 2026
+## 3.18.1.0 — July 2026
 
 - Stop exposing constructors of `RuleCommands` [#11461](https://github.com/haskell/cabal/issues/11461) [#11771](https://github.com/haskell/cabal/pull/11771)
 

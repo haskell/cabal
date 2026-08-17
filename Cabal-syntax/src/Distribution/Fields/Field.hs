@@ -21,8 +21,6 @@ module Distribution.Fields.Field
     -- * Comment
   , Comment (..)
   , WithComments (..)
-  , mapComments
-  , mapCommentedData
 
     -- * Name
   , FieldName
@@ -54,23 +52,18 @@ import Distribution.Parsec.Position
 -- Cabal file
 -------------------------------------------------------------------------------
 
+-- | Store a line comment from field syntax files. @ann@ is usually instantiated as 'Position'.
 data Comment ann = Comment !ByteString !ann
   deriving (Show, Generic, Eq, Ord, Functor)
 
+-- | Hold a list of comments along side some annotation.
 data WithComments ann = WithComments
   { justComments :: ![Comment ann]
+  -- ^ Extract the comments.
   , unComments :: !ann
+  -- ^ Extract the annotation.
   }
   deriving (Show, Generic, Eq, Ord, Functor)
-
-instance HasPosition ann => HasPosition (WithComments ann) where
-  position f (WithComments cmts ann) = WithComments cmts <$> position f ann
-
-mapComments :: ([Comment ann] -> [Comment ann]) -> WithComments ann -> WithComments ann
-mapComments f (WithComments cs x) = WithComments (f cs) x
-
-mapCommentedData :: (ann -> ann) -> WithComments ann -> WithComments ann
-mapCommentedData f (WithComments cs x) = WithComments cs (f x)
 
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
