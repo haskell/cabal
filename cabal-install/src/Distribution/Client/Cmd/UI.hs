@@ -14,6 +14,7 @@ module Distribution.Client.Cmd.UI
   , optDescrToGetOpt
 
     -- * Command data types
+  , Examples
   , CmdItem (..)
   , ParsedCommand (..)
   , parsedCommandParser
@@ -123,7 +124,11 @@ data ParsedCommand a = ParsedCommand
   , parsedListOptions :: Bool
   }
 
-type Examples = String -> String -> String
+type Examples
+  = String -- ^ program name
+  -> String -- ^ command name
+  -> String -- ^ examples text
+
 type ReplaceCommandAlias = String -> String -> String
 
 -- SEE: generic-sop-lens.hs
