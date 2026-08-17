@@ -48,41 +48,50 @@ EditOk
       []
       [
         Field
-          (Position 6 16)
+          (Position 7 16)
           (Name
             WithComments {
-              justComments = [],
-              unComments = Position 6 3}
+              justComments = [
+                Comment
+                  "  -- before"
+                  (Position 6 1),
+                Comment
+                  "    -- within"
+                  (Position 8 1)],
+              unComments = Position 7 3}
             "build-depends")
           [
             FieldLine
               WithComments {
-                justComments = [],
-                unComments = Position 6 18}
+                justComments = [
+                  Comment
+                    "    -- after"
+                    (Position 10 1)],
+                unComments = Position 9 5}
               "base ==1.3.3.7"]],
     Section
       (Name
         WithComments {
           justComments = [],
-          unComments = Position 8 1}
+          unComments = Position 12 1}
         "library")
       [
         SecArgName
           WithComments {
             justComments = [],
-            unComments = Position 8 9}
+            unComments = Position 12 9}
           "namedLibrary"]
       [
         Field
-          (Position 9 16)
+          (Position 13 16)
           (Name
             WithComments {
               justComments = [],
-              unComments = Position 9 3}
+              unComments = Position 13 3}
             "build-depends")
           [
             FieldLine
               WithComments {
                 justComments = [],
-                unComments = Position 9 18}
+                unComments = Position 13 18}
               "base <= 5"]]]
