@@ -177,9 +177,21 @@ newtype LexerMode = LexerMode Int
 -- This has the benefit of providing more exact error message by having more
 -- knowledge about what symbol should follow in the input stream.
 --
--- This lexer never switches to some of the states itself.
--- Instead, the parser inspects the token stream it got, and switches the lexer state.
--- Running the lexer on its own will not produce a correct token stream.
+-- The lexer states are as illustrated below.
+-- The lexer doesn't control the transitions between @in_section@, @in_field_layout@ and @in_field_braces@.
+-- Instead, the parser inspects the token stream it got, and switches the lexer state:
+-- these transitions are uniquely invoked with 'inLexerMode'.
+-- For this reason, running the lexer on its own will not produce a correct token stream.
+--
+-- @
+--                                                   .---> in_field_layout  <--->  bol_field_layout
+--                                                  /
+--                                                 /
+-- start (0) ---> bol_section <-->  in_section <--(
+--                                                 \
+--                                                  \
+--                                                   `---> in_field_braces  <--->  bol_field_braces
+-- @
 --
 -- The parser instructs the lexer to change state using the function 'inLexerMode'.
 -- It runs a parser with the given mode, and then switches back to in_section.
