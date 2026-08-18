@@ -350,7 +350,7 @@ warnIfAssertionsAreEnabled =
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
-    command <- commandsRunBuildOptparseFirst args
+    command <- commandsParse args
     case command of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
@@ -384,19 +384,16 @@ mainWorker args = do
   where
     -- Tries to parse the command line arguments with optparse-applicative
     -- first, and if that fails, falls back to the standard command registry.
-    commandsRunBuildOptparseFirst :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
-    commandsRunBuildOptparseFirst argv =
-      case parseBuildOrInstallWithOptparse argv of
+    commandsParse :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
+    commandsParse argv =
+      case parseCommandWithOptparseMany globalCmd parsersByName argv of
         Just parsed -> pure parsed
         Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
 
-    parseBuildOrInstallWithOptparse :: [String] -> Maybe (CommandParse (GlobalFlags, CommandParse Action))
-    parseBuildOrInstallWithOptparse =
-      parseCommandWithOptparseMany
-        globalCmd
-        [ commandParserByName CmdBuild.examples CmdBuild.buildCommand CmdBuild.buildAction
-        , commandParserByName CmdInstall.examples CmdInstall.installCommand CmdInstall.installAction
-        ]
+    parsersByName =
+      [ commandParserByName CmdBuild.examples CmdBuild.buildCommand CmdBuild.buildAction
+      , commandParserByName CmdInstall.examples CmdInstall.installCommand CmdInstall.installAction
+      ]
 
     delegateToExternal
       :: [Command Action]
