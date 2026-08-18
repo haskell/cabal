@@ -37,6 +37,8 @@ import Distribution.Verbosity.Internal
 
 import qualified Distribution.Compat.NonEmptySet as NES
 
+import qualified Text.Parsec as P
+
 -------------------------------------------------------------------------------
 -- instances
 -------------------------------------------------------------------------------
@@ -111,6 +113,8 @@ instance ToExpr DefUnitId
 instance ToExpr DumpBuildInfo
 instance (ToExpr a) => ToExpr (EditResult a)
 instance ToExpr EditError
+-- TODO(leana8959): maybe move this
+instance ToExpr P.ParseError where toExpr = defaultExprViaShow
 instance ToExpr ExeDependency
 instance ToExpr Executable
 instance ToExpr ExecutableScope
