@@ -526,8 +526,8 @@ interleaveComments (FieldLine pos bs : fls) cmts =
   let (pre, post) = span (\(Comment _ cpos) -> pos < cpos) cmts
   in  FieldLine (WithComments pre pos) bs : interleaveComments fls post
 
--- TODO(leana8959): this will lose all the comments
--- TODO(leana8959): should we add a trailing newline
+-- TODO(leana8959): add property tests
+
 joinFieldLines :: NonEmpty (FieldLine Position) -> FieldLine Position
 -- No indentation needed
 joinFieldLines (FieldLine ann bs :| []) = FieldLine ann bs

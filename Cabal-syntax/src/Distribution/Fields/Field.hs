@@ -141,7 +141,6 @@ toLowerCase (Name ann fname) = Name ann (B.map toLower fname)
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Name ann)
 
--- TODO(leana8959): not enforcing lower case works, but it will need a later stage normalization
 mkName :: ann -> FieldName -> Name ann
 mkName ann bs = Name ann bs
 
