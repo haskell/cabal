@@ -52,6 +52,7 @@ import Distribution.Fields.Field
 import Distribution.Parsec.Position
 import Distribution.Pretty
 
+import Data.Functor ((<&>))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe
 import GHC.Generics
@@ -67,6 +68,8 @@ import Distribution.Annotation
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
+
+import qualified Text.Parsec as P
 
 import Debug.Trace
 import qualified Distribution.Parsec.Position.Lens as L
@@ -85,7 +88,7 @@ data EditError
   = ExpectChanges
   -- TODO(leana8959): not very helpful, we dont' know what didn't change exactly
   -- we have functions, we can't simplify print "what should have" changed".
-  | ParseFailed
+  | ParseFailed P.ParseError
   deriving (Generic)
 
 data AddConfig = AddStart | AddEnd
@@ -381,6 +384,7 @@ appendNewLines (SrcSpan begin end) =
    in if rowDiff > 1 then (<> BS8.replicate rowDiff '\n') else id
 
 -- | Primitive function that edits the joined ByteString of a Field
+--   Will parse and print with @b@.
 modifyValueListBS
   :: forall (sep :: Type) (b :: Type) (a :: Type)
    . ( Coercible a b
@@ -389,34 +393,35 @@ modifyValueListBS
      )
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
-  -> (BS.ByteString -> BS.ByteString)
+  -> (BS.ByteString -> EditResult BS.ByteString)
 modifyValueListBS transformA bs0 =
-  let parsed =
-        coerce @_ @[Located a]
-          . fromRight (error "modifyValueList failed to parse")
-          -- NOTE(leana8959): Eh, the parser doesn't like leading spaces.
-          . runParsecParser (liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))) "<modifyValueList>"
-          -- NOTE(leana8959): do we need the world's position here
+  let parsecWithLeadingSpaces = liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))
+      parsed =
+        fmap (coerce @_ @[Located a])
+          . runParsecParser parsecWithLeadingSpaces "<modifyValueListBS>"
           . fieldLineStreamFromBS
           $ bs0
+  in  case parsed of
+    Left err -> EditErr (ParseFailed err)
+    Right ok ->
+      let transformed :: [Located (Maybe a)]
+          transformed  = (map . fmap) transformA ok
 
-      transformed :: [Located (Maybe a)] = (map . fmap) transformA parsed
+          -- From back to front (avoid drifting), generate a list of (source range, replacement string)
+          editsWithinList =
+            sortBySrcSpanDes transformed >>= \case
+              MkLocated _ Nothing -> []
+              MkLocated spn (Just newItem) -> [(spn, BS8.pack $ show $ pretty @b $ coerce @a @b newItem)]
 
-      -- From back to front (avoid drifting), generate a list of (source range, replacement string)
-      editsWithinList =
-        sortBySrcSpanDes transformed >>= \case
-          MkLocated _ Nothing -> []
-          MkLocated spn (Just newItem) -> [(spn, BS8.pack $ show $ pretty @b $ coerce @a @b newItem)]
+          -- TODO(leana8959): think about performance later. Rope?
+          performEditsWithinList = foldl' go
+            where
+              -- If the original snippet spans more than one line, we append the vertical spacing back by counting lines.
+              -- This is because each Parsec instance eats the trailing spaces.
+              go oldBS (spn, bs) = substituteSubBSAt spn oldBS (appendNewLines spn bs)
 
-      -- TODO(leana8959): think about performance later. Rope?
-      performEditsWithinList = foldl' go
-        where
-          -- If the original snippet spans more than one line, we append the vertical spacing back by counting lines.
-          -- This is because each Parsec instance eats the trailing spaces.
-          go oldBS (spn, bs) = substituteSubBSAt spn oldBS (appendNewLines spn bs)
-
-      printed = performEditsWithinList bs0 editsWithinList
-   in printed
+          printed = performEditsWithinList bs0 editsWithinList
+       in EditOk printed
 
 -- TODO(leana8959): make modification function partial
 
@@ -429,17 +434,17 @@ modifyValueList
      )
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
-  -> ([FieldLine (WithComments Position)] -> [FieldLine (WithComments Position)])
+  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
 modifyValueList transformA fls0 =
   let comments = foldMap extractComments fls0
       fls = fmap removeComments fls0
   in  case joinFieldLines <$> NE.nonEmpty fls of
     -- no original data
-    Nothing -> fls0
+    Nothing -> EditUnchanged fls0
     Just (FieldLine ann0 bs0) ->
-      let bs = modifyValueListBS @sep @b @a transformA bs0
-          fls' = interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
-       in fls'
+      let bsResult = modifyValueListBS @sep @b @a transformA bs0
+       in bsResult <&> \bs ->
+            interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
 
 prependValueListBS
   :: forall (sep :: Type) (b :: Type) (a :: Type)
