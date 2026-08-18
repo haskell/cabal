@@ -40,7 +40,7 @@ module Distribution.Fields.Transform
   , modifyValueListBS
   , modifyValueList
   , prependValueListBS
-  -- , prependValueList
+  , prependValueList
 
   -- TODO: move to an internal module
   -- * Internal
@@ -530,10 +530,10 @@ modifyValueList transformA fls0 =
       fls = fmap removeComments fls0
   in  case joinFieldLines <$> NE.nonEmpty fls of
     Nothing -> EditUnchanged fls0
-    Just (FieldLine ann0 bs0) ->
+    Just (FieldLine pos0 bs0) ->
       let bsResult = modifyValueListBS @sep @b @a transformA bs0
        in bsResult <&> \bs ->
-            interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
+            interleaveComments (splitFieldLines (FieldLine pos0 bs)) comments
 
 -- TODO(leana8959): make this partial
 prependValueListBS
@@ -547,11 +547,10 @@ prependValueListBS
   -- ^ Nothing prevents a new render.
   -> (BS.ByteString -> EditResult BS.ByteString)
 prependValueListBS newItem bs0 =
-  let parsed =
+  let parsecWithLeadingSpaces = liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))
+      parsed =
         fmap (coerce @_ @[Located a])
-          -- NOTE(leana8959): Eh, the parser doesn't like leading spaces.
-          . runParsecParser (liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))) "<modifyValueList>"
-          -- NOTE(leana8959): do we need the world's position here
+          . runParsecParser parsecWithLeadingSpaces "<prependValueList>"
           . fieldLineStreamFromBS
           $ bs0
 
@@ -570,3 +569,27 @@ prependValueListBS newItem bs0 =
                     then newItemBS <> bs0
                     else newItemBS <> newSep <> bs0
        in EditOk printed
+
+-- TODO(leana8959): when we want to insert into a field that is empty, this would do nothing
+-- because we chose to.
+-- To make it do something, we need to have a fallback position.
+-- Think about whether it's needed
+
+prependValueList
+  :: forall (sep :: Type) (b :: Type) (a :: Type)
+   . ( Coercible a b
+     , Sep sep
+     , Pretty b
+     , Parsec (List sep (Located b) (Located a))
+     )
+  =>  a
+  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
+prependValueList newValue fls0 =
+  let comments = foldMap extractComments fls0
+      fls = fmap removeComments fls0
+  in  case joinFieldLines <$> NE.nonEmpty fls of
+    Nothing -> EditUnchanged fls0
+    Just (FieldLine ann0 bs0) ->
+      let bsResult = prependValueListBS @sep @b @a newValue bs0
+       in bsResult <&> \bs ->
+            interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
