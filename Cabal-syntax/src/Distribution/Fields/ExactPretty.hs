@@ -38,9 +38,6 @@ lineEndingChar CRLF = "\r\n"
 
 type RenderM = RWS RenderConfig BSB.Builder Position
 
--- TODO(leana8959): we artifically terminate the file with a trailing newline.
--- Think of a more polished way later.
-
 runRenderFields :: [Field (WithComments Position)] -> BS.ByteString
 runRenderFields = runRenderFields' cfg
   where
@@ -50,11 +47,14 @@ runRenderFields' :: RenderConfig -> [Field (WithComments Position)] -> BS.ByteSt
 runRenderFields' cfg fs =
   BS.toStrict $
     BSB.toLazyByteString $
-      (<> "\n") $
+      -- TODO(leana8959): we artifically terminate the file with a trailing newline.
+      -- Think of a more polished way later.
+      (<> BSB.byteString newlineChar) $
         snd $
           execRWS (renderFields fs) cfg initialPosition
   where
     initialPosition = Position 1 1
+    newlineChar = lineEndingChar (renderLineEnding cfg)
 
 renderFields :: [Field (WithComments Position)] -> RenderM ()
 renderFields = traverse_ renderField
@@ -99,7 +99,7 @@ padUpToPosition p@(Position r c) = do
         | r0 == r =
             if c0 < c
               then BS8.replicate (c - c0) ' '
-              else -- TODO(leana8959): same line backward jump
+              else -- TODO(leana8959): same line backward jump, make it a warning
                 if c0 == c then mempty else mempty
         -- backward jump
         | otherwise = "\n" <> BS8.replicate (c0 - 1) ' '

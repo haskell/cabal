@@ -82,18 +82,9 @@ import qualified Distribution.Parsec.Position.Lens as L
 import qualified Distribution.Fields.Field.Lens as L
 import qualified Distribution.Compat.Lens as L
 
--- TODO(leana8959): possible failures:
--- - focus not found, warning?
--- - modification failed -> error
--- - parse failure -> error
--- - not identpodent -> error
--- - nothing changed and we expect things to change
-
-
 data EditError
   = ExpectChanges
-  -- TODO(leana8959): not very helpful, we dont' know what didn't change exactly
-  -- we have functions, we can't simplify print "what should have" changed".
+  -- TODO(leana8959): use the label
   | ParseFailed P.ParseError
   deriving (Eq, Generic)
 
@@ -101,7 +92,7 @@ data AddConfig = AddStart | AddEnd
 data RemoveConfig = RemoveAll | RemoveFirst
 data ModifyConfig = ModifyFirst | ModifyLast
 
--- TODO(leana8959): do we need to provide all fields in the predicate
+-- TODO(leana8959): Add a label to indicate what didn't match, or what matched and didn't change.
 type MatchField ann = Name ann -> [FieldLine ann] -> Bool
 type MatchSection ann = Name ann -> [SectionArg ann] -> [Field ann] -> Bool
 
@@ -176,11 +167,9 @@ fieldsRowRange = finalize . fmap fieldRowRange
 
 fieldRowRange :: L.HasPosition ann => Field ann -> (Int, Int)
 fieldRowRange (Field _colonPos fname fls) =
-  -- TODO(leana8959): can colon be on a different row?
   let nameRow = L.view L.positionRow (nameAnn fname)
       maybeLastFieldLinePos = L.view L.positionRow . fieldLineAnn . NE.last <$> NE.nonEmpty fls
   in  (nameRow, fromMaybe nameRow maybeLastFieldLinePos)
-  -- TODO(leana8959): can sargs be different lines?
 fieldRowRange (Section sname _sargs fs) =
   let nameRow = L.view L.positionRow (nameAnn sname)
       bodyEnd = snd . fieldsRowRange <$> NE.nonEmpty fs
@@ -230,7 +219,7 @@ addField ac name fls = Edit $ case ac of
       where
         nameLen = BS8.length (getName name)
         startRow = positionRow pos
-        -- TODO(leana8959): how do we know the indentation?
+        -- TODO(leana8959): Get the indentation from the context
         startCol = positionCol pos + 2
 
         fls' :: [FieldLine (WithComments Position)]
@@ -326,10 +315,10 @@ data EditingError = ParserError P.ParseError {- not yet used -} | PrinterError
 
 -- | Reified function to facilitate chaining
 -- This can't be a functor (so there's no applicative nor alternative), I think there are better ways to do this.
+
+-- TODO(leana8959): add an argument that passes in various edit contexts, like a reader monad.
 newtype Edit a = Edit { runEdit :: a -> EditResult a }
 
--- TODO(leana8959): what do we do when there are no existing value?
--- currently we do nothing.
 modifyValueAtomBSAla
   :: forall (b :: Type) (a :: Type)
    . (Coercible a b, Parsec b, Pretty b)
@@ -418,7 +407,6 @@ modifyValueListBS transformA bs0 =
               MkLocated _ Nothing -> []
               MkLocated spn (Just newItem) -> [(spn, BS8.pack $ show $ pretty @b $ coerce @a @b newItem)]
 
-          -- TODO(leana8959): think about performance later. Rope?
           performEditsWithinList = foldl' go
             where
               -- If the original snippet spans more than one line, we append the vertical spacing back by counting lines.
@@ -427,8 +415,6 @@ modifyValueListBS transformA bs0 =
 
           printed = performEditsWithinList bs0 editsWithinList
        in EditOk printed
-
--- TODO(leana8959): make modification function partial
 
 -- | Build a @[FieldLine Position]@ modification function given a function @a -> Maybe a@, parsed as @List sep b a@.
 modifyValueList
@@ -450,6 +436,7 @@ modifyValueList transformA fls0 =
        in bsResult <&> \bs ->
             interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
 
+-- TODO(leana8959): make this partial
 prependValueListBS
   :: forall (sep :: Type) (b :: Type) (a :: Type)
    . ( Coercible a b
