@@ -84,19 +84,10 @@ import qualified Distribution.Parsec.Position.Lens as L
 import qualified Distribution.Fields.Field.Lens as L
 import qualified Distribution.Compat.Lens as L
 
-data EditError
-  = ExpectChanges
-  -- TODO(leana8959): use the label
-  | ParseFailed P.ParseError
-  deriving (Eq, Generic)
 
-data AddConfig = AddStart | AddEnd
-data RemoveConfig = RemoveAll | RemoveFirst
-data ModifyConfig = ModifyFirst | ModifyLast
-
--- TODO(leana8959): Add a label to indicate what didn't match, or what matched and didn't change.
-type MatchField ann = Name ann -> [FieldLine ann] -> Bool
-type MatchSection ann = Name ann -> [SectionArg ann] -> [Field ann] -> Bool
+-- | Reified function to facilitate chaining
+--   This can't be a functor (so there's no applicative nor alternative), I think there are better ways to do this.
+newtype Edit a = Edit { runEdit :: a -> EditResult a }
 
 data EditResult a
   = EditOk a
@@ -104,6 +95,12 @@ data EditResult a
   | EditErr EditError
     -- ^ a case where you might want to fallback to other edits, because apparently what you did did nothing.
   deriving (Eq, Functor, Generic)
+
+data EditError
+  = ExpectChanges
+  -- TODO(leana8959): use the label
+  | ParseFailed P.ParseError
+  deriving (Eq, Generic)
 
 -- | Build an 'EditResult' given the previous value
 mkEditResult :: Eq a => a -> a -> EditResult a
@@ -139,57 +136,13 @@ orFallback' = \cases
   (EditUnchanged _) y -> y
   (EditErr _) y -> y
 
--- TODO(leana8959): add a case for adding a section
+data AddConfig = AddStart | AddEnd
+data RemoveConfig = RemoveAll | RemoveFirst
+data ModifyConfig = ModifyFirst | ModifyLast
 
--- Different modification strategies
-modifyField
-  :: ModifyConfig
-  -> MatchField (WithComments Position) -- ^ Match a given field
-  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
-  -> Edit [Field (WithComments Position)]
-modifyField mc match modifyFieldLines = Edit $ case mc of
-  ModifyFirst -> \fs -> mapFirstThen doModify doShift fs
-  ModifyLast -> mapLast doModify
-  where
-    doModify (Field colonPos fname fls) | match fname fls = Field colonPos fname <$> fls'
-      where
-        fls' = modifyFieldLines fls
-    doModify x = EditUnchanged x
-
-    doShift (old, new) fd =
-        let (_, oldEnd) = fieldRowRange old
-            (_, newEnd) = fieldRowRange new
-            lineShift = (newEnd - oldEnd) `max` 0
-        in  offsetFieldRow lineShift fd
-
-fieldsRowRange :: L.HasPosition ann => NonEmpty (Field ann) -> (Int, Int)
-fieldsRowRange = finalize . fmap fieldRowRange
-  where
-    finalize ranges = (fst (NE.head ranges), snd (NE.last ranges))
-
-fieldRowRange :: L.HasPosition ann => Field ann -> (Int, Int)
-fieldRowRange (Field _colonPos fname fls) =
-  let nameRow = L.view L.positionRow (nameAnn fname)
-      maybeLastFieldLinePos = L.view L.positionRow . fieldLineAnn . NE.last <$> NE.nonEmpty fls
-  in  (nameRow, fromMaybe nameRow maybeLastFieldLinePos)
-fieldRowRange (Section sname _sargs fs) =
-  let nameRow = L.view L.positionRow (nameAnn sname)
-      bodyEnd = snd . fieldsRowRange <$> NE.nonEmpty fs
-  in  (nameRow, fromMaybe nameRow bodyEnd)
-
--- | Compute the ending position of a field based on its range.
-afterFieldEndPosition :: L.HasPosition ann => Field ann -> Position
-afterFieldEndPosition f =
-  let (_, endRow) = fieldRowRange f
-  in  Position (endRow + 1 {- next line -}) 1
-
-offsetFieldRow :: L.HasPosition ann => Int -> Field ann -> Field ann
-offsetFieldRow n = \case
-  (Field colonPos fname fls) -> Field (incrementRowN colonPos) (fmap incrementRowN fname) (map (fmap incrementRowN) fls)
-  (Section sname sargs fs) -> Section (fmap incrementRowN sname) (map (fmap incrementRowN) sargs) (map (fmap incrementRowN) fs)
-  where
-    incrementRowN :: L.HasPosition ann => ann -> ann
-    incrementRowN = L.over L.positionRow (+n)
+-- TODO(leana8959): Add a label to indicate what didn't match, or what matched and didn't change.
+type MatchField ann = Name ann -> [FieldLine ann] -> Bool
+type MatchSection ann = Name ann -> [SectionArg ann] -> [Field ann] -> Bool
 
 addField
   :: AddConfig
@@ -340,6 +293,27 @@ removeField rc match = Edit $ case rc of
     p (Field _ name fls) = not (match name fls)
     p _ = True
 
+-- Different modification strategies
+modifyField
+  :: ModifyConfig
+  -> MatchField (WithComments Position) -- ^ Match a given field
+  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
+  -> Edit [Field (WithComments Position)]
+modifyField mc match modifyFieldLines = Edit $ case mc of
+  ModifyFirst -> \fs -> mapFirstThen doModify doShift fs
+  ModifyLast -> mapLast doModify
+  where
+    doModify (Field colonPos fname fls) | match fname fls = Field colonPos fname <$> fls'
+      where
+        fls' = modifyFieldLines fls
+    doModify x = EditUnchanged x
+
+    doShift (old, new) fd =
+        let (_, oldEnd) = fieldRowRange old
+            (_, newEnd) = fieldRowRange new
+            lineShift = (newEnd - oldEnd) `max` 0
+        in  offsetFieldRow lineShift fd
+
 modifySection
   :: ModifyConfig
   -> MatchSection (WithComments Position) -- ^ Match a given section
@@ -362,12 +336,6 @@ modifySection mc match modifySectionArgs modifyFields = Edit $ case mc of
             lineShift = (newEnd - oldEnd) `max` 0
         in  offsetFieldRow lineShift fd
 
--- | Fallback if something is unchanged.
-orFallback :: Edit a -> Edit a -> Edit a
-orFallback (Edit x) (Edit y) = Edit (\input -> x input `orFallback'` y input)
-
-infixl 4 `orFallback`
-
 -- | If up to this point things are still unchanged, make it an error and stop here.
 failIfUnchanged :: Edit a -> Edit a
 failIfUnchanged (Edit f) = Edit $ \input -> case f input of
@@ -379,6 +347,12 @@ andThen :: Edit a -> Edit a -> Edit a
 andThen (Edit x) (Edit y) = Edit (x >=> y)
 
 infixl 5 `andThen`
+
+-- | Fallback if something is unchanged.
+orFallback :: Edit a -> Edit a -> Edit a
+orFallback (Edit x) (Edit y) = Edit (\input -> x input `orFallback'` y input)
+
+infixl 4 `orFallback`
 
 -- note to self: ModifySection will be hella useful when it comes to changing conditions (if sections)
 
@@ -412,11 +386,17 @@ mapLast f = fmap reverse . mapFirst f . reverse
 data EditingError = ParserError P.ParseError {- not yet used -} | PrinterError
   deriving (Show)
 
--- | Reified function to facilitate chaining
--- This can't be a functor (so there's no applicative nor alternative), I think there are better ways to do this.
-
 -- TODO(leana8959): add an argument that passes in various edit contexts, like a reader monad.
-newtype Edit a = Edit { runEdit :: a -> EditResult a }
+
+--------------------------------------------------------------------------------
+-- Editing 'FieldLine's.
+
+-- $editing-fieldlines
+--
+-- This family of functions help build @ByteString -> ByteString@
+-- or @[FieldLine (WithComments ann)] -> [FieldLine (WithComments ann)]@.
+--
+-- The annotations ('Position' and comments) will be handled automatically.
 
 modifyValueAtomBSAla
   :: forall (b :: Type) (a :: Type)
@@ -593,3 +573,37 @@ prependValueList newValue fls0 =
       let bsResult = prependValueListBS @sep @b @a newValue bs0
        in bsResult <&> \bs ->
             interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
+
+--------------------------------------------------------------------------------
+-- Helper functions, not exported
+
+-- TODO(leana8959): better group them
+
+fieldsRowRange :: L.HasPosition ann => NonEmpty (Field ann) -> (Int, Int)
+fieldsRowRange = finalize . fmap fieldRowRange
+  where
+    finalize ranges = (fst (NE.head ranges), snd (NE.last ranges))
+
+fieldRowRange :: L.HasPosition ann => Field ann -> (Int, Int)
+fieldRowRange (Field _colonPos fname fls) =
+  let nameRow = L.view L.positionRow (nameAnn fname)
+      maybeLastFieldLinePos = L.view L.positionRow . fieldLineAnn . NE.last <$> NE.nonEmpty fls
+  in  (nameRow, fromMaybe nameRow maybeLastFieldLinePos)
+fieldRowRange (Section sname _sargs fs) =
+  let nameRow = L.view L.positionRow (nameAnn sname)
+      bodyEnd = snd . fieldsRowRange <$> NE.nonEmpty fs
+  in  (nameRow, fromMaybe nameRow bodyEnd)
+
+-- | Compute the ending position of a field based on its range.
+afterFieldEndPosition :: L.HasPosition ann => Field ann -> Position
+afterFieldEndPosition f =
+  let (_, endRow) = fieldRowRange f
+  in  Position (endRow + 1 {- next line -}) 1
+
+offsetFieldRow :: L.HasPosition ann => Int -> Field ann -> Field ann
+offsetFieldRow n = \case
+  (Field colonPos fname fls) -> Field (incrementRowN colonPos) (fmap incrementRowN fname) (map (fmap incrementRowN) fls)
+  (Section sname sargs fs) -> Section (fmap incrementRowN sname) (map (fmap incrementRowN) sargs) (map (fmap incrementRowN) fs)
+  where
+    incrementRowN :: L.HasPosition ann => ann -> ann
+    incrementRowN = L.over L.positionRow (+n)
