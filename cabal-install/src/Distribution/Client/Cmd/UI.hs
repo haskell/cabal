@@ -24,7 +24,10 @@ module Distribution.Client.Cmd.UI
   , cmdSpec
   , cmdListOptions
   , commandNames
+  , NamedCommandParser (..)
+  , commandParserByName
   , parseCommandWithOptparse
+  , parseCommandWithOptparseMany
   , parseCommand
   , replaceCommandAlias
   , helpDescriptionOrSynopsis
@@ -240,6 +243,41 @@ parseCommandWithOptparse globalCommand parserForCommand argv =
       cmdParser <- parserForCommand cmdName
       let globalFlags = mkGlobalFlags (commandDefaultFlags globalCommand)
       pure $ CommandReadyToGo (globalFlags, cmdParser cmdName cmdArgs)
+    _ -> Nothing
+
+-- | A parser for one or more command names.
+data NamedCommandParser action = NamedCommandParser
+  { namedCommandNames :: [String]
+  -- ^ The command name and its aliases.
+  , namedCommandParser :: String -> [String] -> CommandParse action
+  }
+
+-- | Wrap a command's optparse parser together with the names it should match.
+commandParserByName
+  :: Examples
+  -> CommandUI (NixStyleFlags flags)
+  -> (NixStyleFlags flags -> [String] -> action)
+  -> NamedCommandParser action
+commandParserByName examples command action =
+  NamedCommandParser
+    { namedCommandNames = commandNames command
+    , namedCommandParser = \name args -> parseCommand examples command action name args
+    }
+
+-- | Parse a command using a list of name/parser associations, picking the first
+-- match in the list.
+parseCommandWithOptparseMany
+  :: CommandUI globalFlags
+  -> [NamedCommandParser action]
+  -> [String]
+  -> Maybe (CommandParse (globalFlags, CommandParse action))
+parseCommandWithOptparseMany globalCommand commands argv =
+  case commandParseArgs globalCommand True argv of
+    CommandReadyToGo (mkGlobalFlags, cmdArgs0) -> do
+      cmdName : cmdArgs <- pure cmdArgs0
+      parser <- find ((cmdName `elem`) . namedCommandNames) commands
+      let globalFlags = mkGlobalFlags (commandDefaultFlags globalCommand)
+      pure $ CommandReadyToGo (globalFlags, namedCommandParser parser cmdName cmdArgs)
     _ -> Nothing
 
 parserInfo :: String -> Examples -> [O.Parser (CmdItem a)] -> CommandUI flags -> ParserInfo (ParsedCommand a)

@@ -184,9 +184,8 @@ import Distribution.PackageDescription
 
 import Distribution.Client.Cmd.UI
   ( cmdSpec
-  , commandNames
-  , parseCommand
-  , parseCommandWithOptparse
+  , commandParserByName
+  , parseCommandWithOptparseMany
   )
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
@@ -383,6 +382,8 @@ mainWorker args = do
             warnIfAssertionsAreEnabled
             action globalFlags
   where
+    -- Tries to parse the command line arguments with optparse-applicative
+    -- first, and if that fails, falls back to the standard command registry.
     commandsRunBuildOptparseFirst :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
     commandsRunBuildOptparseFirst argv =
       case parseBuildOrInstallWithOptparse argv of
@@ -391,14 +392,11 @@ mainWorker args = do
 
     parseBuildOrInstallWithOptparse :: [String] -> Maybe (CommandParse (GlobalFlags, CommandParse Action))
     parseBuildOrInstallWithOptparse =
-      parseCommandWithOptparse globalCmd parserForCommand
-      where
-        parserForCommand name
-          | name `elem` commandNames CmdBuild.buildCommand =
-            Just $ parseCommand CmdBuild.examples CmdBuild.buildCommand CmdBuild.buildAction
-          | name `elem` commandNames CmdInstall.installCommand =
-            Just $ parseCommand CmdInstall.examples CmdInstall.installCommand CmdInstall.installAction
-          | otherwise = Nothing
+      parseCommandWithOptparseMany
+        globalCmd
+        [ commandParserByName CmdBuild.examples CmdBuild.buildCommand CmdBuild.buildAction
+        , commandParserByName CmdInstall.examples CmdInstall.installCommand CmdInstall.installAction
+        ]
 
     delegateToExternal
       :: [Command Action]
