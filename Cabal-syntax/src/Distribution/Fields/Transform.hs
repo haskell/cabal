@@ -7,7 +7,40 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Distribution.Fields.Transform where
+module Distribution.Fields.Transform
+  (
+    EditError (..)
+  , EditResult (..)
+  , MatchField
+  , MatchSection
+
+    -- * Addition
+  , AddConfig (..)
+  , addField
+
+    -- * Removal
+  , RemoveConfig (..)
+  , removeField
+
+    -- * Modification
+  , ModifyConfig (..)
+  , modifyField
+  , modifySection
+
+    -- * Control flow
+  , failIfUnchanged
+  , andThen
+  , orFallback
+
+    -- * Typed modification functions
+  , modifyValueAtomBSAla
+  , modifyValueAtomAla
+  , modifyValueListBS
+  , modifyValueList
+  , prependValueListBS
+  -- , prependValueList
+  )
+  where
 
 import qualified Text.Parsec as P
 
@@ -49,7 +82,9 @@ import qualified Distribution.Compat.Lens as L
 
 
 data EditError
-  = ExpectChanges -- TODO(leana8959): not very helpful, we dont' know what didn't change exactly
+  = ExpectChanges
+  -- TODO(leana8959): not very helpful, we dont' know what didn't change exactly
+  -- we have functions, we can't simplify print "what should have" changed".
   | ParseFailed
   deriving (Generic)
 
@@ -93,9 +128,9 @@ instance Monad EditResult where
   (EditUnchanged u) >>= f = f u
   (EditErr err) >>= _ = EditErr err
 
--- We don't have alternative instance because empty doesnt' make sense.
--- Either we have to conjure up a Unchanged out of thin air
--- Or we need to fail with empty.
+-- We don't have alternative instance because empty doesn't make sense.
+-- Either we have to conjure up a Unchanged out of thin air;
+-- or we need to fail with empty.
 orFallback' :: EditResult a -> EditResult a -> EditResult a
 orFallback' = \cases
   (EditOk x) _ -> EditOk x
