@@ -146,7 +146,7 @@ orFallback' = \cases
 modifyField
   :: ModifyConfig
   -> MatchField (WithComments Position) -- ^ Match a given field
-  -> ([FieldLine (WithComments Position)] -> [FieldLine (WithComments Position)])
+  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
   -> Edit [Field (WithComments Position)]
 modifyField mc match modifyFieldLines = Edit $ case mc of
   ModifyFirst -> \fs -> mapFirstThen doModify doShift fs
@@ -154,7 +154,7 @@ modifyField mc match modifyFieldLines = Edit $ case mc of
   where
     doModify (Field colonPos fname fls) | match fname fls = Field colonPos fname <$> fls'
       where
-        fls' = (mkEditResult <*> modifyFieldLines) fls
+        fls' = modifyFieldLines fls
     doModify x = EditUnchanged x
 
     doShift (old, new) fd =
