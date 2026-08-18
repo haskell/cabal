@@ -545,27 +545,28 @@ prependValueListBS
      )
   => a
   -- ^ Nothing prevents a new render.
-  -> (BS.ByteString -> BS.ByteString)
+  -> (BS.ByteString -> EditResult BS.ByteString)
 prependValueListBS newItem bs0 =
   let parsed =
-        coerce @_ @[Located a]
-          . fromRight (error "modifyValueList failed to parse")
+        fmap (coerce @_ @[Located a])
           -- NOTE(leana8959): Eh, the parser doesn't like leading spaces.
           . runParsecParser (liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))) "<modifyValueList>"
           -- NOTE(leana8959): do we need the world's position here
           . fieldLineStreamFromBS
           $ bs0
 
-      newItemBS = BS8.pack $ show $ pretty @b $ coerce @a @b newItem
-
-      printed = case parsed of
-        [] -> newItemBS
-        (MkLocated (SrcSpan begin _) _ : _) ->
-          let sep = Proxy :: Proxy sep
-              (preOldFirstBS, _) = splitBSAtPosition begin bs0
-              hasLeadingSep = BS8.any (isSeparator sep) preOldFirstBS
-              newSep = sepToChar sep
-           in if hasLeadingSep
-                then newItemBS <> bs0
-                else newItemBS <> newSep <> bs0
-   in printed
+  in  case parsed of
+    Left err -> EditErr (ParseFailed err)
+    Right parseOk ->
+      let newItemBS = BS8.pack $ show $ pretty @b $ coerce @a @b newItem
+          printed = case parseOk of
+            [] -> newItemBS
+            (MkLocated (SrcSpan begin _) _ : _) ->
+              let sep = Proxy :: Proxy sep
+                  (preOldFirstBS, _) = splitBSAtPosition begin bs0
+                  hasLeadingSep = BS8.any (isSeparator sep) preOldFirstBS
+                  newSep = sepToChar sep
+               in if hasLeadingSep
+                    then newItemBS <> bs0
+                    else newItemBS <> newSep <> bs0
+       in EditOk printed
