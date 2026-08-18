@@ -185,6 +185,7 @@ import Distribution.PackageDescription
 import Distribution.Client.Cmd.UI
   ( cmdSpec
   , commandNames
+  , parseCommand
   , parseCommandWithOptparse
   )
 import Distribution.Client.Errors
@@ -393,8 +394,10 @@ mainWorker args = do
       parseCommandWithOptparse globalCmd parserForCommand
       where
         parserForCommand name
-          | name `elem` commandNames CmdBuild.buildCommand = Just CmdBuild.parseCommand
-          | name `elem` commandNames CmdInstall.installCommand = Just CmdInstall.parseCommand
+          | name `elem` commandNames CmdBuild.buildCommand =
+            Just $ parseCommand CmdBuild.examples CmdBuild.buildCommand CmdBuild.buildAction
+          | name `elem` commandNames CmdInstall.installCommand =
+            Just $ parseCommand CmdInstall.examples CmdInstall.installCommand CmdInstall.installAction
           | otherwise = Nothing
 
     delegateToExternal

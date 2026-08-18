@@ -206,11 +206,10 @@ parseCommand
   :: Examples
   -> CommandUI (NixStyleFlags a)
   -> (NixStyleFlags a -> [String] -> action)
-  -> ReplaceCommandAlias
   -> String
   -> [String]
   -> CommandParse action
-parseCommand examples cmdui action replaceAlias invokedName cmdArgs =
+parseCommand examples cmdui action invokedName cmdArgs =
   case execParserPure defaultPrefs pInfo cmdArgs of
     Success parsed ->
       if parsedListOptions parsed
@@ -221,7 +220,7 @@ parseCommand examples cmdui action replaceAlias invokedName cmdArgs =
     Failure failure ->
       let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
        in if exitCode == ExitSuccess
-            then CommandHelp (helpText replaceAlias cmdui invokedName)
+            then CommandHelp (helpText (replaceCommandAlias (commandName cmdui)) cmdui invokedName)
             else CommandErrors [msg]
     CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]

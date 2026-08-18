@@ -5,11 +5,9 @@ module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI command UI and action
     buildCommand
   , buildAction
+  , examples
   , BuildFlags (..)
   , defaultBuildFlags
-
-    -- * The @build@ CLI command spec and parser
-  , parseCommand
 
     -- * Internals exposed for testing
   , selectPackageTargets
@@ -30,10 +28,6 @@ import Distribution.Client.TargetProblem
   )
 
 import qualified Data.Map as Map
-import Distribution.Client.Cmd.UI
-  ( replaceCommandAlias
-  )
-import qualified Distribution.Client.Cmd.UI as Cmd.UI
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -49,22 +43,13 @@ import Distribution.Client.ScriptUtils
   )
 import Distribution.Client.Setup (GlobalFlags, yesNoOpt)
 import Distribution.Simple.Command
-  ( CommandParse (..)
-  , CommandUI (..)
+  ( CommandUI (..)
   , option
   , usageAlternatives
   )
 import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
 import Distribution.Simple.Utils (dieWithException, wrapText)
 import Distribution.Verbosity (normal)
-
-parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
-parseCommand =
-  Cmd.UI.parseCommand
-    examples
-    buildCommand
-    buildAction
-    (replaceCommandAlias (commandName buildCommand))
 
 description :: String
 description =
