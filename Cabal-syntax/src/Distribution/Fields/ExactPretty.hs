@@ -1,6 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Distribution.Fields.ExactPretty where
+module Distribution.Fields.ExactPretty
+  ( -- * Render fields
+    runRenderFields
+
+    -- * Line ending handling
+  , guessLineEnding
+  , lineEndingChar
+  , LineEnding (..)
+  )
+  where
 
 import Control.Monad.State.Strict
 import qualified Data.ByteString as BS
