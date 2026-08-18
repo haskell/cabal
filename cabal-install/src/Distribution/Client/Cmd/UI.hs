@@ -24,6 +24,7 @@ module Distribution.Client.Cmd.UI
   , cmdSpec
   , cmdListOptions
   , commandNames
+  , parseCommandWithOptparse
   , parseCommand
   , replaceCommandAlias
   , helpDescriptionOrSynopsis
@@ -227,6 +228,20 @@ parseCommand examples cmdui action replaceAlias invokedName cmdArgs =
   where
     pInfo = parserInfo invokedName examples flagParsers cmdui
     flagParsers = cmdOptionParsers (commandOptions cmdui ParseArgs)
+
+parseCommandWithOptparse
+  :: CommandUI globalFlags
+  -> (String -> Maybe (String -> [String] -> CommandParse action))
+  -> [String]
+  -> Maybe (CommandParse (globalFlags, CommandParse action))
+parseCommandWithOptparse globalCommand parserForCommand argv =
+  case commandParseArgs globalCommand True argv of
+    CommandReadyToGo (mkGlobalFlags, cmdArgs0) -> do
+      cmdName : cmdArgs <- pure cmdArgs0
+      cmdParser <- parserForCommand cmdName
+      let globalFlags = mkGlobalFlags (commandDefaultFlags globalCommand)
+      pure $ CommandReadyToGo (globalFlags, cmdParser cmdName cmdArgs)
+    _ -> Nothing
 
 parserInfo :: String -> Examples -> [O.Parser (CmdItem a)] -> CommandUI flags -> ParserInfo (ParsedCommand a)
 parserInfo invokedName examples flagParsers cmdui =
