@@ -329,19 +329,19 @@ modifyValueAtomBSAla
    . (Coercible a b, Parsec b, Pretty b)
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
-  -> (BS.ByteString -> BS.ByteString)
+  -> (BS.ByteString -> EditResult BS.ByteString)
 modifyValueAtomBSAla transformA bs0 =
   let parsed =
-        (coerce @b @a)
-          . fromRight (error "modifyValueAtomAla failed to parse")
+        fmap (coerce @b @a)
           . runParsecParser (parsec @b) "<modifyValueAtomAla>"
           . fieldLineStreamFromBS
           $ bs0
-
-      transformed = transformA parsed
-
-      bs = maybe bs0 (BS8.pack . show . pretty @b . coerce @a @b) transformed
-   in bs
+  in case parsed of
+    Left err -> EditErr (ParseFailed err)
+    Right parseOk ->
+      let transformed = transformA parseOk
+          bs = maybe bs0 (BS8.pack . show . pretty @b . coerce @a @b) transformed
+      in  EditOk bs
 
 -- | Build a @[FieldLine Position]@ modification function given a function @a -> a@, parsed as @b@.
 modifyValueAtomAla
@@ -349,17 +349,16 @@ modifyValueAtomAla
    . (Coercible a b, Parsec b, Pretty b)
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
-  -> ([FieldLine (WithComments Position)] -> [FieldLine (WithComments Position)])
+  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
 modifyValueAtomAla transformA fls0 =
   let comments = foldMap extractComments fls0
       fls = fmap removeComments fls0
   in  case joinFieldLines <$> NE.nonEmpty fls of
-        -- no original data
-        Nothing -> fls0
-        Just (FieldLine ann0 bs0) ->
-          let bs = modifyValueAtomBSAla @b @a transformA bs0
-              fls' = interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
-           in fls'
+      Nothing -> EditUnchanged fls0
+      Just (FieldLine ann0 bs0) ->
+        let bsResult = modifyValueAtomBSAla @b @a transformA bs0
+         in bsResult <&> \bs ->
+              interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
 
 -- | The position is (1, 1)-indexed. The second element of the pair starts at the position.
 splitBSAtPosition :: Position -> BS.ByteString -> (BS.ByteString, BS.ByteString)
@@ -439,7 +438,6 @@ modifyValueList transformA fls0 =
   let comments = foldMap extractComments fls0
       fls = fmap removeComments fls0
   in  case joinFieldLines <$> NE.nonEmpty fls of
-    -- no original data
     Nothing -> EditUnchanged fls0
     Just (FieldLine ann0 bs0) ->
       let bsResult = modifyValueListBS @sep @b @a transformA bs0
