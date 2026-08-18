@@ -1,4 +1,0 @@
-packages: .
-
-if(True)
-  compiler: ghc

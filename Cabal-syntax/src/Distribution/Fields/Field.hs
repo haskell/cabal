@@ -64,6 +64,9 @@ data WithComments ann = WithComments
   }
   deriving (Show, Generic, Eq, Ord, Functor)
 
+-- TODO(leana8959): implement the colon Position in an another Field like structure.
+-- TODO(leana8959): remove casing when converting to Field ann
+
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
   = Field Position !(Name ann) [FieldLine ann]

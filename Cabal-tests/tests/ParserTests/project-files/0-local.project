@@ -1,3 +1,0 @@
-packages: .
-constraints: hashable ==1.4.3.0
-constraints: hashable ==1.4.2.0
