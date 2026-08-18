@@ -68,7 +68,6 @@ import Data.Coerce
 import Control.Monad
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-import Data.Either
 import Data.Kind
 import qualified Data.List.NonEmpty as NE
 import Data.Proxy
@@ -77,11 +76,8 @@ import Distribution.FieldGrammar.Newtypes
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
 
-import qualified Text.Parsec as P
-
-import Debug.Trace
 import qualified Distribution.Parsec.Position.Lens as L
-import qualified Distribution.Fields.Field.Lens as L
+import qualified Distribution.Fields.Field.Lens as L ()
 import qualified Distribution.Compat.Lens as L
 
 
@@ -208,7 +204,7 @@ mkSectionAt name sargs nameCmts pos =
   let -- All content is aligned to this column.
       col0 = positionCol pos
 
-      mkCmtAt row col bs = Comment ("-- " <> bs) (Position row col0)
+      mkCmtAt row col bs = Comment (BS8.replicate col ' ' <>  "-- " <> bs) (Position row col0)
       cmtsAboveField = zipWith (\bs row -> mkCmtAt row col0 bs) nameCmts [ positionRow pos .. ]
 
       namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
@@ -253,7 +249,7 @@ mkFieldAt name nameCmts fls flsCmts pos =
       -- TODO(leana8959): read indentation from the config
       indentedCol = col0 + 2
 
-      mkCmtAt row col bs = Comment ("-- " <> bs) (Position row col0)
+      mkCmtAt row col bs = Comment (BS8.replicate col ' ' <>  "-- " <> bs) (Position row col0)
       cmtsAboveField = zipWith (\bs row -> mkCmtAt row col0 bs) cmtsAboveFieldBS [ positionRow pos .. ]
 
       namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
