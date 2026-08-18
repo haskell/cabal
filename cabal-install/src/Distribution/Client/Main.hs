@@ -182,7 +182,11 @@ import Distribution.PackageDescription
   , buildable
   )
 
-import Distribution.Client.Cmd.UI (cmdSpec, commandNames)
+import Distribution.Client.Cmd.UI
+  ( cmdSpec
+  , commandNames
+  , parseCommandWithOptparse
+  )
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import Distribution.PackageDescription.PrettyPrint
@@ -200,7 +204,6 @@ import Distribution.Simple.Command
   , CommandUI (..)
   , commandAddAction
   , commandFromSpec
-  , commandParseArgs
   , commandShowOptions
   , commandsRunWithFallback
   , defaultCommandFallback
@@ -386,14 +389,8 @@ mainWorker args = do
         Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
 
     parseBuildOrInstallWithOptparse :: [String] -> Maybe (CommandParse (GlobalFlags, CommandParse Action))
-    parseBuildOrInstallWithOptparse argv =
-      case commandParseArgs globalCmd True argv of
-        CommandReadyToGo (mkGlobalFlags, cmdArgs0) -> do
-          cmdName : cmdArgs <- pure cmdArgs0
-          cmdParser <- parserForCommand cmdName
-          let globalFlags = mkGlobalFlags (commandDefaultFlags globalCmd)
-          return $ CommandReadyToGo (globalFlags, cmdParser cmdName cmdArgs)
-        _ -> Nothing
+    parseBuildOrInstallWithOptparse =
+      parseCommandWithOptparse globalCmd parserForCommand
       where
         parserForCommand name
           | name `elem` commandNames CmdBuild.buildCommand = Just CmdBuild.parseCommand
