@@ -240,7 +240,7 @@ mkFieldAt name nameCmts fls flsCmts pos =
       namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
       nameWithAnn = (WithComments cmtsAboveField namePosition) <$ name
 
-      colonPos = incPos 2 namePosition
+      colonPos = incPos (BS8.length (getName name)) namePosition
 
       (flsWithAnn, flsHeight) = case fls of
         [] -> ([], 0)
