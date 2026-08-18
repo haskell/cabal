@@ -26,7 +26,7 @@ import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.ComponentId              (ComponentId)
 import Distribution.Types.DumpBuildInfo            (DumpBuildInfo)
 import Distribution.Types.PackageVersionConstraint
-import Distribution.Types.UnitId                   (DefUnitId, UnitId)
+import Distribution.Types.UnitId                   (DefUnitId, InstanceUnitId, UnitId)
 import Distribution.Utils.NubList                  (NubList)
 import Distribution.Utils.Path                     (SymbolicPathX)
 import Distribution.Verbosity
@@ -111,6 +111,7 @@ instance ToExpr ForeignLibOption
 instance ToExpr ForeignLibType
 instance ToExpr HaddockTarget
 instance ToExpr IncludeRenaming
+instance ToExpr InstanceUnitId
 instance ToExpr InstalledPackageInfo
 instance ToExpr KnownRepoType
 instance ToExpr LegacyExeDependency

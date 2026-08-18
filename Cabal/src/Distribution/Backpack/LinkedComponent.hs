@@ -49,6 +49,8 @@ import Text.PrettyPrint (Doc, hang, hsep, quotes, text, vcat, ($+$))
 data LinkedComponent = LinkedComponent
   { lc_ann_id :: AnnotatedId ComponentId
   -- ^ Uniquely identifies linked component
+  , lc_instance_id :: InstanceUnitId
+  -- ^ Uniquely identifies instance (group of components)
   , lc_component :: Component
   -- ^ Corresponds to 'cc_component'.
   , lc_exe_deps :: [AnnotatedId OpenUnitId]
@@ -127,6 +129,7 @@ toLinkedComponent
   pkg_map
   ConfiguredComponent
     { cc_ann_id = aid@AnnotatedId{ann_id = this_cid}
+    , cc_instance_unit_id = iuid
     , cc_component = component
     , cc_exe_deps = exe_deps
     , cc_public = is_public
@@ -377,6 +380,7 @@ toLinkedComponent
     return $
       LinkedComponent
         { lc_ann_id = aid
+        , lc_instance_id = iuid
         , lc_component = component
         , lc_public = is_public
         , -- These must be executables
