@@ -57,6 +57,7 @@ import Distribution.FieldGrammar.Parsec
 import Distribution.Fields.Field
 import Distribution.Parsec.Position
 import Distribution.Pretty
+import Distribution.Utils.Generic
 
 import Data.Functor ((<&>))
 import Data.List.NonEmpty (NonEmpty (..))
@@ -193,42 +194,74 @@ offsetFieldRow n = \case
 -- The fact that WithComments holds comments with positions makes it very hard to reason with.
 addField
   :: AddConfig
-  -> Name (WithComments ())
-  -> [FieldLine (WithComments ())]
+  -> Name ()
+  -> [BS.ByteString] -- ^ Comments to the 'Name'
+  -> [FieldLine ()]
+  -> [BS.ByteString] -- ^ Comments to the 'FieldLine's
   -> Edit [Field (WithComments Position)]
-addField ac name fls = Edit $ case ac of
+addField ac name nameCmts fls flsCmts = Edit $ case ac of
   AddStart -> \case
-    [] -> EditOk [fst (mkNewFieldAt onePos)]
+    [] -> EditOk [fst (mkFieldAt' onePos)]
     fs@(f : _) ->
-      let (newField, newFieldHeight) = mkNewFieldAt (L.view L.position (fieldAnn f))
+      let (newField, newFieldHeight) = mkFieldAt' (L.view L.position (fieldAnn f))
           fs' = offsetFieldRow newFieldHeight <$> fs
       in  EditOk (newField : fs')
   AddEnd ->
-    let go = \case
-          [] -> EditOk [fst (mkNewFieldAt onePos)]
-          [f] ->
-            let (newField, _) = mkNewFieldAt (afterFieldEndPosition f)
+    let go [] = EditOk [fst (mkFieldAt' onePos)]
+        go [f] =
+            let (newField, _) = mkFieldAt' (afterFieldEndPosition f)
             in  EditOk [f, newField]
-          (f : fs) -> (f :) <$> go fs
+        go (f : fs) = (f :) <$> go fs
     in go
   where
-    mkNewFieldAt :: Position -> (Field (WithComments Position), Int)
-    mkNewFieldAt pos =
-      let newField = Field (L.set L.positionCol (nameLen + 1) pos) (fmap (pos <$) name) fls'
-      in  (newField, 1 + flsHeight)
-      where
-        nameLen = BS8.length (getName name)
-        startRow = positionRow pos
-        -- TODO(leana8959): Get the indentation from the context
-        startCol = positionCol pos + 2
+    mkFieldAt' = mkFieldAt name nameCmts fls flsCmts
 
-        fls' :: [FieldLine (WithComments Position)]
-        (fls', flsHeight) = case fls of
-          [] -> ([], 0)
-          [fl] -> ([fmap (Position startRow {- start on same line -} (positionCol pos + 2) <$) fl], 0)
-          _ ->
-            ( zipWith (\fl row -> fmap (Position row startCol <$) fl) fls [startRow + 1 {- start on next line -}..]
-            , length fls )
+-- | Create a new field at a position, along with its height.
+--   Comments are plain strings without @--@ prefix.
+mkFieldAt
+  :: Name ()
+  -> [BS.ByteString] -- ^ Comments to the 'Name'
+  -> [FieldLine ()]
+  -> [BS.ByteString] -- ^ Comments to the 'FieldLine's
+  -> Position
+  -> (Field (WithComments Position), Int)
+mkFieldAt name nameCmts fls flsCmts pos =
+  let -- If there are no body, we attach the fieldlines's comments to the field.
+      cmtsAboveFieldBS = if null fls then nameCmts <> flsCmts else nameCmts
+
+      -- All content is aligned to this column.
+      col0 = positionCol pos
+      -- TODO(leana8959): read indentation from the config
+      indentedCol = col0 + 2
+
+      mkCmtAt row col bs = Comment ("-- " <> bs) (Position row col0)
+      cmtsAboveField = zipWith (\bs row -> mkCmtAt row col0 bs) cmtsAboveFieldBS [ positionRow pos .. ]
+
+      namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
+      nameWithAnn = (WithComments cmtsAboveField namePosition) <$ name
+
+      colonPos = incPos 2 namePosition
+
+      (flsWithAnn, flsHeight) = case fls of
+        [] -> ([], 0)
+        (fl : fls') ->
+          let cmtsAboveFls = zipWith (\bs row -> mkCmtAt row indentedCol bs) flsCmts [ positionRow pos .. ]
+              fieldLineStartPos = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveFls)
+
+              fl' :: FieldLine (WithComments Position)
+              fl' = WithComments cmtsAboveFls fieldLineStartPos <$ fl
+              fieldLineFollowingPos = retPos fieldLineStartPos
+
+              fls'' :: [FieldLine (WithComments Position)]
+              fls'' = zipWith (\fl row -> WithComments mempty (Position row indentedCol) <$ fl) fls' [ positionRow fieldLineFollowingPos ..]
+          in  (fl' : fls'', length cmtsAboveFls + 1 + length fls'')
+
+      field = Field colonPos nameWithAnn flsWithAnn
+      totalHeight =
+          length cmtsAboveField
+          + 1 -- field
+          + flsHeight -- includes inner comments
+  in  (field, totalHeight)
 
 removeField
   :: RemoveConfig
