@@ -190,8 +190,6 @@ offsetFieldRow n = \case
     incrementRowN :: L.HasPosition ann => ann -> ann
     incrementRowN = L.over L.positionRow (+n)
 
--- TODO(leana8959): rewrite this by simply asking the user to provide some comments and we put it at a fixed position.
--- The fact that WithComments holds comments with positions makes it very hard to reason with.
 addField
   :: AddConfig
   -> Name ()
