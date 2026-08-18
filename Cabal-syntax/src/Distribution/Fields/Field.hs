@@ -61,8 +61,8 @@ data WithComments ann = WithComments
   }
   deriving (Show, Generic, Eq, Ord, Functor)
 
-instance HasPosition ann => HasPosition (WithComments ann) where
-  position f (WithComments cmts ann) = WithComments cmts <$> position f ann
+-- TODO(leana8959): implement the colon Position in an another Field like structure.
+-- TODO(leana8959): remove casing when converting to Field ann
 
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
