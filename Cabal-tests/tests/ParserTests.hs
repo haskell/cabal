@@ -237,12 +237,12 @@ modifyValueAtomBSAlaTest = testGroup "modifyValueAtomBSAla"
       "spec-version"
       "1.10"
       (Just . succ)
-      "1.12"
+      (EditOk "1.12")
   , mkModifyValueAtomAlaBSTest @(Identity Language) @Language
       "default-language"
       "Haskell98"
       (\_ -> Just GHC2024)
-      "GHC2024"
+      (EditOk "GHC2024")
   ]
 
 mkModifyValueAtomAlaBSTest
@@ -251,7 +251,7 @@ mkModifyValueAtomAlaBSTest
   => String
   -> BS.ByteString
   -> (a -> Maybe a)
-  -> BS.ByteString
+  -> EditResult BS.ByteString
   -> TestTree
 mkModifyValueAtomAlaBSTest
   name
@@ -278,7 +278,7 @@ modifyValueListBSTest = testGroup "modifyValueListBS"
           Dependency pname _ libname | unPackageName pname == "megaparsec" -> Just (Dependency pname funnyVersionRange libname)
           _ -> Nothing
       )
-      ( BS8.unlines
+      ( EditOk $ BS8.unlines
           [ "  base         > 4.8    , text > 2"
           , ""
           , ", megaparsec ==1.3.3.7"
@@ -301,7 +301,7 @@ modifyValueListBSTest = testGroup "modifyValueListBS"
           Dependency pname _ libname | unPackageName pname == "base" -> Just (Dependency pname funnyVersionRange libname)
           _ -> Nothing
       )
-      ( BS8.unlines
+      ( EditOk $ BS8.unlines
           [ "  base ==1.3.3.7, text > 2"
           , ""
           , ", megaparsec > 5"
@@ -324,7 +324,7 @@ modifyValueListBSTest = testGroup "modifyValueListBS"
           Dependency pname _ libname | unPackageName pname == "containers" -> Just (Dependency pname funnyVersionRange libname)
           _ -> Nothing
       )
-      ( BS8.unlines
+      ( EditOk $ BS8.unlines
           [ "  base         > 4.8    , text > 2"
           , ""
           , ", megaparsec > 5"
@@ -345,7 +345,7 @@ modifyValueListBSTest = testGroup "modifyValueListBS"
           "-Wall" -> Just "-Werror=all"
           _ -> Nothing
       )
-      ( BS8.unlines
+      ( EditOk $ BS8.unlines
           [ "-Werror=all -Wcompat -Widentities -Wincomplete-record-updates"
           , "-Wincomplete-patterns -Wincomplete-uni-patterns"
           , "-Wredundant-constraints -Werror=missing-fields"
@@ -364,7 +364,7 @@ modifyValueListBSTest = testGroup "modifyValueListBS"
           "-Wredundant-meow" -> Just "-Wredundant-constraints"
           _ -> Nothing
       )
-      ( BS8.unlines
+      ( EditOk $ BS8.unlines
           [ "-Wall -Wcompat -Widentities -Wincomplete-record-updates"
           , "-Wincomplete-patterns -Wincomplete-uni-patterns"
           , "  -Wredundant-constraints -Werror=missing-fields"
@@ -383,7 +383,7 @@ modifyValueListBSTest = testGroup "modifyValueListBS"
           "-Werror=missing-fields" -> Just "-Werror=all"
           _ -> Nothing
       )
-      ( BS8.unlines
+      ( EditOk $ BS8.unlines
           [ "-Wall -Wcompat -Widentities -Wincomplete-record-updates"
           , "-Wincomplete-patterns -Wincomplete-uni-patterns"
           , "-Wredundant-constraints -Werror=all"
@@ -404,7 +404,7 @@ mkModifyValueListTest
   => String
   -> BS.ByteString
   -> (a -> Maybe a)
-  -> BS.ByteString
+  -> EditResult BS.ByteString
   -> TestTree
 mkModifyValueListTest
   name

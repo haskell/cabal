@@ -9,7 +9,8 @@
 
 module Distribution.Fields.Transform
   (
-    EditError (..)
+    Edit (..)
+  , EditError (..)
   , EditResult (..)
   , MatchField
   , MatchSection
@@ -39,6 +40,11 @@ module Distribution.Fields.Transform
   , modifyValueList
   , prependValueListBS
   -- , prependValueList
+
+  -- TODO: move to an internal module
+  -- * Internal
+  , substituteSubBSAt
+  , splitBSAtPosition
   )
   where
 
@@ -89,7 +95,7 @@ data EditError
   -- TODO(leana8959): not very helpful, we dont' know what didn't change exactly
   -- we have functions, we can't simplify print "what should have" changed".
   | ParseFailed P.ParseError
-  deriving (Generic)
+  deriving (Eq, Generic)
 
 data AddConfig = AddStart | AddEnd
 data RemoveConfig = RemoveAll | RemoveFirst
@@ -104,7 +110,7 @@ data EditResult a
   | EditUnchanged a
   | EditErr EditError
     -- ^ a case where you might want to fallback to other edits, because apparently what you did did nothing.
-  deriving (Functor, Generic)
+  deriving (Eq, Functor, Generic)
 
 -- | Build an 'EditResult' given the previous value
 mkEditResult :: Eq a => a -> a -> EditResult a
