@@ -18,6 +18,7 @@ module Distribution.Fields.Transform
     -- * Addition
   , AddConfig (..)
   , addField
+  , addSection
 
     -- * Removal
   , RemoveConfig (..)
@@ -213,6 +214,73 @@ addField ac name nameCmts fls flsCmts = Edit $ case ac of
     in go
   where
     mkFieldAt' = mkFieldAt name nameCmts fls flsCmts
+
+addSection
+  :: AddConfig
+  -> Name ()
+  -> [SectionArg ()]
+  -> [BS.ByteString] -- ^ Comments to the 'Name'
+  -> Edit [Field (WithComments Position)] -- ^ Nested modifications
+  -> Edit [Field (WithComments Position)]
+addSection ac name args nameCmts inner = Edit $ case ac of
+  AddStart -> \case
+    [] -> EditOk [mkSectionAt' onePos]
+    fs@(f : _) ->
+      let newSectionResult = modifySectionFields $ mkSectionAt' (L.view L.position (fieldAnn f))
+      in  newSectionResult <&> \newSection ->
+          let newSectionHeight = let (start, end) = fieldRowRange newSection in end - start
+              fs' = offsetFieldRow newSectionHeight <$> fs
+          in (newSection : fs')
+  AddEnd ->
+    let go [] = EditOk [mkSectionAt' onePos]
+        go [f] =
+            let newSectionResult = modifySectionFields $ mkSectionAt' (afterFieldEndPosition f)
+            in  newSectionResult <&> \newSection -> [f, newSection]
+        go (f : fs) = (f :) <$> go fs
+    in go
+  where
+    mkSectionAt' = mkSectionAt name args nameCmts
+
+    modifySectionFields (Section n as fs) = Section n as <$> (runEdit inner fs)
+    modifySectionFields x = EditUnchanged x
+
+-- TODO(leana8959): factor out composable parts with 'mkFieldAt'.
+mkSectionAt
+  :: Name ()
+  -> [SectionArg ()]
+  -> [BS.ByteString] -- ^ Comments to the 'Name'
+  -> Position
+  -> Field (WithComments Position)
+mkSectionAt name sargs nameCmts pos =
+  let -- All content is aligned to this column.
+      col0 = positionCol pos
+
+      mkCmtAt row col bs = Comment ("-- " <> bs) (Position row col0)
+      cmtsAboveField = zipWith (\bs row -> mkCmtAt row col0 bs) nameCmts [ positionRow pos .. ]
+
+      namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
+      nameWithAnn = (WithComments cmtsAboveField namePosition) <$ name
+
+      sargsRow = positionRow namePosition
+      sargsWithAnn = reverse $ snd $ foldl go state0 sargs
+        where
+            state0 =
+                ( Position sargsRow (BS8.length (getName name))
+                , []
+                )
+            go (lastPos, acc) arg =
+              let thisPosStart = incPos 1 lastPos
+                  thisPosEnd = incPos argLength thisPosStart
+                  argLength = BS8.length (sectionArgBS arg)
+              in  ( thisPosEnd
+                  , (WithComments mempty thisPosEnd <$ arg) : acc
+                  )
+
+      newSection = Section nameWithAnn sargsWithAnn []
+  in  newSection
+
+sectionArgBS :: SectionArg ann -> BS8.ByteString
+sectionArgBS = undefined
 
 -- | Create a new field at a position, along with its height.
 --   Comments are plain strings without @--@ prefix.
