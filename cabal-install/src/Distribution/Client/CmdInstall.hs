@@ -7,9 +7,7 @@ module Distribution.Client.CmdInstall
   ( -- * The @install@ CLI command UI and action
     installCommand
   , installAction
-
-    -- * The @install@ CLI command spec and parser
-  , parseCommand
+  , examples
 
     -- * Internals exposed for testing
   , selectPackageTargets
@@ -34,10 +32,6 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
-import Distribution.Client.Cmd.UI
-  ( replaceCommandAlias
-  )
-import qualified Distribution.Client.Cmd.UI as Cmd.UI
 import Distribution.Client.Config
   ( SavedConfig (..)
   , defaultInstallPath
@@ -125,8 +119,7 @@ import Distribution.Simple.BuildPaths
   ( exeExtension
   )
 import Distribution.Simple.Command
-  ( CommandParse (..)
-  , CommandUI (..)
+  ( CommandUI (..)
   , OptionField (..)
   , optionName
   , usageAlternatives
@@ -293,14 +286,6 @@ data InstallExe = InstallExe
   -- ^ A function to get an exe's final possibly different to the name in the
   -- store.
   }
-
-parseCommand :: String -> [String] -> CommandParse (GlobalFlags -> IO ())
-parseCommand =
-  Cmd.UI.parseCommand
-    examples
-    installCommand
-    installAction
-    (replaceCommandAlias (commandName installCommand))
 
 description :: String
 description =
