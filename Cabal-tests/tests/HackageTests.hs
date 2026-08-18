@@ -249,6 +249,7 @@ instance NFData ParsecResult where
     rnf ParsecResult{} = ()
 
 
+-- TODO(leana8959): remove this from cabal itself, it's just stats
 -- Failed, Total
 data RoundTripResult = RoundTripResult !Int !Int
   deriving (Eq, Show)
