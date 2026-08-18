@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ViewPatterns #-}
 #ifdef DEBUG_TRACETREE
 {-# OPTIONS_GHC -Wno-orphans #-}
 #endif
@@ -10,6 +12,7 @@ module Distribution.Solver.Modular.Solver
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
+import Data.Function ((&))
 
 import qualified Data.Map as M
 import qualified Data.List as L
@@ -18,10 +21,12 @@ import Distribution.Verbosity
 
 import Distribution.Compiler (CompilerInfo)
 
+import Distribution.Version
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.PackageConstraint (PackageConstraint(..), PackageProperty(..))
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
 
@@ -138,17 +143,17 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
-                       (case onlyConstrained sc of
-                          OnlyConstrainedAll ->
-                            P.onlyConstrained pkgIsExplicit
-                          OnlyConstrainedNone ->
-                            id)
+                       (let oc = onlyConstrained sc in oc & \case
+                          OnlyConstrainedEq -> P.onlyConstrained oc (`S.member` versionEqOrGoals)
+                          OnlyConstrainedAll -> P.onlyConstrained oc (`S.member` versionConstrainedOrGoals)
+                          OnlyConstrainedNone -> id)
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
-    allExplicit = M.keysSet userConstraints `S.union` userGoals
+    versionEq = filterVersion isThisVersion userConstraints
+    versionEqOrGoals = versionEq `S.union` userGoals
 
-    pkgIsExplicit :: PN -> Bool
-    pkgIsExplicit pn = S.member pn allExplicit
+    versionConstrained = filterVersion isVersionConstrained userConstraints
+    versionConstrainedOrGoals = versionConstrained `S.union` userGoals
 
     -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
     -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
@@ -165,6 +170,31 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     goalChoiceHeuristics
       | asBool (reorderGoals sc) = P.preferReallyEasyGoalChoices
       | otherwise                = id {- P.firstGoal -}
+
+-- | Keep package names of constraints that satisfy the predicate.
+filterVersion :: (LabeledPackageConstraint -> Bool) -> M.Map PN [LabeledPackageConstraint] -> Set PN
+filterVersion versionFilter = M.keysSet . M.filter (not . null) . M.map (filter versionFilter)
+
+normalise :: VersionRange -> VersionRange
+normalise = fromVersionIntervals . toVersionIntervals
+
+-- | Unconstrained with a version range @>=0@ or @<0@ or their flag equivalents
+-- and constrained by other versions ranges.
+--
+-- Both the @-any@ and @-none@ flags are considered unconstrained, because they
+-- don't actually constrain the version of the package. The @-any@ flag allows
+-- any version, and the @-none@ flag effectively excludes a package.
+isVersionConstrained :: LabeledPackageConstraint -> Bool
+isVersionConstrained (LabeledPackageConstraint (PackageConstraint _ c) _) = case c of
+    PackagePropertyVersion (normalise -> vr) -> not (isAnyVersion vr || isNoVersion vr)
+    -- `PackagePropertyFlags` @-any@ and @-none@ are covered below.
+    _ -> False
+
+-- | Is this an equality version constraint @== v@?
+isThisVersion :: LabeledPackageConstraint -> Bool
+isThisVersion (LabeledPackageConstraint (PackageConstraint _ constraint) _)
+  | PackagePropertyVersion (projectVersionRange . normalise -> ThisVersionF _) <- constraint = True
+  | otherwise = False
 
 -- | Dump solver tree to a file (in debugging mode)
 --
