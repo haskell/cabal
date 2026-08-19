@@ -1,0 +1,33 @@
+Register this package with the compiler.
+
+Usage: cabal v1-register [FLAGS]
+
+Flags for v1-register:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --user                       # upon registration, register this package in
+                                the user's local package database
+ --global                     # (default)upon registration, register this
+                                package in the system-wide package database
+ --inplace                    # register the package in the build location, so
+                                it can be used without being installed
+ --gen-script                 # instead of registering, generate a script to
+                                register later
+ --gen-pkg-config[=PKG]       # instead of registering, generate a package
+                                registration file/directory
+ --print-ipid                 # print the installed package ID calculated for
+                                this package
+
+The v1-register command is a part of the legacy v1 style of cabal usage.
+
+It is a legacy feature and will be removed in a future release of
+cabal-install. Please file a bug if you cannot replicate a working v1- use
+case with the nix-style commands.
+
+For more information, see:
+https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html

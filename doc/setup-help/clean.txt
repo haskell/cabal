@@ -1,0 +1,17 @@
+Clean up after a build.
+
+Usage: cabal clean [FLAGS]
+
+Removes .hi, .o, preprocessed sources, etc.
+
+Flags for clean:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ -s, --save-configure         # Do not remove the configuration file
+                                (dist/setup-config) during cleaning. Saves
+                                need to reconfigure.

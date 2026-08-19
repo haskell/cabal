@@ -1,0 +1,31 @@
+Copy the files of all/specific components to install locations.
+
+Usage: cabal v1-copy [FLAGS]
+   or: cabal v1-copy COMPONENTS [FLAGS]
+
+Components encompass executables and libraries. Does not call register, and
+allows a prefix at install time. Without the --destdir flag, configure
+determines location.
+
+Flags for v1-copy:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --destdir=DIR                # directory to copy files to, prepended to
+                                installation directories
+
+Examples:
+  cabal v1-copy               All the components in the package
+  cabal v1-copy foo           A component (i.e. lib, exe, test suite)
+The v1-copy command is a part of the legacy v1 style of cabal usage.
+
+It is a legacy feature and will be removed in a future release of
+cabal-install. Please file a bug if you cannot replicate a working v1- use
+case with the nix-style commands.
+
+For more information, see:
+https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html

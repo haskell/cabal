@@ -1,0 +1,6 @@
+Reformat the .cabal file using the standard style.
+
+Usage: cabal format [FILE]
+
+Flags for format:
+ -h, --help                   # Show this help text

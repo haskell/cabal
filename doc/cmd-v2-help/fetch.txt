@@ -1,0 +1,76 @@
+Downloads packages for later installation.
+
+Usage: cabal fetch [FLAGS] PACKAGES
+
+Note that it currently is not possible to fetch the dependencies for a
+package in the current directory.
+
+Flags for fetch:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --dependencies               # Resolve and fetch dependencies (default)
+ --no-dependencies            # Ignore dependencies
+ --dry-run                    # Do not install anything, only print what would
+                                be installed.
+ --enable-tests               # Enable dependency checking and compilation for
+                                test suites listed in the package description
+                                file.
+ --disable-tests              # Disable dependency checking and compilation
+                                for test suites listed in the package
+                                description file.
+ --enable-benchmarks          # Enable dependency checking and compilation for
+                                benchmarks listed in the package description
+                                file.
+ --disable-benchmarks         # Disable dependency checking and compilation
+                                for benchmarks listed in the package
+                                description file.
+ --solver=SOLVER              # Select dependency solver to use (default:
+                                modular). Choices: modular.
+ --max-backjumps=NUM          # Maximum number of backjumps allowed while
+                                solving (default: 4000). Use a negative number
+                                to enable unlimited backtracking. Use 0 to
+                                disable backtracking completely.
+ --reorder-goals              # Try to reorder goals according to certain
+                                heuristics. Slows things down on average, but
+                                may make backtracking faster for some
+                                packages.
+ --count-conflicts            # Try to speed up solving by preferring goals
+                                that are involved in a lot of conflicts
+                                (default).
+ --fine-grained-conflicts     # Skip a version of a package if it does not
+                                resolve the conflicts encountered in the last
+                                version, as a solver optimization (default).
+ --minimize-conflict-set      # When there is no solution, try to improve the
+                                error message by finding a minimal conflict
+                                set (default: false). May increase run time
+                                significantly.
+ --independent-goals          # Treat several goals on the command line as
+                                independent. If several goals depend on the
+                                same package, different versions can be
+                                chosen.
+ --prefer-oldest              # Prefer the oldest (instead of the latest)
+                                versions of packages available. Useful to
+                                determine lower bounds in the build-depends
+                                section.
+ --prefer-version=oldest|latest|installed-or-latest
+                              # Select which version of a package that the
+                                solver should prefer. Oldest is useful to
+                                determine lower bounds in build-depends
+                                section. Latest will prefer the latest
+                                version. Installed-or-latest will prefer
+                                installed versions and the latest version
+                                otherwise.
+ --shadow-installed-packages  # If multiple package instances of the same
+                                version are installed, treat all but one as
+                                shadowed.
+ --strong-flags               # Do not defer flag choices (this used to be the
+                                default in cabal-install <= 1.20).
+ --allow-boot-library-installs
+                              # Allow cabal to install base, ghc-prim,
+                                integer-simple, integer-gmp, and
+                                template-haskell.
+ --reject-unconstrained-dependencies=none|all
+                              # Require these packages to have constraints on
+                                them if they are to be selected (default:
+                                none).

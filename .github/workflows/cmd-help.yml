@@ -1,0 +1,50 @@
+name: Command help docs
+
+# See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - master
+    paths: &paths
+      - doc/Makefile
+      - doc/cmd-v1-help/**
+      - doc/cmd-v2-help/**
+      - doc/cmd-v2-hidden-help/**
+      - doc/setup-help/**
+      - cabal-install/src/Distribution/Client/Cmd*.hs
+      - cabal-install/src/Distribution/Client/Main.hs
+      - cabal-install/src/Distribution/Client/Setup.hs
+      - Cabal/src/Distribution/Simple.hs
+      - Cabal/src/Distribution/Simple/Setup/**
+  pull_request:
+    paths: *paths
+  workflow_dispatch: {}
+
+jobs:
+  cmd-help:
+    name: Check command help docs are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: 9.12.2
+          cabal-version: latest
+      - run: cabal v2-update
+      - name: Cache dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.local/state/cabal
+          key: ${{ runner.os }}-cmd-help-${{ hashFiles('cabal.project', 'cabal-install/cabal-install.cabal', 'Cabal/Cabal.cabal') }}
+          restore-keys: ${{ runner.os }}-cmd-help-
+      - name: Regenerate command help docs
+        run: make -B -C doc cmd-help
+      - name: Check that diff is clean
+        run: |
+          git status --porcelain=v1 doc
+          git diff --stat doc
+          git diff -p --exit-code doc
