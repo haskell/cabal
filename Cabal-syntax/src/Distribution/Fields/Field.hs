@@ -17,6 +17,7 @@ module Distribution.Fields.Field
   , fieldLineBS
   , SectionArg (..)
   , sectionArgAnn
+  , sectionArgBS
 
     -- * Comment
   , Comment (..)
@@ -127,6 +128,11 @@ sectionArgAnn :: SectionArg ann -> ann
 sectionArgAnn (SecArgName ann _) = ann
 sectionArgAnn (SecArgStr ann _) = ann
 sectionArgAnn (SecArgOther ann _) = ann
+
+sectionArgBS :: SectionArg ann -> ByteString
+sectionArgBS (SecArgName _ bs) = bs
+sectionArgBS (SecArgStr _ bs) = bs
+sectionArgBS (SecArgOther _ bs) = bs
 
 -------------------------------------------------------------------------------
 -- Name

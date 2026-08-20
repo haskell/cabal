@@ -61,6 +61,7 @@ import Distribution.Parsec.Position
 import Distribution.Pretty
 import Distribution.Utils.Generic
 
+import qualified Data.Bifunctor as Bi
 import Data.Functor ((<&>))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe
@@ -191,6 +192,10 @@ addSection ac name args nameCmts inner = Edit $ \spec ->
           go (f : fs) = (f :) <$> go fs
       in go
 
+
+mkCommentAtPosition :: Position -> BS.ByteString -> Comment Position
+mkCommentAtPosition (Position row col) bs = Comment (BS8.replicate col ' ' <>  "-- " <> bs) (Position row col)
+
 -- TODO(leana8959): factor out composable parts with 'mkFieldAt'.
 mkSectionAt
   :: Name ()
@@ -202,8 +207,7 @@ mkSectionAt name sargs nameCmts pos =
   let -- All content is aligned to this column.
       col0 = positionCol pos
 
-      mkCmtAt row col bs = Comment (BS8.replicate col ' ' <>  "-- " <> bs) (Position row col0)
-      cmtsAboveField = zipWith (\bs row -> mkCmtAt row col0 bs) nameCmts [ positionRow pos .. ]
+      cmtsAboveField = zipWith (\bs row -> mkCommentAtPosition (Position row col0) bs) nameCmts [ positionRow pos .. ]
 
       namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
       nameWithAnn = WithComments cmtsAboveField namePosition <$ name
@@ -226,10 +230,7 @@ mkSectionAt name sargs nameCmts pos =
       newSection = Section nameWithAnn sargsWithAnn []
   in  newSection
 
-sectionArgBS :: SectionArg ann -> BS8.ByteString
-sectionArgBS (SecArgName _ bs) = bs
-sectionArgBS (SecArgStr _ bs) = bs
-sectionArgBS (SecArgOther _ bs) = bs
+-- TODO(leana8959): rewrite this with a state monad
 
 -- | Create a new field at a position, along with its height.
 --   Comments are plain strings without @--@ prefix.
@@ -241,41 +242,42 @@ mkFieldAt
   -> Position
   -> (Field (WithComments Position), Int)
 mkFieldAt name nameCmts fls flsCmts pos =
-  let -- If there are no body, we attach the fieldlines's comments to the field.
-      cmtsAboveFieldBS = if null fls then nameCmts <> flsCmts else nameCmts
-
-      -- All content is aligned to this column.
+  let -- All content is aligned to this column.
       col0 = positionCol pos
       -- TODO(leana8959): read indentation from the config
       indentedCol = col0 + 2
 
-      mkCmtAt row col bs = Comment (BS8.replicate col ' ' <>  "-- " <> bs) (Position row col0)
-      cmtsAboveField = zipWith (\bs row -> mkCmtAt row col0 bs) cmtsAboveFieldBS [ positionRow pos .. ]
+      -- If there are no body, we attach the fieldlines's comments to the field.
+      cmtsAboveFieldBS = if null fls then nameCmts <> flsCmts else nameCmts
+      cmtsAboveField = zipWith (\bs row -> mkCommentAtPosition (Position row col0) bs) cmtsAboveFieldBS [ positionRow pos .. ]
 
       namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
-      nameWithAnn = (WithComments cmtsAboveField namePosition) <$ name
+      nameWithAnn = WithComments cmtsAboveField namePosition <$ name
 
       colonPos = incPos (BS8.length (getName name)) namePosition
 
+      cmtsAboveFls = zipWith (\bs row -> mkCommentAtPosition (Position row indentedCol) bs) flsCmts [ positionRow pos .. ]
+      -- If there are no comments, print on the same line after the colon.
+      -- Otherwise after a newline, we list out all fieldlines.
+      fieldLineStartPos = maybe (incPos 2 colonPos) (\(Comment _ p) -> retPos p) (safeLast cmtsAboveFls)
       (flsWithAnn, flsHeight) = case fls of
         [] -> ([], 0)
-        (fl : fls') ->
-          let cmtsAboveFls = zipWith (\bs row -> mkCmtAt row indentedCol bs) flsCmts [ positionRow pos .. ]
-              fieldLineStartPos = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveFls)
-
-              fl' :: FieldLine (WithComments Position)
-              fl' = WithComments cmtsAboveFls fieldLineStartPos <$ fl
-              fieldLineFollowingPos = retPos fieldLineStartPos
-
+        -- Singleline
+        [fl] ->
+         let fl' = WithComments cmtsAboveFls fieldLineStartPos <$ fl
+         in  ([fl'], 0)
+        -- Multiline
+        fls' ->
+          let fieldLineFollowingPos = retPos fieldLineStartPos
               fls'' :: [FieldLine (WithComments Position)]
               fls'' = zipWith (\l row -> WithComments mempty (Position row indentedCol) <$ l) fls' [ positionRow fieldLineFollowingPos ..]
-          in  (fl' : fls'', length cmtsAboveFls + 1 + length fls'')
+          in  (fls'', length cmtsAboveFls + 1 + length fls'')
 
       field = Field colonPos nameWithAnn flsWithAnn
       totalHeight =
           length cmtsAboveField
-          + 1 -- field
-          + flsHeight -- includes inner comments
+          + 1 -- field name
+          + flsHeight -- inner comments and fieldlines
   in  (field, totalHeight)
 
 data RemoveConfig = RemoveAll | RemoveFirst
@@ -426,18 +428,15 @@ modifyValueAtomBSAla
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
   -> (CabalSpecVersion -> BS.ByteString -> EditResult BS.ByteString)
-modifyValueAtomBSAla transformA spec bs0 =
-  let parsed =
-        fmap (coerce @b @a)
-          . runParsecParser' spec (parsec @b) "<modifyValueAtomAla>"
-          . fieldLineStreamFromBS
-          $ bs0
-  in case parsed of
-    Left err -> EditErr (ParseFailed err)
-    Right parseOk ->
-      let transformed = transformA parseOk
-          bs = maybe bs0 (BS8.pack . show . prettyVersioned @b spec . coerce @a @b) transformed
-      in  EditOk bs
+modifyValueAtomBSAla transformA spec bs0 = do
+  parsedOk <-
+        either (EditErr . ParseFailed) (pure . coerce @b @a) $
+          runParsecParser' spec (parsec @b) "<modifyValueAtomAla>" $
+          fieldLineStreamFromBS bs0
+  let transformed = transformA parsedOk
+      bs = maybe bs0 (BS8.pack . show . prettyVersioned @b spec . coerce @a @b) transformed
+
+  EditOk bs
 
 -- | Build a @[FieldLine Position]@ modification function given a function @a -> a@, parsed as @b@.
 modifyValueAtomAla
@@ -489,33 +488,31 @@ modifyValueListBS
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
   -> (CabalSpecVersion -> BS.ByteString -> EditResult BS.ByteString)
-modifyValueListBS transformA spec bs0 =
+modifyValueListBS transformA spec bs0 = do
   let parsecWithLeadingSpaces = liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))
-      parsed =
-        fmap (coerce @_ @[Located a])
-          . runParsecParser' spec parsecWithLeadingSpaces "<modifyValueListBS>"
-          . fieldLineStreamFromBS
-          $ bs0
-  in  case parsed of
-    Left err -> EditErr (ParseFailed err)
-    Right ok ->
-      let transformed :: [Located (Maybe a)]
-          transformed  = (map . fmap) transformA ok
+  parsedOk <-
+    either (EditErr . ParseFailed) (pure . coerce @_ @[Located a]) $
+      runParsecParser' spec parsecWithLeadingSpaces "<modifyValueListBS>" $
+      fieldLineStreamFromBS bs0
 
-          -- From back to front (avoid drifting), generate a list of (source range, replacement string)
-          editsWithinList =
-            sortBySrcSpanDes transformed >>= \case
-              MkLocated _ Nothing -> []
-              MkLocated spn (Just newItem) -> [(spn, BS8.pack $ show $ prettyVersioned @b spec $ coerce @a @b newItem)]
+  let transformed :: [Located (Maybe a)]
+      transformed  = (map . fmap) transformA parsedOk
 
-          performEditsWithinList = foldl' go
-            where
-              -- If the original snippet spans more than one line, we append the vertical spacing back by counting lines.
-              -- This is because each Parsec instance eats the trailing spaces.
-              go oldBS (spn, bs) = substituteSubBSAt spn oldBS (appendNewLines spn bs)
+      -- From back to front (avoid drifting), generate a list of (source range, replacement string)
+      editsWithinList =
+        sortBySrcSpanDes transformed >>= \case
+          MkLocated _ Nothing -> []
+          MkLocated spn (Just newItem) -> [(spn, BS8.pack $ show $ prettyVersioned @b spec $ coerce @a @b newItem)]
 
-          printed = performEditsWithinList bs0 editsWithinList
-       in EditOk printed
+      performEditsWithinList = foldl' go
+        where
+          -- If the original snippet spans more than one line, we append the vertical spacing back by counting lines.
+          -- This is because each Parsec instance eats the trailing spaces.
+          go oldBS (spn, bs) = substituteSubBSAt spn oldBS (appendNewLines spn bs)
+
+      printed = performEditsWithinList bs0 editsWithinList
+
+  EditOk printed
 
 -- | Build a @[FieldLine Position]@ modification function given a function @a -> Maybe a@, parsed as @List sep b a@.
 modifyValueList
@@ -548,29 +545,26 @@ prependValueListBS
   => a
   -- ^ Nothing prevents a new render.
   -> (CabalSpecVersion -> BS.ByteString -> EditResult BS.ByteString)
-prependValueListBS newItem spec bs0 =
+prependValueListBS newItem spec bs0 = do
   let parsecWithLeadingSpaces = liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))
-      parsed =
-        fmap (coerce @_ @[Located a])
-          . runParsecParser' spec parsecWithLeadingSpaces "<prependValueList>"
-          . fieldLineStreamFromBS
-          $ bs0
+  parseOk <-
+        either (EditErr . ParseFailed) (pure . coerce @_ @[Located a]) $
+          runParsecParser' spec parsecWithLeadingSpaces "<prependValueList>" $
+          fieldLineStreamFromBS bs0
 
-  in  case parsed of
-    Left err -> EditErr (ParseFailed err)
-    Right parseOk ->
-      let newItemBS = BS8.pack $ show $ prettyVersioned @b spec $ coerce @a @b newItem
-          printed = case parseOk of
-            [] -> newItemBS
-            (MkLocated (SrcSpan begin _) _ : _) ->
-              let sep = Proxy :: Proxy sep
-                  (preOldFirstBS, _) = splitBSAtPosition begin bs0
-                  hasLeadingSep = BS8.any (isSeparator sep) preOldFirstBS
-                  newSep = sepToChar sep
-               in if hasLeadingSep
-                    then newItemBS <> bs0
-                    else newItemBS <> newSep <> bs0
-       in EditOk printed
+  let newItemBS = BS8.pack $ show $ prettyVersioned @b spec $ coerce @a @b newItem
+      printed = case parseOk of
+        [] -> newItemBS
+        (MkLocated (SrcSpan begin _) _ : _) ->
+          let sep = Proxy :: Proxy sep
+              (preOldFirstBS, _) = splitBSAtPosition begin bs0
+              hasLeadingSep = BS8.any (isSeparator sep) preOldFirstBS
+              newSep = sepToChar sep
+           in if hasLeadingSep
+                then newItemBS <> bs0
+                else newItemBS <> newSep <> bs0
+
+  EditOk printed
 
 -- | Note: when prepending into a 'Field' that has no field line, it would do nothing.
 --   This is because the annotation can't be known.
