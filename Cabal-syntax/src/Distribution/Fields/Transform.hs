@@ -95,10 +95,18 @@ data EditResult a
     EditErr EditError
   deriving (Eq, Functor, Generic)
 
+-- TODO(leana8959): Add a label to indicate what didn't match, or what matched and didn't change.
+-- Define what is a match: when the inner thing doesn't match because there are not inner thing, what we can't rely on it
+-- to tell us its label.
+-- Is this where continuation comes in handy.
+--
+-- Maybe we can put this in the matching function's signature?
+-- But then we can't retrieve it.
+
+-- TODO(leana8959): implement a label mechanism
 data EditError
   = ExpectChanges
-  | -- TODO(leana8959): use the label
-    ParseFailed P.ParseError
+  | ParseFailed P.ParseError
   deriving (Eq, Generic)
 
 -- | Build an 'EditResult' given the previous value
@@ -132,10 +140,6 @@ orFallback' = liftA2 (const id)
 
 data AddConfig = AddStart | AddEnd
 
--- TODO(leana8959): Add a label to indicate what didn't match, or what matched and didn't change.
--- Define what is a match: when the inner thing doesn't match because there are not inner thing, what we can't rely on it
--- to tell us its label.
--- Is this where continuation comes in handy.
 type MatchField ann = Name ann -> [FieldLine ann] -> Bool
 type MatchSection ann = Name ann -> [SectionArg ann] -> [Field ann] -> Bool
 
@@ -199,7 +203,6 @@ addSection ac name args nameCmts inner = Edit $ \spec ->
 mkCommentAtPosition :: Position -> BS.ByteString -> Comment Position
 mkCommentAtPosition (Position row col) bs = Comment (BS8.replicate col ' ' <> "-- " <> bs) (Position row col)
 
--- TODO(leana8959): factor out composable parts with 'mkFieldAt'.
 mkSectionAt
   :: Name ()
   -> [SectionArg ()]
@@ -471,9 +474,10 @@ modifyValueAtomAla transformA spec fls0 =
                 interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
 
 -- | The position is (1, 1)-indexed. The second element of the pair starts at the position.
+--   When indexing out of upper bound, we return a newline string for the following parts.
 splitBSAtPosition :: Position -> BS.ByteString -> (BS.ByteString, BS.ByteString)
 splitBSAtPosition (Position row col) bs = case splitAt (row - 1) (BS8.lines bs) of
-  (preLines, []) -> (BS8.unlines preLines, "\n") -- TODO(leana8959): it is useful, but is it lawful?
+  (preLines, []) -> (BS8.unlines preLines, "\n") -- This happens to be useful.
   (preLines, l : postLines) ->
     let (ll, lr) = BS8.splitAt (col - 1) l
      in (BS8.unlines preLines <> ll, BS8.unlines (lr : postLines))
