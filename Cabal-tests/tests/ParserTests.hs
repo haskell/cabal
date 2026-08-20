@@ -34,6 +34,7 @@ import Distribution.PackageDescription
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
+import Distribution.PackageDescription.Format
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
 import Distribution.Fields.ParseResult
@@ -203,11 +204,13 @@ mkEditFieldGoldenTest name fname edit = ediffGolden goldenTest name exprFile $ d
 
 formatPrintedTest :: TestTree
 formatPrintedTest = testGroup "format-printed"
-  [ mkFormatPrintedTest "buildinfo" "simple.cabal" buildInfoFieldGrammar
+  [ mkFormatPrintedTest "buildinfo" "simple.cabal" (exampleFormatPackageDescription CabalSpecV3_8)
   ]
 
-mkFormatPrintedTest :: String -> FilePath -> FormatterFieldGrammar s a -> TestTree
-mkFormatPrintedTest name fname formatter = ediffGolden goldenTest name exprFile $ do
+mkFormatPrintedTest :: String -> FilePath
+  -> ([Field (WithComments Position)] -> [Field (WithComments Position)])
+  -> TestTree
+mkFormatPrintedTest name fname format = ediffGolden goldenTest name exprFile $ do
   contents <- BS.readFile input
   let res = readFieldsConcrete' contents
 
@@ -217,7 +220,7 @@ mkFormatPrintedTest name fname formatter = ediffGolden goldenTest name exprFile 
       unless (null warns) (fail $ unlines (map show warns))
       pure ok
 
-  pure $ runRenderFields $ formatFieldGrammar cabalSpecLatest formatter fs
+  pure $ runRenderFields $ format fs
   where
     input = "tests" </> "ParserTests" </> "format-printed" </> fname
     exprFile = addExtension (dropExtension input <> "_" <> name) "expr"

@@ -116,6 +116,7 @@ library
     Distribution.PackageDescription.Configuration
     Distribution.PackageDescription.FieldGrammar
     Distribution.PackageDescription.Parsec
+    Distribution.PackageDescription.Format
     Distribution.PackageDescription.PrettyPrint
     Distribution.PackageDescription.Quirks
     Distribution.PackageDescription.Utils
