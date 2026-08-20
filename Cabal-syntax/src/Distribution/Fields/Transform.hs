@@ -34,7 +34,8 @@ module Distribution.Fields.Transform
   , andThen
   , orFallback
 
-    -- * Typed modification functions
+    -- * Typed 'FieldLine' modification functions
+    -- $editing-fieldlines
   , modifyValueAtomBSAla
   , modifyValueAtomAla
   , modifyValueListBS
@@ -65,7 +66,6 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe
 import GHC.Generics
 import Data.Coerce
-import Control.Monad
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Kind
@@ -79,11 +79,11 @@ import Distribution.Parsec.FieldLineStream
 import qualified Distribution.Parsec.Position.Lens as L
 import qualified Distribution.Fields.Field.Lens as L ()
 import qualified Distribution.Compat.Lens as L
-
+import Distribution.CabalSpecVersion
 
 -- | Reified function to facilitate chaining
 --   This can't be a functor (so there's no applicative nor alternative), I think there are better ways to do this.
-newtype Edit a = Edit { runEdit :: a -> EditResult a }
+newtype Edit a = Edit { runEdit :: CabalSpecVersion -> a -> EditResult a }
 
 data EditResult a
   = EditOk a
@@ -114,7 +114,7 @@ instance Applicative EditResult where
     (EditUnchanged y) (EditOk x) -> EditOk (f y x)
     (EditUnchanged u) (EditUnchanged v) -> EditUnchanged (f u v)
 
-    -- Failure takes precedence
+    -- Failure takes precedence.
     _ (EditErr err) -> EditErr err
     (EditErr err) _ -> EditErr err
 
@@ -123,9 +123,9 @@ instance Monad EditResult where
   (EditUnchanged u) >>= f = f u
   (EditErr err) >>= _ = EditErr err
 
--- We don't have alternative instance because empty doesn't make sense.
--- Either we have to conjure up a Unchanged out of thin air;
--- or we need to fail with empty.
+-- 'EditResult' doesn't have an 'Alternative' instance because empty doesn't make sense.
+-- Either we have to conjure up a 'EditUnchanged' out of thin air;
+-- or we need to fail with empty by using 'EditErr'.
 orFallback' :: EditResult a -> EditResult a -> EditResult a
 orFallback' = \cases
   (EditOk x) _ -> EditOk x
@@ -133,8 +133,6 @@ orFallback' = \cases
   (EditErr _) y -> y
 
 data AddConfig = AddStart | AddEnd
-data RemoveConfig = RemoveAll | RemoveFirst
-data ModifyConfig = ModifyFirst | ModifyLast
 
 -- TODO(leana8959): Add a label to indicate what didn't match, or what matched and didn't change.
 type MatchField ann = Name ann -> [FieldLine ann] -> Bool
@@ -147,7 +145,7 @@ addField
   -> [FieldLine ()]
   -> [BS.ByteString] -- ^ Comments to the 'FieldLine's
   -> Edit [Field (WithComments Position)]
-addField ac name nameCmts fls flsCmts = Edit $ case ac of
+addField ac name nameCmts fls flsCmts = Edit $ \_ -> case ac of
   AddStart -> \case
     [] -> EditOk [fst (mkFieldAt' onePos)]
     fs@(f : _) ->
@@ -171,27 +169,27 @@ addSection
   -> [BS.ByteString] -- ^ Comments to the 'Name'
   -> Edit [Field (WithComments Position)] -- ^ Nested modifications
   -> Edit [Field (WithComments Position)]
-addSection ac name args nameCmts inner = Edit $ case ac of
-  AddStart -> \case
-    [] -> EditOk [mkSectionAt' onePos]
-    fs@(f : _) ->
-      let newSectionResult = modifySectionFields $ mkSectionAt' (L.view L.position (fieldAnn f))
-      in  newSectionResult <&> \newSection ->
-          let newSectionHeight = let (start, end) = fieldRowRange newSection in end - start
-              fs' = offsetFieldRow newSectionHeight <$> fs
-          in (newSection : fs')
-  AddEnd ->
-    let go [] = EditOk [mkSectionAt' onePos]
-        go [f] =
-            let newSectionResult = modifySectionFields $ mkSectionAt' (afterFieldEndPosition f)
-            in  newSectionResult <&> \newSection -> [f, newSection]
-        go (f : fs) = (f :) <$> go fs
-    in go
-  where
-    mkSectionAt' = mkSectionAt name args nameCmts
+addSection ac name args nameCmts inner = Edit $ \spec ->
+  let modifySectionFields (Section n as fs) = Section n as <$> runEdit inner spec fs
+      modifySectionFields x = EditUnchanged x
 
-    modifySectionFields (Section n as fs) = Section n as <$> (runEdit inner fs)
-    modifySectionFields x = EditUnchanged x
+      mkSectionAt' = mkSectionAt name args nameCmts
+  in case ac of
+    AddStart -> \case
+      [] -> EditOk [mkSectionAt' onePos]
+      fs@(f : _) ->
+        let newSectionResult = modifySectionFields $ mkSectionAt' (L.view L.position (fieldAnn f))
+        in  newSectionResult <&> \newSection ->
+            let newSectionHeight = let (start, end) = fieldRowRange newSection in end - start
+                fs' = offsetFieldRow newSectionHeight <$> fs
+            in (newSection : fs')
+    AddEnd ->
+      let go [] = EditOk [mkSectionAt' onePos]
+          go [f] =
+              let newSectionResult = modifySectionFields $ mkSectionAt' (afterFieldEndPosition f)
+              in  newSectionResult <&> \newSection -> [f, newSection]
+          go (f : fs) = (f :) <$> go fs
+      in go
 
 -- TODO(leana8959): factor out composable parts with 'mkFieldAt'.
 mkSectionAt
@@ -208,7 +206,7 @@ mkSectionAt name sargs nameCmts pos =
       cmtsAboveField = zipWith (\bs row -> mkCmtAt row col0 bs) nameCmts [ positionRow pos .. ]
 
       namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
-      nameWithAnn = (WithComments cmtsAboveField namePosition) <$ name
+      nameWithAnn = WithComments cmtsAboveField namePosition <$ name
 
       sargsRow = positionRow namePosition
       sargsWithAnn = reverse $ snd $ foldl go state0 sargs
@@ -268,7 +266,7 @@ mkFieldAt name nameCmts fls flsCmts pos =
               fieldLineFollowingPos = retPos fieldLineStartPos
 
               fls'' :: [FieldLine (WithComments Position)]
-              fls'' = zipWith (\fl row -> WithComments mempty (Position row indentedCol) <$ fl) fls' [ positionRow fieldLineFollowingPos ..]
+              fls'' = zipWith (\l row -> WithComments mempty (Position row indentedCol) <$ l) fls' [ positionRow fieldLineFollowingPos ..]
           in  (fl' : fls'', length cmtsAboveFls + 1 + length fls'')
 
       field = Field colonPos nameWithAnn flsWithAnn
@@ -278,37 +276,41 @@ mkFieldAt name nameCmts fls flsCmts pos =
           + flsHeight -- includes inner comments
   in  (field, totalHeight)
 
+data RemoveConfig = RemoveAll | RemoveFirst
+
 removeField
   :: RemoveConfig
   -> MatchField (WithComments Position)
   -> Edit [Field (WithComments Position)]
-removeField rc match = Edit $ case rc of
+removeField rc match = Edit $ \_ -> case rc of
   RemoveAll -> mkEditResult <*> filter p
   RemoveFirst -> mkEditResult <*> filterOne p
   where
     p (Field _ name fls) = not (match name fls)
     p _ = True
 
+data ModifyConfig = ModifyFirst | ModifyLast
+
 -- Different modification strategies
 modifyField
   :: ModifyConfig
   -> MatchField (WithComments Position) -- ^ Match a given field
-  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
+  -> (CabalSpecVersion -> [FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
   -> Edit [Field (WithComments Position)]
-modifyField mc match modifyFieldLines = Edit $ case mc of
-  ModifyFirst -> \fs -> mapFirstThen doModify doShift fs
-  ModifyLast -> mapLast doModify
-  where
-    doModify (Field colonPos fname fls) | match fname fls = Field colonPos fname <$> fls'
-      where
-        fls' = modifyFieldLines fls
-    doModify x = EditUnchanged x
+modifyField mc match modifyFieldLines = Edit $ \spec ->
+  let doModify (Field colonPos fname fls) | match fname fls = Field colonPos fname <$> fls'
+        where
+          fls' = modifyFieldLines spec fls
+      doModify x = EditUnchanged x
 
-    doShift (old, new) fd =
-        let (_, oldEnd) = fieldRowRange old
-            (_, newEnd) = fieldRowRange new
-            lineShift = (newEnd - oldEnd) `max` 0
-        in  offsetFieldRow lineShift fd
+      doShift (old, new) fd =
+          let (_, oldEnd) = fieldRowRange old
+              (_, newEnd) = fieldRowRange new
+              lineShift = (newEnd - oldEnd) `max` 0
+          in  offsetFieldRow lineShift fd
+  in case mc of
+      ModifyFirst -> \fs -> mapFirstThen doModify doShift fs
+      ModifyLast -> mapLast doModify
 
 modifySection
   :: ModifyConfig
@@ -316,37 +318,37 @@ modifySection
   -> ([SectionArg (WithComments Position)] -> [SectionArg (WithComments Position)]) -- ^ Transform the section args
   -> Edit [Field (WithComments Position)] -- ^ Transform inner fields
   -> Edit [Field (WithComments Position)]
-modifySection mc match modifySectionArgs modifyFields = Edit $ case mc of
-  ModifyFirst -> mapFirstThen doModify doShift
-  ModifyLast -> mapLast doModify
-  where
-    doModify (Section sname sargs fs) | match sname sargs fs =
-      let sargs' = (mkEditResult <*> modifySectionArgs) sargs
-          fs' = runEdit modifyFields fs
-       in Section sname <$> sargs' <*> fs'
-    doModify x = EditUnchanged x
+modifySection mc match modifySectionArgs modifyFields = Edit $ \spec -> 
+  let doModify (Section sname sargs fs) | match sname sargs fs =
+        let sargs' = (mkEditResult <*> modifySectionArgs) sargs
+            fs' = runEdit modifyFields spec fs
+         in Section sname <$> sargs' <*> fs'
+      doModify x = EditUnchanged x
 
-    doShift (old, new) fd =
-        let (_, oldEnd) = fieldRowRange old
-            (_, newEnd) = fieldRowRange new
-            lineShift = (newEnd - oldEnd) `max` 0
-        in  offsetFieldRow lineShift fd
+      doShift (old, new) fd =
+          let (_, oldEnd) = fieldRowRange old
+              (_, newEnd) = fieldRowRange new
+              lineShift = (newEnd - oldEnd) `max` 0
+          in  offsetFieldRow lineShift fd
+  in case mc of
+      ModifyFirst -> mapFirstThen doModify doShift
+      ModifyLast -> mapLast doModify
 
 -- | If up to this point things are still unchanged, make it an error and stop here.
 failIfUnchanged :: Edit a -> Edit a
-failIfUnchanged (Edit f) = Edit $ \input -> case f input of
+failIfUnchanged (Edit f) = Edit $ \spec input -> case f spec input of
   EditUnchanged {} -> EditErr ExpectChanges
   other -> other
 
 -- | The product operator should deal with the positioning chaining
 andThen :: Edit a -> Edit a -> Edit a
-andThen (Edit x) (Edit y) = Edit (x >=> y)
+andThen (Edit x) (Edit y) = Edit $ \spec input -> x spec input >>= y spec
 
 infixl 5 `andThen`
 
 -- | Fallback if something is unchanged.
 orFallback :: Edit a -> Edit a -> Edit a
-orFallback (Edit x) (Edit y) = Edit (\input -> x input `orFallback'` y input)
+orFallback (Edit x) (Edit y) = Edit $ \spec input -> x spec input `orFallback'` y spec input
 
 infixl 4 `orFallback`
 
@@ -382,8 +384,6 @@ mapLast f = fmap reverse . mapFirst f . reverse
 data EditingError = ParserError P.ParseError {- not yet used -} | PrinterError
   deriving (Show)
 
--- TODO(leana8959): add an argument that passes in various edit contexts, like a reader monad.
-
 --------------------------------------------------------------------------------
 -- Editing 'FieldLine's.
 
@@ -399,18 +399,18 @@ modifyValueAtomBSAla
    . (Coercible a b, Parsec b, Pretty b)
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
-  -> (BS.ByteString -> EditResult BS.ByteString)
-modifyValueAtomBSAla transformA bs0 =
+  -> (CabalSpecVersion -> BS.ByteString -> EditResult BS.ByteString)
+modifyValueAtomBSAla transformA spec bs0 =
   let parsed =
         fmap (coerce @b @a)
-          . runParsecParser (parsec @b) "<modifyValueAtomAla>"
+          . runParsecParser' spec (parsec @b) "<modifyValueAtomAla>"
           . fieldLineStreamFromBS
           $ bs0
   in case parsed of
     Left err -> EditErr (ParseFailed err)
     Right parseOk ->
       let transformed = transformA parseOk
-          bs = maybe bs0 (BS8.pack . show . pretty @b . coerce @a @b) transformed
+          bs = maybe bs0 (BS8.pack . show . prettyVersioned @b spec . coerce @a @b) transformed
       in  EditOk bs
 
 -- | Build a @[FieldLine Position]@ modification function given a function @a -> a@, parsed as @b@.
@@ -419,14 +419,14 @@ modifyValueAtomAla
    . (Coercible a b, Parsec b, Pretty b)
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
-  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
-modifyValueAtomAla transformA fls0 =
+  -> (CabalSpecVersion -> [FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
+modifyValueAtomAla transformA spec fls0 =
   let comments = foldMap extractComments fls0
       fls = fmap removeComments fls0
   in  case joinFieldLines <$> NE.nonEmpty fls of
       Nothing -> EditUnchanged fls0
       Just (FieldLine ann0 bs0) ->
-        let bsResult = modifyValueAtomBSAla @b @a transformA bs0
+        let bsResult = modifyValueAtomBSAla @b @a transformA spec bs0
          in bsResult <&> \bs ->
               interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
 
@@ -462,12 +462,12 @@ modifyValueListBS
      )
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
-  -> (BS.ByteString -> EditResult BS.ByteString)
-modifyValueListBS transformA bs0 =
+  -> (CabalSpecVersion -> BS.ByteString -> EditResult BS.ByteString)
+modifyValueListBS transformA spec bs0 =
   let parsecWithLeadingSpaces = liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))
       parsed =
         fmap (coerce @_ @[Located a])
-          . runParsecParser parsecWithLeadingSpaces "<modifyValueListBS>"
+          . runParsecParser' spec parsecWithLeadingSpaces "<modifyValueListBS>"
           . fieldLineStreamFromBS
           $ bs0
   in  case parsed of
@@ -480,7 +480,7 @@ modifyValueListBS transformA bs0 =
           editsWithinList =
             sortBySrcSpanDes transformed >>= \case
               MkLocated _ Nothing -> []
-              MkLocated spn (Just newItem) -> [(spn, BS8.pack $ show $ pretty @b $ coerce @a @b newItem)]
+              MkLocated spn (Just newItem) -> [(spn, BS8.pack $ show $ prettyVersioned @b spec $ coerce @a @b newItem)]
 
           performEditsWithinList = foldl' go
             where
@@ -500,14 +500,14 @@ modifyValueList
      )
   => (a -> Maybe a)
   -- ^ Nothing prevents a new render.
-  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
-modifyValueList transformA fls0 =
+  -> (CabalSpecVersion -> [FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
+modifyValueList transformA spec fls0 =
   let comments = foldMap extractComments fls0
       fls = fmap removeComments fls0
   in  case joinFieldLines <$> NE.nonEmpty fls of
     Nothing -> EditUnchanged fls0
     Just (FieldLine pos0 bs0) ->
-      let bsResult = modifyValueListBS @sep @b @a transformA bs0
+      let bsResult = modifyValueListBS @sep @b @a transformA spec bs0
        in bsResult <&> \bs ->
             interleaveComments (splitFieldLines (FieldLine pos0 bs)) comments
 
@@ -521,19 +521,19 @@ prependValueListBS
      )
   => a
   -- ^ Nothing prevents a new render.
-  -> (BS.ByteString -> EditResult BS.ByteString)
-prependValueListBS newItem bs0 =
+  -> (CabalSpecVersion -> BS.ByteString -> EditResult BS.ByteString)
+prependValueListBS newItem spec bs0 =
   let parsecWithLeadingSpaces = liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))
       parsed =
         fmap (coerce @_ @[Located a])
-          . runParsecParser parsecWithLeadingSpaces "<prependValueList>"
+          . runParsecParser' spec parsecWithLeadingSpaces "<prependValueList>"
           . fieldLineStreamFromBS
           $ bs0
 
   in  case parsed of
     Left err -> EditErr (ParseFailed err)
     Right parseOk ->
-      let newItemBS = BS8.pack $ show $ pretty @b $ coerce @a @b newItem
+      let newItemBS = BS8.pack $ show $ prettyVersioned @b spec $ coerce @a @b newItem
           printed = case parseOk of
             [] -> newItemBS
             (MkLocated (SrcSpan begin _) _ : _) ->
@@ -559,14 +559,14 @@ prependValueList
      , Parsec (List sep (Located b) (Located a))
      )
   =>  a
-  -> ([FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
-prependValueList newValue fls0 =
+  -> (CabalSpecVersion -> [FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
+prependValueList newValue spec fls0 =
   let comments = foldMap extractComments fls0
       fls = fmap removeComments fls0
   in  case joinFieldLines <$> NE.nonEmpty fls of
     Nothing -> EditUnchanged fls0
     Just (FieldLine ann0 bs0) ->
-      let bsResult = prependValueListBS @sep @b @a newValue bs0
+      let bsResult = prependValueListBS @sep @b @a newValue spec bs0
        in bsResult <&> \bs ->
             interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
 

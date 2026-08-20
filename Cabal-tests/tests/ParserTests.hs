@@ -195,7 +195,7 @@ mkEditFieldGoldenTest name fname edit = ediffGolden goldenTest name exprFile $ d
     Left perr -> fail $ formatError contents perr
     Right (fs, warns) -> do
       unless (null warns) (fail $ unlines (map show warns))
-      pure $ runEdit edit fs
+      pure $ runEdit edit cabalSpecLatest fs
 
   where
     input = "tests" </> "ParserTests" </> "edit" </> fname
@@ -244,7 +244,7 @@ mkEditFieldPrintedTest name fname edit = ediffGolden goldenTest name exprFile $ 
     Left perr -> fail $ formatError contents perr
     Right (fs, warns) -> do
       unless (null warns) (fail $ unlines (map show warns))
-      pure $ runEdit edit fs
+      pure $ runEdit edit cabalSpecLatest fs
 
   case editResult of
     EditOk ok -> pure $ toExpr (runRenderFields ok)
@@ -283,7 +283,7 @@ mkModifyValueAtomAlaBSTest
   transformA
   expected
   = testCase name $ do
-  let output = modifyValueAtomBSAla @b @a transformA original
+  let output = modifyValueAtomBSAla @b @a transformA cabalSpecLatest original
   assertEqDiff "output = expected" expected output
 
 modifyValueListBSTest :: TestTree
@@ -436,7 +436,7 @@ mkModifyValueListTest
   transformA
   expected
   = testCase name $ do
-  let output = modifyValueListBS @sep @b @a transformA original
+  let output = modifyValueListBS @sep @b @a transformA cabalSpecLatest original
   assertEqDiff "output = expected" expected output
 
 
@@ -485,7 +485,7 @@ mkPrependValueListBSTest
   newItem
   expected
   = testCase name $ do
-  let output = prependValueListBS @sep @b @a newItem original
+  let output = prependValueListBS @sep @b @a newItem cabalSpecLatest original
   assertEqDiff "output = expected" expected output
 
 joinFieldLinesTest :: TestTree
