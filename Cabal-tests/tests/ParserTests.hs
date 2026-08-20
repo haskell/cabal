@@ -217,7 +217,7 @@ mkFormatPrintedTest name fname formatter = ediffGolden goldenTest name exprFile 
       unless (null warns) (fail $ unlines (map show warns))
       pure ok
 
-  pure $ runRenderFields $ formatFieldGrammar formatter fs
+  pure $ runRenderFields $ formatFieldGrammar cabalSpecLatest formatter fs
   where
     input = "tests" </> "ParserTests" </> "format-printed" </> fname
     exprFile = addExtension (dropExtension input <> "_" <> name) "expr"
