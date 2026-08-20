@@ -1,0 +1,13 @@
+synopsis: Monitor `ghc.shim` on Windows
+packages: cabal-install
+prs: #10853
+issues: #10850
+
+description: {
+
+- On Linux it is the `ghc` executable that changes when changing compiler
+  version in GHCup (the symlink points to a new location) but on Windows it is
+  the companion `ghc.shim` file that changes. This file is now also monitored
+  for changes to trigger rebuilds.
+
+}
