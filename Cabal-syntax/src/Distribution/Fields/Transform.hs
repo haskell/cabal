@@ -128,14 +128,14 @@ instance Monad EditResult where
 -- Either we have to conjure up a 'EditUnchanged' out of thin air;
 -- or we need to fail with empty by using 'EditErr'.
 orFallback' :: EditResult a -> EditResult a -> EditResult a
-orFallback' = \cases
-  (EditOk x) _ -> EditOk x
-  (EditUnchanged _) y -> y
-  (EditErr _) y -> y
+orFallback' = liftA2 (const id)
 
 data AddConfig = AddStart | AddEnd
 
 -- TODO(leana8959): Add a label to indicate what didn't match, or what matched and didn't change.
+-- Define what is a match: when the inner thing doesn't match because there are not inner thing, what we can't rely on it
+-- to tell us its label.
+-- Is this where continuation comes in handy.
 type MatchField ann = Name ann -> [FieldLine ann] -> Bool
 type MatchSection ann = Name ann -> [SectionArg ann] -> [Field ann] -> Bool
 
