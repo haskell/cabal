@@ -8,7 +8,6 @@
 module Distribution.FieldGrammar.Format where
 
 import Distribution.FieldGrammar.Class
-import Distribution.FieldGrammar.Parsec
 import Distribution.Fields.Transform
 import Distribution.Fields.Field
 import Distribution.Parsec
@@ -17,13 +16,9 @@ import Distribution.Pretty
 import Data.Coerce
 import Data.Kind
 
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
-import qualified Data.List.NonEmpty as NE
 import Data.Map (Map)
 import qualified Data.Map as M
 import Distribution.Compat.Lens
-import Distribution.Parsec.FieldLineStream
 import Distribution.CabalSpecVersion
 
 data FormatterFieldGrammar s a = FormatterFG
@@ -33,17 +28,15 @@ data FormatterFieldGrammar s a = FormatterFG
   }
   deriving (Functor)
 
--- TODO(lena8959): use in the cabal spec version
-formatFieldGrammar :: CabalSpecVersion -> FormatterFieldGrammar s a -> [Field (WithComments Position)] -> [Field (WithComments Position)]
+formatFieldGrammar :: CabalSpecVersion -> FormatterFieldGrammar s a -> Field (WithComments Position) -> Field (WithComments Position)
 formatFieldGrammar spec (FormatterFG versionedFormatter) = go
   where
-    go [] = []
-    go (section@(Section{}) : fs) = section : go fs
-    go (Field colonPos fname fls : fs) =
+    go section@(Section{}) = section
+    go (Field colonPos fname fls) =
       let newField = case versionedFormatter spec M.!? getName fname of
             Just f -> Field colonPos fname (f fls)
             Nothing -> Field colonPos fname fls
-       in newField : go fs
+       in newField
 
 -- TODO(leana8959): how to do this properly
 class (Pretty a, Parsec a) => Formattable a
@@ -52,8 +45,6 @@ instance (Pretty a, Parsec a) => Formattable a
 instance Applicative (FormatterFieldGrammar s) where
   pure _ = FormatterFG $ \_ -> M.empty
   FormatterFG x <*> FormatterFG y = FormatterFG (x <> y)
-
-
 
 -- | Naive implementation, doesn't put comments back.
 formatFieldLines

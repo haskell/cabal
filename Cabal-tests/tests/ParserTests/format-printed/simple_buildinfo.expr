@@ -1,10 +1,22 @@
 BS.concat
   [
-    "build-depends:\n",
-    "  base >4.8,\n",
-    "  text >5,\n",
-    "  optparse-applicative >999\n",
+    "cabal-version:            3.8\n",
+    "name: googoogaga\n",
+    "version: 1.0.0\n",
+    "\n",
+    "common very-common\n",
+    "  ghc-options:\n",
+    "    -Wall -Wmeow meow -Wwoof\n",
+    "    -Wcommon-should-format-just-fine-and-not-disappear\n",
     "\n",
     "\n",
-    "ghc-options:\n",
-    "  -Wall -Wmeow meow -Wwoof\n"]
+    "\n",
+    "library\n",
+    "  build-depends:\n",
+    "    base >4.8,\n",
+    "    text >5,\n",
+    "    optparse-applicative >999\n",
+    "\n",
+    "\n",
+    "  ghc-options:\n",
+    "    -Wall -Wmeow meow -Wwoof\n"]

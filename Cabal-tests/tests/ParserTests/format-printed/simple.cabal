@@ -1,10 +1,22 @@
-build-depends:
-  base  >  4.8             
-      , text >   5,
-    optparse-applicative
-      >       999
+cabal-version:            3.8
+name: googoogaga
+version: 1.0.0
 
-ghc-options:
-  -Wall 
-            -Wmeow meow
-        -Wwoof
+common very-common
+  ghc-options:
+    -Wall 
+              -Wmeow meow
+          -Wwoof
+    -Wcommon-should-format-just-fine-and-not-disappear
+
+library
+  build-depends:
+    base  >  4.8             
+        , text >   5,
+      optparse-applicative
+        >       999
+
+  ghc-options:
+    -Wall 
+              -Wmeow meow
+          -Wwoof
