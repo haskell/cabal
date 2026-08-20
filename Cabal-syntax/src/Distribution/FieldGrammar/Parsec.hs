@@ -73,7 +73,6 @@ module Distribution.FieldGrammar.Parsec
   , interleaveComments
   ) where
 
-
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
@@ -524,7 +523,7 @@ interleaveComments [] _ = [] -- We have nothing to attach the comment to, consid
 interleaveComments [FieldLine pos bs] cmts = [FieldLine (WithComments cmts pos) bs]
 interleaveComments (FieldLine pos bs : fls) cmts =
   let (pre, post) = span (\(Comment _ cpos) -> pos < cpos) cmts
-  in  FieldLine (WithComments pre pos) bs : interleaveComments fls post
+   in FieldLine (WithComments pre pos) bs : interleaveComments fls post
 
 -- TODO(leana8959): add property tests
 
@@ -560,8 +559,9 @@ splitFieldLines :: FieldLine Position -> [FieldLine Position]
 splitFieldLines (FieldLine ann bs0) =
   let ls = BS8.lines bs0
       Position startRow startCol = L.view L.position ann
-      rowNs = [startRow..]
-  in
-      zipWith
-        ( \ bs row -> FieldLine (Position row startCol) bs
-        ) ls rowNs
+      rowNs = [startRow ..]
+   in zipWith
+        ( \bs row -> FieldLine (Position row startCol) bs
+        )
+        ls
+        rowNs
