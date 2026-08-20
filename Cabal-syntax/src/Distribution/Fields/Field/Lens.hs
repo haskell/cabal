@@ -2,9 +2,9 @@
 
 module Distribution.Fields.Field.Lens where
 
-import Distribution.Parsec.Position.Lens
 import Distribution.Compat.Lens
 import qualified Distribution.Fields.Field as T
+import Distribution.Parsec.Position.Lens
 
 justComments :: Lens' (T.WithComments ann) [T.Comment ann]
 justComments f s = fmap (\x -> s{T.justComments = x}) (f (T.justComments s))

@@ -39,10 +39,10 @@ import Prelude ()
 import qualified Data.Map.Strict as Map
 
 import Distribution.FieldGrammar.Class
+import Distribution.FieldGrammar.Format
 import Distribution.FieldGrammar.Newtypes
 import Distribution.FieldGrammar.Parsec
 import Distribution.FieldGrammar.Pretty
-import Distribution.FieldGrammar.Format
 import Distribution.Fields.Field
 import Distribution.Utils.Generic (spanMaybe)
 

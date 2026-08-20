@@ -8,8 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Distribution.Fields.Transform
-  (
-    Edit (..)
+  ( Edit (..)
   , EditError (..)
   , EditResult (..)
   , MatchField
@@ -42,19 +41,22 @@ module Distribution.Fields.Transform
   , modifyValueList
   , prependValueListBS
   , prependValueList
-
   -- TODO: move to an internal module
-  -- * Internal
+
+    -- * Internal
   , substituteSubBSAt
   , splitBSAtPosition
   )
-  where
+where
 
 import qualified Text.Parsec as P
 
 import Distribution.FieldGrammar.Parsec
-  ( joinFieldLines, splitFieldLines, extractComments, removeComments
+  ( extractComments
   , interleaveComments
+  , joinFieldLines
+  , removeComments
+  , splitFieldLines
   )
 import Distribution.Fields.Field
 import Distribution.Parsec.Position
@@ -62,41 +64,41 @@ import Distribution.Pretty
 import Distribution.Utils.Generic
 
 import qualified Data.Bifunctor as Bi
-import Data.Functor ((<&>))
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe
-import GHC.Generics
-import Data.Coerce
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
+import Data.Coerce
+import Data.Functor ((<&>))
 import Data.Kind
+import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
+import Data.Maybe
 import Data.Proxy
 import Distribution.Annotation
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
+import GHC.Generics
 
-import qualified Distribution.Parsec.Position.Lens as L
-import qualified Distribution.Fields.Field.Lens as L ()
-import qualified Distribution.Compat.Lens as L
 import Distribution.CabalSpecVersion
+import qualified Distribution.Compat.Lens as L
+import qualified Distribution.Fields.Field.Lens as L ()
+import qualified Distribution.Parsec.Position.Lens as L
 
 -- | Reified function to facilitate chaining
 --   This can't be a functor (so there's no applicative nor alternative), I think there are better ways to do this.
-newtype Edit a = Edit { runEdit :: CabalSpecVersion -> a -> EditResult a }
+newtype Edit a = Edit {runEdit :: CabalSpecVersion -> a -> EditResult a}
 
 data EditResult a
   = EditOk a
   | EditUnchanged a
-  | EditErr EditError
-    -- ^ a case where you might want to fallback to other edits, because apparently what you did did nothing.
+  | -- | a case where you might want to fallback to other edits, because apparently what you did did nothing.
+    EditErr EditError
   deriving (Eq, Functor, Generic)
 
 data EditError
   = ExpectChanges
-  -- TODO(leana8959): use the label
-  | ParseFailed P.ParseError
+  | -- TODO(leana8959): use the label
+    ParseFailed P.ParseError
   deriving (Eq, Generic)
 
 -- | Build an 'EditResult' given the previous value
@@ -109,12 +111,10 @@ instance Applicative EditResult where
   pure x = EditOk x
   liftA2 f = \cases
     (EditOk x) (EditOk y) -> EditOk (f x y)
-
     -- As long as something is changed, it's ok.
     (EditOk x) (EditUnchanged y) -> EditOk (f x y)
     (EditUnchanged y) (EditOk x) -> EditOk (f y x)
     (EditUnchanged u) (EditUnchanged v) -> EditUnchanged (f u v)
-
     -- Failure takes precedence.
     _ (EditErr err) -> EditErr err
     (EditErr err) _ -> EditErr err
@@ -142,9 +142,11 @@ type MatchSection ann = Name ann -> [SectionArg ann] -> [Field ann] -> Bool
 addField
   :: AddConfig
   -> Name ()
-  -> [BS.ByteString] -- ^ Comments to the 'Name'
+  -> [BS.ByteString]
+  -- ^ Comments to the 'Name'
   -> [FieldLine ()]
-  -> [BS.ByteString] -- ^ Comments to the 'FieldLine's
+  -> [BS.ByteString]
+  -- ^ Comments to the 'FieldLine's
   -> Edit [Field (WithComments Position)]
 addField ac name nameCmts fls flsCmts = Edit $ \_ -> case ac of
   AddStart -> \case
@@ -152,14 +154,14 @@ addField ac name nameCmts fls flsCmts = Edit $ \_ -> case ac of
     fs@(f : _) ->
       let (newField, newFieldHeight) = mkFieldAt' (L.view L.position (fieldAnn f))
           fs' = offsetFieldRow newFieldHeight <$> fs
-      in  EditOk (newField : fs')
+       in EditOk (newField : fs')
   AddEnd ->
     let go [] = EditOk [fst (mkFieldAt' onePos)]
         go [f] =
-            let (newField, _) = mkFieldAt' (afterFieldEndPosition f)
-            in  EditOk [f, newField]
+          let (newField, _) = mkFieldAt' (afterFieldEndPosition f)
+           in EditOk [f, newField]
         go (f : fs) = (f :) <$> go fs
-    in go
+     in go
   where
     mkFieldAt' = mkFieldAt name nameCmts fls flsCmts
 
@@ -167,68 +169,72 @@ addSection
   :: AddConfig
   -> Name ()
   -> [SectionArg ()]
-  -> [BS.ByteString] -- ^ Comments to the 'Name'
-  -> Edit [Field (WithComments Position)] -- ^ Nested modifications
+  -> [BS.ByteString]
+  -- ^ Comments to the 'Name'
+  -> Edit [Field (WithComments Position)]
+  -- ^ Nested modifications
   -> Edit [Field (WithComments Position)]
 addSection ac name args nameCmts inner = Edit $ \spec ->
   let modifySectionFields (Section n as fs) = Section n as <$> runEdit inner spec fs
       modifySectionFields x = EditUnchanged x
 
       mkSectionAt' = mkSectionAt name args nameCmts
-  in case ac of
-    AddStart -> \case
-      [] -> EditOk [mkSectionAt' onePos]
-      fs@(f : _) ->
-        let newSectionResult = modifySectionFields $ mkSectionAt' (L.view L.position (fieldAnn f))
-        in  newSectionResult <&> \newSection ->
-            let newSectionHeight = let (start, end) = fieldRowRange newSection in end - start
-                fs' = offsetFieldRow newSectionHeight <$> fs
-            in (newSection : fs')
-    AddEnd ->
-      let go [] = EditOk [mkSectionAt' onePos]
-          go [f] =
-              let newSectionResult = modifySectionFields $ mkSectionAt' (afterFieldEndPosition f)
-              in  newSectionResult <&> \newSection -> [f, newSection]
-          go (f : fs) = (f :) <$> go fs
-      in go
-
+   in case ac of
+        AddStart -> \case
+          [] -> EditOk [mkSectionAt' onePos]
+          fs@(f : _) ->
+            let newSectionResult = modifySectionFields $ mkSectionAt' (L.view L.position (fieldAnn f))
+             in newSectionResult <&> \newSection ->
+                  let newSectionHeight = let (start, end) = fieldRowRange newSection in end - start
+                      fs' = offsetFieldRow newSectionHeight <$> fs
+                   in (newSection : fs')
+        AddEnd ->
+          let go [] = EditOk [mkSectionAt' onePos]
+              go [f] =
+                let newSectionResult = modifySectionFields $ mkSectionAt' (afterFieldEndPosition f)
+                 in newSectionResult <&> \newSection -> [f, newSection]
+              go (f : fs) = (f :) <$> go fs
+           in go
 
 mkCommentAtPosition :: Position -> BS.ByteString -> Comment Position
-mkCommentAtPosition (Position row col) bs = Comment (BS8.replicate col ' ' <>  "-- " <> bs) (Position row col)
+mkCommentAtPosition (Position row col) bs = Comment (BS8.replicate col ' ' <> "-- " <> bs) (Position row col)
 
 -- TODO(leana8959): factor out composable parts with 'mkFieldAt'.
 mkSectionAt
   :: Name ()
   -> [SectionArg ()]
-  -> [BS.ByteString] -- ^ Comments to the 'Name'
+  -> [BS.ByteString]
+  -- ^ Comments to the 'Name'
   -> Position
   -> Field (WithComments Position)
 mkSectionAt name sargs nameCmts pos =
-  let -- All content is aligned to this column.
-      col0 = positionCol pos
+  let
+    -- All content is aligned to this column.
+    col0 = positionCol pos
 
-      cmtsAboveField = zipWith (\bs row -> mkCommentAtPosition (Position row col0) bs) nameCmts [ positionRow pos .. ]
+    cmtsAboveField = zipWith (\bs row -> mkCommentAtPosition (Position row col0) bs) nameCmts [positionRow pos ..]
 
-      namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
-      nameWithAnn = WithComments cmtsAboveField namePosition <$ name
+    namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
+    nameWithAnn = WithComments cmtsAboveField namePosition <$ name
 
-      sargsRow = positionRow namePosition
-      sargsWithAnn = reverse $ snd $ foldl go state0 sargs
-        where
-            state0 =
-                ( Position sargsRow (BS8.length (getName name))
-                , []
-                )
-            go (lastPos, acc) arg =
-              let thisPosStart = incPos 1 lastPos
-                  thisPosEnd = incPos argLength thisPosStart
-                  argLength = BS8.length (sectionArgBS arg)
-              in  ( thisPosEnd
-                  , (WithComments mempty thisPosEnd <$ arg) : acc
-                  )
+    sargsRow = positionRow namePosition
+    sargsWithAnn = reverse $ snd $ foldl go state0 sargs
+      where
+        state0 =
+          ( Position sargsRow (BS8.length (getName name))
+          , []
+          )
+        go (lastPos, acc) arg =
+          let thisPosStart = incPos 1 lastPos
+              thisPosEnd = incPos argLength thisPosStart
+              argLength = BS8.length (sectionArgBS arg)
+           in ( thisPosEnd
+              , (WithComments mempty thisPosEnd <$ arg) : acc
+              )
 
-      newSection = Section nameWithAnn sargsWithAnn []
-  in  newSection
+    newSection = Section nameWithAnn sargsWithAnn []
+   in
+    newSection
 
 -- TODO(leana8959): rewrite this with a state monad
 
@@ -236,49 +242,53 @@ mkSectionAt name sargs nameCmts pos =
 --   Comments are plain strings without @--@ prefix.
 mkFieldAt
   :: Name ()
-  -> [BS.ByteString] -- ^ Comments to the 'Name'
+  -> [BS.ByteString]
+  -- ^ Comments to the 'Name'
   -> [FieldLine ()]
-  -> [BS.ByteString] -- ^ Comments to the 'FieldLine's
+  -> [BS.ByteString]
+  -- ^ Comments to the 'FieldLine's
   -> Position
   -> (Field (WithComments Position), Int)
 mkFieldAt name nameCmts fls flsCmts pos =
-  let -- All content is aligned to this column.
-      col0 = positionCol pos
-      -- TODO(leana8959): read indentation from the config
-      indentedCol = col0 + 2
+  let
+    -- All content is aligned to this column.
+    col0 = positionCol pos
+    -- TODO(leana8959): read indentation from the config
+    indentedCol = col0 + 2
 
-      -- If there are no body, we attach the fieldlines's comments to the field.
-      cmtsAboveFieldBS = if null fls then nameCmts <> flsCmts else nameCmts
-      cmtsAboveField = zipWith (\bs row -> mkCommentAtPosition (Position row col0) bs) cmtsAboveFieldBS [ positionRow pos .. ]
+    -- If there are no body, we attach the fieldlines's comments to the field.
+    cmtsAboveFieldBS = if null fls then nameCmts <> flsCmts else nameCmts
+    cmtsAboveField = zipWith (\bs row -> mkCommentAtPosition (Position row col0) bs) cmtsAboveFieldBS [positionRow pos ..]
 
-      namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
-      nameWithAnn = WithComments cmtsAboveField namePosition <$ name
+    namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
+    nameWithAnn = WithComments cmtsAboveField namePosition <$ name
 
-      colonPos = incPos (BS8.length (getName name)) namePosition
+    colonPos = incPos (BS8.length (getName name)) namePosition
 
-      cmtsAboveFls = zipWith (\bs row -> mkCommentAtPosition (Position row indentedCol) bs) flsCmts [ positionRow pos .. ]
-      -- If there are no comments, print on the same line after the colon.
-      -- Otherwise after a newline, we list out all fieldlines.
-      fieldLineStartPos = maybe (incPos 2 colonPos) (\(Comment _ p) -> retPos p) (safeLast cmtsAboveFls)
-      (flsWithAnn, flsHeight) = case fls of
-        [] -> ([], 0)
-        -- Singleline
-        [fl] ->
-         let fl' = WithComments cmtsAboveFls fieldLineStartPos <$ fl
-         in  ([fl'], 0)
-        -- Multiline
-        fls' ->
-          let fieldLineFollowingPos = retPos fieldLineStartPos
-              fls'' :: [FieldLine (WithComments Position)]
-              fls'' = zipWith (\l row -> WithComments mempty (Position row indentedCol) <$ l) fls' [ positionRow fieldLineFollowingPos ..]
-          in  (fls'', length cmtsAboveFls + 1 + length fls'')
+    cmtsAboveFls = zipWith (\bs row -> mkCommentAtPosition (Position row indentedCol) bs) flsCmts [positionRow pos ..]
+    -- If there are no comments, print on the same line after the colon.
+    -- Otherwise after a newline, we list out all fieldlines.
+    fieldLineStartPos = maybe (incPos 2 colonPos) (\(Comment _ p) -> retPos p) (safeLast cmtsAboveFls)
+    (flsWithAnn, flsHeight) = case fls of
+      [] -> ([], 0)
+      -- Singleline
+      [fl] ->
+        let fl' = WithComments cmtsAboveFls fieldLineStartPos <$ fl
+         in ([fl'], 0)
+      -- Multiline
+      fls' ->
+        let fieldLineFollowingPos = retPos fieldLineStartPos
+            fls'' :: [FieldLine (WithComments Position)]
+            fls'' = zipWith (\l row -> WithComments mempty (Position row indentedCol) <$ l) fls' [positionRow fieldLineFollowingPos ..]
+         in (fls'', length cmtsAboveFls + 1 + length fls'')
 
-      field = Field colonPos nameWithAnn flsWithAnn
-      totalHeight =
-          length cmtsAboveField
-          + 1 -- field name
-          + flsHeight -- inner comments and fieldlines
-  in  (field, totalHeight)
+    field = Field colonPos nameWithAnn flsWithAnn
+    totalHeight =
+      length cmtsAboveField
+        + 1 -- field name
+        + flsHeight -- inner comments and fieldlines
+   in
+    (field, totalHeight)
 
 data RemoveConfig = RemoveAll | RemoveFirst
 
@@ -298,7 +308,8 @@ data ModifyConfig = ModifyFirst | ModifyLast
 -- Different modification strategies
 modifyField
   :: ModifyConfig
-  -> MatchField (WithComments Position) -- ^ Match a given field
+  -> MatchField (WithComments Position)
+  -- ^ Match a given field
   -> (CabalSpecVersion -> [FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
   -> Edit [Field (WithComments Position)]
 modifyField mc match modifyFieldLines = Edit $ \spec ->
@@ -308,40 +319,44 @@ modifyField mc match modifyFieldLines = Edit $ \spec ->
       doModify x = EditUnchanged x
 
       doShift (old, new) fd =
-          let (_, oldEnd) = fieldRowRange old
-              (_, newEnd) = fieldRowRange new
-              lineShift = (newEnd - oldEnd) `max` 0
-          in  offsetFieldRow lineShift fd
-  in case mc of
-      ModifyFirst -> \fs -> mapFirstThen doModify doShift fs
-      ModifyLast -> mapLast doModify
+        let (_, oldEnd) = fieldRowRange old
+            (_, newEnd) = fieldRowRange new
+            lineShift = (newEnd - oldEnd) `max` 0
+         in offsetFieldRow lineShift fd
+   in case mc of
+        ModifyFirst -> \fs -> mapFirstThen doModify doShift fs
+        ModifyLast -> mapLast doModify
 
 modifySection
   :: ModifyConfig
-  -> MatchSection (WithComments Position) -- ^ Match a given section
-  -> ([SectionArg (WithComments Position)] -> [SectionArg (WithComments Position)]) -- ^ Transform the section args
-  -> Edit [Field (WithComments Position)] -- ^ Transform inner fields
+  -> MatchSection (WithComments Position)
+  -- ^ Match a given section
+  -> ([SectionArg (WithComments Position)] -> [SectionArg (WithComments Position)])
+  -- ^ Transform the section args
   -> Edit [Field (WithComments Position)]
-modifySection mc match modifySectionArgs modifyFields = Edit $ \spec -> 
-  let doModify (Section sname sargs fs) | match sname sargs fs =
-        let sargs' = (mkEditResult <*> modifySectionArgs) sargs
-            fs' = runEdit modifyFields spec fs
-         in Section sname <$> sargs' <*> fs'
+  -- ^ Transform inner fields
+  -> Edit [Field (WithComments Position)]
+modifySection mc match modifySectionArgs modifyFields = Edit $ \spec ->
+  let doModify (Section sname sargs fs)
+        | match sname sargs fs =
+            let sargs' = (mkEditResult <*> modifySectionArgs) sargs
+                fs' = runEdit modifyFields spec fs
+             in Section sname <$> sargs' <*> fs'
       doModify x = EditUnchanged x
 
       doShift (old, new) fd =
-          let (_, oldEnd) = fieldRowRange old
-              (_, newEnd) = fieldRowRange new
-              lineShift = (newEnd - oldEnd) `max` 0
-          in  offsetFieldRow lineShift fd
-  in case mc of
-      ModifyFirst -> mapFirstThen doModify doShift
-      ModifyLast -> mapLast doModify
+        let (_, oldEnd) = fieldRowRange old
+            (_, newEnd) = fieldRowRange new
+            lineShift = (newEnd - oldEnd) `max` 0
+         in offsetFieldRow lineShift fd
+   in case mc of
+        ModifyFirst -> mapFirstThen doModify doShift
+        ModifyLast -> mapLast doModify
 
 -- | If up to this point things are still unchanged, make it an error and stop here.
 failIfUnchanged :: Edit a -> Edit a
 failIfUnchanged (Edit f) = Edit $ \spec input -> case f spec input of
-  EditUnchanged {} -> EditErr ExpectChanges
+  EditUnchanged{} -> EditErr ExpectChanges
   other -> other
 
 -- | The product operator should deal with the positioning chaining
@@ -392,17 +407,17 @@ fieldRowRange :: L.HasPosition ann => Field ann -> (Int, Int)
 fieldRowRange (Field _colonPos fname fls) =
   let nameRow = L.view L.positionRow (nameAnn fname)
       maybeLastFieldLinePos = L.view L.positionRow . fieldLineAnn . NE.last <$> NE.nonEmpty fls
-  in  (nameRow, fromMaybe nameRow maybeLastFieldLinePos)
+   in (nameRow, fromMaybe nameRow maybeLastFieldLinePos)
 fieldRowRange (Section sname _sargs fs) =
   let nameRow = L.view L.positionRow (nameAnn sname)
       bodyEnd = snd . fieldsRowRange <$> NE.nonEmpty fs
-  in  (nameRow, fromMaybe nameRow bodyEnd)
+   in (nameRow, fromMaybe nameRow bodyEnd)
 
 -- | Compute the ending position of a field based on its range.
 afterFieldEndPosition :: L.HasPosition ann => Field ann -> Position
 afterFieldEndPosition f =
   let (_, endRow) = fieldRowRange f
-  in  Position (endRow + 1 {- next line -}) 1
+   in Position (endRow + 1 {- next line -}) 1
 
 offsetFieldRow :: L.HasPosition ann => Int -> Field ann -> Field ann
 offsetFieldRow n = \case
@@ -410,7 +425,7 @@ offsetFieldRow n = \case
   (Section sname sargs fs) -> Section (fmap incrementRowN sname) (map (fmap incrementRowN) sargs) (map (fmap incrementRowN) fs)
   where
     incrementRowN :: L.HasPosition ann => ann -> ann
-    incrementRowN = L.over L.positionRow (+n)
+    incrementRowN = L.over L.positionRow (+ n)
 
 --------------------------------------------------------------------------------
 -- Editing 'FieldLine's.
@@ -430,9 +445,9 @@ modifyValueAtomBSAla
   -> (CabalSpecVersion -> BS.ByteString -> EditResult BS.ByteString)
 modifyValueAtomBSAla transformA spec bs0 = do
   parsedOk <-
-        either (EditErr . ParseFailed) (pure . coerce @b @a) $
-          runParsecParser' spec (parsec @b) "<modifyValueAtomAla>" $
-          fieldLineStreamFromBS bs0
+    either (EditErr . ParseFailed) (pure . coerce @b @a) $
+      runParsecParser' spec (parsec @b) "<modifyValueAtomAla>" $
+        fieldLineStreamFromBS bs0
   let transformed = transformA parsedOk
       bs = maybe bs0 (BS8.pack . show . prettyVersioned @b spec . coerce @a @b) transformed
 
@@ -448,12 +463,12 @@ modifyValueAtomAla
 modifyValueAtomAla transformA spec fls0 =
   let comments = foldMap extractComments fls0
       fls = fmap removeComments fls0
-  in  case joinFieldLines <$> NE.nonEmpty fls of
-      Nothing -> EditUnchanged fls0
-      Just (FieldLine ann0 bs0) ->
-        let bsResult = modifyValueAtomBSAla @b @a transformA spec bs0
-         in bsResult <&> \bs ->
-              interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
+   in case joinFieldLines <$> NE.nonEmpty fls of
+        Nothing -> EditUnchanged fls0
+        Just (FieldLine ann0 bs0) ->
+          let bsResult = modifyValueAtomBSAla @b @a transformA spec bs0
+           in bsResult <&> \bs ->
+                interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
 
 -- | The position is (1, 1)-indexed. The second element of the pair starts at the position.
 splitBSAtPosition :: Position -> BS.ByteString -> (BS.ByteString, BS.ByteString)
@@ -493,10 +508,10 @@ modifyValueListBS transformA spec bs0 = do
   parsedOk <-
     either (EditErr . ParseFailed) (pure . coerce @_ @[Located a]) $
       runParsecParser' spec parsecWithLeadingSpaces "<modifyValueListBS>" $
-      fieldLineStreamFromBS bs0
+        fieldLineStreamFromBS bs0
 
   let transformed :: [Located (Maybe a)]
-      transformed  = (map . fmap) transformA parsedOk
+      transformed = (map . fmap) transformA parsedOk
 
       -- From back to front (avoid drifting), generate a list of (source range, replacement string)
       editsWithinList =
@@ -527,12 +542,12 @@ modifyValueList
 modifyValueList transformA spec fls0 =
   let comments = foldMap extractComments fls0
       fls = fmap removeComments fls0
-  in  case joinFieldLines <$> NE.nonEmpty fls of
-    Nothing -> EditUnchanged fls0
-    Just (FieldLine pos0 bs0) ->
-      let bsResult = modifyValueListBS @sep @b @a transformA spec bs0
-       in bsResult <&> \bs ->
-            interleaveComments (splitFieldLines (FieldLine pos0 bs)) comments
+   in case joinFieldLines <$> NE.nonEmpty fls of
+        Nothing -> EditUnchanged fls0
+        Just (FieldLine pos0 bs0) ->
+          let bsResult = modifyValueListBS @sep @b @a transformA spec bs0
+           in bsResult <&> \bs ->
+                interleaveComments (splitFieldLines (FieldLine pos0 bs)) comments
 
 -- TODO(leana8959): make this partial
 prependValueListBS
@@ -548,9 +563,9 @@ prependValueListBS
 prependValueListBS newItem spec bs0 = do
   let parsecWithLeadingSpaces = liftParsec P.spaces *> parsec @(List sep (Located b) (Located a))
   parseOk <-
-        either (EditErr . ParseFailed) (pure . coerce @_ @[Located a]) $
-          runParsecParser' spec parsecWithLeadingSpaces "<prependValueList>" $
-          fieldLineStreamFromBS bs0
+    either (EditErr . ParseFailed) (pure . coerce @_ @[Located a]) $
+      runParsecParser' spec parsecWithLeadingSpaces "<prependValueList>" $
+        fieldLineStreamFromBS bs0
 
   let newItemBS = BS8.pack $ show $ prettyVersioned @b spec $ coerce @a @b newItem
       printed = case parseOk of
@@ -578,14 +593,14 @@ prependValueList
      , Pretty b
      , Parsec (List sep (Located b) (Located a))
      )
-  =>  a
+  => a
   -> (CabalSpecVersion -> [FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
 prependValueList newValue spec fls0 =
   let comments = foldMap extractComments fls0
       fls = fmap removeComments fls0
-  in  case joinFieldLines <$> NE.nonEmpty fls of
-    Nothing -> EditUnchanged fls0
-    Just (FieldLine ann0 bs0) ->
-      let bsResult = prependValueListBS @sep @b @a newValue spec bs0
-       in bsResult <&> \bs ->
-            interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
+   in case joinFieldLines <$> NE.nonEmpty fls of
+        Nothing -> EditUnchanged fls0
+        Just (FieldLine ann0 bs0) ->
+          let bsResult = prependValueListBS @sep @b @a newValue spec bs0
+           in bsResult <&> \bs ->
+                interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments

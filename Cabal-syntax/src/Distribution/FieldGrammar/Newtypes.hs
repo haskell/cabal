@@ -42,7 +42,6 @@ module Distribution.FieldGrammar.Newtypes
   , RelativePathNT (..)
   ) where
 
-
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -67,14 +66,14 @@ import Distribution.Version
   )
 import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce (Coercible, coerce)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.SPDX as SPDX
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
 import Distribution.Fields.ExactPretty (LineEnding, lineEndingChar)
+import qualified Distribution.SPDX as SPDX
 
 -- | Vertical list with commas. Displayed with 'vcat'
 data CommaVCat = CommaVCat
@@ -95,6 +94,7 @@ class Sep sep where
   -- | Detect whether a string is considered valid separator.
   --   Used in exactprint modification.
   isSeparator :: Proxy sep -> Char -> Bool
+
   sepToChar :: Proxy sep -> BS.ByteString
 
   prettySep :: Proxy sep -> [Doc] -> Doc

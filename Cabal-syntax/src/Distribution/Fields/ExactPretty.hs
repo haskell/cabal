@@ -9,7 +9,7 @@ module Distribution.Fields.ExactPretty
   , lineEndingChar
   , LineEnding (..)
   )
-  where
+where
 
 import Control.Monad.State.Strict
 import qualified Data.ByteString as BS
@@ -37,8 +37,8 @@ guessLineEnding bs0
   | otherwise = Nothing
   where
     hasCR l = case BS8.unsnoc l of
-        Just (_, '\r') -> True
-        _ -> False
+      Just (_, '\r') -> True
+      _ -> False
     ls = BS8.lines bs0
 
 lineEndingChar :: LineEnding -> BS.ByteString
