@@ -24,9 +24,20 @@ import Distribution.Compat.Lens
 
 data FormatterFieldGrammar s a = FormatterFG
   { fieldGrammarFormatter
-      :: Map FieldName (Field (WithComments Position) -> Field (WithComments Position))
+      :: Map FieldName ([FieldLine (WithComments Position)] -> [FieldLine (WithComments Position)])
   }
   deriving (Functor)
+
+-- TODO(lena8959): use in the cabal spec version
+formatFieldGrammar :: FormatterFieldGrammar s a -> [Field (WithComments Position)] -> [Field (WithComments Position)]
+formatFieldGrammar (FormatterFG formatter) = go
+  where go [] = []
+        go (section@(Section {}) : fs) = section : go fs
+        go (Field colonPos fname fls : fs) =
+          let newField = case formatter M.!? getName fname of
+                Just f -> Field colonPos fname (f fls)
+                Nothing -> Field colonPos fname fls
+          in  newField : go fs
 
 class (Pretty a, Parsec a) => Formattable a
 
@@ -76,31 +87,21 @@ formatBSAla bs0 =
 instance FieldGrammar Formattable FormatterFieldGrammar where
   uniqueFieldAla
     :: forall b a s proxy. (Formattable b, Coercible a b) => FieldName -> proxy a b -> ALens' s a -> FormatterFieldGrammar s a
-  uniqueFieldAla fn _ _extract = FormatterFG $ M.singleton fn $ \case
-    Field colonPos fname fls -> Field colonPos fname (formatFieldLinesAla @b @a fls)
-    x -> x
+  uniqueFieldAla fn _ _extract = FormatterFG $ M.singleton fn $ formatFieldLinesAla @b @a
 
-  booleanFieldDef fn _ _def = FormatterFG $ M.singleton fn $ \case
-    Field colonPos fname fls -> Field colonPos fname (formatFieldLines @Bool fls)
-    x -> x
+  booleanFieldDef fn _ _def = FormatterFG $ M.singleton fn $ formatFieldLines @Bool 
 
   optionalFieldAla
     :: forall b a s proxy. (Formattable b, Coercible a b) => FieldName -> proxy a b -> ALens' s (Maybe a) -> FormatterFieldGrammar s (Maybe a)
-  optionalFieldAla fn _ _extract = FormatterFG $ M.singleton fn $ \case
-    Field colonPos fname fls -> Field colonPos fname (formatFieldLinesAla @b @a fls)
-    x -> x
+  optionalFieldAla fn _ _extract = FormatterFG $ M.singleton fn $ formatFieldLinesAla @b @a
 
   optionalFieldDefAla
     :: forall b a s proxy. (Formattable b, Coercible a b) => FieldName -> proxy a b -> ALens' s a -> a -> FormatterFieldGrammar s a
-  optionalFieldDefAla fn _ _extract _def = FormatterFG $ M.singleton fn $ \case
-    Field colonPos fname fls -> Field colonPos fname (formatFieldLinesAla @b @a fls)
-    x -> x
+  optionalFieldDefAla fn _ _extract _def = FormatterFG $ M.singleton fn $ formatFieldLinesAla @b @a
 
   monoidalFieldAla
     :: forall b a proxy s. (Formattable b, Coercible a b) => FieldName -> proxy a b -> ALens' s a -> FormatterFieldGrammar s a
-  monoidalFieldAla fn _ _extract = FormatterFG $ M.singleton fn $ \case
-    Field colonPos fname fls -> Field colonPos fname (formatFieldLinesAla @b @a fls)
-    x -> x
+  monoidalFieldAla fn _ _extract = FormatterFG $ M.singleton fn $ formatFieldLinesAla @b @a
 
   -- Nothing to format?
   freeTextField _fn _ = FormatterFG M.empty
