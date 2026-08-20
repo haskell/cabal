@@ -227,7 +227,9 @@ mkSectionAt name sargs nameCmts pos =
   in  newSection
 
 sectionArgBS :: SectionArg ann -> BS8.ByteString
-sectionArgBS = undefined
+sectionArgBS (SecArgName _ bs) = bs
+sectionArgBS (SecArgStr _ bs) = bs
+sectionArgBS (SecArgOther _ bs) = bs
 
 -- | Create a new field at a position, along with its height.
 --   Comments are plain strings without @--@ prefix.
