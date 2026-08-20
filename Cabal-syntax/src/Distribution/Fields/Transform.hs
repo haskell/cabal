@@ -352,8 +352,6 @@ orFallback (Edit x) (Edit y) = Edit $ \spec input -> x spec input `orFallback'` 
 
 infixl 4 `orFallback`
 
--- note to self: ModifySection will be hella useful when it comes to changing conditions (if sections)
-
 -- | Filter but only drop one that doesn't fit the predicate.
 filterOne :: (a -> Bool) -> [a] -> [a]
 filterOne _ [] = []
@@ -381,8 +379,34 @@ mapFirst f = mapFirstThen f (const id)
 mapLast :: (a -> EditResult a) -> [a] -> EditResult [a]
 mapLast f = fmap reverse . mapFirst f . reverse
 
-data EditingError = ParserError P.ParseError {- not yet used -} | PrinterError
-  deriving (Show)
+fieldsRowRange :: L.HasPosition ann => NonEmpty (Field ann) -> (Int, Int)
+fieldsRowRange = finalize . fmap fieldRowRange
+  where
+    finalize ranges = (fst (NE.head ranges), snd (NE.last ranges))
+
+fieldRowRange :: L.HasPosition ann => Field ann -> (Int, Int)
+fieldRowRange (Field _colonPos fname fls) =
+  let nameRow = L.view L.positionRow (nameAnn fname)
+      maybeLastFieldLinePos = L.view L.positionRow . fieldLineAnn . NE.last <$> NE.nonEmpty fls
+  in  (nameRow, fromMaybe nameRow maybeLastFieldLinePos)
+fieldRowRange (Section sname _sargs fs) =
+  let nameRow = L.view L.positionRow (nameAnn sname)
+      bodyEnd = snd . fieldsRowRange <$> NE.nonEmpty fs
+  in  (nameRow, fromMaybe nameRow bodyEnd)
+
+-- | Compute the ending position of a field based on its range.
+afterFieldEndPosition :: L.HasPosition ann => Field ann -> Position
+afterFieldEndPosition f =
+  let (_, endRow) = fieldRowRange f
+  in  Position (endRow + 1 {- next line -}) 1
+
+offsetFieldRow :: L.HasPosition ann => Int -> Field ann -> Field ann
+offsetFieldRow n = \case
+  (Field colonPos fname fls) -> Field (incrementRowN colonPos) (fmap incrementRowN fname) (map (fmap incrementRowN) fls)
+  (Section sname sargs fs) -> Section (fmap incrementRowN sname) (map (fmap incrementRowN) sargs) (map (fmap incrementRowN) fs)
+  where
+    incrementRowN :: L.HasPosition ann => ann -> ann
+    incrementRowN = L.over L.positionRow (+n)
 
 --------------------------------------------------------------------------------
 -- Editing 'FieldLine's.
@@ -546,11 +570,11 @@ prependValueListBS newItem spec bs0 =
                     else newItemBS <> newSep <> bs0
        in EditOk printed
 
--- TODO(leana8959): when we want to insert into a field that is empty, this would do nothing
--- because we chose to.
--- To make it do something, we need to have a fallback position.
--- Think about whether it's needed
-
+-- | Note: when prepending into a 'Field' that has no field line, it would do nothing.
+--   This is because the annotation can't be known.
+--
+--   To add a new 'Field', use 'addField' which handles that case specifically and generates
+--   appropriate annotations.
 prependValueList
   :: forall (sep :: Type) (b :: Type) (a :: Type)
    . ( Coercible a b
@@ -569,37 +593,3 @@ prependValueList newValue spec fls0 =
       let bsResult = prependValueListBS @sep @b @a newValue spec bs0
        in bsResult <&> \bs ->
             interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
-
---------------------------------------------------------------------------------
--- Helper functions, not exported
-
--- TODO(leana8959): better group them
-
-fieldsRowRange :: L.HasPosition ann => NonEmpty (Field ann) -> (Int, Int)
-fieldsRowRange = finalize . fmap fieldRowRange
-  where
-    finalize ranges = (fst (NE.head ranges), snd (NE.last ranges))
-
-fieldRowRange :: L.HasPosition ann => Field ann -> (Int, Int)
-fieldRowRange (Field _colonPos fname fls) =
-  let nameRow = L.view L.positionRow (nameAnn fname)
-      maybeLastFieldLinePos = L.view L.positionRow . fieldLineAnn . NE.last <$> NE.nonEmpty fls
-  in  (nameRow, fromMaybe nameRow maybeLastFieldLinePos)
-fieldRowRange (Section sname _sargs fs) =
-  let nameRow = L.view L.positionRow (nameAnn sname)
-      bodyEnd = snd . fieldsRowRange <$> NE.nonEmpty fs
-  in  (nameRow, fromMaybe nameRow bodyEnd)
-
--- | Compute the ending position of a field based on its range.
-afterFieldEndPosition :: L.HasPosition ann => Field ann -> Position
-afterFieldEndPosition f =
-  let (_, endRow) = fieldRowRange f
-  in  Position (endRow + 1 {- next line -}) 1
-
-offsetFieldRow :: L.HasPosition ann => Int -> Field ann -> Field ann
-offsetFieldRow n = \case
-  (Field colonPos fname fls) -> Field (incrementRowN colonPos) (fmap incrementRowN fname) (map (fmap incrementRowN) fls)
-  (Section sname sargs fs) -> Section (fmap incrementRowN sname) (map (fmap incrementRowN) sargs) (map (fmap incrementRowN) fs)
-  where
-    incrementRowN :: L.HasPosition ann => ann -> ann
-    incrementRowN = L.over L.positionRow (+n)
