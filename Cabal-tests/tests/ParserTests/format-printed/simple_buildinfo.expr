@@ -1,0 +1,10 @@
+BS.concat
+  [
+    "build-depends:\n",
+    "  base >4.8,\n",
+    "  text >5,\n",
+    "  optparse-applicative >999\n",
+    "\n",
+    "\n",
+    "ghc-options:\n",
+    "  -Wall -Wmeow meow -Wwoof\n"]

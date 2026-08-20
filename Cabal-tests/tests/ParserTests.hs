@@ -59,6 +59,8 @@ import Data.TreeDiff.Instances.Cabal ()
 #endif
 
 import Distribution.FieldGrammar.Parsec
+import Distribution.PackageDescription.FieldGrammar
+import Distribution.FieldGrammar
 import Data.Functor.Identity
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Types.PackageName
@@ -105,6 +107,7 @@ tests = testGroup "parsec tests"
     , exactPrettyFieldTests
     , editFieldGoldenTests
     , editFieldPrintedTests
+    , formatPrintedTest
     ]
 
 -------------------------------------------------------------------------------
@@ -202,6 +205,27 @@ mkEditFieldGoldenTest name fname edit = ediffGolden goldenTest name exprFile $ d
 
   where
     input = "tests" </> "ParserTests" </> "edit" </> fname
+    exprFile = addExtension (dropExtension input <> "_" <> name) "expr"
+
+formatPrintedTest :: TestTree
+formatPrintedTest = testGroup "format-printed"
+  [ mkFormatPrintedTest "buildinfo" "simple.cabal" buildInfoFieldGrammar
+  ]
+
+mkFormatPrintedTest :: String -> FilePath -> FormatterFieldGrammar s a -> TestTree
+mkFormatPrintedTest name fname formatter = ediffGolden goldenTest name exprFile $ do
+  contents <- BS.readFile input
+  let res = readFieldsConcrete' contents
+
+  fs <- case res of
+    Left perr -> fail $ formatError contents perr
+    Right (ok, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure ok
+
+  pure $ runRenderFields $ formatFieldGrammar formatter fs
+  where
+    input = "tests" </> "ParserTests" </> "format-printed" </> fname
     exprFile = addExtension (dropExtension input <> "_" <> name) "expr"
 
 editFieldPrintedTests :: TestTree
@@ -435,7 +459,7 @@ prependValueListBSTest = testGroup "prependValueListBS"
           ]
       )
       ( Dependency (mkPackageName "meow-meow") funnyVersionRange (NES.singleton LMainLibName) )
-      ( BS8.unlines
+      ( EditOk $ BS8.unlines
           [ "meow-meow ==1.3.3.7,"
           , "  base         > 4.8    , text > 2"
           , ""
@@ -459,7 +483,7 @@ mkPrependValueListBSTest
   => String
   -> BS.ByteString
   -> a
-  -> BS.ByteString
+  -> EditResult BS.ByteString
   -> TestTree
 mkPrependValueListBSTest
   name
