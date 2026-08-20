@@ -39,9 +39,8 @@ formatFieldGrammar (FormatterFG formatter) = go
                 Nothing -> Field colonPos fname fls
           in  newField : go fs
 
+-- TODO(leana8959): how to do this properly
 class (Pretty a, Parsec a) => Formattable a
-
--- TODO(leana8959): Maybe do this properly
 instance (Pretty a, Parsec a) => Formattable a
 
 instance Applicative (FormatterFieldGrammar s) where
