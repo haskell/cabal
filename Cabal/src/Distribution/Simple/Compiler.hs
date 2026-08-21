@@ -330,7 +330,9 @@ flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing = NormalOptimisation
 flagToOptimisationLevel (Just s) = case reads s of
   [(i, "")] -> intToEnum "optimisation level" i
-  _ -> error $ "Can't parse optimisation level " ++ s
+  _ -> case reads s of
+    [(b, "")] -> if b then NormalOptimisation else NoOptimisation
+    _ -> error $ "Can't parse optimisation level " ++ s
 
 -- ------------------------------------------------------------
 
@@ -365,7 +367,9 @@ flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
 flagToDebugInfoLevel (Just s) = case reads s of
   [(i, "")] -> intToEnum "debug info level" i
-  _ -> error $ "Can't parse debug info level " ++ s
+  _ -> case reads s of
+    [(b, "")] -> if b then NormalDebugInfo else NoDebugInfo
+    _ -> error $ "Can't parse debug info level " ++ s
 
 -- ------------------------------------------------------------
 
