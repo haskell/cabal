@@ -201,6 +201,7 @@ module Distribution.Simple.Utils
   , wrapText
   , wrapLine
   , stripCommonPrefix
+  , intToEnum
 
     -- * FilePath stuff
   , isAbsoluteOnAnyPlatform
@@ -2171,3 +2172,21 @@ stripCommonPrefix (x : xs) (y : ys)
   | x == y = stripCommonPrefix xs ys
   | otherwise = y : ys
 stripCommonPrefix _ ys = ys
+
+intToEnum :: (Show a, Enum a, Bounded a) => String -> Int -> a
+intToEnum str i =
+  let res = toEnum i
+      maxLevel = maxBound `asTypeOf` res
+      minLevel = minBound `asTypeOf` res
+   in if i >= fromEnum minLevel && i <= fromEnum maxLevel
+        then res
+        else
+          error $
+            "Bad "
+              ++ str
+              ++ ": "
+              ++ show i
+              ++ ". Valid values are "
+              ++ show minLevel
+              ++ ".."
+              ++ show maxLevel

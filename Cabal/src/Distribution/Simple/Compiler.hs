@@ -324,28 +324,13 @@ parsecOptimisationLevel :: CabalParsing m => m OptimisationLevel
 parsecOptimisationLevel = boolParser <|> intParser
   where
     boolParser = bool NoOptimisation NormalOptimisation <$> parsec
-    intParser = intToOptimisationLevel <$> integral
+    intParser = intToEnum "optimisation level" <$> integral
 
 flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing = NormalOptimisation
 flagToOptimisationLevel (Just s) = case reads s of
-  [(i, "")] -> intToOptimisationLevel i
+  [(i, "")] -> intToEnum "optimisation level" i
   _ -> error $ "Can't parse optimisation level " ++ s
-
-intToOptimisationLevel :: Int -> OptimisationLevel
-intToOptimisationLevel i
-  | i >= minLevel && i <= maxLevel = toEnum i
-  | otherwise =
-      error $
-        "Bad optimisation level: "
-          ++ show i
-          ++ ". Valid values are "
-          ++ show minLevel
-          ++ ".."
-          ++ show maxLevel
-  where
-    minLevel = fromEnum (minBound :: OptimisationLevel)
-    maxLevel = fromEnum (maxBound :: OptimisationLevel)
 
 -- ------------------------------------------------------------
 
@@ -374,28 +359,13 @@ parsecDebugInfoLevel :: CabalParsing m => m DebugInfoLevel
 parsecDebugInfoLevel = boolParser <|> intParser
   where
     boolParser = bool NoDebugInfo NormalDebugInfo <$> parsec
-    intParser = intToDebugInfoLevel <$> integral
+    intParser = intToEnum "debug info level" <$> integral
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
 flagToDebugInfoLevel (Just s) = case reads s of
-  [(i, "")] -> intToDebugInfoLevel i
+  [(i, "")] -> intToEnum "debug info level" i
   _ -> error $ "Can't parse debug info level " ++ s
-
-intToDebugInfoLevel :: Int -> DebugInfoLevel
-intToDebugInfoLevel i
-  | i >= minLevel && i <= maxLevel = toEnum i
-  | otherwise =
-      error $
-        "Bad debug info level: "
-          ++ show i
-          ++ ". Valid values are "
-          ++ show minLevel
-          ++ ".."
-          ++ show maxLevel
-  where
-    minLevel = fromEnum (minBound :: DebugInfoLevel)
-    maxLevel = fromEnum (maxBound :: DebugInfoLevel)
 
 -- ------------------------------------------------------------
 
