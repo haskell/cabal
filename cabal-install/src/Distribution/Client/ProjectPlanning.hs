@@ -136,7 +136,7 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup hiding (cabalVersion, packageName)
 import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
-import Distribution.Client.Targets (userToPackageConstraint)
+import Distribution.Client.Targets (UserConstraint, userToPackageConstraint)
 import Distribution.Client.Types
 import Distribution.Client.Utils (concatMapM, duplicatesBy, incVersion)
 
@@ -156,10 +156,13 @@ import Distribution.Utils.Path hiding
 
 import qualified Hackage.Security.Client as Sec
 
+import Distribution.Solver.Modular.Index
+import Distribution.Solver.Modular.IndexConversion
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.InstSolverPackage
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
@@ -813,7 +816,7 @@ rebuildInstallPlan
             verbosity
             fileMonitorSolverPlan
             ( solverSettings
-            , localPackages
+            , pinfos
             , localPackagesEnabledStanzas
             , compiler
             , platform
@@ -860,6 +863,31 @@ rebuildInstallPlan
                     dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
+            sourcePackages :: [SourcePackage UnresolvedPkgLoc]
+            sourcePackages = [pkg | SpecificSourcePackage pkg <- localPackages]
+
+            Platform arch os = platform
+
+            pair lpc =
+              let PackageConstraint scope _ = unlabelPackageConstraint lpc
+               in (scopeToPackageName scope, [lpc])
+
+            pinfos :: [PInfo]
+            pinfos =
+              [ pinfo
+              | (_, _, pinfo) <-
+                  map
+                    ( convSP
+                        os
+                        arch
+                        (compilerInfo compiler)
+                        (Map.fromListWith (++) $ map (pair . settingConstraintToLPC) $ solverSettingConstraints solverSettings)
+                        (solverSettingStrongFlags solverSettings)
+                        (SolveExecutables True)
+                    )
+                    sourcePackages
+              ]
+
             corePackageDbs :: PackageDBStackCWD
             corePackageDbs =
               Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigShared)
@@ -1398,9 +1426,7 @@ planPackages
             ]
           . addConstraints
             -- version constraints from the config file or command line
-            [ LabeledPackageConstraint (userToPackageConstraint pc) src
-            | (pc, src) <- solverSettingConstraints
-            ]
+            (map settingConstraintToLPC solverSettingConstraints)
           . addPreferences
             -- enable stanza preference unilaterally, regardless if the user asked
             -- accordingly or expressed no preference, to help hint the solver
@@ -1537,6 +1563,10 @@ planPackages
       --
       setupMaxCabalVersionConstraint =
         alterVersion (take 2) $ incVersion 1 $ incVersion 1 cabalVersion
+
+settingConstraintToLPC :: (UserConstraint, ConstraintSource) -> LabeledPackageConstraint
+settingConstraintToLPC (pc, src) =
+  LabeledPackageConstraint (userToPackageConstraint pc) src
 
 ------------------------------------------------------------------------------
 

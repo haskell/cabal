@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Solver.Modular.Flag
     ( FInfo(..)
     , Flag
@@ -20,16 +22,22 @@ module Distribution.Solver.Modular.Flag
 
 import Data.Map as M
 import Prelude hiding (pi)
+import GHC.Generics
 
 import qualified Distribution.PackageDescription as P -- from Cabal
 
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
+import Distribution.Utils.Structured (Structured (..))
+import Distribution.Compat.Binary (Binary)
 
 -- | Flag name. Consists of a package instance and the flag identifier itself.
 data FN qpn = FN qpn Flag
-  deriving (Eq, Ord, Show, Functor)
+  deriving (Eq, Ord, Show, Functor, Generic)
+
+instance Structured qpn => Structured (FN qpn)
+instance Binary qpn => Binary (FN qpn)
 
 -- | Flag identifier. Just a string.
 type Flag = P.FlagName
@@ -47,7 +55,10 @@ mkFlag = P.mkFlagName
 -- whether the flag is weak. Manual flags can only be set explicitly.
 -- Weak flags are typically deferred by the solver.
 data FInfo = FInfo { fdefault :: Bool, fmanual :: FlagType, fweak :: WeakOrTrivial }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance Structured FInfo
+instance Binary FInfo
 
 -- | Flag defaults.
 type FlagInfo = Map Flag FInfo
@@ -57,7 +68,10 @@ type QFN = FN QPN
 
 -- | Stanza name. Paired with a package name, much like a flag.
 data SN qpn = SN qpn Stanza
-  deriving (Eq, Ord, Show, Functor)
+  deriving (Eq, Ord, Show, Functor, Generic)
+
+instance Structured qpn => Structured (SN qpn)
+instance Binary qpn => Binary (SN qpn)
 
 -- | Qualified stanza name.
 type QSN = SN QPN
@@ -74,12 +88,18 @@ type QSN = SN QPN
 -- special case of triviality we actually consider is if there are no new
 -- dependencies introduced by the choice.
 newtype WeakOrTrivial = WeakOrTrivial { unWeakOrTrivial :: Bool }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Structured WeakOrTrivial
+instance Binary WeakOrTrivial
 
 -- | Value shown for a flag in a solver log message. The message can refer to
 -- only the true choice, only the false choice, or both choices.
 data FlagValue = FlagTrue | FlagFalse | FlagBoth
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance Structured FlagValue
+instance Binary FlagValue
 
 showQFNBool :: QFN -> Bool -> String
 showQFNBool qfn@(FN qpn _f) b = showQPN qpn ++ ":" ++ showFBool qfn b
