@@ -328,11 +328,10 @@ parsecOptimisationLevel = boolParser <|> intParser
 
 flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing = NormalOptimisation
-flagToOptimisationLevel (Just s) = case reads s of
-  [(i, "")] -> intToEnum "optimisation level" i
-  _ -> case reads s of
-    [(b, "")] -> if b then NormalOptimisation else NoOptimisation
-    _ -> error $ "Can't parse optimisation level " ++ s
+flagToOptimisationLevel (Just s)
+  | Just i <- readMaybe s = intToEnum "optimisation level" i
+  | Just b <- readMaybe s = if b then NormalOptimisation else NoOptimisation
+  | otherwise = error $ "Can't parse optimisation level: " ++ s
 
 -- ------------------------------------------------------------
 
@@ -365,11 +364,10 @@ parsecDebugInfoLevel = boolParser <|> intParser
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
-flagToDebugInfoLevel (Just s) = case reads s of
-  [(i, "")] -> intToEnum "debug info level" i
-  _ -> case reads s of
-    [(b, "")] -> if b then NormalDebugInfo else NoDebugInfo
-    _ -> error $ "Can't parse debug info level " ++ s
+flagToDebugInfoLevel (Just s)
+  | Just i <- readMaybe s = intToEnum "debug info level" i
+  | Just b <- readMaybe s = if b then NormalDebugInfo else NoDebugInfo
+  | otherwise = error $ "Can't parse debug info level " ++ s
 
 -- ------------------------------------------------------------
 
