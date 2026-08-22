@@ -65,12 +65,12 @@ data ArgDescr a
   | -- |   option requires argument
     ReqArg (String -> Either String a) String
   | -- |   optional argument
-    OptArg String (Maybe String -> Either String a) String
+    OptArg (Maybe String -> Either String a) String
 
 instance Functor ArgDescr where
   fmap f (NoArg a) = NoArg (f a)
   fmap f (ReqArg g s) = ReqArg (fmap f . g) s
-  fmap f (OptArg dv g s) = OptArg dv (fmap f . g) s
+  fmap f (OptArg g s) = OptArg (fmap f . g) s
 
 data OptKind a -- kind of cmd line arg (internal use only):
   = Opt a --    an option
@@ -148,7 +148,7 @@ fmtShort (NoArg _) so = "-" ++ [so]
 fmtShort (ReqArg _ ad) so =
   let opt = "-" ++ [so]
    in opt ++ " " ++ ad ++ " or " ++ opt ++ ad
-fmtShort (OptArg _ _ ad) so =
+fmtShort (OptArg _ ad) so =
   let opt = "-" ++ [so]
    in opt ++ "[" ++ ad ++ "]"
 
@@ -166,7 +166,7 @@ fmtLong (NoArg _) lo = "--" ++ lo
 fmtLong (ReqArg _ ad) lo =
   let opt = "--" ++ lo
    in opt ++ "=" ++ ad
-fmtLong (OptArg _ _ ad) lo =
+fmtLong (OptArg _ ad) lo =
   let opt = "--" ++ lo
    in opt ++ "[=" ++ ad ++ "]"
 
@@ -258,8 +258,8 @@ longOpt ls rs optDescr = long ads arg rs
     long [ReqArg _ d] [] [] = (errReq d optStr, [])
     long [ReqArg f _] [] (r : rest) = (fromRes (f r), rest)
     long [ReqArg f _] ('=' : xs) rest = (fromRes (f xs), rest)
-    long [OptArg _ f _] [] rest = (fromRes (f Nothing), rest)
-    long [OptArg _ f _] ('=' : xs) rest = (fromRes (f (Just xs)), rest)
+    long [OptArg f _] [] rest = (fromRes (f Nothing), rest)
+    long [OptArg f _] ('=' : xs) rest = (fromRes (f (Just xs)), rest)
     long _ _ rest = (UnreqOpt ("--" ++ ls), rest)
 
 -- handle short option
@@ -277,8 +277,8 @@ shortOpt y ys rs optDescr = short ads ys rs
     short (ReqArg _ d : _) [] [] = (errReq d optStr, [])
     short (ReqArg f _ : _) [] (r : rest) = (fromRes (f r), rest)
     short (ReqArg f _ : _) xs rest = (fromRes (f xs), rest)
-    short (OptArg _ f _ : _) [] rest = (fromRes (f Nothing), rest)
-    short (OptArg _ f _ : _) xs rest = (fromRes (f (Just xs)), rest)
+    short (OptArg f _ : _) [] rest = (fromRes (f Nothing), rest)
+    short (OptArg f _ : _) xs rest = (fromRes (f (Just xs)), rest)
     short [] [] rest = (UnreqOpt optStr, rest)
     short [] xs rest = (UnreqOpt (optStr ++ xs), rest)
 
