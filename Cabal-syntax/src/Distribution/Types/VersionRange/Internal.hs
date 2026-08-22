@@ -32,7 +32,6 @@ module Distribution.Types.VersionRange.Internal
   , wildcardUpperBound
   ) where
 
-import Data.Functor (($>))
 import Distribution.Compat.Prelude
 import Distribution.Types.Version
 import Prelude ()
@@ -491,7 +490,7 @@ versionRangeParser digitParser csv = expr
       _ <- P.char '}'
       pure vs
 
-    -- a plain version without tags or wildcards
+    -- a plain version without wildcards
     verPlain :: m Version
     verPlain = mkVersion . toList <$> P.sepByNonEmpty digitParser (P.char '.')
 
@@ -501,11 +500,11 @@ versionRangeParser digitParser csv = expr
       x <- digitParser
       verLoop (DList.singleton x)
 
-    -- trailing: wildcard (.y.*) or normal version (optional tags) (.y.z-tag)
+    -- trailing: wildcard (.y.*) or normal version (.y.z)
     verLoop :: DList.DList Int -> m (Bool, Version)
     verLoop acc =
       verLoop' acc
-        <|> (tags $> (False, mkVersion (DList.toList acc)))
+        <|> pure (False, mkVersion (DList.toList acc))
 
     verLoop' :: DList.DList Int -> m (Bool, Version)
     verLoop' acc = do
@@ -521,13 +520,6 @@ versionRangeParser digitParser csv = expr
         a <- p
         P.spaces
         return a
-
-    tags :: m ()
-    tags = do
-      ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
-      case ts of
-        [] -> pure ()
-        (_ : _) -> parsecWarning PWTVersionTag "version with tags"
 
 ----------------------------
 -- Wildcard range utilities
