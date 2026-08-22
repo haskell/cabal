@@ -75,7 +75,6 @@ import qualified Prelude
 import Foreign
 import Foreign.C
 #endif
-
 -- ---------------------------------------------------------------------------
 -- Installation directories
 
@@ -210,46 +209,47 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
     case buildOS of
       Windows -> return "$prefix"
       _ -> return ("$prefix" </> "lib")
-  return $
-    fmap toPathTemplate $
-      InstallDirs
-        { prefix = installPrefix
-        , bindir = "$prefix" </> "bin"
-        , libdir = installLibDir
-        , libsubdir = case comp of
-            UHC -> "$pkgid"
-            _other -> "$abi" </> "$libname"
-        , dynlibdir =
-            "$libdir" </> case comp of
+  return
+    ( toPathTemplate
+        <$> InstallDirs
+          { prefix = installPrefix
+          , bindir = "$prefix" </> "bin"
+          , libdir = installLibDir
+          , libsubdir = case comp of
               UHC -> "$pkgid"
-              _other -> "$abi"
-        , bytecodelibdir = "$libdir" </> "$libsubdir"
-        , libexecsubdir = "$abi" </> "$pkgid"
-        , flibdir = "$libdir"
-        , libexecdir = case buildOS of
-            Windows -> "$prefix" </> "$libname"
-            Haiku -> "$libdir"
-            _other -> "$prefix" </> "libexec"
-        , includedir = case buildOS of
-            Haiku -> "$prefix" </> "develop" </> "headers"
-            _other -> "$libdir" </> "$libsubdir" </> "include"
-        , datadir = case buildOS of
-            Windows -> "$prefix"
-            Haiku -> "$prefix" </> "data"
-            _other -> "$prefix" </> "share"
-        , datasubdir = "$abi" </> "$pkgid"
-        , docdir = case buildOS of
-            Haiku -> "$prefix" </> "documentation"
-            _other -> "$datadir" </> "doc" </> "$abi" </> "$pkgid"
-        , mandir = case buildOS of
-            Haiku -> "$docdir" </> "man"
-            _other -> "$datadir" </> "man"
-        , htmldir = "$docdir" </> "html"
-        , haddockdir = "$htmldir"
-        , sysconfdir = case buildOS of
-            Haiku -> "boot" </> "system" </> "settings"
-            _other -> "$prefix" </> "etc"
-        }
+              _other -> "$abi" </> "$libname"
+          , dynlibdir =
+              "$libdir" </> case comp of
+                UHC -> "$pkgid"
+                _other -> "$abi"
+          , bytecodelibdir = "$libdir" </> "$libsubdir"
+          , libexecsubdir = "$abi" </> "$pkgid"
+          , flibdir = "$libdir"
+          , libexecdir = case buildOS of
+              Windows -> "$prefix" </> "$libname"
+              Haiku -> "$libdir"
+              _other -> "$prefix" </> "libexec"
+          , includedir = case buildOS of
+              Haiku -> "$prefix" </> "develop" </> "headers"
+              _other -> "$libdir" </> "$libsubdir" </> "include"
+          , datadir = case buildOS of
+              Windows -> "$prefix"
+              Haiku -> "$prefix" </> "data"
+              _other -> "$prefix" </> "share"
+          , datasubdir = "$abi" </> "$pkgid"
+          , docdir = case buildOS of
+              Haiku -> "$prefix" </> "documentation"
+              _other -> "$datadir" </> "doc" </> "$abi" </> "$pkgid"
+          , mandir = case buildOS of
+              Haiku -> "$docdir" </> "man"
+              _other -> "$datadir" </> "man"
+          , htmldir = "$docdir" </> "html"
+          , haddockdir = "$htmldir"
+          , sysconfdir = case buildOS of
+              Haiku -> "boot" </> "system" </> "settings"
+              _other -> "$prefix" </> "etc"
+          }
+    )
 
 -- ---------------------------------------------------------------------------
 -- Converting directories, absolute or prefix-relative

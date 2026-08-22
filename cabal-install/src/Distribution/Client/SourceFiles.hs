@@ -192,7 +192,7 @@ needBuildInfo pkg_descr bi modules = do
       , map getSymbolicPath expandedExtraSrcFiles
       ]
   for_
-    (fmap getSymbolicPath $ installIncludes bi)
+    (getSymbolicPath <$> installIncludes bi)
     ( findFileMonitored ("." : fmap getSymbolicPath (includeDirs bi))
         >=> maybe (return ()) need
     )
