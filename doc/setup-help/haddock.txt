@@ -1,0 +1,51 @@
+Generate Haddock HTML documentation.
+
+Usage: cabal haddock [FLAGS]
+   or: cabal haddock COMPONENTS [FLAGS]
+
+Requires the program haddock, version 2.x.
+
+Flags for haddock:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --hoogle                     # Generate a hoogle database
+ --html                       # Generate HTML documentation (the default)
+ --html-location=URL          # Location of HTML documentation for
+                                pre-requisite packages
+ --for-hackage                # Collection of flags to generate documentation
+                                suitable for upload to hackage
+ --executables                # Run haddock for Executables targets
+ --tests                      # Run haddock for Test Suite targets
+ --benchmarks                 # Run haddock for Benchmark targets
+ --foreign-libraries          # Run haddock for Foreign Library targets
+ --all                        # Run haddock for all targets
+ --internal                   # Run haddock for internal modules and include
+                                all symbols
+ --css=PATH                   # Use PATH as the haddock stylesheet
+ --hyperlink-source           # Hyperlink the documentation to the source code
+ --quickjump                  # Generate an index for interactive
+                                documentation navigation
+ --hscolour-css=PATH          # Use PATH as the HsColour stylesheet
+ --contents-location=URL      # Bake URL in as the location for the contents
+                                page
+ --index-location=URL         # Use a separately-generated HTML index
+ --base-url=URL               # Base URL for static files.
+ --resources-dir=DIR          # Location of Haddocks static / auxiliary files
+ --output-dir=DIR             # Generate haddock documentation into this
+                                directory. This flag is provided as a
+                                technology preview and is subject to change in
+                                the next releases.
+ --use-unicode                # Pass --use-unicode option to haddock
+ --with-ghc=PATH              # Give the path to ghc
+ --with-haddock=PATH          # Give the path to haddock
+ --PROG-option=OPT            # Give an extra option to PROG (passed directly
+                                to PROG as a single argument)
+ --ghc-options=OPTS           # Give extra options to ghc (split on spaces,
+                                use "" to prevent splitting)
+ --haddock-options=OPTS       # Give extra options to haddock (split on
+                                spaces, use "" to prevent splitting)

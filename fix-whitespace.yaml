@@ -123,6 +123,7 @@ excluded-files:
   - "*.log"
   - "*.out"
   - doc/buildinfo-fields-reference.rst
+  - doc/setup-help/copy.txt
 
 # Binary files
   - "*.a"

@@ -1,0 +1,18 @@
+Display detailed information about a particular package.
+
+Usage: cabal info [FLAGS] PACKAGES
+
+Use the package database specified with --package-db. If not specified, use
+the user package database.
+
+Flags for info:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --package-db=DB              # Append the given package database to the list
+                                of package databases used (to satisfy
+                                dependencies and register into). May be a
+                                specific file, 'global' or 'user'. The initial
+                                list is ['global'], ['global', 'user'],
+                                depending on context. Use 'clear' to reset the
+                                list to empty. See the user guide for details.

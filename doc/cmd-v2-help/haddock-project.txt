@@ -1,0 +1,41 @@
+Generate Haddocks HTML documentation for the cabal project.
+
+Usage: cabal haddock-project [FLAGS]
+   or: cabal haddock-project COMPONENTS [FLAGS]
+
+Requires the program haddock, version 2.26.
+
+Flags for haddock-project:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --hackage                    # A short-cut option to build documentation
+                                linked to hackage.
+ --output[=DIRECTORY]         # Output directory
+ --prologue[=PATH]            # File path to a prologue file in haddock format
+ --hoogle                     # Generate a hoogle database
+ --html-location=URL          # Location of HTML documentation for
+                                pre-requisite packages
+ --executables                # Run haddock for Executables targets
+ --tests                      # Run haddock for Test Suite targets
+ --benchmarks                 # Run haddock for Benchmark targets
+ --foreign-libraries          # Run haddock for Foreign Library targets
+ --all                        # Run haddock for all targets
+ --internal                   # Run haddock for internal modules and include
+                                all symbols
+ --css=PATH                   # Use PATH as the haddock stylesheet
+ --hscolour-css=PATH          # Use PATH as the HsColour stylesheet
+ --resources-dir=DIR          # Location of Haddocks static / auxiliary files
+ --use-unicode                # Pass --use-unicode option to haddock
+ --with-ghc=PATH              # Give the path to ghc
+ --with-haddock=PATH          # Give the path to haddock
+ --PROG-option=OPT            # Give an extra option to PROG (passed directly
+                                to PROG as a single argument)
+ --ghc-options=OPTS           # Give extra options to ghc (split on spaces,
+                                use "" to prevent splitting)
+ --haddock-options=OPTS       # Give extra options to haddock (split on
+                                spaces, use "" to prevent splitting)

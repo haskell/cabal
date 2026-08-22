@@ -1,0 +1,22 @@
+Generate HsColour colourised code, in HTML format.
+
+Usage: cabal hscolour [FLAGS]
+
+Requires the hscolour program.
+
+Flags for hscolour:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --executables                # Run hscolour for Executables targets
+ --tests                      # Run hscolour for Test Suite targets
+ --benchmarks                 # Run hscolour for Benchmark targets
+ --foreign-libraries          # Run hscolour for Foreign Library targets
+ --all                        # Run hscolour for all targets
+ --css=PATH                   # Use a cascading style sheet
+
+Deprecated in favour of 'cabal haddock --hyperlink-source'.

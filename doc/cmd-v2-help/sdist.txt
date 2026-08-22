@@ -1,0 +1,25 @@
+Generate a source distribution file (.tar.gz).
+
+Usage: cabal sdist [FLAGS] [PACKAGES]
+
+Generates tarballs of project packages suitable for upload to Hackage.
+
+Flags for sdist:
+ -h, --help                   # Show this help text
+ --project-dir=DIR            # Set the path of the project directory
+ --project-file=FILE          # Set the path of the cabal.project file
+                                (relative to the project directory when
+                                relative)
+ -z, --ignore-project         # Ignore local project configuration (unless
+                                --project-dir or --project-file is also set)
+ --project-file-parser=PARSER # Set the parser to use for the project file
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ -l, --list-only              # Just list the sources, do not make a tarball
+ --null-sep                   # Separate the source files with NUL bytes
+                                rather than newlines.
+ -o PATH or -oPATH, --output-directory=PATH
+                              # Choose the output directory of this command.
+                                '-' sends all output to stdout
