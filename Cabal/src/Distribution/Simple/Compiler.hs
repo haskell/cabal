@@ -455,7 +455,7 @@ parsecDebugInfoLevel = boolParser <|> intParser
     intParser = intToEnum "debug info level" <$> integral
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
-flagToDebugInfoLevel Nothing = NormalDebugInfo
+flagToDebugInfoLevel Nothing = NoDebugInfo
 flagToDebugInfoLevel (Just s)
   | Just i <- readMaybe s = intToEnum "debug info level" i
   | Just b <- readMaybe s = if b then NormalDebugInfo else NoDebugInfo
