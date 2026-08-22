@@ -4,6 +4,7 @@
 module Distribution.Client.ProjectConfig.Parsec
   ( -- * Package configuration
     parseProject
+  , parseProjectConfig
   , ProjectConfig (..)
 
     -- ** Parsing
@@ -174,18 +175,6 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     parseImport :: Position -> [FieldLine Position] -> ParseResult ProjectFileSource FilePath
     parseImport pos lines' = runFieldParser pos (P.many P.anyChar) cabalSpec lines'
 
-    -- We want a normalized path for @fieldsToConfig@. This eventually surfaces
-    -- in solver rejection messages and build messages "this build was affected
-    -- by the following (project) config files" so we want all paths shown there
-    -- to be relative to the directory of the project, not relative to the file
-    -- they were imported from.
-    fieldsToConfig :: ProjectConfigPath -> [Field Position] -> ParseResult ProjectFileSource ProjectConfig
-    fieldsToConfig sourceConfigPath xs = do
-      let (fs, sectionGroups) = partitionFields xs
-          sections = concat sectionGroups
-      config <- parseFieldGrammarCheckingStanzas cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
-      config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
-      return config'
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
       where
@@ -199,7 +188,48 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     sanityWalkBranch :: CondBranch ConfVar ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ParseResult ProjectFileSource ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
+-- We want a normalized path for @fieldsToConfig@. This eventually surfaces
+-- in solver rejection messages and build messages "this build was affected
+-- by the following (project) config files" so we want all paths shown there
+-- to be relative to the directory of the project, not relative to the file
+-- they were imported from.
+fieldsToConfig :: ProjectConfigPath -> [Field Position] -> ParseResult ProjectFileSource ProjectConfig
+fieldsToConfig sourceConfigPath xs = do
+  let (fs, sectionGroups) = partitionFields xs
+      sections = concat sectionGroups
+  config <- parseFieldGrammarCheckingStanzas cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
+  config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
+  return config'
+  where
     programDb = defaultProgramDb
+
+-- |
+-- >>> parseParsec projectPackages "packages" "foo"
+-- ([],Right ["foo"])
+--
+-- >>> parseParsec projectPackages "packages" "xL{4,IE-,eK<}fE?e"
+-- ([],Right ["xL{4,IE-,eK<}fE?e"])
+--
+-- >>> parseParsec projectPackages "packages" "7{u,{h,{=n}}}"
+-- ([],Right ["7{u,{h,{=n}}}"])
+--
+-- >>> parseParsec projectPackages "test-log" ""
+-- ([],Right [])
+--
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " "
+-- ([],Right (Last {getLast = Nothing}))
+--
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " \n"
+-- ([],Right (Last {getLast = Nothing}))
+
+-- >>> parseParsec (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" ""
+-- ([],Right (Last {getLast = Nothing}))
+
+-- >>> parseParsec (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" " "
+-- ([],Right (Last {getLast = Nothing}))
+parseProjectConfig :: FilePath -> BS.ByteString -> ParseResult ProjectFileSource ProjectConfig
+parseProjectConfig rootConfig bs =
+  fieldsToConfig (ProjectConfigPath $ rootConfig :| []) =<< readPreprocessFields bs
 
 startOfSection :: Position -> [SectionArg Position] -> Position
 -- The case where we have no args is the start of the section
@@ -405,3 +435,15 @@ warnUnknownFields fieldName fieldLines = for_ fieldLines (\field -> parseWarning
 
 cabalSpec :: CabalSpecVersion
 cabalSpec = cabalSpecLatest
+
+-- $setup
+-- >>> :set -XViewPatterns
+-- >>> instance (Show a, Show b) => Show (ParseResult a b) where show = show . runParseResult
+--
+-- >>> :{
+-- parseParsec :: (ProjectConfig -> a) -> String -> String -> ParseResult ProjectFileSource a
+-- parseParsec f (toUTF8BS -> field) (toUTF8BS -> s) = f <$>
+--   fieldsToConfig
+--     nullProjectConfigPath
+--     [Field (Name zeroPos field) [FieldLine zeroPos s]]
+-- :}
