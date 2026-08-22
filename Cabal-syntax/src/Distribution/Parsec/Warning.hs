@@ -60,6 +60,8 @@ data PWarnType
     PWTEmptyFilePath
   | -- | sections contents (sections and fields) are indented inconsistently
     PWTInconsistentIndentation
+  | -- | Quoted components names can't be referred to and are to be removed.
+    PWTQuotedComponentNames
   | -- | Experimental feature
     PWTExperimental
   deriving (Eq, Ord, Show, Enum, Bounded, Generic)
