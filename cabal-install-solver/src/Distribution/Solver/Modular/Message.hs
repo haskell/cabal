@@ -309,7 +309,7 @@ showFR _ (PackageRequiresMissingComponent qpn comp) = " (requires " ++ showExpos
 showFR _ (PackageRequiresPrivateComponent qpn comp) = " (requires " ++ showExposedComponent comp ++ " from " ++ showQPN qpn ++ ", but the component is private)"
 showFR _ (PackageRequiresUnbuildableComponent qpn comp) = " (requires " ++ showExposedComponent comp ++ " from " ++ showQPN qpn ++ ", but the component is not buildable in the current environment)"
 showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"
-showFR _ NotExplicit                      = " (not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies was set)"
+showFR _ NotExplicit                      = " (not a user-provided goal nor mentioned as a constraint when reject-unconstrained-dependencies=all)"
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
 showFR _ (Broken u)                       = " (package is broken, missing dependency " ++ prettyShow u ++ ")"
 showFR _ UnknownPackage                   = " (unknown package)"

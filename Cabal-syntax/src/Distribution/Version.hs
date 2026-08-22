@@ -108,9 +108,13 @@ import Distribution.Types.VersionRange
 -- | This is the converse of 'isAnyVersion'. It check if the version range is
 -- empty, if there is no possible version that satisfies the version range.
 --
--- For example this is @True@ (for all @v@):
+-- For example, @\<v && >v@ is no version for all @v@.
 --
--- > isNoVersion (EarlierVersion v `IntersectVersionRanges` LaterVersion v)
+-- >>> ordNub [isNoVersion (earlierVersion v `intersectVersionRanges` laterVersion v) | v <- mkVersion <$> [[0],[1]]]
+-- [True]
+--
+-- >>> isNoVersion <$> [noVersion, anyVersion]
+-- [True,False]
 isNoVersion :: VersionRange -> Bool
 isNoVersion vr = case asVersionIntervals vr of
   [] -> True
@@ -118,8 +122,11 @@ isNoVersion vr = case asVersionIntervals vr of
 
 -- | Is this version range in fact just a specific version?
 --
--- For example the version range @\">= 3 && <= 3\"@ contains only the version
+-- For example the version range @\>= 3 && <= 3@ contains only the version
 -- @3@.
+--
+-- >>> isSpecificVersion (orLaterVersion (mkVersion [3]) `intersectVersionRanges` orEarlierVersion (mkVersion [3]))
+-- Just (mkVersion [3])
 isSpecificVersion :: VersionRange -> Maybe Version
 isSpecificVersion vr = case asVersionIntervals vr of
   [VersionInterval (LowerBound v InclusiveBound) (UpperBound v' InclusiveBound)]
@@ -222,5 +229,6 @@ transformCaretLower = hyloVersionRange embed projectVersionRange
 -- >>> :set -XScopedTypeVariables
 -- >>> import Distribution.Parsec
 -- >>> import Distribution.Pretty
+-- >>> import Distribution.Utils.Generic (ordNub)
 -- >>>
 -- >>> mapVR f xs = [pretty $ f v| Just v <- simpleParsec <$> xs]
