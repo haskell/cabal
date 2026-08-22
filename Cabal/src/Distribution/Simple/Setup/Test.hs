@@ -194,16 +194,19 @@ testOptions' showOrParseArgs =
     , option
         []
         ["show-details"]
-        ( "'always': always show results of individual test cases. "
-            ++ "'never': never show results of individual test cases. "
-            ++ "'failures': show results of failing test cases. "
-            ++ "'streaming': show results of test cases in real time."
-            ++ "'direct': send results of test cases in real time; no log file."
+        ( unlines
+            [ "Allowed values:"
+            , "- always: always show results of individual test cases,"
+            , "- never: never show results of individual test cases,"
+            , "- failures: show results of failing test cases,"
+            , "- streaming: show results of test cases in real time,"
+            , "- direct: send results of test cases in real time; no log file."
+            ]
         )
         testShowDetails
         (\v flags -> flags{testShowDetails = v})
         ( reqArg
-            "FILTER"
+            "always|never|failures|streaming|direct"
             ( parsecToReadE
                 ( \_ ->
                     "--show-details flag expects one of "

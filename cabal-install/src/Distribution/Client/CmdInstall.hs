@@ -4,9 +4,10 @@
 
 -- | cabal-install CLI command: install
 module Distribution.Client.CmdInstall
-  ( -- * The @install@ CLI and action
+  ( -- * The @install@ CLI command UI and action
     installCommand
   , installAction
+  , examples
 
     -- * Internals exposed for testing
   , selectPackageTargets
@@ -119,6 +120,7 @@ import Distribution.Simple.BuildPaths
   )
 import Distribution.Simple.Command
   ( CommandUI (..)
+  , OptionField (..)
   , optionName
   , usageAlternatives
   )
@@ -187,7 +189,7 @@ import Distribution.System
   , Platform
   , buildOS
   )
-import Distribution.Types.InstalledPackageInfo
+import qualified Distribution.Types.InstalledPackageInfo as IPI
   ( InstalledPackageInfo (..)
   )
 import Distribution.Types.PackageId
@@ -285,42 +287,39 @@ data InstallExe = InstallExe
   -- store.
   }
 
+description :: String
+description =
+  "Installs one or more packages. This is done by installing them "
+    ++ "in the store and symlinking or copying the executables in the directory "
+    ++ "specified by the --installdir flag (`~/.local/bin/` by default). "
+    ++ "If you want the installed executables to be available globally, "
+    ++ "make sure that the PATH environment variable contains that directory. "
+    ++ "\n\n"
+    ++ "If TARGET is a library and --lib (provisional) is used, "
+    ++ "it will be added to the global environment. "
+    ++ "When doing this, cabal will try to build a plan that includes all "
+    ++ "the previously installed libraries. This is currently not implemented."
+
+examples :: String -> String -> String
+examples pname invokedName =
+  unlines
+    [ "Examples:"
+    , "  - " <> pname <> " " <> invokedName
+    , "      Install the package in the current directory"
+    , "  - " <> pname <> " " <> invokedName <> " pkgname"
+    , "      Install the package named pkgname (fetching it from hackage if necessary)"
+    , "  - " <> pname <> " " <> invokedName <> " ./pkgfoo"
+    , "      Install the package in the ./pkgfoo directory"
+    ]
+
 installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
 installCommand =
   CommandUI
     { commandName = "v2-install"
     , commandSynopsis = "Install packages."
-    , commandUsage =
-        usageAlternatives
-          "v2-install"
-          ["[TARGETS] [FLAGS]"]
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Installs one or more packages. This is done by installing them "
-            ++ "in the store and symlinking or copying the executables in the directory "
-            ++ "specified by the --installdir flag (`~/.local/bin/` by default). "
-            ++ "If you want the installed executables to be available globally, "
-            ++ "make sure that the PATH environment variable contains that directory. "
-            ++ "\n\n"
-            ++ "If TARGET is a library and --lib (provisional) is used, "
-            ++ "it will be added to the global environment. "
-            ++ "When doing this, cabal will try to build a plan that includes all "
-            ++ "the previously installed libraries. This is currently not implemented."
-    , commandNotes = Just $ \pname ->
-        "Examples:\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-install\n"
-          ++ "    Install the package in the current directory\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-install pkgname\n"
-          ++ "    Install the package named pkgname"
-          ++ " (fetching it from hackage if necessary)\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-install ./pkgfoo\n"
-          ++ "    Install the package in the ./pkgfoo directory\n"
+    , commandUsage = usageAlternatives "v2-install" ["[TARGETS] [FLAGS]"]
+    , commandDescription = Just $ \_ -> wrapText description
+    , commandNotes = Just $ \pname -> examples pname "v2-install"
     , commandOptions = \x -> filter notInstallDirOpt $ nixStyleOptions clientInstallOptions x
     , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
     }
@@ -956,7 +955,7 @@ prepareExeInstall
 installLibraries
   :: Verbosity
   -> ProjectBuildContext
-  -> PI.PackageIndex InstalledPackageInfo
+  -> PI.PackageIndex IPI.InstalledPackageInfo
   -> Compiler
   -> PackageDBStackCWD
   -> FilePath
@@ -989,7 +988,7 @@ installLibraries
               . sortBy (comparing (Down . fst))
               . PI.lookupPackageName installedIndex
           globalLatest = concatMap getLatest globalPackages
-          globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
+          globalEntries = GhcEnvFilePackageId . IPI.installedUnitId <$> globalLatest
           baseEntries =
             GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
           pkgEntries =
@@ -1078,7 +1077,7 @@ environmentFileToSpecifiers
 environmentFileToSpecifiers ipi = foldMap $ \case
   (GhcEnvFilePackageId unitId)
     | Just
-        InstalledPackageInfo
+        IPI.InstalledPackageInfo
           { sourcePackageId = PackageIdentifier{..}
           , installedUnitId
           } <-

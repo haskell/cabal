@@ -182,6 +182,11 @@ import Distribution.PackageDescription
   , buildable
   )
 
+import Distribution.Client.Cmd.UI
+  ( cmdSpec
+  , commandParserByName
+  , parseCommandWithOptparseMany
+  )
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import Distribution.PackageDescription.PrettyPrint
@@ -232,6 +237,7 @@ import Distribution.Simple.Utils
   , createDirectoryIfMissingVerbose
   , die'
   , dieNoVerbosity
+  , dieNoWrap
   , dieWithException
   , findPackageDesc
   , info
@@ -344,7 +350,7 @@ warnIfAssertionsAreEnabled =
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
-    command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
+    command <- commandsParse args
     case command of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
@@ -376,6 +382,19 @@ mainWorker args = do
             warnIfAssertionsAreEnabled
             action globalFlags
   where
+    -- Tries to parse the command line arguments with optparse-applicative
+    -- first, and if that fails, falls back to the standard command registry.
+    commandsParse :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
+    commandsParse argv =
+      case parseCommandWithOptparseMany globalCmd parsersByName argv of
+        Just parsed -> pure parsed
+        Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
+
+    parsersByName =
+      [ commandParserByName CmdBuild.examples CmdBuild.buildCommand CmdBuild.buildAction
+      , commandParserByName CmdInstall.examples CmdInstall.installCommand CmdInstall.installAction
+      ]
+
     delegateToExternal
       :: [Command Action]
       -> String
@@ -454,6 +473,8 @@ mainWorker args = do
           | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
           | otherwise = cabalGitInfo
 
+    globalCmd = globalCommand commands
+
     commands = map commandFromSpec commandSpecs
     commandSpecs =
       [ regularCmd listCommand listAction
@@ -476,14 +497,14 @@ mainWorker args = do
         ++ concat
           [ newCmd CmdConfigure.configureCommand CmdConfigure.configureAction
           , newCmd CmdUpdate.updateCommand CmdUpdate.updateAction
-          , newCmd CmdBuild.buildCommand CmdBuild.buildAction
+          , cmdSpec CmdBuild.buildCommand CmdBuild.buildAction
           , newCmd CmdRepl.replCommand CmdRepl.replAction
           , newCmd CmdFreeze.freezeCommand CmdFreeze.freezeAction
           , newCmd CmdHaddock.haddockCommand CmdHaddock.haddockAction
           , newCmd
               CmdHaddockProject.haddockProjectCommand
               CmdHaddockProject.haddockProjectAction
-          , newCmd CmdInstall.installCommand CmdInstall.installAction
+          , cmdSpec CmdInstall.installCommand CmdInstall.installAction
           , newCmd CmdRun.runCommand CmdRun.runAction
           , newCmd CmdTest.testCommand CmdTest.testAction
           , newCmd CmdBench.benchCommand CmdBench.benchAction
@@ -1572,9 +1593,14 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
             Simple.autoconfSetupHooks
             defaultVerbosityHandles
             args
-        Make -> error "actAsSetupAction Main"
-        Hooks -> error "actAsSetupAction Hooks"
-        Custom -> error "actAsSetupAction Custom"
+        Make -> unsupportedBuildType
+        Hooks -> unsupportedBuildType
+        Custom -> unsupportedBuildType
+  where
+    verbosity = mkVerbosity defaultVerbosityHandles normal
+    unsupportedBuildType = do
+      warn verbosity "act-as-setup accepts --build-type=Simple|Configure, case-sensitively."
+      dieNoWrap verbosity "act-as-setup doesn't accept --build-type=Make|Hooks|Custom."
 
 manpageAction :: [CommandSpec action] -> ManpageFlags -> [String] -> Action
 manpageAction commands flags extraArgs _ = do
