@@ -543,13 +543,23 @@ configureCompiler
         , projectConfigHcPkg
         , projectConfigProgPathExtra
         }
+    , projectConfigAllPackages =
+      PackageConfig
+        { packageConfigProgramPaths = packageConfigProgramPathsGlobal
+        }
     , projectConfigLocalPackages =
       PackageConfig
-        { packageConfigProgramPaths
+        { packageConfigProgramPaths = packageConfigProgramPathsLocal
         , packageConfigProgramPathExtra
         }
     } = do
     let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile "compiler"
+        userProgramPaths =
+          Map.toList
+            . getMapLast
+            $ packageConfigProgramPathsGlobal <> packageConfigProgramPathsLocal
+        userPaths :: ProgramDb -> ProgramDb
+        userPaths = userSpecifyPaths userProgramPaths
 
     progsearchpath <- liftIO getSystemSearchPath
 
@@ -561,7 +571,8 @@ configureCompiler
         , hcPath
         , hcPkg
         , progsearchpath
-        , packageConfigProgramPaths
+        , packageConfigProgramPathsGlobal
+        , packageConfigProgramPathsLocal
         , packageConfigProgramPathExtra
         )
         $ do
@@ -571,7 +582,6 @@ configureCompiler
             let addPaths pathList = prependProgramSearchPath verbosity (fromNubList pathList) []
             let globalPaths :: IO ProgramDb = addPaths projectConfigProgPathExtra defaultProgramDb
             let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtra
-            let userPaths :: ProgramDb -> ProgramDb = userSpecifyPaths (Map.toList $ getMapLast packageConfigProgramPaths)
             (globalPaths >>= localPaths) <&> userPaths
           result@(_, _, progdb') <-
             liftIO $
@@ -597,7 +607,20 @@ configureCompiler
     --     (e.g. hsc2hs, haddock, ar, ld...).
     --
     -- See Note [Caching the result of configuring the compiler]
-    finalProgDb <- liftIO $ Cabal.configCompilerProgDb verbosity hc (clearUnconfiguredPrograms hcProgDb) hcPkg
+    finalProgDb <-
+      liftIO $ do
+        progDb <-
+          Cabal.configCompilerProgDb
+            verbosity
+            hc
+            (clearUnconfiguredPrograms hcProgDb)
+            hcPkg
+        -- Re-apply the user-supplied program locations: 'configCompilerProgDb'
+        -- drops the unconfigured programs (along with any user-specified
+        -- locations) and re-adds the toolchain programs (gcc, ar, ld, ...)
+        -- without them. Without this, @--with-gcc@ and the @program-locations@
+        -- section would have no effect (see #11881).
+        return $ userPaths progDb
     return (hc, plat, finalProgDb)
     where
       hcFlavor = flagToMaybe projectConfigHcFlavor
@@ -2414,16 +2437,25 @@ elaborateInstallPlan
             elabDumpBuildInfo = perPkgOptionFlag pkgid NoDumpBuildInfo packageConfigDumpBuildInfo
 
             -- Combine the configured compiler prog settings with the user-supplied
-            -- config. For the compiler progs any user-supplied config was taken
-            -- into account earlier when configuring the compiler so its ok that
-            -- our configured settings for the compiler override the user-supplied
-            -- config here.
+            -- config. The user-supplied program locations take precedence over
+            -- the locations we discovered while configuring the compiler: this
+            -- is what makes @--with-gcc@ and the @program-locations@ section in
+            -- the config file win over the C compiler that GHC was built with.
             elabProgramPaths =
+<<<<<<< HEAD
               Map.fromList
                 [ (programId prog, programPath prog)
                 | prog <- configuredPrograms compilerProgDb
                 ]
                 <> perPkgOptionMapLast pkgid packageConfigProgramPaths
+=======
+              getMapLast (perPkgOption pkgid packageConfigProgramPaths)
+                <> Map.fromList
+                  [ (programId prog, programPath prog)
+                  | prog <- configuredPrograms compilerProgDb
+                  ]
+
+>>>>>>> 0a06a5f (fix program-locations)
             elabProgramArgs =
               -- Workaround for <https://github.com/haskell/cabal/issues/4010>
               --
