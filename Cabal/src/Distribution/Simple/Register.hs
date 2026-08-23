@@ -283,6 +283,7 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
 
         return
           ( inplaceInstalledPackageInfo
+              ForDevelopment
               inplaceDir
               distPref
               pkg
@@ -613,7 +614,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
 --
 -- This function knows about the layout of in place packages.
 inplaceInstalledPackageInfo
-  :: AbsolutePath (Dir Pkg)
+  :: HaddockTarget
+  -> AbsolutePath (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
   -- ^ location of the dist tree
   -> PackageDescription
@@ -622,7 +624,7 @@ inplaceInstalledPackageInfo
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> InstalledPackageInfo
-inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
+inplaceInstalledPackageInfo haddockTarget inplaceDir distPref pkg abi_hash lib lbi clbi =
   generalInstalledPackageInfo
     adjustRelativeIncludeDirs
     pkg
@@ -656,7 +658,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     inplaceHtmldir =
       i $
         (inplaceDocdir </> makeRelativePathEx "html")
-          </> makeRelativePathEx (haddockLibraryDirPath ForDevelopment pkg lib)
+          </> makeRelativePathEx (haddockLibraryDirPath haddockTarget pkg lib)
 
 -- | Construct 'InstalledPackageInfo' for the final install location of a
 -- library package.

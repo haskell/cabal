@@ -85,7 +85,7 @@ import Distribution.Version
 import Data.Bool (bool)
 import Data.Either (lefts, rights)
 import System.Directory (doesDirectoryExist, doesFileExist)
-import System.FilePath (isAbsolute, normalise)
+import System.FilePath (isAbsolute, joinPath, normalise, splitDirectories)
 import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
 
 -- ------------------------------------------------------------------------------
@@ -430,6 +430,7 @@ haddock_setupHooks
             let
               ipi =
                 inplaceInstalledPackageInfo
+                  haddockTarget
                   inplaceDir
                   (flag $ setupDistPref . haddockCommonFlags)
                   pkg_descr
@@ -1375,7 +1376,22 @@ haddockPackagePaths ipkgs mkHtmlPath = do
           exists <- doesFileExist interface
           if exists
             then return (Right (interface, html', hypsrc', Visible))
-            else return (Left pkgid)
+            else do
+              -- The registered path may use a different 'HaddockTarget'
+              -- directory naming than the one used to actually generate the
+              -- .haddock interface files (e.g. the package was registered
+              -- during 'build' using the ForDevelopment naming, but
+              -- 'haddock --haddock-for-hackage' wrote the interface to the
+              -- ForHackage naming). Try the alternate naming as a fallback.
+              -- See #12212.
+              let altInterface = alternateHaddockInterfacePath pkgid interface
+              altExists <-
+                if altInterface /= interface
+                  then doesFileExist altInterface
+                  else return False
+              if altExists
+                then return (Right (altInterface, html', hypsrc', Visible))
+                else return (Left pkgid)
       | ipkg <- ipkgs
       , let pkgid = packageId ipkg
       , pkgName pkgid `notElem` noHaddockWhitelist
@@ -1416,6 +1432,30 @@ haddockPackagePaths ipkgs mkHtmlPath = do
     -- 'src' is the default hyperlinked source directory ever since. It is
     -- not possible to configure that directory in any way in haddock.
     defaultHyperlinkedSourceDirectory = "src"
+
+    -- Replace the 'HaddockTarget' directory naming component in a haddock
+    -- interface path. The haddock output directory uses either
+    -- @\<pkgname\>@ (ForDevelopment) or @\<pkgid\>-docs@ (ForHackage), as
+    -- computed by 'haddockDirName'. When the registered path uses one naming
+    -- but the file was generated with the other, this produces the alternate
+    -- path. See #12212.
+    --
+    -- Only the matching component nearest the interface file is the haddock
+    -- output directory, so ancestors that happen to carry the same name are
+    -- left alone: the output always lives under @doc\/html@, so a package
+    -- named @html@ would otherwise have both components rewritten.
+    alternateHaddockInterfacePath :: PackageIdentifier -> FilePath -> FilePath
+    alternateHaddockInterfacePath pkgid path =
+      let devDir = prettyShow (pkgName pkgid)
+          hackageDir = prettyShow pkgid ++ "-docs"
+          -- Operates on the components in reverse order, stopping at the
+          -- first match.
+          replaceLastDir [] = []
+          replaceLastDir (d : ds)
+            | d == devDir = hackageDir : ds
+            | d == hackageDir = devDir : ds
+            | otherwise = d : replaceLastDir ds
+       in joinPath (reverse (replaceLastDir (reverse (splitDirectories path))))
 
 haddockPackageFlags
   :: Verbosity
