@@ -41,7 +41,6 @@ import Distribution.Simple.Compiler
   )
 import Distribution.Simple.Glob (matchDirFileGlob)
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Setup.Config
 import Distribution.Simple.Setup.Copy
   ( CopyFlags (..)
   )
@@ -347,10 +346,10 @@ installIncludeFiles verbosity libBi lbi buildPref destIncludeDir = do
   let relincdirs = sameDirectory : mapMaybe symbolicPathRelative_maybe (includeDirs libBi)
       incdirs =
         [ root </> getSymbolicPath dir
-        | -- NB: both baseDir and buildPref are already interpreted,
+        | -- NB: both the package root and buildPref are interpreted below,
         -- so we don't need to interpret these paths in the call to findInc.
         dir <- relincdirs
-        , root <- [baseDir lbi, buildPref]
+        , root <- [interpretSymbolicPath (mbWorkDirLBI lbi) sameDirectory, buildPref]
         ]
   incs <- traverse (findInc incdirs . getSymbolicPath) (installIncludes libBi)
   sequence_
@@ -362,7 +361,6 @@ installIncludeFiles verbosity libBi lbi buildPref destIncludeDir = do
           destDir = takeDirectory destFile
     ]
   where
-    baseDir lbi' = packageRoot $ configCommonFlags $ configFlags lbi'
     findInc fs f = go fs
       where
         go [] = dieWithException verbosity $ CantFindIncludeFile f fs
