@@ -1,0 +1,38 @@
+
+
+This Setup program uses the Haskell Cabal Infrastructure.
+See http://www.haskell.org/cabal/ for more information.
+
+Usage: cabal [GLOBAL FLAGS] [COMMAND [FLAGS]]
+
+Commands:
+  configure     Prepare to build the package.
+  build         Compile all/specific components.
+  repl          Open an interpreter session for the given component.
+  install       Copy the files into the install locations. Run register.
+  copy          Copy the files of all/specific components to install locations.
+  haddock       Generate Haddock HTML documentation.
+  clean         Clean up after a build.
+  sdist         Generate a source distribution file (.tar.gz).
+  hscolour      Generate HsColour colourised code, in HTML format.
+  register      Register this package with the compiler.
+  unregister    Unregister this package with the compiler.
+  test          Run all/specific tests in the test suite.
+  bench         Run all/specific benchmarks.
+  help          Help about commands.
+
+For more information about a command use
+  cabal COMMAND --help
+
+Typical steps for installing Cabal packages:
+  cabal configure
+  cabal build
+  cabal install
+
+Global flags:
+ -h, --help                   # Show this help text
+ -V, --version                # Print version information
+ --full-version               # Print the version, Git revision if available,
+                                and compiler information
+ --numeric-version            # Print just the version number
+ --working-dir=DIR            # Set working directory

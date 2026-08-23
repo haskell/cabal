@@ -1,0 +1,29 @@
+Display and update the user's global cabal configuration.
+
+Usage: cabal user-config init
+   or: cabal user-config diff
+   or: cabal user-config update
+
+When upgrading cabal, the set of configuration keys and their default values
+may change. This command provides means to merge the existing config in
+~/.config/cabal/config (i.e. all bindings that are actually defined and not
+commented out) and the default config of the new version.
+
+init: Creates a new config file at either ~/.config/cabal/config or as
+specified by --config-file, if given. An existing file won't be overwritten
+unless -f or --force is given.
+diff: Shows a pseudo-diff of the user's ~/.config/cabal/config file and the
+default configuration that would be created by cabal if the config file did
+not exist.
+update: Applies the pseudo-diff to the configuration that would be created by
+default, and write the result back to ~/.config/cabal/config.
+
+Flags for user-config:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ -f, --force                  # Overwrite the config file if it already
+                                exists.
+ -a CONFIGLINE or -aCONFIGLINE, --augment=CONFIGLINE
+                              # Additional setting to augment the config file
+                                (replacing a previous setting if it existed).

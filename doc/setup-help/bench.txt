@@ -1,0 +1,31 @@
+Run all/specific benchmarks.
+
+Usage: cabal bench [FLAGS]
+   or: cabal bench BENCHCOMPONENTS [FLAGS]
+
+The package must have been build with configuration flag
+`--enable-benchmarks`.
+
+Note that additional dependencies of the benchmarks must have already been
+installed.
+
+By defining UserHooks in a custom Setup.hs, the package can define actions to
+be executed before and after running benchmarks.
+
+Flags for bench:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --benchmark-options=TEMPLATES
+                              # Give extra options to benchmark executables
+                                (split on spaces, use "" to prevent splitting;
+                                name templates can use $pkgid, $compiler, $os,
+                                $arch, $benchmark)
+ --benchmark-option=TEMPLATE  # Give extra option to benchmark executables
+                                (passed directly as a single argument; name
+                                template can use $pkgid, $compiler, $os,
+                                $arch, $benchmark)

@@ -1,0 +1,11 @@
+Outputs manpage source.
+
+Usage: cabal man [FLAGS]
+
+Output manpage source to STDOUT.
+
+Flags for man:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --raw                        # Output raw troff content

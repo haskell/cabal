@@ -1,0 +1,56 @@
+Run all/specific benchmarks.
+
+Usage: cabal v1-bench [FLAGS]
+   or: cabal v1-bench BENCHCOMPONENTS [FLAGS]
+
+If necessary (re)configures with `--enable-benchmarks` flag and builds the
+benchmarks.
+
+Remember that the benchmarks' dependencies must be installed if there are
+additional ones; e.g. with `cabal v1-install --only-dependencies
+--enable-benchmarks`.
+
+By defining UserHooks in a custom Setup.hs, the package can define actions to
+be executed before and after running benchmarks.
+
+Flags for v1-bench:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ -j[NUM], --jobs[=NUM]        # Run NUM jobs simultaneously (or '$ncpus' if no
+                                NUM is given).
+ --semaphore=SEMAPHORE        # Use the specified semaphore identifier so GHC
+                                can compile components in parallel
+ --with-PROG=PATH             # Give the path to PROG
+ --PROG-option=OPT            # Give an extra option to PROG (passed directly
+                                to PROG as a single argument)
+ --PROG-options=OPTS          # Give extra options to PROG (split on spaces,
+                                use "" to prevent splitting)
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --benchmark-options=TEMPLATES
+                              # Give extra options to benchmark executables
+                                (split on spaces, use "" to prevent splitting;
+                                name templates can use $pkgid, $compiler, $os,
+                                $arch, $benchmark)
+ --benchmark-option=TEMPLATE  # Give extra option to benchmark executables
+                                (passed directly as a single argument; name
+                                template can use $pkgid, $compiler, $os,
+                                $arch, $benchmark)
+
+The v1-bench command is a part of the legacy v1 style of cabal usage.
+
+It is a legacy feature and will be removed in a future release of
+cabal-install. Please file a bug if you cannot replicate a working v1- use
+case with the nix-style commands.
+
+For more information, see:
+https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html

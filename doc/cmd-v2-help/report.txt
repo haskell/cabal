@@ -1,0 +1,19 @@
+Upload build reports to a remote server.
+
+Usage: cabal report [FLAGS]
+
+Flags for report:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ -t TOKEN or -tTOKEN, --token=TOKEN
+                              # Hackage authentication Token.
+ -u USERNAME or -uUSERNAME, --username=USERNAME
+                              # Hackage username.
+ -p PASSWORD or -pPASSWORD, --password=PASSWORD
+                              # Hackage password.
+ -R REPOSITORY or -RREPOSITORY, --repository=REPOSITORY
+                              # Package repository to upload to.
+
+You can store your Hackage login in the ~/.config/cabal/config file
+(the %APPDATA%\cabal\config file on Windows)

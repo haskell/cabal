@@ -1,0 +1,23 @@
+Copy the files of all/specific components to install locations.
+
+Usage: cabal copy [FLAGS]
+   or: cabal copy COMPONENTS [FLAGS]
+
+Components encompass executables and libraries. Does not call register, and
+allows a prefix at install time. Without the --destdir flag, configure
+determines location.
+
+Flags for copy:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --destdir=DIR                # directory to copy files to, prepended to
+                                installation directories
+
+Examples:
+  cabal copy               All the components in the package
+  cabal copy foo           A component (i.e. lib, exe, test suite)

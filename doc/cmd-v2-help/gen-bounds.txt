@@ -1,0 +1,370 @@
+Generate dependency bounds for packages in the project.
+
+Usage: cabal gen-bounds [TARGETS] [FLAGS]
+
+Generate PVP-compliant dependency bounds for packages in the project.
+Flags for gen-bounds:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --keep-temp-files            # Keep temporary files.
+ -g, --ghc                    # Compile with GHC
+ --ghcjs                      # Compile with GHCJS
+ --uhc                        # Compile with UHC
+ -w PATH or -wPATH, --with-compiler=PATH
+                              # Give the path to a particular compiler
+ --with-hc-pkg=PATH           # Give the path to the package tool
+ --prefix=DIR                 # Bake this prefix in preparation of
+                                installation
+ --bindir=DIR                 # Installation directory for executables
+ --libdir=DIR                 # Installation directory for libraries
+ --libsubdir=DIR              # Subdirectory of libdir in which libs are
+                                installed
+ --dynlibdir=DIR              # Installation directory for dynamic libraries
+ --bytecodelibdir=DIR         # Installation directory for bytecode libraries
+ --libexecdir=DIR             # Installation directory for program executables
+ --libexecsubdir=DIR          # Subdirectory of libexecdir in which private
+                                executables are installed
+ --datadir=DIR                # Installation directory for read-only data
+ --datasubdir=DIR             # Subdirectory of datadir in which data files
+                                are installed
+ --docdir=DIR                 # Installation directory for documentation
+ --htmldir=DIR                # Installation directory for HTML documentation
+ --haddockdir=DIR             # Installation directory for haddock interfaces
+ --sysconfdir=DIR             # Installation directory for configuration files
+ --program-prefix=PREFIX      # Prefix to be applied to installed executables
+ --program-suffix=SUFFIX      # Suffix to be applied to installed executables
+ --enable-library-vanilla     # Enable Vanilla libraries
+ --disable-library-vanilla    # Disable Vanilla libraries
+ -p, --enable-library-profiling
+                              # Enable Library profiling
+ --disable-library-profiling  # Disable Library profiling
+ --enable-shared              # Enable Shared library
+ --disable-shared             # Disable Shared library
+ --enable-static              # Enable Static library
+ --disable-static             # Disable Static library
+ --enable-library-bytecode    # Enable Bytecode library
+ --disable-library-bytecode   # Disable Bytecode library
+ --enable-executable-dynamic  # Enable Executable dynamic linking
+ --disable-executable-dynamic # Disable Executable dynamic linking
+ --enable-executable-static   # Enable Executable fully static linking
+ --disable-executable-static  # Disable Executable fully static linking
+ --enable-profiling           # Enable Executable and library profiling
+ --disable-profiling          # Disable Executable and library profiling
+ --enable-profiling-shared    # Enable Build profiling shared libraries
+ --disable-profiling-shared   # Disable Build profiling shared libraries
+ --enable-executable-profiling
+                              # Enable Executable profiling (DEPRECATED)
+ --disable-executable-profiling
+                              # Disable Executable profiling (DEPRECATED)
+ --profiling-detail=level     # Profiling detail level for executable and
+                                library (default, none, exported-functions,
+                                toplevel-functions, all-functions, late).
+ --library-profiling-detail=level
+                              # Profiling detail level for libraries only.
+ -O[n], --enable-optimization[=n]
+                              # Build with optimization (n is 0--2, default is
+                                1)
+ --disable-optimization       # Build without optimization
+ --enable-debug-info[=n]      # Emit debug info (n is 0--3, default is 0)
+ --disable-debug-info         # Don't emit debug info
+ --enable-build-info          # Enable build information generation during
+                                project building
+ --disable-build-info         # Disable build information generation during
+                                project building
+ --enable-library-for-ghci    # Enable compile library for use with GHCi
+ --disable-library-for-ghci   # Disable compile library for use with GHCi
+ --enable-split-sections      # Enable compile library code such that unneeded
+                                definitions can be dropped from the final
+                                executable (GHC 7.8+)
+ --disable-split-sections     # Disable compile library code such that
+                                unneeded definitions can be dropped from the
+                                final executable (GHC 7.8+)
+ --enable-split-objs          # Enable split library into smaller objects to
+                                reduce binary sizes (GHC 6.6+)
+ --disable-split-objs         # Disable split library into smaller objects to
+                                reduce binary sizes (GHC 6.6+)
+ --enable-executable-stripping
+                              # Enable strip executables upon installation to
+                                reduce binary sizes
+ --disable-executable-stripping
+                              # Disable strip executables upon installation to
+                                reduce binary sizes
+ --enable-library-stripping   # Enable strip libraries upon installation to
+                                reduce binary sizes
+ --disable-library-stripping  # Disable strip libraries upon installation to
+                                reduce binary sizes
+ --configure-option=OPT       # Extra option for configure
+ --user                       # Enable doing a per-user installation
+ --global                     # Disable doing a per-user installation
+ --package-db=DB              # Append the given package database to the list
+                                of package databases used (to satisfy
+                                dependencies and register into). May be a
+                                specific file, 'global' or 'user'. The initial
+                                list is ['global'], ['global', 'user'], or
+                                ['global', $sandbox], depending on context.
+                                Use 'clear' to reset the list to empty. See
+                                the user guide for details.
+ -f FLAGS or -fFLAGS, --flags=FLAGS
+                              # Force values for the given flags in Cabal
+                                conditionals in the .cabal file. E.g.,
+                                --flags="debug -usebytestrings" forces the
+                                flag "debug" to true and "usebytestrings" to
+                                false.
+ --extra-include-dirs=PATH    # A list of directories to search for header
+                                files
+ --enable-deterministic       # Enable Try to be as deterministic as possible
+                                (used by the test suite)
+ --disable-deterministic      # Disable Try to be as deterministic as possible
+                                (used by the test suite)
+ --ipid=IPID                  # Installed package ID to compile this package
+                                as
+ --cid=CID                    # Installed component ID to compile this
+                                component as
+ --extra-lib-dirs=PATH        # A list of directories to search for external
+                                libraries
+ --extra-lib-dirs-static=PATH # A list of directories to search for external
+                                libraries when linking fully static
+                                executables
+ --extra-framework-dirs=PATH  # A list of directories to search for external
+                                frameworks (OS X only)
+ --extra-prog-path=PATH       # A list of directories to search for required
+                                programs (in addition to the normal search
+                                locations)
+ --instantiate-with=NAME=MOD  # A mapping of signature names to concrete
+                                module instantiations.
+ --enable-tests               # Enable dependency checking and compilation for
+                                test suites listed in the package description
+                                file.
+ --disable-tests              # Disable dependency checking and compilation
+                                for test suites listed in the package
+                                description file.
+ --enable-coverage            # Enable build package with Haskell Program
+                                Coverage. (GHC only)
+ --disable-coverage           # Disable build package with Haskell Program
+                                Coverage. (GHC only)
+ --enable-library-coverage    # Enable build package with Haskell Program
+                                Coverage. (GHC only) (DEPRECATED)
+ --disable-library-coverage   # Disable build package with Haskell Program
+                                Coverage. (GHC only) (DEPRECATED)
+ --enable-benchmarks          # Enable dependency checking and compilation for
+                                benchmarks listed in the package description
+                                file.
+ --disable-benchmarks         # Disable dependency checking and compilation
+                                for benchmarks listed in the package
+                                description file.
+ --enable-relocatable         # Enable building a package that is relocatable.
+                                (GHC only)
+ --disable-relocatable        # Disable building a package that is
+                                relocatable. (GHC only)
+ --disable-response-files     # Enable workaround for old versions of programs
+                                like "ar" that do not support @file arguments
+ --allow-depending-on-private-libs
+                              # Allow depending on private libraries. If set,
+                                the library visibility check MUST be done
+                                externally.
+ --coverage-for=UNITID        # A list of unit-ids of libraries to include in
+                                the Haskell Program Coverage report.
+ --ignore-build-tools         # Ignore build tool dependencies. If set,
+                                declared build tools needn't be found for
+                                compilation to proceed.
+ --with-PROG=PATH             # Give the path to PROG
+ --PROG-option=OPT            # Give an extra option to PROG (passed directly
+                                to PROG as a single argument)
+ --PROG-options=OPTS          # Give extra options to PROG (split on spaces,
+                                use "" to prevent splitting)
+ --cabal-lib-version=VERSION  # Select which version of the Cabal lib to use
+                                to build packages (useful for testing).
+ --enable-append              # Enable appending the new config to the old
+                                config file
+ --disable-append             # Disable appending the new config to the old
+                                config file
+ --enable-backup              # Enable the backup of the config file before
+                                any alterations
+ --disable-backup             # Disable the backup of the config file before
+                                any alterations
+ -c CONSTRAINT or -cCONSTRAINT, --constraint=CONSTRAINT
+                              # Specify constraints on a package (version,
+                                installed/source, flags)
+ --preference=CONSTRAINT      # Specify preferences (soft constraints) on the
+                                version of a package
+ --solver=SOLVER              # Select dependency solver to use (default:
+                                modular). Choices: modular.
+ --allow-older[=DEPS]         # Ignore lower bounds in all dependencies or
+                                DEPS
+ --allow-newer[=DEPS]         # Ignore upper bounds in all dependencies or
+                                DEPS
+ --write-ghc-environment-files=always|never|ghc8.4.4+
+                              # Whether to create a .ghc.environment file
+                                after a successful build (v2-build only)
+ --enable-documentation       # Enable building of documentation
+ --disable-documentation      # Disable building of documentation
+ --doc-index-file=TEMPLATE    # A central index of haddock API documentation
+                                (template cannot use $pkgid)
+ --dry-run                    # Do not install anything, only print what would
+                                be installed.
+ --only-download              # Do not build anything, only fetch the
+                                packages.
+ --max-backjumps=NUM          # Maximum number of backjumps allowed while
+                                solving (default: 4000). Use a negative number
+                                to enable unlimited backtracking. Use 0 to
+                                disable backtracking completely.
+ --reorder-goals              # Try to reorder goals according to certain
+                                heuristics. Slows things down on average, but
+                                may make backtracking faster for some
+                                packages.
+ --count-conflicts            # Try to speed up solving by preferring goals
+                                that are involved in a lot of conflicts
+                                (default).
+ --fine-grained-conflicts     # Skip a version of a package if it does not
+                                resolve the conflicts encountered in the last
+                                version, as a solver optimization (default).
+ --minimize-conflict-set      # When there is no solution, try to improve the
+                                error message by finding a minimal conflict
+                                set (default: false). May increase run time
+                                significantly.
+ --independent-goals          # Treat several goals on the command line as
+                                independent. If several goals depend on the
+                                same package, different versions can be
+                                chosen.
+ --prefer-oldest              # Prefer the oldest (instead of the latest)
+                                versions of packages available. Useful to
+                                determine lower bounds in the build-depends
+                                section.
+ --prefer-version=oldest|latest|installed-or-latest
+                              # Select which version of a package that the
+                                solver should prefer. Oldest is useful to
+                                determine lower bounds in build-depends
+                                section. Latest will prefer the latest
+                                version. Installed-or-latest will prefer
+                                installed versions and the latest version
+                                otherwise.
+ --shadow-installed-packages  # If multiple package instances of the same
+                                version are installed, treat all but one as
+                                shadowed.
+ --strong-flags               # Do not defer flag choices (this used to be the
+                                default in cabal-install <= 1.20).
+ --allow-boot-library-installs
+                              # Allow cabal to install base, ghc-prim,
+                                integer-simple, integer-gmp, and
+                                template-haskell.
+ --reject-unconstrained-dependencies=none|all
+                              # Require these packages to have constraints on
+                                them if they are to be selected (default:
+                                none).
+ --reinstall                  # Install even if it means installing the same
+                                version again.
+ --avoid-reinstalls           # Do not select versions that would
+                                destructively overwrite installed packages.
+ --force-reinstalls           # Reinstall packages even if they will most
+                                likely break other installed packages.
+ --upgrade-dependencies       # Pick the latest version for all dependencies,
+                                rather than trying to pick an installed
+                                version.
+ --only-dependencies          # Install only the dependencies necessary to
+                                build the given packages
+ --dependencies-only          # A synonym for --only-dependencies
+ --index-state=STATE          # Use source package index state as it existed
+                                at a previous time. Accepts unix-timestamps
+                                (e.g. '@1474732068'), ISO8601 UTC timestamps
+                                (e.g. '2016-09-24T17:47:48Z'), or 'HEAD'
+                                (default: 'HEAD').
+ --root-cmd=COMMAND           # (No longer supported, do not use.)
+ --build-summary=TEMPLATE     # Save build summaries to file (name template
+                                can use $pkgid, $compiler, $os, $arch)
+ --build-log=TEMPLATE         # Log all builds to file (name template can use
+                                $pkgid, $compiler, $os, $arch)
+ --remote-build-reporting=LEVEL
+                              # Generate build reports to send to a remote
+                                server (none, anonymous or detailed).
+ --report-planning-failure    # Generate build reports when the dependency
+                                solver fails. This is used by the Hackage
+                                build bot.
+ --enable-per-component       # Enable Per-component builds when possible
+ --disable-per-component      # Disable Per-component builds when possible
+ --run-tests                  # Run package test suites during installation.
+ --semaphore                  # Use a semaphore so GHC can compile components
+                                in parallel
+ -j[NUM], --jobs[=NUM]        # Run NUM jobs simultaneously (or '$ncpus' if no
+                                NUM is given).
+ --keep-going                 # After a build failure, continue to build other
+                                unaffected packages.
+ --offline                    # Don't download packages from the Internet.
+ --build-timings              # Print elapsed time for each build phase.
+ --haddock-hoogle             # Generate a hoogle database
+ --haddock-html               # Generate HTML documentation (the default)
+ --haddock-html-location=URL  # Location of HTML documentation for
+                                pre-requisite packages
+ --haddock-for-hackage        # Collection of flags to generate documentation
+                                suitable for upload to hackage
+ --haddock-executables        # Run haddock for Executables targets
+ --haddock-tests              # Run haddock for Test Suite targets
+ --haddock-benchmarks         # Run haddock for Benchmark targets
+ --haddock-all                # Run haddock for all targets
+ --haddock-internal           # Run haddock for internal modules and include
+                                all symbols
+ --haddock-css=PATH           # Use PATH as the haddock stylesheet
+ --haddock-hyperlink-source   # Hyperlink the documentation to the source code
+ --haddock-quickjump          # Generate an index for interactive
+                                documentation navigation
+ --haddock-hscolour-css=PATH  # Use PATH as the HsColour stylesheet
+ --haddock-contents-location=URL
+                              # Bake URL in as the location for the contents
+                                page
+ --haddock-base-url=URL       # Base URL for static files.
+ --haddock-resources-dir=DIR  # Location of Haddocks static / auxiliary files
+ --haddock-output-dir=DIR     # Generate haddock documentation into this
+                                directory. This flag is provided as a
+                                technology preview and is subject to change in
+                                the next releases.
+ --haddock-use-unicode        # Pass --use-unicode option to haddock
+ --test-log=TEMPLATE          # Log all test suite results to file (name
+                                template can use $pkgid, $compiler, $os,
+                                $arch, $test-suite, $result)
+ --test-machine-log=TEMPLATE  # Produce a machine-readable log file (name
+                                template can use $pkgid, $compiler, $os,
+                                $arch, $result)
+ --test-show-details=FILTER   # 'always': always show results of individual
+                                test cases. 'never': never show results of
+                                individual test cases. 'failures': show
+                                results of failing test cases. 'streaming':
+                                show results of test cases in real
+                                time.'direct': send results of test cases in
+                                real time; no log file.
+ --test-keep-tix-files        # Keep .tix files for HPC between test runs
+ --test-wrapper=FILE          # Run test through a wrapper.
+ --test-fail-when-no-test-suites
+                              # Exit with failure when no test suites are
+                                found.
+ --test-options=TEMPLATES     # Give extra options to test executables (split
+                                on spaces, use "" to prevent splitting; name
+                                templates can use $pkgid, $compiler, $os,
+                                $arch, $test-suite)
+ --test-option=TEMPLATE       # Give extra option to test executables (passed
+                                directly as a single argument; name template
+                                can use $pkgid, $compiler, $os, $arch,
+                                $test-suite)
+ --benchmark-options=TEMPLATES
+                              # Give extra options to benchmark executables
+                                (split on spaces, use "" to prevent splitting;
+                                name templates can use $pkgid, $compiler, $os,
+                                $arch, $benchmark)
+ --benchmark-option=TEMPLATE  # Give extra option to benchmark executables
+                                (passed directly as a single argument; name
+                                template can use $pkgid, $compiler, $os,
+                                $arch, $benchmark)
+ --project-dir=DIR            # Set the path of the project directory
+ --project-file=FILE          # Set the path of the cabal.project file
+                                (relative to the project directory when
+                                relative)
+ --project-file-parser=PARSER # Set the parser to use for the project file
+
+Examples:
+  cabal gen-bounds
+    Generate bounds for the package in the current directory or all packages in the project
+  cabal gen-bounds pkgname
+    Generate bounds for the package named pkgname in the project
+  cabal gen-bounds ./pkgfoo
+    Generate bounds for the package in the ./pkgfoo directory
