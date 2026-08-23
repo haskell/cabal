@@ -1,0 +1,17 @@
+Generate a source distribution file (.tar.gz).
+
+Usage: cabal sdist [FLAGS]
+
+Flags for sdist:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --list-sources=FILE          # Just write a list of the package's sources to
+                                a file
+ --snapshot                   # Produce a snapshot source distribution
+ --output-directory=DIR       # Generate a source distribution in the given
+                                directory, without creating a tarball

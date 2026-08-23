@@ -1,0 +1,7 @@
+Run as-if this was a Setup.hs
+
+Usage: cabal act-as-setup
+
+Flags for act-as-setup:
+ -h, --help                   # Show this help text
+ --build-type=BUILD-TYPE      # Use the given build type.

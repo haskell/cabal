@@ -1,0 +1,22 @@
+Clean the package store and remove temporary files.
+
+Usage: cabal clean [FLAGS]
+
+Removes all temporary files created during the building process (.hi, .o,
+preprocessed sources, etc.) and also empties out the local caches (by
+default).
+
+
+Flags for clean:
+ -h, --help                   # Show this help text
+ --project-dir=DIR            # Set the path of the project directory
+ --project-file=FILE          # Set the path of the cabal.project file
+                                (relative to the project directory when
+                                relative)
+ --project-file-parser=PARSER # Set the parser to use for the project file
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ -s, --save-config            # Save configuration, only remove build
+                                artifacts

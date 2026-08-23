@@ -1,0 +1,44 @@
+Open an interpreter session for the given component.
+
+Usage: cabal repl [COMPONENT] [FLAGS]
+
+If the current directory contains no package, ignores COMPONENT parameters and
+opens an interactive interpreter session.
+
+Otherwise, (re)configures with the given or default flags, and loads the
+interpreter with the relevant modules. For executables, tests and benchmarks,
+loads the main module (and its dependencies); for libraries all exposed/other
+modules.
+
+The default component is the library itself, or the executable if that is the
+only component.
+
+Support for loading specific modules is planned but not implemented yet. For
+certain scenarios, `cabal exec -- ghci :l Foo` may be used instead. Note that
+`exec` will not (re)configure and you will have to specify the location of
+other modules, if required.
+
+Flags for repl:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --with-PROG=PATH             # Give the path to PROG
+ --PROG-option=OPT            # Give an extra option to PROG (passed directly
+                                to PROG as a single argument)
+ --PROG-options=OPTS          # Give extra options to PROG (split on spaces,
+                                use "" to prevent splitting)
+ --repl-no-load               # Disable loading of project modules at REPL
+                                startup.
+ --repl-options=FLAG          # Use the option(s) for the repl
+ --repl-multi-file=DIR        # Write repl options to this directory rather
+                                than starting repl mode
+ --with-repl=PATH             # Give the path to a program to use for REPL
+
+Examples:
+  cabal repl               The first component in the package
+  cabal repl foo           A named component (i.e. lib, exe, test suite)
+  cabal repl --repl-options="-lstdc++"  Specifying flags for interpreter
