@@ -1018,7 +1018,7 @@ configureExOptions _showOrParseArgs src =
       ( optArg
           "DEPS"
           (parsecToReadEErr unexpectMsgString relaxDepsParser)
-          (show RelaxDepsAll, Just RelaxDepsAll)
+          (Just RelaxDepsAll)
           relaxDepsPrinter
       )
   , option
@@ -1030,7 +1030,7 @@ configureExOptions _showOrParseArgs src =
       ( optArg
           "DEPS"
           (parsecToReadEErr unexpectMsgString relaxDepsParser)
-          (show RelaxDepsAll, Just RelaxDepsAll)
+          (Just RelaxDepsAll)
           relaxDepsPrinter
       )
   , option
@@ -1949,7 +1949,7 @@ getCommand =
                     (const "invalid source-repository")
                     (fmap (toFlag . Just) parsec)
                 )
-                ("", Flag Nothing)
+                (Flag Nothing)
                 (map (fmap show) . flagToList)
             )
         , option
@@ -2833,7 +2833,7 @@ optionNumJobs get set =
     ( optArg
         "NUM"
         (fmap Flag numJobsParser)
-        ("", Flag Nothing)
+        (Flag Nothing)
         (map (Just . maybe "$ncpus" show) . flagToList)
     )
   where
