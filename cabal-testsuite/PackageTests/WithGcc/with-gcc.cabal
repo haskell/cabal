@@ -1,0 +1,10 @@
+cabal-version: 2.0
+name: with-gcc
+version: 0.1.0.0
+build-type: Simple
+
+executable with-gcc
+  main-is: Main.hs
+  c-sources: foo.c
+  build-depends: base
+  default-language: Haskell2010
