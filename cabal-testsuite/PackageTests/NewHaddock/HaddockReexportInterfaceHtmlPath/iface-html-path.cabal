@@ -1,0 +1,15 @@
+cabal-version: 3.0
+name: iface-html-path
+version: 0.1.0.0
+
+library
+  hs-source-dirs: src/lib
+  exposed-modules: Mini
+  build-depends: base, iface-html-path:sub
+  default-language: Haskell2010
+
+library sub
+  hs-source-dirs: src/sub
+  exposed-modules: Sub
+  build-depends: base
+  default-language: Haskell2010
