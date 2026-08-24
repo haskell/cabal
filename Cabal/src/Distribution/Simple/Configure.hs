@@ -167,7 +167,10 @@ import System.Directory
   , listDirectory
   )
 import System.FilePath
-  ( isAbsolute
+  ( dropTrailingPathSeparator
+  , isAbsolute
+  , normalise
+  , splitSearchPath
   )
 import System.IO
   ( hClose
@@ -2626,7 +2629,47 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
       ccflags <- pkgconfig ("--cflags" : pkgs)
       ldflags <- pkgconfig ("--libs" : pkgs)
       ldflags_static <- pkgconfig ("--libs" : "--static" : pkgs)
-      return (ccLdOptionsBuildInfo (words ccflags) (words ldflags) (words ldflags_static))
+      sysLibDirs <- pkgConfigSystemLibDirs
+      let keepLibFlag = not . isSystemLibDir sysLibDirs
+      return
+        ( ccLdOptionsBuildInfo
+            (words ccflags)
+            (filter keepLibFlag (words ldflags))
+            (filter keepLibFlag (words ldflags_static))
+        )
+
+    -- Query @pkg-config@ for the directories it considers to be "system
+    -- library directories", i.e. the ones the linker searches by default.
+    --
+    -- Cabal configures @pkg-config@ with @PKG_CONFIG_ALLOW_SYSTEM_LIBS@ set so
+    -- that it does not strip @-L@ options for these directories.  They are,
+    -- however, redundant with the linker's default search path, and when they
+    -- end up ordered before a more specific @-L@ option they can cause the
+    -- wrong version of a library to be linked (see #11860).  We therefore drop
+    -- them from the @-L@ options collected above.
+    --
+    -- Not all @pkg-config@ implementations support the @pc_system_libdirs@
+    -- variable; in that case we return an empty list and keep the original
+    -- behaviour.
+    pkgConfigSystemLibDirs :: IO [FilePath]
+    pkgConfigSystemLibDirs =
+      ( parseSystemLibDirs
+          <$> pkgconfig ["--variable=pc_system_libdirs", "pkg-config"]
+      )
+        `catchIO` (\_ -> return [])
+        `catchExit` (\_ -> return [])
+      where
+        parseSystemLibDirs out =
+          let trimmed = trim out
+           in if null trimmed
+                then []
+                else map (dropTrailingPathSeparator . normalise) (splitSearchPath trimmed)
+
+    isSystemLibDir :: [FilePath] -> String -> Bool
+    isSystemLibDir sysLibDirs flag =
+      case stripPrefix "-L" flag of
+        Just dir -> dropTrailingPathSeparator (normalise dir) `elem` sysLibDirs
+        Nothing -> False
 
 -- | Makes a 'BuildInfo' from C compiler and linker flags.
 --
