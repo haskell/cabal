@@ -4,6 +4,7 @@ module Distribution.Client.IndexUtils.ActiveRepos
   ( ActiveRepos (..)
   , defaultActiveRepos
   , filterSkippedActiveRepos
+  , activeReposNames
   , ActiveRepoEntry (..)
   , CombineStrategy (..)
   , organizeByRepos
@@ -44,6 +45,13 @@ filterSkippedActiveRepos repos@(ActiveRepos entries)
 
     notSkipped (ActiveRepo _ CombineStrategySkip) = False
     notSkipped _ = True
+
+-- | Extract the names of the repositories in an 'ActiveRepos' list, in order.
+-- Entries referring to \"the rest\" of the repositories are ignored, because
+-- they do not correspond to a single concrete repository name.
+activeReposNames :: ActiveRepos -> [RepoName]
+activeReposNames (ActiveRepos entries) =
+  [ r | ActiveRepo r _ <- entries ]
 
 instance Binary ActiveRepos
 instance Structured ActiveRepos

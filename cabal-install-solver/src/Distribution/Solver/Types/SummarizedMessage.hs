@@ -37,7 +37,7 @@ data Entry
   | EntryTryingS QSN Bool
   | EntryRejectMany QPN [POption] ConflictSet FailReason
   | EntrySkipMany QPN [POption] (Set CS.Conflict)
-  | EntryUnknownPackage QPN (GoalReason QPN)
+  | EntryUnknownPackage QPN (GoalReason QPN) [String]
   | EntrySuccess
   | EntryFailure ConflictSet FailReason
 

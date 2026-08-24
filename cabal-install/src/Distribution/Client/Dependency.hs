@@ -57,6 +57,7 @@ module Distribution.Client.Dependency
   , setSolveExecutables
   , setGoalOrder
   , setSolverVerbosity
+  , setActiveRepositories
   , removeLowerBounds
   , removeUpperBounds
   , addDefaultSetupDependencies
@@ -82,6 +83,7 @@ import Distribution.Client.Types
   , RelaxDepSubject (..)
   , RelaxDeps (..)
   , RelaxedDep (..)
+  , RepoName (..)
   , SourcePackageDb (SourcePackageDb)
   , UnresolvedPkgLoc
   , UnresolvedSourcePackage
@@ -212,6 +214,9 @@ data DepResolverParams = DepResolverParams
   , depResolverGoalOrder :: Maybe (Variable QPN -> Variable QPN -> Ordering)
   -- ^ Function to override the solver's goal-ordering heuristics.
   , depResolverVerbosity :: VerbosityLevel
+  , depResolverActiveRepos :: [RepoName]
+  -- ^ The names of the repositories that were searched for packages. Used to
+  -- enrich the @unknown package@ solver error message.
   }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -309,6 +314,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
     , depResolverSolveExecutables = SolveExecutables True
     , depResolverGoalOrder = Nothing
     , depResolverVerbosity = Normal
+    , depResolverActiveRepos = []
     }
 
 addTargets
@@ -442,6 +448,12 @@ setSolverVerbosity :: VerbosityLevel -> DepResolverParams -> DepResolverParams
 setSolverVerbosity verbosity params =
   params
     { depResolverVerbosity = verbosity
+    }
+
+setActiveRepositories :: [RepoName] -> DepResolverParams -> DepResolverParams
+setActiveRepositories repos params =
+  params
+    { depResolverActiveRepos = repos
     }
 
 dependOnWiredIns :: CompilerInfo -> DepResolverParams -> DepResolverParams
@@ -882,6 +894,7 @@ resolveDependencies platform comp pkgConfigDB params = do
             order
             verbosity
             (PruneAfterFirstSuccess False)
+            (map unRepoName activeRepos)
         )
         platform
         comp
@@ -915,6 +928,7 @@ resolveDependencies platform comp pkgConfigDB params = do
                     solveExes
                     order
                     verbosity
+                    activeRepos
                   ) =
         if isJust (compilerInfoWiredInUnitIds comp) || asBool (depResolverAllowBootLibInstalls params)
           then dependOnWiredIns comp params
@@ -1236,6 +1250,7 @@ resolveWithoutDependencies
       _onlyConstrained
       _order
       _verbosity
+      _activeRepos
     ) =
     collectEithers $ map selectPackage (Set.toList targets)
     where
