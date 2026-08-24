@@ -1,0 +1,4 @@
+packages: .
+
+package test
+  configure-options: --with-so=/path/to/lib.so
