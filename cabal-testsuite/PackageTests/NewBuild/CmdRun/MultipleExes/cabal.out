@@ -19,8 +19,16 @@ Error: [Cabal-7070]
 The run command is for running a single executable at once. The target '' refers to the package MultipleExes-1.0 which includes 
 - executables: bar and foo
 
+You need to specify which executable cabal should use. Try one of those:
+- cabal run MultipleExes:bar
+- cabal run MultipleExes:foo
+
 # cabal v2-run
 Error: [Cabal-7070]
 The run command is for running a single executable at once. The target 'MultipleExes' refers to the package MultipleExes-1.0 which includes 
 - executables: bar and foo
+
+You need to specify which executable cabal should use. Try one of those:
+- cabal run MultipleExes:bar
+- cabal run MultipleExes:foo
 
