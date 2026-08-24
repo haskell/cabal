@@ -597,6 +597,7 @@ linkGhcOptions verbosity lbi bi clbi =
               (mkVersion [9, 4])
               (compiler lbi)
               (maybeToFlag $ programPath <$> lookupProgram gppProgram (withPrograms lbi))
+        , ghcOptAsProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
         }
   where
     exe_paths =
