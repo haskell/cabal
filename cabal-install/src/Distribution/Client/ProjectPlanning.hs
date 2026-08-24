@@ -4647,6 +4647,11 @@ determineCoverageFor configuredPkg plan =
 
 -- | Look up and merge the options from the project config that apply to all
 -- packages, all project local packages, and to specific named packages.
+--
+-- Options are combined as @all-packages <> specific-package <> local@ so
+-- that, for local packages, the top-level (and @program-options@) options
+-- take precedence over the @package@ stanza, as documented. See
+-- <https://github.com/haskell/cabal/issues/8900>.
 lookupPerPkgOption
   :: (Package pkg, Monoid m)
   => (pkg -> Bool)
@@ -4657,10 +4662,10 @@ lookupPerPkgOption
   -> (PackageConfig -> m)
   -> m
 lookupPerPkgOption isLocalPkg allPackagesConfig localPackagesConfig perPackageConfig pkg f =
-  global `mappend` local `mappend` perpkg
+  global `mappend` perpkg `mappend` local
   where
     global = f allPackagesConfig
+    perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
     local
       | isLocalPkg pkg = f localPackagesConfig
       | otherwise = mempty
-    perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
