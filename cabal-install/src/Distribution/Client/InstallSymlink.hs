@@ -146,8 +146,8 @@ symlinkBinaries
             publicBinDir <- canonicalizePath symlinkBinDir
             --    TODO: do we want to do this here? :
             --      createDirectoryIfMissing True publicBinDir
-            fmap catMaybes $
-              sequenceA
+            catMaybes
+              <$> sequenceA
                 [ do
                   privateBinDir <- pkgBinDir pkg ipid
                   ok <-
