@@ -63,8 +63,8 @@ import Distribution.Parsec.Position
 import Distribution.Pretty
 import Distribution.Utils.Generic
 
-import qualified Data.Bifunctor as Bi
 import qualified Data.ByteString as BS
+import qualified Data.Bifunctor as Bi
 import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce
 import Data.Functor ((<&>))
@@ -75,8 +75,11 @@ import Data.Maybe
 import Data.Proxy
 import Distribution.Annotation
 import Distribution.FieldGrammar.Newtypes
+import Distribution.Fields.ConfVar
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
+import Distribution.Types.ConfVar
+import Distribution.Types.Condition
 import GHC.Generics
 
 import Distribution.CabalSpecVersion
@@ -608,3 +611,22 @@ prependValueList newValue spec fls0 =
           let bsResult = prependValueListBS @sep @b @a newValue spec bs0
            in bsResult <&> \bs ->
                 interleaveComments (splitFieldLines (FieldLine ann0 bs)) comments
+
+modifyConditionConfVar
+  :: (Condition ConfVar -> Maybe (Condition ConfVar))
+  -- ^ Nothing prevents a new render.
+  -> (CabalSpecVersion -> [SectionArg (WithComments Position)] -> EditResult [SectionArg (WithComments Position)])
+modifyConditionConfVar _ _ [] = EditUnchanged []
+modifyConditionConfVar transformA spec sargs0@(firstSarg : _) =
+  let comments = foldMap extractComments sargs0
+      sargs = fmap removeComments sargs0
+      startPos = unComments (sectionArgAnn firstSarg)
+  in do
+    parseOk <-
+          either (EditErr . ParseFailed) EditOk $
+            P.runParser (confVarParser <* P.eof) () "<section arguments>" sargs
+    case transformA parseOk of
+      Just modified ->
+        let printed = BS8.pack (show (ppCondition modified))
+        in  EditOk [SecArgName (WithComments comments startPos) printed]
+      Nothing -> EditOk sargs0
