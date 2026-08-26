@@ -268,7 +268,7 @@ withJobLimit (JobLimit sem) =
 newtype Lock = Lock (MVar ())
 
 newLock :: IO Lock
-newLock = fmap Lock $ newMVar ()
+newLock = Lock <$> newMVar ()
 
 criticalSection :: Lock -> IO a -> IO a
 criticalSection (Lock lck) act = bracket_ (takeMVar lck) (putMVar lck ()) act
