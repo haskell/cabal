@@ -337,7 +337,7 @@ modifySection
   :: ModifyConfig
   -> MatchSection (WithComments Position)
   -- ^ Match a given section
-  -> ([SectionArg (WithComments Position)] -> [SectionArg (WithComments Position)])
+  -> (CabalSpecVersion -> [SectionArg (WithComments Position)] -> EditResult [SectionArg (WithComments Position)])
   -- ^ Transform the section args
   -> Edit [Field (WithComments Position)]
   -- ^ Transform inner fields
@@ -345,15 +345,17 @@ modifySection
 modifySection mc match modifySectionArgs modifyFields = Edit $ \spec ->
   let doModify (Section sname sargs fs)
         | match sname sargs fs =
-            let sargs' = (mkEditResult <*> modifySectionArgs) sargs
+            let sargs' = modifySectionArgs spec sargs
                 fs' = runEdit modifyFields spec fs
+                -- TODO(leana8959): handle the case where section args' comments
+                -- push the following content down.
              in Section sname <$> sargs' <*> fs'
       doModify x = EditUnchanged x
 
       doShift (old, new) fd =
         let (_, oldEnd) = fieldRowRange old
             (_, newEnd) = fieldRowRange new
-            lineShift = (newEnd - oldEnd) `max` 0
+            lineShift = (newEnd - oldEnd) `max` 0 -- ignore backjump
          in offsetFieldRow lineShift fd
    in case mc of
         ModifyFirst -> mapFirstThen doModify doShift
@@ -409,6 +411,7 @@ fieldsRowRange = finalize . fmap fieldRowRange
   where
     finalize ranges = (fst (NE.head ranges), snd (NE.last ranges))
 
+-- TODO(leana8959): this doesn't measure the comments' height, we should probably do that.
 fieldRowRange :: L.HasPosition ann => Field ann -> (Int, Int)
 fieldRowRange (Field _colonPos fname fls) =
   let nameRow = L.view L.positionRow (nameAnn fname)
