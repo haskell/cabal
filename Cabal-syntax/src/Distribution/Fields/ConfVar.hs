@@ -1,7 +1,17 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Distribution.Fields.ConfVar (parseConditionConfVar, parseConditionConfVarFromClause) where
+module Distribution.Fields.ConfVar
+  ( -- * Parsers
+    parseConditionConfVar
+  , parseConditionConfVarFromClause
+  , confVarParser
+    -- * Printers
+  , ppConfVar
+  , ppFlagName
+  , ppCondition
+  )
+  where
 
 import Data.Functor ((<&>))
 import Distribution.Compat.CharParsing (char, integral)
@@ -9,10 +19,10 @@ import Distribution.Compat.Prelude
 import Distribution.Fields.Field (Field (..), SectionArg (..), sectionArgAnn)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser (readFields)
-import Distribution.Parsec (Parsec (..), runParsecParser)
 import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Parsec.Position
 import Distribution.Types.Condition
+import Distribution.Types.Flag
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Version
   ( anyVersion
@@ -30,10 +40,15 @@ import Distribution.Version
   )
 import Prelude ()
 
+import Distribution.Parsec
 import qualified Data.ByteString.Char8 as B8
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Error as P
 import qualified Text.Parsec.Pos as P
+
+import Distribution.Pretty
+import Text.PrettyPrint (Doc)
+import qualified Text.PrettyPrint as PP
 
 parseConditionConfVarFromClause :: B8.ByteString -> Either P.ParseError (Condition ConfVar)
 parseConditionConfVarFromClause x =
@@ -70,6 +85,40 @@ type Parser = P.Parsec [SectionArg Position] ()
 
 sepByNonEmpty :: Parser a -> Parser sep -> Parser (NonEmpty a)
 sepByNonEmpty p sep = (:|) <$> p <*> many (sep *> p)
+
+-- TODO(leana8959): make the parser and pretty printer a class
+confVarParser :: Parser (Condition ConfVar)
+confVarParser = parser
+
+ppCondition :: Condition ConfVar -> Doc
+ppCondition (Var x) = ppConfVar x
+ppCondition (Lit b) = PP.text (show b)
+ppCondition (CNot c) = PP.char '!' <<>> ppCondition c
+ppCondition (COr c1 c2) =
+  PP.parens
+    ( PP.hsep
+        [ ppCondition c1
+        , PP.text "||"
+            <+> ppCondition c2
+        ]
+    )
+ppCondition (CAnd c1 c2) =
+  PP.parens
+    ( PP.hsep
+        [ ppCondition c1
+        , PP.text "&&"
+            <+> ppCondition c2
+        ]
+    )
+
+ppConfVar :: ConfVar -> Doc
+ppConfVar (OS os) = PP.text "os" <<>> PP.parens (pretty os)
+ppConfVar (Arch arch) = PP.text "arch" <<>> PP.parens (pretty arch)
+ppConfVar (PackageFlag name) = PP.text "flag" <<>> PP.parens (ppFlagName name)
+ppConfVar (Impl c v) = PP.text "impl" <<>> PP.parens (pretty c <+> pretty v)
+
+ppFlagName :: FlagName -> Doc
+ppFlagName = PP.text . unFlagName
 
 parser :: Parser (Condition ConfVar)
 parser = condOr
