@@ -57,10 +57,10 @@ import Distribution.PackageDescription.FieldGrammar
 import Distribution.Pretty
 import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 
+import Distribution.Fields.ConfVar
 import qualified Distribution.PackageDescription.FieldGrammar as FG
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
-import Distribution.Fields.ConfVar
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
 

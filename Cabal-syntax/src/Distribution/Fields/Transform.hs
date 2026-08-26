@@ -63,8 +63,8 @@ import Distribution.Parsec.Position
 import Distribution.Pretty
 import Distribution.Utils.Generic
 
-import qualified Data.ByteString as BS
 import qualified Data.Bifunctor as Bi
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce
 import Data.Functor ((<&>))
@@ -78,8 +78,8 @@ import Distribution.FieldGrammar.Newtypes
 import Distribution.Fields.ConfVar
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
-import Distribution.Types.ConfVar
 import Distribution.Types.Condition
+import Distribution.Types.ConfVar
 import GHC.Generics
 
 import Distribution.CabalSpecVersion
@@ -347,9 +347,9 @@ modifySection mc match modifySectionArgs modifyFields = Edit $ \spec ->
         | match sname sargs fs =
             let sargs' = modifySectionArgs spec sargs
                 fs' = runEdit modifyFields spec fs
-                -- TODO(leana8959): handle the case where section args' comments
+             in -- TODO(leana8959): handle the case where section args' comments
                 -- push the following content down.
-             in Section sname <$> sargs' <*> fs'
+                Section sname <$> sargs' <*> fs'
       doModify x = EditUnchanged x
 
       doShift (old, new) fd =
@@ -624,12 +624,12 @@ modifyConditionConfVar transformA spec sargs0@(firstSarg : _) =
   let comments = foldMap extractComments sargs0
       sargs = fmap removeComments sargs0
       startPos = unComments (sectionArgAnn firstSarg)
-  in do
-    parseOk <-
+   in do
+        parseOk <-
           either (EditErr . ParseFailed) EditOk $
             P.runParser (confVarParser <* P.eof) () "<section arguments>" sargs
-    case transformA parseOk of
-      Just modified ->
-        let printed = BS8.pack (show (ppCondition modified))
-        in  EditOk [SecArgName (WithComments comments startPos) printed]
-      Nothing -> EditOk sargs0
+        case transformA parseOk of
+          Just modified ->
+            let printed = BS8.pack (show (ppCondition modified))
+             in EditOk [SecArgName (WithComments comments startPos) printed]
+          Nothing -> EditOk sargs0

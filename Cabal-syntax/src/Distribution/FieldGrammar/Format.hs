@@ -3,13 +3,12 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-{- | This is a field formatter directed by 
--}
+-- | This is a field formatter directed by
 module Distribution.FieldGrammar.Format where
 
 import Distribution.FieldGrammar.Class
-import Distribution.Fields.Transform
 import Distribution.Fields.Field
+import Distribution.Fields.Transform
 import Distribution.Parsec
 import Distribution.Pretty
 
@@ -18,8 +17,8 @@ import Data.Kind
 
 import Data.Map (Map)
 import qualified Data.Map as M
-import Distribution.Compat.Lens
 import Distribution.CabalSpecVersion
+import Distribution.Compat.Lens
 
 data FormatterFieldGrammar s a = FormatterFG
   { fieldGrammarFormatter
@@ -59,9 +58,9 @@ formatFieldLinesAla
    . (Coercible a b, Parsec b, Pretty b)
   => (CabalSpecVersion -> [FieldLine (WithComments Position)] -> [FieldLine (WithComments Position)])
 formatFieldLinesAla spec fls = case modifyValueAtomAla @b @a Just spec fls of
-    EditOk ok -> ok
-    EditUnchanged u -> u
-    EditErr _ ->  error $ "formatting failed"
+  EditOk ok -> ok
+  EditUnchanged u -> u
+  EditErr _ -> error $ "formatting failed"
 
 instance FieldGrammar Formattable FormatterFieldGrammar where
   uniqueFieldAla
@@ -84,12 +83,12 @@ instance FieldGrammar Formattable FormatterFieldGrammar where
 
   -- Nothing to format?
   freeTextField _fn _ = FormatterFG $ \_ -> M.empty
-  freeTextFieldDef _fn _ = FormatterFG $ \_ ->  M.empty
-  freeTextFieldDefST _fn _ = FormatterFG $ \_ ->  M.empty
-  prefixedFields _fn _ = FormatterFG $ \_ ->  M.empty
+  freeTextFieldDef _fn _ = FormatterFG $ \_ -> M.empty
+  freeTextFieldDefST _fn _ = FormatterFG $ \_ -> M.empty
+  prefixedFields _fn _ = FormatterFG $ \_ -> M.empty
 
-  knownField _ = FormatterFG $ \_ ->  M.empty
-  hiddenField _ = FormatterFG $ \_ ->  M.empty
+  knownField _ = FormatterFG $ \_ -> M.empty
+  hiddenField _ = FormatterFG $ \_ -> M.empty
 
   deprecatedSince _ _ = id
   removedIn _ _ = id
