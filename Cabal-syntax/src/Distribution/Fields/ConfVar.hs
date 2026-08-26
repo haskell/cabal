@@ -6,12 +6,13 @@ module Distribution.Fields.ConfVar
     parseConditionConfVar
   , parseConditionConfVarFromClause
   , confVarParser
+
     -- * Printers
   , ppConfVar
   , ppFlagName
   , ppCondition
   )
-  where
+where
 
 import Data.Functor ((<&>))
 import Distribution.Compat.CharParsing (char, integral)
@@ -22,8 +23,8 @@ import Distribution.Fields.Parser (readFields)
 import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Parsec.Position
 import Distribution.Types.Condition
-import Distribution.Types.Flag
 import Distribution.Types.ConfVar (ConfVar (..))
+import Distribution.Types.Flag
 import Distribution.Version
   ( anyVersion
   , earlierVersion
@@ -40,8 +41,8 @@ import Distribution.Version
   )
 import Prelude ()
 
-import Distribution.Parsec
 import qualified Data.ByteString.Char8 as B8
+import Distribution.Parsec
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Error as P
 import qualified Text.Parsec.Pos as P
