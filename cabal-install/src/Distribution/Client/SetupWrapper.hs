@@ -31,6 +31,8 @@ module Distribution.Client.SetupWrapper
   , RightFlagsForPhase
   , setupWrapper
   , SetupScriptOptions (..)
+  , SetupDependencies (..)
+  , setupDependencies
   , defaultSetupScriptOptions
   , externalSetupMethod
   ) where
@@ -292,17 +294,45 @@ data SetupMethod (kind :: SetupKind) where
 --
 -- See also the discussion at https://github.com/haskell/cabal/pull/3094
 
+-- | The dependencies to use to compile an external @Setup@ executable.
+data SetupDependencies
+  = -- | An exhaustive set of dependencies to compile the Setup script against.
+    --
+    -- These are used __exclusively__, hiding every other package in the
+    -- package databases.
+    --
+    -- Whether the @Cabal@ library is among these is the package's business: a
+    -- @custom-setup@ stanza may leave it out if its @Setup.hs@ does not need
+    -- it.
+    ExplicitSetupDeps [(ComponentId, PackageId)]
+  | -- | A non-exhaustive set of dependencies to compile the Setup script against.
+    --
+    -- We keep all other packages in the package databases visible as well.
+    --
+    -- We also go looking for a @Cabal@ library in the package databases, adding
+    -- it to this list of dependencies if it doesn't already contain one.
+    ImplicitSetupDeps [(ComponentId, PackageId)]
+
+-- | The dependencies to use to compile an external @Setup@ executable, whether
+-- or not they are to be used exclusively.
+--
+-- Prefer matching on 'SetupDependencies' where the distinction matters.
+setupDependencies :: SetupDependencies -> [(ComponentId, PackageId)]
+setupDependencies (ExplicitSetupDeps deps) = deps
+setupDependencies (ImplicitSetupDeps deps) = deps
+
 -- | @SetupScriptOptions@ are options used to configure and run 'Setup', as
 -- opposed to options given to the Cabal command at runtime.
 data SetupScriptOptions = SetupScriptOptions
   { useCabalVersion :: VersionRange
-  -- ^ The version of the Cabal library to use (if 'useDependenciesExclusive'
-  -- is not set). A suitable version of the Cabal library must be installed
-  -- (or for some build-types be the one cabal-install was built with).
+  -- ^ The acceptable Cabal library version range for this Setup script.
   --
-  -- The version found also determines the version of the Cabal specification
-  -- that we us for talking to the Setup.hs, unless overridden by
-  -- 'useCabalSpecVersion'.
+  -- This determines:
+  --  - whether the Cabal library that cabal-install is linked against can
+  --    provide the Setup CLI,
+  --  - which Cabal library to go looking for in package databases when
+  --    'useSetupDependencies' is 'ImplicitSetupDeps', which in turn decides
+  --    which Cabal specification we use to talk with the @Setup@ executable.
   , useCabalSpecVersion :: Maybe Version
   -- ^ This is the version of the Cabal specification that we believe that
   -- this package uses. This affects the semantics and in particular the
@@ -310,9 +340,7 @@ data SetupScriptOptions = SetupScriptOptions
   --
   -- This is similar to 'useCabalVersion' but instead of probing the system
   -- for a version of the /Cabal library/ you just say exactly which version
-  -- of the /spec/ we will use. Using this also avoids adding the Cabal
-  -- library as an additional dependency, so add it to 'useDependencies'
-  -- if needed.
+  -- of the /spec/ we will use.
   , useCompiler :: Maybe Compiler
   , usePlatform :: Maybe Platform
   , usePackageDB :: PackageDBStackCWD
@@ -328,23 +356,9 @@ data SetupScriptOptions = SetupScriptOptions
   --
   -- * @'Just' v@ means \"set the environment variable's value to @v@\".
   -- * 'Nothing' means \"unset the environment variable\".
-  , useDependencies :: [(ComponentId, PackageId)]
-  -- ^ List of dependencies to use when building Setup.hs.
-  , useDependenciesExclusive :: Bool
-  -- ^ Is the list of setup dependencies exclusive?
-  --
-  -- When this is @False@, if we compile the Setup.hs script we do so with the
-  -- list in 'useDependencies' but all other packages in the environment are
-  -- also visible. A suitable version of @Cabal@ library (see
-  -- 'useCabalVersion') is also added to the list of dependencies, unless
-  -- 'useDependencies' already contains a Cabal dependency.
-  --
-  -- When @True@, only the 'useDependencies' packages are used, with other
-  -- packages in the environment hidden.
-  --
-  -- This feature is here to support the setup stanza in .cabal files that
-  -- specifies explicit (and exclusive) dependencies, as well as the old
-  -- style with no dependencies.
+  , useSetupDependencies :: SetupDependencies
+  -- ^ The dependencies to use when building Setup.hs, and whether they are to
+  -- be used exclusively.
   , useVersionMacros :: Bool
   -- ^ Should we build the Setup.hs with CPP version macros available?
   -- We turn this on when we have a setup stanza in .cabal that declares
@@ -393,8 +407,7 @@ defaultSetupScriptOptions =
     , usePlatform = Nothing
     , usePackageDB = [GlobalPackageDB, UserPackageDB]
     , usePackageIndex = Nothing
-    , useDependencies = []
-    , useDependenciesExclusive = False
+    , useSetupDependencies = ImplicitSetupDeps []
     , useVersionMacros = False
     , useProgramDb = emptyProgramDb
     , useDistPref = defaultDistPref
@@ -510,9 +523,13 @@ withSetupMethod verbosity options pkg buildType' allowInLibrary with
         Nothing     -> False
     withExternalSetupMethod = do
       debug verbosity $ "Using external setup method with build-type " ++ show buildType'
-      debug verbosity $
-        "Using explicit dependencies: "
-          ++ show (useDependenciesExclusive options)
+      debug verbosity $ case useSetupDependencies options of
+        ExplicitSetupDeps deps ->
+          "Using explicit dependencies: "
+            ++ show (map (prettyShow . snd) deps)
+        ImplicitSetupDeps deps ->
+          "Using implicit dependencies: "
+            ++ show (map (prettyShow . snd) deps)
       with <$> compileExternalExe verbosity options pkg buildType' WantSetup
 
 runSetupMethod :: WithCallStack (SetupMethod GeneralSetup -> SetupRunner UseGeneralSetup)
@@ -915,14 +932,14 @@ compileExternalExe verbosity options pkg bt wantedExe = do
     platform = fromMaybe buildPlatform (usePlatform options)
 
 -- | Extract the Cabal library version from 'SetupScriptOptions' if it is
--- already determined: either by the solver via 'useDependencies', or directly
--- via 'useCabalSpecVersion' (used for build-type: Custom packages whose
--- setup-depends does not include a transitive Cabal dependency).
+-- already determined: either by the solver via 'useSetupDependencies', or
+-- directly via 'useCabalSpecVersion' (used for build-type: Custom packages
+-- whose setup-depends does not include a transitive Cabal dependency).
 cabalLibFromOptions
   :: SetupScriptOptions
   -> Maybe (Version, Maybe ComponentId)
 cabalLibFromOptions options =
-  case find (isCabalPkgId . snd) (useDependencies options) of
+  case find (isCabalPkgId . snd) (setupDependencies (useSetupDependencies options)) of
     Just (unitId, pkgId) -> Just (pkgVersion pkgId, Just unitId)
     Nothing ->
       case useCabalSpecVersion options of
@@ -1260,18 +1277,16 @@ compileSetupX
               (\ipkgid -> [(ipkgid, cabalPkgid)])
               maybeCabalLibInstalledPkgId
 
-          -- With 'useDependenciesExclusive' and Custom build type,
-          -- we enforce the deps specified, so only the given ones can be used.
-          -- Otherwise we add on a dep on the Cabal library
-          -- (unless 'useDependencies' already contains one).
-          selectedDeps
-            |  (useDependenciesExclusive options' && (bt /= Hooks))
-            -- NB: to compile build-type: Hooks packages, we need Cabal
-            -- in order to compile @main = defaultMainWithSetupHooks setupHooks@.
-            || any (isCabalPkgId . snd) (useDependencies options')
-            = useDependencies options'
-            | otherwise =
-                useDependencies options' ++ cabalDep
+          setupDeps = useSetupDependencies options'
+          hideAllPackages = case setupDeps of
+            ExplicitSetupDeps{} -> True
+            ImplicitSetupDeps{} -> False
+
+          selectedDeps = case setupDeps of
+            ExplicitSetupDeps ds -> ds
+            ImplicitSetupDeps ds
+              | any (isCabalPkgId . snd) ds -> ds
+              | otherwise -> ds ++ cabalDep
           addRenaming (ipid, _) =
             -- Assert 'DefUnitId' invariant
             ( Backpack.DefiniteUnitId (unsafeMkDefUnitId (newSimpleUnitId ipid))
@@ -1295,8 +1310,8 @@ compileSetupX
                   Hooks -> toNubListR [sameDirectory]
                   _ -> mempty
               , ghcOptPackageDBs = pkgDbs
-              , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
-              , ghcOptCabal = Flag (useDependenciesExclusive options')
+              , ghcOptHideAllPackages = Flag hideAllPackages
+              , ghcOptCabal = Flag hideAllPackages
               , ghcOptPackages = toNubListR $ map addRenaming selectedDeps
               -- With 'useVersionMacros', use a version CPP macros .h file.
               , ghcOptCppIncludes =
@@ -1313,6 +1328,19 @@ compileSetupX
                   -- when compiling a simple Setup.hs file.
               , ghcOptExtensionMap = Map.fromList . Simple.compilerExtensions $ compiler
               }
+      -- Sanity check: if we generated Setup.hs ourselves (the non-Custom case),
+      -- make sure we provide a Cabal dependency when building it.
+      -- This allows us to report a custom message for #11416 instead of giving
+      -- the user a confusing GHC error.
+      when (hideAllPackages && bt /= Custom && not (any (isCabalPkgId . snd) selectedDeps)) $
+        die' verbosity $ unwords
+          [ "internal error: no Cabal library is available to compile the"
+          , what
+          , "executable for the"
+          , prettyShow bt
+          , "package"
+          , prettyShow pkgId ++ "."
+          ]
       let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
       when (useVersionMacros options') $
         rewriteFileEx verbosity (i cppMacrosFile) $
@@ -1347,8 +1375,13 @@ isBasePkgId (PackageIdentifier pname _) = pname == mkPackageName "base"
 -- Hopefully we can get rid of all of this before long, simplifying this
 -- annoyingly complex module.
 --
--- The v1 code path corresponds to 'useDependencies' being unset
--- (no pre-computed dependencies by the solver).
+-- These functions locate a Cabal library by searching the package databases.
+-- They are reached whenever the 'SetupScriptOptions' do not already determine
+-- one, i.e. when no Cabal library appears in 'useSetupDependencies' and
+-- 'useCabalSpecVersion' is unset. In practice that is the v1 code path, which
+-- leaves 'useCabalSpecVersion' unset; note that it is not the same thing as
+-- 'ImplicitSetupDeps', which v1 uses only for packages without an explicit
+-- @custom-setup@ stanza.
 
 -- | **v1-only**
 --

@@ -220,7 +220,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         -- with an old lib:Cabal version.
         buildInfoFileLocation :: J.Pair
         buildInfoFileLocation
-          | elabSetupScriptCliVersion elab < mkVersion [3, 7, 0, 0] =
+          | setupCliVersion (elabSetupScriptCliVersion elab) < mkVersion [3, 7, 0, 0] =
               "build-info" J..= J.Null
           | otherwise =
               "build-info" J..= J.String (getSymbolicPath $ buildInfoPref $ makeSymbolicPath dist_dir)

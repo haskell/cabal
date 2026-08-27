@@ -57,6 +57,8 @@ module Distribution.Client.ProjectPlanning.Types
 
     -- * Setup script
   , SetupScriptStyle (..)
+  , SetupCliVersion (..)
+  , setupCliVersion
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -102,7 +104,7 @@ import Distribution.Simple.Setup
   , ReplOptions
   , TestShowDetails
   )
-import Distribution.Simple.Utils (ordNub)
+import Distribution.Simple.Utils (cabalVersion, ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
@@ -313,15 +315,10 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
 
     elabSetupScriptStyle :: SetupScriptStyle
   -- ^ One of four modes for how we build and interact with the Setup.hs
-  -- script, based on whether it's a build-type Custom, with or without
-  -- explicit deps and the cabal spec version the .cabal file needs.
-  , elabSetupScriptCliVersion :: Version
-  -- ^ The version of the Cabal command line interface that we are using
-  -- for this package. This is typically the version of the Cabal lib
-  -- that the Setup.hs is built against.
-  --
-  -- TODO: We might want to turn this into a enum,
-  -- yet different enum than 'CabalSpecVersion'.
+  -- script, based on whether it's a build-type Custom or Hooks, with or
+  -- without explicit deps, and the cabal spec version the .cabal file needs.
+  , elabSetupScriptCliVersion :: SetupCliVersion
+  -- ^ The Cabal library version used to provide the Setup CLI.
   , -- Build time related:
     elabConfigureTargets :: [ComponentTarget]
   , elabBuildTargets :: [ComponentTarget]
@@ -914,26 +911,62 @@ componentOptionalStanza _ = Nothing
 
 -- | There are four major cases for Setup.hs handling:
 --
---  1. @build-type@ Custom with a @custom-setup@ section
+--  1. @build-type@ Custom or Hooks with a @custom-setup@ section
 --  2. @build-type@ Custom without a @custom-setup@ section
---  3. @build-type@ not Custom with @cabal-version >  $our-cabal-version@
---  4. @build-type@ not Custom with @cabal-version <= $our-cabal-version@
+--  3. @build-type@ neither Custom nor Hooks, with
+--     @cabal-version >  $our-cabal-version@
+--  4. @build-type@ neither Custom nor Hooks, with
+--     @cabal-version <= $our-cabal-version@
 --
 -- It's also worth noting that packages specifying @cabal-version: >= 1.23@
 -- or later that have @build-type@ Custom will always have a @custom-setup@
 -- section. Therefore in case 2, the specified @cabal-version@ will always be
 -- less than 1.23.
 --
--- In cases 1 and 2 we obviously have to build an external Setup.hs script,
--- while in case 4 we can use the internal library API. In case 3 we also have
--- to build an external Setup.hs script because the package needs a later
--- Cabal lib version than we can support internally.
+-- In cases 1 and 2 we obviously have to compile an external program: a
+-- Setup.hs script for build-type Custom, and the hooks executable for
+-- build-type Hooks (with a possible fallback to a Setup.hs).
+-- In case 3 we also have to build an external Setup.hs script, because the
+-- package needs a later Cabal lib version than we can support internally.
+-- Only in case 4 can we use the internal library API alone.
 data SetupScriptStyle
-  = SetupCustomExplicitDeps
-  | SetupCustomImplicitDeps
-  | SetupNonCustomExternalLib
-  | SetupNonCustomInternalLib
+  = -- | @build-type: Custom@ (or @Hooks@) with explicit @setup-depends@
+    SetupCustomExplicitDeps
+  | -- | @build-type: Custom@ without an explicit @setup-depends@
+    SetupCustomImplicitDeps
+  | -- | Non-Custom/Hooks build-type, but we fall back to an external @Setup.hs@
+    -- in order to satisfy Cabal version constraints.
+    SetupNonCustomExternalLib
+  | -- | Non-Custom/Hooks build type: Cabal provides the Setup.hs CLI internally.
+    SetupNonCustomInternalLib
   deriving (Eq, Show, Generic)
 
 instance Binary SetupScriptStyle
 instance Structured SetupScriptStyle
+
+-- | The version of the Cabal library used to provide the Setup CLI.
+--
+-- The version corresponds to the 'SetupScriptStyle' we use: for
+-- 'SetupNonCustomInternalLib' we use the Cabal library that @cabal-install@ was
+-- built against, and for every other 'SetupScripStyle' we pick the version
+-- chosen by the solver to compile the Setup script.
+data SetupCliVersion
+  = -- | Use the Cabal library version that @cabal-install@ was linked against
+    -- to provide the Setup CLI.
+    InternalCabalLib -- NB: this very carefully __does not__ store a version number.
+    --
+    -- This is because of #11416: the install plan is cached across @cabal-install@
+    -- invocations, so we should not pin a Cabal library version which would
+    -- go stale when doing a minor @cabal-install@ upgrade.
+  | -- | Use the Cabal library version picked by the solver to provide
+    -- the Setup CLI.
+    ExternalCabalLib !Version
+  deriving (Eq, Show, Generic)
+
+instance Binary SetupCliVersion
+instance Structured SetupCliVersion
+
+-- | The version of the Cabal library used to provide the Setup CLI.
+setupCliVersion :: SetupCliVersion -> Version
+setupCliVersion InternalCabalLib = cabalVersion
+setupCliVersion (ExternalCabalLib version) = version
