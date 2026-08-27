@@ -10,8 +10,8 @@ import Distribution.Types.ParStrat
 import Distribution.Simple.Flag
 import Distribution.Simple.Compiler (Compiler(..), CompilerId(..), CompilerFlavor(..), AbiTag(NoAbiTag))
 import Distribution.PackageDescription (emptyPackageDescription)
-import Distribution.Simple.Program.GHC (normaliseGhcArgs, renderGhcOptions, ghcOptNumJobs)
-import Distribution.Version            (mkVersion)
+import Distribution.Simple.Program.GHC (GhcOptions, normaliseGhcArgs, renderGhcOptions, ghcOptNumJobs, ghcOptJSppOptions)
+import Distribution.Version            (mkVersion, Version)
 
 tests :: TestTree
 tests = testGroup "Distribution.Simple.Program.GHC"
@@ -59,8 +59,31 @@ tests = testGroup "Distribution.Simple.Program.GHC"
                   (Platform X86_64 Linux)
                   (mempty { ghcOptNumJobs = Flag (NumJobs (Just 4)) })
             assertListEquals flags ["-j4", "-clear-package-db"]
+        , testCase "JS preprocessor options (GHC >= 9.12)" $ do
+            let flags = renderWith (mkVersion [9,12,1])
+                  (mempty { ghcOptJSppOptions = ["-DJS"] })
+            assertBool ("expected -optJSP-DJS in " ++ show flags) ("-optJSP-DJS" `elem` flags)
+        , testCase "JS preprocessor options gated out before GHC 9.12" $ do
+            let flags = renderWith (mkVersion [9,10,1])
+                  (mempty { ghcOptJSppOptions = ["-DJS"] })
+            assertBool ("unexpected -optJSP in " ++ show flags) ("-optJSP-DJS" `notElem` flags)
         ]
     ]
+
+-- | Render 'GhcOptions' as GHC arguments for a GHC of the given version.
+renderWith :: Version -> GhcOptions -> [String]
+renderWith ver =
+    renderGhcOptions
+      (Compiler
+          { compilerId = CompilerId GHC ver
+          , compilerAbiTag = NoAbiTag
+          , compilerCompat = []
+          , compilerLanguages = []
+          , compilerExtensions = []
+          , compilerProperties = Map.singleton "Support parallel --make" "YES"
+          , compilerWiredInUnitIds = Nothing
+          })
+      (Platform X86_64 Linux)
 
 assertListEquals :: (Eq a, Show a) => [a] -> [a] -> Assertion
 assertListEquals xs ys
