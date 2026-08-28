@@ -16,3 +16,6 @@ unComments f s = fmap (\x -> s{T.unComments = x}) (f (T.unComments s))
 
 instance HasPosition ann => HasPosition (T.WithComments ann) where
   position = unComments . position
+
+instance HasPosition ann => HasPosition (T.Comment ann) where
+  position f (T.Comment bs ann) = T.Comment bs <$> position f ann

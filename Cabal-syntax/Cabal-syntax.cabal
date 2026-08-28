@@ -101,6 +101,7 @@ library
     Distribution.Fields.ConfVar
     Distribution.Fields.Field
     Distribution.Fields.Field.Lens
+    Distribution.Fields.Field.Relative
     Distribution.Fields.Lexer
     Distribution.Fields.LexerMonad
     Distribution.Fields.Transform
