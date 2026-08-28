@@ -17,7 +17,6 @@ module Distribution.Fields.Transform
     -- * Addition
   , AddConfig (..)
   , addField
-  , addSection
 
     -- * Removal
   , RemoveConfig (..)
@@ -25,8 +24,8 @@ module Distribution.Fields.Transform
 
     -- * Modification
   , ModifyConfig (..)
-  , modifyField
-  , modifySection
+  -- , modifyField
+  -- , modifySection
 
     -- * Control flow
   , failIfUnchanged
@@ -63,6 +62,7 @@ import Distribution.Parsec.Position
 import Distribution.Pretty
 import Distribution.Utils.Generic
 
+import Data.Function ((&))
 import qualified Data.Bifunctor as Bi
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -82,14 +82,18 @@ import Distribution.Types.Condition
 import Distribution.Types.ConfVar
 import GHC.Generics
 
+import Control.Monad.Trans.State
 import Distribution.CabalSpecVersion
 import qualified Distribution.Compat.Lens as L
 import qualified Distribution.Fields.Field.Lens as L ()
+import Distribution.Fields.Field.Relative
 import qualified Distribution.Parsec.Position.Lens as L
+import Control.Monad.Identity (Identity)
+import Data.Functor.Identity
 
 -- | Reified function to facilitate chaining
 --   This can't be a functor (so there's no applicative nor alternative), I think there are better ways to do this.
-newtype Edit a = Edit {runEdit :: CabalSpecVersion -> a -> EditResult a}
+newtype Edit a = Edit { runEdit :: CabalSpecVersion -> a -> EditResult a }
 
 data EditResult a
   = EditOk a
@@ -148,153 +152,13 @@ type MatchSection ann = Name ann -> [SectionArg ann] -> [Field ann] -> Bool
 
 addField
   :: AddConfig
-  -> Name ()
-  -> [BS.ByteString]
-  -- ^ Comments to the 'Name'
-  -> [FieldLine ()]
-  -> [BS.ByteString]
-  -- ^ Comments to the 'FieldLine's
-  -> Edit [Field (WithComments Position)]
-addField ac name nameCmts fls flsCmts = Edit $ \_ -> case ac of
-  AddStart -> \case
-    [] -> EditOk [fst (mkFieldAt' onePos)]
-    fs@(f : _) ->
-      let (newField, newFieldHeight) = mkFieldAt' (L.view L.position (fieldAnn f))
-          fs' = offsetFieldRow newFieldHeight <$> fs
-       in EditOk (newField : fs')
-  AddEnd ->
-    let go [] = EditOk [fst (mkFieldAt' onePos)]
-        go [f] =
-          let (newField, _) = mkFieldAt' (afterFieldEndPosition f)
-           in EditOk [f, newField]
-        go (f : fs) = (f :) <$> go fs
-     in go
+  -> Relative (Field (WithComments Position))
+  -> Edit (Relative [Field (WithComments Position)])
+addField ac newField = Edit $ \_ -> case ac of
+    AddStart -> EditOk . liftA2 (:) newField
+    AddEnd -> EditOk . liftA2 snoc newField
   where
-    mkFieldAt' = mkFieldAt name nameCmts fls flsCmts
-
-addSection
-  :: AddConfig
-  -> Name ()
-  -> [SectionArg ()]
-  -> [BS.ByteString]
-  -- ^ Comments to the 'Name'
-  -> Edit [Field (WithComments Position)]
-  -- ^ Nested modifications
-  -> Edit [Field (WithComments Position)]
-addSection ac name args nameCmts inner = Edit $ \spec ->
-  let modifySectionFields (Section n as fs) = Section n as <$> runEdit inner spec fs
-      modifySectionFields x = EditUnchanged x
-
-      mkSectionAt' = mkSectionAt name args nameCmts
-   in case ac of
-        AddStart -> \case
-          [] -> EditOk [mkSectionAt' onePos]
-          fs@(f : _) ->
-            let newSectionResult = modifySectionFields $ mkSectionAt' (L.view L.position (fieldAnn f))
-             in newSectionResult <&> \newSection ->
-                  let newSectionHeight = let (start, end) = fieldRowRange newSection in end - start
-                      fs' = offsetFieldRow newSectionHeight <$> fs
-                   in (newSection : fs')
-        AddEnd ->
-          let go [] = EditOk [mkSectionAt' onePos]
-              go [f] =
-                let newSectionResult = modifySectionFields $ mkSectionAt' (afterFieldEndPosition f)
-                 in newSectionResult <&> \newSection -> [f, newSection]
-              go (f : fs) = (f :) <$> go fs
-           in go
-
-mkCommentAtPosition :: Position -> BS.ByteString -> Comment Position
-mkCommentAtPosition (Position row col) bs = Comment (BS8.replicate col ' ' <> "-- " <> bs) (Position row col)
-
-mkSectionAt
-  :: Name ()
-  -> [SectionArg ()]
-  -> [BS.ByteString]
-  -- ^ Comments to the 'Name'
-  -> Position
-  -> Field (WithComments Position)
-mkSectionAt name sargs nameCmts pos =
-  let
-    -- All content is aligned to this column.
-    col0 = positionCol pos
-
-    cmtsAboveField = zipWith (\bs row -> mkCommentAtPosition (Position row col0) bs) nameCmts [positionRow pos ..]
-
-    namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
-    nameWithAnn = WithComments cmtsAboveField namePosition <$ name
-
-    sargsRow = positionRow namePosition
-    sargsWithAnn = reverse $ snd $ foldl go state0 sargs
-      where
-        state0 =
-          ( Position sargsRow (BS8.length (getName name))
-          , []
-          )
-        go (lastPos, acc) arg =
-          let thisPosStart = incPos 1 lastPos
-              thisPosEnd = incPos argLength thisPosStart
-              argLength = BS8.length (sectionArgBS arg)
-           in ( thisPosEnd
-              , (WithComments mempty thisPosEnd <$ arg) : acc
-              )
-
-    newSection = Section nameWithAnn sargsWithAnn []
-   in
-    newSection
-
--- TODO(leana8959): rewrite this with a state monad
-
--- | Create a new field at a position, along with its height.
---   Comments are plain strings without @--@ prefix.
-mkFieldAt
-  :: Name ()
-  -> [BS.ByteString]
-  -- ^ Comments to the 'Name'
-  -> [FieldLine ()]
-  -> [BS.ByteString]
-  -- ^ Comments to the 'FieldLine's
-  -> Position
-  -> (Field (WithComments Position), Int)
-mkFieldAt name nameCmts fls flsCmts pos =
-  let
-    -- All content is aligned to this column.
-    col0 = positionCol pos
-    -- TODO(leana8959): read indentation from the config
-    indentedCol = col0 + 2
-
-    -- If there are no body, we attach the fieldlines's comments to the field.
-    cmtsAboveFieldBS = if null fls then nameCmts <> flsCmts else nameCmts
-    cmtsAboveField = zipWith (\bs row -> mkCommentAtPosition (Position row col0) bs) cmtsAboveFieldBS [positionRow pos ..]
-
-    namePosition = maybe pos (\(Comment _ p) -> retPos p) (safeLast cmtsAboveField)
-    nameWithAnn = WithComments cmtsAboveField namePosition <$ name
-
-    colonPos = incPos (BS8.length (getName name)) namePosition
-
-    cmtsAboveFls = zipWith (\bs row -> mkCommentAtPosition (Position row indentedCol) bs) flsCmts [positionRow pos ..]
-    -- If there are no comments, print on the same line after the colon.
-    -- Otherwise after a newline, we list out all fieldlines.
-    fieldLineStartPos = maybe (incPos 2 colonPos) (\(Comment _ p) -> retPos p) (safeLast cmtsAboveFls)
-    (flsWithAnn, flsHeight) = case fls of
-      [] -> ([], 0)
-      -- Singleline
-      [fl] ->
-        let fl' = WithComments cmtsAboveFls fieldLineStartPos <$ fl
-         in ([fl'], 0)
-      -- Multiline
-      fls' ->
-        let fieldLineFollowingPos = retPos fieldLineStartPos
-            fls'' :: [FieldLine (WithComments Position)]
-            fls'' = zipWith (\l row -> WithComments mempty (Position row indentedCol) <$ l) fls' [positionRow fieldLineFollowingPos ..]
-         in (fls'', length cmtsAboveFls + 1 + length fls'')
-
-    field = Field colonPos nameWithAnn flsWithAnn
-    totalHeight =
-      length cmtsAboveField
-        + 1 -- field name
-        + flsHeight -- inner comments and fieldlines
-   in
-    (field, totalHeight)
+    snoc x xs = xs ++ [x]
 
 data RemoveConfig = RemoveAll | RemoveFirst
 
@@ -303,6 +167,7 @@ removeField
   -> MatchField (WithComments Position)
   -> Edit [Field (WithComments Position)]
 removeField rc match = Edit $ \_ -> case rc of
+  -- No position dependency
   RemoveAll -> mkEditResult <*> filter p
   RemoveFirst -> mkEditResult <*> filterOne p
   where
@@ -311,55 +176,53 @@ removeField rc match = Edit $ \_ -> case rc of
 
 data ModifyConfig = ModifyFirst | ModifyLast
 
+-- Relative has to be outside :pensive:
+
 -- Different modification strategies
 modifyField
   :: ModifyConfig
   -> MatchField (WithComments Position)
   -- ^ Match a given field
   -> (CabalSpecVersion -> [FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
-  -> Edit [Field (WithComments Position)]
+  -> Edit (Relative [Field (WithComments Position)])
 modifyField mc match modifyFieldLines = Edit $ \spec ->
-  let doModify (Field colonPos fname fls) | match fname fls = Field colonPos fname <$> fls'
-        where
-          fls' = modifyFieldLines spec fls
+  let doModify :: Field (WithComments Position) -> EditResult (Field (WithComments Position))
+      doModify (Field colonPos fname fls)
+        | match fname fls = Field colonPos fname <$> modifyFieldLines spec fls
       doModify x = EditUnchanged x
 
-      doShift (old, new) fd =
-        let (_, oldEnd) = fieldRowRange old
-            (_, newEnd) = fieldRowRange new
-            lineShift = (newEnd - oldEnd) `max` 0
-         in offsetFieldRow lineShift fd
    in case mc of
-        ModifyFirst -> \fs -> mapFirstThen doModify doShift fs
-        ModifyLast -> mapLast doModify
+        ModifyFirst -> (mapFirstRest doModify undefined)
 
-modifySection
-  :: ModifyConfig
-  -> MatchSection (WithComments Position)
-  -- ^ Match a given section
-  -> (CabalSpecVersion -> [SectionArg (WithComments Position)] -> EditResult [SectionArg (WithComments Position)])
-  -- ^ Transform the section args
-  -> Edit [Field (WithComments Position)]
-  -- ^ Transform inner fields
-  -> Edit [Field (WithComments Position)]
-modifySection mc match modifySectionArgs modifyFields = Edit $ \spec ->
-  let doModify (Section sname sargs fs)
-        | match sname sargs fs =
-            let sargs' = modifySectionArgs spec sargs
-                fs' = runEdit modifyFields spec fs
-             in -- TODO(leana8959): handle the case where section args' comments
-                -- push the following content down.
-                Section sname <$> sargs' <*> fs'
-      doModify x = EditUnchanged x
+        -- ModifyLast -> mapLast doModify
 
-      doShift (old, new) fd =
-        let (_, oldEnd) = fieldRowRange old
-            (_, newEnd) = fieldRowRange new
-            lineShift = (newEnd - oldEnd) `max` 0 -- ignore backjump
-         in offsetFieldRow lineShift fd
-   in case mc of
-        ModifyFirst -> mapFirstThen doModify doShift
-        ModifyLast -> mapLast doModify
+-- modifySection
+--   :: ModifyConfig
+--   -> MatchSection (WithComments Position)
+--   -- ^ Match a given section
+--   -> (CabalSpecVersion -> [SectionArg (WithComments Position)] -> EditResult [SectionArg (WithComments Position)])
+--   -- ^ Transform the section args
+--   -> Edit [Field (WithComments Position)]
+--   -- ^ Transform inner fields
+--   -> Edit [Field (WithComments Position)]
+-- modifySection mc match modifySectionArgs modifyFields = Edit $ \spec ->
+--   let doModify (Section sname sargs fs)
+--         | match sname sargs fs =
+--             let sargs' = modifySectionArgs spec sargs
+--                 fs' = runEdit modifyFields spec fs
+--              in -- TODO(leana8959): handle the case where section args' comments
+--                 -- push the following content down.
+--                 Section sname <$> sargs' <*> fs'
+--       doModify x = EditUnchanged x
+
+--       doShift (old, new) fd =
+--         let (_, oldEnd) = fieldRowRange old
+--             (_, newEnd) = fieldRowRange new
+--             lineShift = (newEnd - oldEnd) `max` 0 -- ignore backjump
+--          in offsetFieldRow lineShift fd
+--    in case mc of
+--         ModifyFirst -> mapFirstThen doModify doShift
+--         ModifyLast -> mapLast doModify
 
 -- | If up to this point things are still unchanged, make it an error and stop here.
 failIfUnchanged :: Edit a -> Edit a
@@ -402,6 +265,11 @@ mapFirstThen f g (x : xs) = case f x of
 
 mapFirst :: (a -> EditResult a) -> [a] -> EditResult [a]
 mapFirst f = mapFirstThen f (const id)
+
+mapFirstRest :: (a -> b) -> (a -> b) -> [a] -> [b]
+mapFirstRest _ _ [] = []
+mapFirstRest f g [u] = [f u]
+mapFirstRest f g (u : us) = f u : map g us
 
 mapLast :: (a -> EditResult a) -> [a] -> EditResult [a]
 mapLast f = fmap reverse . mapFirst f . reverse

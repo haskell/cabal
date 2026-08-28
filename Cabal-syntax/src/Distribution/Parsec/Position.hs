@@ -4,6 +4,7 @@
 module Distribution.Parsec.Position
   ( Position (..)
   , incPos
+  , incRow
   , retPos
   , showPos
   , zeroPos
@@ -29,6 +30,10 @@ instance Structured Position
 -- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position
 incPos n (Position row col) = Position row (col + n)
+
+-- | Shift position by n rows below.
+incRow :: Int -> Position -> Position
+incRow n (Position row col) = Position (row + n) col
 
 -- | Shift position to beginning of next row.
 retPos :: Position -> Position
