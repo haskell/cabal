@@ -15,6 +15,8 @@ Flags for upload:
                                 combine with --publish.
  -t TOKEN or -tTOKEN, --token=TOKEN
                               # Hackage authentication token.
+ -T COMMAND or -TCOMMAND, --token-command=COMMAND
+                              # Command to get Hackage authentication token.
  -u USERNAME or -uUSERNAME, --username=USERNAME
                               # Hackage username.
  -p PASSWORD or -pPASSWORD, --password=PASSWORD
@@ -28,6 +30,7 @@ You can store your Hackage login in the ~/.config/cabal/config file
 (the %APPDATA%\cabal\config file on Windows)
 Relevant global configuration keys:
   token
+  token-command
   username
   password
   password-command
