@@ -1,0 +1,39 @@
+Deprecated alias for 'get'.
+
+Usage: cabal unpack [PACKAGES]
+
+Creates a local copy of a package's source code. By default it gets the source
+tarball and unpacks it in a local subdirectory. Alternatively, with -s it will
+get the code from the source repository specified by the package.
+
+Flags for unpack:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ -d PATH or -dPATH, --destdir=PATH
+                              # Where to place the package source, defaults to
+                                the current directory.
+ -s[[head|this|...]], --source-repository[=[head|this|...]]
+                              # Copy the package's source repository (ie git
+                                clone, darcs get, etc as appropriate).
+ --index-state=STATE          # Use source package index state as it existed
+                                at a previous time. Accepts unix-timestamps
+                                (e.g. '@1474732068'), ISO8601 UTC timestamps
+                                (e.g. '2016-09-24T17:47:48Z'), or 'HEAD'
+                                (default: 'HEAD'). This determines which
+                                package versions are available as well as
+                                .cabal file revision is selected (unless
+                                --pristine is used).
+ --only-package-description   # Unpack only the package description file.
+ --package-description-only   # A synonym for --only-package-description.
+ --pristine                   # Unpack the original pristine tarball, rather
+                                than updating the .cabal file with the latest
+                                revision from the package archive.
+ -R REPOSITORY or -RREPOSITORY, --repository=REPOSITORY
+                              # Package repository to fetch from.
+
+Examples:
+  cabal unpack hlint
+    Download the latest stable version of hlint;
+  cabal unpack lens --source-repository=head
+    Download the source repository of lens (i.e. git clone from github).

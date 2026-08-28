@@ -1,0 +1,115 @@
+Command line interface to the Haskell Cabal infrastructure.
+
+See http://www.haskell.org/cabal/ for more information.
+
+Usage: cabal [GLOBAL FLAGS] [COMMAND [FLAGS]]
+
+Commands:
+ [global]
+  user-config            Display and update the user's global cabal configuration.
+  help                   Help about commands.
+
+ [package database]
+  update                 Updates list of known packages.
+  list                   List packages matching a search string.
+  info                   Display detailed information about a particular package.
+
+ [initialization and download]
+  init                   Create a new cabal package.
+  fetch                  Downloads packages for later installation.
+  get                    Download/Extract a package's source code (repository).
+
+ [project configuration]
+  configure              Add extra project configuration.
+  freeze                 Freeze dependencies.
+  gen-bounds             Generate dependency bounds for packages in the project.
+  outdated               Check for outdated dependencies.
+  path                   Query for simple project information.
+  target                 Target a subset of all targets.
+
+ [project building and installing]
+  build                  Compile targets within the project.
+  install                Install packages.
+  haddock                Build Haddock documentation.
+  haddock-project        Generate Haddocks HTML documentation for the cabal project.
+  clean                  Clean the package store and remove temporary files.
+
+ [running and testing]
+  list-bin               List the path to a single executable.
+  repl                   Open an interactive session for the given component.
+  run                    Run an executable.
+  bench                  Run benchmarks.
+  test                   Run test-suites.
+  exec                   Give a command access to the store.
+
+ [sanity checks and shipping]
+  check                  Check the package for common mistakes.
+  sdist                  Generate a source distribution file (.tar.gz).
+  upload                 Uploads source packages or documentation to Hackage.
+  report                 Upload build reports to a remote server.
+
+ [deprecated]
+  unpack                 Deprecated alias for 'get'.
+  hscolour               Generate HsColour colourised code, in HTML format.
+
+ [new-style projects (forwards-compatible aliases)]
+  v2-target              Target a subset of all targets.
+  v2-build               Compile targets within the project.
+  v2-configure           Add extra project configuration.
+  v2-repl                Open an interactive session for the given component.
+  v2-run                 Run an executable.
+  v2-test                Run test-suites.
+  v2-bench               Run benchmarks.
+  v2-freeze              Freeze dependencies.
+  v2-haddock             Build Haddock documentation.
+  v2-exec                Give a command access to the store.
+  v2-update              Updates list of known packages.
+  v2-install             Install packages.
+  v2-clean               Clean the package store and remove temporary files.
+  v2-sdist               Generate a source distribution file (.tar.gz).
+  v2-outdated            Check for outdated dependencies.
+  v2-gen-bounds          Generate dependency bounds for packages in the project.
+
+ [legacy command aliases]
+  v1-build               Compile all/specific components.
+  v1-configure           Prepare to build the package.
+  v1-repl                Open an interpreter session for the given component.
+  v1-run                 Builds and runs an executable.
+  v1-test                Run all/specific tests in the test suite.
+  v1-bench               Run all/specific benchmarks.
+  v1-freeze              Freeze dependencies.
+  v1-haddock             Generate Haddock HTML documentation.
+  v1-install             Install packages.
+  v1-clean               Clean up after a build.
+  v1-copy                Copy the files of all/specific components to install locations.
+  v1-register            Register this package with the compiler.
+  v1-reconfigure         Reconfigure the package if necessary.
+  v1-gen-bounds          Generate dependency bounds.
+
+For more information about a command use:
+   cabal COMMAND --help
+or cabal help COMMAND
+
+To install Cabal packages from hackage use:
+  cabal install foo [--dry-run]
+
+Occasionally you need to update the list of available packages:
+  cabal update
+
+Global flags:
+ -h, --help                   # Show this help text
+ -V, --version                # Print version information
+ --full-version               # Print full version information with git
+                                revision (if available) and compiler
+ --numeric-version            # Print just the version number
+ --config-file=FILE           # Set an alternate location for the config file
+ --ignore-expiry              # Ignore expiry dates on signed metadata (use
+                                only in exceptional circumstances)
+ --http-transport=HttpTransport
+                              # Set a transport for http(s) requests. Accepts
+                                'curl', 'wget', 'powershell', and
+                                'plain-http'. (default: 'curl')
+ --store-dir=DIR              # The location of the build store
+ --active-repositories=REPOS  # The active package repositories (set to
+                                ':none' to disable all repositories)
+

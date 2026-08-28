@@ -1,0 +1,42 @@
+Builds and runs an executable.
+
+Usage: cabal v1-run [FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]
+
+Builds and then runs the specified executable. If no executable is specified,
+but the package contains just one executable, that one is built and executed.
+
+Use `cabal v1-test --show-details=streaming` to run a test-suite and get its
+full output.
+
+Flags for v1-run:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ -j[NUM], --jobs[=NUM]        # Run NUM jobs simultaneously (or '$ncpus' if no
+                                NUM is given).
+ --semaphore=SEMAPHORE        # Use the specified semaphore identifier so GHC
+                                can compile components in parallel
+ --with-PROG=PATH             # Give the path to PROG
+ --PROG-option=OPT            # Give an extra option to PROG (passed directly
+                                to PROG as a single argument)
+ --PROG-options=OPTS          # Give extra options to PROG (split on spaces,
+                                use "" to prevent splitting)
+
+Examples:
+  cabal v1-run
+    Run the only executable in the current package;
+  cabal v1-run foo -- --fooflag
+    Works similar to `./foo --fooflag`.
+
+The v1-run command is a part of the legacy v1 style of cabal usage.
+
+It is a legacy feature and will be removed in a future release of
+cabal-install. Please file a bug if you cannot replicate a working v1- use
+case with the nix-style commands.
+
+For more information, see:
+https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html

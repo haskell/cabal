@@ -123,12 +123,12 @@ data Graph a = Graph
 instance Show a => Show (Graph a) where
   show = show . toList
 
-instance (IsNode a, Read a, Show (Key a)) => Read (Graph a) where
-  readsPrec d s = map (first fromDistinctList) (readsPrec d s)
+instance (IsNode a, Read a) => Read (Graph a) where
+  readsPrec d s = map (first fromDistinctListTrusted) (readsPrec d s)
 
-instance (IsNode a, Binary a, Show (Key a)) => Binary (Graph a) where
+instance (IsNode a, Binary a) => Binary (Graph a) where
   put x = put (toList x)
-  get = fmap fromDistinctList get
+  get = fmap fromDistinctListTrusted get
 
 instance Structured a => Structured (Graph a) where
   structure p = Nominal (typeRep p) 0 "Graph" [structure (Proxy :: Proxy a)]
@@ -391,6 +391,15 @@ fromDistinctList =
       error $
         "Graph.fromDistinctList: duplicate key: "
           ++ show (nodeKey n)
+
+-- | Like 'fromDistinctList', but for reconstructing a graph whose keys are
+-- already known to be distinct — in particular a graph produced by 'toList'
+-- and round-tripped through the 'Binary'/'Read' instances. It performs no
+-- duplicate-key check, and so (unlike 'fromDistinctList') does not require
+-- @Show (Key a)@.
+fromDistinctListTrusted :: IsNode a => [a] -> Graph a
+fromDistinctListTrusted =
+  fromMap . Map.fromList . map (\n -> n `seq` (nodeKey n, n))
 
 -- Map-like operations
 

@@ -180,9 +180,7 @@ programSearchPathAsPATHVar searchpath = do
   return (intercalate [searchPathSeparator] (concat ess))
   where
     getEntries (ProgramSearchPathDir dir) = return [dir]
-    getEntries ProgramSearchPathDefault = do
-      env <- getEnvironment
-      return (maybe [] splitSearchPath (lookup "PATH" env))
+    getEntries ProgramSearchPathDefault = maybe [] splitSearchPath <$> lookupEnv "PATH"
 
 -- | Get the system search path. On Unix systems this is just the @$PATH@ env
 -- var, but on windows it's a bit more complicated.

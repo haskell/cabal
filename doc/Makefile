@@ -1,5 +1,9 @@
 # Build and safety-check requirements.txt
 
+# Remove a target if its recipe fails, so a failed `cabal run` can't leave a
+# truncated *-help/*.txt behind for `git diff` to find.
+.DELETE_ON_ERROR:
+
 # skjold needs a personal github access token.  This needs no permissions,
 # it is only required to query the GitHub GraphQL API v4.
 # See: https://pythonawesome.com/security-audit-python-project-dependencies-against-security-advisory-databases/
@@ -52,5 +56,119 @@ debug:
 	@echo "GITHUB_TOKEN = ${GITHUB_TOKEN}"
 	@echo "SKJOLD_GITHUB_API_TOKEN = $${SKJOLD_GITHUB_API_TOKEN}"
 	@echo "Is SKJOLD_GITHUB_API_TOKEN set? $${SKJOLD_GITHUB_API_TOKEN:+yes}"
+
+CABAL_V1_COMMANDS := \
+	bench \
+	build \
+	clean \
+	configure \
+	copy \
+	freeze \
+	gen-bounds \
+	haddock \
+	install \
+	reconfigure \
+	register \
+	repl \
+	run \
+	test
+
+CABAL_COMMANDS := \
+	bench \
+	build \
+	clean \
+	configure \
+	exec \
+	fetch \
+	freeze \
+	gen-bounds \
+	get \
+	haddock \
+	haddock-project \
+	hscolour \
+	info \
+	init \
+	install \
+	list \
+	list-bin \
+	outdated \
+	path \
+	repl \
+	report \
+	run \
+	sdist \
+	target \
+	test \
+	unpack \
+	update \
+	upload \
+	user-config
+
+CABAL_HIDDEN_COMMANDS := \
+	act-as-setup \
+	format \
+	man
+
+# Distribution.Simple.defaultMain's commands, for build-type: Simple.
+SETUP_COMMANDS := \
+	bench \
+	build \
+	clean \
+	configure \
+	copy \
+	haddock \
+	hscolour \
+	install \
+	register \
+	repl \
+	sdist \
+	test \
+	unregister
+
+# NOTE: To silence the following warning, redirect stderr to /dev/null:
+#   Warning: this is a debug build of cabal-install with assertions enabled.
+cmd-v1-help/%.txt:
+	@mkdir -p $(@D)
+	@cabal run -v0 cabal-install:exe:cabal -- v1-$* --help > $@ 2>/dev/null
+
+cmd-v2-help/%.txt:
+	@mkdir -p $(@D)
+	@cabal run -v0 cabal-install:exe:cabal -- $* --help > $@ 2>/dev/null
+
+# The "You can edit the cabal configuration file..." footer embeds an
+# absolute, machine-specific config path, so strip it for reproducibility.
+cmd-v2-help/help.txt:
+	@mkdir -p $(@D)
+	@cabal run -v0 cabal-install:exe:cabal -- --help 2>/dev/null \
+	  | sed '/^You can edit the cabal configuration file to set defaults:$$/,$$d' > $@
+
+cmd-v2-hidden-help/%.txt:
+	@mkdir -p $(@D)
+	@cabal run -v0 cabal-install:exe:cabal -- $* --help > $@ 2>/dev/null
+
+# act-as-setup runs Distribution.Simple.defaultMainArgs directly; the "--"
+# forwards args after it verbatim instead of being parsed by cabal itself.
+setup-help/%.txt:
+	@mkdir -p $(@D)
+	@cabal run -v0 cabal-install:exe:cabal -- act-as-setup -- $* --help > $@ 2>/dev/null
+
+setup-help/help.txt:
+	@mkdir -p $(@D)
+	@cabal run -v0 cabal-install:exe:cabal -- act-as-setup -- --help > $@ 2>/dev/null
+
+.PHONY: cmd-v1-help
+cmd-v1-help: $(addsuffix .txt,$(addprefix cmd-v1-help/,$(CABAL_V1_COMMANDS)))
+
+.PHONY: cmd-v2-help
+cmd-v2-help: cmd-v2-help/help.txt $(addsuffix .txt,$(addprefix cmd-v2-help/,$(CABAL_COMMANDS)))
+
+.PHONY: cmd-v2-hidden-help
+cmd-v2-hidden-help: $(addsuffix .txt,$(addprefix cmd-v2-hidden-help/,$(CABAL_HIDDEN_COMMANDS)))
+
+.PHONY: setup-help
+setup-help: setup-help/help.txt $(addsuffix .txt,$(addprefix setup-help/,$(SETUP_COMMANDS)))
+
+.PHONY: cmd-help
+cmd-help: cmd-v2-help cmd-v1-help cmd-v2-hidden-help setup-help
 
 # EOF

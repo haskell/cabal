@@ -1,0 +1,31 @@
+List packages matching a search string.
+
+Usage: cabal list [FLAGS]
+   or: cabal list [FLAGS] STRINGS
+
+List all packages, or all packages matching one of the search strings.
+
+Use the package database specified with --package-db. If not specified, use
+the user package database.
+
+Flags for list:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --installed                  # Only print installed packages
+ --simple-output              # Print in a easy-to-parse format
+ -i, --ignore-case            # Enable Ignore case distinctions
+ -I, --strict-case            # Disable Ignore case distinctions
+ --package-db=DB              # Append the given package database to the list
+                                of package databases used (to satisfy
+                                dependencies and register into). May be a
+                                specific file, 'global' or 'user'. The initial
+                                list is ['global'], ['global', 'user'],
+                                depending on context. Use 'clear' to reset the
+                                list to empty. See the user guide for details.
+ -w PATH or -wPATH, --with-compiler=PATH
+                              # Give the path to a particular compiler
+
+Examples:
+  cabal list pandoc
+    Will find pandoc, pandoc-citeproc, pandoc-lens, ...

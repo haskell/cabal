@@ -1,0 +1,72 @@
+Run all/specific tests in the test suite.
+
+Usage: cabal v1-test [FLAGS]
+   or: cabal v1-test TESTCOMPONENTS [FLAGS]
+
+If necessary (re)configures with `--enable-tests` flag and builds the test
+suite.
+
+Remember that the tests' dependencies must be installed if there are
+additional ones; e.g. with `cabal v1-install --only-dependencies
+--enable-tests`.
+
+By defining UserHooks in a custom Setup.hs, the package can define actions to
+be executed before and after running tests.
+
+Flags for v1-test:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ -j[NUM], --jobs[=NUM]        # Run NUM jobs simultaneously (or '$ncpus' if no
+                                NUM is given).
+ --semaphore=SEMAPHORE        # Use the specified semaphore identifier so GHC
+                                can compile components in parallel
+ --with-PROG=PATH             # Give the path to PROG
+ --PROG-option=OPT            # Give an extra option to PROG (passed directly
+                                to PROG as a single argument)
+ --PROG-options=OPTS          # Give extra options to PROG (split on spaces,
+                                use "" to prevent splitting)
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --log=TEMPLATE               # Log all test suite results to file (name
+                                template can use $pkgid, $compiler, $os,
+                                $arch, $test-suite, $result)
+ --machine-log=TEMPLATE       # Produce a machine-readable log file (name
+                                template can use $pkgid, $compiler, $os,
+                                $arch, $result)
+ --show-details=FILTER        # 'always': always show results of individual
+                                test cases. 'never': never show results of
+                                individual test cases. 'failures': show
+                                results of failing test cases. 'streaming':
+                                show results of test cases in real
+                                time.'direct': send results of test cases in
+                                real time; no log file.
+ --keep-tix-files             # Keep .tix files for HPC between test runs
+ --test-wrapper=FILE          # Run test through a wrapper.
+ --fail-when-no-test-suites   # Exit with failure when no test suites are
+                                found.
+ --test-options=TEMPLATES     # Give extra options to test executables (split
+                                on spaces, use "" to prevent splitting; name
+                                templates can use $pkgid, $compiler, $os,
+                                $arch, $test-suite)
+ --test-option=TEMPLATE       # Give extra option to test executables (passed
+                                directly as a single argument; name template
+                                can use $pkgid, $compiler, $os, $arch,
+                                $test-suite)
+
+The v1-test command is a part of the legacy v1 style of cabal usage.
+
+It is a legacy feature and will be removed in a future release of
+cabal-install. Please file a bug if you cannot replicate a working v1- use
+case with the nix-style commands.
+
+For more information, see:
+https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html

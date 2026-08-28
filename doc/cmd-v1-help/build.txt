@@ -1,0 +1,43 @@
+Compile all/specific components.
+
+Usage: cabal v1-build [FLAGS]
+   or: cabal v1-build COMPONENTS [FLAGS]
+
+Components encompass executables, tests, and benchmarks.
+
+Affected by configuration options, see `v1-configure`.
+
+Flags for v1-build:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ -j[NUM], --jobs[=NUM]        # Run NUM jobs simultaneously (or '$ncpus' if no
+                                NUM is given).
+ --semaphore=SEMAPHORE        # Use the specified semaphore identifier so GHC
+                                can compile components in parallel
+ --with-PROG=PATH             # Give the path to PROG
+ --PROG-option=OPT            # Give an extra option to PROG (passed directly
+                                to PROG as a single argument)
+ --PROG-options=OPTS          # Give extra options to PROG (split on spaces,
+                                use "" to prevent splitting)
+
+Examples:
+  cabal v1-build               All the components in the package
+  cabal v1-build foo           A component (i.e. lib, exe, test suite)
+
+The flags --with-PROG and --PROG-option(s) can be used with the following programs:
+  alex ar c2hs cpphs doctest gcc ghc ghc-pkg ghcjs ghcjs-pkg haddock happy hpc
+  hsc2hs hscolour jhc ld pkg-config runghc strip tar uhc
+
+The v1-build command is a part of the legacy v1 style of cabal usage.
+
+It is a legacy feature and will be removed in a future release of
+cabal-install. Please file a bug if you cannot replicate a working v1- use
+case with the nix-style commands.
+
+For more information, see:
+https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html

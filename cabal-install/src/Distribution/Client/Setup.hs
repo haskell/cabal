@@ -1018,7 +1018,7 @@ configureExOptions _showOrParseArgs src =
       ( optArg
           "DEPS"
           (parsecToReadEErr unexpectMsgString relaxDepsParser)
-          (show RelaxDepsAll, Just RelaxDepsAll)
+          (Just RelaxDepsAll)
           relaxDepsPrinter
       )
   , option
@@ -1030,7 +1030,7 @@ configureExOptions _showOrParseArgs src =
       ( optArg
           "DEPS"
           (parsecToReadEErr unexpectMsgString relaxDepsParser)
-          (show RelaxDepsAll, Just RelaxDepsAll)
+          (Just RelaxDepsAll)
           relaxDepsPrinter
       )
   , option
@@ -1949,7 +1949,7 @@ getCommand =
                     (const "invalid source-repository")
                     (fmap (toFlag . Just) parsec)
                 )
-                ("", Flag Nothing)
+                (Flag Nothing)
                 (map (fmap show) . flagToList)
             )
         , option
@@ -2143,7 +2143,7 @@ listOptions =
   , option
       "w"
       ["with-compiler"]
-      "give the path to a particular compiler"
+      "Give the path to a particular compiler"
       listHcPath
       (\v flags -> flags{listHcPath = v})
       (reqArgFlag "PATH")
@@ -2833,7 +2833,7 @@ optionNumJobs get set =
     ( optArg
         "NUM"
         (fmap Flag numJobsParser)
-        ("", Flag Nothing)
+        (Flag Nothing)
         (map (Just . maybe "$ncpus" show) . flagToList)
     )
   where
@@ -3349,7 +3349,7 @@ initOptions _ =
   , option
       "w"
       ["with-compiler"]
-      "give the path to a particular compiler. For 'init', this flag is used \
+      "Give the path to a particular compiler. For 'init', this flag is used \
       \to set the bounds inferred for the 'base' package."
       IT.initHcPath
       (\v flags -> flags{IT.initHcPath = v})

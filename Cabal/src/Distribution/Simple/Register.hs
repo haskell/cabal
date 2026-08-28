@@ -283,6 +283,7 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
 
         return
           ( inplaceInstalledPackageInfo
+              ForDevelopment
               inplaceDir
               distPref
               pkg
@@ -327,9 +328,9 @@ abiHash
 abiHash verbosity pkg distPref lbi lib clbi =
   case compilerFlavor comp of
     GHC -> do
-      fmap mkAbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
+      mkAbiHash <$> GHC.libAbiHash verbosity pkg lbi' lib clbi
     GHCJS -> do
-      fmap mkAbiHash $ GHCJS.libAbiHash verbosity pkg lbi' lib clbi
+      mkAbiHash <$> GHCJS.libAbiHash verbosity pkg lbi' lib clbi
     _ -> return (mkAbiHash "")
   where
     comp = compiler lbi
@@ -613,7 +614,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
 --
 -- This function knows about the layout of in place packages.
 inplaceInstalledPackageInfo
-  :: AbsolutePath (Dir Pkg)
+  :: HaddockTarget
+  -> AbsolutePath (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
   -- ^ location of the dist tree
   -> PackageDescription
@@ -622,7 +624,7 @@ inplaceInstalledPackageInfo
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> InstalledPackageInfo
-inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
+inplaceInstalledPackageInfo haddockTarget inplaceDir distPref pkg abi_hash lib lbi clbi =
   generalInstalledPackageInfo
     adjustRelativeIncludeDirs
     pkg
@@ -656,7 +658,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     inplaceHtmldir =
       i $
         (inplaceDocdir </> makeRelativePathEx "html")
-          </> makeRelativePathEx (haddockLibraryDirPath ForDevelopment pkg lib)
+          </> makeRelativePathEx (haddockLibraryDirPath haddockTarget pkg lib)
 
 -- | Construct 'InstalledPackageInfo' for the final install location of a
 -- library package.
@@ -713,8 +715,7 @@ relocatableInstalledPackageInfo pkg abi_hash lib lbi clbi pkgroot =
     bi = libBuildInfo lib
 
     installDirs =
-      fmap (("${pkgroot}" </>) . shortRelativePath (getSymbolicPath pkgroot)) $
-        absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
+      ("${pkgroot}" </>) . shortRelativePath (getSymbolicPath pkgroot) <$> absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
 
 -- -----------------------------------------------------------------------------
 -- Unregistration

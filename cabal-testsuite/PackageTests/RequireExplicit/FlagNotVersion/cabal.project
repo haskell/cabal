@@ -1,0 +1,3 @@
+packages: .
+constraints: some-lib +some-flag
+reject-unconstrained-dependencies: all

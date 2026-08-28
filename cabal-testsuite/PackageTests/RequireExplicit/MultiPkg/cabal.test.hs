@@ -9,8 +9,18 @@ main = cabalTest . recordMode DoNotRecord $ withRepo "repo" $ do
   res <- fails $ cabal' "v2-build" ["all", "--dry-run", "--reject-unconstrained-dependencies", "all", "--constraint", "other-lib -any"]
   assertOutputContains "not a user-provided goal" res
 
-  -- everything's listed, good to go
-  cabal "v2-build" ["all", "--dry-run", "--reject-unconstrained-dependencies", "all", "--constraint", "other-lib -any", "--constraint", "some-exe -any"]
+  -- everything's listed, but -any is not a version constraint accepted by reject-unconstrained-dependencies=all
+  res <- fails $ cabal' "v2-build" ["all", "--dry-run", "--reject-unconstrained-dependencies", "all", "--constraint", "other-lib -any", "--constraint", "some-exe -any"]
+  assertOutputContains "not a user-provided goal" res
 
-  -- a depends on b, but b is a local dependency, so it gets a pass
-  cabal "v2-build" ["a", "--dry-run", "--reject-unconstrained-dependencies", "all", "--constraint", "other-lib -any", "--constraint", "some-exe -any"]
+  -- everything's listed, good to go if we give proper version constraints
+  res <- cabal' "v2-build" ["all", "--dry-run", "--reject-unconstrained-dependencies", "all", "--constraint", "some-lib ==1.0", "--constraint", "other-lib ==1.0", "--constraint", "some-exe ==1.0"]
+  assertOutputDoesNotContain "not a user-provided goal" res
+
+  -- a depends on b, but b is a local dependency, so it gets a pass, but we still need to provide version constraints for the other dependencies
+  res <- fails $ cabal' "v2-build" ["a", "--dry-run", "--reject-unconstrained-dependencies", "all", "--constraint", "other-lib -any", "--constraint", "some-exe -any"]
+  assertOutputContains "not a user-provided goal" res
+
+  -- a depends on b, but b is a local dependency, so it gets a pass and we're good to go if we give proper version constraints
+  res <- cabal' "v2-build" ["a", "--dry-run", "--reject-unconstrained-dependencies", "all", "--constraint", "some-lib ==1.0", "--constraint", "other-lib ==1.0", "--constraint", "some-exe ==1.0"]
+  assertOutputDoesNotContain "not a user-provided goal" res

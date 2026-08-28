@@ -1,0 +1,22 @@
+Generate dependency bounds.
+
+Usage: cabal gen-bounds [FLAGS]
+
+Generates bounds for all dependencies that do not currently have them.
+Generated bounds are printed to stdout. You can then paste them into your
+.cabal file.
+
+
+Flags for v1-gen-bounds:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+
+The v1-gen-bounds command is a part of the legacy v1 style of cabal usage.
+
+It is a legacy feature and will be removed in a future release of
+cabal-install. Please file a bug if you cannot replicate a working v1- use
+case with the nix-style commands.
+
+For more information, see:
+https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html

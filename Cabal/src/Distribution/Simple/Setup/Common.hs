@@ -237,7 +237,7 @@ programDbPaths' mkName progDb showOrParseArgs get set =
       option
         ""
         [mkName prog]
-        ("give the path to " ++ prog)
+        ("Give the path to " ++ prog)
         get
         set
         ( reqArg'
@@ -267,7 +267,7 @@ programDbOption progDb showOrParseArgs get set =
       option
         ""
         [prog ++ "-option"]
-        ( "give an extra option to "
+        ( "Give an extra option to "
             ++ prog
             ++ " (passed directly to "
             ++ prog
@@ -308,7 +308,7 @@ programDbOptions progDb showOrParseArgs get set =
       option
         ""
         [prog ++ "-options"]
-        ( "give extra options to "
+        ( "Give extra options to "
             ++ prog
             ++ " (split on spaces, use \"\" to prevent splitting)"
         )
@@ -400,7 +400,7 @@ optionVerbosity get set =
     ( optArg
         "n"
         (fmap Flag flagToVerbosity)
-        (show verbose, Flag verbose) -- default Value if no n is given
+        (Flag verbose)
         (fmap (Just . showForCabal) . flagToList)
     )
 
@@ -418,7 +418,7 @@ optionNumJobs get set =
     ( optArg
         "NUM"
         (fmap Flag numJobsParser)
-        ("$ncpus", Flag Nothing)
+        (Flag Nothing)
         (map (Just . maybe "$ncpus" show) . flagToList)
     )
   where

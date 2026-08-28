@@ -1,0 +1,33 @@
+Uploads source packages or documentation to Hackage.
+
+Usage: cabal upload [FLAGS] TARFILES
+
+Flags for upload:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --publish                    # Publish the package instead of uploading it as
+                                a candidate.
+ -d, --documentation          # Upload documentation instead of a source
+                                package. By default, this uploads
+                                documentation for a package candidate. To
+                                upload documentation for a published package,
+                                combine with --publish.
+ -t TOKEN or -tTOKEN, --token=TOKEN
+                              # Hackage authentication token.
+ -u USERNAME or -uUSERNAME, --username=USERNAME
+                              # Hackage username.
+ -p PASSWORD or -pPASSWORD, --password=PASSWORD
+                              # Hackage password.
+ -P COMMAND or -PCOMMAND, --password-command=COMMAND
+                              # Command to get Hackage password.
+ -R REPOSITORY or -RREPOSITORY, --repository=REPOSITORY
+                              # Package repository to upload to.
+
+You can store your Hackage login in the ~/.config/cabal/config file
+(the %APPDATA%\cabal\config file on Windows)
+Relevant global configuration keys:
+  token
+  username
+  password
+  password-command

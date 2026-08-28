@@ -1,0 +1,27 @@
+Copy the files into the install locations. Run register.
+
+Usage: cabal install [FLAGS]
+
+Unlike the copy command, install calls the register command. If you want to
+install into a location that is not what was specified in the configure step,
+use the copy command.
+
+Flags for install:
+ -h, --help                   # Show this help text
+ -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
+                                verbosity level is 1)
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --cabal-file=PATH            # use this Cabal file
+ --keep-temp-files            # Keep temporary files.
+ --inplace                    # install the package in the install
+                                subdirectory of the dist prefix, so it can be
+                                used without being installed
+ --enable-shell-wrappers      # Enable using shell script wrappers around
+                                executables
+ --disable-shell-wrappers     # Disable using shell script wrappers around
+                                executables
+ --user                       # upon configuration register this package in
+                                the user's local package database
+ --global                     # (default) upon configuration register this
+                                package in the system-wide package database
