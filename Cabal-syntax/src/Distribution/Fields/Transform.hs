@@ -185,16 +185,24 @@ modifyField
   -- ^ Match a given field
   -> (CabalSpecVersion -> [FieldLine (WithComments Position)] -> EditResult [FieldLine (WithComments Position)])
   -> Edit (Relative [Field (WithComments Position)])
-modifyField mc match modifyFieldLines = Edit $ \spec ->
-  let doModify :: Field (WithComments Position) -> EditResult (Field (WithComments Position))
-      doModify (Field colonPos fname fls)
-        | match fname fls = Field colonPos fname <$> modifyFieldLines spec fls
-      doModify x = EditUnchanged x
+modifyField mc match modifyFieldLines =
+  -- Edit $ \spec ->
+  -- let doModify :: Field (WithComments Position) -> EditResult (Field (WithComments Position))
+  --     doModify (Field colonPos fname fls)
+  --       | match fname fls = Field colonPos fname <$> modifyFieldLines spec fls
+  --     doModify x = EditUnchanged x
 
-   in case mc of
-        ModifyFirst -> (mapFirstRest doModify undefined)
+  --  in case mc of
+  --       ModifyFirst -> (mapFirstRest doModify undefined)
 
-        -- ModifyLast -> mapLast doModify
+  --       -- ModifyLast -> mapLast doModify
+
+  Edit $ \spec relFields ->
+    let modifiedFields :: Relative [EditResult (Field (WithComments Position))]
+        modifiedFields = doModify <$> relFields
+
+        modifieldFields' :: EditResult [Relative (Field (WithComments Position))]
+    in  undefined
 
 -- modifySection
 --   :: ModifyConfig
