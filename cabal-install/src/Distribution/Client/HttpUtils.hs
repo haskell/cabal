@@ -541,7 +541,7 @@ curlTransport prog =
             , "--form"
             , "package=@" ++ path
             , "--write-out"
-            , "\n%{http_code}"
+            , "%{http_code}"
             , "--user-agent"
             , userAgent
             , "--silent"
@@ -567,7 +567,7 @@ curlTransport prog =
             , "--data-binary"
             , "@" ++ path
             , "--write-out"
-            , "\n%{http_code}"
+            , "%{http_code}"
             , "--user-agent"
             , userAgent
             , "--silent"
@@ -589,21 +589,21 @@ curlTransport prog =
       (code, err, _etag) <- parseResponse verbosity uri resp ""
       return (code, err)
 
-    -- on success these curl invocations produces an output like "200"
-    -- and on failure it has the server error response first
+    -- On success these curl invocations produce an output like "200" (or body ending in "200"),
+    -- and on failure it has the server error response first followed by the HTTP status code.
+    -- The --write-out option appends the 3-digit HTTP status code directly to
+    -- the response body (e.g. "<body>200"). We extract the last 3 characters as the status code.
     parseResponse :: Verbosity -> URI -> String -> String -> IO (Int, String, Maybe ETag)
     parseResponse verbosity uri resp headers =
-      let codeerr =
-            case reverse (lines resp) of
-              (codeLine : rerrLines) ->
-                case readMaybe (trim codeLine) of
-                  Just i ->
-                    let errstr = mkErrstr rerrLines
-                     in Just (i, errstr)
-                  Nothing -> Nothing
-              [] -> Nothing
+      let respLen = length resp
+          codeerr
+            | respLen >= 3
+            , let (body, codeStr) = splitAt (respLen - 3) resp
+            , Just code <- readMaybe codeStr =
+                Just (code, mkErrstr body)
+            | otherwise = Nothing
 
-          mkErrstr = unlines . reverse . dropWhile (all isSpace)
+          mkErrstr = unlines . reverse . dropWhile (all isSpace) . reverse . lines
 
           mb_etag :: Maybe ETag
           mb_etag =
