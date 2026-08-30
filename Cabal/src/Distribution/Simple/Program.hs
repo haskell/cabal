@@ -109,6 +109,7 @@ module Distribution.Simple.Program
   , ghcjsPkgProgram
   , jhcProgram
   , uhcProgram
+  , mhsProgram
   , gccProgram
   , gppProgram
   , arProgram
