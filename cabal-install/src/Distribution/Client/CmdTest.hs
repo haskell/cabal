@@ -48,8 +48,7 @@ import Distribution.Simple.Command
   , usageAlternatives
   )
 import Distribution.Simple.Flag
-  ( Flag
-  , pattern Flag
+  ( pattern Flag
   )
 import Distribution.Simple.Setup
   ( TestFlags (..)
