@@ -57,6 +57,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( dieWithException
   , notice
+  , ordNub
   , warn
   , wrapText
   )
@@ -143,13 +144,34 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
       -- Interpret the targets on the command line as test targets
       -- (as opposed to say build or haddock targets).
       targets <-
-        either (reportTargetProblems verbosity failWhenNoTestSuites) return $
+        either (reportTargetProblems verbosity) return $
           resolveTargetsFromSolver
             selectPackageTargets
             selectComponentTarget
             elaboratedPlan
             Nothing
             targetSelectors
+
+      let noTestsSelectors =
+            ordNub
+              ( filter
+                  (`notElem` uniqueTargetSelectors targets)
+                  targetSelectors
+              )
+
+      case noTestsSelectors of
+        [] -> return ()
+        _ -> case failWhenNoTestSuites of
+          Flag True ->
+            dieWithException verbosity $
+              ReportTargetProblems
+                ( unlines
+                    (map (renderTestTargetProblem . noTestsProblem) noTestsSelectors)
+                )
+          _ -> do
+            for_ noTestsSelectors $ \selector ->
+              notice verbosity (renderAllowedNoTestsProblem selector)
+            when (null (allTargetSelectors targets)) System.Exit.exitSuccess
 
       let elaboratedPlan' =
             pruneInstallPlanToTargets
@@ -171,8 +193,11 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
 -- or otherwise classifies the problem.
 --
--- For the @test@ command we select all buildable test-suites,
--- or fail if there are no test-suites or no buildable test-suites.
+-- For the @test@ command we select all buildable test-suites.
+-- A target that contains no test-suites does not select anything: it is
+-- skipped with a notice instead of aborting the command (see #11858), so
+-- we only report a problem if there are test-suites but none are buildable,
+-- or if there is nothing to select a test-suite from at all.
 selectPackageTargets
   :: TargetSelector
   -> [AvailableTarget k]
@@ -184,12 +209,12 @@ selectPackageTargets targetSelector targets
   -- If there are test-suites but none are buildable then we report those
   | not (null targetsTests) =
       Left (TargetProblemNoneEnabled targetSelector targetsTests)
-  -- If there are no test-suite but some other targets then we report that
-  | not (null targets) =
-      Left (noTestsProblem targetSelector)
   -- If there are no targets at all then we report that
-  | otherwise =
+  | null targets =
       Left (TargetProblemNoTargets targetSelector)
+  -- If there are no test-suites then there is nothing to select
+  | otherwise =
+      Right []
   where
     targetsTestsBuildable =
       selectBuildableTargets
@@ -255,22 +280,13 @@ isSubComponentProblem pkgid name subcomponent =
   CustomTargetProblem $
     TargetProblemIsSubComponent pkgid name subcomponent
 
-reportTargetProblems :: Verbosity -> Flag Bool -> [TestTargetProblem] -> IO a
-reportTargetProblems verbosity failWhenNoTestSuites problems =
-  case (failWhenNoTestSuites, problems) of
-    (Flag True, [CustomTargetProblem (TargetProblemNoTests _)]) ->
-      dieWithException verbosity $ ReportTargetProblems problemsMessage
-    (_, [CustomTargetProblem (TargetProblemNoTests selector)]) -> do
-      notice verbosity (renderAllowedNoTestsProblem selector)
-      System.Exit.exitSuccess
-    (_, _) -> dieWithException verbosity $ ReportTargetProblems problemsMessage
-  where
-    problemsMessage = unlines . map renderTestTargetProblem $ problems
+reportTargetProblems :: Verbosity -> [TestTargetProblem] -> IO a
+reportTargetProblems verbosity =
+  dieWithException verbosity
+    . ReportTargetProblems
+    . unlines
+    . map renderTestTargetProblem
 
--- | Unless @--test-fail-when-no-test-suites@ flag is passed, we don't
---   @die@ when the target problem is 'TargetProblemNoTests'.
---   Instead, we display a notice saying that no tests have run and
---   indicate how this behaviour was enabled.
 renderAllowedNoTestsProblem :: TargetSelector -> String
 renderAllowedNoTestsProblem selector =
   "No tests to run for " ++ renderTargetSelector selector
