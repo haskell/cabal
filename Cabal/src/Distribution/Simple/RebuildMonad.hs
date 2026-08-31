@@ -21,6 +21,7 @@ module Distribution.Simple.RebuildMonad
     -- * Setting up file monitoring
   , monitorFiles
   , MonitorFilePath
+  , MonitorFilePaths
   , monitorFile
   , monitorFileHashed
   , monitorNonExistentFile
@@ -60,16 +61,25 @@ import Distribution.Simple.Utils (debug)
 
 import Control.Concurrent.MVar (MVar, modifyMVar, newMVar)
 import Control.Monad
-import Control.Monad.Writer as Writer
+import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.Trans.Writer.CPS (WriterT, runWriterT)
+import Control.Monad.Writer (MonadWriter)
+import qualified Control.Monad.Writer as Writer
 import qualified Data.Map.Strict as Map
+import Data.Monoid (Dual (..))
 import System.Directory
 import System.FilePath
+
+-- | We use 'Dual' internally to avoid the performance problems associated with
+-- appending to linked lists (as the more obvious @WriterT [MonitorFilePath]@
+-- type would cause).
+type MonitorFilePaths = Dual [MonitorFilePath]
 
 -- | A monad layered on top of 'IO' to help with re-running actions when the
 -- input files and values they depend on change. The crucial operations are
 -- 'rerunIfChanged'' and 'monitorFiles'.
 class
-  (Monad m, MonadIO m, MonadWriter [MonitorFilePath] m) =>
+  (Monad m, MonadIO m, MonadWriter MonitorFilePaths m) =>
   MonadRebuild m
   where
   -- | Lift an 'IO' action into a 'MonadRebuild' context, such that other
@@ -102,12 +112,17 @@ class
     :: ((forall a. m a -> IO (a, [MonitorFilePath])) -> IO (b, [MonitorFilePath]))
     -> m b
 
--- | Minimal instance for a simple @WriterT [MonitorFilePath] IO@.
-instance MonadRebuild (WriterT [MonitorFilePath] IO) where
+-- | Minimal instance for a simple @WriterT MonitorFilePaths IO@.
+instance MonadRebuild (WriterT MonitorFilePaths IO) where
   withRunRebuildInIO inner = do
-    (result, files) <- liftIO $ inner runWriterT
-    Writer.tell files
+    (result, files) <- liftIO $ inner runRebuildT
+    Writer.tell (Dual files)
     return result
+    where
+      runRebuildT :: Monad m => WriterT MonitorFilePaths m a -> m (a, [MonitorFilePath])
+      runRebuildT action = do
+        (result, Dual files) <- runWriterT action
+        return (result, files)
 
 -- | Use this within the body action of 'rerunIfChanged' to declare that the
 -- action depends on the given files. This can be based on what the action
@@ -118,7 +133,7 @@ instance MonadRebuild (WriterT [MonitorFilePath] IO) where
 -- passed in to 'runRebuild'.
 monitorFiles :: MonadRebuild m => [MonitorFilePath] -> m ()
 monitorFiles filespecs =
-  Writer.tell filespecs
+  Writer.tell (Dual filespecs)
 
 -- | This captures the standard use pattern for a 'FileMonitor': given a
 -- monitor, an action and the input value the action depends on, either
