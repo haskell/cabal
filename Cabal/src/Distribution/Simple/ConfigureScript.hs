@@ -22,7 +22,6 @@ import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Errors
-import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup.Common
@@ -59,7 +58,9 @@ runConfigureScript verbHandles cfg flags programDb hp = do
   dist_dir <- findDistPrefOrDefault $ setupDistPref commonCfg
   let build_dir = dist_dir </> makeRelativePathEx "build"
       mbWorkDir = flagToMaybe $ setupWorkingDir commonCfg
-      configureScriptPath = packageRoot commonCfg </> "configure"
+      configureScriptPath =
+        interpretSymbolicPath mbWorkDir $
+          makeRelativePathEx @Pkg "configure"
   confExists <- doesFileExist configureScriptPath
   unless confExists $
     dieWithException verbosity (ConfigureScriptNotFound configureScriptPath)

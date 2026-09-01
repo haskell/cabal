@@ -1371,12 +1371,15 @@ finalCheckPackage
     do
       let common = configCommonFlags cfg
           verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-          cabalFileDir = packageRoot common
+          pkgRoot =
+            interpretSymbolicPath
+              (flagToMaybe $ setupWorkingDir common)
+              (sameDirectory :: SymbolicPath Pkg (Dir Pkg))
 
       checkCompilerProblems verbosity comp pkg_descr enabled
       checkPackageProblems
         verbosity
-        cabalFileDir
+        pkgRoot
         g_pkg_descr
         (updatePackageDescription hookedBuildInfo pkg_descr)
       -- NB: we apply the HookedBuildInfo to check it is valid,
@@ -2777,14 +2780,14 @@ checkForeignDeps pkg lbi verbosity =
           <$> listDirectory (i (buildDir lbi) </> dir) `catchIO` (\_ -> return [])
       srcHeaders <- for relIncDirs $ \dir ->
         fmap (dir </>) . filter isHeader
-          <$> listDirectory (baseDir </> dir) `catchIO` (\_ -> return [])
+          <$> listDirectory (pkgRoot </> dir) `catchIO` (\_ -> return [])
       let commonHeaders = concat genHeaders `intersect` concat srcHeaders
       for_ commonHeaders $ \hdr -> do
         warn verbosity $
           "Duplicate header found in "
             ++ (getSymbolicPath (buildDir lbi) </> hdr)
             ++ " and "
-            ++ (baseDir </> hdr)
+            ++ (pkgRoot </> hdr)
             ++ ". Which one the C compiler will use is unspecified."
 
     findOffendingHdr =
@@ -2820,12 +2823,10 @@ checkForeignDeps pkg lbi verbosity =
 
     libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
-    common = configCommonFlags $ configFlags lbi
-    baseDir = packageRoot common
-
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPathLBI lbi
     mbWorkDir = mbWorkDirLBI lbi
+    pkgRoot = i (sameDirectory :: SymbolicPath Pkg (Dir Pkg))
 
     commonCppArgs =
       platformDefines lbi
@@ -2839,15 +2840,11 @@ checkForeignDeps pkg lbi verbosity =
            | dir <- mapMaybe symbolicPathRelative_maybe $ ordNub (collectField includeDirs)
            ]
         -- we might also reference headers from the
-        -- packages directory.
-        ++ [ "-I" ++ baseDir </> getSymbolicPath dir
-           | dir <- mapMaybe symbolicPathRelative_maybe $ ordNub (collectField includeDirs)
+        -- package directory.
+        ++ [ "-I" ++ i dir
+           | dir <- ordNub (collectField includeDirs)
            ]
-        ++ [ "-I" ++ dir
-           | dir <- ordNub (collectField (fmap getSymbolicPath . includeDirs))
-           , isAbsolute dir
-           ]
-        ++ ["-I" ++ baseDir]
+        ++ ["-I" ++ pkgRoot]
         ++ collectField cppOptions
         ++ collectField ccOptions
         ++ [ "-I" ++ dir
@@ -2937,7 +2934,7 @@ checkForeignDeps pkg lbi verbosity =
 checkPackageProblems
   :: Verbosity
   -> FilePath
-  -- ^ Path to the @.cabal@ file's directory
+  -- ^ Path to the package root
   -> GenericPackageDescription
   -> PackageDescription
   -> IO ()

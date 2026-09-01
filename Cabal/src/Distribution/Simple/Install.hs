@@ -41,7 +41,6 @@ import Distribution.Simple.Compiler
   )
 import Distribution.Simple.Glob (matchDirFileGlob)
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Setup.Config
 import Distribution.Simple.Setup.Copy
   ( CopyFlags (..)
   )
@@ -362,7 +361,8 @@ installIncludeFiles verbosity libBi lbi buildPref destIncludeDir = do
           destDir = takeDirectory destFile
     ]
   where
-    baseDir lbi' = packageRoot $ configCommonFlags $ configFlags lbi'
+    baseDir lbi' = interpretSymbolicPathLBI lbi' $
+                   ( sameDirectory :: SymbolicPath Pkg ( Dir Pkg ) )
     findInc fs f = go fs
       where
         go [] = dieWithException verbosity $ CantFindIncludeFile f fs
