@@ -33,7 +33,11 @@ import Distribution.Types.UnqualComponentName
 
 import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.Simple.BuildPaths (haddockPath, haddockPref)
+import Distribution.Simple.BuildPaths
+  ( haddockPath
+  , haddockPref
+  , includeSearchDirs
+  )
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.Compiler
   ( CompilerFlavor (..)
@@ -54,6 +58,7 @@ import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , dieWithException
+  , findFileCwd
   , info
   , installDirectoryContents
   , installOrdinaryFile
@@ -239,7 +244,7 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
 
   -- install include files for all compilers - they may be needed to compile
   -- haskell files (using the CPP extension)
-  installIncludeFiles verbosity (libBuildInfo lib) lbi buildPref incPref
+  installIncludeFiles verbosity (libBuildInfo lib) lbi clbi incPref
 
   case compilerFlavor (compiler lbi) of
     GHC -> GHC.installLib verbosity lbi libPref dynlibPref bytecodeLibPref buildPref pkg_descr lib clbi
@@ -255,7 +260,7 @@ copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
       buildPref = interpretSymbolicPathLBI lbi $ componentBuildDir lbi clbi
 
   noticeNoWrap verbosity ("Installing foreign library " ++ unUnqualComponentName (foreignLibName flib) ++ " in " ++ flibPref)
-  installIncludeFiles verbosity (foreignLibBuildInfo flib) lbi buildPref incPref
+  installIncludeFiles verbosity (foreignLibBuildInfo flib) lbi clbi incPref
 
   case compilerFlavor (compiler lbi) of
     GHC -> GHC.installFLib verbosity lbi flibPref buildPref pkg_descr flib
@@ -341,32 +346,31 @@ installFileGlob verbosity spec_version mbWorkDir (srcDir, destDir) glob = do
     installOrdinaryFile verbosity src dst
 
 -- | Install the files listed in install-includes for a library
-installIncludeFiles :: Verbosity -> BuildInfo -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
-installIncludeFiles verbosity libBi lbi buildPref destIncludeDir = do
-  let relincdirs = sameDirectory : mapMaybe symbolicPathRelative_maybe (includeDirs libBi)
-      incdirs =
-        [ root </> getSymbolicPath dir
-        | -- NB: both baseDir and buildPref are already interpreted,
-        -- so we don't need to interpret these paths in the call to findInc.
-        dir <- relincdirs
-        , root <- [baseDir lbi, buildPref]
-        ]
-  incs <- traverse (findInc incdirs . getSymbolicPath) (installIncludes libBi)
+installIncludeFiles
+  :: Verbosity
+  -> BuildInfo
+  -> LocalBuildInfo
+  -> ComponentLocalBuildInfo
+  -> FilePath
+  -- ^ absolute destination include directory
+  -> IO ()
+installIncludeFiles verbosity libBi lbi clbi destIncludeDir = do
+  incs <-
+    traverse
+      (\f -> (,) f <$> findFileCwd verbosity FindIncludeFile mbWorkDir incdirs f)
+      (installIncludes libBi)
   sequence_
     [ do
       createDirectoryIfMissingVerbose verbosity True destDir
-      installOrdinaryFile verbosity srcFile destFile
+      installOrdinaryFile verbosity (i srcFile) destFile
     | (relFile, srcFile) <- incs
-    , let destFile = destIncludeDir </> relFile
+    , let destFile = destIncludeDir </> getSymbolicPath relFile
           destDir = takeDirectory destFile
     ]
   where
-    baseDir lbi' = interpretSymbolicPathLBI lbi' $
-                   ( sameDirectory :: SymbolicPath Pkg ( Dir Pkg ) )
-    findInc fs f = go fs
-      where
-        go [] = dieWithException verbosity $ CantFindIncludeFile f fs
-        go (d : ds) = do
-          let path = d </> f
-          b <- doesFileExist path
-          if b then return (f, path) else go ds
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    i = interpretSymbolicPathLBI lbi
+    mbWorkDir = mbWorkDirLBI lbi
+
+    incdirs :: [SymbolicPath Pkg (Dir Include)]
+    incdirs = includeSearchDirs lbi (Just clbi) (includeDirs libBi)

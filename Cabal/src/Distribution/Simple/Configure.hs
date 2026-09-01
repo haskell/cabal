@@ -90,6 +90,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Check hiding (doesFileExist, listDirectory)
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.PrettyPrint
+import Distribution.Simple.BuildPaths (includeSearchDirs)
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.BuildWay
@@ -2835,16 +2836,9 @@ checkForeignDeps pkg lbi verbosity =
         -- PER-component (c.f. the "I'm Feeling Lucky"; we
         -- should NOT be glomming everything together.)
         ++ ["-I" ++ i (buildDir lbi </> makeRelativePathEx "autogen")]
-        -- `configure' may generate headers in the build directory
-        ++ [ "-I" ++ i (buildDir lbi </> unsafeCoerceSymbolicPath dir)
-           | dir <- mapMaybe symbolicPathRelative_maybe $ ordNub (collectField includeDirs)
-           ]
-        -- we might also reference headers from the
-        -- package directory.
         ++ [ "-I" ++ i dir
-           | dir <- ordNub (collectField includeDirs)
+           | dir <- includeSearchDirs lbi Nothing $ ordNub (collectField includeDirs)
            ]
-        ++ ["-I" ++ pkgRoot]
         ++ collectField cppOptions
         ++ collectField ccOptions
         ++ [ "-I" ++ dir
