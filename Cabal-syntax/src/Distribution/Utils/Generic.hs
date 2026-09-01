@@ -211,7 +211,7 @@ renameFileWithRetry srcPath targetPath =
       -- UnsupportedOperation means EXDEV from rename(2) with source and target
       -- on different devices. In such case we resort to copying instead of renaming.
       | ioeGetErrorType exception == UnsupportedOperation =
-          copyFile srcPath targetPath `Exception.catch` retryCopy (retriesLeft - 1)
+          retryCopy retriesLeft exception
       | otherwise = do
           -- Wait 1ms between retries: maybe device is busy, maybe antivirus locked srcPath.
           threadDelay 1000
@@ -222,7 +222,7 @@ renameFileWithRetry srcPath targetPath =
     retryCopy retriesLeft _ = do
       -- Wait 1ms between retries: maybe device is busy, maybe antivirus locked srcPath.
       threadDelay 1000
-      copyFile srcPath targetPath `Exception.catch` retryCopy retriesLeft
+      copyFile srcPath targetPath `Exception.catch` retryCopy (retriesLeft - 1)
       -- It's nice to clean up, but not critical, so ignoring any exceptions.
       removeFile srcPath `Exception.catch` (\(_ :: IOException) -> pure ())
 
