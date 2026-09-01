@@ -24,7 +24,6 @@ module Distribution.Simple.LocalBuildInfo
 
     -- * Convenience accessors
   , buildDir
-  , packageRoot
   , progPrefix
   , progSuffix
   , interpretSymbolicPathLBI
