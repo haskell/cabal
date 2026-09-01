@@ -236,12 +236,12 @@ parseSection programDb (MkSection (Name pos name) args secFields)
   | name == "program-options" = do
       verifyNullSubsections
       verifyNullSectionArgs
-      opts' <- lift $ parseProgramArgs programDb fields
+      opts' <- lift $ parseProgramArgs programDb True fields
       stateConfig . L.projectConfigLocalPackages . L.packageConfigProgramArgs %= (opts' <>)
   | name == "program-locations" = do
       verifyNullSubsections
       verifyNullSectionArgs
-      paths' <- lift $ parseProgramPaths programDb fields
+      paths' <- lift $ parseProgramPaths programDb True fields
       stateConfig . L.projectConfigLocalPackages . L.packageConfigProgramPaths %= (paths' <>)
   | name == "repository" = do
       verifyNullSubsections
@@ -277,8 +277,8 @@ parseSection programDb (MkSection (Name pos name) args secFields)
     verifyNullSectionArgs = unless (null args) (lift $ parseFailure pos $ "The section '" <> show name <> "' takes no arguments")
     parsePackageConfig = do
       packageCfg <- lift $ parseFieldGrammar cabalSpec fields (packageConfigFieldGrammar programNames)
-      args' <- lift $ parseProgramArgs programDb fields
-      paths <- lift $ parseProgramPaths programDb fields
+      args' <- lift $ parseProgramArgs programDb False fields
+      paths <- lift $ parseProgramPaths programDb False fields
       return packageCfg{packageConfigProgramPaths = paths, packageConfigProgramArgs = args'}
 
 stanzas :: Set BS.ByteString
@@ -344,24 +344,28 @@ parsePackageName pos args = case args of
       P.choice [P.try (P.char '*' >> return AllPackages), SpecificPackage <$> parsec]
 
 -- | Parse fields of a program-options stanza.
-parseProgramArgs :: ProgramDb -> Fields Position -> ParseResult src (MapMappend String [String])
-parseProgramArgs programDb fields = foldM parseField mempty (filter hasOptionsSuffix $ Map.toList fields)
+parseProgramArgs :: ProgramDb -> Bool -> Fields Position -> ParseResult src (MapMappend String [String])
+parseProgramArgs programDb warnUnknown fields = foldM parseField mempty (filter hasOptionsSuffix $ Map.toList fields)
   where
     parseField programArgs (fieldName, fieldLines) = do
       case readProgramName "-options" programDb fieldName of
-        Nothing -> warnUnknownFields fieldName fieldLines >> return programArgs
+        Nothing -> do
+          when warnUnknown $ warnUnknownFields fieldName fieldLines
+          return programArgs
         Just program -> do
           args <- parseProgramArgsField $ reverse fieldLines
           return $ programArgs <> MapMappend (Map.singleton program args)
     hasOptionsSuffix (fieldName, _) = BS.isSuffixOf "-options" fieldName
 
 -- | Parse fields of a program-locations stanza.
-parseProgramPaths :: ProgramDb -> Fields Position -> ParseResult src (MapLast String FilePath)
-parseProgramPaths programDb fields = foldM parseField mempty (filter hasLocationSuffix $ Map.toList fields)
+parseProgramPaths :: ProgramDb -> Bool -> Fields Position -> ParseResult src (MapLast String FilePath)
+parseProgramPaths programDb warnUnknown fields = foldM parseField mempty (filter hasLocationSuffix $ Map.toList fields)
   where
     parseField paths (fieldName, fieldLines) = do
       case readProgramName "-location" programDb fieldName of
-        Nothing -> warnUnknownFields fieldName fieldLines >> return paths
+        Nothing -> do
+          when warnUnknown $ warnUnknownFields fieldName fieldLines
+          return paths
         Just program -> do
           case fieldLines of
             (MkNamelessField pos lines') : _ -> do
