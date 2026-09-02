@@ -30,15 +30,13 @@ import Distribution.Simple.Compiler (Compiler (..))
 import Distribution.Simple.Utils
   ( debug
   , info
+  , withFileLock
   , withTempDirectory
   )
 
-import Control.Exception
 import qualified Data.Set as Set
-import GHC.IO.Handle.Lock (LockMode (ExclusiveLock), hLock, hTryLock, hUnlock)
 import System.Directory
 import System.FilePath
-import System.IO (IOMode (ReadWriteMode), hClose, openFile)
 
 -- $concurrency
 --
@@ -240,20 +238,10 @@ withIncomingUnitIdLock
   compiler
   unitid
   action =
-    bracket takeLock releaseLock (\_hnd -> action)
+    withFileLock verbosity (storeIncomingLock compiler unitid) waitMsg action
     where
       compid = compilerId compiler
-      takeLock = do
-        h <- openFile (storeIncomingLock compiler unitid) ReadWriteMode
-        -- First try non-blocking, but if we would have to wait then
-        -- log an explanation and do it again in blocking mode.
-        gotlock <- hTryLock h ExclusiveLock
-        unless gotlock $ do
-          info verbosity $
-            "Waiting for file lock on store entry "
-              ++ prettyShow compid
-              </> prettyShow unitid
-          hLock h ExclusiveLock
-        return h
-
-      releaseLock h = hUnlock h >> hClose h
+      waitMsg =
+        "Waiting for file lock on store entry "
+          ++ prettyShow compid
+          </> prettyShow unitid
