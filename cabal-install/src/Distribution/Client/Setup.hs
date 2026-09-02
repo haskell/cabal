@@ -2861,6 +2861,7 @@ data UploadFlags = UploadFlags
   { uploadCandidate :: Flag IsCandidate
   , uploadDoc :: Flag Bool
   , uploadToken :: Flag Token
+  , uploadTokenCmd :: Flag [String]
   , uploadUsername :: Flag Username
   , uploadPassword :: Flag Password
   , uploadPasswordCmd :: Flag [String]
@@ -2876,6 +2877,7 @@ defaultUploadFlags =
     { uploadCandidate = toFlag IsCandidate
     , uploadDoc = toFlag False
     , uploadToken = mempty
+    , uploadTokenCmd = mempty
     , uploadUsername = mempty
     , uploadPassword = mempty
     , uploadPasswordCmd = mempty
@@ -2892,7 +2894,7 @@ uploadCommand =
     , commandNotes = Just $ \_ ->
         "You can store your Hackage login in the ~/.config/cabal/config file\n"
           ++ "(the %APPDATA%\\cabal\\config file on Windows)\n"
-          ++ relevantConfigValuesText ["token", "username", "password", "password-command"]
+          ++ relevantConfigValuesText ["token", "token-command", "username", "password", "password-command"]
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n"
     , commandDefaultFlags = defaultUploadFlags
@@ -2928,6 +2930,20 @@ uploadCommand =
                 "TOKEN"
                 (toFlag . Token)
                 (flagToList . fmap unToken)
+            )
+        , option
+            ['T']
+            ["token-command"]
+            "Command to get Hackage authentication token."
+            uploadTokenCmd
+            (\v flags -> flags{uploadTokenCmd = v})
+            ( reqArg
+                "COMMAND"
+                ( readP_to_E
+                    ("Cannot parse command: " ++)
+                    (Flag <$> parseSpaceList parseTokenQ)
+                )
+                (flagElim [] (pure . unwords . fmap show))
             )
         , option
             ['u']
