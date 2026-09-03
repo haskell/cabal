@@ -72,7 +72,7 @@ showCabalSpecVersion CabalSpecV1_2 = "1.2"
 showCabalSpecVersion CabalSpecV1_0 = "1.0"
 
 cabalSpecLatest :: CabalSpecVersion
-cabalSpecLatest = CabalSpecV3_16
+cabalSpecLatest = CabalSpecV3_18
 
 -- | Parse 'CabalSpecVersion' from version digits.
 --
