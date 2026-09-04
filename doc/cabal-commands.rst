@@ -267,7 +267,7 @@ cabal preferences. It is very useful when you are e.g. first configuring
 
   .. option:: --config-file=PATH
 
-      Specify config file path. (default: ``~/.cabal/config``).
+      Specify config file path. (default: ``~/.config/cabal/config``).
 
   .. option:: -f, --force
 
@@ -738,13 +738,15 @@ installed binaries, and so on.
     $ cabal path
     compiler-flavour: ghc
     compiler-id: ghc-9.8.2
+    compiler-abi-tag: ghc-9.8.2
     compiler-path: /home/alice/.ghcup/bin/ghc
-    cache-home: /home/alice/.cabal
-    remote-repo-cache: /home/alice/.cabal/packages
-    logs-dir: /home/alice/.cabal/logs
-    store-dir: /home/alice/.cabal/store
-    config-file: /home/alice/.cabal/config
-    installdir: /home/alice/.cabal/bin
+    compiler-store-path: /home/alice/.local/state/cabal/store/ghc-9.8.2
+    cache-home: /home/alice/.cache/cabal
+    remote-repo-cache: /home/alice/.cache/cabal/packages
+    logs-dir: /home/alice/.local/state/cabal/logs
+    store-dir: /home/alice/.local/state/cabal/store
+    config-file: /home/alice/.config/cabal/config
+    installdir: /home/alice/.local/bin
 
 Or using the json output:
 
@@ -755,18 +757,20 @@ Or using the json output:
 .. code-block:: json
 
     {
-      "cabal-version": "3.13.0.0",
+      "cabal-version": "3.17.0.0",
       "compiler": {
         "flavour": "ghc",
         "id": "ghc-9.8.2",
-        "path": "/home/alice/.ghcup/bin/ghc"
+        "abi-tag": "ghc-9.8.2",
+        "path": "/home/alice/.ghcup/bin/ghc",
+        "store-path": "/home/alice/.local/state/cabal/store/ghc-9.8.2"
       },
-      "cache-home": "/home/alice/.cabal",
-      "remote-repo-cache": "/home/alice/.cabal/packages",
-      "logs-dir": "/home/alice/.cabal/logs",
-      "store-dir": "/home/alice/.cabal/store",
-      "config-file": "/home/alice/.cabal/config",
-      "installdir": "/home/alice/.cabal/bin"
+      "cache-home": "/home/alice/.cache/cabal",
+      "remote-repo-cache": "/home/alice/.cache/cabal/packages",
+      "logs-dir": "/home/alice/.local/state/cabal/logs",
+      "store-dir": "/home/alice/.local/state/cabal/store",
+      "config-file": "/home/alice/.config/cabal/config",
+      "installdir": "/home/alice/.local/bin"
     }
 
 If ``cabal path`` is passed a single option naming a path, then that
@@ -775,7 +779,7 @@ path will be printed *without* any label:
 ::
 
    $ cabal path --installdir
-   /home/alice/.cabal/bin
+   /home/alice/.local/bin
 
 While this interface is intended to be used for scripting, it is an experimental command.
 Scripting example:
