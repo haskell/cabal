@@ -32,6 +32,7 @@ import System.Random
 
 import Test.Tasty
 import Test.Tasty.ExpectedFailure
+import Test.Tasty.HUnit (assertEqual, testCase)
 import Test.Tasty.QuickCheck
 import UnitTests.Distribution.Client.ArbitraryInstances
 
@@ -65,6 +66,12 @@ tests mtimeChange =
           [ testProperty "check VCS test framework" prop_framework_git
           , testProperty "cloneSourceRepo" prop_cloneRepo_git
           , testProperty "syncSourceRepos" prop_syncRepos_git
+          , testCase "syncSourceRepos, shallow, distinct tags" $
+              unit_syncRepos_git fileUri NotShared ["tag-one", "tag-two"]
+          , testCase "syncSourceRepos, shallow, repeated tag" $
+              unit_syncRepos_git fileUri NotShared ["tag-two", "tag-two"]
+          , testCase "syncSourceRepos, not shallow, distinct tags" $
+              unit_syncRepos_git id Shared ["tag-one", "tag-two"]
           ]
     , --
       ignoreTestBecause "for the moment they're not yet working" $
@@ -412,6 +419,79 @@ checkSyncRepos
             srcRepoPath
             destRepoPath
             (mkStdGen seed)
+
+-- | Whether the checkouts after the first one are expected to borrow the first
+-- one's object store through @git clone --reference@.
+data ObjectSharing = Shared | NotShared
+  deriving (Eq, Show)
+
+-- | Sync several checkouts of one repository, as a @cabal.project@ with more
+-- than one @source-repository-package@ stanza for the same location does.
+--
+-- 'prop_syncRepos_git' cannot cover this: it gives every stanza its own
+-- repository, so the sharing between checkouts of one repository never comes
+-- into play. How the location is spelled decides whether it can: over a URI
+-- git honours @--depth@ and the checkouts are shallow, and git rejects a
+-- shallow repository as the argument of @git clone --reference@ (#12296); for
+-- a plain local path git ignores @--depth@, so the first checkout is a
+-- complete repository and can be shared.
+unit_syncRepos_git
+  :: (FilePath -> String)
+  -- ^ How to spell the repository location.
+  -> ObjectSharing
+  -- ^ What that spelling implies for the later checkouts.
+  -> [TagName]
+  -> IO ()
+unit_syncRepos_git mkLocation expectedSharing tags =
+  testSetup vcsGit vcsTestDriverGit recipe $
+    \VCSTestDriver{vcsVCS, vcsRepoRoot, vcsIgnoreFiles} tmpdir repoState -> do
+      let destPaths = [tmpdir </> ("dest" ++ show i) | i <- [1 :: Int ..]]
+          repoAt tag =
+            SourceRepositoryPackage
+              { srpType = vcsRepoType vcsVCS
+              , srpLocation = mkLocation vcsRepoRoot
+              , srpTag = Just tag
+              , srpBranch = Nothing
+              , srpSubdir = Proxy
+              , srpCommand = []
+              }
+          syncTargets = zip tags destPaths
+      _ <-
+        execRebuild "root-unused" $
+          syncSourceRepos verbosity vcsVCS [(repoAt tag, dest) | (tag, dest) <- syncTargets]
+      sequence_
+        [ checkExpectedWorkingState vcsIgnoreFiles dest (allTags repoState Map.! tag)
+        | (tag, dest) <- syncTargets
+        ]
+      sequence_
+        [ do
+          borrows <- doesFileExist (dest </> ".git" </> "objects" </> "info" </> "alternates")
+          assertEqual
+            ("object sharing of " ++ dest)
+            expectedSharing
+            (if borrows then Shared else NotShared)
+        | dest <- drop 1 (map snd syncTargets)
+        ]
+  where
+    verbosity = mkVerbosity defaultVerbosityHandles silent
+
+    recipe :: RepoRecipe 'SubmodulesNotSupported
+    recipe =
+      WithoutBranchingSupport $
+        NonBranchingRepoRecipe
+          [ TaggedCommits "tag-one" [Commit [Left (FileUpdate ("file" </> "A") "one")]]
+          , TaggedCommits "tag-two" [Commit [Left (FileUpdate ("file" </> "B") "two")]]
+          ]
+
+-- | Git treats a plain local path and a @file://@ URI differently: the former
+-- takes a shortcut that ignores @--depth@.
+fileUri :: FilePath -> String
+fileUri path = "file://" ++ root ++ map toPosixSeparator path
+  where
+    root = case buildOS of
+      Windows -> "/"
+      _ -> ""
+    toPosixSeparator c = if isPathSeparator c then '/' else c
 
 pickSyncTargetSets
   :: RepoType
