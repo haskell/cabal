@@ -77,6 +77,7 @@ import qualified Control.Monad.Trans.State.Strict as State
 
 import Control.Exception (ErrorCall (..), catch, evaluate)
 
+import GHC.Fingerprint
 import GHC.Generics
 
 import qualified Data.ByteString as BS
@@ -390,6 +391,8 @@ instance Structured Int where structure = nominalStructure
 instance Structured Integer where structure = nominalStructure
 
 instance Structured Data.Word.Word where structure = nominalStructure
+
+instance Structured Fingerprint
 
 instance Structured Int8 where structure = nominalStructure
 instance Structured Int16 where structure = nominalStructure
