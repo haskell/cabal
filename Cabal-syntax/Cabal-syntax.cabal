@@ -86,7 +86,6 @@ library
     Distribution.FieldGrammar.Newtypes
     Distribution.FieldGrammar.Parsec
     Distribution.FieldGrammar.Pretty
-    Distribution.FieldGrammar.Format
     Distribution.Fields
     Distribution.Fields.ConfVar
     Distribution.Fields.Field
@@ -106,7 +105,6 @@ library
     Distribution.PackageDescription.Configuration
     Distribution.PackageDescription.FieldGrammar
     Distribution.PackageDescription.Parsec
-    Distribution.PackageDescription.Format
     Distribution.PackageDescription.PrettyPrint
     Distribution.PackageDescription.Quirks
     Distribution.PackageDescription.Utils

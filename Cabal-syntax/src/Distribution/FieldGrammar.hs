@@ -16,8 +16,6 @@ module Distribution.FieldGrammar
   , PrettyFieldGrammar
   , PrettyFieldGrammar'
   , prettyFieldGrammar
-  , FormatterFieldGrammar
-  , formatFieldGrammar
 
     -- * Auxiliary
   , (^^^)
@@ -39,7 +37,6 @@ import Prelude ()
 import qualified Data.Map.Strict as Map
 
 import Distribution.FieldGrammar.Class
-import Distribution.FieldGrammar.Format
 import Distribution.FieldGrammar.Newtypes
 import Distribution.FieldGrammar.Parsec
 import Distribution.FieldGrammar.Pretty
