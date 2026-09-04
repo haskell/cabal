@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE DataKinds #-}
 module Distribution.Described (
     Described (..),
     describeDoc,
@@ -31,6 +32,7 @@ module Distribution.Described (
     csUpper,
     csNotSpace,
     csNotSpaceOrComma,
+    csNotSpaceOrParen,
     -- * tasty
     testDescribed,
     ) where
@@ -77,6 +79,7 @@ import Distribution.Types.Dependency               (Dependency)
 import Distribution.Types.ExecutableScope          (ExecutableScope)
 import Distribution.Types.ExeDependency            (ExeDependency)
 import Distribution.Types.ExposedModule            (ExposedModule)
+import Distribution.Types.ExtraSource              (ExtraSource)
 import Distribution.Types.Flag                     (FlagAssignment, FlagName)
 import Distribution.Types.ForeignLib               (LibVersionInfo)
 import Distribution.Types.ForeignLibOption         (ForeignLibOption)
@@ -96,7 +99,7 @@ import Distribution.Types.SourceRepo               (RepoType)
 import Distribution.Types.TestType                 (TestType)
 import Distribution.Types.UnitId                   (UnitId)
 import Distribution.Types.UnqualComponentName      (UnqualComponentName)
-import Distribution.Utils.Path                     (SymbolicPath, RelativePath)
+import Distribution.Utils.Path                     (SymbolicPath, RelativePath, FileOrDir(..), Pkg)
 import Distribution.Verbosity                      (VerbosityFlags)
 import Distribution.Version                        (Version, VersionRange)
 import Language.Haskell.Extension                  (Extension, Language, knownLanguages)
@@ -202,6 +205,12 @@ csNotSpace = CS.difference CS.universe $ CS.singleton ' '
 
 csNotSpaceOrComma :: CS.CharSet
 csNotSpaceOrComma = CS.difference csNotSpace $ CS.singleton ','
+
+-- | Characters an unquoted per-file option on an extra source may contain.
+-- Keep in sync with @parsecExtraSourceOpt@ / @showExtraSourceOpt@ in
+-- "Distribution.Types.ExtraSource".
+csNotSpaceOrParen :: CS.CharSet
+csNotSpaceOrParen = CS.difference csNotSpace $ CS.fromList ")\""
 
 -------------------------------------------------------------------------------
 -- Special
@@ -402,6 +411,14 @@ instance Described ExposedModule where
 
 instance Described Extension where
     describe _ = RETodo
+
+instance Described ExtraSource where
+    describe _ = REAppend
+        [ describe (Proxy :: Proxy (SymbolicPath Pkg File))
+        , REOpt (RESpaces1 <> reChar '(' <> reSpacedList opt <> reChar ')')
+        ]
+      where
+        opt = REUnion [reHsString, reMunch1CS csNotSpaceOrParen]
 
 instance Described FlagAssignment where
     describe _ = REMunch RESpaces1 $

@@ -23,6 +23,7 @@ import Distribution.Simple.Setup                   (HaddockTarget (..), TestShow
 import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
+import Distribution.Types.ExtraSource
 import Distribution.Types.Flag                     (FlagAssignment, FlagName, mkFlagAssignment, mkFlagName, unFlagAssignment)
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.LibraryName
@@ -38,6 +39,7 @@ import Distribution.Types.SourceRepo
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.VersionRange.Internal
 import Distribution.Utils.NubList
+import Distribution.Utils.Path                     (makeSymbolicPath)
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -144,6 +146,21 @@ instance Arbitrary VersionIntervals where
 
 instance Arbitrary Bound where
   arbitrary = elements [ExclusiveBound, InclusiveBound]
+
+-------------------------------------------------------------------------------
+-- ExtraSource
+-------------------------------------------------------------------------------
+
+instance Arbitrary ExtraSource where
+    arbitrary = ExtraSource . makeSymbolicPath
+        <$> arbitraryShortPath
+        <*> listOf arbitraryExtraSourceOpt
+      where
+        -- An option containing whitespace or a ')' has to be rendered quoted,
+        -- so make sure the generator produces some of those.
+        arbitraryExtraSourceOpt = shortListOf1 5 $ elements $ ' ' : ['#' .. '~']
+
+    shrink (ExtraSource p opts) = ExtraSource p <$> shrink opts
 
 -------------------------------------------------------------------------------
 -- Backpack

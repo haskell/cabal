@@ -64,7 +64,8 @@ pcc (PreConfComponentInputs _lbc pbd _comp) =
             --    That would work, but would mean we wouldn't benefit from
             --    recompilation checking.
             emptyBuildInfo
-              { cSources = [ autogenDir </> unsafeMakeSymbolicPath "Gen.c"
+              { cSources = map extraSourceFromPath
+                           [ autogenDir </> unsafeMakeSymbolicPath "Gen.c"
                            , autogenDir </> unsafeMakeSymbolicPath "Gen2.c"
                            , autogenDir </> unsafeMakeSymbolicPath "DynDep.c"]
               }

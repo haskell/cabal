@@ -1,0 +1,149 @@
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV3_20,
+    package = PackageIdentifier {
+      pkgName = PackageName
+        "extra-source-opts",
+      pkgVersion = mkVersion [0]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis = "",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Nothing,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = [],
+    extraFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Just
+    CondNode {
+      condTreeData = Library {
+        libName = LMainLibName,
+        exposedModules = [],
+        reexportedModules = [],
+        signatures = [],
+        libExposed = True,
+        libVisibility =
+        LibraryVisibilityPublic,
+        libBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [
+            ExtraSource {
+              extraSourceFile = SymbolicPath
+                "cbits/qux.s",
+              extraSourceOpts = ["-DASM"]}],
+          cmmSources = [
+            ExtraSource {
+              extraSourceFile = SymbolicPath
+                "cbits/rts.cmm",
+              extraSourceOpts = ["-DCMM"]}],
+          cSources = [
+            ExtraSource {
+              extraSourceFile = SymbolicPath
+                "cbits/foo.c",
+              extraSourceOpts = [
+                "-DFOO",
+                "-O2"]},
+            ExtraSource {
+              extraSourceFile = SymbolicPath
+                "cbits/bar.c",
+              extraSourceOpts = []},
+            ExtraSource {
+              extraSourceFile = SymbolicPath
+                "cbits/quoted.c",
+              extraSourceOpts = [
+                "-DGREETING=\"hi there\"",
+                "-DPAREN=)"]}],
+          cxxSources = [
+            ExtraSource {
+              extraSourceFile = SymbolicPath
+                "cbits/baz.cpp",
+              extraSourceOpts = [
+                "-std=c++17"]}],
+          jsSources = [
+            ExtraSource {
+              extraSourceFile = SymbolicPath
+                "jsbits/glue.js",
+              extraSourceOpts = ["-DJS"]}],
+          hsSourceDirs = [],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          mixins = []}},
+      condTreeComponents = []},
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [],
+  condTestSuites = [],
+  condBenchmarks = []}
