@@ -162,10 +162,10 @@ editFieldGoldenTests = testGroup "edit-golden"
   , mkEditFieldGoldenTest "remove-field" "simple.cabal" $
       removeField RemoveFirst (\fname _ -> getName fname == "version")
   , mkEditFieldGoldenTest "remove-field-in-section" "simple.cabal" $
-      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) id $
+      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id) $
         removeField RemoveAll (\fname _ -> getName fname == "build-depends")
   , mkEditFieldGoldenTest "modify-field-in-section" "simple.cabal" $
-      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) id $
+      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id) $
         modifyField ModifyFirst (\fname _ -> getName fname == "build-depends") $
           modifyValueList @CommaVCat @(Identity Dependency) @Dependency
             ( \case
@@ -176,11 +176,11 @@ editFieldGoldenTests = testGroup "edit-golden"
 
   -- The example doesn't have the field "depends" but "build-depends" to demonstrate what would happen if the matcher doesn't match anything.
   , mkEditFieldGoldenTest "remove-field-unchanged" "simple.cabal" $
-      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) id $
+      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id) $
         removeField RemoveAll (\fname _ -> getName fname == "depends")
 
   , mkEditFieldGoldenTest "remove-field-alternative" "simple.cabal" $
-     modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) id
+     modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id)
       ( removeField RemoveAll (\fname _ -> getName fname == "depends")
         `orFallback`
         removeField RemoveAll (\fname _ -> getName fname == "build-depends")
@@ -228,7 +228,7 @@ mkFormatPrintedTest name fname format = ediffGolden goldenTest name exprFile $ d
 editFieldPrintedTests :: TestTree
 editFieldPrintedTests = testGroup "edit-printed"
   [ mkEditFieldPrintedTest "modify-field-in-section" "simple.cabal" $
-      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) id $
+      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id) $
         modifyField ModifyFirst (\fname _ -> getName fname == "build-depends") $
           modifyValueList @CommaVCat @(Identity Dependency) @Dependency
             ( \case
