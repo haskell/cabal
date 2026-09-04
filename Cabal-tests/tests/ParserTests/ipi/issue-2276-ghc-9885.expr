@@ -8,10 +8,13 @@ InstalledPackageInfo {
   sourceLibName = LMainLibName,
   installedComponentId_ =
   ComponentId "",
+  installedSublibs = [],
   libVisibility =
   LibraryVisibilityPublic,
   installedUnitId = UnitId
     "transformers-0.5.2.0",
+  installedInstanceUnitId = InstanceUnitId
+    (UnitId ""),
   instantiatedWith = [],
   compatPackageKey =
   "transformers-0.5.2.0",
