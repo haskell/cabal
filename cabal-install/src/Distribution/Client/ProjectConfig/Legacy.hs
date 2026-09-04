@@ -227,7 +227,7 @@ instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ map
     go :: CondTree FlagName ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ProjectConfig
     go (CondNode (_, l) ts) =
       let branches = concatMap processBranch ts
-       in l <> mconcat branches
+       in mconcat branches <> l
     processBranch (CondBranch cnd t mf) = case cnd of
       (Lit True) -> [go t]
       (Lit False) -> maybe [] ((: []) . go) mf
