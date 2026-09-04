@@ -1,3 +1,7 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE CPP #-}
 module Main
     ( main
@@ -10,10 +14,12 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (void)
+import Control.Applicative
+import Control.Monad                               (void, unless)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
+import Distribution.Fields.Parser                  (readFieldsConcrete', formatError)
 import Distribution.PackageDescription
   ( GenericPackageDescription
   , packageDescription
@@ -26,7 +32,7 @@ import Distribution.PackageDescription
   , condTestSuites
   , condBenchmarks
   )
-import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
+import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
@@ -34,27 +40,67 @@ import Distribution.Fields.ParseResult
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
-import System.FilePath                             (replaceExtension, (</>))
+import System.FilePath                             (replaceExtension, (</>), dropExtension, addExtension)
 import Distribution.Parsec.Source
-
+import Data.Function ((&))
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
-
+import Data.List.NonEmpty (NonEmpty (..))
 import qualified Distribution.InstalledPackageInfo as IPI
-
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff                 (ansiWlEditExpr, ediff, toExpr)
+import Data.TreeDiff                 (ansiWlEditExpr, ediff, toExpr, ToExpr)
 import Data.TreeDiff.Golden          (ediffGolden)
 import Data.TreeDiff.Instances.Cabal ()
 #endif
+import Distribution.FieldGrammar.Parsec
+import Distribution.PackageDescription.FieldGrammar
+import Distribution.FieldGrammar
+import Data.Functor.Identity
+import Distribution.FieldGrammar.Newtypes
+import Distribution.Types.PackageName
+import Distribution.Fields.Field
+import Data.Char
+import Distribution.CabalSpecVersion
+import Distribution.Types.Dependency
+import Distribution.Types.VersionRange
+import Distribution.Types.Version
+import Distribution.Types.LibraryName
+import Distribution.Types.PackageName
+import Distribution.Fields.Transform
+import qualified Distribution.Compat.NonEmptySet as NES
+import Distribution.Parsec.Position
+import Distribution.Annotation
+import Data.Kind
+import Data.Coerce
+import Distribution.Parsec
+import Distribution.Pretty
+import Language.Haskell.Extension
+import qualified Text.PrettyPrint as PP
+import Debug.Trace
+import Distribution.Fields.ExactPretty
+import qualified Data.Text.Lazy.IO as TIO
+import Text.Pretty.Simple
+import System.IO (hPutStr, stderr, stdout)
+import qualified Data.Bifunctor        as Bi
 
 tests :: TestTree
 tests = testGroup "parsec tests"
     [ regressionTests
     , warningTests
+    , commentTests
     , errorTests
     , ipiTests
+    , modifyValueAtomBSAlaTest
+    , modifyValueListBSTest
+    , prependValueListBSTest
+    , joinFieldLinesTest
+    , splitFieldLinesTest
+    , splitBSAtPositionTests
+    , substituteSubBSAtTests
+    , exactPrettyFieldTests
+    , editFieldGoldenTests
+    , editFieldPrintedTests
     ]
 
 -------------------------------------------------------------------------------
@@ -103,6 +149,649 @@ warningTest wt fp = testCase (show wt) $ do
   where
     isRight (Right _) = True
     isRight _         = False
+
+editFieldGoldenTests :: TestTree
+editFieldGoldenTests = testGroup "edit-golden"
+  [ mkEditFieldGoldenTest "add-field-end" "simple.cabal" $
+      addField AddEnd (mkName () "its-a-new-field") mempty
+        [ FieldLine () ", value"
+        , FieldLine () ", value on another line,"
+        ]
+        mempty
+  , mkEditFieldGoldenTest "add-field-start" "simple.cabal" $
+      addField AddStart (mkName () "its-a-new-field") mempty
+        [ FieldLine () ", value"
+        , FieldLine () ", value on another line,"
+        ]
+        mempty
+
+  , mkEditFieldGoldenTest "remove-field" "simple.cabal" $
+      removeField RemoveFirst (\fname _ -> getName fname == "version")
+  , mkEditFieldGoldenTest "remove-field-in-section" "simple.cabal" $
+      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id) $
+        removeField RemoveAll (\fname _ -> getName fname == "build-depends")
+  , mkEditFieldGoldenTest "modify-field-in-section" "simple.cabal" $
+      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id) $
+        modifyField ModifyFirst (\fname _ -> getName fname == "build-depends") $
+          modifyValueList @CommaVCat @(Identity Dependency) @Dependency
+            ( \case
+                Dependency pname _ libname | unPackageName pname == "base" -> Just (Dependency pname funnyVersionRange libname)
+                  where funnyVersionRange = thisVersion (mkVersion [1,3,3,7])
+                _ -> Nothing
+            )
+
+  -- The example doesn't have the field "depends" but "build-depends" to demonstrate what would happen if the matcher doesn't match anything.
+  , mkEditFieldGoldenTest "remove-field-unchanged" "simple.cabal" $
+      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id) $
+        removeField RemoveAll (\fname _ -> getName fname == "depends")
+
+  , mkEditFieldGoldenTest "remove-field-alternative" "simple.cabal" $
+     modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id)
+      ( removeField RemoveAll (\fname _ -> getName fname == "depends")
+        `orFallback`
+        removeField RemoveAll (\fname _ -> getName fname == "build-depends")
+      )
+  ]
+
+mkEditFieldGoldenTest :: String -> FilePath -> Edit [Field (WithComments Position)] -> TestTree
+mkEditFieldGoldenTest name fname edit = ediffGolden goldenTest name exprFile $ do
+  contents <- BS.readFile input
+  let res = readFieldsConcrete' contents
+
+  case res of
+    Left perr -> fail $ formatError contents perr
+    Right (fs, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure $ runEdit edit cabalSpecLatest fs
+
+  where
+    input = "tests" </> "ParserTests" </> "edit" </> fname
+    exprFile = addExtension (dropExtension input <> "_" <> name) "expr"
+
+editFieldPrintedTests :: TestTree
+editFieldPrintedTests = testGroup "edit-printed"
+  [ mkEditFieldPrintedTest "modify-field-in-section" "simple.cabal" $
+      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const $ EditUnchanged . id) $
+        modifyField ModifyFirst (\fname _ -> getName fname == "build-depends") $
+          modifyValueList @CommaVCat @(Identity Dependency) @Dependency
+            ( \case
+                Dependency pname _ libname | unPackageName pname == "base" -> Just (Dependency pname funnyVersionRange libname)
+                  where funnyVersionRange = thisVersion (mkVersion [1,3,3,7])
+                _ -> Nothing
+            )
+
+  , mkEditFieldPrintedTest "add-field-end" "simple.cabal" $
+      addField AddEnd (mkName () "its-a-new-field") mempty
+        [ FieldLine () ", value"
+        , FieldLine () ", value on another line,"
+        ]
+        mempty
+  , mkEditFieldPrintedTest "add-field-start" "simple.cabal" $
+      addField AddStart (mkName () "its-a-new-field") mempty
+        [ FieldLine () ", value"
+        , FieldLine () ", value on another line,"
+        ]
+        mempty
+  ]
+
+mkEditFieldPrintedTest :: String -> FilePath -> Edit [Field (WithComments Position)] -> TestTree
+mkEditFieldPrintedTest name fname edit = ediffGolden goldenTest name exprFile $ do
+  contents <- BS.readFile input
+  let res = readFieldsConcrete' contents
+
+  editResult <- case res of
+    Left perr -> fail $ formatError contents perr
+    Right (fs, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure $ runEdit edit cabalSpecLatest fs
+
+  case editResult of
+    EditOk ok -> pure $ toExpr (runRenderFields ok)
+    EditUnchanged u -> pure (toExpr @String "unchanged")
+    EditErr err -> pure (toExpr err)
+
+  where
+    input = "tests" </> "ParserTests" </> "edit-printed" </> fname
+    exprFile = addExtension (dropExtension input <> "_" <> name) "expr"
+
+modifyValueAtomBSAlaTest :: TestTree
+modifyValueAtomBSAlaTest = testGroup "modifyValueAtomBSAla"
+  [ mkModifyValueAtomAlaBSTest @SpecVersion @CabalSpecVersion
+      "spec-version"
+      "1.10"
+      (Just . succ)
+      (EditOk "1.12")
+  , mkModifyValueAtomAlaBSTest @(Identity Language) @Language
+      "default-language"
+      "Haskell98"
+      (\_ -> Just GHC2024)
+      (EditOk "GHC2024")
+  ]
+
+mkModifyValueAtomAlaBSTest
+  :: forall (b :: Type) (a :: Type)
+   . (Coercible a b, Parsec b, Pretty b)
+  => String
+  -> BS.ByteString
+  -> (a -> Maybe a)
+  -> EditResult BS.ByteString
+  -> TestTree
+mkModifyValueAtomAlaBSTest
+  name
+  original
+  transformA
+  expected
+  = testCase name $ do
+  let output = modifyValueAtomBSAla @b @a transformA cabalSpecLatest original
+  assertEqDiff "output = expected" expected output
+
+modifyValueListBSTest :: TestTree
+modifyValueListBSTest = testGroup "modifyValueListBS"
+  [ mkModifyValueListTest @CommaVCat @(Identity Dependency) @Dependency
+      "modify-middle-dependency-bound"
+      ( BS8.unlines
+          [ "  base         > 4.8    , text > 2"
+          , ""
+          , ", megaparsec > 5"
+          , ""
+          , ", containers > 0.6"
+          ]
+      )
+      ( \case
+          Dependency pname _ libname | unPackageName pname == "megaparsec" -> Just (Dependency pname funnyVersionRange libname)
+          _ -> Nothing
+      )
+      ( EditOk $ BS8.unlines
+          [ "  base         > 4.8    , text > 2"
+          , ""
+          , ", megaparsec ==1.3.3.7"
+          , ""
+          , ", containers > 0.6"
+          ]
+      )
+
+  , mkModifyValueListTest @CommaVCat @(Identity Dependency) @Dependency
+      "modify-first-dependency-bound"
+      ( BS8.unlines
+          [ "  base         > 4.8    , text > 2"
+          , ""
+          , ", megaparsec > 5"
+          , ""
+          , ", containers > 0.6"
+          ]
+      )
+      ( \case
+          Dependency pname _ libname | unPackageName pname == "base" -> Just (Dependency pname funnyVersionRange libname)
+          _ -> Nothing
+      )
+      ( EditOk $ BS8.unlines
+          [ "  base ==1.3.3.7, text > 2"
+          , ""
+          , ", megaparsec > 5"
+          , ""
+          , ", containers > 0.6"
+          ]
+      )
+
+  , mkModifyValueListTest @CommaVCat @(Identity Dependency) @Dependency
+      "modify-last-dependency-bound"
+      ( BS8.unlines
+          [ "  base         > 4.8    , text > 2"
+          , ""
+          , ", megaparsec > 5"
+          , ""
+          , ", containers > 0.6"
+          ]
+      )
+      ( \case
+          Dependency pname _ libname | unPackageName pname == "containers" -> Just (Dependency pname funnyVersionRange libname)
+          _ -> Nothing
+      )
+      ( EditOk $ BS8.unlines
+          [ "  base         > 4.8    , text > 2"
+          , ""
+          , ", megaparsec > 5"
+          , ""
+          , ", containers ==1.3.3.7"
+          ]
+      )
+
+  , mkModifyValueListTest @NoCommaFSep @Token' @String
+      "modify-ghc-options-start"
+      ( BS8.unlines
+          [ "-Wall -Wcompat -Widentities -Wincomplete-record-updates"
+          , "-Wincomplete-patterns -Wincomplete-uni-patterns"
+          , "-Wredundant-constraints -Werror=missing-fields"
+          ]
+      )
+      ( \case
+          "-Wall" -> Just "-Werror=all"
+          _ -> Nothing
+      )
+      ( EditOk $ BS8.unlines
+          [ "-Werror=all -Wcompat -Widentities -Wincomplete-record-updates"
+          , "-Wincomplete-patterns -Wincomplete-uni-patterns"
+          , "-Wredundant-constraints -Werror=missing-fields"
+          ]
+      )
+
+  , mkModifyValueListTest @NoCommaFSep @Token' @String
+      "modify-ghc-options-middle"
+      ( BS8.unlines
+          [ "-Wall -Wcompat -Widentities -Wincomplete-record-updates"
+          , "-Wincomplete-patterns -Wincomplete-uni-patterns"
+          , "  -Wredundant-meow -Werror=missing-fields"
+          ]
+      )
+      ( \case
+          "-Wredundant-meow" -> Just "-Wredundant-constraints"
+          _ -> Nothing
+      )
+      ( EditOk $ BS8.unlines
+          [ "-Wall -Wcompat -Widentities -Wincomplete-record-updates"
+          , "-Wincomplete-patterns -Wincomplete-uni-patterns"
+          , "  -Wredundant-constraints -Werror=missing-fields"
+          ]
+      )
+
+  , mkModifyValueListTest @NoCommaFSep @Token' @String
+      "modify-ghc-options-end"
+      ( BS8.unlines
+          [ "-Wall -Wcompat -Widentities -Wincomplete-record-updates"
+          , "-Wincomplete-patterns -Wincomplete-uni-patterns"
+          , "-Wredundant-constraints -Werror=missing-fields"
+          ]
+      )
+      ( \case
+          "-Werror=missing-fields" -> Just "-Werror=all"
+          _ -> Nothing
+      )
+      ( EditOk $ BS8.unlines
+          [ "-Wall -Wcompat -Widentities -Wincomplete-record-updates"
+          , "-Wincomplete-patterns -Wincomplete-uni-patterns"
+          , "-Wredundant-constraints -Werror=all"
+          ]
+      )
+  ]
+  where
+    funnyVersionRange = thisVersion (mkVersion [1,3,3,7])
+
+mkModifyValueListTest
+  :: forall (sep :: Type) (b :: Type) (a :: Type)
+   . ( Coercible a b
+     , Sep sep
+     , Pretty b
+     , Parsec b
+     , Parsec (List sep (Located b) (Located a))
+     )
+  => String
+  -> BS.ByteString
+  -> (a -> Maybe a)
+  -> EditResult BS.ByteString
+  -> TestTree
+mkModifyValueListTest
+  name
+  original
+  transformA
+  expected
+  = testCase name $ do
+  let output = modifyValueListBS @sep @b @a transformA cabalSpecLatest original
+  assertEqDiff "output = expected" expected output
+
+
+prependValueListBSTest :: TestTree
+prependValueListBSTest = testGroup "prependValueListBS"
+  [ mkPrependValueListBSTest @CommaVCat @(Identity Dependency) @Dependency
+      "add-non-empty-no-leading-sep"
+      ( BS8.unlines
+          [ "  base         > 4.8    , text > 2"
+          , ""
+          , ", megaparsec > 5"
+          , ""
+          , ", containers > 0.6"
+          ]
+      )
+      ( Dependency (mkPackageName "meow-meow") funnyVersionRange (NES.singleton LMainLibName) )
+      ( EditOk $ BS8.unlines
+          [ "meow-meow ==1.3.3.7,"
+          , "  base         > 4.8    , text > 2"
+          , ""
+          , ", megaparsec > 5"
+          , ""
+          , ", containers > 0.6"
+          ]
+      )
+  ]
+  where
+    funnyVersionRange = thisVersion (mkVersion [1,3,3,7])
+
+mkPrependValueListBSTest
+  :: forall (sep :: Type) (b :: Type) (a :: Type)
+   . ( Coercible a b
+     , Sep sep
+     , Pretty b
+     , Parsec b
+     , Parsec (List sep (Located b) (Located a))
+     )
+  => String
+  -> BS.ByteString
+  -> a
+  -> EditResult BS.ByteString
+  -> TestTree
+mkPrependValueListBSTest
+  name
+  original
+  newItem
+  expected
+  = testCase name $ do
+  let output = prependValueListBS @sep @b @a newItem cabalSpecLatest original
+  assertEqDiff "output = expected" expected output
+
+joinFieldLinesTest :: TestTree
+joinFieldLinesTest = testCase "joinFieldLines" $ do
+  let input =
+        FieldLine (Position 2 5) "base > 4.8"
+        :|
+        [ FieldLine (Position 3 3) ", megaparsec > 5"
+        , FieldLine (Position 4 3) ",  containers > 0.6"
+        ]
+  let output = joinFieldLines input
+  assertEqDiff "output is correct" output $
+    FieldLine (Position 2 3) "  base > 4.8\n, megaparsec > 5\n,  containers > 0.6"
+
+splitFieldLinesTest :: TestTree
+splitFieldLinesTest = testCase "splitFieldLines" $ do
+  let input =
+        FieldLine (Position 2 3) "  base > 4.8\n, megaparsec > 5\n,  containers > 0.6"
+  let output = splitFieldLines input
+  assertEqDiff "output is correct" output
+        [ FieldLine (Position 2 3) "  base > 4.8"
+        , FieldLine (Position 3 3) ", megaparsec > 5"
+        , FieldLine (Position 4 3) ",  containers > 0.6"
+        ]
+
+substituteSubBSAtTests :: TestTree
+substituteSubBSAtTests = testGroup "substituteSubBSAt"
+  [ mkSubstituteSubBSAtTest
+      "middle"
+      ", foo\n, bar\n, baz, qux\n"
+      (SrcSpan (Position 2 3) (Position 2 6))
+      "foo"
+      ", foo\n, foo\n, baz, qux\n"
+  , mkSubstituteSubBSAtTest
+      "start"
+      ", foo\n, bar\n, baz, qux\n"
+      (SrcSpan (Position 1 1) (Position 1 6))
+      "bar"
+      "bar\n, bar\n, baz, qux\n"
+  , mkSubstituteSubBSAtTest
+      "end"
+      ", foo\n, bar\n, baz, qux\n"
+      (SrcSpan (Position 3 8) (Position 3 11))
+      "bar"
+      ", foo\n, bar\n, baz, bar\n"
+  ]
+
+mkSubstituteSubBSAtTest
+  :: String
+  -> BS.ByteString
+  -> SrcSpan
+  -> BS.ByteString
+  -> BS.ByteString
+  -> TestTree
+mkSubstituteSubBSAtTest
+  name
+  input
+  spn
+  substitutor
+  expected = testCase name $ do
+    let output = substituteSubBSAt spn input substitutor
+    assertEqDiff "output = expected" output expected
+
+splitBSAtPositionTests :: TestTree
+splitBSAtPositionTests = testGroup "splitBSAtPosition" $
+  [ mkSplitBSAtPositionTest
+      "start-of-all"
+      ", foo\n, bar\n, baz, qux\n"
+      (Position 1 1)
+      ""
+      ", foo\n, bar\n, baz, qux\n"
+  , mkSplitBSAtPositionTest
+      "start-of-line"
+      ", foo\n, bar\n, baz, qux\n"
+      (Position 2 1)
+      ", foo\n"
+      ", bar\n, baz, qux\n"
+  , mkSplitBSAtPositionTest
+      "middle-of-line"
+      ", foo\n, bar\n, baz, qux\n"
+      (Position 2 2)
+      ", foo\n,"
+      " bar\n, baz, qux\n"
+  , mkSplitBSAtPositionTest
+      "end-of-line"
+      ", foo\n, bar\n, baz, qux\n"
+      (Position 2 6)
+      ", foo\n, bar"
+      "\n, baz, qux\n"
+  ]
+
+mkSplitBSAtPositionTest
+  :: String
+  -> BS.ByteString
+  -> Position
+  -> BS.ByteString
+  -> BS.ByteString
+  -> TestTree
+mkSplitBSAtPositionTest
+  name
+  input
+  splitPos
+  expectedLeft
+  expectedRight = testCase name $ do
+    let (pre, post) = splitBSAtPosition splitPos input
+    assertEqDiff "input = pre <> post" input (pre <> post)
+    assertEqDiff "left is wrong" expectedLeft pre
+    assertEqDiff "right is wrong" expectedRight post
+
+#ifdef MIN_VERSION_tree_diff
+assertEqDiff :: (ToExpr a, Eq a) => String -> a -> a -> Assertion
+assertEqDiff label x y = x == y @?
+          unlines
+              [ label
+              , show $ ansiWlEditExpr $ ediff x y
+              ]
+#else
+assertEqDiff :: (Eq a) => String -> a -> a -> Assertion
+assertEqDiff label x y = x == y @?
+          unlines
+              [ label
+              , "expected"
+              , show x
+              , "actual"
+              , show y
+              ]
+#endif
+
+exactPrettyFieldTests :: TestTree
+exactPrettyFieldTests =
+  testGroup "warnings triggered"
+  $ map
+    ( exactPrettyFieldTest . (\p -> "tests" </> "ParserTests" </> p)
+    )
+  [
+    -- "project-files" </> "0-local.project"
+  -- , "project-files" </> "1-local-constraints-import.project"
+  -- , "project-files" </> "1-local-import-constraints.project"
+  -- , "project-files" </> "1-web-constraints-import.project"
+  -- , "project-files" </> "1-web-import-constraints.project"
+  -- , "project-files" </> "2-local-constraints-import.project"
+  -- , "project-files" </> "2-local-import-constraints.project"
+  -- , "project-files" </> "2-web-constraints-import.project"
+  -- , "project-files" </> "2-web-import-constraints.project"
+  -- , "project-files" </> "3-web-constraints-import.project"
+  -- , "project-files" </> "3-web-import-constraints.project"
+  -- , "project-files" </> "alt.project"
+  -- , "project-files" </> "bad-conditional.project"
+  -- , "project-files" </> "cabal-cyclical-1-hop.project"
+  -- , "project-files" </> "cabal-cyclical-2-hop.project"
+  -- , "project-files" </> "cabal-missing-package.project"
+  -- , "project-files" </> "cabal.bootstrap.project"
+  -- , "project-files" </> "cabal.dot-uv.project"
+  -- , "project-files" </> "cabal.external.project"
+  -- , "project-files" </> "cabal.freeze-only.project"
+  -- , "project-files" </> "cabal.internal.project"
+  -- , "project-files" </> "cabal.local-only.project"
+  -- , "project-files" </> "cabal.meta.project"
+  -- , "project-files" </> "cabal.negative.project"
+  -- , "project-files" </> "cabal.positive.project"
+  -- , "project-files" </> "cabal.project"
+  -- , "project-files" </> "cabal.release.project"
+  -- , "project-files" </> "cabal.repo.project"
+  -- , "project-files" </> "cabal.sub-pq.project"
+  -- , "project-files" </> "cabal.sub-rs.project"
+  -- , "project-files" </> "cabal.validate-libonly.project"
+  -- , "project-files" </> "cabal.validate.project"
+  -- , "project-files" </> "cyclical-0-self.project"
+  -- , "project-files" </> "cyclical-1-out-back.project"
+  -- , "project-files" </> "cyclical-1-out-self.project"
+  -- , "project-files" </> "cyclical-2-out-out-back.project"
+  -- , "project-files" </> "cyclical-2-out-out-backback.project"
+  -- , "project-files" </> "cyclical-2-out-out-self.project"
+  -- , "project-files" </> "cyclical-same-filename-out-out-back.project"
+  -- , "project-files" </> "cyclical-same-filename-out-out-backback.project"
+  -- , "project-files" </> "cyclical-same-filename-out-out-self.project"
+  -- , "project-files" </> "elif.project"
+  -- , "project-files" </> "else.project"
+  -- , "project-files" </> "empty.project"
+  -- , "project-files" </> "extra.project"
+  -- , "project-files" </> "fake.cabal.project"
+  -- , "project-files" </> "foo.project"
+  -- , "project-files" </> "hops-0.project"
+  -- , "project-files" </> "if.project"
+  -- , "project-files" </> "no-pkgs.project"
+  -- , "project-files" </> "noncyclical-same-filename-a.project"
+  -- , "project-files" </> "noncyclical-same-filename-b.project"
+  -- , "project-files" </> "oops-0.project"
+  -- , "project-files" </> "reverse.project"
+  -- , "project-files" </> "some.project"
+  -- , "project-files" </> "tabs-and-spaces.project"
+  -- , "project-files" </> "trailing-space.project"
+  -- , "project-files" </> "variant.project"
+  -- , "project-files" </> "woops-0.project"
+  -- , "project-files" </> "yops-0.project"
+
+ -- "exact-pretty.cabal"
+
+  -- "no-braces" </> "oeis.cabal"
+  -- "no-braces" </> "music-util.cabal" -- ok
+  -- "no-braces" </> "modulo.cabal" -- ok
+  -- "no-braces" </> "cryptohash-sha512.cabal"
+  ]
+
+
+exactPrettyFieldTest :: FilePath -> TestTree
+exactPrettyFieldTest input = testCase "exact-pretty" $ do
+  contents <- patchUpCasesWeDon'tHandle <$> BS.readFile input
+  let res = readFieldsConcrete' contents
+
+  fs <- case res of
+    Left perr -> fail $ formatError contents perr
+    Right (ok, warns) -> do
+      -- unless (null warns) (fail $ unlines (map show warns))
+      pure ok
+
+  pPrint fs
+
+  let reprinted = runRenderFields fs
+  contents == reprinted @?
+#ifdef MIN_VERSION_tree_diff
+            unlines
+                [ "re-parsed doesn't match"
+                , show $ ansiWlEditExpr $ ediff contents reprinted
+                ]
+#else
+            unlines
+                [ "re-parsed doesn't match"
+                , "expected"
+                , show contents
+                , "actual"
+                , show reprinted
+                ]
+#endif
+  pure ()
+  where
+    patchUpCasesWeDon'tHandle =
+      ( (<> "\n")
+        . BS8.dropWhileEnd ( \c -> isSpace c || c == '\n' )
+        )
+      . ( BS8.intercalate "\n"
+        . map (BS8.dropWhileEnd isSpace)
+        . map (\l -> if BS8.all isSpace l then "" else l)
+        . map (\l -> case BS8.unsnoc l of { Just (l', '\r') -> l' ; _ -> l })
+        . BS8.split '\n'
+        )
+      . BS8.map (\case { '\t' -> ' '; c -> c })
+
+
+-------------------------------------------------------------------------------
+-- comment
+-------------------------------------------------------------------------------
+
+-- Verify that comments are parsed correctly
+commentTests :: TestTree
+commentTests = testGroup "comments"
+    [
+#ifdef MIN_VERSION_tree_diff
+      readFieldTest "layout-complex-indented-comments.cabal"
+    , readFieldTest "layout-comment-in-fieldline.cabal" -- aligned leading comma after comment
+
+    , commentTest "layout-nosections-before.cabal"
+    , commentTest "layout-nosections-after.cabal"
+    , commentTest "layout-nosections-mixed.cabal"
+    , commentTest "layout-many-sections.cabal"
+    , commentTest "layout-interleaved-in-section.cabal"
+    , commentTest "layout-fieldline-is-flag.cabal"
+
+    , commentTest "hasktorch.cabal" -- Imported from regression test, has a lot of comments
+#endif
+    ]
+
+#ifdef MIN_VERSION_tree_diff
+-- Use this test to bypass the more sophisticated checks of whether a cabal file is valid
+readFieldTest :: FilePath -> TestTree
+readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
+  contents <- BS.readFile input
+  let res = readFieldsConcrete' contents
+
+  case res of
+    Left perr -> fail $ formatError contents perr
+    Right (fs, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure fs
+
+  where
+    input = "tests" </> "ParserTests" </> "comments" </> fname
+    exprFile = replaceExtension input "expr"
+#endif
+
+#ifdef MIN_VERSION_tree_diff
+-- | Assert the comment structure of a given cabal file.
+commentTest :: FilePath -> TestTree
+commentTest fname = ediffGolden goldenTest fname exprFile $ do
+  contents <- BS.readFile input
+  let res = readFieldsConcrete' contents
+
+  case res of
+    Left perr -> fail $ formatError contents perr
+    Right (ok, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure (foldMap extractComments ok)
+
+  where
+    input = "tests" </> "ParserTests" </> "comments" </> fname
+    exprFile = replaceExtension input "expr"
+#endif
 
 -------------------------------------------------------------------------------
 -- Errors

@@ -14,9 +14,11 @@ library
     , Cabal-syntax  ^>=3.19.0.0
     , Cabal         ^>=3.19.0.0
     , tree-diff     ^>=0.1 || ^>=0.2 || ^>=0.3
+    , parsec        >= 3.1.13.0 && < 3.2
 
   exposed-modules:  Data.TreeDiff.Instances.Cabal
   other-modules:
     Data.TreeDiff.Instances.CabalLanguage
     Data.TreeDiff.Instances.CabalSPDX
     Data.TreeDiff.Instances.CabalVersion
+    Data.TreeDiff.Instances.Parsec

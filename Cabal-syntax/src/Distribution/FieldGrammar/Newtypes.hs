@@ -66,10 +66,13 @@ import Distribution.Version
   )
 import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce (Coercible, coerce)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Fields.ExactPretty (LineEnding, lineEndingChar)
 import qualified Distribution.SPDX as SPDX
 
 -- | Vertical list with commas. Displayed with 'vcat'
@@ -88,12 +91,21 @@ data FSep = FSep
 data NoCommaFSep = NoCommaFSep
 
 class Sep sep where
+  -- | Detect whether a string is considered valid separator.
+  --   Used in exactprint modification.
+  isSeparator :: Proxy sep -> Char -> Bool
+
+  sepToChar :: Proxy sep -> BS.ByteString
+
   prettySep :: Proxy sep -> [Doc] -> Doc
 
   parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
   parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty a)
 
 instance Sep CommaVCat where
+  isSeparator _ = (== ',')
+  sepToChar _ = ",\n"
+
   prettySep _ = vcat . punctuate comma
   parseSep _ p = do
     v <- askCabalSpecVersion
@@ -102,6 +114,9 @@ instance Sep CommaVCat where
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
 instance Sep CommaFSep where
+  isSeparator _ = (== ',')
+  sepToChar _ = ","
+
   prettySep _ = fsep . punctuate comma
   parseSep _ p = do
     v <- askCabalSpecVersion
@@ -110,18 +125,27 @@ instance Sep CommaFSep where
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
 instance Sep VCat where
+  isSeparator _ c = c == ',' || isSpace c
+  sepToChar _ = "\n"
+
   prettySep _ = vcat
   parseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
   parseSepNE _ p = NE.some1 (p <* P.spaces)
 instance Sep FSep where
+  isSeparator _ c = c == ',' || isSpace c
+  sepToChar _ = " "
+
   prettySep _ = fsep
   parseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
   parseSepNE _ p = NE.some1 (p <* P.spaces)
 instance Sep NoCommaFSep where
+  isSeparator _ = isSpace
+  sepToChar _ = " "
+
   prettySep _ = fsep
   parseSep _ p = many (p <* P.spaces)
   parseSepNE _ p = NE.some1 (p <* P.spaces)
