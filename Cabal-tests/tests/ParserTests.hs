@@ -244,6 +244,19 @@ editFieldPrintedTests = testGroup "edit-printed"
                   where funnyVersionRange = thisVersion (mkVersion [1,3,3,7])
                 _ -> Nothing
             )
+
+  , mkEditFieldPrintedTest "add-field-end" "simple.cabal" $
+      addField AddEnd (mkName () "its-a-new-field") mempty
+        [ FieldLine () ", value"
+        , FieldLine () ", value on another line,"
+        ]
+        mempty
+  , mkEditFieldPrintedTest "add-field-start" "simple.cabal" $
+      addField AddStart (mkName () "its-a-new-field") mempty
+        [ FieldLine () ", value"
+        , FieldLine () ", value on another line,"
+        ]
+        mempty
   ]
 
 mkEditFieldPrintedTest :: String -> FilePath -> Edit [Field (WithComments Position)] -> TestTree
