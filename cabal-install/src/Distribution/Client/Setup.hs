@@ -2739,11 +2739,17 @@ installOptions showOrParseArgs =
        , option
           []
           ["remote-build-reporting"]
-          "Generate build reports to send to a remote server (none, anonymous or detailed)."
+          ( unlines
+              [ "Generate build reports to send to a remote server:"
+              , "- none: do not report,"
+              , "- anonymous: report without identifying information,"
+              , "- detailed: report with full details."
+              ]
+          )
           installBuildReports
           (\v flags -> flags{installBuildReports = v})
           ( reqArg
-              "LEVEL"
+              "none|anonymous|detailed"
               ( parsecToReadE
                   ( const $
                       "report level must be 'none', "
@@ -3461,7 +3467,7 @@ actAsSetupCommand =
             actAsSetupBuildType
             (\v flags -> flags{actAsSetupBuildType = v})
             ( reqArg
-                "BUILD-TYPE"
+                placeholder
                 ( parsecToReadE
                     ("Cannot parse build type: " ++)
                     (fmap toFlag parsec)
@@ -3470,6 +3476,9 @@ actAsSetupCommand =
             )
         ]
     }
+  where
+    placeholder = intercalate "|" $ map show setupBuildTypes
+    setupBuildTypes = [Simple, Configure]
 
 -- ------------------------------------------------------------
 
