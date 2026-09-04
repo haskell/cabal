@@ -1,5 +1,6 @@
 module Distribution.Solver.Modular.IndexConversion
     ( convPIs
+    , convSP
     ) where
 
 import Distribution.Solver.Compat.Prelude
