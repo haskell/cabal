@@ -1417,14 +1417,34 @@ testTargetProblemsTest config reportSubCase = do
     ]
 
   reportSubCase "no tests"
-  assertProjectTargetProblems
-    "targets/simple"
-    config
-    CmdTest.selectPackageTargets
-    CmdTest.selectComponentTarget
-    [ (CmdTest.noTestsProblem, mkTargetPackage "p-0.1")
-    , (CmdTest.noTestsProblem, mkTargetPackage "q-0.1")
-    ]
+  do
+    (_, elaboratedPlan, _) <- planProject "targets/simple" config
+    -- Packages without test suites select no targets: they are skipped with
+    -- a notice instead of aborting the command (see #11858).
+    assertProjectDistinctTargets
+      elaboratedPlan
+      CmdTest.selectPackageTargets
+      CmdTest.selectComponentTarget
+      [mkTargetPackage "p-0.1"]
+      []
+    assertProjectDistinctTargets
+      elaboratedPlan
+      CmdTest.selectPackageTargets
+      CmdTest.selectComponentTarget
+      [mkTargetPackage "p-0.1", mkTargetPackage "q-0.1"]
+      []
+
+  reportSubCase "pkg with tests and pkg without tests"
+  do
+    (_, elaboratedPlan, _) <- planProject "targets/tests-and-no-tests" config
+    -- The package with test suites must still be selected when it is
+    -- requested together with a package without test suites (see #11858).
+    assertProjectDistinctTargets
+      elaboratedPlan
+      CmdTest.selectPackageTargets
+      CmdTest.selectComponentTarget
+      [mkTargetPackage "p-0.1", mkTargetPackage "q-0.1"]
+      [("p-0.1-inplace-p-tests", CTestName "p-tests")]
 
   reportSubCase "not a test"
   assertProjectTargetProblems
