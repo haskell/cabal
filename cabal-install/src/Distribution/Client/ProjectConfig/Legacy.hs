@@ -1304,6 +1304,9 @@ legacyProjectConfigFieldDescrs constraintSrc =
 -- allow http urls which don't parse as globs, and possibly some
 -- system-dependent file paths. So we parse fairly liberally as a token, but
 -- we allow @,@ inside matched @{}@ braces.
+--
+-- >>> readP_to_S parsePackageLocationTokenQ "*/*.cabal ../{foo,bar}/"
+-- [("*/*.cabal"," ../{foo,bar}/")]
 parsePackageLocationTokenQ :: ReadP String
 parsePackageLocationTokenQ =
   parseHaskellString
@@ -2054,3 +2057,6 @@ showTokenQ "" = Disp.empty
 showTokenQ x@('-' : '-' : _) = Disp.text (show x)
 showTokenQ x@['.'] = Disp.text (show x)
 showTokenQ x = showToken x
+
+-- $setup
+-- >>> import Distribution.Deprecated.ReadP (readP_to_S)
