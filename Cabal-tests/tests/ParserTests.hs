@@ -155,9 +155,17 @@ warningTest wt fp = testCase (show wt) $ do
 editFieldGoldenTests :: TestTree
 editFieldGoldenTests = testGroup "edit-golden"
   [ mkEditFieldGoldenTest "add-field-end" "simple.cabal" $
-      addField AddEnd (mkName () "its-a-new-field") mempty [] mempty
+      addField AddEnd (mkName () "its-a-new-field") mempty
+        [ FieldLine () ", value"
+        , FieldLine () ", value on another line,"
+        ]
+        mempty
   , mkEditFieldGoldenTest "add-field-start" "simple.cabal" $
-      addField AddStart (mkName () "its-a-new-field") mempty [] mempty
+      addField AddStart (mkName () "its-a-new-field") mempty
+        [ FieldLine () ", value"
+        , FieldLine () ", value on another line,"
+        ]
+        mempty
 
   , mkEditFieldGoldenTest "remove-field" "simple.cabal" $
       removeField RemoveFirst (\fname _ -> getName fname == "version")

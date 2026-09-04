@@ -102,4 +102,14 @@ EditOk
           justComments = [],
           unComments = Position 14 1}
         "its-a-new-field")
-      []]
+      [
+        FieldLine
+          WithComments {
+            justComments = [],
+            unComments = Position 15 3}
+          ", value",
+        FieldLine
+          WithComments {
+            justComments = [],
+            unComments = Position 16 3}
+          ", value on another line,"]]

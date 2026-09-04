@@ -7,51 +7,61 @@ EditOk
           justComments = [],
           unComments = Position 1 1}
         "its-a-new-field")
-      [],
+      [
+        FieldLine
+          WithComments {
+            justComments = [],
+            unComments = Position 2 3}
+          ", value",
+        FieldLine
+          WithComments {
+            justComments = [],
+            unComments = Position 3 3}
+          ", value on another line,"],
     Field
-      (Position 2 14)
+      (Position 5 14)
       (Name
         WithComments {
           justComments = [],
-          unComments = Position 2 1}
+          unComments = Position 5 1}
         "cabal-version")
       [
         FieldLine
           WithComments {
             justComments = [],
-            unComments = Position 2 16}
+            unComments = Position 5 16}
           "3.0"],
     Field
-      (Position 3 5)
+      (Position 6 5)
       (Name
         WithComments {
           justComments = [],
-          unComments = Position 3 1}
+          unComments = Position 6 1}
         "name")
       [
         FieldLine
           WithComments {
             justComments = [],
-            unComments = Position 3 7}
+            unComments = Position 6 7}
           "simple"],
     Field
-      (Position 4 8)
+      (Position 7 8)
       (Name
         WithComments {
           justComments = [],
-          unComments = Position 4 1}
+          unComments = Position 7 1}
         "version")
       [
         FieldLine
           WithComments {
             justComments = [],
-            unComments = Position 4 10}
+            unComments = Position 7 10}
           "1.0"],
     Section
       (Name
         WithComments {
           justComments = [],
-          unComments = Position 6 1}
+          unComments = Position 9 1}
         "library")
       []
       [
@@ -66,7 +76,7 @@ EditOk
                 Comment
                   "    -- within"
                   (Position 8 1)],
-              unComments = Position 8 3}
+              unComments = Position 11 3}
             "build-depends")
           [
             FieldLine
@@ -75,19 +85,19 @@ EditOk
                   Comment
                     "    -- after"
                     (Position 10 1)],
-                unComments = Position 10 5}
+                unComments = Position 13 5}
               "base > 4.8"]],
     Section
       (Name
         WithComments {
           justComments = [],
-          unComments = Position 13 1}
+          unComments = Position 16 1}
         "library")
       [
         SecArgName
           WithComments {
             justComments = [],
-            unComments = Position 13 9}
+            unComments = Position 16 9}
           "namedLibrary"]
       [
         Field
@@ -95,11 +105,11 @@ EditOk
           (Name
             WithComments {
               justComments = [],
-              unComments = Position 14 3}
+              unComments = Position 17 3}
             "build-depends")
           [
             FieldLine
               WithComments {
                 justComments = [],
-                unComments = Position 14 18}
+                unComments = Position 17 18}
               "base <= 5"]]]
