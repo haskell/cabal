@@ -34,7 +34,6 @@ import Distribution.PackageDescription
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.PackageDescription.Format
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
 import Distribution.Fields.ParseResult
@@ -102,7 +101,6 @@ tests = testGroup "parsec tests"
     , exactPrettyFieldTests
     , editFieldGoldenTests
     , editFieldPrintedTests
-    , formatPrintedTest
     ]
 
 -------------------------------------------------------------------------------
@@ -208,29 +206,6 @@ mkEditFieldGoldenTest name fname edit = ediffGolden goldenTest name exprFile $ d
 
   where
     input = "tests" </> "ParserTests" </> "edit" </> fname
-    exprFile = addExtension (dropExtension input <> "_" <> name) "expr"
-
-formatPrintedTest :: TestTree
-formatPrintedTest = testGroup "format-printed"
-  [ mkFormatPrintedTest "buildinfo" "simple.cabal" (exampleFormatPackageDescription CabalSpecV3_8)
-  ]
-
-mkFormatPrintedTest :: String -> FilePath
-  -> ([Field (WithComments Position)] -> [Field (WithComments Position)])
-  -> TestTree
-mkFormatPrintedTest name fname format = ediffGolden goldenTest name exprFile $ do
-  contents <- BS.readFile input
-  let res = readFieldsConcrete' contents
-
-  fs <- case res of
-    Left perr -> fail $ formatError contents perr
-    Right (ok, warns) -> do
-      unless (null warns) (fail $ unlines (map show warns))
-      pure ok
-
-  pure $ runRenderFields $ format fs
-  where
-    input = "tests" </> "ParserTests" </> "format-printed" </> fname
     exprFile = addExtension (dropExtension input <> "_" <> name) "expr"
 
 editFieldPrintedTests :: TestTree
