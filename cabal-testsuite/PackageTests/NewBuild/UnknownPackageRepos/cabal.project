@@ -1,0 +1,2 @@
+packages: fake-pkg
+active-repositories: test-local-repo
