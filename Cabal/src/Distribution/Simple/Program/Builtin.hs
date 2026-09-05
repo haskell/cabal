@@ -317,7 +317,7 @@ ldProgram =
         ldHelpOutput <-
           getProgramInvocationOutput
             verbosity
-            (programInvocation ldProg ["--help"])
+            (programInvocation (suppressOverrideArgs ldProg) ["--help"])
             -- In case the linker does not support '--help'. Eg the LLVM linker,
             -- `lld` only accepts `-help`.
             `catchIO` (\_ -> return "")

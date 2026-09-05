@@ -258,7 +258,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
               _ <-
                 getProgramOutput
                   verbosity
-                  ldProg
+                  (suppressOverrideArgs ldProg)
                   ["-x", "-r", testofile, "-o", testofile']
               return True
               `catchIO` (\_ -> return False)

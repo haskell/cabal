@@ -122,7 +122,21 @@ data ConfiguredProgram = ConfiguredProgram
   , programOverrideArgs :: [String]
   -- ^ Override command-line args for this program.
   -- These flags will appear last on the command line, so they override
-  -- all earlier flags.
+  -- all earlier flags. They hold the user's options for this program
+  -- ('programDriverArgs') interpreted for the program's own command
+  -- line, which for @ld@ differs from the form the user gives them in
+  , programDriverArgs :: [String]
+  -- ^ The user's options for this program, as given by the user (e.g.
+  -- from @--ld-options@), before they are interpreted for the program's
+  -- own command line.
+  --
+  -- For most programs these are the options for the program itself, and
+  -- equal to 'programOverrideArgs'. The exception is @ld@: its options
+  -- are documented as options for GHC's linking phase (GHC receives them
+  -- as @-optl@ arguments, which forwards them to the C compiler driver
+  -- acting as the linker), so options for the linker proper have to be
+  -- given with a @-Wl,@ prefix — see
+  -- They are not passed to @ld@ when Cabal invokes it directly.
   , programOverrideEnv :: [(String, Maybe String)]
   -- ^ Override environment variables for this program.
   -- These env vars will extend\/override the prevailing environment of
@@ -164,7 +178,11 @@ programPath = locationPath . programLocation
 
 -- | Suppress any extra arguments added by the user.
 suppressOverrideArgs :: ConfiguredProgram -> ConfiguredProgram
-suppressOverrideArgs prog = prog{programOverrideArgs = []}
+suppressOverrideArgs prog =
+  prog
+    { programOverrideArgs = []
+    , programDriverArgs = []
+    }
 
 -- | Make a simple 'ConfiguredProgram'.
 --
@@ -176,6 +194,7 @@ simpleConfiguredProgram name loc =
     , programVersion = Nothing
     , programDefaultArgs = []
     , programOverrideArgs = []
+    , programDriverArgs = []
     , programOverrideEnv = []
     , programProperties = Map.empty
     , programLocation = loc
