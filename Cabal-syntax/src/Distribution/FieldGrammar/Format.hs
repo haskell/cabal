@@ -3,7 +3,8 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE UndecidableInstances #-}
 
--- | This is a field formatter directed by
+-- | This is an instance interpreting existing FieldGrammar definitions as a formatter, running on FieldLines.
+--   Using the fieldname and type, we parse and print each FieldLine using functions defined in the Distribution.Fields.Transform module.
 module Distribution.FieldGrammar.Format where
 
 import Distribution.FieldGrammar.Class
