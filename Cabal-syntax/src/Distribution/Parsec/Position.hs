@@ -1,9 +1,14 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Parsec.Position
   ( Position (..)
   , incPos
+  , incRow
   , retPos
   , showPos
   , zeroPos
+  , onePos
   , positionCol
   , positionRow
   ) where
@@ -16,14 +21,19 @@ data Position
   = Position
       {-# UNPACK #-} !Int -- row
       {-# UNPACK #-} !Int -- column
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary Position
 instance NFData Position
+instance Structured Position
 
 -- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position
 incPos n (Position row col) = Position row (col + n)
+
+-- | Shift position by n rows below.
+incRow :: Int -> Position -> Position
+incRow n (Position row col) = Position (row + n) col
 
 -- | Shift position to beginning of next row.
 retPos :: Position -> Position
@@ -34,6 +44,9 @@ showPos (Position row col) = show row ++ ":" ++ show col
 
 zeroPos :: Position
 zeroPos = Position 0 0
+
+onePos :: Position
+onePos = Position 1 1
 
 -- | @since 3.0.0.0
 positionCol :: Position -> Int

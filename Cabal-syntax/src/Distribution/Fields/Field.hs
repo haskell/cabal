@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
@@ -14,6 +17,11 @@ module Distribution.Fields.Field
   , fieldLineBS
   , SectionArg (..)
   , sectionArgAnn
+  , sectionArgBS
+
+    -- * Comment
+  , Comment (..)
+  , WithComments (..)
 
     -- * Name
   , FieldName
@@ -21,6 +29,7 @@ module Distribution.Fields.Field
   , mkName
   , getName
   , nameAnn
+  , toLowerCase
 
     -- * Conversions to String
   , sectionArgsToString
@@ -29,7 +38,6 @@ module Distribution.Fields.Field
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
-import qualified Data.Char as Char
 import Distribution.Compat.Prelude
 import Distribution.Pretty (showTokenStr)
 import Distribution.Utils.Generic (fromUTF8BS)
@@ -38,22 +46,40 @@ import Prelude ()
 import qualified Data.Foldable1 as F1
 #endif
 
+import Distribution.Parsec.Position
+
 -------------------------------------------------------------------------------
 -- Cabal file
 -------------------------------------------------------------------------------
 
+-- | Store a line comment from field syntax files. @ann@ is usually instantiated as 'Position'.
+data Comment ann = Comment !ByteString !ann
+  deriving (Show, Generic, Eq, Ord, Functor)
+
+-- | Hold a list of comments along side some annotation.
+data WithComments ann = WithComments
+  { justComments :: ![Comment ann]
+  -- ^ Extract the comments.
+  , unComments :: !ann
+  -- ^ Extract the annotation.
+  }
+  deriving (Show, Generic, Eq, Ord, Functor)
+
+-- TODO(leana8959): implement the colon Position in an another Field like structure.
+-- TODO(leana8959): remove casing when converting to Field ann
+
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
-  = Field !(Name ann) [FieldLine ann]
+  = Field Position !(Name ann) [FieldLine ann]
   | Section !(Name ann) [SectionArg ann] [Field ann]
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Field ann)
 
 -- | Section of field name
 fieldName :: Field ann -> Name ann
-fieldName (Field n _) = n
+fieldName (Field _ n _) = n
 fieldName (Section n _ _) = n
 
 fieldAnn :: Field ann -> ann
@@ -64,14 +90,14 @@ fieldAnn = nameAnn . fieldName
 -- /Note:/ the resulting list is never empty.
 fieldUniverse :: Field ann -> [Field ann]
 fieldUniverse f@(Section _ _ fs) = f : concatMap fieldUniverse fs
-fieldUniverse f@(Field _ _) = [f]
+fieldUniverse f@(Field _ _ _) = [f]
 
 -- | A line of text representing the value of a field from a Cabal file.
 -- A field may contain multiple lines.
 --
 -- /Invariant:/ 'ByteString' has no newlines.
 data FieldLine ann = FieldLine !ann !ByteString
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (FieldLine ann)
@@ -92,7 +118,7 @@ data SectionArg ann
     SecArgStr !ann !ByteString
   | -- | everything else, mm. operators (e.g. in if-section conditionals)
     SecArgOther !ann !ByteString
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (SectionArg ann)
@@ -103,6 +129,11 @@ sectionArgAnn (SecArgName ann _) = ann
 sectionArgAnn (SecArgStr ann _) = ann
 sectionArgAnn (SecArgOther ann _) = ann
 
+sectionArgBS :: SectionArg ann -> ByteString
+sectionArgBS (SecArgName _ bs) = bs
+sectionArgBS (SecArgStr _ bs) = bs
+sectionArgBS (SecArgOther _ bs) = bs
+
 -------------------------------------------------------------------------------
 -- Name
 -------------------------------------------------------------------------------
@@ -110,16 +141,17 @@ sectionArgAnn (SecArgOther ann _) = ann
 type FieldName = ByteString
 
 -- | A field name.
---
--- /Invariant/: 'ByteString' is lower-case ASCII.
 data Name ann = Name !ann !FieldName
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+toLowerCase :: Name ann -> Name ann
+toLowerCase (Name ann fname) = Name ann (B.map toLower fname)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Name ann)
 
 mkName :: ann -> FieldName -> Name ann
-mkName ann bs = Name ann (B.map Char.toLower bs)
+mkName ann bs = Name ann bs
 
 getName :: Name ann -> FieldName
 getName (Name _ bs) = bs
@@ -163,7 +195,7 @@ fieldLinesToString =
 
 -- | @since 3.12.0.0
 instance F1.Foldable1 Field where
-  foldMap1 f (Field x ys) =
+  foldMap1 f (Field _ x ys) =
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys)
   foldMap1 f (Section x ys zs) =
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys ++ map (F1.foldMap1 f) zs)

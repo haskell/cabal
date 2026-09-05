@@ -1,0 +1,8 @@
+-- comment before
+name: comment-before-nameless-field
+version: 1
+cabal-version: >= 1.8
+
+library
+  build-depends:
+    base >= 4

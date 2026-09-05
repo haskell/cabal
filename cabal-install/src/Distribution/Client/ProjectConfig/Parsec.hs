@@ -116,7 +116,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
   where
     go :: [Field Position] -> [Field Position] -> IO (ParseResult ProjectFileSource ProjectConfigSkeleton)
     go acc (x : xs) = case x of
-      (Field (Name pos name) importLines) | name == "import" -> do
+      (Field _ (Name pos name) importLines) | name == "import" -> do
         liftParseResult
           ( \importLoc -> do
               let importLocPath = importLoc `consProjectConfigPath` source

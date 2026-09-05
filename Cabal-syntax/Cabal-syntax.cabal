@@ -18,6 +18,11 @@ build-type:     Simple
 extra-doc-files:
   README.md ChangeLog.md
 
+flag cabal-parsec-debug
+  description: Enable debug build for the cabal field lexer/parser.
+  default:     False
+  manual:      True
+
 source-repository head
   type:     git
   location: https://github.com/haskell/cabal/
@@ -47,6 +52,8 @@ library
     -- See also https://github.com/ekmett/transformers-compat/issues/35
     , transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7)
 
+    , pretty-simple
+
   ghc-options:
     -Wall
     -fno-ignore-asserts
@@ -60,11 +67,17 @@ library
   if impl(ghc >= 8.0) && impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
 
+  if flag(cabal-parsec-debug)
+    CPP-Options: -DCABAL_PARSEC_DEBUG
+    build-depends:
+      vector
+
   build-tool-depends:
     -- https://github.com/haskell/alex/issues/288
     alex:alex < 3.5.4.1 || > 3.5.4.1
 
   exposed-modules:
+    Distribution.Annotation
     Distribution.Backpack
     Distribution.CabalSpecVersion
     Distribution.Compat.Binary
@@ -83,14 +96,19 @@ library
     Distribution.FieldGrammar.Newtypes
     Distribution.FieldGrammar.Parsec
     Distribution.FieldGrammar.Pretty
+    Distribution.FieldGrammar.Format
     Distribution.Fields
     Distribution.Fields.ConfVar
     Distribution.Fields.Field
+    Distribution.Fields.Field.Lens
+    Distribution.Fields.Field.Relative
     Distribution.Fields.Lexer
     Distribution.Fields.LexerMonad
+    Distribution.Fields.Transform
     Distribution.Fields.ParseResult
     Distribution.Fields.Parser
     Distribution.Fields.Pretty
+    Distribution.Fields.ExactPretty
     Distribution.InstalledPackageInfo
     Distribution.License
     Distribution.ModuleName
@@ -99,6 +117,7 @@ library
     Distribution.PackageDescription.Configuration
     Distribution.PackageDescription.FieldGrammar
     Distribution.PackageDescription.Parsec
+    Distribution.PackageDescription.Format
     Distribution.PackageDescription.PrettyPrint
     Distribution.PackageDescription.Quirks
     Distribution.PackageDescription.Utils
@@ -106,6 +125,7 @@ library
     Distribution.Parsec.Error
     Distribution.Parsec.FieldLineStream
     Distribution.Parsec.Position
+    Distribution.Parsec.Position.Lens
     Distribution.Parsec.Warning
     Distribution.Parsec.Source
     Distribution.Pretty
