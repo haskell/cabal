@@ -127,11 +127,10 @@ linkOrLoadComponent
               [ "-static"
               | withFullyStaticExe lbi
               ]
-                -- Pass extra `ld-options` given
-                -- through to GHC's linker.
+                -- Pass extra `ld-options` given through to GHC's linker.
                 ++ maybe
                   []
-                  programOverrideArgs
+                  programDriverArgs
                   (lookupProgram ldProgram (withPrograms lbi))
           , ghcOptLinkLibs =
               if withFullyStaticExe lbi

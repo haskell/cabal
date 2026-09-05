@@ -318,9 +318,30 @@ userSpecifyArgs name args' =
               prog
                 { programOverrideArgs =
                     programOverrideArgs prog
+                      ++ interpretUserOptions name args'
+                , programDriverArgs =
+                    programDriverArgs prog
                       ++ args'
                 }
       )
+
+-- | Interpret options written for the linker driver (the form documented
+-- for @ld-options@, see Note [ld-options and the linker driver]) into the
+-- options @ld@ itself accepts (#10789).
+--
+-- A driver option @-Wl,a,b@ means \"pass @a@ and @b@ to the linker\", so it
+-- turns into @[a, b]@. All other options are passed through unchanged.
+interpretUserOptions :: String -> [String] -> [String]
+interpretUserOptions "ld" = concatMap ldOptionToLdFlag
+  where
+    ldOptionToLdFlag opt
+      | "-Wl," `isPrefixOf` opt = splitOnCommas (drop 4 opt)
+      | otherwise = [opt]
+
+    splitOnCommas s = case break (== ',') s of
+      (w, []) -> [w]
+      (w, _ : rest) -> w : splitOnCommas rest
+interpretUserOptions _ = id
 
 -- | Like 'userSpecifyPath' but for a list of progs and their paths.
 userSpecifyPaths
@@ -439,7 +460,9 @@ configureUnconfiguredProgram verbosity prog progdb = do
               { programId = name
               , programVersion = version
               , programDefaultArgs = []
-              , programOverrideArgs = userSpecifiedArgs prog progdb
+              , programOverrideArgs =
+                  interpretUserOptions name (userSpecifiedArgs prog progdb)
+              , programDriverArgs = userSpecifiedArgs prog progdb
               , programOverrideEnv = [("PATH", Just newPath)] ++ progOverrideEnv progdb
               , programProperties = Map.empty
               , programLocation = location

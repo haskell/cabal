@@ -1,0 +1,11 @@
+cabal-version:      2.2
+name:               foreign-opts-pgml
+version:            0.1
+build-type:         Simple
+
+executable foreign-opts-pgml-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  include-dirs:        cbits
+  c-sources:           cbits/pgmllib.c

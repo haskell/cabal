@@ -209,13 +209,59 @@ configureToolchain _implInfo ghcProg ghcInfo =
           | otherwise -> tokenizeQuotedWords flags
 
     configureGcc :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
-    configureGcc _v gccProg = do
+    configureGcc v gccProg = do
+      gccProg' <- configureGcc' v gccProg
       return
-        gccProg
+        gccProg'
           { programDefaultArgs =
-              programDefaultArgs gccProg
+              programDefaultArgs gccProg'
                 ++ ccFlags
                 ++ gccLinkerFlags
+          }
+
+    -- We probe whether the linker driver (the C compiler) supports -no-pie
+    -- with a test file, like GHC's build system does
+    -- (FP_GCC_SUPPORTS_NO_PIE). GHC passes -no-pie to the linker driver
+    -- when joining objects or linking, but with a custom linker (see
+    -- -pgml, 'ghcOptLinkerProgram') it does not know whether the flag is
+    -- supported and refuses to pass it, unless told otherwise with
+    -- -pgml-supports-no-pie (GHC #15319). Note that some compilers only
+    -- warn on unknown flags, hence -Werror and the output check, mirroring
+    -- GHC's own probe.
+    configureGcc' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureGcc' verbosity gccProg = do
+      supportsNoPie <- withTempFile ".c" $ \testcfile testchnd ->
+        withTempFile ".o" $ \testofile testohnd -> do
+          hPutStrLn testchnd "int main() { return 0; }"
+          hClose testchnd
+          hClose testohnd
+          runProgram
+            verbosity
+            ghcProg
+            [ "-hide-all-packages"
+            , "-c"
+            , testcfile
+            , "-o"
+            , testofile
+            ]
+          withTempFile "" $ \testbinfile testbinhnd ->
+            do
+              hClose testbinhnd
+              output <-
+                getProgramOutput
+                  verbosity
+                  gccProg
+                  ["-no-pie", "-Werror", testofile, "-o", testbinfile]
+              return (not ("unrecognized" `isInfixOf` map toLower output))
+              `catchIO` (\_ -> return False)
+              `catchExit` (\_ -> return False)
+      return
+        gccProg
+          { programProperties =
+              Map.insert
+                "Supports -no-pie"
+                (if supportsNoPie then "YES" else "NO")
+                (programProperties gccProg)
           }
 
     configureGpp :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
@@ -258,7 +304,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
               _ <-
                 getProgramOutput
                   verbosity
-                  ldProg
+                  (suppressOverrideArgs ldProg)
                   ["-x", "-r", testofile, "-o", testofile']
               return True
               `catchIO` (\_ -> return False)
@@ -597,6 +643,34 @@ linkGhcOptions verbosity lbi bi clbi =
               (mkVersion [9, 4])
               (compiler lbi)
               (maybeToFlag $ programPath <$> lookupProgram gppProgram (withPrograms lbi))
+        , -- Use -pgml to ensure GHC drives the final link with the C compiler
+          -- Cabal resolved (as with -pgmc above, so that cc-options and
+          -- ld-options are interpreted by the selected toolchain, #4435,
+          -- #9801). Note that GHC's linker does not follow -pgmc: without
+          -- -pgml the final link is driven by the C compiler from GHC's
+          -- settings file.
+          -- As with -pgmc, we can only do this on GHC >= 9.4: with a custom
+          -- linker GHC stops passing -no-pie
+          -- (https://gitlab.haskell.org/ghc/ghc/-/issues/15319), which
+          -- breaks linking on toolchains that default to PIE. Whether the
+          -- resolved C compiler supports -no-pie is probed when the
+          -- compiler is configured (see 'configureGcc''), and passed along
+          -- as -pgml-supports-no-pie by renderGhcOptions.
+          -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgml
+          ghcOptLinkerProgram =
+            ghcOptionsSince
+              (mkVersion [9, 4])
+              (compiler lbi)
+              (maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi))
+        , ghcOptLinkerSupportsNoPie =
+            ghcOptionsSince
+              (mkVersion [9, 4])
+              (compiler lbi)
+              ( maybeToFlag $ do
+                  gccProg <- lookupProgram gccProgram (withPrograms lbi)
+                  guard (Map.lookup "Supports -no-pie" (programProperties gccProg) == Just "YES")
+                  pure True
+              )
         }
   where
     exe_paths =

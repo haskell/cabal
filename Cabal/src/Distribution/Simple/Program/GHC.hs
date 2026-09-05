@@ -532,6 +532,23 @@ data GhcOptions = GhcOptions
   -- ^ Program to use for the C compiler; the @ghc -pgmc@ flag.
   , ghcOptGppProgram :: Flag FilePath
   -- ^ Program to use for the C++ compiler; the @ghc -pgmcxx@ flag.
+  , ghcOptLinkerProgram :: Flag FilePath
+  -- ^ Program to use as the linker; the @ghc -pgml@ flag.
+  --
+  -- Note that GHC drives the final link with C compiler style options
+  -- (@-Wl,..@, @-no-pie@): the linker program is a C compiler driver, which
+  -- by default is the C compiler from GHC's settings. Since a custom
+  -- linker's support for @-no-pie@ is unknown to GHC, it stops passing the
+  -- flag altogether (see @-pgml-supports-no-pie@ and GHC issue #15319);
+  -- renderGhcOptions therefore passes @-pgml-supports-no-pie@ along with
+  -- this option depending on 'ghcOptLinkerSupportsNoPie', as the linker
+  -- Cabal selects is the probed C compiler.
+  , ghcOptLinkerSupportsNoPie :: Flag Bool
+  -- ^ Whether the linker program (see 'ghcOptLinkerProgram') supports the
+  -- @-no-pie@ flag; the @ghc -pgml-supports-no-pie@ flag. GHC refuses to
+  -- pass @-no-pie@ to a custom linker (see GHC issue #15319) unless this
+  -- flag is given, so Cabal probes the resolved C compiler when it is
+  -- configured.
   , ----------------------------
     -- Language and extensions
 
@@ -889,6 +906,14 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ["-opta" ++ opt | opt <- ghcOptAsmOptions opts]
         , concat [["-pgmc", cc] | cc <- flag ghcOptCcProgram]
         , concat [["-pgmcxx", cxx] | cxx <- flag ghcOptGppProgram]
+        , -- -pgml-supports-no-pie has to be passed after -pgml: GHC refuses
+          -- to pass -no-pie to a custom linker (see 'ghcOptLinkerProgram'
+          -- and GHC issue #15319) unless the probe of the resolved compiler
+          -- found support for it.
+          concat
+            [ ["-pgml", ld] ++ ["-pgml-supports-no-pie" | flagBool ghcOptLinkerSupportsNoPie]
+            | ld <- flag ghcOptLinkerProgram
+            ]
         , -----------------
           -- Linker stuff
 
