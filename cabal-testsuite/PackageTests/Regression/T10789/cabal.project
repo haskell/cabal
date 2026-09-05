@@ -1,0 +1,4 @@
+packages: .
+
+program-options
+    ld-options: -Wl,--allow-multiple-definition -Wl,--wrap=meaning_of_life_ld_real

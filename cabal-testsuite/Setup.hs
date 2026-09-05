@@ -14,6 +14,8 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Verbosity
 
+import Data.List (isPrefixOf)
+
 import System.Directory
 import System.FilePath
 
@@ -65,7 +67,15 @@ generateScriptEnvModule lbi verbosity = do
       , "lbiPackages = read " ++ show (show (cabalTestsPackages lbi))
       , ""
       , "lbiProgramDb :: ProgramDb"
-      , "lbiProgramDb = read " ++ show (show (withPrograms lbi))
+      -- The `Show`/`Read` round trip below crosses Cabal versions: this
+      -- setup script is compiled against the released Cabal pinned in the
+      -- `custom-setup` stanza, while the generated module is read by the
+      -- test suite compiled against the in-tree Cabal, whose types may
+      -- have gained fields. Splice the fields added to `ConfiguredProgram`
+      -- since the pinned release, so that the newer `Read` accepts the
+      -- generated value (in the spirit of the `lbiCompiler` workaround
+      -- above).
+      , "lbiProgramDb = read " ++ show (addMissingConfiguredProgramFields (show (withPrograms lbi)))
       , ""
       , "lbiWithSharedLib :: Bool"
       , "lbiWithSharedLib = " ++ show (withSharedLib lbi)
@@ -77,6 +87,23 @@ generateScriptEnvModule lbi verbosity = do
     moduledir = libAutogenDir </> "Test" </> "Cabal"
     -- fixme: use component-specific folder
     libAutogenDir = autogenPackageModulesDir lbi
+
+-- | `programDriverArgs` was added to `ConfiguredProgram` after the Cabal
+-- release this setup script is compiled against; its derived `Show`
+-- therefore omits the field that the test suite's newer `Read` expects.
+-- Splice it into every record of the generated `show` output.
+--
+-- The spliced label is assumed not to occur inside any of the shown string
+-- values, which holds for the program arguments occurring in practice.
+addMissingConfiguredProgramFields :: String -> String
+addMissingConfiguredProgramFields = go
+  where
+    needle = ", programOverrideEnv = "
+    replacement = ", programDriverArgs = [], programOverrideEnv = "
+    go [] = []
+    go s@(c : rest)
+      | needle `isPrefixOf` s = replacement ++ go (drop (length needle) s)
+      | otherwise = c : go rest
 
 -- | Convert package database into absolute path, so that
 -- if we change working directories in a subprocess we get the correct database.
