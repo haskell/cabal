@@ -138,6 +138,10 @@ normalizeOutput nenv =
         . resub
           "\"-pgmcxx\",\"[^\"]+\""
           "\"-pgmcxx\",\"<CXXCPATH>\""
+        -- Normalize the linker path embedded in -pgml.
+        . resub
+          "\"-pgml\",\"[^\"]+\""
+          "\"-pgml\",\"<CCPATH>\""
         -- Remove cabal version output from show-build-info output
         . resub
           ("{\"cabal-lib-version\":\"" ++ posixRegexEscape (display (normalizerCabalVersion nenv)) ++ "\"")
