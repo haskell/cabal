@@ -2442,20 +2442,12 @@ elaborateInstallPlan
             -- is what makes @--with-gcc@ and the @program-locations@ section in
             -- the config file win over the C compiler that GHC was built with.
             elabProgramPaths =
-<<<<<<< HEAD
-              Map.fromList
-                [ (programId prog, programPath prog)
-                | prog <- configuredPrograms compilerProgDb
-                ]
-                <> perPkgOptionMapLast pkgid packageConfigProgramPaths
-=======
-              getMapLast (perPkgOption pkgid packageConfigProgramPaths)
+              perPkgOptionMapLast pkgid packageConfigProgramPaths
                 <> Map.fromList
                   [ (programId prog, programPath prog)
                   | prog <- configuredPrograms compilerProgDb
                   ]
 
->>>>>>> 0a06a5f (fix program-locations)
             elabProgramArgs =
               -- Workaround for <https://github.com/haskell/cabal/issues/4010>
               --
