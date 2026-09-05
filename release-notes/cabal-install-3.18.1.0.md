@@ -17,9 +17,10 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
     Temporary files are cleaned on reboot.  If you do not reboot frequently,
     you can run `rm /tmp/*.tmp`.
 
-- Putting targets after the argument separator is deprecated [#12231](https://github.com/haskell/cabal/issues/12231)
+    This will be fixed in a future `cabal-install 3.18` point release.
 
-   Invoking e.g. `cabal run -- target` is deprecated.  Put the target
+- Putting targets after the argument separator is removed [#12231](https://github.com/haskell/cabal/issues/12231) [#10487](https://github.com/haskell/cabal/pull/10487)
+   Invoking e.g. `cabal run -- target` works no more.  Put the target
    — and any cabal-specific option — before the hyphen (like this:
    `cabal run target -- <non-cabal-options>`).
 
@@ -28,6 +29,30 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
   If `cabal` throws parse warnings or errors when compiling your project, you
   can invoke it with `--project-file-parser=legacy` to have the build work
   again.
+
+  This will be fixed in a future `cabal-install 3.18` point release.
+
+- `cabal-install` works with semaphore version 2 only [#12306](https://github.com/haskell/cabal/issues/12306)
+
+  `cabal-install 3.18` includes support for version 2 of `semaphore-compat`.
+  GHC plans to add support for v2 in releases 9.10.4, 9.12.5, 9.14.2, and
+  10.0.1.
+
+  If those GHCs are not yet released or not available to you, you might
+  consider not updating to `3.18` to keep v1 semaphore working.
+
+- Windows: cannot `cabal install` `cabal-install` [#12269](https://github.com/haskell/cabal/issues/12269)
+
+  This is due to Windows not allowing to delete an open file.
+
+  Workaround: build `cabal-install` and copy it manually to the target
+  folder.
+
+- Windows: `cabal-install` links against msys env specific dlls [#12272](https://github.com/haskell/cabal/issues/12272)
+
+  This effectively does not allow cabal to be run in Powershell.
+
+  A fix will be present in a future `cabal-install 3.18` point release.
 
 
 ### Significant changes
@@ -158,6 +183,9 @@ cabal-install and cabal-install-solver 3.18.1.0 changelog and release notes
 
   `readProjectConfig` now requires an additional `ProjectFileParser`
   parameter.
+
+  `parseConditionConfVar` now requires a new start position `Position`
+  argument.
 
 ### Other changes
 
