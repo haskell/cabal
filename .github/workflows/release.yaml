@@ -76,7 +76,7 @@ jobs:
 
       - name: build sdists
         run: |
-          cabal sdist -o out all
+          cabal sdist --output-directory out/ all
         shell: bash
 
       - name: Release
