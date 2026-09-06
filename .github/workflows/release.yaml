@@ -76,7 +76,7 @@ jobs:
 
       - name: build sdists
         run: |
-          cabal sdist --output-directory out/ all
+          cabal sdist --output-directory out/ Cabal-syntax Cabal-hooks Cabal cabal-install-solver hooks-exe cabal-install
         shell: bash
 
       - name: Release
