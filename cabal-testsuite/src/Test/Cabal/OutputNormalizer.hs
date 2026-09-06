@@ -138,7 +138,16 @@ normalizeOutput nenv =
         . resub
           "\"-pgmcxx\",\"[^\"]+\""
           "\"-pgmcxx\",\"<CXXCPATH>\""
-        -- Remove cabal version output from show-build-info output
+        -- Normalize the linker path embedded in -pgml.
+        . resub
+          "\"-pgml\",\"[^\"]+\""
+          "\"-pgml\",\"<CCPATH>\""
+        -- Whether -pgml-supports-no-pie is passed depends on whether the
+        -- probe of the resolved C compiler found -no-pie support.
+        . resub
+          ",\"-pgml-supports-no-pie\""
+          ""
+        -- Remove cabal version output from show-build-info output.
         . resub
           ("{\"cabal-lib-version\":\"" ++ posixRegexEscape (display (normalizerCabalVersion nenv)) ++ "\"")
           "{\"cabal-lib-version\":\"<CABALVER>\""
