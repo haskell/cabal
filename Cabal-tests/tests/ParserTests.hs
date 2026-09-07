@@ -14,11 +14,9 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Applicative
 import Control.Monad                               (void, unless)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
-import Distribution.Fields                         (pwarning)
 import Distribution.Fields.Parser                  (readFieldsConcrete', formatError)
 import Distribution.PackageDescription
   ( GenericPackageDescription
@@ -34,15 +32,12 @@ import Distribution.PackageDescription
   )
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
-import Distribution.Pretty                         (prettyShow)
 import Distribution.Fields.ParseResult
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>), dropExtension, addExtension)
 import Distribution.Parsec.Source
-import Data.Function ((&))
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
@@ -54,11 +49,8 @@ import Data.TreeDiff.Golden          (ediffGolden)
 import Data.TreeDiff.Instances.Cabal ()
 #endif
 import Distribution.FieldGrammar.Parsec
-import Distribution.PackageDescription.FieldGrammar
 import Distribution.FieldGrammar
 import Data.Functor.Identity
-import Distribution.FieldGrammar.Newtypes
-import Distribution.Types.PackageName
 import Distribution.Fields.Field
 import Data.Char
 import Distribution.CabalSpecVersion
@@ -76,13 +68,8 @@ import Data.Coerce
 import Distribution.Parsec
 import Distribution.Pretty
 import Language.Haskell.Extension
-import qualified Text.PrettyPrint as PP
-import Debug.Trace
 import Distribution.Fields.ExactPretty
-import qualified Data.Text.Lazy.IO as TIO
 import Text.Pretty.Simple
-import System.IO (hPutStr, stderr, stdout)
-import qualified Data.Bifunctor        as Bi
 
 tests :: TestTree
 tests = testGroup "parsec tests"
@@ -247,7 +234,7 @@ mkEditFieldPrintedTest name fname edit = ediffGolden goldenTest name exprFile $ 
 
   case editResult of
     EditOk ok -> pure $ toExpr (runRenderFields ok)
-    EditUnchanged u -> pure (toExpr @String "unchanged")
+    EditUnchanged _ -> pure (toExpr @String "unchanged")
     EditErr err -> pure (toExpr err)
 
   where
@@ -422,7 +409,6 @@ mkModifyValueListTest
      , Sep sep
      , Pretty b
      , Parsec b
-     , Parsec (List sep (Located b) (Located a))
      )
   => String
   -> BS.ByteString
@@ -471,7 +457,6 @@ mkPrependValueListBSTest
      , Sep sep
      , Pretty b
      , Parsec b
-     , Parsec (List sep (Located b) (Located a))
      )
   => String
   -> BS.ByteString
@@ -698,7 +683,7 @@ exactPrettyFieldTest input = testCase "exact-pretty" $ do
   fs <- case res of
     Left perr -> fail $ formatError contents perr
     Right (ok, warns) -> do
-      -- unless (null warns) (fail $ unlines (map show warns))
+      unless (null warns) (fail $ unlines (map show warns))
       pure ok
 
   pPrint fs
