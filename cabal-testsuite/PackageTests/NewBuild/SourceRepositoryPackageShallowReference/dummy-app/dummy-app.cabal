@@ -1,0 +1,10 @@
+cabal-version: 3.0
+name: dummy-app
+version: 0.1.0.0
+build-type: Simple
+
+executable dummy-app
+  main-is: Main.hs
+  hs-source-dirs: app
+  build-depends: base, pkg-a, pkg-b
+  default-language: Haskell2010
