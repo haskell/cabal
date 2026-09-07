@@ -66,14 +66,13 @@ import Distribution.Fields.ExactPretty
 #ifdef MIN_VERSION_tree_diff
 import Data.TreeDiff                 (ediff)
 import Data.TreeDiff.Instances.Cabal ()
-import Data.TreeDiff.Pretty          (ansiWlEditExprCompact, ansiWlEditExpr)
+import Data.TreeDiff.Pretty          (ansiWlEditExprCompact, {-ansiWlEditExpr-})
 #endif
 
 import Data.Time.Clock.System
 import Data.Time.Format
 
 import Data.Char
-import Debug.Trace
 
 -------------------------------------------------------------------------------
 -- parseIndex: Index traversal
@@ -162,7 +161,7 @@ readFieldTest fpath bs = case Parsec.readFields bs' of
 
 fieldRoundTripTest :: FilePath -> B.ByteString -> IO RoundTripResult
 fieldRoundTripTest fpath bs0 = do
-  fs <- case Parsec.readFieldsWithComments bs of
+  fs <- case Parsec.readFieldsConcrete bs of
         Right ok  -> pure ok
         Left err -> do
             putStrLn fpath

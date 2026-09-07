@@ -67,12 +67,10 @@ import Distribution.Version
 import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce (Coercible, coerce)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Fields.ExactPretty (LineEnding, lineEndingChar)
 import qualified Distribution.SPDX as SPDX
 
 -- | Vertical list with commas. Displayed with 'vcat'

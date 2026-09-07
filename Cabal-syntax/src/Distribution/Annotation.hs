@@ -8,7 +8,6 @@ import Data.List (sortOn)
 import Data.Ord (Down (..))
 import Distribution.Compat.Newtype
 import Distribution.Parsec
-import Distribution.Parsec.Position
 
 -- | Designates the source position within a joined 'FieldLineStream'.
 --   Inclusive in the start position, exclusive in the ending position.

@@ -81,7 +81,6 @@ import qualified Distribution.FieldGrammar as FG
 import qualified Distribution.Fields as F
 import Distribution.Fields.ParseResult (runParseResult)
 import Distribution.Parsec.Error (showPErrorWithSource)
-import Distribution.Parsec.Position (Position (..))
 import Distribution.Parsec.Warning (showPWarningWithSource)
 import Distribution.Simple.Utils (fromUTF8BS, toUTF8BS)
 
