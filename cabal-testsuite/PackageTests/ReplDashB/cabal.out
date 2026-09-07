@@ -1,6 +1,5 @@
 # cabal clean
 # cabal v2-repl
-Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - fake-package-0 (interactive) (lib) (first run)
