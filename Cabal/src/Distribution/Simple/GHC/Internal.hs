@@ -88,7 +88,8 @@ import Language.Haskell.Extension
 import System.Directory (listDirectory)
 import System.Environment (getEnv)
 import System.FilePath
-  ( takeDirectory
+  ( isAbsolute
+  , takeDirectory
   , takeExtension
   , takeFileName
   )
@@ -98,6 +99,14 @@ targetPlatform :: [(String, String)] -> Maybe Platform
 targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 
 -- | Adjust the way we find and configure gcc and ld
+--
+-- The tools are the ones GHC was configured with: we ask GHC (via the
+-- settings file exposed by @ghc --info@) what C toolchain it uses and use
+-- exactly that. The toolchain recorded in GHC's settings file was
+-- chosen when GHC (or its bindist) was configured, and GHC cannot be
+-- assumed to work with any other choice; e.g. a GHC built for another
+-- target is configured with a toolchain that searching the PATH cannot find
+-- (a GHC for the JS backend needs the emscripten toolchain).
 configureToolchain
   :: GhcImplInfo
   -> ConfiguredProgram
@@ -107,28 +116,28 @@ configureToolchain
 configureToolchain _implInfo ghcProg ghcInfo =
   addKnownProgram
     gccProgram
-      { programFindLocation = findProg gccProgramName extraGccPath
+      { programFindLocation = findProg gccProgram mbGccCommand extraGccPath
       , programPostConf = configureGcc
       }
     . addKnownProgram
       gppProgram
-        { programFindLocation = findProg gppProgramName extraGppPath
+        { programFindLocation = findProg gppProgram mbGppCommand extraGppPath
         , programPostConf = configureGpp
         }
     . addKnownProgram
       ldProgram
-        { programFindLocation = findProg ldProgramName extraLdPath
+        { programFindLocation = findProg ldProgram mbLdCommand extraLdPath
         , programPostConf = \v cp ->
             -- Call any existing configuration first and then add any new configuration
             configureLd v =<< programPostConf ldProgram v cp
         }
     . addKnownProgram
       arProgram
-        { programFindLocation = findProg arProgramName extraArPath
+        { programFindLocation = findProg arProgram mbArCommand extraArPath
         }
     . addKnownProgram
       stripProgram
-        { programFindLocation = findProg stripProgramName extraStripPath
+        { programFindLocation = findProg stripProgram mbStripCommand extraStripPath
         }
   where
     compilerDir, base_dir, mingwBinDir :: FilePath
@@ -138,27 +147,22 @@ configureToolchain _implInfo ghcProg ghcInfo =
     isWindows = case buildOS of Windows -> True; _ -> False
     binPrefix = ""
 
-    maybeName :: Program -> Maybe FilePath -> String
-    maybeName prog = maybe (programName prog) (dropExeExtension . takeFileName)
-
-    gccProgramName = maybeName gccProgram mbGccLocation
-    gppProgramName = maybeName gppProgram mbGppLocation
-    ldProgramName = maybeName ldProgram mbLdLocation
-    arProgramName = maybeName arProgram mbArLocation
-    stripProgramName = maybeName stripProgram mbStripLocation
-
     mkExtraPath :: Maybe FilePath -> FilePath -> [FilePath]
-    mkExtraPath mbPath mingwPath
+    mkExtraPath mbCommand mingwPath
       | isWindows = mbDir ++ [mingwPath]
       | otherwise = mbDir
       where
-        mbDir = maybeToList . fmap takeDirectory $ mbPath
+        mbDir =
+          [ takeDirectory command
+          | Just command <- [mbCommand]
+          , isAbsolute command
+          ]
 
-    extraGccPath = mkExtraPath mbGccLocation windowsExtraGccDir
-    extraGppPath = mkExtraPath mbGppLocation windowsExtraGppDir
-    extraLdPath = mkExtraPath mbLdLocation windowsExtraLdDir
-    extraArPath = mkExtraPath mbArLocation windowsExtraArDir
-    extraStripPath = mkExtraPath mbStripLocation windowsExtraStripDir
+    extraGccPath = mkExtraPath mbGccCommand windowsExtraGccDir
+    extraGppPath = mkExtraPath mbGppCommand windowsExtraGppDir
+    extraLdPath = mkExtraPath mbLdCommand windowsExtraLdDir
+    extraArPath = mkExtraPath mbArCommand windowsExtraArDir
+    extraStripPath = mkExtraPath mbStripCommand windowsExtraStripDir
 
     -- on Windows finding and configuring ghc's gcc & binutils is a bit special
     ( windowsExtraGccDir
@@ -170,24 +174,46 @@ configureToolchain _implInfo ghcProg ghcInfo =
         let b = mingwBinDir </> binPrefix
          in (b, b, b, b, b)
 
+    -- Locate a toolchain tool, preferring the exact tool GHC was configured
     findProg
-      :: String
+      :: Program
+      -> Maybe FilePath
+      -- \^ The tool command reported by @ghc --info@, if any.
       -> [FilePath]
+      -- \^ Extra directories to search (e.g. GHC's bundled mingw bin dir).
       -> Verbosity
       -> ProgramSearchPath
       -> IO (Maybe (FilePath, [FilePath]))
-    findProg progName extraPath v searchpath =
-      findProgramOnSearchPath v searchpath' progName
+    findProg prog mbCommand extraPath v searchpath =
+      case mbCommand of
+        -- new way: the exact tool recorded in GHC's settings file
+        Just command | isAbsolute command -> return (Just (command, []))
+        -- old way: find a like-named program on the search path
+        _ -> searchFor $ maybeName mbCommand
       where
-        searchpath' = map ProgramSearchPathDir extraPath ++ searchpath
+        maybeName :: Program -> Maybe FilePath -> String
+        maybeName prog = maybe (programName prog) (dropExeExtension . takeFileName)
 
-    -- Read tool locations from the 'ghc --info' output. Useful when
-    -- cross-compiling.
-    mbGccLocation = Map.lookup "C compiler command" ghcInfo
-    mbGppLocation = Map.lookup "C++ compiler command" ghcInfo
-    mbLdLocation = Map.lookup "ld command" ghcInfo
-    mbArLocation = Map.lookup "ar command" ghcInfo
-    mbStripLocation = Map.lookup "strip command" ghcInfo
+        searchFor :: String -> IO (Maybe (FilePath, [FilePath]))
+        searchFor = findProgramOnSearchPath v searchpath'
+          where
+            searchpath' = map ProgramSearchPathDir extraPath ++ searchpath
+
+    -- The tool commands from the 'ghc --info' output.
+    mbGccCommand = getToolCommand "C compiler command"
+    mbGppCommand = getToolCommand "C++ compiler command"
+    mbLdCommand = getToolCommand "Merge objects command" <|> getToolCommand "ld command"
+    mbArCommand = getToolCommand "ar command"
+    mbStripCommand = getToolCommand "strip command"
+
+    -- An empty command means the tool was deliberately left unconfigured
+    -- when GHC was built (e.g. the merge objects command of GHCs with the
+    -- bundled Windows toolchain); treat it as if it were not reported.
+    getToolCommand :: String -> Maybe FilePath
+    getToolCommand key = case Map.lookup key ghcInfo of
+      Just command
+        | not (null command) -> Just command
+      _ -> Nothing
 
     ccFlags = getFlags "C compiler flags"
     cxxFlags = getFlags "C++ compiler flags"
