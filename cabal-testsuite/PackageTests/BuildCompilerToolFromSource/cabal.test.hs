@@ -1,9 +1,8 @@
 import Test.Cabal.Prelude
 
-import Data.List (isInfixOf)
 import Distribution.Package (mkPackageName)
 import System.FilePath ((</>))
-import Test.Cabal.Plan (ConfiguredInplace (..), InstallItem (..), Plan (..))
+import Test.Cabal.Plan (ConfiguredInplace (..), InstallItem (..), Plan (..), Stage (..))
 
 -- Build a build-tool dependency FROM SOURCE with a distinct build compiler.
 --
@@ -30,14 +29,13 @@ main = cabalTest . recordMode DoNotRecord $ do
     withPlan $ do
       -- 'tool' is in the plan twice: as a host-stage local package (every
       -- local package is a solver goal) and as app's build-stage build tool.
-      -- plan.json does not record the stage yet, so pick the copy built by the
-      -- build compiler through its dist dir, which carries the compiler id.
+      -- We want the build-stage copy, which plan.json's 'stage' field names.
       Just plan <- testPlan <$> getTestEnv
       let toolDists =
             [ configuredInplaceDistDir c
             | AConfiguredInplace c <- planInstallPlan plan
             , configuredInplacePackageName c == mkPackageName "tool"
-            , ("ghc-" ++ buildVersion) `isInfixOf` configuredInplaceDistDir c
+            , configuredInplaceStage c == Build
             ]
       toolDist <- case toolDists of
         [d] -> return d

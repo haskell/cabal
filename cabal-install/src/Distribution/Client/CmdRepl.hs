@@ -178,13 +178,14 @@ import Distribution.Client.ProjectConfig
   ( ProjectConfig (..)
   , ProjectConfigShared (..)
   )
-import Distribution.Client.ProjectPlanning.Stage (WithStage, withoutStage)
+import Distribution.Client.ProjectPlanning.Stage (WithStage (..), withoutStage)
 import Distribution.Client.ReplFlags
   ( EnvFlags (envIncludeTransitive, envPackages)
   , ReplFlags (..)
   , defaultReplFlags
   , topReplOptions
   )
+import Distribution.Client.Toolchain (Stage (..))
 import Distribution.Compat.Binary (decode)
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
@@ -449,9 +450,10 @@ targetedRepl
 
           let
             (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
-            -- The plan is keyed by 'WithStage UnitId'; recover the node for this
-            -- (host-stage) target unit to get at its key and dependencies.
-            targetPkg = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ find ((== unitId) . installedUnitId) (InstallPlan.toList elaboratedPlan)
+            -- The plan is keyed by 'WithStage UnitId'; a repl target is a
+            -- host-stage unit, so look its node up at the host stage (under
+            -- cross-compilation a build-stage copy may share the UnitId).
+            targetPkg = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ InstallPlan.lookup elaboratedPlan (WithStage Host unitId)
             originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan (Graph.nodeKey targetPkg)
             oci = OriginalComponentInfo unitId originalDeps
             pkgId = packageId targetPkg
@@ -744,12 +746,15 @@ addDepsToProjectTarget deps pkgId ctx =
 generateReplFlags :: Bool -> ElaboratedInstallPlan -> OriginalComponentInfo -> [String]
 generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = flags
   where
-    -- The plan is keyed by 'WithStage UnitId'; look a bare unit's key up in the
-    -- plan (it carries the stage that unit was solved for).
+    -- The plan is keyed by 'WithStage UnitId'. The repl's own component and
+    -- everything it links against are host-stage units, so a bare unit id
+    -- means the host-stage node (under cross-compilation a build-stage copy
+    -- may share the UnitId).
     planKey :: UnitId -> WithStage UnitId
     planKey uid =
-      maybe (error $ "generateReplFlags: cannot find " ++ prettyShow uid) Graph.nodeKey $
-        find ((== uid) . installedUnitId) (InstallPlan.toList elaboratedPlan)
+      case InstallPlan.lookup elaboratedPlan (WithStage Host uid) of
+        Just pkg -> Graph.nodeKey pkg
+        Nothing -> error $ "generateReplFlags: cannot find " ++ prettyShow uid
 
     exeDeps :: [UnitId]
     exeDeps =
