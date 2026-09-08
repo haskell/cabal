@@ -20,6 +20,7 @@ import Distribution.Client.HashValue (hashValue, showHashValue)
 import Distribution.Client.ProjectBuilding.Types
 import Distribution.Client.ProjectPlanning.Stage (WithStage (..), withoutStage)
 import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.Toolchain (Stage, showStage)
 import Distribution.Client.Types.ConfiguredId (confInstId)
 import Distribution.Client.Types.PackageLocation (PackageLocation (..))
 import Distribution.Client.Types.Repo (RemoteRepo (..), Repo (..))
@@ -126,7 +127,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     planPackageToJ :: ElaboratedPlanPackage -> J.Value
     planPackageToJ pkg =
       case pkg of
-        InstallPlan.PreExisting (WithStage _stage ipi) -> installedPackageInfoToJ ipi
+        InstallPlan.PreExisting (WithStage stage ipi) -> installedPackageInfoToJ stage ipi
         InstallPlan.Configured elab -> elaboratedPackageToJ False elab
         InstallPlan.Installed elab -> elaboratedPackageToJ True elab
     -- Note that the plan.json currently only uses the elaborated plan,
@@ -134,8 +135,14 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     -- that case, but the code supports it in case we want to use this
     -- later in some use case where we want the status of the build.
 
-    installedPackageInfoToJ :: InstalledPackageInfo -> J.Value
-    installedPackageInfoToJ ipi =
+    -- The build stage a plan entry belongs to. Under cross-compilation the
+    -- same unit id can appear once per stage, so the stage is what tells the
+    -- two entries apart; in a non-cross build every entry is on the host stage.
+    stageToJ :: Stage -> (String, J.Value)
+    stageToJ stage = "stage" J..= J.String (showStage stage)
+
+    installedPackageInfoToJ :: Stage -> InstalledPackageInfo -> J.Value
+    installedPackageInfoToJ stage ipi =
       -- Pre-existing packages lack configuration information such as their flag
       -- settings or non-lib components. We only get pre-existing packages for
       -- the global/core packages however, so this isn't generally a problem.
@@ -144,6 +151,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       J.object
         [ "type" J..= J.String "pre-existing"
         , "id" J..= (jdisplay . installedUnitId) ipi
+        , stageToJ stage
         , "pkg-name" J..= (jdisplay . pkgName . packageId) ipi
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) ipi
         , "depends" J..= map jdisplay (installedDepends ipi)
@@ -159,6 +167,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                   else "configured"
               )
         , "id" J..= (jdisplay . installedUnitId) elab
+        , stageToJ (elabStage elab)
         , "pkg-name" J..= (jdisplay . pkgName . packageId) elab
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
         , -- The `x-revision` field is a feature of repos (not cabal itself),
