@@ -918,9 +918,10 @@ resolveDependencies toolchains pkgConfigDbs params = do
         preferences
         constraints
         targets
-  validateSolverResult platform comp indGoals pkgs
+  validateSolverResult toolchains indGoals pkgs
   where
-    (comp, platform) = getStage toolchains Host
+    -- The wired-in units come from the host compiler.
+    comp = fst (getStage toolchains Host)
     finalparams@( DepResolverParams
                     targets
                     constraints
@@ -1016,13 +1017,12 @@ interpretPackagesPreference selected defaultPref prefs =
 -- | Make an install plan from the output of the dep resolver.
 -- It checks that the plan is valid, or it's an error in the dep resolver.
 validateSolverResult
-  :: Platform
-  -> CompilerInfo
+  :: Staged (CompilerInfo, Platform)
   -> IndependentGoals
   -> [ResolverPackage UnresolvedPkgLoc]
   -> Progress String String SolverInstallPlan
-validateSolverResult platform comp indepGoals pkgs =
-  case planPackagesProblems platform comp pkgs of
+validateSolverResult toolchains indepGoals pkgs =
+  case planPackagesProblems toolchains pkgs of
     [] -> case SolverInstallPlan.new indepGoals graph of
       Right plan -> return plan
       Left problems -> fail (formatPlanProblems problems)
@@ -1067,14 +1067,13 @@ showPlanPackageProblem (DuplicatePackageSolverId pid dups) =
     ++ " duplicate instances."
 
 planPackagesProblems
-  :: Platform
-  -> CompilerInfo
+  :: Staged (CompilerInfo, Platform)
   -> [ResolverPackage UnresolvedPkgLoc]
   -> [PlanPackageProblem]
-planPackagesProblems platform cinfo pkgs =
+planPackagesProblems toolchains pkgs =
   [ InvalidConfiguredPackage pkg packageProblems
   | Configured pkg <- pkgs
-  , let packageProblems = configuredPackageProblems platform cinfo pkg
+  , let packageProblems = configuredPackageProblems toolchains pkg
   , not (null packageProblems)
   ]
     ++ [ DuplicatePackageSolverId (Graph.nodeKey aDup) dups
@@ -1123,14 +1122,12 @@ showPackageProblem (InvalidDep dep pkgid) =
 -- in the configuration given by the flag assignment, all the package
 -- dependencies are satisfied by the specified packages.
 configuredPackageProblems
-  :: Platform
-  -> CompilerInfo
+  :: Staged (CompilerInfo, Platform)
   -> SolverPackage UnresolvedPkgLoc
   -> [PackageProblem]
 configuredPackageProblems
-  platform
-  cinfo
-  (SolverPackage _stage pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
+  toolchains
+  (SolverPackage stage pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
     [ DuplicateFlag flag
     | flag <- PD.findDuplicateFlagAssignments specifiedFlags
     ]
@@ -1155,6 +1152,10 @@ configuredPackageProblems
       thisPkgName = packageName (srcpkgDescription pkg)
 
       specifiedDeps1 :: ComponentDeps [PackageId]
+      -- Finalise the package against the compiler and platform of the stage
+      -- it was solved for.
+      (cinfo, platform) = getStage toolchains stage
+
       specifiedDeps1 = fmap (map solverSrcId) specifiedDeps0
 
       mergedFlags :: [MergeResult PD.FlagName PD.FlagName]

@@ -127,6 +127,7 @@ import Distribution.Simple.Command
   , commandShowOptions
   )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import Distribution.Solver.Types.Stage (Staged, getStage)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program.GHC
   ( GhcMode (..)
@@ -231,7 +232,7 @@ data InLibraryArgs (lbi :: Type) (flags :: Type) where
   InLibraryConfigureArgs
     :: ElaboratedSharedConfig
     -> ElaboratedReadyPackage
-    -> TVar InstalledPackageIndex
+    -> TVar (Staged InstalledPackageIndex)
     -> InLibraryArgs lbi ConfigFlags
   InLibraryPostConfigureArgs
     :: SPostConfigurePhase flags
@@ -658,9 +659,10 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                SRegisterPhase -> ()
                STestPhase     -> ()
                SBenchPhase    -> ()
-    LibraryMethod (InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar) -> do
-      -- Start from the pre-configured compiler ProgramDb, augmented
-      -- with all builtin programs (restored as unconfigured).
+    LibraryMethod (InLibraryConfigureArgs elabSharedConfig elabReadyPkg@(ReadyPackage elabPkg) ipiTVar) -> do
+      -- Start from the pre-configured compiler ProgramDb of the
+      -- package's own stage, augmented with all builtin programs
+      -- (restored as unconfigured).
       -- This ensures:
       --   (a) configureAllKnownPrograms inside configureFinal skips
       --       compiler programs (already configured at project level),
@@ -677,16 +679,17 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
         -- program options (--PROG-options=...).
         mkProgramDb verbHandles flags
           (restoreProgramDb builtinPrograms $
-            pkgConfigCompilerProgs elabSharedConfig)
+            elabProgramDb elabSharedConfig elabPkg)
       setupProgDb <-
         prependProgramSearchPath verbosity
           (useExtraPathEnv options)
           (useExtraEnvOverrides options)
           baseProgDb
-      -- Read the project InstalledPackageIndex to avoid needing to query
-      -- @ghc-pkg@ to obtain it.
+      -- Read the project InstalledPackageIndex of the package's stage to
+      -- avoid needing to query @ghc-pkg@ to obtain it. See (ProjIPI3) and
+      -- (ProjIPI4) in Note [Per-project InstalledPackageIndex]
       -- in Distribution.Client.ProjectBuilding.
-      ipi <- readTVarIO ipiTVar
+      ipi <- (`getStage` elabStage elabPkg) <$> readTVarIO ipiTVar
       lbi0 <-
         InLibrary.configure
           (InLibrary.libraryConfigureInputsFromElabPackage

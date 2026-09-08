@@ -21,7 +21,7 @@ import Distribution.Compiler (CompilerInfo)
 
 import Distribution.Version
 import Distribution.Solver.Types.PackagePath
-import Distribution.Solver.Types.Stage (Stage (..))
+import Distribution.Solver.Types.Stage (Stage (..), Staged)
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
@@ -92,9 +92,9 @@ newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 -- before exploration.
 --
 solve :: SolverConfig                         -- ^ solver parameters
-      -> CompilerInfo
+      -> Staged CompilerInfo                  -- ^ the compiler of each build stage
       -> Index                                -- ^ all available packages as an index
-      -> Maybe PkgConfigDb                    -- ^ available pkg-config pkgs
+      -> Staged (Maybe PkgConfigDb)           -- ^ available pkg-config pkgs, per build stage
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> M.Map PN [LabeledPackageConstraint]  -- ^ global constraints
       -> S.Set PN                             -- ^ global goals

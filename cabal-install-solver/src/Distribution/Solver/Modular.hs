@@ -65,7 +65,7 @@ import Distribution.Solver.Types.Progress
 import Distribution.Solver.Types.SummarizedMessage
     ( SummarizedMessage(StringMsg) )
 import Distribution.Solver.Types.Stage
-         ( Stage(Host), getStage )
+         ( Staged )
 import Distribution.Solver.Types.Variable ( Variable(..) )
 import Distribution.Simple.Setup
          ( BooleanFlag(..) )
@@ -81,11 +81,10 @@ modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
   uncurry postprocess <$> -- convert install plan
   solve' sc cinfo idx pkgConfigDB pprefs gcs pns
     where
-      -- Compiler info and pkg-config DB used to validate flag/dependency
-      -- choices still come from the host stage; staging the validation phase
-      -- is a separate refinement.
-      cinfo = fst (getStage toolchains Host)
-      pkgConfigDB = getStage pkgConfigDbs Host
+      -- Flag/dependency choices are validated against the compiler and
+      -- pkg-config database of the stage each goal is solved for.
+      cinfo = fmap fst toolchains
+      pkgConfigDB = pkgConfigDbs
       -- Indices have to be converted into solver-specific uniform index. Which
       -- stages are solved separately is intrinsic to the staged toolchains (a
       -- non-cross build has no build stage), so 'convPIs' derives it directly.
@@ -140,9 +139,9 @@ modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
 -- complete, i.e., it shows the whole chain of dependencies from the user
 -- targets to the conflicting packages.
 solve' :: SolverConfig
-       -> CompilerInfo
+       -> Staged CompilerInfo
        -> Index
-       -> Maybe PkgConfigDb
+       -> Staged (Maybe PkgConfigDb)
        -> (PN -> PackagePreferences)
        -> Map PN [LabeledPackageConstraint]
        -> Set PN
