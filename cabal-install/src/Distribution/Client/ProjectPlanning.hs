@@ -155,6 +155,7 @@ import Distribution.Client.Toolchain
   , Staged (..)
   , Toolchain (..)
   , Toolchains
+  , activeStages
   , always
   , getStage
   , isCross
@@ -1174,7 +1175,11 @@ rebuildInstallPlan
         -> Rebuild ElaboratedInstallPlan
       phaseImprovePlan elaboratedPlan elaboratedShared = do
         liftIO $ debug verbosity "Improving the install plan..."
-        storePkgIdSet <- getStoreEntries cabalStoreDirLayout compiler
+        -- Each stage's compiler has its own store; read them all. Unit ids
+        -- hash the compiler, so a plain union cannot confuse the stages.
+        storePkgIdSet <-
+          fmap Set.unions . for (activeStages toolchains) $ \stage ->
+            getStoreEntries cabalStoreDirLayout (toolchainCompiler (getStage toolchains stage))
         let improvedPlan =
               improveInstallPlanWithInstalledPackages
                 storePkgIdSet
@@ -1186,7 +1191,7 @@ rebuildInstallPlan
         -- matches up as expected, e.g. no dangling deps, files deleted.
         return improvedPlan
         where
-          compiler = pkgConfigCompiler elaboratedShared
+          toolchains = pkgConfigToolchains elaboratedShared
 
 -- | If a 'PackageSpecifier' refers to a single package, return Just that
 -- package.
@@ -1889,14 +1894,9 @@ elaborateInstallPlan
     return (x, elaboratedSharedConfig)
     where
       -- The full 'Toolchains' (host + build) are carried in
-      -- 'ElaboratedSharedConfig'. These bindings name the host and build
-      -- compilers for the project-wide computations below (e.g. which package
-      -- DBs to use, which build ways the compiler supports). Each package's own
-      -- stage toolchain is selected per-package in 'elaborateSolverToCommon'.
-      Toolchain{toolchainCompiler = compiler} = getStage toolchains Host
-
-      Toolchain{toolchainCompiler = buildCompiler} = getStage toolchains Build
-
+      -- 'ElaboratedSharedConfig'. Each package's own stage toolchain is
+      -- selected per-package in 'elaborateSolverToCommon'; the project-wide
+      -- computations below select the stage they need explicitly.
       elaboratedSharedConfig =
         ElaboratedSharedConfig
           { pkgConfigToolchains = toolchains
@@ -2584,7 +2584,7 @@ elaborateInstallPlan
               if shouldBuildInplaceOnly pkg
                 then BuildInplaceOnly OnDisk
                 else BuildAndInstall
-            elabPackageDbs = projectPackageDbs Host
+            elabPackageDbs = projectPackageDbs elabStage
             elabBuildPackageDBStack = buildAndRegisterDbs
             elabRegisterPackageDBStack = buildAndRegisterDbs
 
@@ -2597,20 +2597,24 @@ elaborateInstallPlan
                 deps0
             elabSetupPackageDBStack = buildSetupDbs
 
-            elabInplaceBuildPackageDBStack = inplacePackageDbs
-            elabInplaceRegisterPackageDBStack = inplacePackageDbs
-            elabInplaceSetupPackageDBStack = buildInplacePackageDbs
+            elabInplaceBuildPackageDBStack = stageInplacePackageDbs stage
+            elabInplaceRegisterPackageDBStack = stageInplacePackageDbs stage
+            elabInplaceSetupPackageDBStack = stageInplacePackageDbs setupStage
 
+            -- A package is built against, and registered into, the databases
+            -- of its own stage.
             buildAndRegisterDbs
-              | shouldBuildInplaceOnly pkg = inplacePackageDbs
-              | otherwise = corePackageDbs
+              | shouldBuildInplaceOnly pkg = stageInplacePackageDbs stage
+              | otherwise = stageCorePackageDbs stage
 
             -- The Setup.hs script runs on the /build/ machine, so its
-            -- dependencies come from the build toolchain's databases (equal to
-            -- the host stacks unless cross-compiling).
+            -- dependencies come from the previous stage's databases (the same
+            -- as the package's own unless cross-compiling).
             buildSetupDbs
-              | shouldBuildInplaceOnly pkg = buildInplacePackageDbs
-              | otherwise = buildCorePackageDbs
+              | shouldBuildInplaceOnly pkg = stageInplacePackageDbs setupStage
+              | otherwise = stageCorePackageDbs setupStage
+
+            setupStage = prevStage stage
 
             elabPkgDescriptionOverride = descOverride
 
@@ -2762,26 +2766,26 @@ elaborateInstallPlan
       perPkgOption :: (Package pkg, Monoid m) => pkg -> (PackageConfig -> m) -> m
       perPkgOption = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig perPackageConfig
 
-      inplacePackageDbs =
-        corePackageDbs
-          ++ [distPackageDB (compilerId compiler)]
-
       -- The project's package databases belong to the host compiler; a
       -- distinct build toolchain gets none of them.
       projectPackageDbs :: Stage -> [Maybe PackageDBCWD]
       projectPackageDbs = projectPackageDbsFor toolchains sharedPackageConfig
 
-      corePackageDbs =
-        storePackageDBStack compiler (projectPackageDbs Host)
+      -- The package databases of a build stage: the store database of that
+      -- stage's compiler, and for in-place builds that compiler's dist
+      -- database too, on top of whichever project databases apply to the
+      -- stage. Equal for both stages unless cross-compiling.
+      stageCorePackageDbs :: Stage -> PackageDBStackCWD
+      stageCorePackageDbs s =
+        storePackageDBStack (stageCompilerOf s) (projectPackageDbs s)
 
-      -- The same database stacks for the build toolchain, used by setup
-      -- scripts. Equal to the host stacks unless cross-compiling.
-      buildInplacePackageDbs =
-        buildCorePackageDbs
-          ++ [distPackageDB (compilerId buildCompiler)]
+      stageInplacePackageDbs :: Stage -> PackageDBStackCWD
+      stageInplacePackageDbs s =
+        stageCorePackageDbs s
+          ++ [distPackageDB (compilerId (stageCompilerOf s))]
 
-      buildCorePackageDbs =
-        storePackageDBStack buildCompiler (projectPackageDbs Build)
+      stageCompilerOf :: Stage -> Compiler
+      stageCompilerOf s = toolchainCompiler (getStage toolchains s)
 
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be

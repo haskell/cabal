@@ -1,0 +1,15 @@
+cabal-version:      2.4
+name:               app
+version:            0.1.0.0
+build-type:         Simple
+
+executable app
+  main-is:            Main.hs
+  -- 'mylib' is a library dependency of this executable, while 'tool' is a
+  -- build-tool dependency that itself depends on 'mylib'. With a distinct
+  -- build compiler, 'tool' and its copy of 'mylib' are built from source by
+  -- the build compiler, and this executable and its copy of 'mylib' by the
+  -- host compiler.
+  build-depends:      base, mylib
+  build-tool-depends: tool:tool
+  default-language:   Haskell2010
