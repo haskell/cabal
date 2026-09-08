@@ -1,14 +1,9 @@
 import Test.Cabal.Prelude
 
 import Data.Char (isSpace)
+import Data.List (isInfixOf)
 import Data.Maybe (fromMaybe)
-import System.Directory
-  ( createDirectoryIfMissing
-  , doesFileExist
-  , executable
-  , getPermissions
-  , setPermissions
-  )
+import System.Directory (createDirectoryIfMissing, executable, getPermissions, setPermissions)
 import System.Environment (lookupEnv)
 
 -- Cabal must use the C toolchain GHC was configured with (the settings file
@@ -26,30 +21,32 @@ main = cabalTest $ recordMode DoNotRecord $ do
     -- GHC records an absolute path: Cabal must invoke exactly that C
     -- compiler, even when a like-named program shadows it on the PATH.
     Just cc | isAbsolute cc -> do
-      unless isWindows $ do
-        -- A decoy that records being invoked and forwards to GHC's actual
-        -- C compiler, put in front of everything on the PATH.
-        let marker = pkgDir </> "decoy-gcc-invoked"
-            decoyBin = pkgDir </> "decoy-bin"
-        liftIO $ do
-          createDirectoryIfMissing True decoyBin
-          let decoy = decoyBin </> "gcc"
-          writeFile decoy $
-            unlines
-              [ "#!/bin/sh"
-              , "touch " ++ show marker
-              , "exec " ++ show cc ++ " \"$@\""
-              ]
-          perms <- getPermissions decoy
-          setPermissions decoy perms{executable = True}
-        originalPath <- fromMaybe "" <$> liftIO (lookupEnv "PATH")
-        withEnv
-          [("PATH", Just (decoyBin ++ searchPathSeparator : originalPath))]
-          $ do
-            cabal' "v2-build" ["all"]
-              >>= assertOutputContains ("-pgmc " ++ cc)
-        decoyInvoked <- liftIO $ doesFileExist marker
-        assertBool "the decoy gcc on the PATH was used" (not decoyInvoked)
+      decoyEnv <-
+        if isWindows
+          then return []
+          else do
+            let decoyBin = pkgDir </> "decoy-bin"
+            liftIO $ do
+              createDirectoryIfMissing True decoyBin
+              let decoy = decoyBin </> takeFileName cc
+              writeFile decoy $
+                unlines
+                  [ "#!/bin/sh"
+                  , "exec " ++ show cc ++ " \"$@\""
+                  ]
+              perms <- getPermissions decoy
+              setPermissions decoy perms{executable = True}
+            originalPath <- fromMaybe "" <$> liftIO (lookupEnv "PATH")
+            return [("PATH", Just (decoyBin ++ searchPathSeparator : originalPath))]
+      withEnv decoyEnv $ do
+        res <- cabal' "v2-build" ["all"]
+        -- Depending on the platform's command-line escaping rules the
+        -- recorded path may be quoted.
+        assertBool
+          "Cabal did not use the C compiler GHC was configured with"
+          ( ("-pgmc " ++ cc)
+              `isInfixOf` filter (`notElem` ("\"'" :: String)) (resultOutput res)
+          )
       withPlan $ runPlanExe "ghc-toolchain" "ghc-toolchain-exe" []
     -- GHC only records a bare program name (or nothing): looking it up on
     -- the PATH is then exactly what GHC does itself.
