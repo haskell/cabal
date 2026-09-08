@@ -94,8 +94,9 @@ libraryConfigureInputsFromElabPackage
   userTargets =
     LibraryConfigureInputs
       { verbosityHandles = verbHandles
-      , compiler = pkgConfigCompiler sharedConfig
-      , platform = pkgConfigPlatform sharedConfig
+      , -- The package is configured with the toolchain of its own stage.
+        compiler = elabCompiler sharedConfig pkg
+      , platform = elabPlatform sharedConfig pkg
       , buildType =
           -- NB: don't get the build-type from 'pkgDescr',
           -- because for Configure build-type we rewrite the build-type
