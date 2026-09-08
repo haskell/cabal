@@ -191,8 +191,8 @@ configureToolchain _implInfo ghcProg ghcInfo =
         -- old way: find a like-named program on the search path
         _ -> searchFor $ maybeName mbCommand
       where
-        maybeName :: Program -> Maybe FilePath -> String
-        maybeName prog = maybe (programName prog) (dropExeExtension . takeFileName)
+        maybeName :: Maybe FilePath -> String
+        maybeName = maybe (programName prog) (dropExeExtension . takeFileName)
 
         searchFor :: String -> IO (Maybe (FilePath, [FilePath]))
         searchFor = findProgramOnSearchPath v searchpath'
