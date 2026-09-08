@@ -642,7 +642,21 @@ getSourceFiles = do
         Nothing
   recordLog r
   _ <- requireSuccess r
-  return (lines $ resultOutput r)
+  case lines (resultOutput r) of
+    [] ->
+      -- The source directory is not part of a git checkout (a jj workspace,
+      -- an unpacked sdist, ...), so git has nothing to say about it. Fall back
+      -- to listing the directory, skipping the build artefacts that git would
+      -- have ignored.
+      liftIO $
+        filter (not . isBuildArtefact)
+          <$> getDirectoryContentsRecursive (testSourceDir env)
+    files -> return files
+  where
+    isBuildArtefact f =
+      any
+        (\d -> d == "dist-newstyle" || d == ".jj" || ".dist" `isSuffixOf` d)
+        (splitDirectories f)
 
 recordLog :: Result -> TestM ()
 recordLog res = do

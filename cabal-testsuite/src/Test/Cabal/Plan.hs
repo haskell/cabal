@@ -6,6 +6,7 @@ module Test.Cabal.Plan
   ( Plan (..)
   , DistDirOrBinFile (..)
   , InstallItem (..)
+  , ConfiguredInplace (..)
   , ConfiguredGlobal (..)
   , Revision (..)
   , planDistDir
