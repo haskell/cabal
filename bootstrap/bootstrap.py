@@ -275,10 +275,12 @@ UnitId = NewType('UnitId', str)
 PlanUnit = NewType('PlanUnit', dict)
 
 def bootstrap(info: BootstrapInfo, ghc: Compiler) -> None:
-    if not PKG_DB.exists():
-        print(f'Creating package database {PKG_DB}')
-        PKG_DB.parent.mkdir(parents=True, exist_ok=True)
-        subprocess_run([ghc.ghc_pkg_path, 'init', PKG_DB])
+    if PKG_DB.exists():
+        print(f'Deleting stale package database {PKG_DB}')
+        shutil.rmtree(PKG_DB)
+    print(f'Creating package database {PKG_DB}')
+    PKG_DB.parent.mkdir(parents=True, exist_ok=True)
+    subprocess_run([ghc.ghc_pkg_path, 'init', PKG_DB])
 
     for dep in info.builtin:
         check_builtin(dep, ghc)
