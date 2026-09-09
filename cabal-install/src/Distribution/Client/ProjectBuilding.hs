@@ -360,6 +360,7 @@ rebuildTargets
         let compiler = pkgConfigCompiler sharedPackageConfig
         registerLock <- newLock -- serialise registration
         cacheLock <- newLock -- serialise access to setup exe cache
+        unpackLock <- newLock -- serialise tarball unpacking, see 'withTarballLocalDirectory'
         -- TODO: [code cleanup] eliminate setup exe cache
         info verbosity $
           "Executing install plan "
@@ -428,6 +429,7 @@ rebuildTargets
                       downloadMap
                       registerLock
                       cacheLock
+                      unpackLock
                       sharedPackageConfig
                       installPlan
                       ipiTVar
@@ -641,6 +643,8 @@ rebuildTarget
   -- ^ Serialises package registration
   -> Lock
   -- ^ Serialises access to the setup executable cache
+  -> Lock
+  -- ^ Serialises tarball unpacking
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> TVar (Staged InstalledPackageIndex)
@@ -656,6 +660,7 @@ rebuildTarget
   downloadMap
   registerLock
   cacheLock
+  unpackLock
   sharedPackageConfig
   plan
   ipiTVar
@@ -708,6 +713,7 @@ rebuildTarget
         withTarballLocalDirectory
           verbosity
           distDirLayout
+          unpackLock
           tarball
           (packageId pkg)
           (elabDistDirParams sharedPackageConfig pkg)
@@ -846,6 +852,8 @@ downloadedSourceLocation pkgloc =
 withTarballLocalDirectory
   :: Verbosity
   -> DistDirLayout
+  -> Lock
+  -- ^ serialises the check-and-unpack of the shared source directory
   -> FilePath
   -> PackageId
   -> DistDirParams
@@ -859,6 +867,7 @@ withTarballLocalDirectory
 withTarballLocalDirectory
   verbosity
   distDirLayout@DistDirLayout{..}
+  unpackLock
   tarball
   pkgid
   dparams
@@ -898,23 +907,31 @@ withTarballLocalDirectory
                 makeRelative (normalise srcdir) $
                   distBuildDirectory dparams
         -- TODO: [nice to have] ^^ do this relative stuff better
-        exists <- doesDirectoryExist srcdir
-        -- TODO: [nice to have] use a proper file monitor rather
-        -- than this dir exists test
-        unless exists $ do
-          createDirectoryIfMissingVerbose verbosity True srcrootdir
-          unpackPackageTarball
-            verbosity
-            tarball
-            srcrootdir
-            pkgid
-            pkgTextOverride
-          moveTarballShippedDistDirectory
-            verbosity
-            distDirLayout
-            srcrootdir
-            pkgid
-            dparams
+        --
+        -- The source directory is shared by every unit of this package: under
+        -- cross-compilation the build-stage and the host-stage copy of a
+        -- package are separate plan nodes that can be built concurrently, and
+        -- both would find the directory missing and unpack over each other
+        -- (the loser then sees a half-written tree: "No cabal file found").
+        -- So the check and the unpack are one critical section.
+        criticalSection unpackLock $ do
+          exists <- doesDirectoryExist srcdir
+          -- TODO: [nice to have] use a proper file monitor rather
+          -- than this dir exists test
+          unless exists $ do
+            createDirectoryIfMissingVerbose verbosity True srcrootdir
+            unpackPackageTarball
+              verbosity
+              tarball
+              srcrootdir
+              pkgid
+              pkgTextOverride
+            moveTarballShippedDistDirectory
+              verbosity
+              distDirLayout
+              srcrootdir
+              pkgid
+              dparams
         buildPkg (makeSymbolicPath srcdir) builddir
 
 unpackPackageTarball
