@@ -56,6 +56,7 @@ import Distribution.Solver.Types.Settings
   , ReorderGoals (..)
   , StrongFlags (..)
   )
+import Distribution.Solver.Types.Stage (Stage)
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint
   )
@@ -104,6 +105,10 @@ projectConfigLocalPackages f s = fmap (\x -> s{T.projectConfigLocalPackages = x}
 projectConfigSpecificPackage :: Lens' ProjectConfig (MapMappend PackageName PackageConfig)
 projectConfigSpecificPackage f s = fmap (\x -> s{T.projectConfigSpecificPackage = x}) (f (T.projectConfigSpecificPackage s))
 {-# INLINEABLE projectConfigSpecificPackage #-}
+
+projectConfigStagePackages :: Lens' ProjectConfig (MapMappend Stage PackageConfig)
+projectConfigStagePackages f s = fmap (\x -> s{T.projectConfigStagePackages = x}) (f (T.projectConfigStagePackages s))
+{-# INLINEABLE projectConfigStagePackages #-}
 
 projectConfigVerbosity :: Lens' ProjectConfigBuildOnly (Flag VerbosityFlags)
 projectConfigVerbosity f s = fmap (\x -> s{T.projectConfigVerbosity = x}) (f (T.projectConfigVerbosity s))

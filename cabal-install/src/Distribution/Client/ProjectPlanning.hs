@@ -593,34 +593,49 @@ configureToolchains
         , projectConfigBuildHcPkg
         , projectConfigProgPathExtra
         }
-    , projectConfigAllPackages =
-      PackageConfig
-        { packageConfigProgramPaths = packageConfigProgramPathsGlobal
-        , packageConfigBuildProgramPaths = packageConfigBuildProgramPathsGlobal
-        }
+    , projectConfigAllPackages
     , projectConfigLocalPackages =
-      PackageConfig
-        { packageConfigProgramPaths = packageConfigProgramPathsLocal
-        , packageConfigBuildProgramPaths = packageConfigBuildProgramPathsLocal
-        , packageConfigProgramPathExtra
+      projectConfigLocalPackages@PackageConfig
+        { packageConfigProgramPathExtra = packageConfigProgramPathExtraLocal
         }
+    , projectConfigStagePackages
     } = do
     progsearchpath <- liftIO getSystemSearchPath
 
-    -- NB: the @extra-prog-path@ entries are still project-wide settings with
-    -- no per-stage variant, so both stages search the same extra directories.
+    -- User-supplied program locations, per stage: the stage's own settings
+    -- from the global and the local configuration (@--with-PROG@ and
+    -- @program-locations@ for the host stage, @--with-build-PROG@ and
+    -- @build-program-locations@ for the build stage), then the stage's own
+    -- @package host:*@ or @package build:*@ stanza, which overrides them.
+    -- Neither stage inherits the other's: @--with-ar@ is the @ar@ for host
+    -- binaries and must not produce build-machine binaries. This is how a
+    -- cross-compilation names the tools that answer for the host (a
+    -- target-prefixed @pkg-config@, say) without handing them to the build
+    -- stage.
+    --
+    -- NB: the global and local @extra-prog-path@ entries have no per-stage
+    -- variant, so both stages search those extra directories; only a stage
+    -- stanza's @extra-prog-path@ is the stage's own.
+    let stagePackageConfig :: Stage -> PackageConfig
+        stagePackageConfig stage =
+          stageStanzaConfig stage $
+            Map.findWithDefault mempty stage (getMapMappend projectConfigStagePackages)
+        userProgramPaths :: Stage -> [(String, FilePath)]
+        userProgramPaths stage =
+          Map.toList
+            . getMapLast
+            $ foldMap
+              (stageProgramPaths stage)
+              [projectConfigAllPackages, projectConfigLocalPackages, stagePackageConfig stage]
+        userPaths :: Stage -> ProgramDb -> ProgramDb
+        userPaths stage = userSpecifyPaths (userProgramPaths stage)
+        stageProgramPathExtra :: Stage -> NubList FilePath
+        stageProgramPathExtra stage = packageConfigProgramPathExtra (stagePackageConfig stage)
 
     -- Configure the compiler for a single stage, caching the result under the
-    -- given project-cache file. The stage's own user-supplied program
-    -- locations (the global and the local ones, in that order) are applied
-    -- to its program database.
-    let configureStage cacheName hcFlavor hcPath hcPkg programPathsGlobal programPathsLocal = do
-          let userPaths :: ProgramDb -> ProgramDb
-              userPaths =
-                userSpecifyPaths
-                  . Map.toList
-                  . getMapLast
-                  $ programPathsGlobal <> programPathsLocal
+    -- given project-cache file. The compiler flavour/path/hc-pkg and the
+    -- program settings are the stage's own.
+    let configureStage stage cacheName hcFlavor hcPath hcPkg = do
           let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile cacheName
           (hc, plat, hcProgDb) <-
             rerunIfChanged
@@ -630,18 +645,19 @@ configureToolchains
               , hcPath
               , hcPkg
               , progsearchpath
-              , programPathsGlobal
-              , programPathsLocal
-              , packageConfigProgramPathExtra
+              , userProgramPaths stage
+              , (packageConfigProgramPathExtraLocal, stageProgramPathExtra stage)
               )
               $ do
                 liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
                 progdb <- liftIO $ do
-                  -- Add paths in the global config then paths in the local config
+                  -- Add paths in the global config, then paths in the local
+                  -- config, then the paths of this stage's stanza.
                   let addPaths pathList = prependProgramSearchPath verbosity (fromNubList pathList) []
                   let globalPaths :: IO ProgramDb = addPaths projectConfigProgPathExtra defaultProgramDb
-                  let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtra
-                  (globalPaths >>= localPaths) <&> userPaths
+                  let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtraLocal
+                  let stagePaths :: ProgramDb -> IO ProgramDb = addPaths (stageProgramPathExtra stage)
+                  (globalPaths >>= localPaths >>= stagePaths) <&> userPaths stage
                 result@(_, _, progdb') <-
                   liftIO $
                     Cabal.configCompiler
@@ -687,7 +703,7 @@ configureToolchains
               -- locations) and re-adds the toolchain programs (gcc, ar, ld, ...)
               -- without them. Without this, @--with-gcc@ and the @program-locations@
               -- section would have no effect (see #11881).
-              return $ userPaths progDb
+              return $ userPaths stage progDb
           return
             Toolchain
               { toolchainCompiler = hc
@@ -699,12 +715,11 @@ configureToolchains
     -- had, so an existing dist-newstyle is not reconfigured on upgrade.
     hostToolchain <-
       configureStage
+        Host
         "compiler"
         (flagToMaybe projectConfigHcFlavor)
         (flagToMaybe projectConfigHcPath)
         (flagToMaybe projectConfigHcPkg)
-        packageConfigProgramPathsGlobal
-        packageConfigProgramPathsLocal
 
     -- A distinct build toolchain exists only when a build-stage compiler is
     -- requested AND it turns out to be a different compiler from the host's.
@@ -735,12 +750,11 @@ configureToolchains
         then do
           candidate <-
             configureStage
+              Build
               "build-compiler"
               (buildHcFlavor <|> flagToMaybe projectConfigHcFlavor)
               (buildHcPath <|> flagToMaybe projectConfigHcPath)
               buildHcPkg
-              packageConfigBuildProgramPathsGlobal
-              packageConfigBuildProgramPathsLocal
           return $
             if sameCompiler hostToolchain candidate
               then Nothing
@@ -779,6 +793,24 @@ stageProgramPaths Build = packageConfigBuildProgramPaths
 stageProgramArgs :: Stage -> PackageConfig -> MapMappend String [String]
 stageProgramArgs Host = packageConfigProgramArgs
 stageProgramArgs Build = packageConfigBuildProgramArgs
+
+-- | The configuration of a @package host:*@ or @package build:*@ stanza, as
+-- it applies to its stage. The stanza already names its stage, so in a
+-- @package build:*@ stanza the plain program fields (@gcc-location@,
+-- @ghc-options@, ...) are build-stage settings: they are moved to the
+-- build-stage fields, which is where the build stage reads them from (see
+-- 'stageProgramPaths' and 'stageProgramArgs').
+stageStanzaConfig :: Stage -> PackageConfig -> PackageConfig
+stageStanzaConfig Host pkgconf = pkgconf
+stageStanzaConfig Build pkgconf =
+  pkgconf
+    { packageConfigProgramPaths = mempty
+    , packageConfigProgramArgs = mempty
+    , packageConfigBuildProgramPaths =
+        packageConfigProgramPaths pkgconf <> packageConfigBuildProgramPaths pkgconf
+    , packageConfigBuildProgramArgs =
+        packageConfigProgramArgs pkgconf <> packageConfigBuildProgramArgs pkgconf
+    }
 
 -- | Do two toolchains build the same thing the same way?
 --
@@ -1014,6 +1046,7 @@ rebuildInstallPlan
           , projectConfigAllPackages
           , projectConfigLocalPackages
           , projectConfigSpecificPackage
+          , projectConfigStagePackages
           }
         toolchains
         localPackages
@@ -1115,7 +1148,7 @@ rebuildInstallPlan
 
             solverSettings = resolveSolverSettings projectConfig
             logMsg message rest = debugNoWrap verbosity message >> rest
-            perPkgOption = lookupPerPkgOption (const True) projectConfigAllPackages projectConfigLocalPackages (getMapMappend projectConfigSpecificPackage)
+            perPkgOption = lookupPerPkgOption (const True) projectConfigAllPackages projectConfigLocalPackages (getMapMappend projectConfigStagePackages) (getMapMappend projectConfigSpecificPackage) Host
 
             -- TODO: "local" misnomer: we should separate
             -- builtin/global/inplace/local packages and packages explicitly
@@ -1150,6 +1183,7 @@ rebuildInstallPlan
           , projectConfigAllPackages
           , projectConfigLocalPackages
           , projectConfigSpecificPackage
+          , projectConfigStagePackages
           , projectConfigBuildOnly
           }
         toolchains
@@ -1192,6 +1226,7 @@ rebuildInstallPlan
                 projectConfigAllPackages
                 projectConfigLocalPackages
                 (getMapMappend projectConfigSpecificPackage)
+                (getMapMappend projectConfigStagePackages)
           let instantiatedPlan =
                 instantiateInstallPlan
                   cabalStoreDirLayout
@@ -1941,6 +1976,7 @@ elaborateInstallPlan
   -> PackageConfig
   -> PackageConfig
   -> Map PackageName PackageConfig
+  -> Map Stage PackageConfig
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan
   verbosity
@@ -1955,7 +1991,8 @@ elaborateInstallPlan
   projectConfigShared
   allPackagesConfig
   localPackagesConfig
-  perPackageConfig = do
+  perPackageConfig
+  stagePackagesConfig = do
     x <- elaboratedInstallPlan
     return (x, elaboratedSharedConfig)
     where
@@ -2561,6 +2598,21 @@ elaborateInstallPlan
             -- the build stage falls back to the host toolchain, so this
             -- selects the same toolchain there.
             elabStage = stage
+            -- The per-package option lookups, specialised to this package's
+            -- stage so that stage-qualified configuration ('package build:*',
+            -- 'package host:*') applies. The names are the ones the many uses
+            -- below expect; 'perPkgOptionStaged' is the stage-taking original.
+            perPkgOption :: (Package pkg, Monoid m) => pkg -> (PackageConfig -> m) -> m
+            perPkgOption = perPkgOptionStaged elabStage
+            perPkgOptionFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> a
+            perPkgOptionFlag def = fmap (fromFlagOrDefault def) . perPkgOption
+            perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
+            perPkgOptionMaybe = fmap flagToMaybe . perPkgOption
+            perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
+            perPkgOptionList = perPkgOption
+            perPkgOptionLibExeFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> (PackageConfig -> Flag a) -> (a, a)
+            perPkgOptionLibExeFlag (fromFlagOrDefault -> f) pkgid' (perPkgOption pkgid' -> both) (perPkgOption pkgid' -> lib) =
+              (f both, f (both <> lib))
             Toolchain
               { toolchainCompiler = stageCompiler
               , toolchainPlatform = stagePlatform
@@ -2822,21 +2874,10 @@ elaborateInstallPlan
 
             elabBenchmarkOptions = perPkgOptionList pkgid packageConfigBenchmarkOptions
 
-      perPkgOptionFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> a
-      perPkgOptionFlag def = fmap (fromFlagOrDefault def) . perPkgOption
-
-      perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
-      perPkgOptionMaybe = fmap flagToMaybe . perPkgOption
-
-      perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
-      perPkgOptionList = perPkgOption
-
-      perPkgOptionLibExeFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> (PackageConfig -> Flag a) -> (a, a)
-      perPkgOptionLibExeFlag (fromFlagOrDefault -> f) pkgid (perPkgOption pkgid -> both) (perPkgOption pkgid -> lib) =
-        (f both, f (both <> lib))
-
-      perPkgOption :: (Package pkg, Monoid m) => pkg -> (PackageConfig -> m) -> m
-      perPkgOption = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig perPackageConfig
+      -- The per-package option lookup for a package built for a given stage.
+      -- 'elaborateSolverToCommon' fixes the stage to the package's own.
+      perPkgOptionStaged :: (Package pkg, Monoid m) => Stage -> pkg -> (PackageConfig -> m) -> m
+      perPkgOptionStaged = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig stagePackagesConfig perPackageConfig
 
       -- The project's package databases belong to the host compiler; a
       -- distinct build toolchain gets none of them.
@@ -2899,7 +2940,7 @@ elaborateInstallPlan
       -- here is where we decide which ones will be local!
 
       libWays :: LibraryWays
-      libWays = elaborateLibraryWays toolchains libDepGraph perPkgOption
+      libWays = elaborateLibraryWays toolchains libDepGraph perPkgOptionStaged
 
       libDepGraph =
         Graph.fromDistinctList $
@@ -3071,7 +3112,8 @@ solverNodeStage = solverStage . Graph.nodeKey
 elaborateLibraryWays
   :: Toolchains
   -> Graph.Graph NonSetupLibDepSolverPlanPackage
-  -> PerPkgConfigFlag
+  -> (Stage -> PerPkgConfigFlag)
+  -- ^ the per-package option lookup for a package of a given stage
   -> LibraryWays
 elaborateLibraryWays toolchains libDepGraph lookupFlag =
   LibraryWays
@@ -3101,7 +3143,7 @@ elaborateLibraryWays toolchains libDepGraph lookupFlag =
           libDepGraph
           [ Graph.nodeKey pkg
           | pkg <- Graph.toList libDepGraph
-          , needs lookupFlag (compilerFor (solverNodeStage pkg)) (packageId pkg)
+          , needs (lookupFlag (solverNodeStage pkg)) (compilerFor (solverNodeStage pkg)) (packageId pkg)
           -- TODO: [nice to have] this does not check config consistency, e.g. a
           -- package explicitly turning off profiling but something depending on
           -- it that needs profiling. That needs a separate config
@@ -5186,21 +5228,26 @@ determineCoverageFor configuredPkg plan =
     isIndefiniteOrInstantiation = not . Set.null . modShapeRequires
 
 -- | Look up and merge the options from the project config that apply to all
--- packages, all project local packages, and to specific named packages.
+-- packages, all project local packages, all packages of the package's stage
+-- (@package build:*@, @package host:*@) and to specific named packages, in
+-- that order: later, more specific, layers override earlier ones.
 lookupPerPkgOption
   :: (Package pkg, Monoid m)
   => (pkg -> Bool)
   -> PackageConfig
   -> PackageConfig
+  -> Map Stage PackageConfig
   -> Map PackageName PackageConfig
+  -> Stage
   -> pkg
   -> (PackageConfig -> m)
   -> m
-lookupPerPkgOption isLocalPkg allPackagesConfig localPackagesConfig perPackageConfig pkg f =
-  global `mappend` local `mappend` perpkg
+lookupPerPkgOption isLocalPkg allPackagesConfig localPackagesConfig stagePackagesConfig perPackageConfig stage pkg f =
+  global `mappend` local `mappend` perstage `mappend` perpkg
   where
     global = f allPackagesConfig
     local
       | isLocalPkg pkg = f localPackagesConfig
       | otherwise = mempty
+    perstage = maybe mempty (f . stageStanzaConfig stage) (Map.lookup stage stagePackagesConfig)
     perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)

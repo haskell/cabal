@@ -56,6 +56,7 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.Stage (Stage)
 
 import Distribution.Package
   ( PackageId
@@ -153,6 +154,12 @@ data ProjectConfig = ProjectConfig
   -- ^ Configuration to be applied to *local* packages; i.e.,
   -- any packages which are explicitly named in `cabal.project`.
   , projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
+  , projectConfigStagePackages :: MapMappend Stage PackageConfig
+  -- ^ Configuration to be applied to every package built for a given
+  -- stage: @package build:*@ or @package host:*@. Under cross-compilation
+  -- the same package can be built for both stages, which plain @package *@
+  -- cannot tell apart. It sits between the local-package and the named
+  -- layer: @package *@ < local packages < @package <stage>:*@ < @package name@.
   }
   deriving (Eq, Show, Generic)
   deriving (Semigroup, Monoid) via Generically ProjectConfig

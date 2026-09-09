@@ -48,6 +48,7 @@ import Distribution.Solver.Types.Settings
   , ReorderGoals (..)
   , StrongFlags (..)
   )
+import Distribution.Solver.Types.Stage (Stage (..))
 import Distribution.System (OS (..), buildOS)
 import Distribution.Types.CondTree (CondTree (..))
 import Distribution.Types.Flag (mkFlagAssignment)
@@ -85,6 +86,7 @@ parserTests =
     , testCase "read project-config-local-packages" testProjectConfigLocalPackages
     , testCase "read project-config-all-packages" testProjectConfigAllPackages
     , testCase "read project-config-specific-packages" testProjectConfigSpecificPackages
+    , testCase "read project-config-stage-packages" testProjectConfigStagePackages
     , testCase "test projectConfigAllPackages concatenation" testAllPackagesConcat
     , testCase "test projectConfigSpecificPackages concatenation" testSpecificPackagesConcat
     , testCase "test program-locations concatenation" testProgramLocationsConcat
@@ -443,6 +445,29 @@ testProjectConfigSpecificPackages = do
         { packageConfigSharedLib = Flag True
         }
 
+testProjectConfigStagePackages :: Assertion
+testProjectConfigStagePackages = do
+  -- The legacy parser has no stage-qualified package stanzas (it rejects the
+  -- 'build:*' argument), so read with the parsec parser only.
+  config <- readConfigParsec "project-config-stage-packages"
+  assertEqual
+    "Parsed Config does not match expected"
+    expected
+    (projectConfigStagePackages (snd (condTreeData config)))
+  where
+    expected = MapMappend $ Map.fromList [(Build, expectedBuild), (Host, expectedHost)]
+    expectedBuild :: PackageConfig
+    expectedBuild =
+      mempty
+        { packageConfigSharedLib = Flag False
+        , packageConfigDynExe = Flag False
+        }
+    expectedHost :: PackageConfig
+    expectedHost =
+      mempty
+        { packageConfigSharedLib = Flag True
+        }
+
 testAllPackagesConcat :: Assertion
 testAllPackagesConcat = do
   (config, legacy) <- readConfigDefault "all-packages-concat"
@@ -570,6 +595,18 @@ verbosity = mkVerbosity defaultVerbosityHandles normal
 
 readConfigDefault :: FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfigDefault testSubDir = readConfig testSubDir "cabal.project"
+
+-- | Read a project config with the parsec parser only, for syntax the legacy
+-- parser does not know (stage-qualified package stanzas).
+readConfigParsec :: FilePath -> IO ProjectConfigSkeleton
+readConfigParsec testSubDir = do
+  (TestDir testRootFp projectConfigFp distDirLayout) <- testDirInfo testSubDir "cabal.project"
+  exists <- liftIO $ doesFileExist projectConfigFp
+  assertBool ("projectConfig does not exist: " <> projectConfigFp) exists
+  httpTransport <- liftIO $ configureTransport verbosity [] Nothing
+  liftIO $
+    runRebuild testRootFp $
+      readProjectFileSkeletonParsec verbosity httpTransport distDirLayout ProjectFileKeyMain
 
 readConfig :: FilePath -> FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfig testSubDir projectFileName = do
