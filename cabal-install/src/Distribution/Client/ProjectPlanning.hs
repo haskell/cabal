@@ -4016,7 +4016,7 @@ setupHsScriptOptions
       , -- note that the above adds the extra-prog-path directly following the elaborated
         -- dep paths, so that it overrides the normal path, but _not_ the elaborated extensions
         -- for build-tools-depends.
-        useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
+        useExtraEnvOverrides = dataDirsEnvironmentForPackage distdir plan elab
       , useWin32CleanHack = False -- TODO: [required eventually]
       , setupCacheLock = Just cacheLock
       , isInteractive = False

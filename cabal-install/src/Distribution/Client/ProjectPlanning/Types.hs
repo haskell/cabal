@@ -23,6 +23,7 @@ module Distribution.Client.ProjectPlanning.Types
   , elabInplaceDependencyBuildCacheFiles
   , elabRequiresRegistration
   , dataDirsEnvironmentForPlan
+  , dataDirsEnvironmentForPackage
   , elabPlanPackageName
   , elabConfiguredName
   , elabComponentName
@@ -435,6 +436,32 @@ dataDirsEnvironmentForPlan distDirLayout =
     )
     . InstallPlan.toList
 
+-- | The data-dir environment for building one package: the @*_datadir@
+-- variables of the in-place packages it (transitively) depends on, its own
+-- included.
+--
+-- This is deliberately narrower than 'dataDirsEnvironmentForPlan'. The
+-- variables are keyed by package /name/ and override the data dir baked into
+-- any executable of that name, so a plan-wide environment would also redirect
+-- a tool that is not part of this package's build at all. That happens when
+-- the plan builds a package whose name matches a program Cabal locates by
+-- itself: a project that builds @hsc2hs@ (say, to ship it) and preprocesses
+-- other packages with the @hsc2hs@ found next to the compiler would point that
+-- external @hsc2hs@ at the in-place package's data dir, which may not even
+-- exist yet.
+dataDirsEnvironmentForPackage
+  :: DistDirLayout
+  -> ElaboratedInstallPlan
+  -> ElaboratedConfiguredPackage
+  -> [(String, Maybe FilePath)]
+dataDirsEnvironmentForPackage distDirLayout plan pkg =
+  mapMaybe
+    ( InstallPlan.foldPlanPackage
+        (const Nothing)
+        (dataDirEnvVarForPackage distDirLayout)
+    )
+    (InstallPlan.dependencyClosure plan [nodeKey pkg])
+
 -- | Construct an environment variable that points
 -- the package's datadir to its correct location.
 -- This might be:
@@ -459,7 +486,11 @@ dataDirEnvVarForPackage distDirLayout pkg =
     srcPath (LocalTarballPackage _path) = unpackedPath
     srcPath (RemoteTarballPackage _uri _localTar) = unpackedPath
     srcPath (RepoTarballPackage _repo _packageId _localTar) = unpackedPath
-    srcPath (RemoteSourceRepoPackage _sourceRepo (Just localCheckout)) = localCheckout
+    -- The 'Just' payload is the tarball cabal-install packs the synced
+    -- checkout into (see 'syncAndReadSourcePackagesRemoteRepos'), not a
+    -- directory: the package is unpacked from it under the dist tree like
+    -- any other tarball, so that is where its data files live.
+    srcPath (RemoteSourceRepoPackage _sourceRepo (Just _tarball)) = unpackedPath
     -- TODO: see https://github.com/haskell/cabal/wiki/Potential-Refactors#unresolvedpkgloc
     srcPath (RemoteSourceRepoPackage _sourceRepo Nothing) =
       error
