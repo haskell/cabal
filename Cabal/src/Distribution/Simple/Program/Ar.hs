@@ -20,6 +20,7 @@ import Prelude ()
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
+import Data.List (isInfixOf)
 import Distribution.Compat.CopyFile (filesEqual)
 import Distribution.Simple.Compiler (arDashLSupported, arResponseFilesSupported)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..), mbWorkDirLBI)
@@ -32,7 +33,8 @@ import Distribution.Simple.Program.ResponseFile
   ( withResponseFile
   )
 import Distribution.Simple.Program.Run
-  ( multiStageProgramInvocation
+  ( getProgramInvocationOutputAndErrors
+  , multiStageProgramInvocation
   , programInvocationCwd
   , runProgramInvocation
   )
@@ -109,6 +111,32 @@ createArLibArchive verbosity lbi targetPath files = do
     -- When we need to call ar multiple times we use "ar q" and for the last
     -- call on OSX we use "ar qs" so that it'll make the index.
 
+    -- Whether "-L" and "@file" can be used is a property of the ar we are
+    -- about to run, not of the compiler. The compiler's settings ("ar supports
+    -- -L", "ar supports at file") describe the ar GHC was configured with; the
+    -- ar in the program db can be another one, notably under
+    -- cross-compilation where the compiler's ar is the target's (llvm-ar,
+    -- emar) while the one configured here is the build machine's. Trusting the
+    -- settings then breaks on the mismatch: GNU ar rejects "-L" ("invalid
+    -- option -- 'L'"), Apple's cctools ar takes "@file" as a literal member
+    -- name. So confirm each claimed capability against the program's
+    -- "--version" banner: "-L" is an llvm-ar feature, response files are
+    -- supported by GNU ar and llvm-ar but not by cctools ar. Falling back to
+    -- the conservative path is always correct, only more ar invocations.
+    arBanner <-
+      if arDashLSupported (compiler lbi) || arResponseFilesSupported (compiler lbi)
+        then do
+          -- cctools ar does not accept "--version" (usage message, non-zero
+          -- exit); an unrecognised or failed banner just means "unknown".
+          (out, _err, ec) <-
+            getProgramInvocationOutputAndErrors
+              verbosity
+              (programInvocationCwd mbWorkDir arProg ["--version"])
+          return (if ec == ExitSuccess then out else "")
+        else return ""
+    let arIsGnu = "GNU" `isInfixOf` arBanner
+        arIsLLVM = "LLVM" `isInfixOf` arBanner
+
     let simpleArgs, initialArgs, finalArgs :: [String]
         simpleArgs = case hostOS of
           OSX -> ["-r", "-s"]
@@ -132,9 +160,9 @@ createArLibArchive verbosity lbi targetPath files = do
         oldVersionManualOverride =
           fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
         responseArgumentsNotSupported =
-          not (arResponseFilesSupported (compiler lbi))
+          not (arResponseFilesSupported (compiler lbi) && (arIsGnu || arIsLLVM))
         dashLSupported =
-          arDashLSupported (compiler lbi)
+          arDashLSupported (compiler lbi) && arIsLLVM
 
         invokeWithResponseFile :: FilePath -> ProgramInvocation
         invokeWithResponseFile atFile =
