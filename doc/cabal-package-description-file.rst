@@ -3235,13 +3235,18 @@ The :pkg-field:`build-type` ``Configure`` differs from ``Simple`` in two ways:
 Note that the package's ``extra-source-files`` are available to the
 ``configure`` script when it is executed. In typical ``autoconf`` fashion,
 ``--host`` flag will be passed to the ``configure`` script to indicate the host
-platform when cross-compiling. Moreover, various bits of build configuration
+platform when cross-compiling. The compiler the package is configured with
+is passed as ``--with-compiler=``, ``--with-hc-pkg=`` and ``HC=`` arguments
+with the programs' paths, before the :cfg-field:`configure-options`, which can
+therefore override them. Moreover, various bits of build configuration
 will be passed via environment variables:
 
  - ``CC`` will reflect the path to the C compiler
  - ``CXX`` will reflect the path to the C++ compiler (if available, it always will be if ghc >= 9.4)
  - ``CFLAGS`` will reflect the flags to the C compiler
  - ``CXXFLAGS`` will reflect the flags to the C++ compiler (if available)
+ - ``GHC`` and ``GHC_PKG`` will reflect the paths to the ``ghc`` and
+   ``ghc-pkg`` the package is configured with, when the compiler is GHC
  - ``CABAL_FLAGS`` will contain the Cabal flag assignment of the current
    package using traditional Cabal flag syntax (e.g. ``+flagA -flagB``)
  - ``CABAL_FLAG_<flag>`` will be set to either ``0`` or ``1`` depending upon

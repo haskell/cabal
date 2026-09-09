@@ -35,6 +35,7 @@ module Distribution.Simple.Setup.Config
   , showPackageDb
   , showPackageDbList
   , configureArgs
+  , configureInstallDirArgs
   , configureOptions
   , installDirsOptions
   ) where
@@ -1074,13 +1075,8 @@ emptyConfigFlags = mempty
 configureArgs :: Bool -> ConfigFlags -> [String]
 configureArgs bcHack flags =
   hc_flag
-    ++ optFlag "with-hc-pkg" configHcPkg
-    ++ optFlag' "prefix" prefix
-    ++ optFlag' "bindir" bindir
-    ++ optFlag' "libdir" libdir
-    ++ optFlag' "libexecdir" libexecdir
-    ++ optFlag' "datadir" datadir
-    ++ optFlag' "sysconfdir" sysconfdir
+    ++ hc_pkg_flag
+    ++ configureInstallDirArgs flags
     ++ configConfigureArgs flags
   where
     hc_flag = case (configHcFlavor flags, configHcPath flags) of
@@ -1091,13 +1087,20 @@ configureArgs bcHack flags =
       -- TODO kill off this bc hack when defaultUserHooks is removed.
       | bcHack = "--with-hc="
       | otherwise = "--with-compiler="
-    optFlag name config_field = case config_field flags of
-      Flag p -> ["--" ++ name ++ "=" ++ p]
-      NoFlag -> []
-    optFlag' name config_field =
-      optFlag
-        name
-        ( fmap fromPathTemplate
-            . config_field
-            . configInstallDirs
-        )
+    hc_pkg_flag = ["--with-hc-pkg=" ++ p | Flag p <- [configHcPkg flags]]
+
+-- | The installation directories, as @--prefix@, @--bindir@ etc. arguments to
+-- a @configure@ script.
+configureInstallDirArgs :: ConfigFlags -> [String]
+configureInstallDirArgs flags =
+  concat
+    [ ["--" ++ name ++ "=" ++ fromPathTemplate p | Flag p <- [dir (configInstallDirs flags)]]
+    | (name, dir) <-
+        [ ("prefix", prefix)
+        , ("bindir", bindir)
+        , ("libdir", libdir)
+        , ("libexecdir", libexecdir)
+        , ("datadir", datadir)
+        , ("sysconfdir", sysconfdir)
+        ]
+    ]

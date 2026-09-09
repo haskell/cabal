@@ -18,8 +18,10 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 -- local
+import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.PackageDescription
 import Distribution.Pretty
+import Distribution.Simple.Compiler (Compiler, compilerFlavor)
 import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Errors
 import Distribution.Simple.Program
@@ -48,11 +50,14 @@ runConfigureScript
   :: VerbosityHandles
   -> ConfigFlags
   -> FlagAssignment
+  -> Compiler
+  -> CompilerPrograms
+  -- ^ the compiler's programs, as configured together with the 'Compiler'
   -> ProgramDb
   -> Platform
   -- ^ host platform
   -> IO ()
-runConfigureScript verbHandles cfg flags programDb hp = do
+runConfigureScript verbHandles cfg flags comp hcProgs programDb hp = do
   let commonCfg = configCommonFlags cfg
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonCfg)
   dist_dir <- findDistPrefOrDefault $ setupDistPref commonCfg
@@ -86,6 +91,22 @@ runConfigureScript verbHandles cfg flags programDb hp = do
         cxxProgShort <- getShortPathName cxxProg
         return (Just cxxProgShort, Just cxxFlags)
       Nothing -> return (Nothing, Nothing)
+
+  -- The compiler this package is configured with. A configure script that
+  -- asks for it (autoconf's @AC_ARG_WITH([compiler])@ or @AC_ARG_VAR([GHC])@,
+  -- as GHC's own libraries do to run @ghc --print-prim-module@) must get the
+  -- compiler Cabal uses, not whatever @ghc@ happens to be on PATH.
+  hcPath <- getShortPathName (compilerPath hcProgs)
+  mHcPkgPath <- traverse getShortPathName (compilerPkgPath hcProgs)
+  let hcArgs =
+        ["--with-compiler=" ++ hcPath]
+          ++ ["--with-hc-pkg=" ++ p | Just p <- [mHcPkgPath]]
+          -- The standard autoconf spelling (#2947). It comes before the
+          -- user's configure options so that they can override it.
+          ++ ["HC=" ++ hcPath]
+      hcEnv = case compilerFlavor comp of
+        GHC -> ("GHC", Just hcPath) : [("GHC_PKG", Just p) | Just p <- [mHcPkgPath]]
+        _ -> []
 
   let configureFile' = toUnix configureFile
   -- autoconf is fussy about filenames, and has a set of forbidden
@@ -179,11 +200,14 @@ runConfigureScript verbHandles cfg flags programDb hp = do
         ("CFLAGS", Just (mkFlagsEnv ccFlags "CFLAGS"))
           : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
           ++ [("PATH", Just pathEnv) | not (null extraPath)]
+          ++ hcEnv
           ++ cabalFlagEnv
       maybeHostFlag = ["--host=" ++ show (pretty hp) | hp /= buildPlatform]
       args' =
         configureFile'
-          : args
+          : hcArgs
+          ++ configureInstallDirArgs cfg
+          ++ configConfigureArgs cfg
           ++ ["CC=" ++ ccProgShort]
           ++ ["CXX=" ++ cxxProgShort | Just cxxProgShort <- [mcxxProgShort]]
           ++ maybeHostFlag
@@ -201,9 +225,6 @@ runConfigureScript verbHandles cfg flags programDb hp = do
           { progInvokeCwd = Just build_in
           }
     Nothing -> dieWithException verbosity NotFoundMsg
-  where
-    args = configureArgs backwardsCompatHack cfg
-    backwardsCompatHack = False
 
 -- | Convert Windows path to Unix ones
 toUnix :: String -> String
