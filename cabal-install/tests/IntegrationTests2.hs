@@ -35,6 +35,7 @@ import Distribution.Client.Types
   , PackageSpecifier (..)
   , UnresolvedSourcePackage
   )
+import Distribution.Compat.Graph (nodeKey)
 import Distribution.Solver.Types.ConstraintSource
   ( ConstraintSource (ConstraintSourceUnknown)
   )
@@ -2349,7 +2350,7 @@ expectPackagePreExisting
   -> IO InstalledPackageInfo
 expectPackagePreExisting plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
-  case (planpkg, Map.lookup (installedUnitId planpkg) buildOutcomes) of
+  case (planpkg, Map.lookup (nodeKey planpkg) buildOutcomes) of
     (InstallPlan.PreExisting pkg, Nothing) ->
       return (withoutStage pkg)
     (_, buildResult) -> unexpectedBuildResult "PreExisting" planpkg buildResult
@@ -2361,7 +2362,7 @@ expectPackageConfigured
   -> IO ElaboratedConfiguredPackage
 expectPackageConfigured plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
-  case (planpkg, Map.lookup (installedUnitId planpkg) buildOutcomes) of
+  case (planpkg, Map.lookup (nodeKey planpkg) buildOutcomes) of
     (InstallPlan.Configured pkg, Nothing) ->
       return pkg
     (_, buildResult) -> unexpectedBuildResult "Configured" planpkg buildResult
@@ -2373,7 +2374,7 @@ expectPackageInstalled
   -> IO ElaboratedConfiguredPackage
 expectPackageInstalled plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
-  case (planpkg, Map.lookup (installedUnitId planpkg) buildOutcomes) of
+  case (planpkg, Map.lookup (nodeKey planpkg) buildOutcomes) of
     (InstallPlan.Configured pkg, Just (Right _result)) ->
       -- result isn't used by any test
       return pkg
@@ -2390,7 +2391,7 @@ expectPackageFailed
   -> IO (ElaboratedConfiguredPackage, BuildFailure)
 expectPackageFailed plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
-  case (planpkg, Map.lookup (installedUnitId planpkg) buildOutcomes) of
+  case (planpkg, Map.lookup (nodeKey planpkg) buildOutcomes) of
     (InstallPlan.Configured pkg, Just (Left failure)) ->
       return (pkg, failure)
     (_, buildResult) -> unexpectedBuildResult "Failed" planpkg buildResult
