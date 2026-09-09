@@ -2094,6 +2094,13 @@ Most users generally won't need these.
     ``template-haskell`` to be installed or upgraded. This flag
     removes the restriction.
 
+    Packages the compiler reports as *wired in* (``ghc`` and
+    ``ghc-internal`` on GHC 9.14 and later) are always taken from the
+    compiler's own installation, even with this flag, unless the project
+    provides such a package itself as a local package. In that case it is
+    built from the project's source, as when GHC's own source tree is built
+    with a stage1 compiler.
+
     The command line variant of this field is
     ``--(no-)allow-boot-library-installs``.
 

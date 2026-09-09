@@ -248,6 +248,20 @@ tests =
           wiredInUnitIds $
             mkTest dbBaseOld "Refuse to install very old base" ["base"] $
               solverFailure (isInfixOf "rejecting: base-1 (constraint from non-reinstallable package requires >=4.22)")
+      , -- A wired-in package that the project provides itself, as a target,
+        -- is built from that source when boot library installs are allowed
+        -- (GHC's own tree building its libraries with the stage1 compiler).
+        runTest $
+          allowBootLibInstalls $
+            wiredInUnitIds $
+              mkTest dbGhcInternal "Rebuilds ghc-internal as a target with --allow-boot-library-installs" ["ghc-internal"] $
+                solverSuccess [("ghc-internal", 1)]
+      , -- ... but a wired-in package that is merely depended upon stays pinned.
+        runTest $
+          allowBootLibInstalls $
+            wiredInUnitIds $
+              mkTest dbNonupgrade "Still refuses newer ghc requested by another library with --allow-boot-library-installs" ["A"] $
+                solverFailure (isInfixOf "rejecting: ghc-2 (constraint from non-reinstallable package requires installed instance with unit id ghc-1)")
       ]
   , -- reject-unconstrained-dependencies=all requires all non-goals to be
     -- version constrained. Goals don't need constraints and flag constraints
