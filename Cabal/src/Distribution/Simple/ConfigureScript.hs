@@ -29,7 +29,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
-import Distribution.System (Platform, buildPlatform)
+import Distribution.System (Arch (..), OS (..), Platform (..), buildPlatform)
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
@@ -215,7 +215,13 @@ runConfigureScript verbHandles cfg flags programDb hp = do
           ++ [("PATH", Just pathEnv) | not (null extraPath)]
           ++ hcEnv
           ++ cabalFlagEnv
-      maybeHostFlag = ["--host=" ++ show (pretty hp) | hp /= buildPlatform]
+      -- Cross-compiling: tell the script which machine it configures for,
+      -- in the GNU spelling it understands (see 'platformGnuTriple').
+      maybeHostFlag =
+        [ flag
+        | hp /= buildPlatform
+        , flag <- ["--build=" ++ platformGnuTriple buildPlatform, "--host=" ++ platformGnuTriple hp]
+        ]
       backwardsCompatHack = False
       args = configureArgs backwardsCompatHack cfg'
       args' =
@@ -279,3 +285,40 @@ badAutoconfCharacters =
   , ('`', "backtick")
   , ('|', "pipe")
   ]
+
+-- | The GNU configuration name (@cpu-vendor-os@ triple) of a platform, the
+-- spelling autoconf's @config.sub@ understands for @--build@ and @--host@.
+--
+-- Cabal's own rendering of a 'Platform' (@x86_64-linux@, @javascript-ghcjs@,
+-- @wasm32-wasi@) is not a triple: some of it @config.sub@ canonicalises by
+-- luck, the rest it rejects, so a configure script run for a cross target
+-- would die on its own command line.
+platformGnuTriple :: Platform -> String
+platformGnuTriple (Platform arch os) = cpu arch ++ "-" ++ vendorOS os
+  where
+    cpu a = case a of
+      PPC -> "powerpc"
+      PPC64 -> "powerpc64"
+      PPC64LE -> "powerpc64le"
+      OtherArch s -> s
+      _ -> prettyShow a
+    vendorOS o = case o of
+      Linux -> "unknown-linux"
+      Windows -> "unknown-mingw32"
+      OSX -> "apple-darwin"
+      FreeBSD -> "unknown-freebsd"
+      OpenBSD -> "unknown-openbsd"
+      NetBSD -> "unknown-netbsd"
+      DragonFly -> "unknown-dragonfly"
+      Solaris -> "unknown-solaris2"
+      AIX -> "ibm-aix"
+      HPUX -> "hp-hpux"
+      IRIX -> "sgi-irix"
+      HaLVM -> "unknown-halvm"
+      Hurd -> "unknown-gnu"
+      IOS -> "apple-ios"
+      Android -> "unknown-linux-android"
+      Ghcjs -> "unknown-ghcjs"
+      Wasi -> "unknown-wasi"
+      Haiku -> "unknown-haiku"
+      OtherOS s -> "unknown-" ++ s
