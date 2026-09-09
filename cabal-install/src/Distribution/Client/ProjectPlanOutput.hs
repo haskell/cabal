@@ -20,7 +20,7 @@ import Distribution.Client.HashValue (hashValue, showHashValue)
 import Distribution.Client.ProjectBuilding.Types
 import Distribution.Client.ProjectPlanning.Stage (WithStage (..), withoutStage)
 import Distribution.Client.ProjectPlanning.Types
-import Distribution.Client.Toolchain (Stage, showStage)
+import Distribution.Client.Toolchain (Stage (..), showStage)
 import Distribution.Client.Types.ConfiguredId (confInstId)
 import Distribution.Client.Types.PackageLocation (PackageLocation (..))
 import Distribution.Client.Types.Repo (RemoteRepo (..), Repo (..))
@@ -465,7 +465,9 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 -- successfully then they're still out of date -- meeting our definition of
 -- invalid.
 
-type PackageIdSet = Set UnitId
+-- | Plan keys: a unit id and the build stage it is built for.
+type PackageIdSet = Set (WithStage UnitId)
+
 type PackagesUpToDate = PackageIdSet
 
 data PostBuildProjectStatus = PostBuildProjectStatus
@@ -518,7 +520,7 @@ data PostBuildProjectStatus = PostBuildProjectStatus
   -- or data file generation failing.
   --
   -- This is a subset of 'packagesInvalidByChangedLibDeps'.
-  , packagesLibDepGraph :: Graph (Node UnitId ElaboratedPlanPackage)
+  , packagesLibDepGraph :: Graph (Node (WithStage UnitId) ElaboratedPlanPackage)
   -- ^ A subset of the plan graph, including only dependency-on-library
   -- edges. That is, dependencies /on/ libraries, not dependencies /of/
   -- libraries. This tells us all the libraries that packages link to.
@@ -587,32 +589,28 @@ postBuildProjectStatus
       -- The previous set of up-to-date packages will contain bogus package ids
       -- when the solver plan or config contributing to the hash changes.
       -- So keep only the ones where the package id (i.e. hash) is the same.
-      -- The post-build project status is tracked per 'UnitId' (build outcomes
-      -- and the monitoring cache are 'UnitId'-keyed), whereas the plan is keyed
-      -- by 'WithStage UnitId'. Project the plan's keys down to 'UnitId' at this
-      -- boundary; in a non-cross build the two coincide.
-      planUnitIds :: Set UnitId
-      planUnitIds = Set.fromList (map installedUnitId (InstallPlan.toList plan))
+      planKeys :: PackageIdSet
+      planKeys = Set.fromList (map Graph.nodeKey (InstallPlan.toList plan))
 
       previousPackagesUpToDate' =
         Set.intersection
           previousPackagesUpToDate
-          planUnitIds
+          planKeys
 
       packagesUpToDatePreBuild =
         Set.filter
           (\ipkgid -> not (lookupBuildStatusRequiresBuild True ipkgid))
           -- For packages not in the plan subset we did the dry-run on we don't
           -- know anything about their status, so not known to be /up to date/.
-          planUnitIds
+          planKeys
 
       packagesOutOfDatePreBuild =
-        Set.fromList . map installedUnitId $
+        Set.fromList . map Graph.nodeKey $
           InstallPlan.reverseDependencyClosure
             plan
             [ Graph.nodeKey pkg
             | pkg <- InstallPlan.toList plan
-            , lookupBuildStatusRequiresBuild False (installedUnitId pkg)
+            , lookupBuildStatusRequiresBuild False (Graph.nodeKey pkg)
             -- For packages not in the plan subset we did the dry-run on we don't
             -- know anything about their status, so not known to be /out of date/.
             ]
@@ -643,20 +641,22 @@ postBuildProjectStatus
                   $ Map.intersectionWith (,) pkgBuildStatus buildOutcomes
               )
 
-      -- The plan graph but only counting dependency-on-library edges
-      packagesLibDepGraph :: Graph (Node UnitId ElaboratedPlanPackage)
+      -- The plan graph but only counting dependency-on-library edges. A
+      -- library dependency is always on the same stage as the package.
+      packagesLibDepGraph :: Graph (Node (WithStage UnitId) ElaboratedPlanPackage)
       packagesLibDepGraph =
         Graph.fromDistinctList
-          [ Graph.N pkg (installedUnitId pkg) libdeps
+          [ Graph.N pkg (Graph.nodeKey pkg) libdeps
           | pkg <- InstallPlan.toList plan
           , let libdeps = case pkg of
-                  InstallPlan.PreExisting (WithStage _ ipkg) -> installedDepends ipkg
+                  InstallPlan.PreExisting (WithStage stage ipkg) -> map (WithStage stage) (installedDepends ipkg)
                   InstallPlan.Configured srcpkg -> elabLibDeps srcpkg
                   InstallPlan.Installed srcpkg -> elabLibDeps srcpkg
           ]
 
-      elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
-      elabLibDeps = map ((newSimpleUnitId . confInstId) . fst) . elabLibDependencies
+      elabLibDeps :: ElaboratedConfiguredPackage -> [WithStage UnitId]
+      elabLibDeps elab =
+        map (WithStage (elabStage elab) . newSimpleUnitId . confInstId . fst) (elabLibDependencies elab)
 
       -- Was a build was attempted for this package?
       -- If it doesn't have both a build status and outcome then the answer is no.
@@ -673,27 +673,27 @@ postBuildProjectStatus
       buildAttempted _ (Left BuildFailure{}) = True
       buildAttempted _ (Right _) = True
 
-      lookupBuildStatusRequiresBuild :: Bool -> UnitId -> Bool
+      lookupBuildStatusRequiresBuild :: Bool -> WithStage UnitId -> Bool
       lookupBuildStatusRequiresBuild def ipkgid =
         case Map.lookup ipkgid pkgBuildStatus of
           Nothing -> def -- Not in the plan subset we did the dry-run on
           Just buildStatus -> buildStatusRequiresBuild buildStatus
 
-      packagesBuildLocal :: Set UnitId
+      packagesBuildLocal :: PackageIdSet
       packagesBuildLocal =
         selectPlanPackageIdSet $ \case
           InstallPlan.PreExisting _ -> False
           InstallPlan.Installed _ -> False
           InstallPlan.Configured srcpkg -> elabLocalToProject srcpkg
 
-      packagesBuildInplace :: Set UnitId
+      packagesBuildInplace :: PackageIdSet
       packagesBuildInplace =
         selectPlanPackageIdSet $ \case
           InstallPlan.PreExisting _ -> False
           InstallPlan.Installed _ -> False
           InstallPlan.Configured srcpkg -> isInplaceBuildStyle (elabBuildStyle srcpkg)
 
-      packagesAlreadyInStore :: Set UnitId
+      packagesAlreadyInStore :: PackageIdSet
       packagesAlreadyInStore =
         selectPlanPackageIdSet $ \case
           InstallPlan.PreExisting _ -> True
@@ -702,10 +702,10 @@ postBuildProjectStatus
 
       selectPlanPackageIdSet
         :: (ElaboratedPlanPackage -> Bool)
-        -> Set UnitId
+        -> PackageIdSet
       selectPlanPackageIdSet p =
         Set.fromList
-          . map installedUnitId
+          . map Graph.nodeKey
           . filter p
           $ InstallPlan.toList plan
 
@@ -981,7 +981,10 @@ selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
   case Graph.closure packagesLibDepGraph (Set.toList packagesBuildLocal) of
     Nothing -> error "renderGhcEnvironmentFile: broken dep closure"
     Just nodes ->
-      [ pkgid | Graph.N pkg pkgid _ <- nodes, hasUpToDateLib pkg
+      -- The environment file is for the host compiler, so only host-stage
+      -- libraries belong in it; a local package used as a build tool also has
+      -- a build-stage copy, whose libraries are for the build compiler.
+      [ pkgid | Graph.N pkg (WithStage Host pkgid) _ <- nodes, hasUpToDateLib pkg
       ]
   where
     hasUpToDateLib planpkg = case planpkg of
@@ -993,7 +996,7 @@ selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
       -- or just locally. Check it's a lib and that it is probably up to date.
       InstallPlan.Configured pkg ->
         elabRequiresRegistration pkg
-          && installedUnitId pkg `Set.member` packagesProbablyUpToDate
+          && Graph.nodeKey pkg `Set.member` packagesProbablyUpToDate
 
 selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStackCWD
 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =

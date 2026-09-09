@@ -44,7 +44,7 @@ import Distribution.Client.ProjectBuilding.Types
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectPlanning
-import Distribution.Client.ProjectPlanning.Stage (Staged (..), withoutStage)
+import Distribution.Client.ProjectPlanning.Stage (Staged (..), WithStage)
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Store
 import Distribution.Client.Toolchain
@@ -179,9 +179,7 @@ rebuildTargetsDryRun
   -> IO BuildStatusMap
 rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
   -- Do the various checks to work out the 'BuildStatus' of each package.
-  -- The plan is keyed by 'WithStage UnitId'; the build-status map is keyed by
-  -- 'UnitId', so project the keys at this boundary (a no-op for non-cross).
-  fmap (Map.mapKeys withoutStage) . foldMInstallPlanDepOrder dryRunPkg
+  foldMInstallPlanDepOrder dryRunPkg
   where
     dryRunPkg
       :: ElaboratedPlanPackage
@@ -306,7 +304,7 @@ improveInstallPlanWithUpToDatePackages pkgsBuildStatus =
   where
     canPackageBeImproved :: ElaboratedConfiguredPackage -> Bool
     canPackageBeImproved pkg =
-      case Map.lookup (installedUnitId pkg) pkgsBuildStatus of
+      case Map.lookup (nodeKey pkg) pkgsBuildStatus of
         Just BuildStatusUpToDate{} -> True
         Just _ -> False
         Nothing ->
@@ -410,19 +408,15 @@ rebuildTargets
             pkgsBuildStatus
             $ \downloadMap ->
               -- For each package in the plan, in dependency order, but in parallel...
-              -- The plan is keyed by 'WithStage UnitId'; 'BuildOutcomes' is keyed
-              -- by 'UnitId', so project the keys at this boundary (a no-op for
-              -- non-cross builds).
-              fmap (Map.mapKeys withoutStage)
-                $ InstallPlan.execute
-                  jobControl
-                  keepGoing
-                  (BuildFailure Nothing . DependentFailed . packageId)
-                  installPlan
+              InstallPlan.execute
+                jobControl
+                keepGoing
+                (BuildFailure Nothing . DependentFailed . packageId)
+                installPlan
                 $ \pkg ->
                   -- TODO: review exception handling
                   handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $ do
-                    let pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") (installedUnitId pkg) pkgsBuildStatus
+                    let pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") (nodeKey pkg) pkgsBuildStatus
 
                     rebuildTarget
                       verbosity
@@ -474,13 +468,12 @@ rebuildTargets
       offlineError :: BuildOutcomes
       offlineError = Map.fromList . map makeBuildOutcome $ packagesToDownload
         where
-          makeBuildOutcome :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
+          makeBuildOutcome :: ElaboratedConfiguredPackage -> (WithStage UnitId, BuildOutcome)
           makeBuildOutcome
-            ElaboratedConfiguredPackage
-              { elabUnitId
-              , elabPkgSourceId = PackageIdentifier{pkgName, pkgVersion}
+            elab@ElaboratedConfiguredPackage
+              { elabPkgSourceId = PackageIdentifier{pkgName, pkgVersion}
               } =
-              ( elabUnitId
+              ( nodeKey elab
               , Left
                   ( BuildFailure
                       { buildFailureLogFile = Nothing
@@ -745,8 +738,7 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
         [ elabPkgSourceLocation elab
         | InstallPlan.Configured elab <-
             InstallPlan.reverseTopologicalOrder installPlan
-        , let uid = installedUnitId elab
-              pkgBuildStatus = Map.findWithDefault (error "asyncDownloadPackages") uid pkgsBuildStatus
+        , let pkgBuildStatus = Map.findWithDefault (error "asyncDownloadPackages") (nodeKey elab) pkgsBuildStatus
         , BuildStatusDownload <- [pkgBuildStatus]
         ]
 

@@ -1137,7 +1137,7 @@ printPlan
                   "(" ++ showComp elab comp ++ ")"
             , showFlagAssignment (nonDefaultFlags elab)
             , showConfigureFlags elab
-            , let buildStatus = pkgsBuildStatus Map.! installedUnitId elab
+            , let buildStatus = pkgsBuildStatus Map.! Graph.nodeKey elab
                in "(" ++ showBuildStatus buildStatus ++ ")"
             ]
 
@@ -1296,7 +1296,7 @@ writeBuildReports settings buildContext plan buildOutcomes = do
                 TestsOk -> BuildReports.Ok
          in Just (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
       fromPlanPackage _ _ = Nothing
-      buildReports = mapMaybe (\x -> fromPlanPackage x (Map.lookup (installedUnitId x) buildOutcomes)) $ InstallPlan.toList plan
+      buildReports = mapMaybe (\x -> fromPlanPackage x (Map.lookup (Graph.nodeKey x) buildOutcomes)) $ InstallPlan.toList plan
 
   BuildReports.storeLocal
     (compilerInfo comp)
@@ -1349,7 +1349,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
           , (pkg, failureClassification) <- failuresClassification
           ]
   where
-    failures :: [(UnitId, BuildFailure)]
+    failures :: [(WithStage UnitId, BuildFailure)]
     failures =
       [ (pkgid, failure)
       | (pkgid, Left failure) <- Map.toList buildOutcomes
@@ -1362,10 +1362,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       , case buildFailureReason failure of
           DependentFailed{} -> verbosityLevel verbosity > Normal
           _ -> True
-      , -- 'failures' is keyed by 'UnitId'; the plan is keyed by
-      -- 'WithStage UnitId', so match on the projected unit id.
-      InstallPlan.Configured pkg <-
-        filter ((== pkgid) . installedUnitId) (InstallPlan.toList plan)
+      , Just (InstallPlan.Configured pkg) <- [InstallPlan.lookup plan pkgid]
       ]
 
     dieIfNotHaddockFailure :: Verbosity -> String -> IO ()
@@ -1411,7 +1408,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     isSimpleCase
       | [(pkgid, failure)] <- failures
       , [pkg] <- rootpkgs
-      , installedUnitId pkg == pkgid
+      , Graph.nodeKey pkg == pkgid
       , isFailureSelfExplanatory (buildFailureReason failure)
       , currentCommand `notElem` [InstallCommand, BuildCommand, ReplCommand] =
           True
@@ -1436,17 +1433,12 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       ]
 
     ultimateDeps
-      :: UnitId
+      :: WithStage UnitId
       -> [ElaboratedPlanPackage]
     ultimateDeps pkgid =
       filter
-        (\pkg -> hasNoDependents (Graph.nodeKey pkg) && installedUnitId pkg /= pkgid)
-        -- 'pkgid' is a plain 'UnitId'; the plan is keyed by 'WithStage UnitId',
-        -- so use the plan keys of any nodes carrying this unit as the roots.
-        ( InstallPlan.reverseDependencyClosure
-            plan
-            [Graph.nodeKey pkg | pkg <- InstallPlan.toList plan, installedUnitId pkg == pkgid]
-        )
+        (\pkg -> hasNoDependents (Graph.nodeKey pkg) && Graph.nodeKey pkg /= pkgid)
+        (InstallPlan.reverseDependencyClosure plan [pkgid])
 
     hasNoDependents :: WithStage UnitId -> Bool
     hasNoDependents = null . InstallPlan.revDirectDeps plan
@@ -1481,7 +1473,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
         pkgstr =
           elabConfiguredName verbosity pkg
             ++ if mentionDepOf
-              then renderDependencyOf (installedUnitId pkg)
+              then renderDependencyOf (Graph.nodeKey pkg)
               else ""
 
     renderFailureExtraDetail :: BuildFailureReason -> String
@@ -1492,7 +1484,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     renderFailureExtraDetail _ =
       ""
 
-    renderDependencyOf :: UnitId -> String
+    renderDependencyOf :: WithStage UnitId -> String
     renderDependencyOf pkgid =
       case ultimateDeps pkgid of
         [] -> ""
