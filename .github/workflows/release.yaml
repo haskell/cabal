@@ -74,9 +74,12 @@ jobs:
           sudo apt-get update && sudo apt-get install -y tar xz-utils
         shell: bash
 
+      # NOTE ☞: Here is where we decide what to output in a GitHub release,
+      # so if we add a package which is meant to be released to Cabal, this
+      # has to be changed. See issue #12179.
       - name: build sdists
         run: |
-          cabal sdist -o out all
+          cabal sdist --output-directory out/ Cabal-syntax Cabal-hooks Cabal cabal-install-solver hooks-exe cabal-install
         shell: bash
 
       - name: Release
