@@ -35,6 +35,7 @@ projectConfigFieldGrammar source knownPrograms = do
   let projectConfigProvenance = Set.singleton (Explicit source)
       projectConfigAllPackages = mempty
       projectConfigSpecificPackage = mempty
+      projectConfigStagePackages = mempty
   projectConfigLocalPackages <- blurFieldGrammar L.projectConfigLocalPackages (packageConfigFieldGrammar knownPrograms)
   pure ProjectConfig{..}
 
