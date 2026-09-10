@@ -63,6 +63,7 @@ module Distribution.Client.ProjectConfig
   , BuildTimeSettings (..)
   , resolveBuildTimeSettings
   , resolveNumJobsSetting
+  , resolveProgramDb
 
     -- * Checking configuration
   , checkBadPerPackageCompilerPaths
@@ -184,6 +185,12 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.Program
   ( ConfiguredProgram (..)
   )
+import Distribution.Simple.Program.Db
+  ( ProgramDb
+  , defaultProgramDb
+  , prependProgramSearchPath
+  , userSpecifyPaths
+  )
 import Distribution.Simple.Setup
   ( Flag
   , flagToList
@@ -210,7 +217,8 @@ import Distribution.Utils.Generic
   , toUTF8LBS
   )
 import Distribution.Utils.NubList
-  ( fromNubList
+  ( NubList
+  , fromNubList
   )
 import Distribution.Verbosity
 import Distribution.Version
@@ -539,6 +547,17 @@ resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs =
     else case determineNumJobs projectConfigNumJobs of
       1 -> Serial
       n -> NumJobs (Just n)
+
+-- | ProgramDb with user specified paths from both global and local config.
+-- Mirrors the path-resolution order used by 'configureCompiler'.
+resolveProgramDb :: Verbosity -> NubList FilePath -> PackageConfig -> IO ProgramDb
+resolveProgramDb verbosity globalExtraPath packageConfig = do
+  let localExtraPath = fromNubList (packageConfigProgramPathExtra packageConfig)
+  programDb <-
+    prependProgramSearchPath verbosity (fromNubList globalExtraPath) [] defaultProgramDb
+      >>= prependProgramSearchPath verbosity localExtraPath []
+  let paths = Map.toList $ getMapLast (packageConfigProgramPaths packageConfig)
+  return $ userSpecifyPaths paths programDb
 
 ---------------------------------------------
 -- Reading and writing project config files
