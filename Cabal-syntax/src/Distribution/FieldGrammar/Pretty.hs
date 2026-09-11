@@ -4,6 +4,7 @@ module Distribution.FieldGrammar.Pretty
   ) where
 
 import Data.Coerce (Coercible, coerce)
+import qualified Data.Text as T
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
@@ -84,7 +85,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   freeTextField fn l = PrettyFG pp
     where
-      pp v s = maybe mempty (ppField fn . showFT) (aview l s)
+      pp v s = maybe mempty (ppField fn . showFT . T.unpack) (aview l s)
         where
           showFT
             | v >= CabalSpecV3_0 = showFreeTextV3
@@ -93,13 +94,11 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   -- it's ok to just show, as showFreeText of empty string is empty.
   freeTextFieldDef fn l = PrettyFG pp
     where
-      pp v s = ppField fn (showFT (aview l s))
+      pp v s = ppField fn (showFT (T.unpack (aview l s)))
         where
           showFT
             | v >= CabalSpecV3_0 = showFreeTextV3
             | otherwise = showFreeText
-
-  freeTextFieldDefST = defaultFreeTextFieldDefST
 
   monoidalFieldAla
     :: forall s proxy a b

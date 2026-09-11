@@ -8,11 +8,11 @@ module Distribution.FieldGrammar.Class
   , optionalField
   , optionalFieldDef
   , monoidalField
-  , defaultFreeTextFieldDefST
   ) where
 
 import Data.Coerce (Coercible)
 import Data.Kind (Constraint, Type)
+import Data.Text (Text)
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -20,7 +20,6 @@ import Prelude ()
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Fields.Field
-import Distribution.Utils.ShortText
 
 -- | @g@ is parametrised by
 --
@@ -91,9 +90,9 @@ class
   -- @since 3.0.0.0
   freeTextField
     :: FieldName
-    -> ALens' s (Maybe String)
+    -> ALens' s (Maybe Text)
     -- ^ lens into the field
-    -> g s (Maybe String)
+    -> g s (Maybe Text)
 
   --  | Free text field is essentially 'optionalFieldDefAla` with @""@
   --  as the default and "accept everything" parser.
@@ -101,16 +100,9 @@ class
   -- @since 3.0.0.0
   freeTextFieldDef
     :: FieldName
-    -> ALens' s String
+    -> ALens' s Text
     -- ^ lens into the field
-    -> g s String
-
-  -- | @since 3.2.0.0
-  freeTextFieldDefST
-    :: FieldName
-    -> ALens' s ShortText
-    -- ^ lens into the field
-    -> g s ShortText
+    -> g s Text
 
   -- | Monoidal field.
   --
@@ -222,16 +214,3 @@ monoidalField
   -- ^ lens into the field
   -> g s a
 monoidalField fn l = monoidalFieldAla fn Identity l
-
--- | Default implementation for 'freeTextFieldDefST'.
-defaultFreeTextFieldDefST
-  :: FieldGrammar c g
-  => FieldName
-  -> ALens' s ShortText
-  -- ^ lens into the field
-  -> g s ShortText
-defaultFreeTextFieldDefST fn l =
-  toShortText <$> freeTextFieldDef fn (cloneLens l . st)
-  where
-    st :: Lens' ShortText String
-    st f s = toShortText <$> f (fromShortText s)
