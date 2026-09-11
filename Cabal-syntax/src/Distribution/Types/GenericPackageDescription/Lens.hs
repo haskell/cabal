@@ -6,6 +6,8 @@ module Distribution.Types.GenericPackageDescription.Lens
   , module Distribution.Types.GenericPackageDescription.Lens
   ) where
 
+import Data.Text (Text)
+import qualified Data.Text as T
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -95,8 +97,8 @@ flagName :: Lens' PackageFlag FlagName
 flagName f (MkPackageFlag x1 x2 x3 x4) = fmap (\y1 -> MkPackageFlag y1 x2 x3 x4) (f x1)
 {-# INLINE flagName #-}
 
-flagDescription :: Lens' PackageFlag String
-flagDescription f (MkPackageFlag x1 x2 x3 x4) = fmap (\y1 -> MkPackageFlag x1 y1 x3 x4) (f x2)
+flagDescription :: Lens' PackageFlag Text
+flagDescription f (MkPackageFlag x1 x2 x3 x4) = fmap (\y1 -> MkPackageFlag x1 (T.unpack y1) x3 x4) (f (T.pack x2))
 {-# INLINE flagDescription #-}
 
 flagDefault :: Lens' PackageFlag Bool
