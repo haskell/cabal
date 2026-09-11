@@ -108,7 +108,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.18.2.0"
         },
         {
             "cabal_sha256": "b74eed77eb3237c4ab6a39f08bcce4712b4486b091712ee20e92c8864f1e80a0",
@@ -132,14 +132,14 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.18.2.0"
         },
         {
-            "cabal_sha256": null,
+            "cabal_sha256": "d5a79fbb79d01b2adcbcadf8f55be21a2edc2763f26c56424ec3c43b8f2659b8",
             "component": "lib:Cabal-hooks",
             "flags": [],
             "package": "Cabal-hooks",
-            "revision": null,
+            "revision": 0,
             "source": "local",
             "src_sha256": null,
             "version": "3.18"
@@ -326,7 +326,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.18.2.0"
         },
         {
             "cabal_sha256": "0e9de2ccce261e7a5b027e842f6f47f50eb0e6059a0de98a5479f75aa8164107",
@@ -440,14 +440,14 @@
             "version": "0.6.3.3"
         },
         {
-            "cabal_sha256": null,
+            "cabal_sha256": "72c3ade001fa1734c646fdc724b6428c868d2dbaa6a46f239339803b9bd0c276",
             "component": "lib:hooks-exe",
             "flags": [],
             "package": "hooks-exe",
-            "revision": null,
+            "revision": 0,
             "source": "local",
             "src_sha256": null,
-            "version": "0.1"
+            "version": "3.18"
         },
         {
             "cabal_sha256": "0dc8dc33b9bba0e025e444355f6c2d806f62a4656446961c3647165f80f0d278",
@@ -527,7 +527,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.18.2.0"
         },
         {
             "cabal_sha256": null,
@@ -541,7 +541,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.18.2.0"
         }
     ]
 }
