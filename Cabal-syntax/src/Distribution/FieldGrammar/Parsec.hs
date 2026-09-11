@@ -75,6 +75,8 @@ import Data.Coerce (Coercible, coerce)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Distribution.Utils.ShortText as ShortText
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Error as P
@@ -260,26 +262,10 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls)
         | null fls = pure Nothing
-        | v >= freeTextIgnoreDotlineVers = pure (Just (fieldlinesToFreeText3 pos fls))
-        | otherwise = pure (Just (fieldlinesToFreeText fls))
+        | v >= freeTextIgnoreDotlineVers = pure (Just (T.pack (fieldlinesToFreeText3 pos fls)))
+        | otherwise = pure (Just (T.pack (fieldlinesToFreeText fls)))
 
   freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser
-    where
-      parser v fields = case Map.lookup fn fields of
-        Nothing -> pure ""
-        Just [] -> pure ""
-        Just [x] -> parseOne v x
-        Just xs@(_ : y : ys) -> do
-          warnMultipleSingularFields fn xs
-          NE.last <$> traverse (parseOne v) (y :| ys)
-
-      parseOne v (MkNamelessField pos fls)
-        | null fls = pure ""
-        | v >= freeTextIgnoreDotlineVers = pure (fieldlinesToFreeText3 pos fls)
-        | otherwise = pure (fieldlinesToFreeText fls)
-
-  -- freeTextFieldDefST = defaultFreeTextFieldDefST
-  freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
@@ -315,12 +301,12 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
     where
-      parser :: Fields Position -> [(String, String)]
+      parser :: Fields Position -> [(T.Text, T.Text)]
       parser values = reorder $ concatMap convert $ filter match $ Map.toList values
 
       match (fn, _) = fnPfx `BS.isPrefixOf` fn
       convert (fn, fields) =
-        [ (pos, (fromUTF8BS fn, trim $ fromUTF8BS $ fieldlinesToBS fls))
+        [ (pos, (T.decodeUtf8 fn, T.strip $ T.decodeUtf8 $ fieldlinesToBS fls))
         | MkNamelessField pos fls <- fields
         ]
       -- hack: recover the order of prefixed fields

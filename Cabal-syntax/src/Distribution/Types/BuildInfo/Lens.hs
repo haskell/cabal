@@ -3,9 +3,11 @@
 module Distribution.Types.BuildInfo.Lens
   ( BuildInfo
   , HasBuildInfo (..)
+  , customFieldsBIText
   , HasBuildInfos (..)
   ) where
 
+import Data.Bifunctor
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -21,6 +23,7 @@ import Distribution.Types.PkgconfigDependency (PkgconfigDependency)
 import Distribution.Utils.Path
 import Language.Haskell.Extension (Extension, Language)
 
+import qualified Data.Text as T
 import qualified Distribution.Types.BuildInfo as T
 
 -- | Classy lenses for 'BuildInfo'.
@@ -218,6 +221,13 @@ class HasBuildInfo a where
   mixins :: Lens' a [Mixin]
   mixins = buildInfo . mixins
   {-# INLINE mixins #-}
+
+customFieldsBIText :: HasBuildInfo a => Lens' a [(T.Text, T.Text)]
+customFieldsBIText = customFieldsBI . textLens
+  where
+    textLens :: Lens' [(String, String)] [(T.Text, T.Text)]
+    textLens f = fmap (map (bimap T.unpack T.unpack)) . f . map (bimap T.pack T.pack)
+{-# INLINE customFieldsBIText #-}
 
 instance HasBuildInfo BuildInfo where
   buildInfo = id

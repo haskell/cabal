@@ -260,7 +260,6 @@ instance FieldGrammar Described Reference where
     freeTextField fn _l = reference fn FreeTextField
 
     freeTextFieldDef   fn _l = reference fn FreeTextField
-    freeTextFieldDefST fn _l = reference fn FreeTextField
 
     monoidalFieldAla fn pack _l =
         reference fn (MonoidalFieldAla (describeDoc pack))
