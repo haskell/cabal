@@ -1,0 +1,8 @@
+cabal-version: 1.12
+name: fake-pkg
+version: 1.0
+build-type: Simple
+
+library
+  build-depends: base, p
+  default-language: Haskell2010
