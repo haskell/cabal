@@ -84,6 +84,7 @@ import Distribution.Version (Version, VersionRange)
 
 import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce (coerce)
+import qualified Data.Text as T
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
@@ -111,18 +112,18 @@ packageDescriptionFieldGrammar = do
   package <- blurFieldGrammar L.package packageIdentifierGrammar
   licenseRaw <- optionalFieldDefAla "license" SpecLicense L.licenseRaw (Left SPDX.NONE)
   licenseFiles <- licenseFilesGrammar
-  copyright <- freeTextFieldDefST "copyright" L.copyright
-  maintainer <- freeTextFieldDefST "maintainer" L.maintainer
-  author <- freeTextFieldDefST "author" L.author
-  stability <- freeTextFieldDefST "stability" L.stability
+  copyright <- freeTextFieldDef "copyright" L.copyright
+  maintainer <- freeTextFieldDef "maintainer" L.maintainer
+  author <- freeTextFieldDef "author" L.author
+  stability <- freeTextFieldDef "stability" L.stability
   testedWith <- monoidalFieldAla "tested-with" (alaList' FSep TestedWith) L.testedWith
-  homepage <- freeTextFieldDefST "homepage" L.homepage
-  pkgUrl <- freeTextFieldDefST "package-url" L.pkgUrl
-  bugReports <- freeTextFieldDefST "bug-reports" L.bugReports
+  homepage <- freeTextFieldDef "homepage" L.homepage
+  pkgUrl <- freeTextFieldDef "package-url" L.pkgUrl
+  bugReports <- freeTextFieldDef "bug-reports" L.bugReports
   let sourceRepos = []
-  synopsis <- freeTextFieldDefST "synopsis" L.synopsis
-  description <- freeTextFieldDefST "description" L.description
-  category <- freeTextFieldDefST "category" L.category
+  synopsis <- freeTextFieldDef "synopsis" L.synopsis
+  description <- freeTextFieldDef "description" L.description
+  category <- freeTextFieldDef "category" L.category
   customFieldsPD <- prefixedFields "x-" L.customFieldsPD
   buildTypeRaw <- optionalField "build-type" L.buildTypeRaw
   let setupBuildInfo = Nothing
@@ -807,7 +808,7 @@ flagFieldGrammar
   => FlagName
   -> g PackageFlag PackageFlag
 flagFieldGrammar flagName = do
-  flagDescription <- freeTextFieldDef "description" L.flagDescription
+  flagDescription <- T.unpack <$> freeTextFieldDef "description" L.flagDescription
   flagDefault <- booleanFieldDef "default" L.flagDefault True
   flagManual <- booleanFieldDef "manual" L.flagManual False
   pure MkPackageFlag{..}
@@ -824,7 +825,7 @@ sourceRepoFieldGrammar
   -> g SourceRepo SourceRepo
 sourceRepoFieldGrammar repoKind = do
   repoType <- optionalField "type" L.repoType
-  repoLocation <- freeTextField "location" L.repoLocation
+  repoLocation <- fmap T.unpack <$> freeTextField "location" L.repoLocation
   repoModule <- optionalFieldAla "module" Token L.repoModule
   repoBranch <- optionalFieldAla "branch" Token L.repoBranch
   repoTag <- optionalFieldAla "tag" Token L.repoTag
