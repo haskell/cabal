@@ -374,7 +374,7 @@ parsecDebugInfoLevel :: CabalParsing m => m DebugInfoLevel
 parsecDebugInfoLevel = flagToDebugInfoLevel . pure <$> parsecToken
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
-flagToDebugInfoLevel Nothing = NormalDebugInfo
+flagToDebugInfoLevel Nothing = NoDebugInfo
 flagToDebugInfoLevel (Just s) = case reads s of
   [(i, "")]
     | i >= fromEnum (minBound :: DebugInfoLevel)
