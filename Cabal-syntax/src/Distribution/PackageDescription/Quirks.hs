@@ -345,6 +345,12 @@ patches =
         (Fingerprint 2984391146441073709 11728234882049907993)
         (Fingerprint 12058479081855347701 14017937756688869826)
         (bsReplace "/home/palo/dev/haskell-workspace/playground/reheat/gpl-3.0.txt" "")
+    , -- tags in versions
+      mk
+        "name:                 winerror\nversion:              0.1\ncopyright:            2008 Felix Martini\nlicense:              BSD3\nlicense-file:         LICENSE\nmaintainer:           fmartini@gmail.com\nstability:            Provisional\ncategory:             Fore"
+        (Fingerprint 10169741554319722490 956170109879166409)
+        (Fingerprint 5647534001752630768 4392345862845484326)
+        (bsReplace "2006-09" "2006.9")
     ]
   where
     mk a b c d = ((a, b), (c, d))
