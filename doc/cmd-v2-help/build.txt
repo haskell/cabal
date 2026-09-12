@@ -19,7 +19,7 @@ Flags for build:
  --builddir=DIR               # The directory where Cabal puts generated build
                                 files (default dist)
  --keep-temp-files            # Keep temporary files.
- -g, --ghc                    # Compile with GHC
+ --ghc                        # Compile with GHC
  --ghcjs                      # Compile with GHCJS
  --uhc                        # Compile with UHC
  -w PATH or -wPATH, --with-compiler=PATH
@@ -77,7 +77,8 @@ Flags for build:
                               # Build with optimization (n is 0--2, default is
                                 1)
  --disable-optimization       # Build without optimization
- --enable-debug-info[=n]      # Emit debug info (n is 0--3, default is 0)
+ -g[n], --enable-debug-info[=n]
+                              # Emit debug info (n is 0--3, default is 0)
  --disable-debug-info         # Don't emit debug info
  --enable-build-info          # Enable build information generation during
                                 project building
