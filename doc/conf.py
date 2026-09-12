@@ -69,7 +69,8 @@ if on_rtd:
 html_title = "Cabal {} User's Guide".format(release)
 html_short_title = "Cabal %s User's Guide" % release
 html_logo = 'images/Cabal-dark.png'
-html_static_path = ['images']
+html_static_path = ['images', '_static']
+html_css_files = ['css/custom.css']
 # Convert quotes and dashes to typographically correct entities
 html_use_smartypants = True
 html_show_copyright = True
