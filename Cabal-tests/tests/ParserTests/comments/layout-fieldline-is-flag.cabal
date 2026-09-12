@@ -1,0 +1,13 @@
+cabal-version:       2.2
+name:                common
+version:             0
+synopsis:            Common-stanza demo
+build-type:          Simple
+
+test-suite doctests
+  type:                exitcode-stdio-1.0
+  main-is:             doctests.hs
+  x-doctest-options:   --preserve-it
+    -- The previous thing shouldn't be parsed as a comment because it's a flag
+    -- This however, is a comment
+  ghc-options:         -Wall -threaded

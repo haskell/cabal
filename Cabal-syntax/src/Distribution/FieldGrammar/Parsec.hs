@@ -1,4 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | This module provides a 'FieldGrammarParser', one way to parse
 -- @.cabal@ -like files.
@@ -63,6 +66,11 @@ module Distribution.FieldGrammar.Parsec
   , runFieldParser'
   , fieldLinesToStream
   , freeTextIgnoreDotlineVers
+  , joinFieldLines
+  , splitFieldLines
+  , extractComments
+  , removeComments
+  , interleaveComments
   ) where
 
 import Distribution.Compat.Prelude
@@ -71,10 +79,14 @@ import Distribution.Utils.String (trim)
 import Prelude ()
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce (Coercible, coerce)
+import Data.Foldable1
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Distribution.Compat.Lens as L
+import qualified Distribution.Parsec.Position.Lens as L
 import qualified Distribution.Utils.ShortText as ShortText
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Error as P
@@ -495,3 +507,61 @@ fieldLinesToStream :: [FieldLine ann] -> FieldLineStream
 fieldLinesToStream [] = fieldLineStreamEnd
 fieldLinesToStream [FieldLine _ bs] = FLSLast bs
 fieldLinesToStream (FieldLine _ bs : fs) = FLSCons bs (fieldLinesToStream fs)
+
+-- | Take all comments out from a structure
+extractComments :: Foldable t => t (WithComments ann) -> [Comment ann]
+extractComments = foldMap justComments
+
+-- | Remove all comments from a structure
+removeComments :: Functor f => f (WithComments ann) -> f ann
+removeComments = fmap unComments
+
+-- | Biased to put comments as trailing.
+--   Precondition: both list are sorted by 'Position' (asc).
+interleaveComments :: [FieldLine Position] -> [Comment Position] -> [FieldLine (WithComments Position)]
+interleaveComments [] _ = [] -- We have nothing to attach the comment to, considered it deleted.
+interleaveComments [FieldLine pos bs] cmts = [FieldLine (WithComments cmts pos) bs]
+interleaveComments (FieldLine pos bs : fls) cmts =
+  let (pre, post) = span (\(Comment _ cpos) -> pos < cpos) cmts
+   in FieldLine (WithComments pre pos) bs : interleaveComments fls post
+
+-- TODO(leana8959): add property tests
+
+joinFieldLines :: NonEmpty (FieldLine Position) -> FieldLine Position
+-- No indentation needed
+joinFieldLines (FieldLine ann bs :| []) = FieldLine ann bs
+-- Fixup missing whitespaces, then join
+joinFieldLines fsNE =
+  let leftmostCol = foldl1' min $ fmap (L.view L.positionCol . fieldLineAnn) fsNE
+      ann0 = fieldLineAnn (NE.head fsNE)
+      indented = map (indentFieldLine leftmostCol) (NE.toList fsNE)
+      bss = toBSWithNewlines (L.view L.positionRow ann0) indented
+   in FieldLine (L.set L.positionCol leftmostCol ann0) bss
+
+-- | Indent a FieldLine while preserving 'FieldLine' invariants.
+indentFieldLine :: L.HasPosition ann => Int -> FieldLine ann -> FieldLine ann
+indentFieldLine leftmostCol (FieldLine ann bs) =
+  let myCol = L.view L.positionCol ann
+      indent = myCol - leftmostCol
+   in FieldLine (L.set L.positionCol leftmostCol ann) (BS8.replicate indent ' ' <> bs)
+
+toBSWithNewlines :: L.HasPosition ann => Int -> [FieldLine ann] -> BS.ByteString
+toBSWithNewlines row0 = mconcat . mealy go row0
+  where
+    go row (FieldLine ann bs) =
+      let myRow = L.view L.positionRow ann
+          newlines = myRow - row
+       in (myRow, BS8.replicate newlines '\n' <> bs)
+
+-- | Lines the inner 'ByteString', remove empty lines, distributing start colomn numbers and enumerate row numbers.
+--   We assume that the joined field lines have been aligned to the same column.
+splitFieldLines :: FieldLine Position -> [FieldLine Position]
+splitFieldLines (FieldLine ann bs0) =
+  let ls = BS8.lines bs0
+      Position startRow startCol = L.view L.position ann
+      rowNs = [startRow ..]
+   in zipWith
+        ( \bs row -> FieldLine (Position row startCol) bs
+        )
+        ls
+        rowNs

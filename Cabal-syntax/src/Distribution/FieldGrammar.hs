@@ -85,7 +85,7 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
       | otherwise = (fs, reverse (reverse s : ss))
 
     f :: PS ann -> Field ann -> PS ann
-    f (PS fs s ss) (Field (Name ann name) fss) =
+    f (PS fs s ss) (Field _ (Name ann name) fss) =
       PS (Map.insertWith (flip (++)) name [MkNamelessField ann fss] fs) [] ss'
       where
         ss'
@@ -95,10 +95,11 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
       PS fs (MkSection name sargs sfields : s) ss
 
 -- | Take all fields from the front.
+-- Returns a tuple containing the comments, nameless fields, and sections
 takeFields :: [Field ann] -> (Fields ann, [Field ann])
 takeFields = finalize . spanMaybe match
   where
     finalize (fs, rest) = (Map.fromListWith (flip (++)) fs, rest)
 
-    match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
+    match (Field _ (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing

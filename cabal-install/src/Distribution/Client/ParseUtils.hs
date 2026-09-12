@@ -81,9 +81,10 @@ import qualified Distribution.FieldGrammar as FG
 import qualified Distribution.Fields as F
 import Distribution.Fields.ParseResult (runParseResult)
 import Distribution.Parsec.Error (showPErrorWithSource)
-import Distribution.Parsec.Position (Position (..))
 import Distribution.Parsec.Warning (showPWarningWithSource)
 import Distribution.Simple.Utils (fromUTF8BS, toUTF8BS)
+
+import Distribution.Parsec.Position
 
 -------------------------
 -- FieldDescr utilities
@@ -328,7 +329,7 @@ parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs =
 
 convertField :: Field -> F.Field Position
 convertField (F line name str) =
-  F.Field (F.Name pos (toUTF8BS name)) [F.FieldLine pos $ toUTF8BS str]
+  F.Field zeroPos (F.Name pos (toUTF8BS name)) [F.FieldLine pos $ toUTF8BS str]
   where
     pos = Position line 0
 -- arguments omitted
