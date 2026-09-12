@@ -44,8 +44,13 @@ jobs:
         id: bootstrap-cache
         with:
           path: "/home/runner/work/cabal/cabal/_build"
-          key: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-${{ hashFiles(format('bootstrap/linux-{0}.json', matrix.ghc)) }}-${{ github.sha }}
-          restore-keys: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-${{ hashFiles(format('bootstrap/linux-{0}.json', matrix.ghc)) }}-
+          # Hash the .cabal files of the local packages into the key too:
+          # the bootstrap plans only reference local packages by name, so
+          # without this the caches of branches with different local package
+          # versions (e.g. master vs a release branch) collide and a stale
+          # _build/packages.conf gets restored. See #12311.
+          key: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-${{ hashFiles(format('bootstrap/linux-{0}.json', matrix.ghc), 'Cabal/Cabal.cabal', 'Cabal-syntax/Cabal-syntax.cabal', 'Cabal-hooks/Cabal-hooks.cabal', 'hooks-exe/hooks-exe.cabal', 'cabal-install-solver/cabal-install-solver.cabal', 'cabal-install/cabal-install.cabal') }}-${{ github.sha }}
+          restore-keys: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-${{ hashFiles(format('bootstrap/linux-{0}.json', matrix.ghc), 'Cabal/Cabal.cabal', 'Cabal-syntax/Cabal-syntax.cabal', 'Cabal-hooks/Cabal-hooks.cabal', 'hooks-exe/hooks-exe.cabal', 'cabal-install-solver/cabal-install-solver.cabal', 'cabal-install/cabal-install.cabal') }}-
 
       - uses: haskell-actions/setup@v2
         with:
