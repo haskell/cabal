@@ -419,7 +419,8 @@ parseNameBS :: Position -> [SectionArg Position] -> SectionParser src BS.ByteStr
 parseNameBS pos args = case args of
   [SecArgName _pos secName] ->
     pure secName
-  [SecArgStr _pos secName] ->
+  [SecArgStr _pos secName] -> do
+    lift $ parseWarning pos PWTQuotedComponentNames ("name " <> show secName <> " is quoted")
     pure secName
   [] -> do
     lift $ parseFailure pos "name required"
