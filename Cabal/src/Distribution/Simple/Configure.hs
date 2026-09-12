@@ -2556,6 +2556,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
       traverse_ requirePkg allpkgs
       mlib' <- traverse addPkgConfigBILib (library pkg_descr)
       libs' <- traverse addPkgConfigBILib (subLibraries pkg_descr)
+      flibs' <- traverse addPkgConfigBIFLib (foreignLibs pkg_descr)
       exes' <- traverse addPkgConfigBIExe (executables pkg_descr)
       tests' <- traverse addPkgConfigBITest (testSuites pkg_descr)
       benches' <- traverse addPkgConfigBIBench (benchmarks pkg_descr)
@@ -2563,6 +2564,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
             pkg_descr
               { library = mlib'
               , subLibraries = libs'
+              , foreignLibs = flibs'
               , executables = exes'
               , testSuites = tests'
               , benchmarks = benches'
@@ -2606,6 +2608,10 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     -- Adds pkgconfig dependencies to the build info for a library
     addPkgConfigBILib = addPkgConfigBI libBuildInfo $
       \lib bi -> lib{libBuildInfo = bi}
+
+    -- Adds pkgconfig dependencies to the build info for a foreign library
+    addPkgConfigBIFLib = addPkgConfigBI foreignLibBuildInfo $
+      \flib bi -> flib{foreignLibBuildInfo = bi}
 
     -- Adds pkgconfig dependencies to the build info for an executable
     addPkgConfigBIExe = addPkgConfigBI buildInfo $

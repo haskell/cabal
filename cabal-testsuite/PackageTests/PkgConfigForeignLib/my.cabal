@@ -1,0 +1,16 @@
+name: PkgConfigForeignLib
+version: 0.1
+license: BSD3
+synopsis: Test that pkgconfig-depends cflags reach foreign-library c-sources
+category: PackageTests
+build-type: Simple
+cabal-version: 2.0
+
+foreign-library myforeignlib
+  type: native-shared
+  pkgconfig-depends: mypkg
+  other-modules: MyForeignLib
+  hs-source-dirs: src
+  c-sources: csrc/foo.c
+  build-depends: base
+  default-language: Haskell2010
