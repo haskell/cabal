@@ -153,6 +153,6 @@ custom-setup
   -- we only depend on even stable releases of lib:Cabal
   -- and must match the release used in validate.yml (see
   -- https://github.com/haskell/cabal/pull/10251)
-  setup-depends: Cabal ^>= 3.12.1.0,
-                 Cabal-syntax ^>= 3.12.1.0,
+  setup-depends: Cabal ^>= 3.18.1.0,
+                 Cabal-syntax ^>= 3.18.1.0,
                  base, filepath, directory
