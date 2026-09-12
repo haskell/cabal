@@ -193,6 +193,7 @@ tests config =
       , testCase "program options scope all" (testProgramOptionsAll config)
       , testCase "program options scope local" (testProgramOptionsLocal config)
       , testCase "program options scope specific" (testProgramOptionsSpecific config)
+      , testCase "program options scope combined" (testProgramOptionsCombined config)
       ]
   , dependentTestGroup
       "Flag tests"
@@ -2110,6 +2111,45 @@ testProgramOptionsSpecific config0 = do
     configArgs =
       mempty
         { packageConfigProgramArgs = programArgs
+        }
+
+-- | Test that program options specified at the top level (via the
+-- @program-options@ stanza) are applied *after* the ones specified for a
+-- specific package, so that they can override them (see #8900).
+testProgramOptionsCombined :: ProjectConfig -> Assertion
+testProgramOptionsCombined config0 = do
+  (_, elaboratedPlan, _) <- planProject testdir config
+  let packages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+  assertEqual
+    "q"
+    (Just [ghcSpecificFlag, ghcLocalFlag])
+    (getProgArgs packages "q")
+  assertEqual
+    "p"
+    Nothing
+    (getProgArgs packages "p")
+  where
+    testdir = "regression/program-options"
+    ghcLocalFlag = "-fno-full-laziness"
+    ghcSpecificFlag = "-fno-float-in"
+
+    localArgs = MapMappend (Map.fromList [("ghc", [ghcLocalFlag])])
+    specificConfig =
+      mempty
+        { packageConfigProgramArgs = MapMappend (Map.fromList [("ghc", [ghcSpecificFlag])])
+        }
+
+    -- Insert a flag into the local config and a different one into the
+    -- specific package "q" config.
+    config =
+      config0
+        { projectConfigLocalPackages =
+            (projectConfigLocalPackages config0)
+              { packageConfigProgramArgs = localArgs
+              }
+        , projectConfigSpecificPackage =
+            MapMappend (Map.fromList [(mkPackageName "q", specificConfig)])
         }
 
 filterConfiguredPackages :: [ElaboratedPlanPackage] -> [ElaboratedConfiguredPackage]
