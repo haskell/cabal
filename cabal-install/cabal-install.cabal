@@ -330,6 +330,7 @@ test-suite unit-tests
     other-modules:
       UnitTests.Distribution.Client.ArbitraryInstances
       UnitTests.Distribution.Client.BuildReport
+      UnitTests.Distribution.Client.CmdRun
       UnitTests.Distribution.Client.Configure
       UnitTests.Distribution.Client.FetchUtils
       UnitTests.Distribution.Client.Get

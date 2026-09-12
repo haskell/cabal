@@ -13,6 +13,8 @@ module Distribution.Client.CmdRun
   , noExesProblem
   , selectPackageTargets
   , selectComponentTarget
+  , RunProblem (..)
+  , renderRunProblem
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (toList)
@@ -76,6 +78,10 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.Utils
   ( giveRTSWarning
   , occursOnlyOrBefore
+  )
+
+import Distribution.Package
+  ( packageName
   )
 
 import Distribution.Simple.BuildToolDepends
@@ -612,6 +618,7 @@ renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
                 (map (componentNameRaw . availableTargetComponentName) . (`filterTargetsKind` targets) <$> [ExeKind, TestKind, BenchKind])
             )
       )
+    ++ renderRunProblemMatchesMultipleHint targets
 renderRunProblem (TargetProblemMultipleTargets selectorMap) =
   "The run command is for running a single executable at once. The targets "
     ++ renderListCommaAnd
@@ -646,3 +653,24 @@ renderRunProblem (TargetProblemNoExes targetSelector) =
     ++ " because "
     ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
     ++ " not contain any executables."
+
+-- | Render a hint suggesting how to disambiguate which executable to run when
+-- a target matches multiple executable-like components.
+renderRunProblemMatchesMultipleHint :: [AvailableTarget ()] -> String
+renderRunProblemMatchesMultipleHint targets =
+  case exes of
+    [] -> ""
+    _ ->
+      "\nYou need to specify which executable cabal should use. Try one of those:\n"
+        ++ unlines
+          [ "- cabal run " ++ prettyShow pkgname ++ ":" ++ exe
+          | (pkgname, exe) <- exes
+          ]
+  where
+    exes =
+      sortNub
+        [ ( packageName (availableTargetPackageId target)
+          , componentNameRaw (availableTargetComponentName target)
+          )
+        | target <- filterTargetsKind ExeKind targets
+        ]
