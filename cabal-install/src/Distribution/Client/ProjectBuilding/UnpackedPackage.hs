@@ -667,7 +667,7 @@ buildInplaceUnpackedPackage
           Simple -> listSimple
           Hooks -> listSdist `ifNullThen` listSimple
           _
-            | elabSetupScriptCliVersion pkg >= mkVersion [1, 17] ->
+            | setupCliVersion (elabSetupScriptCliVersion pkg) >= mkVersion [1, 17] ->
                 listSdist `ifNullThen` listSimple
             | otherwise ->
                 listSimple
@@ -689,18 +689,19 @@ buildInplaceUnpackedPackage
           buildResult
 
       whenReconfigure :: IO InLibraryLBI -> IO InLibraryLBI
-      whenReconfigure action =
+      whenReconfigure configure_action =
         case buildStatus of
-          BuildStatusConfigure _ -> action
+          BuildStatusConfigure _ -> configure_action
           _ -> do
             -- We are skipping reconfiguration, so we recover the
             -- 'LocalBuildInfo' persisted by the previous 'configure'.
             mbOldLBI <- Cabal.tryGetPersistBuildConfig (Just srcdir) builddir
             case mbOldLBI of
-              -- #11942: if the previous LocalBuildInfo was written by an
-              -- external Setup.hs with an incompatible Cabal library version,
-              -- then we must continue to use the external setup method.
-              Left Cabal.ConfigStateFileBadVersion{} -> return NotInLibraryNoLBI
+              -- #11942: the previous 'LocalBuildInfo' was written by an
+              -- incompatible Cabal (either an external Setup.hs or a different
+              -- version of cabal-install). We can't use it at all, so we must
+              -- re-configure.
+              Left Cabal.ConfigStateFileBadVersion{} -> configure_action
               -- Other errors reflect genuine problems: re-throw them.
               Left err -> throwIO err
               Right lbi_wo_programs -> do
