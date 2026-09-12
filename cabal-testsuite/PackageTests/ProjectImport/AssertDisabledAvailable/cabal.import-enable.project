@@ -1,0 +1,7 @@
+packages: .
+
+-- The order matters, tests need to be true then false.
+import: enable-tests.config
+
+package *
+  tests: False
