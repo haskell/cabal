@@ -637,10 +637,6 @@ instance ArbitraryOrd ShortText where
     pure $ \l r -> strc (fromShortText l) (fromShortText r)
 
 deriving instance Generic (Variable pn)
-deriving instance Generic (P.Qualified a)
-deriving instance Generic P.PackagePath
-deriving instance Generic P.Namespace
-deriving instance Generic P.Qualifier
 
 randomSubset :: Int -> [a] -> Gen [a]
 randomSubset n xs = take n <$> shuffle xs
