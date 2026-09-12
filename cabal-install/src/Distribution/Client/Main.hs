@@ -197,8 +197,10 @@ import Distribution.Simple.Command
   , CommandSpec (..)
   , CommandType (..)
   , CommandUI (..)
+  , ShowOrParseArgs (..)
   , commandAddAction
   , commandFromSpec
+  , commandOptionsUsageInfo
   , commandShowOptions
   , commandsRunWithFallback
   , defaultCommandFallback
@@ -324,6 +326,18 @@ main args = do
 
   mainWorker . (++ args1) =<< expandResponse args0
 
+-- | The section listing the global flags, appended to the help text of
+-- every command, so that global options such as @--store-dir@ can be
+-- discovered there (see issue #7587).
+globalFlagsSection :: String
+globalFlagsSection =
+  "\n"
+    ++ commandOptionsUsageInfo
+      "Global flags:"
+      (commandOptions (globalCommand []) ShowArgs)
+    ++ "\nGlobal flags must be given before the command, e.g.\n"
+    ++ "`cabal --store-dir=DIR build`.\n"
+
 -- | Check whether assertions are enabled and print a warning in that case.
 warnIfAssertionsAreEnabled :: IO ()
 warnIfAssertionsAreEnabled =
@@ -405,6 +419,7 @@ mainWorker args = do
     printCommandHelp help = do
       pname <- getProgName
       putStr (help pname)
+      putStr globalFlagsSection
     printGlobalHelp help = do
       pname <- getProgName
       configFile <- defaultConfigFile
