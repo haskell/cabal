@@ -1357,6 +1357,8 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
 findFileCwd
   :: forall searchDir allowAbsolute
    . Verbosity
+  -> WhatToFind
+  -- ^ what kind of file are we looking for? (for error messages only)
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ working directory
   -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
@@ -1364,13 +1366,18 @@ findFileCwd
   -> RelativePath searchDir File
   -- ^ File Name
   -> IO (SymbolicPathX allowAbsolute Pkg File)
-findFileCwd verbosity mbWorkDir searchPath fileName =
+findFileCwd verbosity what mbWorkDir searchPath fileName =
   findFirstFile
     (interpretSymbolicPath mbWorkDir)
     [ path </> fileName
-    | path <- ordNub searchPath
+    | path <- dirs
     ]
-    >>= maybe (dieWithException verbosity $ FindFile $ getSymbolicPath fileName) return
+    >>= maybe notFound return
+  where
+    dirs = ordNub searchPath
+    notFound =
+      dieWithException verbosity $
+        FindFile what (getSymbolicPath fileName) (map (interpretSymbolicPath mbWorkDir) dirs)
 
 -- | Find a file by looking in a search path. The file path must match exactly.
 findFileEx
@@ -1381,7 +1388,8 @@ findFileEx
   -> RelativePath searchDir File
   -- ^ File Name
   -> IO (SymbolicPathX allowAbsolute Pkg File)
-findFileEx v = findFileCwd v Nothing
+-- TODO: deprecate then remove this function
+findFileEx v = findFileCwd v FindOtherFile Nothing
 
 -- | Find a file by looking in a search path with one of a list of possible
 -- file extensions. The file base name should be given and it will be tried
@@ -1434,6 +1442,7 @@ findAllFilesWithExtension
   -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
   -> RelativePath searchDir File
   -> IO [SymbolicPathX allowAbsolute Pkg File]
+-- TODO: deprecate then remove this function
 findAllFilesWithExtension =
   findAllFilesCwdWithExtension Nothing
 
@@ -1444,6 +1453,7 @@ findFileWithExtension'
   -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
   -> RelativePath searchDir File
   -> IO (Maybe (SymbolicPathX allowAbsolute Pkg (Dir searchDir), RelativePath searchDir File))
+-- TODO: deprecate then remove this function
 findFileWithExtension' =
   findFileCwdWithExtension' Nothing
 

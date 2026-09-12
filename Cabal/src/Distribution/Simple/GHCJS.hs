@@ -1150,7 +1150,7 @@ gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
   where
     exeSources :: Executable -> IO BuildSources
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
-      main <- findFileCwd verbosity mbWorkDir (tmpDir : hsSourceDirs bnfo) modPath
+      main <- findFileCwd verbosity FindHaskellSourceFile mbWorkDir (tmpDir : hsSourceDirs bnfo) modPath
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
           otherModNames = exeModules exe
           haskellMain = isHaskell (getSymbolicPath main)
