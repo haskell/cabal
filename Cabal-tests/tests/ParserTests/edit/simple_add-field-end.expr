@@ -1,0 +1,105 @@
+EditOk
+  [
+    Field
+      (Position 1 14)
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 1 1}
+        "cabal-version")
+      [
+        FieldLine
+          WithComments {
+            justComments = [],
+            unComments = Position 1 16}
+          "3.0"],
+    Field
+      (Position 2 5)
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 2 1}
+        "name")
+      [
+        FieldLine
+          WithComments {
+            justComments = [],
+            unComments = Position 2 7}
+          "simple"],
+    Field
+      (Position 3 8)
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 3 1}
+        "version")
+      [
+        FieldLine
+          WithComments {
+            justComments = [],
+            unComments = Position 3 10}
+          "1.0"],
+    Section
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 5 1}
+        "library")
+      []
+      [
+        Field
+          (Position 7 16)
+          (Name
+            WithComments {
+              justComments = [
+                Comment
+                  "  -- before"
+                  (Position 6 1),
+                Comment
+                  "    -- within"
+                  (Position 8 1)],
+              unComments = Position 7 3}
+            "build-depends")
+          [
+            FieldLine
+              WithComments {
+                justComments = [
+                  Comment
+                    "    -- after"
+                    (Position 10 1)],
+                unComments = Position 9 5}
+              "base > 4.8"]],
+    Section
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 12 1}
+        "library")
+      [
+        SecArgName
+          WithComments {
+            justComments = [],
+            unComments = Position 12 9}
+          "namedLibrary"]
+      [
+        Field
+          (Position 13 16)
+          (Name
+            WithComments {
+              justComments = [],
+              unComments = Position 13 3}
+            "build-depends")
+          [
+            FieldLine
+              WithComments {
+                justComments = [],
+                unComments = Position 13 18}
+              "base <= 5"]],
+    Field
+      (Position 14 16)
+      (Name
+        WithComments {
+          justComments = [],
+          unComments = Position 14 1}
+        "its-a-new-field")
+      []]
