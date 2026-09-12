@@ -167,6 +167,58 @@ For these test executables, `-p` which applies a regex filter to the test
 names. When running `cabal-install` test suites, one need only use `cabal test` or
 `cabal run <test-target>` in order to test locally.
 
+### Testing with GHC's JavaScript backend
+
+CI runs a `validate-javascript` job that builds and tests the repo against
+GHC's JavaScript backend, using the `javascript-unknown-ghcjs` cross
+toolchain from the [ghcup `cross` release channel](https://www.haskell.org/ghcup/guide/cross/).
+To reproduce it locally (Linux, x86_64):
+
+1. Install [emscripten](https://emscripten.org/docs/getting_started/downloads.html)
+   at the version required by the cross bindist (see the ghcup pre-install
+   message; 3.1.74 for `9.12.2`):
+
+   ```sh
+   git clone https://github.com/emscripten-core/emsdk.git ~/.local/emsdk
+   ~/.local/emsdk/emsdk install 3.1.74 && ~/.local/emsdk/emsdk activate 3.1.74
+   ```
+
+2. Install the cross compiler (with emsdk on the `PATH`, and `emconfigure`
+   so the bindist's `configure` uses `emcc`):
+
+   ```sh
+   ghcup config add-release-channel cross
+   source ~/.local/emsdk/emsdk_env.sh
+   emconfigure ghcup install ghc javascript-unknown-ghcjs-9.12.2
+   ```
+
+3. Build and test using `cabal.validate-js.project` (isolating the store in a
+   separate `CABAL_DIR` is recommended):
+
+   ```sh
+   export CABAL_DIR=~/.cabal-js
+   source ~/.local/emsdk/emsdk_env.sh
+   cabal update
+   cabal build --builddir=dist-newstyle-validate-js \
+     --project-file=cabal.validate-js.project \
+     --with-compiler=javascript-unknown-ghcjs-ghc-9.12.2 \
+     --with-hc-pkg=javascript-unknown-ghcjs-ghc-pkg-9.12.2 \
+     Cabal cabal-install:exe:cabal Cabal-tests:test:unit-tests
+   ```
+
+   The produced executables are Node.js scripts and can be run directly
+   (they require `node` on the `PATH`).
+
+Known limitations on the JavaScript target (as of the `9.12.2` cross
+bindist): `cabal-testsuite` cannot run (it needs a GHCi session and the
+cross bindist is not built for interactive use), `cabal-install`'s unit tests
+fail to load (a static-pointers codegen bug in the backend, triggered by
+`hackage-security`), and the `no-thunks-test` and `rpmvercmp` suites of
+`Cabal-tests` are not runnable (`unpackClosure#` primop and a C FFI routine
+are missing on the target). See the `validate-javascript` job in
+[.github/workflows/validate.yml](.github/workflows/validate.yml) for the
+current list of steps that CI runs.
+
 ## Running other checks locally
 
 Various other checks done by CI can be run locally to make sure your code doesn't

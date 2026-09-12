@@ -24,6 +24,9 @@ build-type:     Simple
 extra-doc-files:
   README.md ChangeLog.md
 
+extra-source-files:
+  jsbits/js-backend-polyfills.js
+
 source-repository head
   type:     git
   location: https://github.com/haskell/cabal/
@@ -39,6 +42,10 @@ library
   -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
   default-extensions: NoImportQualifiedPost
   hs-source-dirs: src
+
+  if arch(javascript)
+    -- See jsbits/js-backend-polyfills.js for why this is needed.
+    js-sources: jsbits/js-backend-polyfills.js
 
   build-depends:
     , Cabal-syntax ^>= 3.19
