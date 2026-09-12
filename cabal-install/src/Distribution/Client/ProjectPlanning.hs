@@ -3986,25 +3986,24 @@ setupHsScriptOptions
   builddir
   cacheLock =
     SetupScriptOptions
-      { useCabalVersion = thisVersion elabSetupScriptCliVersion
-      , useCabalSpecVersion =
+      { useCabalVersion = thisVersion cliVersion
+      , -- NB: for build-type: Hooks we don't want to commit to a Cabal
+        -- version, as all that should matter is the version of Cabal-hooks,
+        -- not of Cabal.
+        useCabalSpecVersion =
           if PD.buildType elabPkgDescription == PD.Hooks
-            then -- NB: we don't want to commit to a Cabal version here:
-            --   - all that should matter for Hooks build-type is the
-            --     version of Cabal-hooks, not of Cabal,
-            --   - if we commit to a Cabal version, the logic in
-              Nothing
-            else Just elabSetupScriptCliVersion
+            then Nothing
+            else Just cliVersion
       , useCompiler = Just pkgConfigCompiler
       , usePlatform = Just pkgConfigPlatform
       , usePackageDB = elabSetupPackageDBStack
       , usePackageIndex = Nothing
-      , useDependencies =
-          [ (uid, srcid)
-          | (ConfiguredId srcid (Just (CLibName LMainLibName)) uid, _) <-
-              elabSetupDependencies elab
-          ]
-      , useDependenciesExclusive = True
+      , useSetupDependencies =
+          ExplicitSetupDeps
+            [ (uid, srcid)
+            | (ConfiguredId srcid (Just (CLibName LMainLibName)) uid, _) <-
+                elabSetupDependencies elab
+            ]
       , useVersionMacros = elabSetupScriptStyle == SetupCustomExplicitDeps
       , useProgramDb = pkgConfigCompilerProgs
       , useDistPref = builddir
@@ -4029,6 +4028,8 @@ setupHsScriptOptions
           -- everything else is not a main lib or exe component
           ElabComponent _ -> False
       }
+    where
+      cliVersion = setupCliVersion elabSetupScriptCliVersion
 
 -- | To be used for the input for elaborateInstallPlan.
 --
@@ -4310,7 +4311,7 @@ setupHsBuildFlags par_strat elab _ common =
     , buildProgramArgs = mempty -- unused, set at configure time
     , buildNumJobs = mempty -- TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
     , buildUseSemaphore =
-        if elabSetupScriptCliVersion elab >= mkVersion [3, 11, 0, 0]
+        if setupCliVersion (elabSetupScriptCliVersion elab) >= mkVersion [3, 11, 0, 0]
           then -- Cabal 3.11 is the first version that supports parallelism semaphores
             par_strat
           else mempty
@@ -4319,7 +4320,7 @@ setupHsBuildFlags par_strat elab _ common =
 setupHsBuildArgs :: ElaboratedConfiguredPackage -> [String]
 setupHsBuildArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage _})
   -- Fix for #3335, don't pass build arguments if it's not supported
-  | elabSetupScriptCliVersion elab >= mkVersion [1, 17] =
+  | setupCliVersion (elabSetupScriptCliVersion elab) >= mkVersion [1, 17] =
       map (showComponentTarget (packageId elab)) (elabBuildTargets elab)
   | otherwise =
       []

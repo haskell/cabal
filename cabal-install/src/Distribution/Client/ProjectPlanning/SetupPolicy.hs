@@ -7,20 +7,8 @@
 -- functions for both phases together here so at least you can see all of it
 -- in one place.
 --
--- There are four major cases for Setup.hs handling:
---
---  1. @build-type@ Custom with a @custom-setup@ section
---  2. @build-type@ Custom without a @custom-setup@ section
---  3. @build-type@ not Custom with @cabal-version >  $our-cabal-version@
---  4. @build-type@ not Custom with @cabal-version <= $our-cabal-version@
---
--- It's also worth noting that packages specifying @cabal-version: >= 1.23@
--- or later that have @build-type@ Custom will always have a @custom-setup@
--- section. Therefore in case 2, the specified @cabal-version@ will always be
--- less than 1.23.
---
--- In cases 1 and 2 we obviously have to build an external Setup.hs script,
--- while in case 4 we can use the internal library API.
+-- There are four major cases for Setup.hs handling; see the documentation of
+-- 'SetupScriptStyle' in Distribution.Client.ProjectPlanning.Types.
 --
 -- @since 3.12.0.0
 module Distribution.Client.ProjectPlanning.SetupPolicy
@@ -34,7 +22,10 @@ where
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.ProjectPlanning.Types (SetupScriptStyle (..))
+import Distribution.Client.ProjectPlanning.Types
+  ( SetupCliVersion (..)
+  , SetupScriptStyle (..)
+  )
 import Distribution.Client.SolverInstallPlan (SolverPlanPackage)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -192,24 +183,25 @@ packageSetupScriptSpecVersion
   -> PackageDescription
   -> Graph.Graph NonSetupLibDepSolverPlanPackage
   -> ComponentDeps [SolverId]
-  -> Version
+  -> SetupCliVersion
 -- We're going to be using the internal Cabal library, so the spec version of
 -- that is simply the version of the Cabal library that cabal-install has been
 -- built with.
 packageSetupScriptSpecVersion SetupNonCustomInternalLib _ _ _ =
-  cabalVersion
+  InternalCabalLib
 -- If we happen to be building the Cabal lib itself then because that
 -- bootstraps itself then we use the version of the lib we're building.
 packageSetupScriptSpecVersion SetupCustomImplicitDeps pkg _ _
   | packageName pkg == cabalPkgname =
-      packageVersion pkg
+      ExternalCabalLib $ packageVersion pkg
 -- In all other cases we have a look at what version of the Cabal lib the
 -- solver picked. Or if it didn't depend on Cabal at all (which is very rare)
 -- then we look at the .cabal file to see what spec version it declares.
 packageSetupScriptSpecVersion _ pkg libDepGraph deps =
-  case find ((cabalPkgname ==) . packageName) setupLibDeps of
-    Just dep -> packageVersion dep
-    Nothing -> mkVersion (cabalSpecMinimumLibraryVersion (specVersion pkg))
+  ExternalCabalLib $
+    case find ((cabalPkgname ==) . packageName) setupLibDeps of
+      Just dep -> packageVersion dep
+      Nothing -> mkVersion (cabalSpecMinimumLibraryVersion (specVersion pkg))
   where
     setupLibDeps =
       maybe [] (map packageId) (Graph.closure libDepGraph (CD.setupDeps deps))
