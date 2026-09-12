@@ -1,0 +1,15 @@
+cabal-version: 3.20
+name: extra-sources
+version: 0
+build-type: Simple
+
+library
+  hs-source-dirs: src
+  build-depends: base
+  exposed-modules: MyLib
+  c-sources: cbits/test.c (-D DOIT=1)
+  -- Per-file options on C-- sources are plain GHC options, so an option for
+  -- the C-- preprocessor has to carry its own -optCmmP prefix. That prefix
+  -- only exists since GHC 9.12.
+  if impl(ghc >= 9.12)
+    cmm-sources: cbits/testcmm.cmm (-optCmmP-DDOIT=1)

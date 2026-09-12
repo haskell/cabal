@@ -6,6 +6,8 @@ module Distribution.Simple.GHC.Build.ExtraSources where
 
 import Control.Monad
 import Data.Foldable
+import Distribution.Compiler (CompilerFlavor (GHC))
+import Distribution.Simple.Compiler (compilerCompatVersion)
 import Distribution.Simple.Flag
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.Program
@@ -24,8 +26,10 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Setup.Common (commonSetupTempFileOptions)
 import Distribution.System (Arch (JavaScript), Platform (..))
 import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.ExtraSource (ExtraSource (..), extraSourceFromPath)
 import Distribution.Utils.Path
-import Distribution.Verbosity (VerbosityHandles, VerbosityLevel, mkVerbosity, verbosityLevel)
+import Distribution.Verbosity (VerbosityHandles, mkVerbosity, verbosityLevel)
+import Distribution.Version (mkVersion)
 
 -- | An action that builds all the extra build sources of a component, i.e. C,
 -- C++, Js, Asm, C-- sources.
@@ -53,57 +57,59 @@ buildAllExtraSources =
     , buildCmmSources
     ]
 
-buildCSources
-  , buildCxxSources
-  , buildJsSources
-  , buildAsmSources
-  , buildCmmSources
-    :: Maybe (SymbolicPath Pkg File)
-    -- ^ An optional non-Haskell Main file
-    -> ConfiguredProgram
-    -- ^ The GHC configured program
-    -> SymbolicPath Pkg (Dir Artifacts)
-    -- ^ The build directory for this target
-    -> (Bool -> [BuildWay], Bool -> BuildWay, BuildWay)
-    -- ^ Needed build ways
-    -> VerbosityHandles
-    -- ^ Logging handles
-    -> PreBuildComponentInputs
-    -- ^ The context and component being built in it.
-    -> IO (NubListR (SymbolicPath Pkg File))
-    -- ^ Returns the list of extra sources that were built
+type ExtraSourceBuilder =
+  Maybe (SymbolicPath Pkg File)
+  -- ^ An optional non-Haskell Main file
+  -> ConfiguredProgram
+  -- ^ The GHC configured program
+  -> SymbolicPath Pkg (Dir Artifacts)
+  -- ^ The build directory for this target
+  -> (Bool -> [BuildWay], Bool -> BuildWay, BuildWay)
+  -- ^ Needed build ways
+  -> VerbosityHandles
+  -- ^ Logging handles
+  -> PreBuildComponentInputs
+  -- ^ The context and component being built in it.
+  -> IO (NubListR (SymbolicPath Pkg File))
+  -- ^ Returns the list of extra sources that were built
+
+buildCSources :: ExtraSourceBuilder
 buildCSources mbMainFile =
   buildExtraSources
     "C Sources"
-    (Internal.splitCandCxxOptions Internal.CcProgram)
+    Internal.CSourceKind
     ( \c -> do
         let cFiles = cSources (componentBuildInfo c)
         case c of
           CExe{}
             | Just main <- mbMainFile
             , isC $ getSymbolicPath main ->
-                cFiles ++ [main]
+                cFiles ++ [extraSourceFromPath main]
           _otherwise -> cFiles
     )
+
+buildCxxSources :: ExtraSourceBuilder
 buildCxxSources mbMainFile =
   buildExtraSources
     "C++ Sources"
-    (Internal.splitCandCxxOptions Internal.CxxProgram)
+    Internal.CxxSourceKind
     ( \c -> do
         let cxxFiles = cxxSources (componentBuildInfo c)
         case c of
           CExe{}
             | Just main <- mbMainFile
             , isCxx $ getSymbolicPath main ->
-                cxxFiles ++ [main]
+                cxxFiles ++ [extraSourceFromPath main]
           _otherwise -> cxxFiles
     )
+
+buildJsSources :: ExtraSourceBuilder
 buildJsSources _mbMainFile ghcProg buildTargetDir neededWays verbHandles = do
   Platform hostArch _ <- hostPlatform <$> localBuildInfo
   let hasJsSupport = hostArch == JavaScript
   buildExtraSources
     "JS Sources"
-    Internal.sourcesGhcOptions
+    Internal.JsSourceKind
     ( \c ->
         if hasJsSupport
           then -- JS files are C-like with GHC's JS backend: they are
@@ -117,15 +123,19 @@ buildJsSources _mbMainFile ghcProg buildTargetDir neededWays verbHandles = do
     buildTargetDir
     neededWays
     verbHandles
+
+buildAsmSources :: ExtraSourceBuilder
 buildAsmSources _mbMainFile =
   buildExtraSources
     "Assembler Sources"
-    Internal.sourcesGhcOptions
+    Internal.AsmSourceKind
     (asmSources . componentBuildInfo)
+
+buildCmmSources :: ExtraSourceBuilder
 buildCmmSources _mbMainFile =
   buildExtraSources
     "C-- Sources"
-    Internal.sourcesGhcOptions
+    Internal.CmmSourceKind
     (cmmSources . componentBuildInfo)
 
 -- | Create 'PreBuildComponentRules' for a given type of extra build sources
@@ -134,17 +144,11 @@ buildCmmSources _mbMainFile =
 buildExtraSources
   :: String
   -- ^ String describing the extra sources being built, for printing.
-  -> ( VerbosityLevel
-       -> LocalBuildInfo
-       -> BuildInfo
-       -> ComponentLocalBuildInfo
-       -> SymbolicPath Pkg (Dir Artifacts)
-       -> SymbolicPath Pkg File
-       -> GhcOptions
-     )
-  -- ^ Function to determine the @'GhcOptions'@ for the
-  -- invocation of GHC when compiling these extra sources
-  -> (Component -> [SymbolicPath Pkg File])
+  -> Internal.ExtraSourceKind
+  -- ^ The kind of these extra sources, which determines the @'GhcOptions'@ for
+  -- the invocation of GHC when compiling them, and where their per-file
+  -- options go.
+  -> (Component -> [ExtraSource])
   -- ^ View the extra sources of a component, typically from
   -- the build info (e.g. @'asmSources'@, @'cSources'@).
   -- @'Executable'@ components might additionally add the
@@ -164,7 +168,7 @@ buildExtraSources
   -- ^ Returns the list of extra sources that were built
 buildExtraSources
   description
-  componentSourceGhcOptions
+  kind
   viewSources
   ghcProg
   buildTargetDir
@@ -193,16 +197,17 @@ buildExtraSources
           platform
           mbWorkDir
 
-      buildAction :: SymbolicPath Pkg File -> IO ()
-      buildAction sourceFile = do
+      buildAction :: ExtraSource -> IO ()
+      buildAction extraSource = do
         let baseSrcOpts =
-              componentSourceGhcOptions
+              Internal.extraSourceGhcOptions
+                kind
                 (verbosityLevel verbosity)
                 lbi
                 bi
                 clbi
                 buildTargetDir
-                sourceFile
+                extraSource
             vanillaSrcOpts =
               -- -fPIC is used in case you are using the repl
               -- of a dynamically linked GHC
@@ -232,9 +237,24 @@ buildExtraSources
             odir = fromFlag (ghcOptObjDir vanillaSrcOpts)
 
             compileIfNeeded :: GhcOptions -> IO ()
-            compileIfNeeded opts = do
-              needsRecomp <- checkNeedsRecompilation mbWorkDir sourceFile opts
-              when needsRecomp $ runGhcProg opts
+            compileIfNeeded opts' = do
+              needsRecomp <- checkNeedsRecompilation mbWorkDir (extraSourceFile extraSource) opts'
+              when needsRecomp $ runGhcProg opts'
+
+            -- Per-file options on JavaScript sources are routed to -optJSP,
+            -- which only exists since GHC 9.12 and is dropped by
+            -- 'renderGhcOptions' before that. Say so rather than silently
+            -- building without them.
+            optionsAreDropped =
+              not (null (extraSourceOpts extraSource))
+                && kind == Internal.JsSourceKind
+                && maybe True (< mkVersion [9, 12]) (compilerCompatVersion GHC comp)
+
+        when optionsAreDropped $
+          warn verbosity $
+            "Ignoring the per-file options on "
+              ++ getSymbolicPath (extraSourceFile extraSource)
+              ++ ": passing options to the JavaScript preprocessor requires GHC 9.12 or later."
 
         createDirectoryIfMissingVerbose verbosity True (i odir)
         case targetComponent targetInfo of
@@ -273,4 +293,4 @@ buildExtraSources
       else do
         info verbosity ("Building " ++ description ++ "...")
         traverse_ buildAction sources
-        return (toNubListR sources)
+        return (toNubListR (map extraSourceFile sources))

@@ -29,6 +29,7 @@ import qualified UnitTests.Distribution.SPDX (spdxTests)
 import qualified UnitTests.Distribution.Described
 import qualified UnitTests.Distribution.CabalSpecVersion
 import qualified UnitTests.Distribution.Types.GenericPackageDescription
+import qualified UnitTests.Distribution.Types.ExtraSource (extraSourceTests)
 
 tests :: TestTree
 tests =
@@ -67,6 +68,8 @@ tests =
         UnitTests.Distribution.Version.versionTests
     , testGroup "Distribution.Types.PkgconfigVersion(Range)"
         UnitTests.Distribution.PkgconfigVersion.pkgconfigVersionTests
+    , testGroup "Distribution.Types.ExtraSource"
+        UnitTests.Distribution.Types.ExtraSource.extraSourceTests
     , testGroup "Distribution.SPDX"
         UnitTests.Distribution.SPDX.spdxTests
     , UnitTests.Distribution.Utils.CharSet.tests
