@@ -24,7 +24,7 @@ file with ``profiling: True``.
 
 The full configuration of a project is determined by combining the
 following sources (later entries override earlier ones, except for appendable
-options):
+options, like dependency version constraints):
 
 1. :ref:`The user-wide global configuration <config-file-discovery>` (default: ``~/.config/cabal/config``)
 
