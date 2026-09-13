@@ -1145,12 +1145,13 @@ the vendored packages:
     $ cabal vendor
     Vendored 12 packages into /home/me/proj/vendor
 
-    To build using the vendored packages, add the following to the project file:
+    To build using the vendored packages, add the following to the project file
+    (the 'url' line must stay indented under 'repository'):
 
-        repository vendored
-          url: file+noindex:vendor
+    repository vendored
+      url: file+noindex:vendor
 
-        active-repositories: vendored
+    active-repositories: vendored
 
 The path is relative to the project root (see :ref:`local-no-index-repositories`),
 so the ``vendor`` directory can be committed together with the project. With
@@ -1167,7 +1168,7 @@ the vendored one override them for the packages it contains:
     $ cabal vendor aeson
     Vendored 1 of 12 dependencies into /home/me/proj/vendor
     ...
-        active-repositories: :rest, vendored:override
+    active-repositories: :rest, vendored:override
 
 Running ``cabal vendor`` again adds the dependencies of the current plan to the
 directory and refreshes its index cache; files already there are left alone.

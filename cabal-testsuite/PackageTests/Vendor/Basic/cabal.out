@@ -16,12 +16,13 @@ Error: [Cabal-7169]
 # cabal v2-vendor
 Vendored 1 package into <ROOT>/vendor
 
-To build using the vendored packages, add the following to the project file:
+To build using the vendored packages, add the following to the project file
+(the 'url' line must stay indented under 'repository'):
 
-    repository vendored
-      url: file+noindex:vendor
+repository vendored
+  url: file+noindex:vendor
 
-    active-repositories: vendored
+active-repositories: vendored
 # cabal v2-build
 Warning: Error during construction of file+noindex test-local-repo repository index: <ROOT>/cabal.dist/repo: getDirectoryContents:openDirStream: does not exist (No such file or directory)
 Resolving dependencies...
@@ -41,9 +42,10 @@ Warning: Error during construction of file+noindex test-local-repo repository in
 Resolving dependencies...
 Vendored 1 package into <ROOT>/vendor
 
-To build using the vendored packages, add the following to the project file:
+To build using the vendored packages, add the following to the project file
+(the 'url' line must stay indented under 'repository'):
 
-    repository vendored
-      url: file+noindex:vendor
+repository vendored
+  url: file+noindex:vendor
 
-    active-repositories: vendored
+active-repositories: vendored
