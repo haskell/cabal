@@ -142,6 +142,9 @@ data CabalInstallException
   | CmdHaddockReportTargetProblems [String]
   | FailedExtractingScriptBlock String
   | FreezeAction [String]
+  | VendorInvalidPackageName String
+  | VendorUnknownPackages [PackageName]
+  | VendorLocalPackages [PackageName]
   | TryFindPackageDescErr String
   | DieIfNotHaddockFailureException String
   | ConfigureInstallInternalError
@@ -343,6 +346,9 @@ exceptionCodeCabalInstall e = case e of
   CabalFileParseFailure{} -> 7166
   ProjectConfigParseFailure{} -> 7167
   ProjectConfigNoPackages{} -> 7168
+  VendorInvalidPackageName{} -> 7169
+  VendorUnknownPackages{} -> 7170
+  VendorLocalPackages{} -> 7171
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -648,6 +654,20 @@ exceptionMessageCabalInstall e = case e of
   FreezeAction extraArgs ->
     "'freeze' doesn't take any extra arguments: "
       ++ unwords extraArgs
+  VendorInvalidPackageName arg ->
+    "'vendor' takes package names as arguments, but '"
+      ++ arg
+      ++ "' is not a package name."
+  VendorUnknownPackages pkgs ->
+    "Cannot vendor "
+      ++ intercalate ", " (map prettyShow pkgs)
+      ++ ": not a source dependency of this project. Only packages that the "
+      ++ "solver picked from a package repository or a source-repository-package "
+      ++ "stanza can be vendored."
+  VendorLocalPackages pkgs ->
+    "Cannot vendor "
+      ++ intercalate ", " (map prettyShow pkgs)
+      ++ ": local packages of this project are not vendored."
   TryFindPackageDescErr err -> err
   DieIfNotHaddockFailureException errorStr -> errorStr
   ConfigureInstallInternalError ->

@@ -196,6 +196,7 @@ import Distribution.Simple.Setup
 import Distribution.System
   ( Platform
   )
+import Distribution.Types.CondTree (mapTreeData)
 import Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription
   )
@@ -211,6 +212,7 @@ import Distribution.Utils.Generic
   )
 import Distribution.Utils.NubList
   ( fromNubList
+  , overNubList
   )
 import Distribution.Verbosity
 import Distribution.Version
@@ -835,7 +837,7 @@ readProjectFileSkeletonGen
         then do
           monitorLog $ "Monitor existing: " ++ fileWithAbsolute extensionFile
           monitorFiles [monitorFileHashed extensionFile]
-          pcs <- liftIO $ parseConfig extensionFile
+          pcs <- liftIO $ mapTreeData (second (resolveLocalRepoPaths distProjectRootDirectory)) <$> parseConfig extensionFile
           let paths =
                 [ currentProjectConfigPath path
                 | (Nothing, path) <- projectSkeletonImports pcs
@@ -859,6 +861,25 @@ readProjectFileSkeletonGen
       makeAbsolute f
         | isAbsolute f = f
         | otherwise = distProjectRootDirectory </> f
+
+-- | Resolve relative @file+noindex:@ repository paths found in a project file
+-- against the project root, so that a local repository (for example one
+-- written by @cabal vendor@) can be referred to with a relative path and
+-- committed together with the project.
+resolveLocalRepoPaths :: FilePath -> ProjectConfig -> ProjectConfig
+resolveLocalRepoPaths root config =
+  config
+    { projectConfigShared =
+        shared
+          { projectConfigLocalNoIndexRepos =
+              overNubList (map resolve) (projectConfigLocalNoIndexRepos shared)
+          }
+    }
+  where
+    shared = projectConfigShared config
+    resolve repo
+      | isAbsolute (localRepoPath repo) = repo
+      | otherwise = repo{localRepoPath = normalise (root </> localRepoPath repo)}
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
