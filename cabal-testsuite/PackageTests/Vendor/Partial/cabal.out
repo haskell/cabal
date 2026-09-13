@@ -4,12 +4,13 @@ Downloading the latest package list from test-local-repo
 Resolving dependencies...
 Vendored 1 of 2 dependencies into <ROOT>/vendor
 
-To build using the vendored packages, add the following to the project file:
+To build using the vendored packages, add the following to the project file
+(the 'url' line must stay indented under 'repository'):
 
-    repository vendored
-      url: file+noindex:vendor
+repository vendored
+  url: file+noindex:vendor
 
-    active-repositories: :rest, vendored:override
+active-repositories: :rest, vendored:override
 # cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1

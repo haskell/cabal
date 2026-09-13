@@ -328,12 +328,13 @@ vendorReport projectRoot vendorDir partial total selected =
   unlines $
     [ summary
     , ""
-    , "To build using the vendored packages, add the following to the project file:"
+    , "To build using the vendored packages, add the following to the project file"
+    , "(the 'url' line must stay indented under 'repository'):"
     , ""
-    , "    repository " ++ vendoredRepoName
-    , "      url: " ++ vendorUrl
+    , "repository " ++ vendoredRepoName
+    , "  url: " ++ vendorUrl
     , ""
-    , "    active-repositories: " ++ activeRepos
+    , "active-repositories: " ++ activeRepos
     ]
       ++ sourceRepoNotes
   where
