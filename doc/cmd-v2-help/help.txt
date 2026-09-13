@@ -26,6 +26,7 @@ Commands:
   outdated               Check for outdated dependencies.
   path                   Query for simple project information.
   target                 Target a subset of all targets.
+  vendor                 Vendor dependencies into a local repository.
 
  [project building and installing]
   build                  Compile targets within the project.
@@ -61,6 +62,7 @@ Commands:
   v2-test                Run test-suites.
   v2-bench               Run benchmarks.
   v2-freeze              Freeze dependencies.
+  v2-vendor              Vendor dependencies into a local repository.
   v2-haddock             Build Haddock documentation.
   v2-exec                Give a command access to the store.
   v2-update              Updates list of known packages.

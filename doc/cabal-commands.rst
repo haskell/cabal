@@ -37,6 +37,7 @@ Commands
       outdated               Check for outdated dependencies.
       path                   Query for simple project information.
       target                 Target a subset of all targets.
+      vendor                 Vendor dependencies into a local repository.
 
      [project building and installing]
       build                  Compile targets within the project.
@@ -1109,6 +1110,82 @@ artifacts for the script, which are stored under the .cabal/script-builds direct
 
 In addition when clean is invoked it will remove all script build artifacts for
 which the corresponding script no longer exists.
+
+.. _cabal-vendor:
+
+cabal vendor
+^^^^^^^^^^^^
+
+::
+
+    cabal vendor [PACKAGES] [FLAGS]
+
+``cabal vendor`` copies the source tarballs of the project's dependencies into
+a directory laid out as a :ref:`local no-index repository
+<local-no-index-repositories>`, so that the project can be built without
+network access, for example when packaging it for a distribution or in a
+sandboxed build. The dependencies are the ones the solver picks for the
+current project configuration, including build tools and setup dependencies.
+
+The directory defaults to ``vendor`` in the project root. For every dependency
+it contains ``<package>-<version>.tar.gz`` and, for packages from a package
+repository with a revised ``.cabal`` file, that file as
+``<package>-<version>.cabal``; cabal reads the directory as a repository
+without any further index. Dependencies from ``source-repository-package``
+stanzas are vendored as source distributions of their checkouts, which lets
+the stanza be removed afterwards. Local packages of the project are not
+vendored, and packages given as remote or local tarballs in ``packages:`` are
+skipped with a warning since their ``packages:`` entry would still be used.
+
+The command then prints the stanza to add to the project file to build from
+the vendored packages:
+
+.. code-block:: console
+
+    $ cabal vendor
+    Vendored 12 packages into /home/me/proj/vendor
+
+    To build using the vendored packages, add the following to the project file:
+
+        repository vendored
+          url: file+noindex:vendor
+
+        active-repositories: vendored
+
+The path is relative to the project root (see :ref:`local-no-index-repositories`),
+so the ``vendor`` directory can be committed together with the project. With
+``active-repositories`` naming only the vendored repository, the solver sees
+exactly the vendored versions and no other repository is consulted.
+
+Package names can be given to vendor only some of the dependencies, for
+instance to pin a few packages to exact sources while the rest still come from
+Hackage. The printed stanza then keeps the other repositories active and makes
+the vendored one override them for the packages it contains:
+
+.. code-block:: console
+
+    $ cabal vendor aeson
+    Vendored 1 of 12 dependencies into /home/me/proj/vendor
+    ...
+        active-repositories: :rest, vendored:override
+
+Running ``cabal vendor`` again adds the dependencies of the current plan to the
+directory and refreshes its index cache; files already there are left alone.
+
+The ``cabal vendor`` command supports the following options:
+
+.. option:: -o, --output-directory=PATH
+
+    Directory to vendor the packages into. Defaults to ``vendor`` in the
+    project root.
+
+.. option:: --dry-run
+
+    Only print the packages that would be vendored; write nothing.
+
+Besides these, the command accepts the project and solver flags shared by the
+other project commands, such as ``--project-file``, ``--constraint`` and
+``--index-state``, which determine the plan that is vendored.
 
 .. _command-group-run:
 
