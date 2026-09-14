@@ -316,11 +316,12 @@ vendorPackage verbosity repoCtxt vendorDir pkgid source = do
     if destExists
       then (==) <$> canonicalizePath src <*> canonicalizePath dest
       else return False
-  unless sameFile $ copyFileVerbose verbosity src dest
-  case source of
-    FromRepo _ (Just cabalFile) ->
-      writeFileAtomic (vendorDir </> prettyShow pkgid <.> "cabal") cabalFile
-    _ -> return ()
+  unless sameFile $ do
+    copyFileVerbose verbosity src dest
+    case source of
+      FromRepo _ (Just cabalFile) ->
+        writeFileAtomic (vendorDir </> prettyShow pkgid <.> "cabal") cabalFile
+      _ -> return ()
 
 -- | What was vendored, and the project configuration needed to use it.
 vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource)] -> String
