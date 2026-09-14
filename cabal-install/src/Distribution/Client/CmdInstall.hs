@@ -446,7 +446,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   (usedPackageEnvFlag, envFile) <- getEnvFile clientInstallFlags platform compilerVersion
   (usedExistingPkgEnvFile, existingEnvEntries) <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
-  packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
+  packageDbs <- getPackageDbStack compiler platform projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let
@@ -919,7 +919,7 @@ prepareExeInstall
         mkUnitBinDir :: UnitId -> FilePath
         mkUnitBinDir =
           InstallDirs.bindir
-            . storePackageInstallDirs' storeDirLayout compiler
+            . storePackageInstallDirs' storeDirLayout compiler platform
 
         mkExeName :: UnqualComponentName -> FilePath
         mkExeName exe = unUnqualComponentName exe <.> exeExtension platform
@@ -1328,16 +1328,17 @@ getLocalEnv dir platform compilerVersion =
 
 getPackageDbStack
   :: Compiler
+  -> Platform
   -> Flag FilePath
   -> Flag FilePath
   -> [Maybe PackageDBCWD]
   -> IO PackageDBStackCWD
-getPackageDbStack compiler storeDirFlag logsDirFlag packageDbs = do
+getPackageDbStack compiler platform storeDirFlag logsDirFlag packageDbs = do
   mstoreDir <- traverse makeAbsolute $ flagToMaybe storeDirFlag
   let
     mlogsDir = flagToMaybe logsDirFlag
   cabalLayout <- mkCabalDirLayout mstoreDir mlogsDir
-  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compiler packageDbs
+  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compiler platform packageDbs
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

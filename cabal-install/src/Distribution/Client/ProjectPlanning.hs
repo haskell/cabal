@@ -1175,11 +1175,16 @@ rebuildInstallPlan
         -> Rebuild ElaboratedInstallPlan
       phaseImprovePlan elaboratedPlan elaboratedShared = do
         liftIO $ debug verbosity "Improving the install plan..."
-        -- Each stage's compiler has its own store; read them all. Unit ids
-        -- hash the compiler, so a plain union cannot confuse the stages.
+        -- Each stage has its own store, keyed by that stage's compiler and
+        -- the platform it targets; read them all. Unit ids hash both, so a
+        -- plain union cannot confuse the stages.
         storePkgIdSet <-
-          fmap Set.unions . for (activeStages toolchains) $ \stage ->
-            getStoreEntries cabalStoreDirLayout (toolchainCompiler (getStage toolchains stage))
+          fmap Set.unions . for (activeStages toolchains) $ \stage -> do
+            let toolchain = getStage toolchains stage
+            getStoreEntries
+              cabalStoreDirLayout
+              (toolchainCompiler toolchain)
+              (toolchainPlatform toolchain)
         let improvedPlan =
               improveInstallPlanWithInstalledPackages
                 storePkgIdSet
@@ -2772,20 +2777,27 @@ elaborateInstallPlan
       projectPackageDbs = projectPackageDbsFor toolchains sharedPackageConfig
 
       -- The package databases of a build stage: the store database of that
-      -- stage's compiler, and for in-place builds that compiler's dist
-      -- database too, on top of whichever project databases apply to the
-      -- stage. Equal for both stages unless cross-compiling.
+      -- stage's compiler and the platform it targets, and for in-place builds
+      -- that compiler's dist database too, on top of whichever project
+      -- databases apply to the stage. Equal for both stages unless
+      -- cross-compiling.
       stageCorePackageDbs :: Stage -> PackageDBStackCWD
       stageCorePackageDbs s =
-        storePackageDBStack (stageCompilerOf s) (projectPackageDbs s)
+        storePackageDBStack
+          (stageCompilerOf s)
+          (stagePlatformOf s)
+          (projectPackageDbs s)
 
       stageInplacePackageDbs :: Stage -> PackageDBStackCWD
       stageInplacePackageDbs s =
         stageCorePackageDbs s
-          ++ [distPackageDB (compilerId (stageCompilerOf s))]
+          ++ [distPackageDB (stagePlatformOf s) (compilerId (stageCompilerOf s))]
 
       stageCompilerOf :: Stage -> Compiler
       stageCompilerOf s = toolchainCompiler (getStage toolchains s)
+
+      stagePlatformOf :: Stage -> Platform
+      stagePlatformOf s = toolchainPlatform (getStage toolchains s)
 
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be
@@ -4444,14 +4456,16 @@ userInstallDirTemplates compiler = do
 storePackageInstallDirs
   :: StoreDirLayout
   -> Compiler
+  -> Platform
   -> InstalledPackageId
   -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs storeDirLayout compiler ipkgid =
-  storePackageInstallDirs' storeDirLayout compiler $ newSimpleUnitId ipkgid
+storePackageInstallDirs storeDirLayout compiler platform ipkgid =
+  storePackageInstallDirs' storeDirLayout compiler platform $ newSimpleUnitId ipkgid
 
 storePackageInstallDirs'
   :: StoreDirLayout
   -> Compiler
+  -> Platform
   -> UnitId
   -> InstallDirs.InstallDirs FilePath
 storePackageInstallDirs'
@@ -4460,11 +4474,12 @@ storePackageInstallDirs'
     , storeDirectory
     }
   compiler
+  platform
   unitid =
     InstallDirs.InstallDirs{..}
     where
-      store = storeDirectory compiler
-      prefix = storePackageDirectory compiler unitid
+      store = storeDirectory compiler platform
+      prefix = storePackageDirectory compiler platform unitid
       bindir = prefix </> "bin"
       libdir = prefix </> "lib"
       libsubdir = ""
@@ -4516,6 +4531,7 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       storePackageInstallDirs'
         storeDirLayout
         (elabCompiler elaboratedShared elab)
+        (elabPlatform elaboratedShared elab)
         (elabUnitId elab)
 
 -- TODO: [code cleanup] perhaps reorder this code
