@@ -145,6 +145,7 @@ data CabalInstallException
   | VendorInvalidPackageName String
   | VendorUnknownPackages [PackageName]
   | VendorLocalPackages [PackageName]
+  | VendorUnpackNeedsPackages
   | TryFindPackageDescErr String
   | DieIfNotHaddockFailureException String
   | ConfigureInstallInternalError
@@ -349,6 +350,7 @@ exceptionCodeCabalInstall e = case e of
   VendorInvalidPackageName{} -> 7169
   VendorUnknownPackages{} -> 7170
   VendorLocalPackages{} -> 7171
+  VendorUnpackNeedsPackages{} -> 7172
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -668,6 +670,9 @@ exceptionMessageCabalInstall e = case e of
     "Cannot vendor "
       ++ intercalate ", " (map prettyShow pkgs)
       ++ ": local packages of this project are not vendored."
+  VendorUnpackNeedsPackages ->
+    "'vendor --unpack' needs the names of the packages to unpack; unpacking "
+      ++ "every dependency would turn them all into local packages."
   TryFindPackageDescErr err -> err
   DieIfNotHaddockFailureException errorStr -> errorStr
   ConfigureInstallInternalError ->

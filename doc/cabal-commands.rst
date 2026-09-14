@@ -1203,6 +1203,16 @@ The ``cabal vendor`` command supports the following options:
     several configurations (say ``tests: True`` and ``tests: False``) is
     pruned to the one the command runs with.
 
+.. option:: --unpack
+
+    Also unpack the named packages into ``src/`` under the vendor directory,
+    with the revised ``.cabal`` file applied, and print the ``packages:``
+    line that makes them local packages of the project. A local package
+    takes precedence over the vendored tarball of the same name, so this is
+    the way to try a change in a dependency; remove the ``packages:`` entry
+    to go back to the vendored one. Package names are required. A package
+    directory that already exists is left alone, since it may hold edits.
+
 Besides these, the command accepts the project and solver flags shared by the
 other project commands, such as ``--project-file``, ``--constraint`` and
 ``--index-state``, which determine the plan that is vendored.
