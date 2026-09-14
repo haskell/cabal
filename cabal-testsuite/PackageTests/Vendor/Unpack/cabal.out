@@ -1,0 +1,46 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal v2-vendor
+Error: [Cabal-7172]
+'vendor --unpack' needs the names of the packages to unpack; unpacking every dependency would turn them all into local packages.
+# cabal v2-vendor
+Resolving dependencies...
+Unpacking to <ROOT>/vendor/src/my-lib-1.0/
+Vendored 1 package into <ROOT>/vendor
+
+To build using the vendored packages, add the following to the project file
+(the 'url' line must stay indented under 'repository'):
+
+repository vendored
+  url: file+noindex:vendor
+
+active-repositories: vendored
+
+Unpacked into vendor/src. To work on these as local packages,
+which take precedence over the vendored ones, add to the project file:
+
+packages:
+  vendor/src/my-lib-1.0
+# cabal v2-vendor
+Warning: Not unpacking my-lib-1.0: <ROOT>/vendor/src/my-lib-1.0 already exists and may hold changes; remove it to unpack again.
+Vendored 1 package into <ROOT>/vendor
+
+To build using the vendored packages, add the following to the project file
+(the 'url' line must stay indented under 'repository'):
+
+repository vendored
+  url: file+noindex:vendor
+
+active-repositories: vendored
+# cabal v2-run
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - my-lib-1.0 (lib) (first run)
+ - main-1.0 (exe:main) (first run)
+Configuring library for my-lib-1.0...
+Preprocessing library for my-lib-1.0...
+Building library for my-lib-1.0...
+Configuring executable 'main' for main-1.0...
+Preprocessing executable 'main' for main-1.0...
+Building executable 'main' for main-1.0...
