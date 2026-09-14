@@ -19,6 +19,10 @@ The directory defaults to 'vendor' in the project root and can be changed with
 stanza to add to the project file so that the vendored packages are used. When
 package names are given, only those packages are vendored.
 
+With '--unpack', the named packages are also unpacked into 'src/' under the
+vendor directory, with the revised '.cabal' file applied, so that they can be
+worked on as local packages listed in 'packages:'.
+
 Flags for vendor:
  -h, --help                   # Show this help text
  -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
@@ -383,6 +387,9 @@ Flags for vendor:
                                 (default: 'vendor' in the project root)
  --prune                      # Remove package files that are not dependencies
                                 in the current plan from the directory
+ --unpack                     # Also unpack the named packages into 'src/'
+                                under the directory, to work on them as local
+                                packages
 
 Examples:
   cabal vendor
@@ -395,3 +402,5 @@ Examples:
     Show which packages would be vendored
   cabal vendor --prune
     Vendor all dependencies and remove packages no longer needed
+  cabal vendor --unpack aeson
+    Vendor aeson and unpack it into vendor/src/ to work on it
