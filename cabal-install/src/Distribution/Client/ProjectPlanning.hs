@@ -1891,7 +1891,7 @@ elaborateInstallPlan
   localPackages
   sourcePackageHashes
   defaultInstallDirs
-  sharedPackageConfig
+  projectConfigShared
   allPackagesConfig
   localPackagesConfig
   perPackageConfig = do
@@ -2023,7 +2023,7 @@ elaborateInstallPlan
               -- For ease of testing, we let per-component builds be toggled
               -- at the top level
               cuz_flag
-                | fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig) =
+                | fromFlagOrDefault True (projectConfigPerComponent projectConfigShared) =
                     []
                 | otherwise = [CuzDisablePerComponent]
 
@@ -2774,7 +2774,7 @@ elaborateInstallPlan
       -- The project's package databases belong to the host compiler; a
       -- distinct build toolchain gets none of them.
       projectPackageDbs :: Stage -> [Maybe PackageDBCWD]
-      projectPackageDbs = projectPackageDbsFor toolchains sharedPackageConfig
+      projectPackageDbs = projectPackageDbsFor toolchains projectConfigShared
 
       -- The package databases of a build stage: the store database of that
       -- stage's compiler and the platform it targets, and for in-place builds
