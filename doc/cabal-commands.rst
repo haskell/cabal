@@ -1156,7 +1156,9 @@ the vendored packages:
 The path is relative to the project root (see :ref:`local-no-index-repositories`),
 so the ``vendor`` directory can be committed together with the project. With
 ``active-repositories`` naming only the vendored repository, the solver sees
-exactly the vendored versions and no other repository is consulted.
+exactly the vendored versions and no other repository is consulted, and
+``cabal build --offline`` accepts packages from it since nothing is
+downloaded for them.
 
 Package names can be given to vendor only some of the dependencies, for
 instance to pin a few packages to exact sources while the rest still come from

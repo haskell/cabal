@@ -28,7 +28,7 @@ main = cabalTest $ withShorterPathForNewBuildStore $ withRepo "repo" $ do
   -- satisfy the build.
   liftIO $ removeDirectoryRecursive (testRepoDir env)
   withProjectFile "cabal.vendored.project" $ do
-    cabal "v2-build" ["all"]
+    cabal "v2-build" ["--offline", "all"]
     -- Vendoring again from the vendored repository is a no-op.
     cabal "v2-vendor" []
     shouldExist (vendorDir </> "my-lib-1.0.tar.gz")
