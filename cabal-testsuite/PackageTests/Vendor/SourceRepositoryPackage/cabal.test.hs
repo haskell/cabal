@@ -52,7 +52,7 @@ main = cabalTest $ withShorterPathForNewBuildStore $ recordMode DoNotRecord $ do
       ]
   liftIO $ removeDirectoryRecursive (cwd </> "upstream")
   withProjectFile "cabal.vendored.project" $
-    cabal "v2-build" ["all"]
+    cabal "v2-build" ["--offline", "all"]
   where
     fileUri path = "file://" ++ root ++ map toPosixSeparator path
       where
