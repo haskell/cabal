@@ -2785,10 +2785,13 @@ elaborateInstallPlan
       stageInplacePackageDbs :: Stage -> PackageDBStackCWD
       stageInplacePackageDbs s =
         stageCorePackageDbs s
-          ++ [distPackageDB (compilerId (stageCompilerOf s))]
+          ++ [distPackageDB (stagePlatformOf s) (compilerId (stageCompilerOf s))]
 
       stageCompilerOf :: Stage -> Compiler
       stageCompilerOf s = toolchainCompiler (getStage toolchains s)
+
+      stagePlatformOf :: Stage -> Platform
+      stagePlatformOf s = toolchainPlatform (getStage toolchains s)
 
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be
