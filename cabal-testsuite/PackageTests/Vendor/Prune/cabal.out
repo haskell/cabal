@@ -1,0 +1,56 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal v2-vendor
+Resolving dependencies...
+Vendored 2 packages into <ROOT>/vendor
+
+To build using the vendored packages, add the following to the project file
+(the 'url' line must stay indented under 'repository'):
+
+repository vendored
+  url: file+noindex:vendor
+
+active-repositories: vendored
+# cabal v2-vendor
+Resolving dependencies...
+Vendored 2 packages into <ROOT>/vendor
+
+To build using the vendored packages, add the following to the project file
+(the 'url' line must stay indented under 'repository'):
+
+repository vendored
+  url: file+noindex:vendor
+
+active-repositories: vendored
+# cabal v2-vendor
+Would vendor the following packages into <ROOT>/vendor:
+ - my-lib-2.0
+ - other-lib-1.0
+Would remove the following files not in the current plan:
+ - my-lib-1.0.cabal
+ - my-lib-1.0.tar.gz
+ - stale-0.1.cabal
+# cabal v2-vendor
+Removed 3 files not in the current plan:
+ - my-lib-1.0.cabal
+ - my-lib-1.0.tar.gz
+ - stale-0.1.cabal
+Vendored 1 of 2 dependencies into <ROOT>/vendor
+
+To build using the vendored packages, add the following to the project file
+(the 'url' line must stay indented under 'repository'):
+
+repository vendored
+  url: file+noindex:vendor
+
+active-repositories: :rest, vendored:override
+# cabal v2-vendor
+Vendored 2 packages into <ROOT>/vendor
+
+To build using the vendored packages, add the following to the project file
+(the 'url' line must stay indented under 'repository'):
+
+repository vendored
+  url: file+noindex:vendor
+
+active-repositories: vendored

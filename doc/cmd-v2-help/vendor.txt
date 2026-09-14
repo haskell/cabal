@@ -381,6 +381,8 @@ Flags for vendor:
  -o PATH or -oPATH, --output-directory=PATH
                               # The directory to vendor the packages into
                                 (default: 'vendor' in the project root)
+ --prune                      # Remove package files that are not dependencies
+                                in the current plan from the directory
 
 Examples:
   cabal vendor
@@ -391,3 +393,5 @@ Examples:
     Vendor only the aeson and text packages
   cabal vendor --dry-run
     Show which packages would be vendored
+  cabal vendor --prune
+    Vendor all dependencies and remove packages no longer needed
