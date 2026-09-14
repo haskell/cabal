@@ -58,9 +58,11 @@ import Distribution.Simple.Flag
   , fromFlagOrDefault
   , pattern Flag
   )
+import Distribution.Simple.Setup (trueArg)
 import Distribution.Simple.Utils
   ( copyFileVerbose
   , dieWithException
+  , info
   , notice
   , warn
   , wrapText
@@ -76,7 +78,9 @@ import qualified Data.Text as Text
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
+  , doesDirectoryExist
   , doesFileExist
+  , listDirectory
   , makeAbsolute
   , removeFile
   )
@@ -132,6 +136,10 @@ vendorCommand =
           ++ pname
           ++ " v2-vendor --dry-run\n"
           ++ "    Show which packages would be vendored\n"
+          ++ "  "
+          ++ pname
+          ++ " v2-vendor --prune\n"
+          ++ "    Vendor all dependencies and remove packages no longer needed\n"
     , commandDefaultFlags = defaultNixStyleFlags defaultVendorFlags
     , commandOptions = nixStyleOptions vendorOptions
     }
@@ -140,8 +148,9 @@ vendorCommand =
 -- Flags
 -------------------------------------------------------------------------------
 
-newtype VendorFlags = VendorFlags
+data VendorFlags = VendorFlags
   { vendorOutputDir :: Flag FilePath
+  , vendorPrune :: Flag Bool
   }
   deriving (Eq, Show)
 
@@ -149,6 +158,7 @@ defaultVendorFlags :: VendorFlags
 defaultVendorFlags =
   VendorFlags
     { vendorOutputDir = mempty
+    , vendorPrune = mempty
     }
 
 vendorOptions :: ShowOrParseArgs -> [OptionField VendorFlags]
@@ -160,6 +170,13 @@ vendorOptions _ =
       vendorOutputDir
       (\v flags -> flags{vendorOutputDir = v})
       (reqArg "PATH" (succeedReadE Flag) flagToList)
+  , option
+      []
+      ["prune"]
+      "Remove package files that are not dependencies in the current plan from the directory"
+      vendorPrune
+      (\v flags -> flags{vendorPrune = v})
+      trueArg
   ]
 
 -------------------------------------------------------------------------------
@@ -184,7 +201,7 @@ vendoredRepoName = "vendored"
 -- copies the source tarball of every dependency in the plan into a directory
 -- that cabal can use as a @file+noindex@ package repository.
 vendorAction :: NixStyleFlags VendorFlags -> [String] -> GlobalFlags -> IO ()
-vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir}} pkgArgs globalFlags = do
+vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendorPrune}} pkgArgs globalFlags = do
   pkgNames <- for pkgArgs $ \arg ->
     case simpleParsec arg of
       Just name -> return (name :: PackageName)
@@ -262,6 +279,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir}} pkgA
       dryRun =
         buildSettingDryRun buildSettings
           || buildSettingOnlyDownload buildSettings
+      prune = fromFlagOrDefault False vendorPrune
 
   unless (null unknown) $
     dieWithException verbosity (VendorUnknownPackages unknown)
@@ -272,16 +290,31 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir}} pkgA
     warn verbosity $ "Not vendoring " ++ prettyShow pkgid ++ ": " ++ why ++ "."
 
   if dryRun
-    then
+    then do
       notice verbosity $
         unlines $
           ("Would vendor the following packages into " ++ vendorDir ++ ":")
             : [" - " ++ prettyShow pkgid | pkgid <- Map.keys selected]
+      when prune $ do
+        stale <- staleVendorFiles vendorDir (Map.keysSet sources)
+        unless (null stale) $
+          notice verbosity $
+            unlines $
+              "Would remove the following files not in the current plan:"
+                : [" - " ++ file | file <- stale]
     else do
       createDirectoryIfMissing True vendorDir
       projectConfigWithBuilderRepoContext verbosity buildSettings $ \repoCtxt ->
         for_ (Map.toList selected) $ \(pkgid, source) ->
           vendorPackage verbosity repoCtxt vendorDir pkgid source
+
+      when prune $ do
+        removed <- pruneVendorDir verbosity vendorDir (Map.keysSet sources)
+        unless (null removed) $
+          notice verbosity $
+            unlines $
+              ("Removed " ++ show (length removed) ++ " " ++ plural (length removed) "file" "files" ++ " not in the current plan:")
+                : [" - " ++ file | file <- removed]
 
       -- The index cache of a file+noindex repository is never invalidated by
       -- cabal itself, so drop it; it is rebuilt on first use.
@@ -323,6 +356,48 @@ vendorPackage verbosity repoCtxt vendorDir pkgid source = do
         writeFileAtomic (vendorDir </> prettyShow pkgid <.> "cabal") cabalFile
       _ -> return ()
 
+-- | The package a file in the vendor directory belongs to, for the file
+-- names that the @file+noindex@ reader understands: @\<pkgid\>.tar.gz@ and
+-- the @\<pkgid\>.cabal@ sidecar. Anything else is not a package file.
+vendorFilePackageId :: FilePath -> Maybe PackageId
+vendorFilePackageId file =
+  listToMaybe
+    [ pkgid
+    | suffix <- [".tar.gz", ".cabal"]
+    , suffix `isSuffixOf` file
+    , Just pkgid <- [simpleParsec (take (length file - length suffix) file)]
+    ]
+
+-- | The package files in the vendor directory that belong to packages not in
+-- the given set.
+staleVendorFiles :: FilePath -> Set PackageId -> IO [FilePath]
+staleVendorFiles vendorDir keep = do
+  exists <- doesDirectoryExist vendorDir
+  if not exists
+    then return []
+    else do
+      entries <- listDirectory vendorDir
+      return $
+        sort
+          [ file
+          | file <- entries
+          , Just pkgid <- [vendorFilePackageId file]
+          , pkgid `Set.notMember` keep
+          ]
+
+-- | Remove the package files that belong to packages not in the given set,
+-- returning what was removed.
+pruneVendorDir :: Verbosity -> FilePath -> Set PackageId -> IO [FilePath]
+pruneVendorDir verbosity vendorDir keep = do
+  stale <- staleVendorFiles vendorDir keep
+  for_ stale $ \file -> do
+    info verbosity $ "Removing " ++ vendorDir </> file
+    removeFile (vendorDir </> file)
+  return stale
+
+plural :: Int -> String -> String -> String
+plural n singular pluralForm = if n == 1 then singular else pluralForm
+
 -- | What was vendored, and the project configuration needed to use it.
 vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource)] -> String
 vendorReport projectRoot vendorDir partial total selected =
@@ -344,7 +419,6 @@ vendorReport projectRoot vendorDir partial total selected =
           "Vendored " ++ show (length selected) ++ " of " ++ show total ++ " dependencies into " ++ vendorDir
       | otherwise =
           "Vendored " ++ show (length selected) ++ " " ++ plural (length selected) "package" "packages" ++ " into " ++ vendorDir
-    plural n singular pluralForm = if n == 1 then singular else pluralForm
 
     -- Prefer a path relative to the project root, so that the vendored
     -- repository can be committed along with the project.

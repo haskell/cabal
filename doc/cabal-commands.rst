@@ -1172,7 +1172,8 @@ the vendored one override them for the packages it contains:
 
 Running ``cabal vendor`` again writes the dependencies of the current plan to
 the directory (overwriting files of the same name), refreshes its index cache
-and leaves other files alone, so partial runs accumulate. Note that once
+and leaves other files alone, so partial runs accumulate; ``--prune`` removes
+the package files that the current plan does not need. Note that once
 ``active-repositories`` names only the vendored repository, the plan is solved
 from that repository, so ``cabal vendor`` has nothing new to add; to pick up
 newer versions from the other repositories, re-enable them for that run with
@@ -1187,7 +1188,20 @@ The ``cabal vendor`` command supports the following options:
 
 .. option:: --dry-run
 
-    Only print the packages that would be vendored; write nothing.
+    Only print the packages that would be vendored (and, with ``--prune``,
+    the files that would be removed); write nothing.
+
+.. option:: --prune
+
+    After vendoring, remove ``<package>-<version>.tar.gz`` and
+    ``<package>-<version>.cabal`` files for packages that are not
+    dependencies in the current plan — for instance older versions left
+    behind by a refresh. Files that are not package files, such as
+    ``preferred-versions``, are never touched. Pruning goes by the whole
+    plan even when package names are given, so a partial run with
+    ``--prune`` keeps the other dependencies' files. A directory shared by
+    several configurations (say ``tests: True`` and ``tests: False``) is
+    pruned to the one the command runs with.
 
 Besides these, the command accepts the project and solver flags shared by the
 other project commands, such as ``--project-file``, ``--constraint`` and
