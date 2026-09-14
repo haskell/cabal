@@ -315,6 +315,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                         storePackageDirectory
                           (cabalStoreDirLayout cabalLayout)
                           (pkgConfigCompiler sharedConfig')
+                          (pkgConfigPlatform sharedConfig')
                           (elabUnitId package)
                       -- TODO: use `InstallDirTemplates`
                       docDir = packageDir </> "share" </> "doc" </> "html"

@@ -850,7 +850,7 @@ buildAndInstallUnpackedPackage
                   | otherwise = do
                       assert
                         ( elabRegisterPackageDBStack pkg
-                            == storePackageDBStack compiler (elabPackageDbs pkg)
+                            == storePackageDBStack compiler platform (elabPackageDbs pkg)
                         )
                         (return ())
                       ipkg <-
@@ -869,6 +869,7 @@ buildAndInstallUnpackedPackage
                 verbosity
                 storeDirLayout
                 compiler
+                platform
                 uid
                 (copyPkgFiles verbosity pkgshared pkg runCopy)
                 registerPkg

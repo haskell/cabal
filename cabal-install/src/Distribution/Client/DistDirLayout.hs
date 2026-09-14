@@ -130,20 +130,34 @@ data DistDirLayout = DistDirLayout
   , distSdistDirectory :: FilePath
   , distTempDirectory :: FilePath
   , distBinDirectory :: FilePath
-  , distPackageDB :: CompilerId -> PackageDBCWD
+  , distPackageDB :: Platform -> CompilerId -> PackageDBCWD
+  -- ^ The database the packages built inplace are registered in, keyed by the
+  -- platform the compiler targets and the compiler, in that order, as
+  -- 'distBuildDirectory' and 'StoreDirLayout' are. Inplace unit ids do not
+  -- mention the compiler, so without the platform the build-stage and
+  -- host-stage copies of a local package would be registered over one another
+  -- whenever the two compilers agree on 'compilerId'.
   , distHaddockOutputDir :: Maybe FilePath
   -- ^ Is needed when `--haddock-output-dir` flag is used.
   }
 
 -- | The layout of a cabal nix-style store.
+--
+-- Every location is keyed by the platform the compiler targets /and/ the
+-- compiler, in that order, as 'distBuildDirectory' spells it. The compiler
+-- alone does not identify what it produces: one @ghc-9.12.2@ may target the
+-- machine it runs on while another targets something else entirely, and they
+-- agree on 'compilerId' and 'compilerAbiTag'. Keying on the compiler alone
+-- would file both of their outputs in one directory, under one package
+-- database.
 data StoreDirLayout = StoreDirLayout
-  { storeDirectory :: Compiler -> FilePath
-  , storePackageDirectory :: Compiler -> UnitId -> FilePath
-  , storePackageDBPath :: Compiler -> FilePath
-  , storePackageDB :: Compiler -> PackageDBCWD
-  , storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
-  , storeIncomingDirectory :: Compiler -> FilePath
-  , storeIncomingLock :: Compiler -> UnitId -> FilePath
+  { storeDirectory :: Compiler -> Platform -> FilePath
+  , storePackageDirectory :: Compiler -> Platform -> UnitId -> FilePath
+  , storePackageDBPath :: Compiler -> Platform -> FilePath
+  , storePackageDB :: Compiler -> Platform -> PackageDBCWD
+  , storePackageDBStack :: Compiler -> Platform -> [Maybe PackageDBCWD] -> PackageDBStackCWD
+  , storeIncomingDirectory :: Compiler -> Platform -> FilePath
+  , storeIncomingLock :: Compiler -> Platform -> UnitId -> FilePath
   }
 
 -- TODO: move to another module, e.g. CabalDirLayout?
@@ -277,11 +291,15 @@ defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir =
     distBinDirectory :: FilePath
     distBinDirectory = distDirectory </> "bin"
 
-    distPackageDBPath :: CompilerId -> FilePath
-    distPackageDBPath compid = distDirectory </> "packagedb" </> prettyShow compid
+    distPackageDBPath :: Platform -> CompilerId -> FilePath
+    distPackageDBPath platform compid =
+      distDirectory
+        </> "packagedb"
+        </> prettyShow platform
+        </> prettyShow compid
 
-    distPackageDB :: CompilerId -> PackageDBCWD
-    distPackageDB = SpecificPackageDB . distPackageDBPath
+    distPackageDB :: Platform -> CompilerId -> PackageDBCWD
+    distPackageDB platform = SpecificPackageDB . distPackageDBPath platform
 
     distHaddockOutputDir :: Maybe FilePath
     distHaddockOutputDir = haddockOutputDir
@@ -290,36 +308,39 @@ defaultStoreDirLayout :: FilePath -> StoreDirLayout
 defaultStoreDirLayout storeRoot =
   StoreDirLayout{..}
   where
-    storeDirectory :: Compiler -> FilePath
-    storeDirectory compiler =
-      storeRoot </> case compilerAbiTag compiler of
-        NoAbiTag -> prettyShow (compilerId compiler)
-        AbiTag tag -> prettyShow (compilerId compiler) <> "-" <> tag
+    storeDirectory :: Compiler -> Platform -> FilePath
+    storeDirectory compiler platform =
+      storeRoot
+        </> prettyShow platform
+        </> ( case compilerAbiTag compiler of
+                NoAbiTag -> prettyShow (compilerId compiler)
+                AbiTag tag -> prettyShow (compilerId compiler) <> "-" <> tag
+            )
 
-    storePackageDirectory :: Compiler -> UnitId -> FilePath
-    storePackageDirectory compiler ipkgid =
-      storeDirectory compiler </> prettyShow ipkgid
+    storePackageDirectory :: Compiler -> Platform -> UnitId -> FilePath
+    storePackageDirectory compiler platform ipkgid =
+      storeDirectory compiler platform </> prettyShow ipkgid
 
-    storePackageDBPath :: Compiler -> FilePath
-    storePackageDBPath compiler =
-      storeDirectory compiler </> "package.db"
+    storePackageDBPath :: Compiler -> Platform -> FilePath
+    storePackageDBPath compiler platform =
+      storeDirectory compiler platform </> "package.db"
 
-    storePackageDB :: Compiler -> PackageDBCWD
-    storePackageDB compiler =
-      SpecificPackageDB (storePackageDBPath compiler)
+    storePackageDB :: Compiler -> Platform -> PackageDBCWD
+    storePackageDB compiler platform =
+      SpecificPackageDB (storePackageDBPath compiler platform)
 
-    storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
-    storePackageDBStack compiler extraPackageDB =
+    storePackageDBStack :: Compiler -> Platform -> [Maybe PackageDBCWD] -> PackageDBStackCWD
+    storePackageDBStack compiler platform extraPackageDB =
       interpretPackageDbFlags False extraPackageDB
-        ++ [storePackageDB compiler]
+        ++ [storePackageDB compiler platform]
 
-    storeIncomingDirectory :: Compiler -> FilePath
-    storeIncomingDirectory compiler =
-      storeDirectory compiler </> "incoming"
+    storeIncomingDirectory :: Compiler -> Platform -> FilePath
+    storeIncomingDirectory compiler platform =
+      storeDirectory compiler platform </> "incoming"
 
-    storeIncomingLock :: Compiler -> UnitId -> FilePath
-    storeIncomingLock compiler unitid =
-      storeIncomingDirectory compiler </> prettyShow unitid <.> "lock"
+    storeIncomingLock :: Compiler -> Platform -> UnitId -> FilePath
+    storeIncomingLock compiler platform unitid =
+      storeIncomingDirectory compiler platform </> prettyShow unitid <.> "lock"
 
 defaultCabalDirLayout :: IO CabalDirLayout
 defaultCabalDirLayout =
