@@ -15,6 +15,7 @@ import Prelude ()
 import Distribution.Client.DistDirLayout (DistDirLayout (..))
 import Distribution.Client.Errors
 import Distribution.Client.FetchUtils (fetchRepoTarball)
+import Distribution.Client.Get (unpackPackage)
 import Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
@@ -63,7 +64,7 @@ import Distribution.Simple.Utils
   ( copyFileVerbose
   , dieWithException
   , info
-  , notice
+  , noticeNoWrap
   , warn
   , wrapText
   , writeFileAtomic
@@ -117,7 +118,11 @@ vendorCommand =
             ++ "changed with '--output-directory'. After vendoring, the command "
             ++ "prints the 'repository' stanza to add to the project file so that "
             ++ "the vendored packages are used. When package names are given, "
-            ++ "only those packages are vendored.\n"
+            ++ "only those packages are vendored.\n\n"
+            ++ "With '--unpack', the named packages are also unpacked into "
+            ++ "'src/' under the vendor directory, with the revised '.cabal' "
+            ++ "file applied, so that they can be worked on as local packages "
+            ++ "listed in 'packages:'.\n"
     , commandNotes = Just $ \pname ->
         "Examples:\n"
           ++ "  "
@@ -140,6 +145,10 @@ vendorCommand =
           ++ pname
           ++ " v2-vendor --prune\n"
           ++ "    Vendor all dependencies and remove packages no longer needed\n"
+          ++ "  "
+          ++ pname
+          ++ " v2-vendor --unpack aeson\n"
+          ++ "    Vendor aeson and unpack it into vendor/src/ to work on it\n"
     , commandDefaultFlags = defaultNixStyleFlags defaultVendorFlags
     , commandOptions = nixStyleOptions vendorOptions
     }
@@ -151,6 +160,7 @@ vendorCommand =
 data VendorFlags = VendorFlags
   { vendorOutputDir :: Flag FilePath
   , vendorPrune :: Flag Bool
+  , vendorUnpack :: Flag Bool
   }
   deriving (Eq, Show)
 
@@ -159,6 +169,7 @@ defaultVendorFlags =
   VendorFlags
     { vendorOutputDir = mempty
     , vendorPrune = mempty
+    , vendorUnpack = mempty
     }
 
 vendorOptions :: ShowOrParseArgs -> [OptionField VendorFlags]
@@ -176,6 +187,13 @@ vendorOptions _ =
       "Remove package files that are not dependencies in the current plan from the directory"
       vendorPrune
       (\v flags -> flags{vendorPrune = v})
+      trueArg
+  , option
+      []
+      ["unpack"]
+      "Also unpack the named packages into 'src/' under the directory, to work on them as local packages"
+      vendorUnpack
+      (\v flags -> flags{vendorUnpack = v})
       trueArg
   ]
 
@@ -201,11 +219,14 @@ vendoredRepoName = "vendored"
 -- copies the source tarball of every dependency in the plan into a directory
 -- that cabal can use as a @file+noindex@ package repository.
 vendorAction :: NixStyleFlags VendorFlags -> [String] -> GlobalFlags -> IO ()
-vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendorPrune}} pkgArgs globalFlags = do
+vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendorPrune, vendorUnpack}} pkgArgs globalFlags = do
   pkgNames <- for pkgArgs $ \arg ->
     case simpleParsec arg of
       Just name -> return (name :: PackageName)
       Nothing -> dieWithException verbosity (VendorInvalidPackageName arg)
+  let unpack = fromFlagOrDefault False vendorUnpack
+  when (unpack && null pkgNames) $
+    dieWithException verbosity VendorUnpackNeedsPackages
 
   ProjectBaseContext
     { distDirLayout
@@ -280,6 +301,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         buildSettingDryRun buildSettings
           || buildSettingOnlyDownload buildSettings
       prune = fromFlagOrDefault False vendorPrune
+      unpackDir = vendorDir </> "src"
 
   unless (null unknown) $
     dieWithException verbosity (VendorUnknownPackages unknown)
@@ -291,17 +313,22 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
 
   if dryRun
     then do
-      notice verbosity $
+      noticeNoWrap verbosity $
         unlines $
           ("Would vendor the following packages into " ++ vendorDir ++ ":")
             : [" - " ++ prettyShow pkgid | pkgid <- Map.keys selected]
       when prune $ do
         stale <- staleVendorFiles vendorDir (Map.keysSet sources)
         unless (null stale) $
-          notice verbosity $
+          noticeNoWrap verbosity $
             unlines $
               "Would remove the following files not in the current plan:"
                 : [" - " ++ file | file <- stale]
+      when unpack $
+        noticeNoWrap verbosity $
+          unlines $
+            ("Would unpack the following packages into " ++ unpackDir ++ ":")
+              : [" - " ++ prettyShow pkgid | pkgid <- Map.keys selected]
     else do
       createDirectoryIfMissing True vendorDir
       projectConfigWithBuilderRepoContext verbosity buildSettings $ \repoCtxt ->
@@ -311,7 +338,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       when prune $ do
         removed <- pruneVendorDir verbosity vendorDir (Map.keysSet sources)
         unless (null removed) $
-          notice verbosity $
+          noticeNoWrap verbosity $
             unlines $
               ("Removed " ++ show (length removed) ++ " " ++ plural (length removed) "file" "files" ++ " not in the current plan:")
                 : [" - " ++ file | file <- removed]
@@ -322,8 +349,14 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       cacheExists <- doesFileExist cacheFile
       when cacheExists $ removeFile cacheFile
 
-      notice verbosity $
-        vendorReport projectRoot vendorDir partial (Map.size sources) (Map.toList selected)
+      unpacked <-
+        if unpack
+          then fmap concat . for (Map.toList selected) $ \(pkgid, source) ->
+            unpackVendored verbosity vendorDir pkgid source
+          else return []
+
+      noticeNoWrap verbosity $
+        vendorReport projectRoot vendorDir partial (Map.size sources) (Map.toList selected) unpacked
   where
     verbosity = cfgVerbosity normal flags
     cliConfig =
@@ -355,6 +388,29 @@ vendorPackage verbosity repoCtxt vendorDir pkgid source = do
       FromRepo _ (Just cabalFile) ->
         writeFileAtomic (vendorDir </> prettyShow pkgid <.> "cabal") cabalFile
       _ -> return ()
+
+-- | Unpack a vendored package into @src/@ under the vendor directory, with
+-- the revised @.cabal@ file applied as @cabal get@ does, so that it can be
+-- listed in @packages:@ and worked on. A directory that is already there is
+-- left alone: it may hold edits.
+unpackVendored :: Verbosity -> FilePath -> PackageId -> VendorSource -> IO [PackageId]
+unpackVendored verbosity vendorDir pkgid source = do
+  let unpackDir = vendorDir </> "src"
+      pkgDir = unpackDir </> prettyShow pkgid
+      tarball = vendorDir </> prettyShow pkgid <.> "tar.gz"
+      override = case source of
+        FromRepo _ cabalFile -> cabalFile
+        FromSourceRepo _ _ -> Nothing
+  exists <- doesDirectoryExist pkgDir
+  if exists
+    then do
+      warn verbosity $
+        "Not unpacking " ++ prettyShow pkgid ++ ": " ++ pkgDir ++ " already exists and may hold changes; remove it to unpack again."
+      return []
+    else do
+      createDirectoryIfMissing True unpackDir
+      unpackPackage verbosity unpackDir pkgid override tarball
+      return [pkgid]
 
 -- | The package a file in the vendor directory belongs to, for the file
 -- names that the @file+noindex@ reader understands: @\<pkgid\>.tar.gz@ and
@@ -399,8 +455,8 @@ plural :: Int -> String -> String -> String
 plural n singular pluralForm = if n == 1 then singular else pluralForm
 
 -- | What was vendored, and the project configuration needed to use it.
-vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource)] -> String
-vendorReport projectRoot vendorDir partial total selected =
+vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource)] -> [PackageId] -> String
+vendorReport projectRoot vendorDir partial total selected unpacked =
   unlines $
     [ summary
     , ""
@@ -413,6 +469,7 @@ vendorReport projectRoot vendorDir partial total selected =
     , "active-repositories: " ++ activeRepos
     ]
       ++ sourceRepoNotes
+      ++ unpackNotes
   where
     summary
       | partial =
@@ -423,6 +480,9 @@ vendorReport projectRoot vendorDir partial total selected =
     -- Prefer a path relative to the project root, so that the vendored
     -- repository can be committed along with the project.
     relativeDir = makeRelative projectRoot vendorDir
+    displayDir
+      | isRelative relativeDir = asPosixPath relativeDir
+      | otherwise = vendorDir
     vendorUrl
       | isRelative relativeDir = "file+noindex:" ++ asPosixPath relativeDir
       | Windows <- buildOS = "file+noindex:" ++ asPosixPath vendorDir
@@ -445,6 +505,17 @@ vendorReport projectRoot vendorDir partial total selected =
             ++ [ "  - " ++ prettyShow pkgid ++ " (" ++ describeSourceRepo srp ++ ")"
                | (pkgid, srp) <- srps
                ]
+
+    unpackNotes = case unpacked of
+      [] -> []
+      pkgids ->
+        [ ""
+        , "Unpacked into " ++ displayDir ++ "/src. To work on these as local packages,"
+        , "which take precedence over the vendored ones, add to the project file:"
+        , ""
+        , "packages:"
+        ]
+          ++ ["  " ++ displayDir ++ "/src/" ++ prettyShow pkgid | pkgid <- pkgids]
 
     describeSourceRepo SourceRepositoryPackage{srpType, srpLocation, srpTag, srpBranch, srpSubdir} =
       intercalate ", " $
