@@ -130,7 +130,13 @@ data DistDirLayout = DistDirLayout
   , distSdistDirectory :: FilePath
   , distTempDirectory :: FilePath
   , distBinDirectory :: FilePath
-  , distPackageDB :: CompilerId -> PackageDBCWD
+  , distPackageDB :: Platform -> CompilerId -> PackageDBCWD
+  -- ^ The database the packages built inplace are registered in, keyed by the
+  -- platform the compiler targets and the compiler, in that order, as
+  -- 'distBuildDirectory' is. Inplace unit ids do not mention the compiler, so
+  -- without the platform the build-stage and host-stage copies of a local
+  -- package would be registered over one another whenever the two compilers
+  -- agree on 'compilerId'.
   , distHaddockOutputDir :: Maybe FilePath
   -- ^ Is needed when `--haddock-output-dir` flag is used.
   }
@@ -277,11 +283,15 @@ defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir =
     distBinDirectory :: FilePath
     distBinDirectory = distDirectory </> "bin"
 
-    distPackageDBPath :: CompilerId -> FilePath
-    distPackageDBPath compid = distDirectory </> "packagedb" </> prettyShow compid
+    distPackageDBPath :: Platform -> CompilerId -> FilePath
+    distPackageDBPath platform compid =
+      distDirectory
+        </> "packagedb"
+        </> prettyShow platform
+        </> prettyShow compid
 
-    distPackageDB :: CompilerId -> PackageDBCWD
-    distPackageDB = SpecificPackageDB . distPackageDBPath
+    distPackageDB :: Platform -> CompilerId -> PackageDBCWD
+    distPackageDB platform = SpecificPackageDB . distPackageDBPath platform
 
     distHaddockOutputDir :: Maybe FilePath
     distHaddockOutputDir = haddockOutputDir
