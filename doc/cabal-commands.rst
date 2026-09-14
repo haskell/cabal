@@ -1170,8 +1170,13 @@ the vendored one override them for the packages it contains:
     ...
     active-repositories: :rest, vendored:override
 
-Running ``cabal vendor`` again adds the dependencies of the current plan to the
-directory and refreshes its index cache; files already there are left alone.
+Running ``cabal vendor`` again writes the dependencies of the current plan to
+the directory (overwriting files of the same name), refreshes its index cache
+and leaves other files alone, so partial runs accumulate. Note that once
+``active-repositories`` names only the vendored repository, the plan is solved
+from that repository, so ``cabal vendor`` has nothing new to add; to pick up
+newer versions from the other repositories, re-enable them for that run with
+``cabal --active-repositories=:rest vendor``.
 
 The ``cabal vendor`` command supports the following options:
 
