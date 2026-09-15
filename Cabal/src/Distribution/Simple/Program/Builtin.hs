@@ -104,7 +104,10 @@ ghcProgram =
     , programNormaliseArgs = normaliseGhcArgs
     }
   where
-    ghcPostConf _verbosity ghcProg = do
+    ghcPostConf verbosity ghcProg0 = do
+      -- Record which features this GHC supports; see 'GhcFeature'.
+      ghcProg <- detectGhcFeatures verbosity ghcProg0
+
       let ignorePackageEnv prog = prog{programDefaultArgs = "-package-env=-" : programDefaultArgs prog}
 
           canIgnorePackageEnv = orLaterVersion $ mkVersion [8, 4, 4]

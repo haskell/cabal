@@ -11,6 +11,10 @@ module Distribution.Simple.Program.GHC
   , GhcDynLinkMode (..)
   , GhcObjectMode (..)
   , GhcProfAuto (..)
+  , GhcFeature (..)
+  , ghcFeatureFlag
+  , detectGhcFeatures
+  , ghcSupports
   , ghcInvocation
   , renderGhcOptions
   , runGHC
@@ -617,9 +621,11 @@ data GhcMode
   | -- | @ghci@ \/ @ghc --interactive@
     GhcModeInteractive
   | -- | @ghc --abi-hash@
-    --             | GhcModeDepAnalysis -- ^ @ghc -M@
-    --             | GhcModeEvaluate    -- ^ @ghc -e@
     GhcModeAbiHash
+  | -- | @ghc --merge-objs@
+    GhcModeMergeObjs
+  --             | GhcModeDepAnalysis -- ^ @ghc -M@
+  --             | GhcModeEvaluate    -- ^ @ghc -e@
   deriving (Show, Eq)
 
 data GhcOptimisation
@@ -778,6 +784,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
             Just GhcModeMake -> ["--make"]
             Just GhcModeInteractive -> ["--interactive"]
             Just GhcModeAbiHash -> ["--abi-hash"]
+            Just GhcModeMergeObjs -> ["--merge-objs"]
         , --     Just GhcModeDepAnalysis -> ["-M"]
           --     Just GhcModeEvaluate    -> ["-e", expr]
 
@@ -1047,3 +1054,64 @@ splitRTSArgs args =
               then addRTSArg arg $ go isRTSArg rest
               else addNonRTSArg arg $ go isRTSArg rest
    in go False args
+
+-- ---------------------------------------------------------------------------
+-- Feature detection
+
+-- | A feature of the @ghc@ program that Cabal detects by asking GHC which
+-- command-line flags it accepts (@ghc --show-options@), rather than by
+-- comparing version numbers as 'Distribution.Simple.GHC.ImplInfo' does.
+--
+-- Detection happens once, when the program is configured (see
+-- 'detectGhcFeatures'), and the outcome is recorded in the program's
+-- 'programProperties', so it is saved along with the rest of the configured
+-- program. Query it with 'ghcSupports'.
+--
+-- To add a feature, add a constructor and map it in 'ghcFeatureFlag' to the
+-- flag whose presence signals it.
+data GhcFeature
+  = -- | The @--merge-objs@ mode: merge object files into a GHCi library
+    -- with the merge tool GHC was configured with (GHC 9.4 and later).
+    GhcMergeObjs
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+-- | The command-line flag whose presence in @ghc --show-options@ signals
+-- the feature.
+ghcFeatureFlag :: GhcFeature -> String
+ghcFeatureFlag GhcMergeObjs = "--merge-objs"
+
+-- | The 'programProperties' key recording whether a feature is supported.
+ghcFeatureProperty :: GhcFeature -> String
+ghcFeatureProperty feature = "Supports " ++ ghcFeatureFlag feature
+
+-- | Ask GHC which command-line flags it accepts and record, for every
+-- 'GhcFeature', whether it is supported.
+--
+-- Meant to be called from the program's 'programPostConf'. If GHC cannot be
+-- queried (e.g. it predates @--show-options@) every feature is recorded as
+-- unsupported.
+detectGhcFeatures :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+detectGhcFeatures verbosity ghcProg = do
+  (output, _errors, exitCode) <-
+    getProgramInvocationOutputAndErrors
+      verbosity
+      (programInvocation (suppressOverrideArgs ghcProg) ["--show-options"])
+      `catchIO` (\_ -> return ("", "", ExitFailure 1))
+  let supportedFlags = case exitCode of
+        ExitSuccess -> Set.fromList (lines output)
+        ExitFailure _ -> Set.empty
+      record feature =
+        Map.insert
+          (ghcFeatureProperty feature)
+          (if ghcFeatureFlag feature `Set.member` supportedFlags then "YES" else "NO")
+  return
+    ghcProg
+      { programProperties =
+          foldr record (programProperties ghcProg) ([minBound .. maxBound] :: [GhcFeature])
+      }
+
+-- | Does the configured GHC support the feature? 'False' when detection did
+-- not run for this program.
+ghcSupports :: GhcFeature -> ConfiguredProgram -> Bool
+ghcSupports feature ghcProg =
+  Map.lookup (ghcFeatureProperty feature) (programProperties ghcProg) == Just "YES"
