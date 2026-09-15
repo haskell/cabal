@@ -88,7 +88,8 @@ import Language.Haskell.Extension
 import System.Directory (listDirectory)
 import System.Environment (getEnv)
 import System.FilePath
-  ( takeDirectory
+  ( isAbsolute
+  , takeDirectory
   , takeExtension
   , takeFileName
   )
@@ -98,6 +99,11 @@ targetPlatform :: [(String, String)] -> Maybe Platform
 targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 
 -- | Adjust the way we find and configure gcc and ld
+--
+-- When GHC's settings file (exposed by @ghc --info@) records an absolute path to
+-- an executable, that exact tool is used; otherwise a like-named program is
+-- looked up on the search path, which is what GHC itself does for a bare
+-- command name.
 configureToolchain
   :: GhcImplInfo
   -> ConfiguredProgram
@@ -107,85 +113,64 @@ configureToolchain
 configureToolchain _implInfo ghcProg ghcInfo =
   addKnownProgram
     gccProgram
-      { programFindLocation = findProg gccProgramName extraGccPath
+      { programFindLocation = findProg gccProgram $ getToolCommand "C compiler command"
       , programPostConf = configureGcc
       }
     . addKnownProgram
       gppProgram
-        { programFindLocation = findProg gppProgramName extraGppPath
+        { programFindLocation = findProg gppProgram $ getToolCommand "C++ compiler command"
         , programPostConf = configureGpp
         }
     . addKnownProgram
       ldProgram
-        { programFindLocation = findProg ldProgramName extraLdPath
+        { programFindLocation = findProg ldProgram $ getToolCommand "ld command"
         , programPostConf = ldPostConf
         }
     . addKnownProgram
       arProgram
-        { programFindLocation = findProg arProgramName extraArPath
+        { programFindLocation = findProg arProgram $ getToolCommand "ar command"
         }
     . addKnownProgram
       stripProgram
-        { programFindLocation = findProg stripProgramName extraStripPath
+        { programFindLocation = findProg stripProgram $ getToolCommand "strip command"
         }
   where
-    compilerDir, base_dir, mingwBinDir :: FilePath
-    compilerDir = takeDirectory (programPath ghcProg)
-    base_dir = takeDirectory compilerDir
-    mingwBinDir = base_dir </> "mingw" </> "bin"
+    -- On Windows, GHC's bundled toolchain is not necessarily on the PATH.
+    mingwBinDir :: FilePath
+    mingwBinDir = takeDirectory (takeDirectory (programPath ghcProg)) </> "mingw" </> "bin"
     isWindows = case buildOS of Windows -> True; _ -> False
-    binPrefix = ""
-
-    maybeName :: Program -> Maybe FilePath -> String
-    maybeName prog = maybe (programName prog) (dropExeExtension . takeFileName)
-
-    gccProgramName = maybeName gccProgram mbGccLocation
-    gppProgramName = maybeName gppProgram mbGppLocation
-    ldProgramName = maybeName ldProgram mbLdLocation
-    arProgramName = maybeName arProgram mbArLocation
-    stripProgramName = maybeName stripProgram mbStripLocation
-
-    mkExtraPath :: Maybe FilePath -> FilePath -> [FilePath]
-    mkExtraPath mbPath mingwPath
-      | isWindows = mbDir ++ [mingwPath]
-      | otherwise = mbDir
-      where
-        mbDir = maybeToList . fmap takeDirectory $ mbPath
-
-    extraGccPath = mkExtraPath mbGccLocation windowsExtraGccDir
-    extraGppPath = mkExtraPath mbGppLocation windowsExtraGppDir
-    extraLdPath = mkExtraPath mbLdLocation windowsExtraLdDir
-    extraArPath = mkExtraPath mbArLocation windowsExtraArDir
-    extraStripPath = mkExtraPath mbStripLocation windowsExtraStripDir
-
-    -- on Windows finding and configuring ghc's gcc & binutils is a bit special
-    ( windowsExtraGccDir
-      , windowsExtraGppDir
-      , windowsExtraLdDir
-      , windowsExtraArDir
-      , windowsExtraStripDir
-      ) =
-        let b = mingwBinDir </> binPrefix
-         in (b, b, b, b, b)
 
     findProg
-      :: String
-      -> [FilePath]
+      :: Program
+      -> Maybe FilePath
+      -- \^ The tool command reported by @ghc --info@, if any.
       -> Verbosity
       -> ProgramSearchPath
       -> IO (Maybe (FilePath, [FilePath]))
-    findProg progName extraPath v searchpath =
-      findProgramOnSearchPath v searchpath' progName
+    findProg prog mbCommand v searchpath = case mbCommand of
+      Just command
+        | isAbsolute command -> do
+            found <- doesExecutableExist command
+            if found
+              then return (Just (command, []))
+              else searchFor name
+      _ -> searchFor name
       where
-        searchpath' = map ProgramSearchPathDir extraPath ++ searchpath
+        name = maybe (programName prog) (dropExeExtension . takeFileName) mbCommand
+        searchFor = findProgramOnSearchPath v searchpath'
+          where
+            searchpath'
+              | isWindows = ProgramSearchPathDir mingwBinDir : searchpath
+              | otherwise = searchpath
 
-    -- Read tool locations from the 'ghc --info' output. Useful when
-    -- cross-compiling.
-    mbGccLocation = Map.lookup "C compiler command" ghcInfo
-    mbGppLocation = Map.lookup "C++ compiler command" ghcInfo
-    mbLdLocation = Map.lookup "ld command" ghcInfo
-    mbArLocation = Map.lookup "ar command" ghcInfo
-    mbStripLocation = Map.lookup "strip command" ghcInfo
+    -- A tool command from the 'ghc --info' output. An empty command means
+    -- the tool was deliberately left unconfigured; treat it as if it were
+    -- not reported at all.
+    getToolCommand :: String -> Maybe FilePath
+    getToolCommand key = case Map.lookup key ghcInfo of
+      Just command
+        | not (null command) -> Just command
+      _ -> Nothing
 
     ccFlags = getFlags "C compiler flags"
     cxxFlags = getFlags "C++ compiler flags"
