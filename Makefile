@@ -271,7 +271,7 @@ validate-via-docker-old:
 # tags
 .PHONY : tags
 tags: ## Generate editor tags, vim ctags and emacs etags.
-	hasktags -b Cabal-syntax/src Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
+	hasktags -b Cabal-syntax/src Cabal/src Cabal-described/src cabal-install/src cabal-install-internal/src cabal-testsuite/src
 
 # bootstrapping
 ##############################################################################
