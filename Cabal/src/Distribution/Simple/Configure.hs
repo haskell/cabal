@@ -106,6 +106,7 @@ import Distribution.Simple.Program.Db
   , prependProgramSearchPath
   , updateConfiguredProgs
   )
+import Distribution.Simple.Program.GHC (GhcFeature (..), ghcSupports)
 import Distribution.Simple.Setup.Common as Setup
 import Distribution.Simple.Setup.Config as Setup
 import Distribution.Simple.SetupHooks.Internal
@@ -950,9 +951,21 @@ adjustBuildOptions comp programDb opts =
             Just "NO" -> Just False
             _other -> Nothing
 
+    -- Whether a GHCi library (merged object) can be built at all.
+    canMergeObjects :: Maybe Bool
+    canMergeObjects
+      | Just ghc <- lookupProgram ghcProgram programDb
+      , ghcSupports GhcMergeObjs ghc =
+          -- GHC merges objects with the tool recorded in its settings. An
+          -- empty command means it has none (e.g. the Windows bindists, whose
+          -- lld cannot produce relocatable objects); GHC would then fall back
+          -- to an archive, which brings nothing to GHCi.
+          not . null <$> Map.lookup "Merge objects command" (compilerProperties comp)
+      | otherwise = linkerSupportsRelocations
+
     ghciLib
       | LBC.withGHCiLib opts
-      , not (fromMaybe True linkerSupportsRelocations) =
+      , not (fromMaybe True canMergeObjects) =
           False
       | otherwise = LBC.withGHCiLib opts
 
@@ -996,8 +1009,8 @@ buildOptionsAdjustmentWarnings comp opts0 opts1 =
        | LBC.splitObjs opts0
        , not (LBC.splitObjs opts1)
        ]
-    ++ [ "--enable-library-for-ghci is not supported with the current"
-        ++ "  linker; ignoring..."
+    ++ [ "--enable-library-for-ghci is not supported: the linker cannot "
+        ++ "merge object files; ignoring..."
        | LBC.withGHCiLib opts0
        , not (LBC.withGHCiLib opts1)
        ]
