@@ -1,0 +1,110 @@
+name: Check API
+
+# Informational API diff job: it shows which public API of the Cabal
+# packages changes with respect to the PR base, but it is not a required
+# check and does not block merging.
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+      - '**/*.md'
+      - 'changelog.d/**'
+      - 'release-notes/**'
+  push:
+    branches:
+      - '3.*'
+    paths-ignore:
+      - 'doc/**'
+      - '**/*.md'
+      - 'changelog.d/**'
+      - 'release-notes/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The API depends on the GHC version, so both revisions are always built
+  # with a single pinned GHC. Use the GHC used for releases, see GHC_FOR_RELEASE
+  # in .github/workflows/validate.yml, and bump both together.
+  GHC_VERSION: "9.10.3"
+
+jobs:
+  check-api:
+    name: API diff ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - Cabal-syntax
+          - Cabal
+          - cabal-install-solver
+          - Cabal-hooks
+
+    steps:
+      # fetch-depth: 0 is needed because packdiff checks out the base
+      # revision itself and builds it.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ env.GHC_VERSION }}
+          cabal-version: latest
+
+      # runner.os isn't sufficient for binary compatible caches
+      - name: Get runner OS/version for cache keys
+        id: get-osver
+        run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.get-osver.outputs.osver }}-check-api-${{ env.GHC_VERSION }}-${{ github.sha }}
+          restore-keys: ${{ steps.get-osver.outputs.osver }}-check-api-${{ env.GHC_VERSION }}-
+
+      - name: "Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)"
+        run: git config --global protocol.file.allow always
+
+      - name: Install packdiff
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cabal install packdiff --project-file=cabal.project.api --installdir="$HOME/.local/bin" --overwrite-policy=always
+
+      - name: Run packdiff
+        run: |
+          set -o pipefail
+          case "${{ github.event_name }}" in
+            pull_request) base="${{ github.event.pull_request.base.sha }}" ;;
+            push)         base="${{ github.event.before }}" ;;
+            *)            base="" ;;
+          esac
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            base="$(git merge-base origin/master HEAD)"
+          fi
+          head="$(git rev-parse HEAD)"
+          echo "Diffing ${{ matrix.package }} API: $base -> $head"
+          packdiff diff ${{ matrix.package }} "$base" ${{ matrix.package }} "$head" | tee api-diff.txt
+
+          sed -n '/API Annotations/,$p' api-diff.txt > api-diff-summary.txt
+          {
+            echo "## API diff \`${{ matrix.package }}\`: \`$(git rev-parse --short "$base")\` -> \`$(git rev-parse --short "$head")\`"
+            echo '```'
+            cat api-diff-summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Diff entries look like "[C] Module.Name"; the annotation legend
+          # ("[A] : Added") has a colon right after the marker and must not match.
+          if grep -qE '^\[[ARC]\] [^ :]' api-diff.txt; then
+            echo "::error::The API of ${{ matrix.package }} changed with respect to the base revision. See the job summary for the diff. Consider a changelog entry, a PVP version bump, and whether the change should be backported."
+            exit 1
+          else
+            echo "No API changes detected in ${{ matrix.package }}."
+          fi
