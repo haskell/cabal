@@ -4,6 +4,7 @@ module Distribution.Client.IndexUtils.ActiveRepos
   ( ActiveRepos (..)
   , defaultActiveRepos
   , filterSkippedActiveRepos
+  , activeReposNames
   , ActiveRepoEntry (..)
   , CombineStrategy (..)
   , organizeByRepos
@@ -44,6 +45,9 @@ filterSkippedActiveRepos repos@(ActiveRepos entries)
 
     notSkipped (ActiveRepo _ CombineStrategySkip) = False
     notSkipped _ = True
+
+activeReposNames :: ActiveRepos -> [RepoName]
+activeReposNames (ActiveRepos entries) = [r | ActiveRepo r _ <- entries]
 
 instance Binary ActiveRepos
 instance Structured ActiveRepos
