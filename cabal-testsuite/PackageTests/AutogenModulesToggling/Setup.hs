@@ -15,8 +15,12 @@ ppHGen :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppHGen _bi lbi _clbi = PreProcessor
   { platformIndependent = True
   , ppOrdering          = unsorted
-  , runPreProcessor     = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      copyFile inFile outFile
+  , getPreProcessor     = \_ ->
+      pure
+        ( mkSimplePreProcessor $ \inFile outFile verbosity ->
+            copyFile inFile outFile
+        , PreProcessorBuiltin
+        )
   }
 
 main :: IO ()
