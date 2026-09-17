@@ -18,7 +18,10 @@ import qualified Text.PrettyPrint as Disp
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
 data PackagePath = PackagePath Namespace Qualifier
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Structured PackagePath
+instance Binary PackagePath
 
 -- | Top-level namespace
 --
@@ -30,7 +33,10 @@ data Namespace =
 
     -- | A namespace for a specific build target
   | Independent PackageName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Structured Namespace
+instance Binary Namespace
 
 -- | Pretty-prints a namespace. The result is either empty or
 -- ends in a period, so it can be prepended onto a qualifier.
@@ -68,7 +74,10 @@ data Qualifier =
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
   | QualExe PackageName PackageName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Structured Qualifier
+instance Binary Qualifier
 
 -- | Pretty-prints a qualifier. The result is either empty or
 -- ends in a period, so it can be prepended onto a package name.
@@ -87,7 +96,10 @@ dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text "."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Structured a => Structured (Qualified a)
+instance Binary a => Binary (Qualified a)
 
 -- | Qualified package name.
 type QPN = Qualified PackageName
