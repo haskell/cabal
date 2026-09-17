@@ -230,3 +230,14 @@ library
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
+
+test-suite spec-version-check
+  type: exitcode-stdio-1.0
+  default-language: GHC2021
+  hs-source-dirs: tests
+  main-is: SpecVersion.hs
+  autogen-modules: Paths_Cabal_syntax
+  other-modules: Paths_Cabal_syntax
+  build-depends:
+    , base         >= 4.17 && < 5
+    , Cabal-syntax ^>= 3.19
