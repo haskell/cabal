@@ -828,7 +828,7 @@ defaultStoreDir =
 
 defaultLogsDir :: IO FilePath
 defaultLogsDir =
-  getDefaultDir XdgCache "logs"
+  getDefaultDir XdgState "logs"
 
 defaultReportsDir :: IO FilePath
 defaultReportsDir =
