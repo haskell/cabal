@@ -679,7 +679,9 @@ commandsRunWithFallback globalCommand commands defaultCommand args =
       ("help" : cmdArgs) -> handleHelpCommand flags cmdArgs
       (name : cmdArgs) -> case lookupCommand name of
         [Command _ _ action _] ->
-          pure $ CommandReadyToGo (flags, action cmdArgs)
+          pure $
+            CommandReadyToGo
+              (flags, improveGlobalOptionError cmdArgs (action cmdArgs))
         _ -> do
           final_cmd <- defaultCommand commands' name cmdArgs
           return $ CommandReadyToGo (flags, final_cmd)
@@ -695,6 +697,43 @@ commandsRunWithFallback globalCommand commands defaultCommand args =
 
     commands' = commands ++ [commandAddAction helpCommandUI undefined]
     commandNames = [name | (Command name _ _ NormalCommand) <- commands']
+
+    globalOptions = commandGetOpts ParseArgs globalCommand
+
+    -- If a global option is given after the command name (e.g.
+    -- @cabal get --config-file=foo@), the subcommand parser rejects it as an
+    -- unrecognized option. In that case, produce a more helpful error message
+    -- pointing out that global options have to come before the command.
+    improveGlobalOptionError
+      :: [String]
+      -> CommandParse action
+      -> CommandParse action
+    improveGlobalOptionError cmdArgs parse =
+      case parse of
+        CommandErrors errs ->
+          case misplacedGlobalOptions cmdArgs of
+            [] -> CommandErrors errs
+            [_] -> CommandErrors (errs ++ ["Note: this option is global and must be specified before the command."])
+            _ : _ -> CommandErrors (errs ++ ["Note: these options are global and must be specified before the command."])
+        _ -> parse
+
+    misplacedGlobalOptions :: [String] -> [String]
+    misplacedGlobalOptions = go
+      where
+        go [] = []
+        go ("--" : _) = []
+        go (arg : rest)
+          | isGlobalOption arg = arg : go rest
+          | otherwise = go rest
+
+        isGlobalOption ('-' : '-' : rest) =
+          let (name, _) = break (== '=') rest
+           in name `elem` longNames
+        isGlobalOption ('-' : c : _) = c `elem` shortNames
+        isGlobalOption _ = False
+
+        longNames = [l | GetOpt.Option _ ls _ _ <- globalOptions, l <- ls]
+        shortNames = [s | GetOpt.Option ss _ _ _ <- globalOptions, s <- ss]
 
     -- A bit of a hack: support "prog help" as a synonym of "prog --help"
     -- furthermore, support "prog help command" as "prog command --help"
