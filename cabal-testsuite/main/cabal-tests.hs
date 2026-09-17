@@ -163,9 +163,8 @@ buildCabalLibsProject projString verb mbGhc dir = do
   -- Determine the path to the package db in the store. Note that these libs
   -- were built by the cabal on PATH, not the cabal under test, so we have to
   -- cope with either store layout: <root>/<compiler-id>-<abi>/package.db as
-  -- older cabals lay it out, or
-  -- <root>/<machine>/<platform>/<compiler-id>-<abi>/package.conf.d as newer ones
-  -- do (the Cabal libs being host-machine artifacts).
+  -- older cabals lay it out, or <root>/<machine>/<platform>/package.conf.d as
+  -- newer ones do (the Cabal libs being host-machine artifacts).
   storeEntries <- listDirectoryIfExists storeRoot
   legacyDbs <-
     filterM
@@ -174,15 +173,9 @@ buildCabalLibsProject projString verb mbGhc dir = do
   let hostStoreRoot = storeRoot </> "host"
   machineDbs <- do
     platforms <- listDirectoryIfExists hostStoreRoot
-    fmap concat . forM platforms $ \p -> do
-      let platformDir = hostStoreRoot </> p
-      compilers <- listDirectoryIfExists platformDir
-      filterM
-        doesDirectoryExist
-        [ platformDir </> c </> "package.conf.d"
-        | c <- compilers
-        , prettyShow pv `isInfixOf` c
-        ]
+    filterM
+      doesDirectoryExist
+      [hostStoreRoot </> p </> "package.conf.d" | p <- platforms]
   return (legacyDbs ++ machineDbs ++ [final_package_db])
   where
     listDirectoryIfExists d = do

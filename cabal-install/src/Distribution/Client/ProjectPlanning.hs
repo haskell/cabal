@@ -263,6 +263,21 @@ import System.Directory (getCurrentDirectory)
 import System.FilePath
 import qualified Text.PrettyPrint as Disp
 
+-- | The component id a package is given when it is named after its package id
+-- instead of a content hash -- a package in the project's own source closure,
+-- or one built from a mutable local directory, which has no source hash to
+-- derive a store hash from.
+--
+-- Must agree with the naming in 'elaborateInstallPlan'; this is the inverse
+-- used to check it.
+unhashedComponentIdOf :: ElaboratedConfiguredPackage -> ComponentId
+unhashedComponentIdOf elab =
+  mkComponentId $
+    prettyShow (packageId elab)
+      ++ case elabComponentName elab >>= Cabal.componentNameString of
+        Nothing -> ""
+        Just s -> "-" ++ prettyShow s
+
 -- | Check that an 'ElaboratedConfiguredPackage' actually makes
 -- sense under some 'ElaboratedSharedConfig'.
 sanityCheckElaboratedConfiguredPackage
@@ -277,15 +292,20 @@ sanityCheckElaboratedConfiguredPackage
         ElabPackage pkg -> sanityCheckElaboratedPackage elab pkg
         ElabComponent comp -> sanityCheckElaboratedComponent elab comp
     )
-      -- either a package is being built inplace, or the
-      -- 'installedPackageId' we assigned is consistent with
-      -- the 'hashedInstalledPackageId' we would compute from
-      -- the elaborated configured package
+      -- The 'installedPackageId' we assigned has to be one we could have
+      -- assigned: the package is built inplace, or it is named after its
+      -- package id (a package in the project's own source closure, or one
+      -- with no source hash to derive a store hash from -- see
+      -- 'inProjectSourcePackagesClosure'), or it is named by the
+      -- 'hashedInstalledPackageId' we would compute for it.
       . assert
         ( isInplaceBuildStyle elabBuildStyle
-            || elabComponentId
-              == hashedInstalledPackageId
-                (packageHashInputs sharedConfig elab)
+            || elabComponentId == unhashedComponentIdOf elab
+            || ( isJust elabPkgSourceHash
+                  && elabComponentId
+                    == hashedInstalledPackageId
+                      (packageHashInputs sharedConfig elab)
+               )
         )
       -- the stanzas explicitly disabled should not be available
       . assert
@@ -2266,21 +2286,30 @@ elaborateInstallPlan
                       elab0
                         { elabPkgOrComp = ElabComponent elab_comp
                         }
+                    unhashedComponentId marker =
+                      mkComponentId $
+                        prettyShow pkgid
+                          ++ marker
+                          ++ ( case Cabal.componentNameString cname of
+                                Nothing -> ""
+                                Just s -> "-" ++ prettyShow s
+                             )
                     cid = case elabBuildStyle elab0 of
-                      BuildInplaceOnly{} ->
-                        mkComponentId $
-                          prettyShow pkgid
-                            ++ "-inplace"
-                            ++ ( case Cabal.componentNameString cname of
-                                  Nothing -> ""
-                                  Just s -> "-" ++ prettyShow s
-                               )
-                      BuildAndInstall ->
-                        hashedInstalledPackageId
-                          ( packageHashInputs
-                              elaboratedSharedConfig
-                              elab1 -- knot tied
-                          )
+                      BuildInplaceOnly{} -> unhashedComponentId "-inplace"
+                      BuildAndInstall
+                        -- Only a package from outside the project is named by
+                        -- a content hash. Inside the project the package id is
+                        -- the name, and a package built from a mutable local
+                        -- directory has no source hash to derive one from
+                        -- anyway. See 'inProjectSourcePackagesClosure'.
+                        | Just{} <- elabPkgSourceHash elab1
+                        , not (nameUnitAfterPackageId spkg) ->
+                            hashedInstalledPackageId
+                              ( packageHashInputs
+                                  elaboratedSharedConfig
+                                  elab1 -- knot tied
+                              )
+                        | otherwise -> unhashedComponentId ""
                     cc = cc0{cc_ann_id = fmap (const cid) (cc_ann_id cc0)}
                 infoProgress $ dispConfiguredComponent cc
 
@@ -2513,13 +2542,16 @@ elaborateInstallPlan
             pkgInstalledId
               | shouldBuildInplaceOnly pkg =
                   mkComponentId (prettyShow pkgid ++ "-inplace")
-              | otherwise =
-                  assert (isJust elabPkgSourceHash) $
-                    hashedInstalledPackageId
-                      ( packageHashInputs
-                          elaboratedSharedConfig
-                          elab -- recursive use of elab
-                      )
+              -- See 'inProjectSourcePackagesClosure': only a package from
+              -- outside the project is named by a content hash.
+              | Just{} <- elabPkgSourceHash
+              , not (nameUnitAfterPackageId pkg) =
+                  hashedInstalledPackageId
+                    ( packageHashInputs
+                        elaboratedSharedConfig
+                        elab -- recursive use of elab
+                    )
+              | otherwise = mkComponentId (prettyShow pkgid)
 
             -- Need to filter out internal dependencies, because they don't
             -- correspond to anything real anymore.
@@ -2916,12 +2948,43 @@ elaborateInstallPlan
       -- source dir packages will also get unpacked locally.
       shouldBuildInplaceOnly :: SolverPackage loc -> Bool
       shouldBuildInplaceOnly pkg =
+        -- With @inplace-builds: False@ the project's own packages are
+        -- installed into the store like any other dependency, so that the
+        -- whole build lands in one relocatable directory. See
+        -- 'projectConfigInplaceBuilds'.
+        fromFlagOrDefault True (projectConfigInplaceBuilds sharedPackageConfig)
+          && inProjectSourcePackagesClosure pkg
+
+      -- Should this package's unit be named after its package id rather than
+      -- a hash of its inputs?
+      --
+      -- Only for a project that installs its own packages into the store,
+      -- where the point is a store another build system can address: it wants
+      -- to find @lib/array-0.5.8.0@, not @lib/array-0.5.8.0-<64 hex digits>@,
+      -- and the name has to be the same next time.
+      --
+      -- The default store must not do this. The content hash is what keeps two
+      -- builds of one package id with different configuration in separate
+      -- entries; drop it and they alias, which is what
+      -- PackageTests/LinkerOptions/NonignoredConfigs exists to catch.
+      nameUnitAfterPackageId :: SolverPackage loc -> Bool
+      nameUnitAfterPackageId pkg =
+        not (fromFlagOrDefault True (projectConfigInplaceBuilds sharedPackageConfig))
+          && inProjectSourcePackagesClosure pkg
+
+      -- Is this package part of the project's own source closure?
+      --
+      -- Distinct from 'shouldBuildInplaceOnly': whether such a package is
+      -- built in place is a matter of configuration, but it is part of the
+      -- project either way.
+      inProjectSourcePackagesClosure :: SolverPackage loc -> Bool
+      inProjectSourcePackagesClosure pkg =
         Set.member
           (packageId pkg)
-          pkgsToBuildInplaceOnly
+          projectSourcePackagesClosure
 
-      pkgsToBuildInplaceOnly :: Set PackageId
-      pkgsToBuildInplaceOnly =
+      projectSourcePackagesClosure :: Set PackageId
+      projectSourcePackagesClosure =
         Set.fromList $
           map packageId $
             SolverInstallPlan.reverseDependencyClosure
@@ -4630,32 +4693,35 @@ storePackageInstallDirs'
   -> InstallDirs.InstallDirs FilePath
 storePackageInstallDirs'
   StoreDirLayout
-    { storePackageDirectory
-    , storeDirectory
+    { storeDirectory
     }
   machine
   toolchain
   unitid =
     InstallDirs.InstallDirs{..}
     where
-      store = storeDirectory machine toolchain
-      prefix = storePackageDirectory machine toolchain unitid
+      -- Everything a machine installs is rooted at that machine's store
+      -- directory, not at a directory of its own: one @lib@ holding a
+      -- directory per unit, one @bin@, one package database beside them.
+      -- A store laid out this way can be consumed directly by another build
+      -- system -- GHC's assembles its binary distribution by copying @lib/*@
+      -- and @package.conf.d/*@ out of it -- which per-unit roots do not
+      -- allow, as there is then no one directory holding all the libraries.
+      prefix = storeDirectory machine toolchain
       bindir = prefix </> "bin"
-      libdir = prefix </> "lib"
+      libdir = prefix </> "lib" </> prettyShow unitid
       libsubdir = ""
-      -- Note: on macOS, we place libraries into
-      --       @store/lib@ to work around the load
-      --       command size limit of macOSs mach-o linker.
-      --       See also @PackageHash.hashedInstalledPackageIdVeryShort@
-      dynlibdir
-        | buildOS == OSX = store </> "lib"
-        | otherwise = libdir
-      bytecodelibdir = libdir
-      flibdir = libdir
-      libexecdir = prefix </> "libexec"
+      -- Shared objects sit directly in @lib@, so that a single rpath entry
+      -- reaches all of them. On macOS this also keeps the mach-o linker's
+      -- load command size down; see
+      -- @PackageHash.hashedInstalledPackageIdVeryShort@.
+      dynlibdir = prefix </> "lib"
+      bytecodelibdir = dynlibdir
+      flibdir = dynlibdir
+      libexecdir = libdir </> "libexec"
       libexecsubdir = ""
       includedir = libdir </> "include"
-      datadir = prefix </> "share"
+      datadir = libdir </> "share"
       datasubdir = ""
       docdir = datadir </> "doc"
       mandir = datadir </> "man"
@@ -4959,12 +5025,12 @@ setupHsCopyFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
   -> Cabal.CommonSetupFlags
-  -> FilePath
+  -> InstallDirs.CopyDest
   -> Cabal.CopyFlags
-setupHsCopyFlags _ _ common destdir =
+setupHsCopyFlags _ _ common dest =
   Cabal.CopyFlags
     { copyCommonFlags = common
-    , copyDest = toFlag (InstallDirs.CopyTo destdir)
+    , copyDest = toFlag dest
     }
 
 setupHsRegisterFlags

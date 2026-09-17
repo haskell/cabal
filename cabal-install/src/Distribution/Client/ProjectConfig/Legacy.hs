@@ -112,6 +112,7 @@ import Distribution.Simple.Setup
   , HaddockFlags (..)
   , TestFlags (..)
   , benchmarkOptions'
+  , boolOpt
   , configureOptions
   , defaultBenchmarkFlags
   , defaultHaddockFlags
@@ -423,6 +424,7 @@ data LegacySharedConfig = LegacySharedConfig
   , legacyClientInstallFlags :: ClientInstallFlags
   , legacyProjectFlags :: ProjectFlags
   , legacyMultiRepl :: Flag Bool
+  , legacyInplaceBuilds :: Flag Bool
   }
   deriving (Show, Generic)
   deriving (Semigroup, Monoid) via Generically LegacySharedConfig
@@ -460,6 +462,7 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags{..} clientInstallFlags
           configExFlags
           installFlags
           projectFlags
+          NoFlag
           NoFlag
     , projectConfigLocalPackages = localConfig
     , projectConfigAllPackages = allConfig
@@ -569,6 +572,7 @@ convertLegacyGlobalConfig
           installFlags'
           projectFlags'
           replMulti
+          NoFlag
       configBuildOnly =
         convertLegacyBuildOnlyFlags
           globalFlags
@@ -598,6 +602,7 @@ convertLegacyProjectConfig
         clientInstallFlags
         projectFlags
         multiRepl
+        inplaceBuilds
     , legacyAllConfig
     , legacyLocalConfig =
       LegacyPackageConfig
@@ -645,6 +650,7 @@ convertLegacyProjectConfig
           installSharedFlags
           projectFlags
           multiRepl
+          inplaceBuilds
       configBuildOnly =
         convertLegacyBuildOnlyFlags
           globalFlags
@@ -683,8 +689,9 @@ convertLegacyAllPackageFlags
   -> InstallFlags
   -> ProjectFlags
   -> Flag Bool
+  -> Flag Bool
   -> ProjectConfigShared
-convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags projectFlags projectConfigMultiRepl =
+convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags projectFlags projectConfigMultiRepl projectConfigInplaceBuilds =
   ProjectConfigShared{..}
   where
     GlobalFlags
@@ -972,6 +979,7 @@ convertToLegacySharedConfig
       , legacyClientInstallFlags = projectConfigClientInstallFlags
       , legacyProjectFlags = projectFlags
       , legacyMultiRepl = projectConfigMultiRepl
+      , legacyInplaceBuilds = projectConfigInplaceBuilds
       }
     where
       globalFlags =
@@ -1541,7 +1549,21 @@ legacySharedConfigFieldDescrs constraintSrc =
         . commandOptionsToFields
         $ projectFlagsOptions ParseArgs
     , [liftField legacyMultiRepl (\flags conf -> conf{legacyMultiRepl = flags}) (commandOptionToField multiReplOption)]
+    , [liftField legacyInplaceBuilds (\flags conf -> conf{legacyInplaceBuilds = flags}) (commandOptionToField inplaceBuildsOption)]
     ]
+
+-- | Whether the project's own packages are built in place (the default) or
+-- installed into the store like any other dependency. See
+-- 'projectConfigInplaceBuilds'.
+inplaceBuildsOption :: OptionField (Flag Bool)
+inplaceBuildsOption =
+  option
+    []
+    ["inplace-builds"]
+    "build the project's own packages in place instead of installing them into the store"
+    id
+    (\v _ -> v)
+    (boolOpt [] [])
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]
 legacyPackageConfigFieldDescrs =

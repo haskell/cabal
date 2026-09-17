@@ -36,7 +36,6 @@ import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.RebuildMonad
-import Distribution.Client.Store
 import Distribution.Client.Toolchain (Toolchain (..))
 
 import Distribution.Client.DistDirLayout
@@ -117,8 +116,8 @@ import Control.Concurrent.STM (TVar, atomically, modifyTVar)
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
 import Data.IORef (newIORef, readIORef, writeIORef)
 import GHC.Clock (getMonotonicTime)
-import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
-import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
+import System.Directory (canonicalizePath, createDirectoryIfMissing)
+import System.FilePath (takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreIdentifier)
 import Text.Printf (printf)
@@ -146,7 +145,7 @@ data PackageBuildingPhase r where
   PBHaddockPhase :: {runHaddock :: IO [MonitorFilePath]} -> PackageBuildingPhase ()
   PBReplPhase :: {runRepl :: IO [MonitorFilePath]} -> PackageBuildingPhase ()
   PBInstallPhase
-    :: { runCopy :: FilePath -> IO ()
+    :: { runCopy :: Cabal.CopyDest -> IO ()
        , runRegister
           :: PackageDBStackCWD
           -> Cabal.RegisterOptions
@@ -252,12 +251,12 @@ buildAndRegisterUnpackedPackage
           return ipkg0{Installed.installedUnitId = uid}
     timedDelegate $
       PBInstallPhase
-        { runCopy = \destdir ->
+        { runCopy = \dest ->
             annotateFailure mlogFile InstallFailed $
               setup
                 Cabal.copyCommand
                 Cabal.copyCommonFlags
-                (return . copyFlags destdir)
+                (return . copyFlags dest)
                 copyArgs
                 (InLibraryArgs $ InLibraryPostConfigureArgs SCopyPhase mbLBI)
         , runRegister = \pkgDBStack registerOpts ->
@@ -392,13 +391,13 @@ buildAndRegisterUnpackedPackage
             (commonFlags $ buildArgs v)
       buildArgs _ = setupHsBuildArgs pkg
 
-      copyFlags destdir v =
+      copyFlags dest v =
         flip filterCopyFlags v $
           setupHsCopyFlags
             pkg
             pkgshared
             (commonFlags $ buildArgs v)
-            destdir
+            dest
       -- In theory, we could want to copy less things than those that were
       -- built, but instead, we simply copy the targets that were built.
       copyArgs = buildArgs
@@ -781,7 +780,7 @@ buildAndInstallUnpackedPackage
 buildAndInstallUnpackedPackage
   verbosity
   distDirLayout
-  storeDirLayout@StoreDirLayout
+  _storeDirLayout@StoreDirLayout
     { storePackageDBStack
     }
   maybe_semaphore
@@ -864,20 +863,38 @@ buildAndInstallUnpackedPackage
                       -- Write the InstalledPackageInfo to the IORef
                       writeIORef ipkgRef (Just ipkg)
 
-            -- Actual installation
-            void $
-              newStoreEntry
-                verbosity
-                storeDirLayout
-                machine
-                toolchain
-                uid
-                (copyPkgFiles verbosity pkgshared pkg runCopy)
-                registerPkg
+            -- Actual installation.
+            --
+            -- The package is copied straight to where its package database says
+            -- it lives, rather than staged in a temporary directory and moved
+            -- into place. A store whose units share one lib/ and one bin/ leaves
+            -- nothing that /can/ be moved atomically: the destination directories
+            -- already hold other units.
+            --
+            runCopy (Cabal.CopyToDb (elabRegistrationPackageDb pkg))
+
+            -- Record what the store entry's hash was computed from, next to the
+            -- artefacts it describes. Without a staging directory to put it in
+            -- this has to be written after the copy, and a package with no
+            -- source hash has no computed hash to record (see
+            -- 'nameUnitAfterPackageId').
+            for_ (elabPkgSourceHash pkg) $ \_ -> do
+              let libdir = InstallDirs.libdir (elabInstallDirs pkg)
+                  hashFile = libdir </> "cabal-hash.txt"
+                  hashInputs = renderPackageHashInputs (packageHashInputs pkgshared pkg)
+              createDirectoryIfMissing True libdir
+              info verbosity $
+                "creating file with the inputs used to compute the package hash: " ++ hashFile
+              LBS.writeFile hashFile hashInputs
+              traverse_
+                (debug verbosity . ("> " ++))
+                (lines $ LBS.Char8.unpack hashInputs)
+
+            registerPkg
 
             -- Keep the per-project running InstalledPackageIndex TVar up to date.
-            -- This must run regardless of whether newStoreEntry won or lost the
-            -- race (UseNewStoreEntry/UseExistingStoreEntry).
+            -- This must run whether or not we were the build that installed the
+            -- entry.
             --
             -- See (ProjIPI2) in Note [Per-project InstalledPackageIndex].
             when (elabRequiresRegistration pkg) $ do
@@ -964,80 +981,6 @@ buildAndInstallUnpackedPackage
           Just logFile -> do
             createDirectoryIfMissing True (takeDirectory logFile)
             removeFileForcibly logFile
-
--- | The copy part of the installation phase when doing build-and-install
-copyPkgFiles
-  :: Verbosity
-  -> ElaboratedSharedConfig
-  -> ElaboratedConfiguredPackage
-  -> (FilePath -> IO ())
-  -- ^ The 'runCopy' function which invokes ./Setup copy for the
-  -- given filepath
-  -> FilePath
-  -- ^ The temporary dir file path
-  -> IO (FilePath, [FilePath])
-copyPkgFiles verbosity pkgshared pkg runCopy tmpDir = do
-  let tmpDirNormalised = normalise tmpDir
-  runCopy tmpDirNormalised
-  -- Note that the copy command has put the files into
-  -- @$tmpDir/$prefix@ so we need to return this dir so
-  -- the store knows which dir will be the final store entry.
-  let prefix =
-        normalise $
-          dropDrive (InstallDirs.prefix (elabInstallDirs pkg))
-      entryDir = tmpDirNormalised </> prefix
-
-  -- if there weren't anything to build, it might be that directory is not created
-  -- the @setup Cabal.copyCommand@ above might do nothing.
-  -- https://github.com/haskell/cabal/issues/4130
-  createDirectoryIfMissingVerbose verbosity True entryDir
-
-  let hashFileName = entryDir </> "cabal-hash.txt"
-      outPkgHashInputs = renderPackageHashInputs (packageHashInputs pkgshared pkg)
-
-  info verbosity $
-    "creating file with the inputs used to compute the package hash: " ++ hashFileName
-
-  LBS.writeFile hashFileName outPkgHashInputs
-
-  debug verbosity "Package hash inputs:"
-  traverse_
-    (debug verbosity . ("> " ++))
-    (lines $ LBS.Char8.unpack outPkgHashInputs)
-
-  -- Ensure that there are no files in `tmpDir`, that are
-  -- not in `entryDir`. While this breaks the
-  -- prefix-relocatable property of the libraries, it is
-  -- necessary on macOS to stay under the load command limit
-  -- of the macOS mach-o linker. See also
-  -- @PackageHash.hashedInstalledPackageIdVeryShort@.
-  --
-  -- We also normalise paths to ensure that there are no
-  -- different representations for the same path. Like / and
-  -- \\ on windows under msys.
-  otherFiles <-
-    filter (not . isPrefixOf entryDir)
-      <$> listFilesRecursive tmpDirNormalised
-  -- Here's where we could keep track of the installed files
-  -- ourselves if we wanted to by making a manifest of the
-  -- files in the tmp dir.
-  return (entryDir, otherFiles)
-  where
-    listFilesRecursive :: FilePath -> IO [FilePath]
-    listFilesRecursive path = do
-      files <- fmap (path </>) <$> listDirectory path
-      allFiles <- for files $ \file -> do
-        isDir <- doesDirectoryExist file
-        if isDir
-          then listFilesRecursive file
-          else return [file]
-      return (concat allFiles)
-
---------------------------------------------------------------------------------
-
--- * Exported Utils
-
---------------------------------------------------------------------------------
 
 {- FOURMOLU_DISABLE -}
 annotateFailureNoLog :: (SomeException -> BuildFailureReason)

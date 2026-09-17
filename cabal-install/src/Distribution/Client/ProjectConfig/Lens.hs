@@ -346,6 +346,10 @@ projectConfigMultiRepl :: Lens' ProjectConfigShared (Flag Bool)
 projectConfigMultiRepl f s = fmap (\x -> s{T.projectConfigMultiRepl = x}) (f (T.projectConfigMultiRepl s))
 {-# INLINEABLE projectConfigMultiRepl #-}
 
+projectConfigInplaceBuilds :: Lens' ProjectConfigShared (Flag Bool)
+projectConfigInplaceBuilds f s = fmap (\x -> s{T.projectConfigInplaceBuilds = x}) (f (T.projectConfigInplaceBuilds s))
+{-# INLINEABLE projectConfigInplaceBuilds #-}
+
 packageConfigProgramPaths :: Lens' PackageConfig (MapLast String FilePath)
 packageConfigProgramPaths f s = fmap (\x -> s{T.packageConfigProgramPaths = x}) (f (T.packageConfigProgramPaths s))
 {-# INLINEABLE packageConfigProgramPaths #-}

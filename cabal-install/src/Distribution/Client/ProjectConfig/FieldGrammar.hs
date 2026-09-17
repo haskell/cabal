@@ -110,6 +110,7 @@ projectConfigSharedFieldGrammar source = do
   projectConfigPreferVersion <- packageConfigPreferVersion
   projectConfigProgPathExtra <- monoidalFieldAla "extra-prog-path-shared-only" (alaNubList' FSep FilePathNT) L.projectConfigProgPathExtra
   projectConfigMultiRepl <- optionalFieldDef "multi-repl" L.projectConfigMultiRepl mempty
+  projectConfigInplaceBuilds <- optionalFieldDef "inplace-builds" L.projectConfigInplaceBuilds mempty
   pure ProjectConfigShared{..}
 
 packageConfigFieldGrammar :: [String] -> ParsecFieldGrammar' PackageConfig

@@ -535,6 +535,28 @@ Environment options
 
     Specifies the name of the directory of the global package store.
 
+.. cfg-field:: inplace-builds: boolean
+               --inplace-builds
+    :synopsis: Build the project's own packages in place
+    :default: ``True``
+
+    By default the packages that make up the project are built in place, in the
+    build directory, and only their dependencies are installed into the store.
+    Setting this to ``False`` installs the project's own packages into the store
+    as well, so that the entire build ends up in one relocatable directory with
+    a single library tree and a single package database.
+
+    This is aimed at build systems that drive ``cabal`` over a source tree and
+    then copy the result elsewhere. It costs what in-place builds buy: each edit
+    reinstalls the package into the store instead of rebuilding it in situ.
+
+    A package built from a local directory has no source hash, so its store
+    entry cannot be named after one. Such packages are installed under their
+    package id (for example ``mylib-0.1.0.0``) rather than a content hash, and
+    no ``cabal-hash.txt`` is written for them. Two builds of the same package id
+    with different flags therefore share a store entry, so a store populated
+    this way belongs to one project and one configuration.
+
 .. cfg-field:: package-dbs: package DB stack (comma separated)
                --package-db=[clear, global, user, PATH]
     :synopsis: PackageDB stack manipulation

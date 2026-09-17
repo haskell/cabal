@@ -90,7 +90,7 @@ import qualified Data.Set as Set
 import qualified Text.PrettyPrint as Disp
 
 import Control.Concurrent.STM (TVar, newTVarIO)
-import Control.Exception (assert, handle, try)
+import Control.Exception (handle, try)
 import Data.Either (isLeft)
 import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -727,12 +727,13 @@ rebuildTarget
       --
       rebuildPhase :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> IO BuildResult
       rebuildPhase buildStatus srcdir =
-        assert
-          (isInplaceBuildStyle $ elabBuildStyle pkg)
-          buildInplace
-          buildStatus
-          srcdir
-          builddir
+        case elabBuildStyle pkg of
+          -- A local directory package that is installed into the store rather
+          -- than built in place (see 'inplace-builds: False'). Its source is
+          -- already where it will stay, so unlike a tarball it has no download
+          -- or unpack phase to be installed from.
+          BuildAndInstall -> buildAndInstall srcdir builddir
+          BuildInplaceOnly{} -> buildInplace buildStatus srcdir builddir
         where
           distdir = distBuildDirectory (elabDistDirParams sharedPackageConfig pkg)
           builddir =

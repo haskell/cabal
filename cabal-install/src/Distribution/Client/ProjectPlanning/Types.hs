@@ -71,6 +71,7 @@ module Distribution.Client.ProjectPlanning.Types
   , SetupScriptStyle (..)
   , SetupCliVersion (..)
   , setupCliVersion
+  , elabRegistrationPackageDb
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -626,6 +627,24 @@ elabConfiguredName verbosity elab
         ++ prettyShow (packageId elab)
   | otherwise =
       prettyShow (elabUnitId elab)
+
+-- | The package database a package registers itself into.
+--
+-- Installing a package into the store copies it to the location this database
+-- implies, so the two have to be talked about together; see the install phase
+-- in "Distribution.Client.ProjectBuilding.UnpackedPackage".
+elabRegistrationPackageDb
+  :: ElaboratedConfiguredPackage
+  -> FilePath
+elabRegistrationPackageDb elab =
+  case registrationPackageDB (elabRegisterPackageDBStack elab) of
+    SpecificPackageDB db -> db
+    db ->
+      error $
+        "elabRegistrationPackageDb: expected a specific package database for "
+          ++ prettyShow (elabUnitId elab)
+          ++ ", got "
+          ++ show db
 
 elabDistDirParams :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> DistDirParams
 elabDistDirParams shared elab =

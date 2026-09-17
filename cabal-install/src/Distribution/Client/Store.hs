@@ -134,6 +134,29 @@ getStoreEntries StoreDirLayout{storeDirectory} machine toolchain = do
     valid ('.' : _) = False
     valid _ = True
 
+-- Note [Store reuse is disabled under this layout]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- 'getStoreEntries' above reads the store directory expecting a directory per
+-- unit. Since units moved into a shared @lib@ (see
+-- 'storePackageInstallDirs''), what it actually finds is @lib@, @bin@ and the
+-- incoming directory, so the set it returns never matches a real unit and
+-- 'improveInstallPlanWithUpToDatePackages' never marks anything up to date
+-- from the store. Every build therefore reinstalls what it already has.
+--
+-- This is deliberately left as it is, because fixing it is not enough on its
+-- own: reading @lib@, or reading the unit ids out of the package database,
+-- both make the improvement start firing, and it then trips
+-- @InstallPlan.installed@'s invariant ("the package must have all of its
+-- dependencies already installed too") during stage2 of a GHC build. The
+-- store is closed under library dependencies but not under /setup/ and
+-- build-tool dependencies, which belong to the build machine and live in a
+-- different store: the host store here holds 45 units and the build store 21,
+-- so a host package can be present while the build-machine dependency that
+-- 'directDeps' reports for it is not.
+--
+-- So the improvement needs to be made machine-aware before the enumeration is
+-- fixed, and the two have to land together.
+
 -- | The outcome of 'newStoreEntry': either the store entry was newly created
 -- or it existed already. The latter case happens if there was a race between
 -- two builds of the same store entry.
@@ -201,6 +224,9 @@ newStoreEntry
             register
 
             -- Atomically rename the temp dir to the final store entry location.
+            -- Entries live under the store's lib/, which the first entry of a
+            -- fresh store has to create.
+            createDirectoryIfMissing True (takeDirectory finalEntryDir)
             renameDirectory incomingEntryDir finalEntryDir
             for_ otherFiles $ \file -> do
               let storeDir = storeDirectory machine toolchain

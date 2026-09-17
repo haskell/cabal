@@ -327,7 +327,12 @@ defaultStoreDirLayout storeRoot =
 
     storePackageDirectory :: Machine -> Toolchain -> UnitId -> FilePath
     storePackageDirectory machine toolchain ipkgid =
-      storeDirectory machine toolchain </> prettyShow ipkgid
+      -- Must agree with the @libdir@ that 'storePackageInstallDirs' hands to
+      -- the package: units live in one shared @lib@, not each at the store
+      -- root. Anything that looks a unit up by directory -- checking whether
+      -- the store already holds it, finding its documentation -- goes through
+      -- here, and silently finds nothing if this disagrees.
+      storeDirectory machine toolchain </> "lib" </> prettyShow ipkgid
 
     storePackageDBPath :: Machine -> Toolchain -> FilePath
     storePackageDBPath machine toolchain =

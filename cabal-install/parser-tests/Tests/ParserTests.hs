@@ -237,6 +237,7 @@ testProjectConfigShared = do
     projectConfigPreferVersion = Flag PreferOldest
     projectConfigProgPathExtra = toNubList ["/foo/bar", "/baz/quux"]
     projectConfigMultiRepl = toFlag True
+    projectConfigInplaceBuilds = toFlag False
 
 testInstallDirs :: Assertion
 testInstallDirs = do

@@ -249,6 +249,18 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigPreferVersion :: Flag PreferVersion
   , projectConfigProgPathExtra :: NubList FilePath
   , projectConfigMultiRepl :: Flag Bool
+  , projectConfigInplaceBuilds :: Flag Bool
+  -- ^ Build the project's own packages in place (the default), or install
+  -- every one of them into the store like any other dependency.
+  --
+  -- A build system driving @cabal@ over a source tree may need the whole
+  -- result in a single relocatable store directory -- one library directory
+  -- and one package database it can copy wholesale -- rather than split
+  -- between the store and each package's in-place build directory. GHC's
+  -- @Makefile@ assembles its binary distribution that way.
+  --
+  -- Turning this off costs what in-place builds buy: each edit reinstalls the
+  -- package into the store under a fresh hash instead of rebuilding in situ.
   -- More things that only make sense for manual mode, not --local mode
   -- too much control!
   -- projectConfigShadowPkgs        :: Flag Bool,
