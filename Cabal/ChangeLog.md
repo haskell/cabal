@@ -1,3 +1,6 @@
+# 3.18.2.0 [Francesco Ariis](mailto:fa-ml@ariis.it) September 2026
+* See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.18.2.0.md
+
 # 3.18.1.0 [Artem Pelenitsyn](mailto:a@pelenitsyn.top) July 2026
 * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.18.1.0.md
 
