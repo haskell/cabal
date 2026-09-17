@@ -4,8 +4,8 @@ import Test.Cabal.Prelude
 main = setupAndCabalTest $ do
 
         configureResult <- setup' "configure" []
-        assertOutputDoesNotContain "MyDummy.hs doesn't exist" configureResult
+        assertOutputDoesNotContain "Could not find Haskell source file MyDummy.hs" configureResult
         sdistResult <- fails $ setup' "sdist" []
-        assertOutputContains "MyDummy.hs doesn't exist" sdistResult
+        assertOutputContains "Could not find Haskell source file MyDummy.hs" sdistResult
 
         return ()
