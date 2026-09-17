@@ -1240,6 +1240,13 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
 
 parseLegacyProjectConfigFields :: ProjectConfigPath -> [ParseUtils.Field] -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfigFields (ConstraintSourceProjectConfig -> constraintSrc) =
+  parseLegacyProjectConfigFieldsWithConstraintSource constraintSrc
+
+parseLegacyProjectConfigFieldsWithConstraintSource
+  :: ConstraintSource
+  -> [ParseUtils.Field]
+  -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfigFieldsWithConstraintSource constraintSrc =
   parseFieldsAndSections
     (legacyProjectConfigFieldDescrs constraintSrc)
     legacyPackageConfigSectionDescrs
@@ -1265,6 +1272,30 @@ showLegacyProjectConfig config =
     -- but requires re-work of how we annotate provenance.
     constraintSrc = ConstraintSourceProjectConfig nullProjectConfigPath
 
+-- |
+-- >>> parseLegacyConvert projectPackages "packages" "foo"
+-- ParseOk [] ["foo"]
+--
+-- >>> parseLegacyConvert projectPackages "packages" "xL{4,IE-,eK<}fE?e"
+-- ParseOk [] ["xL{4,IE-,eK<}fE?e"]
+--
+-- >>> parseLegacyConvert projectPackages "packages" "7{u,{h,{=n}}}"
+-- ParseOk [] ["7{u,{h,{=n}}}"]
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" ""
+-- ParseOk [] (Last {getLast = Nothing})
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " "
+-- ParseOk [] (Last {getLast = Nothing})
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " \n"
+-- ParseOk [] (Last {getLast = Nothing})
+--
+-- >>> parseLegacyConvert (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" ""
+-- ParseOk [] (Last {getLast = Nothing})
+--
+-- >>> parseLegacyConvert (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" " "
+-- ParseOk [] (Last {getLast = Nothing})
 legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs constraintSrc =
   [ newLineListField
@@ -2054,3 +2085,20 @@ showTokenQ "" = Disp.empty
 showTokenQ x@('-' : '-' : _) = Disp.text (show x)
 showTokenQ x@['.'] = Disp.text (show x)
 showTokenQ x = showToken x
+
+-- $setup
+-- >>> :{
+-- parseLegacy :: (LegacyProjectConfig -> a) -> String -> String -> ParseResult a
+-- parseLegacy f field s =  f <$>
+--   parseLegacyProjectConfigFieldsWithConstraintSource
+--     ConstraintSourceUnknown
+--     [ParseUtils.F 1 field s]
+-- :}
+--
+-- >>> :{
+-- parseLegacyConvert :: (ProjectConfig -> a) -> String -> String -> ParseResult a
+-- parseLegacyConvert f field s =  (f . convertLegacyProjectConfig) <$>
+--   parseLegacyProjectConfigFieldsWithConstraintSource
+--     ConstraintSourceUnknown
+--     [ParseUtils.F 1 field s]
+-- :}
