@@ -77,6 +77,9 @@ projectConfigSharedFieldGrammar source = do
   projectConfigHcFlavor <- optionalFieldDef "compiler" L.projectConfigHcFlavor mempty
   projectConfigHcPath <- optionalFieldDefAla "with-compiler" (alaFlag FilePathNT) L.projectConfigHcPath mempty
   projectConfigHcPkg <- optionalFieldDefAla "with-hc-pkg" (alaFlag FilePathNT) L.projectConfigHcPkg mempty
+  projectConfigBuildHcFlavor <- optionalFieldDef "build-compiler" L.projectConfigBuildHcFlavor mempty
+  projectConfigBuildHcPath <- optionalFieldDefAla "with-build-compiler" (alaFlag FilePathNT) L.projectConfigBuildHcPath mempty
+  projectConfigBuildHcPkg <- optionalFieldDefAla "with-build-hc-pkg" (alaFlag FilePathNT) L.projectConfigBuildHcPkg mempty
   projectConfigHaddockIndex <- optionalFieldDef "doc-index-file" L.projectConfigHaddockIndex mempty
   projectConfigInstallDirs <- blurFieldGrammar L.projectConfigInstallDirs installDirsGrammar
   projectConfigPackageDBs <- monoidalFieldAla "package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigPackageDBs

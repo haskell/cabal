@@ -8,6 +8,9 @@ ignore-project: False
 compiler: ghcjs
 with-compiler: /some/path/to/compiler
 with-hc-pkg: /some/path/to/ghc-pkg
+build-compiler: ghc
+with-build-compiler: /some/path/to/build-compiler
+with-build-hc-pkg: /some/path/to/build-ghc-pkg
 doc-index-file: /path/to/haddock-index
 package-dbs: clear, foo, clear, bar, baz
 active-repositories:

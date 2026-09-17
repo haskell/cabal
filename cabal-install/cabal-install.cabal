@@ -192,6 +192,7 @@ library
         Distribution.Client.ProjectPlanOutput
         Distribution.Client.ProjectPlanning
         Distribution.Client.ProjectPlanning.SetupPolicy
+        Distribution.Client.ProjectPlanning.Stage
         Distribution.Client.ProjectPlanning.Types
         Distribution.Client.RebuildMonad
         Distribution.Client.Reconfigure
@@ -214,6 +215,7 @@ library
         Distribution.Client.TargetProblem
         Distribution.Client.TargetSelector
         Distribution.Client.Targets
+        Distribution.Client.Toolchain
         Distribution.Client.Types
         Distribution.Client.Types.AllowNewer
         Distribution.Client.Types.BuildResults

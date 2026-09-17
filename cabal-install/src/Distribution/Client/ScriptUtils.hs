@@ -71,6 +71,7 @@ import Distribution.Client.ProjectPlanning
   ( ElaboratedConfiguredPackage (..)
   , ElaboratedSharedConfig (..)
   , configureCompiler
+  , pkgConfigCompiler
   )
 import Distribution.Client.RebuildMonad
   ( runRebuild

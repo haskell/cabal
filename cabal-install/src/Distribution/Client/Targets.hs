@@ -622,11 +622,14 @@ fromUserQualifier UserQualToplevel = QualToplevel
 fromUserQualifier (UserQualSetup name) = QualSetup name
 fromUserQualifier (UserQualExe name1 name2) = QualExe name1 name2
 
+-- | User constraints carry no stage: they apply at every stage.
 fromUserConstraintScope :: UserConstraintScope -> ConstraintScope
 fromUserConstraintScope (UserQualified q pn) =
-  ScopeQualified (fromUserQualifier q) pn
-fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
-fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
+  ConstraintScope Nothing (ScopeQualified (fromUserQualifier q) pn)
+fromUserConstraintScope (UserAnySetupQualifier pn) =
+  ConstraintScope Nothing (ScopeAnySetupQualifier pn)
+fromUserConstraintScope (UserAnyQualifier pn) =
+  ConstraintScope Nothing (ScopeAnyQualifier pn)
 
 -- | Version of 'PackageConstraint' that the user can specify on
 -- the command line.

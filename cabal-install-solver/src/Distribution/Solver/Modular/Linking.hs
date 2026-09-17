@@ -95,9 +95,9 @@ validateLinking index = (`runReader` initVS) . go
 
     -- Package choices
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
-    goP qpn@(Q _pp pn) opt@(POption i _) r = do
+    goP qpn@(Q (PackagePath s _pns _pq) pn) opt@(POption i _) r = do
       vs <- ask
-      let PInfo deps _ _ _ = vsIndex vs ! pn ! i
+      let PInfo deps _ _ _ = vsIndex vs ! s ! pn ! i
           qdeps            = qualifyDeps (vsQualifyOptions vs) qpn deps
           newSaved         = M.insert qpn qdeps (vsSaved vs)
       case execUpdateState (pickPOption qpn opt qdeps) vs of
@@ -336,7 +336,7 @@ updateLinkGroup lg = do
 
 verifyLinkGroup :: LinkGroup -> UpdateState ()
 verifyLinkGroup lg =
-    case lgInstance lg of
+    case lgCanon lg of
       -- No instance picked yet. Nothing to verify
       Nothing ->
         return ()
@@ -344,9 +344,9 @@ verifyLinkGroup lg =
       -- We picked an instance. Verify flags and stanzas
       -- TODO: The enumeration of OptionalStanza names is very brittle;
       -- if a constructor is added to the datatype we won't notice it here
-      Just i -> do
+      Just (PI (PackagePath s _ _) i) -> do
         vs <- get
-        let PInfo _deps _exes finfo _ = vsIndex vs ! lgPackage lg ! i
+        let PInfo _deps _exes finfo _ = vsIndex vs ! s ! lgPackage lg ! i
             flags   = M.keys finfo
             stanzas = [TestStanzas, BenchStanzas]
         forM_ flags $ \fn -> do

@@ -297,6 +297,14 @@ this folder (the most important two are first):
     Haskell data structure as well as an example tool showing possible
     applications.
 
+    Every entry of ``install-plan`` carries a ``stage`` field, either
+    ``"host"`` or ``"build"``. In an ordinary build every entry is on the
+    host stage. When cross-compiling (see :cfg-field:`with-build-compiler`)
+    the packages built for the build machine (build tools, custom
+    ``Setup.hs`` dependencies) are on the build stage, and the same package
+    may appear once per stage, possibly under the same ``id``; the stage is
+    what tells the two entries apart.
+
     .. todo::
 
         Document JSON schema (including version history of schema)

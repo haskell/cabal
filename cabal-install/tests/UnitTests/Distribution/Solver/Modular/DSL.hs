@@ -97,6 +97,7 @@ import qualified Distribution.Solver.Types.PkgConfigDb as PC
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Stage (always)
 import Distribution.Solver.Types.Variable
 import Distribution.Types.UnitId (UnitId)
 
@@ -244,10 +245,13 @@ exFlagged
   -> ExampleDependency
 exFlagged n t e = ExFlagged n (dependencies t) (dependencies e)
 
+-- | Example constraints carry a bare 'ConstraintQualifier'; they are turned
+-- into stage-agnostic ('Nothing') 'ConstraintScope's in 'toConstraint'. The
+-- solver test suite is entirely non-cross, so a stage need never be specified.
 data ExConstraint
-  = ExVersionConstraint ConstraintScope ExampleVersionRange
-  | ExFlagConstraint ConstraintScope ExampleFlagName Bool
-  | ExStanzaConstraint ConstraintScope [OptionalStanza]
+  = ExVersionConstraint ConstraintQualifier ExampleVersionRange
+  | ExFlagConstraint ConstraintQualifier ExampleFlagName Bool
+  | ExStanzaConstraint ConstraintQualifier [OptionalStanza]
   deriving (Show)
 
 data ExPreference
@@ -828,7 +832,7 @@ exResolve
   prefs
   verbosity
   enableAllTests =
-    resolveDependencies C.buildPlatform compiler pkgConfigDb params
+    resolveDependencies (always (compiler, C.buildPlatform)) (always pkgConfigDb) params
     where
       defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
       compiler =
@@ -876,15 +880,15 @@ exResolve
           $ setSolveExecutables solveExes
           $ setGoalOrder goalOrder
           $ setSolverVerbosity (C.verbosityLevel verbosity)
-          $ standardInstallPolicy instIdx avaiIdx targets'
+          $ standardInstallPolicy (always instIdx) avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
       toConstraint (ExVersionConstraint scope v) =
-        toLpc $ PackageConstraint scope (PackagePropertyVersion v)
+        toLpc $ PackageConstraint (ConstraintScope Nothing scope) (PackagePropertyVersion v)
       toConstraint (ExFlagConstraint scope fn b) =
-        toLpc $ PackageConstraint scope (PackagePropertyFlags (C.mkFlagAssignment [(C.mkFlagName fn, b)]))
+        toLpc $ PackageConstraint (ConstraintScope Nothing scope) (PackagePropertyFlags (C.mkFlagAssignment [(C.mkFlagName fn, b)]))
       toConstraint (ExStanzaConstraint scope stanzas) =
-        toLpc $ PackageConstraint scope (PackagePropertyStanzas stanzas)
+        toLpc $ PackageConstraint (ConstraintScope Nothing scope) (PackagePropertyStanzas stanzas)
 
       toPref (ExPkgPref n v) = PackageVersionPreference (C.mkPackageName n) v
       toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
