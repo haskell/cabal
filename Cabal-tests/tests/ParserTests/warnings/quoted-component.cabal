@@ -1,0 +1,7 @@
+cabal-version: 3.0
+name: quoted-component
+version: 1.0
+
+library "quoted"
+    build-depends: base >= 4.9
+    hs-source-dirs: .
