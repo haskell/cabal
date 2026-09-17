@@ -13,22 +13,28 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGrammar)
+import Distribution.Client.ProjectConfig.Legacy (renderPackageLocationToken)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
 import Distribution.Client.Utils.Parsec
+import qualified Distribution.Compat.CharParsing as P
+import Distribution.Compat.Lens (Lens')
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
+import Distribution.Parsec (CabalParsing, Parsec (..), parsecHaskellString)
+import Distribution.Pretty (Pretty (..))
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Solver.Types.Settings (PreferVersion (..))
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
+import qualified Text.PrettyPrint as PP
 
 projectConfigFieldGrammar :: ProjectConfigPath -> [String] -> ParsecFieldGrammar' ProjectConfig
 projectConfigFieldGrammar source knownPrograms = do
-  projectPackages <- monoidalFieldAla "packages" (alaList' FSep Token) L.projectPackages
-  projectPackagesOptional <- monoidalFieldAla "optional-packages" (alaList' FSep Token) L.projectPackagesOptional
+  projectPackages <- getPackageLocationTokens <$> monoidalField "packages" ignoredLens
+  projectPackagesOptional <- getPackageLocationTokens <$> monoidalField "optional-packages" ignoredLens
   let projectPackagesRepo = mempty
   projectPackagesNamed <- monoidalFieldAla "extra-packages" formatPackageVersionConstraints L.projectPackagesNamed
   projectConfigBuildOnly <- blurFieldGrammar L.projectConfigBuildOnly projectConfigBuildOnlyFieldGrammar
@@ -38,6 +44,41 @@ projectConfigFieldGrammar source knownPrograms = do
       projectConfigSpecificPackage = mempty
   projectConfigLocalPackages <- blurFieldGrammar L.projectConfigLocalPackages (packageConfigFieldGrammar knownPrograms)
   pure ProjectConfig{..}
+
+newtype PackageLocationTokens = PackageLocationTokens {getPackageLocationTokens :: [String]}
+
+instance Semigroup PackageLocationTokens where
+  PackageLocationTokens a <> PackageLocationTokens b = PackageLocationTokens (a <> b)
+
+instance Monoid PackageLocationTokens where
+  mempty = PackageLocationTokens mempty
+
+instance Parsec PackageLocationTokens where
+  parsec = PackageLocationTokens <$> parseSep (Proxy :: Proxy FSep) parsePackageLocationTokenQ
+
+instance Pretty PackageLocationTokens where
+  pretty = prettySep (Proxy :: Proxy FSep) . map (PP.text . renderPackageLocationToken) . getPackageLocationTokens
+
+ignoredLens :: Lens' ProjectConfig PackageLocationTokens
+ignoredLens f s = s <$ f mempty
+
+-- | This matches legacy parsing for @packages@ and @optional-packages@:
+-- supports quoted strings, and for unquoted tokens allows commas only inside
+-- balanced braces (e.g. ../{foo,bar}/).
+--
+-- >>> getPackageLocationTokens <$> (simpleParsec "*/*.cabal ../{foo,bar}/" :: Maybe PackageLocationTokens)
+-- Just ["*/*.cabal","../{foo,bar}/"]
+parsePackageLocationTokenQ :: CabalParsing m => m String
+parsePackageLocationTokenQ = parsecHaskellString <|> parsePackageLocationToken
+  where
+    parsePackageLocationToken = concat <$> some outerTerm
+    outerTerm = outerToken <|> braces innerTerm
+    innerTerm = concat <$> many (innerToken <|> braces innerTerm)
+    outerToken = P.munch1 outerChar
+    innerToken = P.munch1 innerChar
+    outerChar c = not (isSpace c || c == '{' || c == '}' || c == ',')
+    innerChar c = not (isSpace c || c == '{' || c == '}')
+    braces p = ("{" <>) . (<> "}") <$> P.between (P.char '{') (P.char '}') p
 
 formatPackageVersionConstraints :: [PackageVersionConstraint] -> List CommaVCat (Identity PackageVersionConstraint) PackageVersionConstraint
 formatPackageVersionConstraints = alaList CommaVCat
@@ -207,3 +248,6 @@ packageConfigPreferVersion =
     <$> optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty
       ^^^ deprecatedSince CabalSpecV3_20 "Please use 'prefer-version' field instead."
     <*> optionalFieldDef "prefer-version" L.projectConfigPreferVersion mempty
+
+-- $setup
+-- >>> import Distribution.Parsec (simpleParsec)
