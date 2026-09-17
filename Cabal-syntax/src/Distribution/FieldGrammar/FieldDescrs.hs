@@ -17,6 +17,7 @@ import Distribution.Utils.String (trim)
 
 import Data.Coerce
 import qualified Data.Map as Map
+import qualified Data.Text as T
 import qualified Distribution.Compat.CharParsing as C
 import qualified Distribution.Fields as P
 import qualified Distribution.Parsec as P
@@ -107,15 +108,13 @@ instance FieldGrammar ParsecPretty FieldDescrs where
 
   freeTextField fn l = singletonF fn f g
     where
-      f s = maybe mempty showFreeText (aview l s)
-      g s = cloneLens l (const (Just <$> parsecFreeText)) s
+      f s = maybe mempty (showFreeText . T.unpack) (aview l s)
+      g s = cloneLens l (const (Just . T.pack <$> parsecFreeText)) s
 
   freeTextFieldDef fn l = singletonF fn f g
     where
-      f s = showFreeText (aview l s)
-      g s = cloneLens l (const parsecFreeText) s
-
-  freeTextFieldDefST = defaultFreeTextFieldDefST
+      f s = showFreeText (T.unpack (aview l s))
+      g s = cloneLens l (const (T.pack <$> parsecFreeText)) s
 
   monoidalFieldAla
     :: forall s proxy a b
