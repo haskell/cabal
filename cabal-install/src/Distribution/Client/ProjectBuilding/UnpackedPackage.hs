@@ -29,6 +29,7 @@ module Distribution.Client.ProjectBuilding.UnpackedPackage
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.PackageHash (renderPackageHashInputs)
 import Distribution.Client.ProjectBuilding.Types
 import Distribution.Client.ProjectConfig
@@ -115,7 +116,13 @@ import Control.Concurrent.STM (TVar, atomically, modifyTVar)
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
 import Data.IORef (newIORef, readIORef, writeIORef)
 import GHC.Clock (getMonotonicTime)
-import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
+import System.Directory
+  ( canonicalizePath
+  , createDirectoryIfMissing
+  , doesDirectoryExist
+  , listDirectory
+  , renameFile
+  )
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreIdentifier)
@@ -534,7 +541,6 @@ buildInplaceUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout
     { distPackageCacheDirectory
-    , distDirectory
     , distHaddockOutputDir
     }
   maybe_semaphore
@@ -585,15 +591,8 @@ buildInplaceUnpackedPackage
         PBHaddockPhase{runHaddock} -> do
           withFileMonitor runHaddock
           let haddockTarget = elabHaddockForHackage pkg
-          when (haddockTarget == Cabal.ForHackage) $ do
-            let dest = distDirectory </> name <.> "tar.gz"
-                name = haddockDirName haddockTarget (elabPkgDescription pkg)
-                docDir =
-                  distBuildDirectory distDirLayout dparams
-                    </> "doc"
-                    </> "html"
-            Tar.createTarGzFile dest docDir name
-            notice verbosity $ "Documentation tarball created: " ++ dest
+          when (haddockTarget == Cabal.ForHackage) $
+            createHackageDocsTarball verbosity distDirLayout pkgshared plan rpkg
 
           when (buildSettingHaddockOpen && haddockTarget /= Cabal.ForHackage) $ do
             let dest = docDir </> "index.html"
@@ -1041,6 +1040,56 @@ annotateFailure mlogFile annotate action =
 --------------------------------------------------------------------------------
 -- * Other Utils
 --------------------------------------------------------------------------------
+
+-- | Create the @<pkgid>-docs.tar.gz@ documentation tarball to upload to
+-- Hackage (see the @--haddock-for-hackage@ flag).
+--
+-- The haddocks of a package can be spread over several build units: e.g. the
+-- main library and its internal libraries are built as separate units, each
+-- writing its haddocks into its own build directory.
+createHackageDocsTarball
+  :: Verbosity
+  -> DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedInstallPlan
+  -> ElaboratedReadyPackage
+  -> IO ()
+createHackageDocsTarball verbosity distDirLayout pkgshared plan (ReadyPackage pkg) =
+  withTempDirectory (distTempDirectory distDirLayout) "docs-tarball" $ \tmpDir -> do
+    let tmpTarball = tmpDir </> "docs.tar.gz"
+    createDirectoryIfMissingVerbose verbosity True (tmpDir </> haddockDocsDirName)
+    for_ hackageUnits $ \unit -> do
+      let unitDocHtmlDir =
+            distBuildDirectory distDirLayout (elabDistDirParams pkgshared unit)
+              </> "doc"
+              </> "html"
+          unitHaddockDir = unitDocHtmlDir </> haddockDocsDirName
+      -- The unit's haddocks may not exist yet if the unit is still being
+      -- built concurrently; that unit will re-create the tarball once its
+      -- own haddocks are done.
+      hasDocs <- doesDirectoryExist unitHaddockDir
+      when hasDocs $
+        copyDirectoryRecursive verbosity unitHaddockDir (tmpDir </> haddockDocsDirName)
+    Tar.createTarGzFile tmpTarball tmpDir haddockDocsDirName
+    -- Create the tarball in the temporary directory and rename it into
+    -- place, so that concurrent units never observe (or corrupt) a
+    -- half-written tarball.
+    renameFile tmpTarball dest
+    notice verbosity $ "Documentation tarball created: " ++ dest
+  where
+    haddockTarget = elabHaddockForHackage pkg
+    haddockDocsDirName = haddockDirName haddockTarget (elabPkgDescription pkg)
+    dest = distDirectory distDirLayout </> haddockDocsDirName <.> "tar.gz"
+    -- The units of the same package in the install plan whose haddocks are
+    -- generated and therefore belong in the tarball. This includes the
+    -- current unit itself.
+    hackageUnits =
+      [ elab
+      | InstallPlan.Configured elab <- InstallPlan.toList plan
+      , packageId elab == packageId pkg
+      , isInplaceBuildStyle (elabBuildStyle elab)
+      , hasValidHaddockTargets elab
+      ]
 
 -- | Display name for each build phase, used in timing output.
 buildPhaseName :: PackageBuildingPhase r -> String
