@@ -290,8 +290,8 @@ prependCommentsFields cs fs = case fs of
 -- | We attach the comments to the name (foremost child) of 'Field', this hence cannot fail.
 prependCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 prependCommentsField cs f = case f of
-  (Field colonPos name fls) -> Field colonPos (mapComments (cs ++) <$> name) fls
-  (Section name args fs) -> Section (mapComments (cs ++) <$> name) args fs
+  (Field colonPos name fls) -> Field colonPos (L.over (traverse . L.justComments) (cs ++) name) fls
+  (Section name args fs) -> Section (L.over (traverse . L.justComments) (cs ++) name) args fs
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 appendCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
@@ -303,7 +303,7 @@ appendCommentsFields cs fs = case fs of
 appendCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 appendCommentsField cs f = case f of
   (Field colonPos name fls) -> case appendCommentsFieldLines cs fls of
-    Nothing -> Field colonPos (mapComments (++ cs) <$> name) []
+    Nothing -> Field colonPos (L.over (traverse . L.justComments) (++ cs) name) []
     Just fls' -> Field colonPos name fls'
   (Section name args fs) -> case appendCommentsFields cs fs of
     Nothing -> Section (L.over (traverse . L.justComments) (++ cs) name) args []
