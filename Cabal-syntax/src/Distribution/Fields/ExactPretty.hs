@@ -56,7 +56,7 @@ runRenderFields' :: RenderConfig -> [Field (WithComments Position)] -> BS.ByteSt
 runRenderFields' cfg fs =
   BS.toStrict $
     BSB.toLazyByteString $
-      -- TODO(leana8959): we artifically terminate the file with a trailing newline.
+      -- TODO(leana8959): we artificially terminate the file with a trailing newline.
       -- Think of a more polished way later.
       (<> BSB.byteString newlineChar) $
         snd $
@@ -136,7 +136,7 @@ splitCommentsByPosition p0 = span (\(Comment _ p) -> p <= p0)
 renderComment :: Comment Position -> RenderM ()
 renderComment (Comment bs pos) = liftA2 (<>) (padUpToPosition pos) (renderBS bs)
 
--- | The line count annd last column count of a 'ByteString'
+-- | The line count and last column count of a 'ByteString'
 dimensionBS :: BS.ByteString -> (Int, Int)
 dimensionBS bs =
   let ls = BS8.lines bs

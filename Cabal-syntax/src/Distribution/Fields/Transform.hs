@@ -390,7 +390,7 @@ filterOne f (x : xs)
   | f x = x : filterOne f xs
   | otherwise = xs
 
--- | Map until the first mapping function succeeds (commited changes).
+-- | Map until the first mapping function succeeds.
 mapFirstThen
   :: (a -> EditResult a)
   -- ^ edit a

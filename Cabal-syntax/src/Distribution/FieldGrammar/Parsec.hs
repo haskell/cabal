@@ -552,7 +552,7 @@ toBSWithNewlines row0 = mconcat . mealy go row0
           newlines = myRow - row
        in (myRow, BS8.replicate newlines '\n' <> bs)
 
--- | Lines the inner 'ByteString', remove empty lines, distributing start colomn numbers and enumerate row numbers.
+-- | Lines the inner 'ByteString', remove empty lines, distributing start column numbers and enumerate row numbers.
 --   We assume that the joined field lines have been aligned to the same column.
 splitFieldLines :: FieldLine Position -> [FieldLine Position]
 splitFieldLines (FieldLine ann bs0) =
