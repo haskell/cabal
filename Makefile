@@ -227,16 +227,21 @@ cabal-install-test-accept:
 ##############################################################################
 
 # https://github.com/composewell/packdiff; the same commit is pinned in
-# cabal.project.api and used by the "Check API" CI job.
+# .github/workflows/check-api.yml and used by the "Check API" CI job.
+# packdiff is not on Hackage yet, so it is installed from the pinned commit.
 PACKDIFF_COMMIT := 54e786de55f091cdd3b912bd72ccc0e5e252aa77
+PACKDIFF_URL := https://github.com/composewell/packdiff/archive/$(PACKDIFF_COMMIT).tar.gz
 
 API_PACKAGES := Cabal-syntax Cabal cabal-install-solver Cabal-hooks
 API_BASE ?= origin/master
 
 .PHONY: api-install
 api-install: ## Install the packdiff tool used for API diffing.
-	mkdir -p $(HOME)/.local/bin
-	cabal install packdiff --project-file=cabal.project.api --installdir=$(HOME)/.local/bin --overwrite-policy=always
+	rm -rf "$${TMPDIR:-/tmp}/packdiff-install"
+	mkdir -p "$${TMPDIR:-/tmp}/packdiff-install"
+	curl -sSL $(PACKDIFF_URL) | tar -xz -C "$${TMPDIR:-/tmp}/packdiff-install"
+	cd "$${TMPDIR:-/tmp}/packdiff-install/packdiff-$(PACKDIFF_COMMIT)" && \
+		cabal install exe:packdiff --installdir=$(HOME)/.local/bin --overwrite-policy=always
 
 .PHONY: api-diff
 api-diff: ## API diff of PKG (default: all library packages) between API_BASE (default: origin/master) and HEAD.

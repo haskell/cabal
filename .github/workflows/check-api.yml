@@ -1,8 +1,9 @@
 name: Check API
 
 # Informational API diff job: it shows which public API of the Cabal
-# packages changes with respect to the PR base, but it is not a required
-# check and does not block merging.
+# packages changes with respect to the PR base. The job fails when the API
+# changed and the PR adds no changelog entry; if a changelog entry is
+# present, the job passes while still showing the diff in its summary.
 
 on:
   pull_request:
@@ -29,6 +30,9 @@ env:
   # with a single pinned GHC. Use the GHC used for releases, see GHC_FOR_RELEASE
   # in .github/workflows/validate.yml, and bump both together.
   GHC_VERSION: "9.10.3"
+  # packdiff is not on Hackage yet; it is installed from this pinned commit
+  # (the same one is pinned in the `api-install` target of the Makefile).
+  PACKDIFF_COMMIT: "54e786de55f091cdd3b912bd72ccc0e5e252aa77"
 
 jobs:
   check-api:
@@ -75,7 +79,9 @@ jobs:
       - name: Install packdiff
         run: |
           mkdir -p "$HOME/.local/bin"
-          cabal install packdiff --project-file=cabal.project.api --installdir="$HOME/.local/bin" --overwrite-policy=always
+          curl -sSL "https://github.com/composewell/packdiff/archive/${PACKDIFF_COMMIT}.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP/packdiff-${PACKDIFF_COMMIT}"
+          cabal install exe:packdiff --installdir="$HOME/.local/bin" --overwrite-policy=always
 
       - name: Run packdiff
         run: |
@@ -102,9 +108,17 @@ jobs:
 
           # Diff entries look like "[C] Module.Name"; the annotation legend
           # ("[A] : Added") has a colon right after the marker and must not match.
-          if grep -qE '^\[[ARC]\] [^ :]' api-diff.txt; then
-            echo "::error::The API of ${{ matrix.package }} changed with respect to the base revision. See the job summary for the diff. Consider a changelog entry, a PVP version bump, and whether the change should be backported."
-            exit 1
-          else
+          if ! grep -qE '^\[[ARC]\] [^ :]' api-diff.txt; then
             echo "No API changes detected in ${{ matrix.package }}."
+            exit 0
           fi
+
+          # The API changed. This is acceptable when the PR documents the
+          # change in a changelog entry (see the PR template checklist):
+          # the job passes, but keeps showing the diff in its summary.
+          changed_changelogs="$(git diff --name-only --diff-filter=AM "$base" "$head" -- changelog.d/)"
+          if [ -z "$changed_changelogs" ]; then
+            echo "::error::The API of ${{ matrix.package }} changed with respect to the base revision, and this PR adds no changelog entry. See the job summary for the diff. Add a changelog file under changelog.d/ describing the change (or revert the API change)."
+            exit 1
+          fi
+          python3 .github/scripts/api-changelog-check.py "${{ matrix.package }}" api-diff.txt $changed_changelogs

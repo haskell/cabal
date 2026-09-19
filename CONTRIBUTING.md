@@ -189,14 +189,19 @@ does not block merging, it exists to inform you and the reviewers:
   (API-changing PRs usually are not).
 
 The diff is computed in CI with a single pinned GHC and no golden files are
-committed, so there is nothing to update when the API changes: an API-changing
-PR just turns the job red.
+committed, so there is nothing to update when the API changes. When the API
+changed, the job checks that the PR documents the change: at least one
+changelog file under `changelog.d/` must list the package in its `packages:`
+field, otherwise the job fails. The job also warns when such an entry does not
+mention any of the changed modules or declarations. This is the
+machine-checked version of the PR template checkbox: *either the `Check API`
+job is clean, or the API changes are documented in a changelog file*.
 
 To run the same diff locally:
 
 ```console
-$ make api-install    # once; installs packdiff from the pinned commit in cabal.project.api
-$ make api-diff                              # all four packages, against origin/master
+$ make api-install                               # once; installs packdiff from the pinned commit
+$ make api-diff                                  # all four packages, against origin/master
 $ make api-diff PKG=Cabal-syntax API_BASE=3.14   # one package, against a branch/tag
 ```
 
