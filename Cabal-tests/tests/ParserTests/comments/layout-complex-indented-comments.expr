@@ -1,5 +1,5 @@
 [
-  Section
+  SectionX
     (Name
       WithComments {
         justComments =
@@ -20,7 +20,8 @@
           unComments = Position 6 12}
         "hackage.haskell.org"]
     [
-      Field
+      FieldX
+        (Position 7 6)
         (Name
           WithComments {
             justComments = [],
@@ -44,7 +45,8 @@
                   (Position 12 1)],
               unComments = Position 7 8}
             "http://hackage.haskell.org/"]],
-  Field
+  FieldX
+    (Position 13 18)
     (Name
       WithComments {
         justComments = [],
@@ -62,7 +64,8 @@
               (Position 15 1)],
           unComments = Position 13 20}
         "/home/foo/.cache/cabal/packages"],
-  Field
+  FieldX
+    (Position 16 14)
     (Name
       WithComments {
         justComments = [],
@@ -77,7 +80,8 @@
               (Position 17 1)],
           unComments = Position 16 16}
         "/home/foo/.cache/cabal/logs/build.log"],
-  Field
+  FieldX
+    (Position 18 23)
     (Name
       WithComments {
         justComments = [],
@@ -95,7 +99,8 @@
               (Position 20 1)],
           unComments = Position 18 25}
         "none"],
-  Field
+  FieldX
+    (Position 21 5)
     (Name
       WithComments {
         justComments = [],
@@ -113,7 +118,8 @@
               (Position 23 1)],
           unComments = Position 21 7}
         "$ncpus"],
-  Field
+  FieldX
+    (Position 24 11)
     (Name
       WithComments {
         justComments = [],
@@ -131,7 +137,7 @@
               (Position 26 1)],
           unComments = Position 24 13}
         "/home/foo/.local/bin"],
-  Section
+  SectionX
     (Name
       WithComments {
         justComments = [
@@ -145,7 +151,7 @@
       "haddock")
     []
     [],
-  Section
+  SectionX
     (Name
       WithComments {
         justComments = [
@@ -159,7 +165,7 @@
       "init")
     []
     [],
-  Section
+  SectionX
     (Name
       WithComments {
         justComments = [

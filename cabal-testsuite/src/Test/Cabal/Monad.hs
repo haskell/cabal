@@ -97,7 +97,7 @@ import Distribution.Simple.Configure
   )
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
-import qualified Distribution.Simple.Utils as U (cabalVersion)
+import Distribution.Simple.Utils qualified as U (cabalVersion)
 import Distribution.System
 import Distribution.Text
 
@@ -107,11 +107,11 @@ import Test.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir')
 
 import Control.Applicative
 import Control.Concurrent.Async
-import qualified Control.Exception as E
+import Control.Exception qualified as E
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Reader
-import qualified Data.ByteString.Char8 as C
+import Data.ByteString.Char8 qualified as C
 import Data.List
 import Data.Maybe
 import Data.Monoid (mempty)
