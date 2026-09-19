@@ -68,7 +68,9 @@ import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce
 import Data.Functor ((<&>))
 import Data.Kind
+#if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
+#endif
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe
