@@ -223,6 +223,42 @@ cabal-install-test-accept:
 	rm -rf .ghc.environment.*
 	cd cabal-testsuite && `cabal list-bin cabal-tests` --with-cabal=`cabal list-bin cabal` --hide-successes -j3 --accept ${TEST}
 
+# API diff (packdiff)
+##############################################################################
+
+# https://github.com/composewell/packdiff; the same commit is pinned in
+# .github/workflows/check-api.yml and used by the "Check API" CI job.
+# packdiff is not on Hackage yet, so it is installed from the pinned commit.
+PACKDIFF_COMMIT := 54e786de55f091cdd3b912bd72ccc0e5e252aa77
+PACKDIFF_URL := https://github.com/composewell/packdiff/archive/$(PACKDIFF_COMMIT).tar.gz
+
+API_PACKAGES := Cabal-syntax Cabal cabal-install cabal-install-solver Cabal-hooks
+API_BASE ?= origin/master
+
+.PHONY: api-install
+api-install: ## Install the packdiff tool used for API diffing.
+	rm -rf "$${TMPDIR:-/tmp}/packdiff-install"
+	mkdir -p "$${TMPDIR:-/tmp}/packdiff-install"
+	curl -sSL $(PACKDIFF_URL) | tar -xz -C "$${TMPDIR:-/tmp}/packdiff-install"
+	cd "$${TMPDIR:-/tmp}/packdiff-install/packdiff-$(PACKDIFF_COMMIT)" && \
+		cabal install exe:packdiff --installdir=$(HOME)/.local/bin --overwrite-policy=always
+
+.PHONY: api-diff
+api-diff: ## API diff of PKG (default: all library packages) between API_BASE (default: origin/master) and HEAD.
+	@command -v packdiff >/dev/null || { echo "packdiff not found; run 'make api-install'"; exit 1; }
+	@# NB: packdiff literally runs 'git checkout' on the given revisions, so:
+	@#  * revisions are resolved to SHAs *before* running (a literal "HEAD"
+	@#    would be re-resolved after switching to the base revision);
+	@#  * the worktree must be clean (commit or stash first);
+	@#  * the base revision must be buildable with the local GHC;
+	@#  * on success the worktree is left at HEAD, on failure at the base.
+	@base=$$(git rev-parse $(API_BASE)); \
+	head=$$(git rev-parse HEAD); \
+	for pkg in $(if $(PKG),$(PKG),$(API_PACKAGES)); do \
+		echo "== packdiff $$pkg: $(API_BASE) -> HEAD =="; \
+		packdiff diff $$pkg $$base $$pkg $$head; \
+	done
+
 # Docker validation
 
 # Use this carefully, on big machine you can say

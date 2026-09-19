@@ -174,6 +174,48 @@ fail annoyingly once you push it. `make checks` will do these checks. The list o
 checks is expected to grow over time, to make it easier to avoid CI turnaround on
 simple problems.
 
+## API diff
+
+CI runs an informational "Check API" job (`.github/workflows/check-api.yml`) on
+every pull request. It computes the public API diff of `Cabal-syntax`, `Cabal`,
+`cabal-install`, `cabal-install-solver` and `Cabal-hooks` between the base revision and the head
+of the PR using [packdiff](https://github.com/composewell/packdiff), and prints
+it in the job log and the job summary. The job is **not a required check**: it
+does not block merging, it exists to inform you and the reviewers:
+
+- whether a PR changes the public API (perhaps accidentally);
+- what to write in the changelog entry and which version bump PVP requires;
+- whether the PR is a candidate for backporting to a release branch
+  (API-changing PRs usually are not).
+
+The diff is computed in CI with a single pinned GHC and no golden files are
+committed, so there is nothing to update when the API changes. When the API
+changed, the job checks that the PR documents the change: at least one
+changelog file under `changelog.d/` must list the package in its `packages:`
+field, otherwise the job fails. The job also warns when such an entry does not
+mention any of the changed modules or declarations. This is the
+machine-checked version of the PR template checkbox: *either the `Check API`
+job is clean, or the API changes are documented in a changelog file*.
+
+To run the same diff locally:
+
+```console
+$ make api-install                               # once; installs packdiff from the pinned commit
+$ make api-diff                                  # all four packages, against origin/master
+$ make api-diff PKG=Cabal-syntax API_BASE=3.14   # one package, against a branch/tag
+```
+
+Notes:
+
+- `packdiff` literally runs `git checkout` on both revisions, so commit or stash
+  your changes first, and don't be surprised to find the working tree left at
+  `HEAD` (on success) or at the base revision (on failure).
+- The base revision must be buildable with your local GHC; very old revisions
+  may not be.
+- `packdiff` derives its output from the haddock hoogle files, so it does not
+  cover `other-modules` and does not merge the API of re-exported modules;
+  a small amount of noise is possible on module reshuffles.
+
 ## QA Notes
 
 Manual Quality Assurance (QA) is performed to ensure that the changes impacting
