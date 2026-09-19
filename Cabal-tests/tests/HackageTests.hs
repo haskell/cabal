@@ -195,9 +195,11 @@ fieldRoundTripTest fpath bs0 = do
         . B8.dropWhileEnd ( \c -> isSpace c || c == '\n' )
         )
       $! ( B8.intercalate "\n"
-        . map (B8.dropWhileEnd isSpace)
-        . map (\l -> if B8.all isSpace l then "" else l)
-        . map (\l -> case B8.unsnoc l of { Just (l', '\r') -> l' ; _ -> l })
+        . map
+            ( B8.dropWhileEnd isSpace
+             . (\l -> if B8.all isSpace l then "" else l)
+             . (\l -> case B8.unsnoc l of { Just (l', '\r') -> l' ; _ -> l })
+            )
         . B8.split '\n'
         )
       $! B8.map (\case { '\t' -> ' '; c -> c })

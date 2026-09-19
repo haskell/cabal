@@ -87,7 +87,7 @@ fieldAnn = nameAnn . fieldName
 -- /Note:/ the resulting list is never empty.
 fieldUniverse :: Field ann -> [Field ann]
 fieldUniverse f@(Section _ _ fs) = f : concatMap fieldUniverse fs
-fieldUniverse f@(Field _ _ _) = [f]
+fieldUniverse f@(Field{}) = [f]
 
 -- | A line of text representing the value of a field from a Cabal file.
 -- A field may contain multiple lines.

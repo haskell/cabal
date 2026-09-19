@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor #-}
+
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE UndecidableInstances #-}
 
