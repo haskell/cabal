@@ -1,25 +1,27 @@
 [
-  Section
+  SectionX
     (Name
       WithComments {
         justComments = [],
         unComments = Position 1 1}
-      "executable")
+      "Executable")
     []
     [
-      Field
+      FieldX
+        (Position 2 12)
         (Name
           WithComments {
             justComments = [],
             unComments = Position 2 5}
-          "main-is")
+          "Main-is")
         [
           FieldLine
             WithComments {
               justComments = [],
               unComments = Position 2 26}
             "Main.hs"],
-      Field
+      FieldX
+        (Position 3 19)
         (Name
           WithComments {
             justComments = [],
@@ -31,7 +33,8 @@
               justComments = [],
               unComments = Position 4 9}
             "src"],
-      Field
+      FieldX
+        (Position 5 16)
         (Name
           WithComments {
             justComments = [],
@@ -43,12 +46,13 @@
               justComments = [],
               unComments = Position 5 18}
             "-Wall"],
-      Field
+      FieldX
+        (Position 6 18)
         (Name
           WithComments {
             justComments = [],
             unComments = Position 6 5}
-          "build-depends")
+          "Build-Depends")
         [
           FieldLine
             WithComments {

@@ -8,13 +8,15 @@ import qualified Data.TreeDiff.OMap as OMap
 import Data.TreeDiff.Instances.CabalLanguage ()
 import Data.TreeDiff.Instances.CabalSPDX ()
 import Data.TreeDiff.Instances.CabalVersion ()
+import Data.TreeDiff.Instances.Parsec ()
 
 -------------------------------------------------------------------------------
 
 import Distribution.Backpack                       (OpenModule, OpenUnitId)
 import Distribution.CabalSpecVersion               (CabalSpecVersion)
 import Distribution.Compiler                       (CompilerFlavor, CompilerId, PerCompilerFlavor)
-import Distribution.Fields.Field                   (Field, Name, FieldLine, SectionArg, Comment, WithComments)
+import Distribution.Fields.Field                   (FieldConcrete, Name, FieldLine, SectionArg, Comment, WithComments)
+import Distribution.Fields.Transform               (EditResult, EditError)
 import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.PackageDescription
@@ -89,7 +91,7 @@ instance ToExpr GenericPackageDescription where
 
 instance (ToExpr ann) => ToExpr (Comment ann)
 instance (ToExpr ann) => ToExpr (WithComments ann)
-instance (ToExpr ann) => ToExpr (Field ann)
+instance (ToExpr ann, ToExpr pos) => ToExpr (FieldConcrete pos ann)
 instance (ToExpr ann) => ToExpr (FieldLine ann)
 instance (ToExpr ann) => ToExpr (Name ann)
 instance (ToExpr ann) => ToExpr (SectionArg ann)
@@ -108,6 +110,8 @@ instance ToExpr ComponentId
 instance ToExpr DebugInfoLevel
 instance ToExpr DefUnitId
 instance ToExpr DumpBuildInfo
+instance (ToExpr a) => ToExpr (EditResult a)
+instance ToExpr EditError
 instance ToExpr ExeDependency
 instance ToExpr Executable
 instance ToExpr ExecutableScope

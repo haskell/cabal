@@ -24,10 +24,10 @@ import Data.Maybe (isJust)
 import Distribution.System
 import Distribution.Utils.Generic (unsnoc)
 import Network.URI (parseURI)
-import qualified System.FilePath.Posix as Posix
-import qualified System.FilePath.Windows as Windows
+import System.FilePath.Posix qualified as Posix
+import System.FilePath.Windows qualified as Windows
 import Prelude hiding (unlines)
-import qualified Prelude (unlines)
+import Prelude qualified (unlines)
 
 {-
 Note [Multiline Needles]
