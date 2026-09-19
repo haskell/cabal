@@ -232,7 +232,7 @@ cabal-install-test-accept:
 PACKDIFF_COMMIT := 54e786de55f091cdd3b912bd72ccc0e5e252aa77
 PACKDIFF_URL := https://github.com/composewell/packdiff/archive/$(PACKDIFF_COMMIT).tar.gz
 
-API_PACKAGES := Cabal-syntax Cabal cabal-install-solver Cabal-hooks
+API_PACKAGES := Cabal-syntax Cabal cabal-install cabal-install-solver Cabal-hooks
 API_BASE ?= origin/master
 
 .PHONY: api-install

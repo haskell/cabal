@@ -178,7 +178,7 @@ simple problems.
 
 CI runs an informational "Check API" job (`.github/workflows/check-api.yml`) on
 every pull request. It computes the public API diff of `Cabal-syntax`, `Cabal`,
-`cabal-install-solver` and `Cabal-hooks` between the base revision and the head
+`cabal-install`, `cabal-install-solver` and `Cabal-hooks` between the base revision and the head
 of the PR using [packdiff](https://github.com/composewell/packdiff), and prints
 it in the job log and the job summary. The job is **not a required check**: it
 does not block merging, it exists to inform you and the reviewers:

@@ -45,6 +45,7 @@ jobs:
         package:
           - Cabal-syntax
           - Cabal
+          - cabal-install
           - cabal-install-solver
           - Cabal-hooks
 
