@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | Parsing project configuration.
 module Distribution.Client.ProjectConfig.Parsec
@@ -25,7 +26,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec (NamelessField (..), namelessFieldAnn)
-import Distribution.Fields (Field (..), FieldLine (..), FieldName, Name (..), SectionArg (..), readFields')
+import Distribution.Fields (Field, FieldLine (..), FieldName, Name (..), SectionArg (..), readFields', pattern Field, pattern Section)
 import Distribution.Fields.ConfVar (parseConditionConfVar)
 import Distribution.Fields.Field (fieldLinesToString, sectionArgAnn)
 import Distribution.Fields.LexerMonad (toPWarnings)

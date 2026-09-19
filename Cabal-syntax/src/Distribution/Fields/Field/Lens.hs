@@ -1,7 +1,10 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Distribution.Fields.Field.Lens where
 
 import Distribution.Compat.Lens
 import qualified Distribution.Fields.Field as T
+import Distribution.Parsec.Position.Lens
 
 justComments :: Lens' (T.WithComments ann) [T.Comment ann]
 justComments f s = fmap (\x -> s{T.justComments = x}) (f (T.justComments s))
@@ -10,3 +13,6 @@ justComments f s = fmap (\x -> s{T.justComments = x}) (f (T.justComments s))
 unComments :: Lens' (T.WithComments ann) ann
 unComments f s = fmap (\x -> s{T.unComments = x}) (f (T.unComments s))
 {-# INLINE unComments #-}
+
+instance HasPosition ann => HasPosition (T.WithComments ann) where
+  position = unComments . position
