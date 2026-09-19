@@ -93,7 +93,9 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Types.BuildType
+import Distribution.Types.ComponentName (componentNameString)
 import Distribution.Types.PackageDescription.Lens (componentModules)
+import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 
 import Distribution.Client.Errors
 import Distribution.Simple.Utils
@@ -1057,20 +1059,14 @@ createHackageDocsTarball
 createHackageDocsTarball verbosity distDirLayout pkgshared plan (ReadyPackage pkg) =
   withTempDirectory (distTempDirectory distDirLayout) "docs-tarball" $ \tmpDir -> do
     let tmpTarball = tmpDir </> "docs.tar.gz"
-    createDirectoryIfMissingVerbose verbosity True (tmpDir </> haddockDocsDirName)
-    for_ hackageUnits $ \unit -> do
-      let unitDocHtmlDir =
-            distBuildDirectory distDirLayout (elabDistDirParams pkgshared unit)
-              </> "doc"
-              </> "html"
-          unitHaddockDir = unitDocHtmlDir </> haddockDocsDirName
-      -- The unit's haddocks may not exist yet if the unit is still being
-      -- built concurrently; that unit will re-create the tarball once its
-      -- own haddocks are done.
-      hasDocs <- doesDirectoryExist unitHaddockDir
-      when hasDocs $
-        copyDirectoryRecursive verbosity unitHaddockDir (tmpDir </> haddockDocsDirName)
-    Tar.createTarGzFile tmpTarball tmpDir haddockDocsDirName
+    -- Skip the units whose haddocks do not exist (yet): a unit may still be
+    -- building concurrently; it will re-create the tarball once its own
+    -- haddocks are done.
+    docDirs <-
+      filterM
+        (\(base, dir) -> doesDirectoryExist (base </> dir))
+        haddockDirs
+    Tar.createTarGzFileMulti tmpTarball docDirs
     -- Create the tarball in the temporary directory and rename it into
     -- place, so that concurrent units never observe (or corrupt) a
     -- half-written tarball.
@@ -1080,6 +1076,18 @@ createHackageDocsTarball verbosity distDirLayout pkgshared plan (ReadyPackage pk
     haddockTarget = elabHaddockForHackage pkg
     haddockDocsDirName = haddockDirName haddockTarget (elabPkgDescription pkg)
     dest = distDirectory distDirLayout </> haddockDocsDirName <.> "tar.gz"
+    haddockDirs =
+      [ (unitDocHtmlDir unit, haddockDocsDir unit)
+      | unit <- hackageUnits
+      ]
+    unitDocHtmlDir unit =
+      distBuildDirectory distDirLayout (elabDistDirParams pkgshared unit)
+        </> "doc"
+        </> "html"
+    haddockDocsDir unit =
+      case elabComponentName unit >>= componentNameString of
+        Nothing -> haddockDocsDirName
+        Just cname -> haddockDocsDirName </> unUnqualComponentName cname
     -- The units of the same package in the install plan whose haddocks are
     -- generated and therefore belong in the tarball. This includes the
     -- current unit itself.
