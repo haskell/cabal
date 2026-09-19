@@ -65,6 +65,7 @@ library
     alex:alex < 3.5.4.1 || > 3.5.4.1
 
   exposed-modules:
+    Distribution.Annotation
     Distribution.Backpack
     Distribution.CabalSpecVersion
     Distribution.Compat.Binary
@@ -86,11 +87,14 @@ library
     Distribution.Fields
     Distribution.Fields.ConfVar
     Distribution.Fields.Field
+    Distribution.Fields.Field.Lens
     Distribution.Fields.Lexer
     Distribution.Fields.LexerMonad
+    Distribution.Fields.Transform
     Distribution.Fields.ParseResult
     Distribution.Fields.Parser
     Distribution.Fields.Pretty
+    Distribution.Fields.ExactPretty
     Distribution.InstalledPackageInfo
     Distribution.License
     Distribution.ModuleName
@@ -106,6 +110,7 @@ library
     Distribution.Parsec.Error
     Distribution.Parsec.FieldLineStream
     Distribution.Parsec.Position
+    Distribution.Parsec.Position.Lens
     Distribution.Parsec.Warning
     Distribution.Parsec.Source
     Distribution.Pretty
