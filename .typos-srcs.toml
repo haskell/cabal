@@ -17,6 +17,12 @@ extend-exclude = [
     "Cabal-tests/tests/ParserTests/errors/common1.cabal", # import: windo doesn't exist
     "Cabal-tests/tests/ParserTests/errors/common1.errors",
     "cabal-testsuite/PackageTests/ProjectImport/UniquePathDuplicates/www-stackage-org/lts-21.25.config",
+
+    # golden tests
+    "Cabal-tests/tests/ParserTests/comments/*.cabal",
+    "Cabal-tests/tests/ParserTests/regressions/*.cabal",
+    "Cabal-tests/tests/ParserTests/regressions/*.format",
+    "Cabal-tests/tests/ParserTests/regressions/*.expr",
 ]
 
 [default]
