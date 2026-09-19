@@ -71,6 +71,7 @@ import Data.Functor ((<&>))
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
+import Data.List (foldl')
 import Data.Maybe
 import Data.Proxy
 import Distribution.Annotation
