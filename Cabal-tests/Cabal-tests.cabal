@@ -95,8 +95,6 @@ test-suite parser-tests
     , tasty-hunit
     , tree-diff         >=0.1     && <0.4
 
-    , pretty-simple
-
   ghc-options:      -Wall
   default-language: GHC2021
 

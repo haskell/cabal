@@ -54,7 +54,6 @@ import Distribution.FieldGrammar.Parsec
 import Distribution.FieldGrammar
 import Data.Functor.Identity
 import Distribution.Fields.Field
-import Data.Char
 import Distribution.CabalSpecVersion
 import Distribution.Types.Dependency
 import Distribution.Types.VersionRange
@@ -71,7 +70,6 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Language.Haskell.Extension
 import Distribution.Fields.ExactPretty
-import Text.Pretty.Simple
 
 tests :: TestTree
 tests = testGroup "parsec tests"
@@ -87,7 +85,7 @@ tests = testGroup "parsec tests"
     , splitFieldLinesTest
     , splitBSAtPositionTests
     , substituteSubBSAtTests
-    , exactPrettyFieldTests
+    -- , exactPrettyFieldTests
     , editFieldGoldenTests
     , editFieldPrintedTests
     ]
@@ -600,127 +598,126 @@ assertEqDiff label x y = x == y @?
               ]
 #endif
 
-exactPrettyFieldTests :: TestTree
-exactPrettyFieldTests = []
-  -- testGroup "warnings triggered"
-  -- $ map
-  --   ( exactPrettyFieldTest . (\p -> "tests" </> "ParserTests" </> p)
-  --   )
-  [
-    -- "project-files" </> "0-local.project"
-  -- , "project-files" </> "1-local-constraints-import.project"
-  -- , "project-files" </> "1-local-import-constraints.project"
-  -- , "project-files" </> "1-web-constraints-import.project"
-  -- , "project-files" </> "1-web-import-constraints.project"
-  -- , "project-files" </> "2-local-constraints-import.project"
-  -- , "project-files" </> "2-local-import-constraints.project"
-  -- , "project-files" </> "2-web-constraints-import.project"
-  -- , "project-files" </> "2-web-import-constraints.project"
-  -- , "project-files" </> "3-web-constraints-import.project"
-  -- , "project-files" </> "3-web-import-constraints.project"
-  -- , "project-files" </> "alt.project"
-  -- , "project-files" </> "bad-conditional.project"
-  -- , "project-files" </> "cabal-cyclical-1-hop.project"
-  -- , "project-files" </> "cabal-cyclical-2-hop.project"
-  -- , "project-files" </> "cabal-missing-package.project"
-  -- , "project-files" </> "cabal.bootstrap.project"
-  -- , "project-files" </> "cabal.dot-uv.project"
-  -- , "project-files" </> "cabal.external.project"
-  -- , "project-files" </> "cabal.freeze-only.project"
-  -- , "project-files" </> "cabal.internal.project"
-  -- , "project-files" </> "cabal.local-only.project"
-  -- , "project-files" </> "cabal.meta.project"
-  -- , "project-files" </> "cabal.negative.project"
-  -- , "project-files" </> "cabal.positive.project"
-  -- , "project-files" </> "cabal.project"
-  -- , "project-files" </> "cabal.release.project"
-  -- , "project-files" </> "cabal.repo.project"
-  -- , "project-files" </> "cabal.sub-pq.project"
-  -- , "project-files" </> "cabal.sub-rs.project"
-  -- , "project-files" </> "cabal.validate-libonly.project"
-  -- , "project-files" </> "cabal.validate.project"
-  -- , "project-files" </> "cyclical-0-self.project"
-  -- , "project-files" </> "cyclical-1-out-back.project"
-  -- , "project-files" </> "cyclical-1-out-self.project"
-  -- , "project-files" </> "cyclical-2-out-out-back.project"
-  -- , "project-files" </> "cyclical-2-out-out-backback.project"
-  -- , "project-files" </> "cyclical-2-out-out-self.project"
-  -- , "project-files" </> "cyclical-same-filename-out-out-back.project"
-  -- , "project-files" </> "cyclical-same-filename-out-out-backback.project"
-  -- , "project-files" </> "cyclical-same-filename-out-out-self.project"
-  -- , "project-files" </> "elif.project"
-  -- , "project-files" </> "else.project"
-  -- , "project-files" </> "empty.project"
-  -- , "project-files" </> "extra.project"
-  -- , "project-files" </> "fake.cabal.project"
-  -- , "project-files" </> "foo.project"
-  -- , "project-files" </> "hops-0.project"
-  -- , "project-files" </> "if.project"
-  -- , "project-files" </> "no-pkgs.project"
-  -- , "project-files" </> "noncyclical-same-filename-a.project"
-  -- , "project-files" </> "noncyclical-same-filename-b.project"
-  -- , "project-files" </> "oops-0.project"
-  -- , "project-files" </> "reverse.project"
-  -- , "project-files" </> "some.project"
-  -- , "project-files" </> "tabs-and-spaces.project"
-  -- , "project-files" </> "trailing-space.project"
-  -- , "project-files" </> "variant.project"
-  -- , "project-files" </> "woops-0.project"
-  -- , "project-files" </> "yops-0.project"
+-- exactPrettyFieldTests :: TestTree
+-- exactPrettyFieldTests =
+--   testGroup "warnings triggered"
+--   $ map
+--     ( exactPrettyFieldTest . (\p -> "tests" </> "ParserTests" </> p)
+--     )
+--   [ "project-files" </> "0-local.project"
+--   , "project-files" </> "1-local-constraints-import.project"
+--   , "project-files" </> "1-local-import-constraints.project"
+--   , "project-files" </> "1-web-constraints-import.project"
+--   , "project-files" </> "1-web-import-constraints.project"
+--   , "project-files" </> "2-local-constraints-import.project"
+--   , "project-files" </> "2-local-import-constraints.project"
+--   , "project-files" </> "2-web-constraints-import.project"
+--   , "project-files" </> "2-web-import-constraints.project"
+--   , "project-files" </> "3-web-constraints-import.project"
+--   , "project-files" </> "3-web-import-constraints.project"
+--   , "project-files" </> "alt.project"
+--   , "project-files" </> "bad-conditional.project"
+--   , "project-files" </> "cabal-cyclical-1-hop.project"
+--   , "project-files" </> "cabal-cyclical-2-hop.project"
+--   , "project-files" </> "cabal-missing-package.project"
+--   , "project-files" </> "cabal.bootstrap.project"
+--   , "project-files" </> "cabal.dot-uv.project"
+--   , "project-files" </> "cabal.external.project"
+--   , "project-files" </> "cabal.freeze-only.project"
+--   , "project-files" </> "cabal.internal.project"
+--   , "project-files" </> "cabal.local-only.project"
+--   , "project-files" </> "cabal.meta.project"
+--   , "project-files" </> "cabal.negative.project"
+--   , "project-files" </> "cabal.positive.project"
+--   , "project-files" </> "cabal.project"
+--   , "project-files" </> "cabal.release.project"
+--   , "project-files" </> "cabal.repo.project"
+--   , "project-files" </> "cabal.sub-pq.project"
+--   , "project-files" </> "cabal.sub-rs.project"
+--   , "project-files" </> "cabal.validate-libonly.project"
+--   , "project-files" </> "cabal.validate.project"
+--   , "project-files" </> "cyclical-0-self.project"
+--   , "project-files" </> "cyclical-1-out-back.project"
+--   , "project-files" </> "cyclical-1-out-self.project"
+--   , "project-files" </> "cyclical-2-out-out-back.project"
+--   , "project-files" </> "cyclical-2-out-out-backback.project"
+--   , "project-files" </> "cyclical-2-out-out-self.project"
+--   , "project-files" </> "cyclical-same-filename-out-out-back.project"
+--   , "project-files" </> "cyclical-same-filename-out-out-backback.project"
+--   , "project-files" </> "cyclical-same-filename-out-out-self.project"
+--   , "project-files" </> "elif.project"
+--   , "project-files" </> "else.project"
+--   , "project-files" </> "empty.project"
+--   , "project-files" </> "extra.project"
+--   , "project-files" </> "fake.cabal.project"
+--   , "project-files" </> "foo.project"
+--   , "project-files" </> "hops-0.project"
+--   , "project-files" </> "if.project"
+--   , "project-files" </> "no-pkgs.project"
+--   , "project-files" </> "noncyclical-same-filename-a.project"
+--   , "project-files" </> "noncyclical-same-filename-b.project"
+--   , "project-files" </> "oops-0.project"
+--   , "project-files" </> "reverse.project"
+--   , "project-files" </> "some.project"
+--   , "project-files" </> "tabs-and-spaces.project"
+--   , "project-files" </> "trailing-space.project"
+--   , "project-files" </> "variant.project"
+--   , "project-files" </> "woops-0.project"
+--   , "project-files" </> "yops-0.project"
 
- -- "exact-pretty.cabal"
+--   , "exact-pretty.cabal"
 
-  -- "no-braces" </> "oeis.cabal"
-  -- "no-braces" </> "music-util.cabal" -- ok
-  -- "no-braces" </> "modulo.cabal" -- ok
-  -- "no-braces" </> "cryptohash-sha512.cabal"
-  ]
+--   , "no-braces" </> "oeis.cabal"
+--   , "no-braces" </> "music-util.cabal" -- ok
+--   , "no-braces" </> "modulo.cabal" -- ok
+--   , "no-braces" </> "cryptohash-sha512.cabal"
+--   ]
 
 
-exactPrettyFieldTest :: FilePath -> TestTree
-exactPrettyFieldTest input = testCase "exact-pretty" $ do
-  contents <- patchUpCasesWeDon'tHandle <$> BS.readFile input
-  let res = readFieldsConcrete' contents
+-- exactPrettyFieldTest :: FilePath -> TestTree
+-- exactPrettyFieldTest input = testCase "exact-pretty" $ do
+--   contents <- patchUpCasesWeDon'tHandle <$> BS.readFile input
+--   let res = readFieldsConcrete' contents
 
-  fs <- case res of
-    Left perr -> fail $ formatError contents perr
-    Right (ok, warns) -> do
-      unless (null warns) (fail $ unlines (map show warns))
-      pure ok
+--   fs <- case res of
+--     Left perr -> fail $ formatError contents perr
+--     Right (ok, warns) -> do
+--       unless (null warns) (fail $ unlines (map show warns))
+--       pure ok
 
-  pPrint fs
+--   pPrint fs
 
-  let reprinted = runRenderFields fs
-  contents == reprinted @?
-#ifdef MIN_VERSION_tree_diff
-            unlines
-                [ "re-parsed doesn't match"
-                , show $ ansiWlEditExpr $ ediff contents reprinted
-                ]
-#else
-            unlines
-                [ "re-parsed doesn't match"
-                , "expected"
-                , show contents
-                , "actual"
-                , show reprinted
-                ]
-#endif
-  pure ()
-  where
-    patchUpCasesWeDon'tHandle =
-      ( (<> "\n")
-        . BS8.dropWhileEnd ( \c -> isSpace c || c == '\n' )
-        )
-      . ( BS8.intercalate "\n"
-        . map
-            ( BS8.dropWhileEnd isSpace
-             . (\l -> if BS8.all isSpace l then "" else l)
-             . (\l -> case BS8.unsnoc l of { Just (l', '\r') -> l' ; _ -> l })
-            )
-        . BS8.split '\n'
-        )
-      . BS8.map (\case { '\t' -> ' '; c -> c })
+--   let reprinted = runRenderFields fs
+--   contents == reprinted @?
+-- #ifdef MIN_VERSION_tree_diff
+--             unlines
+--                 [ "re-parsed doesn't match"
+--                 , show $ ansiWlEditExpr $ ediff contents reprinted
+--                 ]
+-- #else
+--             unlines
+--                 [ "re-parsed doesn't match"
+--                 , "expected"
+--                 , show contents
+--                 , "actual"
+--                 , show reprinted
+--                 ]
+-- #endif
+--   pure ()
+--   where
+--     patchUpCasesWeDon'tHandle =
+--       ( (<> "\n")
+--         . BS8.dropWhileEnd ( \c -> isSpace c || c == '\n' )
+--         )
+--       . ( BS8.intercalate "\n"
+--         . map
+--             ( BS8.dropWhileEnd isSpace
+--              . (\l -> if BS8.all isSpace l then "" else l)
+--              . (\l -> case BS8.unsnoc l of { Just (l', '\r') -> l' ; _ -> l })
+--             )
+--         . BS8.split '\n'
+--         )
+--       . BS8.map (\case { '\t' -> ' '; c -> c })
 
 
 -------------------------------------------------------------------------------
