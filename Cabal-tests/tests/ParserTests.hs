@@ -137,27 +137,29 @@ warningTest wt fp = testCase (show wt) $ do
     isRight (Right _) = True
     isRight _         = False
 
+-- Note: the bad-cabal extension is to avoid ci from trying to check the whitespace
+-- format on this file. It is intentionally bad.
 editFieldGoldenTests :: TestTree
 editFieldGoldenTests = testGroup "edit-golden"
-  [ mkEditFieldGoldenTest "add-field-end" "simple.cabal" $
+  [ mkEditFieldGoldenTest "add-field-end" "simple.bad-cabal" $
       addField AddEnd (mkName () "its-a-new-field") mempty
         [ FieldLine () ", value"
         , FieldLine () ", value on another line,"
         ]
         mempty
-  , mkEditFieldGoldenTest "add-field-start" "simple.cabal" $
+  , mkEditFieldGoldenTest "add-field-start" "simple.bad-cabal" $
       addField AddStart (mkName () "its-a-new-field") mempty
         [ FieldLine () ", value"
         , FieldLine () ", value on another line,"
         ]
         mempty
 
-  , mkEditFieldGoldenTest "remove-field" "simple.cabal" $
+  , mkEditFieldGoldenTest "remove-field" "simple.bad-cabal" $
       removeField RemoveFirst (\fname _ -> getName fname == "version")
-  , mkEditFieldGoldenTest "remove-field-in-section" "simple.cabal" $
+  , mkEditFieldGoldenTest "remove-field-in-section" "simple.bad-cabal" $
       modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const EditUnchanged) $
         removeField RemoveAll (\fname _ -> getName fname == "build-depends")
-  , mkEditFieldGoldenTest "modify-field-in-section" "simple.cabal" $
+  , mkEditFieldGoldenTest "modify-field-in-section" "simple.bad-cabal" $
       modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const EditUnchanged) $
         modifyField ModifyFirst (\fname _ -> getName fname == "build-depends") $
           modifyValueList @CommaVCat @(Identity Dependency) @Dependency
@@ -168,11 +170,11 @@ editFieldGoldenTests = testGroup "edit-golden"
             )
 
   -- The example doesn't have the field "depends" but "build-depends" to demonstrate what would happen if the matcher doesn't match anything.
-  , mkEditFieldGoldenTest "remove-field-unchanged" "simple.cabal" $
+  , mkEditFieldGoldenTest "remove-field-unchanged" "simple.bad-cabal" $
       modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const EditUnchanged) $
         removeField RemoveAll (\fname _ -> getName fname == "depends")
 
-  , mkEditFieldGoldenTest "remove-field-alternative" "simple.cabal" $
+  , mkEditFieldGoldenTest "remove-field-alternative" "simple.bad-cabal" $
      modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const EditUnchanged)
       ( removeField RemoveAll (\fname _ -> getName fname == "depends")
         `orFallback`
@@ -197,7 +199,7 @@ mkEditFieldGoldenTest name fname edit = ediffGolden goldenTest name exprFile $ d
 
 editFieldPrintedTests :: TestTree
 editFieldPrintedTests = testGroup "edit-printed"
-  [ mkEditFieldPrintedTest "modify-field-in-section" "simple.cabal" $
+  [ mkEditFieldPrintedTest "modify-field-in-section" "simple.bad-cabal" $
       modifySection ModifyFirst (\sname sargs _ -> getName sname == "library" && null sargs) (const EditUnchanged) $
         modifyField ModifyFirst (\fname _ -> getName fname == "build-depends") $
           modifyValueList @CommaVCat @(Identity Dependency) @Dependency
@@ -207,13 +209,13 @@ editFieldPrintedTests = testGroup "edit-printed"
                 _ -> Nothing
             )
 
-  , mkEditFieldPrintedTest "add-field-end" "simple.cabal" $
+  , mkEditFieldPrintedTest "add-field-end" "simple.bad-cabal" $
       addField AddEnd (mkName () "its-a-new-field") mempty
         [ FieldLine () ", value"
         , FieldLine () ", value on another line,"
         ]
         mempty
-  , mkEditFieldPrintedTest "add-field-start" "simple.cabal" $
+  , mkEditFieldPrintedTest "add-field-start" "simple.bad-cabal" $
       addField AddStart (mkName () "its-a-new-field") mempty
         [ FieldLine () ", value"
         , FieldLine () ", value on another line,"
@@ -667,10 +669,10 @@ assertEqDiff label x y = x == y @?
 
 --   , "exact-pretty.cabal"
 
---   , "no-braces" </> "oeis.cabal"
---   , "no-braces" </> "music-util.cabal" -- ok
---   , "no-braces" </> "modulo.cabal" -- ok
---   , "no-braces" </> "cryptohash-sha512.cabal"
+--   , "no-braces" </> "oeis.bad-cabal"
+--   , "no-braces" </> "music-util.bad-cabal" -- ok
+--   , "no-braces" </> "modulo.bad-cabal" -- ok
+--   , "no-braces" </> "cryptohash-sha512.bad-cabal"
 --   ]
 
 
