@@ -68,15 +68,16 @@ import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce
 import Data.Functor ((<&>))
 import Data.Kind
+import Data.List (foldl')
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
-import Data.List (foldl')
 import Data.Maybe
 import Data.Proxy
 import Distribution.Annotation
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
+
 -- import Distribution.Fields.ConfVar
 -- import Distribution.Types.Condition
 -- import Distribution.Types.ConfVar

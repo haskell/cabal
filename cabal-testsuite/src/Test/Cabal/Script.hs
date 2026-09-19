@@ -26,7 +26,7 @@ import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
 
-import qualified Data.Monoid as M
+import Data.Monoid qualified as M
 
 -- | The runner environment, which contains all of the important
 -- parameters for invoking GHC.  Mostly subset of 'LocalBuildInfo'.
