@@ -10,10 +10,11 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (void)
+import Control.Monad                               (void, unless)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
+import Distribution.Fields.Parser                  (readFieldsWithComments', formatError)
 import Distribution.PackageDescription
   ( GenericPackageDescription
   , packageDescription
@@ -30,6 +31,7 @@ import Distribution.PackageDescription.Parsec      (parseGenericPackageDescripti
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
+import Distribution.Fields.Field
 import Distribution.Fields.ParseResult
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
@@ -40,6 +42,7 @@ import Distribution.Parsec.Source
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
+import qualified Data.Bifunctor        as Bi
 
 import qualified Distribution.InstalledPackageInfo as IPI
 
@@ -53,6 +56,7 @@ tests :: TestTree
 tests = testGroup "parsec tests"
     [ regressionTests
     , warningTests
+    , commentTests
     , errorTests
     , ipiTests
     ]
@@ -103,6 +107,77 @@ warningTest wt fp = testCase (show wt) $ do
   where
     isRight (Right _) = True
     isRight _         = False
+
+
+-------------------------------------------------------------------------------
+-- comment
+-------------------------------------------------------------------------------
+
+-- Verify that comments are parsed correctly
+commentTests :: TestTree
+commentTests = testGroup "comments"
+    [
+#ifdef MIN_VERSION_tree_diff
+      readFieldTest "layout-complex-indented-comments.cabal" -- Imported from hackage integration test
+    , readFieldTest "layout-comment-in-fieldline.cabal" -- Aligned leading comma after comment
+
+    , commentTest "layout-nosections-before.cabal"
+    , commentTest "layout-nosections-after.cabal"
+    , commentTest "layout-nosections-mixed.cabal"
+    , commentTest "layout-many-sections.cabal"
+    , commentTest "layout-interleaved-in-section.cabal"
+    , commentTest "layout-fieldline-is-flag.cabal"
+
+    , commentTest "hasktorch.cabal" -- Taken from regression, has a lot of comments
+#endif
+    ]
+
+#ifdef MIN_VERSION_tree_diff
+-- | Assert the field structure of a given Cabal file.
+readFieldTest :: FilePath -> TestTree
+readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
+  contents <- BS.readFile input
+  let res = readFieldsWithComments' contents
+
+  case res of
+    Left perr -> fail $ formatError contents perr
+    Right (fs, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure fs
+
+  where
+    input = "tests" </> "ParserTests" </> "comments" </> fname
+    exprFile = replaceExtension input "expr"
+#endif
+
+#ifdef MIN_VERSION_tree_diff
+-- | Assert the comment structure of a given cabal file.
+commentTest :: FilePath -> TestTree
+commentTest fname = ediffGolden goldenTest fname exprFile $ do
+  contents <- BS.readFile input
+  let res = Bi.first (fst . extractComments) <$> readFieldsWithComments' contents
+
+  case res of
+    Left perr -> fail $ formatError contents perr
+    Right (cmts, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure cmts
+
+  where
+    input = "tests" </> "ParserTests" </> "comments" </> fname
+    exprFile = replaceExtension input "expr"
+#endif
+
+#ifdef MIN_VERSION_tree_diff
+-- Extract comments to reduce the golden file's size and make it easier to verify.
+extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
+extractComments = Bi.first mconcat . unzip . map extractCommentsStep
+#endif
+
+#ifdef MIN_VERSION_tree_diff
+extractCommentsStep :: (Foldable f, Functor f) => f (WithComments ann) -> ([Comment ann], f ann)
+extractCommentsStep f = (foldMap justComments f, fmap unComments f)
+#endif
 
 -------------------------------------------------------------------------------
 -- Errors
