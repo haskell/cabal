@@ -338,6 +338,10 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
+      - name: Install Node
+        run: |
+          sudo pkg install -y www/node
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ matrix.branch }}
@@ -630,6 +634,10 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
+      - name: Install Node
+        run: |
+          sudo pkg install -y www/node
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ matrix.branch }}
