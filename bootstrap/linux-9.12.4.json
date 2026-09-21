@@ -506,31 +506,29 @@
         },
         {
             "cabal_sha256": null,
-            "component": "lib:cabal-install",
+            "component": "lib:cabal-install-internal",
             "flags": [
                 "-git-rev",
                 "-legacy-comparison",
                 "+native-dns"
             ],
-            "package": "cabal-install",
+            "package": "cabal-install-internal",
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.19.0.0"
         },
         {
             "cabal_sha256": null,
             "component": "exe:cabal",
             "flags": [
-                "-git-rev",
-                "-legacy-comparison",
-                "+native-dns"
+                "-git-rev"
             ],
             "package": "cabal-install",
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.19.0.0"
         }
     ]
 }
