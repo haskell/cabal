@@ -89,6 +89,7 @@ local_packages: List[PackageName] = [ "Cabal-syntax"
                                     , "Cabal-tests"
                                     , "Cabal-tree-diff"
                                     , "cabal-install-solver"
+                                    , "cabal-install-internal"
                                     , "cabal-install"
                                     , "hooks-exe"
                                     ]

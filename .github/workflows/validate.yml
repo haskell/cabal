@@ -267,7 +267,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_RELEASE }}
-          cabal-version: latest
+          cabal-version: 3.18.1.0
 
       - name: GHC versions
         run: |
@@ -420,7 +420,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: latest # default, we are not using it in this job
+          cabal-version: 3.18.1.0
 
       - name: Download cabal executable from workflow artifacts
         uses: actions/download-artifact@v8

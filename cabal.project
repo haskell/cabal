@@ -10,6 +10,9 @@ tests: True
 package cabal-install
   flags: +git-rev
 
+package cabal-install-internal
+  flags: +git-rev
+
 package Cabal
   flags: +git-rev
 

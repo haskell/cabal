@@ -34,7 +34,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
-          cabal-version: latest
+          cabal-version: 3.18.1.0
       - name: Haskell versions
         run: |
           ghc --version
@@ -170,7 +170,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
-          cabal-version: latest
+          cabal-version: 3.18.1.0
       - name: Haskell versions
         run: |
           ghc --version
