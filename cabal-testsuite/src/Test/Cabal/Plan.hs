@@ -7,20 +7,27 @@ module Test.Cabal.Plan
   , DistDirOrBinFile (..)
   , InstallItem (..)
   , ConfiguredGlobal (..)
+  , PkgSrc (..)
   , Revision (..)
+  , readPlan
+  , readPlanRaw
   , planDistDir
   , buildInfoFile
+  , pkgSrcPath
+  , planPkgSrcPaths
   ) where
 
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.Types
+import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as Text
 import Distribution.Package
 import Distribution.Parsec (eitherParsec, simpleParsec)
 import Distribution.Pretty (prettyShow)
 import Distribution.Types.ComponentName
 import Distribution.Types.Version
+import System.FilePath (isRelative, takeDirectory, (</>))
 
 -- TODO: index this
 data Plan = Plan {planInstallPlan :: [InstallItem]}
@@ -40,6 +47,7 @@ data ConfiguredInplace = ConfiguredInplace
   , configuredInplaceVersion :: Version
   , configuredInplaceRevision :: Revision
   , configuredInplaceComponentName :: Maybe ComponentName
+  , configuredInplacePkgSrc :: PkgSrc
   }
   deriving (Show)
 
@@ -49,7 +57,16 @@ data ConfiguredGlobal = ConfiguredGlobal
   , configuredGlobalVersion :: Version
   , configuredGlobalRevision :: Revision
   , configuredGlobalComponentName :: Maybe ComponentName
+  , configuredGlobalPkgSrc :: PkgSrc
   }
+  deriving (Show)
+
+data PkgSrc
+  = LocalUnpackedPkg FilePath
+  | LocalTarballPkg FilePath
+  | RemoteTarballPkg String
+  | RepoTarballPkg
+  | SourceRepoPkg
   deriving (Show)
 
 newtype Revision = Revision Int
@@ -82,7 +99,8 @@ instance FromJSON ConfiguredInplace where
     pkg_version <- v .: "pkg-version"
     pkg_revision <- v .: "pkg-revision"
     component_name <- v .:? "component-name"
-    return (ConfiguredInplace dist_dir build_info pkg_name pkg_version pkg_revision component_name)
+    pkg_src <- v .: "pkg-src"
+    return (ConfiguredInplace dist_dir build_info pkg_name pkg_version pkg_revision component_name pkg_src)
   parseJSON invalid = typeMismatch "ConfiguredInplace" invalid
 
 instance FromJSON ConfiguredGlobal where
@@ -92,8 +110,21 @@ instance FromJSON ConfiguredGlobal where
     pkg_version <- v .: "pkg-version"
     pkg_revision <- v .: "pkg-revision"
     component_name <- v .:? "component-name"
-    return (ConfiguredGlobal bin_file pkg_name pkg_version pkg_revision component_name)
+    pkg_src <- v .: "pkg-src"
+    return (ConfiguredGlobal bin_file pkg_name pkg_version pkg_revision component_name pkg_src)
   parseJSON invalid = typeMismatch "ConfiguredGlobal" invalid
+
+instance FromJSON PkgSrc where
+  parseJSON (Object v) = do
+    t <- v .: "type"
+    case t :: String of
+      "local" -> LocalUnpackedPkg <$> v .: "path"
+      "local-tar" -> LocalTarballPkg <$> v .: "path"
+      "remote-tar" -> RemoteTarballPkg <$> v .: "uri"
+      "repo-tar" -> return RepoTarballPkg
+      "source-repo" -> return SourceRepoPkg
+      _ -> fail $ "unrecognized value of 'type' field in pkg-src: " ++ t
+  parseJSON invalid = typeMismatch "PkgSrc" invalid
 
 instance FromJSON PackageName where
   parseJSON (String t) = return (mkPackageName (Text.unpack t))
@@ -110,6 +141,49 @@ instance FromJSON ComponentName where
     where
       s = Text.unpack t
   parseJSON invalid = typeMismatch "ComponentName" invalid
+
+readPlan :: FilePath -> IO Plan
+readPlan planFile =
+  resolvePlanPaths (buildTreeRootOf planFile) <$> readPlanRaw planFile
+  where
+    -- plan.json lives in <build tree root>/cache/plan.json
+    buildTreeRootOf = takeDirectory . takeDirectory
+
+    resolvePlanPaths root plan =
+      plan{planInstallPlan = map resolveItem (planInstallPlan plan)}
+      where
+        resolveItem APreExisting = APreExisting
+        resolveItem (AConfiguredGlobal conf) =
+          AConfiguredGlobal
+            conf
+              { configuredGlobalBinFile = fmap resolve (configuredGlobalBinFile conf)
+              , configuredGlobalPkgSrc = resolveSrc (configuredGlobalPkgSrc conf)
+              }
+        resolveItem (AConfiguredInplace conf) =
+          AConfiguredInplace
+            conf
+              { configuredInplaceDistDir = resolve (configuredInplaceDistDir conf)
+              , configuredInplaceBuildInfo = fmap resolve (configuredInplaceBuildInfo conf)
+              , configuredInplacePkgSrc = resolveSrc (configuredInplacePkgSrc conf)
+              }
+
+        resolveSrc (LocalUnpackedPkg path) = LocalUnpackedPkg (resolve path)
+        resolveSrc (LocalTarballPkg path) = LocalTarballPkg (resolve path)
+        resolveSrc src@RemoteTarballPkg{} = src
+        resolveSrc src@RepoTarballPkg = src
+        resolveSrc src@SourceRepoPkg = src
+
+        resolve path
+          | isRelative path = root </> path
+          | otherwise = path
+
+-- | Decode a plan.json without un-relativizing paths
+readPlanRaw :: FilePath -> IO Plan
+readPlanRaw planFile = do
+  contents <- BSL.readFile planFile
+  case eitherDecode contents of
+    Left err -> fail $ "readPlanRaw: cannot decode " ++ planFile ++ ": " ++ err
+    Right plan -> return plan
 
 data DistDirOrBinFile = DistDir FilePath | BinFile FilePath
 
@@ -185,3 +259,24 @@ buildInfoFile plan pkg_name cname =
         Nothing -> True
         Just cname' -> cname == cname'
       return $ configuredInplaceBuildInfo conf
+
+pkgSrcPath :: PkgSrc -> Maybe FilePath
+pkgSrcPath (LocalUnpackedPkg path) = Just path
+pkgSrcPath (LocalTarballPkg path) = Just path
+pkgSrcPath (RemoteTarballPkg _) = Nothing
+pkgSrcPath RepoTarballPkg = Nothing
+pkgSrcPath SourceRepoPkg = Nothing
+
+planPkgSrcPaths :: Plan -> [(PackageName, FilePath)]
+planPkgSrcPaths plan =
+  [ (pkg_name, path)
+  | item <- planInstallPlan plan
+  , Just (pkg_name, src) <- [itemPkgSrc item]
+  , Just path <- [pkgSrcPath src]
+  ]
+  where
+    itemPkgSrc APreExisting = Nothing
+    itemPkgSrc (AConfiguredGlobal conf) =
+      Just (configuredGlobalPackageName conf, configuredGlobalPkgSrc conf)
+    itemPkgSrc (AConfiguredInplace conf) =
+      Just (configuredInplacePackageName conf, configuredInplacePkgSrc conf)

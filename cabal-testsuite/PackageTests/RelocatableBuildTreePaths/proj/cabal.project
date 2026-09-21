@@ -1,0 +1,3 @@
+-- Testing with package (external) which is explicitly outside of the project tree
+packages: pkgs/inside
+          ../external

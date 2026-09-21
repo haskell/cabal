@@ -20,6 +20,7 @@ import Distribution.Client.Types hiding
   )
 
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.Simple.Compiler (PackageDBX (..))
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   )
@@ -44,6 +45,7 @@ data PackageFileMonitor = PackageFileMonitor
   { pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage ()
   , pkgFileMonitorBuild :: FileMonitor (Set ComponentName) BuildResultMisc
   , pkgFileMonitorReg :: FileMonitor () (Maybe InstalledPackageInfo)
+  , pkgFileMonitorDistDirLayout :: DistDirLayout
   }
 
 -- | This is all the components of the 'BuildResult' other than the
@@ -60,7 +62,7 @@ newPackageFileMonitor
   -> PackageFileMonitor
 newPackageFileMonitor
   shared
-  DistDirLayout{distPackageCacheFile}
+  distDirLayout@DistDirLayout{distPackageCacheFile}
   dparams =
     PackageFileMonitor
       { pkgFileMonitorConfig =
@@ -78,7 +80,70 @@ newPackageFileMonitor
             }
       , pkgFileMonitorReg =
           newFileMonitor (distPackageCacheFile dparams "registration")
+      , pkgFileMonitorDistDirLayout = distDirLayout
       }
+
+-- | Rewrite the absolute paths in an 'ElaboratedConfiguredPackage' that live
+-- under the build tree root so that they become relative to it. This makes the
+-- package-configuration file monitor /key/ location-independent.
+relativiseElabConfigPaths
+  :: DistDirLayout
+  -> ElaboratedConfiguredPackage
+  -> IO ElaboratedConfiguredPackage
+relativiseElabConfigPaths distDirLayout elab = do
+  srcLocation <- relLocation (elabPkgSourceLocation elab)
+  packageDbs <- traverse (traverse relDB) (elabPackageDbs elab)
+  setupDbStack <- traverse relDB (elabSetupPackageDBStack elab)
+  buildDbStack <- traverse relDB (elabBuildPackageDBStack elab)
+  registerDbStack <- traverse relDB (elabRegisterPackageDBStack elab)
+  inplaceSetupDbStack <- traverse relDB (elabInplaceSetupPackageDBStack elab)
+  inplaceBuildDbStack <- traverse relDB (elabInplaceBuildPackageDBStack elab)
+  inplaceRegisterDbStack <- traverse relDB (elabInplaceRegisterPackageDBStack elab)
+  installDirs <- traverse rel (elabInstallDirs elab)
+  extraLibDirs <- traverse rel (elabExtraLibDirs elab)
+  extraLibDirsStatic <- traverse rel (elabExtraLibDirsStatic elab)
+  extraFrameworkDirs <- traverse rel (elabExtraFrameworkDirs elab)
+  extraIncludeDirs <- traverse rel (elabExtraIncludeDirs elab)
+  programPaths <- traverse rel (elabProgramPaths elab)
+  programPathExtra <- traverse rel (elabProgramPathExtra elab)
+  haddockCss <- traverse rel (elabHaddockCss elab)
+  haddockHscolourCss <- traverse rel (elabHaddockHscolourCss elab)
+  haddockOutputDir <- traverse rel (elabHaddockOutputDir elab)
+  testWrapper <- traverse rel (elabTestWrapper elab)
+  return
+    elab
+      { elabPkgSourceLocation = srcLocation
+      , elabPackageDbs = packageDbs
+      , elabSetupPackageDBStack = setupDbStack
+      , elabBuildPackageDBStack = buildDbStack
+      , elabRegisterPackageDBStack = registerDbStack
+      , elabInplaceSetupPackageDBStack = inplaceSetupDbStack
+      , elabInplaceBuildPackageDBStack = inplaceBuildDbStack
+      , elabInplaceRegisterPackageDBStack = inplaceRegisterDbStack
+      , elabInstallDirs = installDirs
+      , elabExtraLibDirs = extraLibDirs
+      , elabExtraLibDirsStatic = extraLibDirsStatic
+      , elabExtraFrameworkDirs = extraFrameworkDirs
+      , elabExtraIncludeDirs = extraIncludeDirs
+      , elabProgramPaths = programPaths
+      , elabProgramPathExtra = programPathExtra
+      , elabHaddockCss = haddockCss
+      , elabHaddockHscolourCss = haddockHscolourCss
+      , elabHaddockOutputDir = haddockOutputDir
+      , elabTestWrapper = testWrapper
+      }
+  where
+    rel :: FilePath -> IO FilePath
+    rel = relativiseProjectPath distDirLayout
+
+    relDB :: PackageDBX FilePath -> IO (PackageDBX FilePath)
+    relDB (SpecificPackageDB fp) = SpecificPackageDB <$> rel fp
+    relDB db = pure db
+
+    relLocation :: PackageLocation (Maybe FilePath) -> IO (PackageLocation (Maybe FilePath))
+    relLocation (LocalUnpackedPackage fp) = LocalUnpackedPackage <$> rel fp
+    relLocation (LocalTarballPackage fp) = LocalTarballPackage <$> rel fp
+    relLocation loc = pure loc
 
 -- | Helper function for 'checkPackageFileMonitorChanged',
 -- 'updatePackageConfigFileMonitor' and 'updatePackageBuildFileMonitor'.
@@ -143,11 +208,12 @@ checkPackageFileMonitorChanged
   depsBuildStatus = do
     -- TODO: [nice to have] some debug-level message about file
     -- changes, like rerunIfChanged
+    relPkgConfig <- relativiseElabConfigPaths pkgFileMonitorDistDirLayout pkgconfig
     configChanged <-
       checkFileMonitorChanged
         pkgFileMonitorConfig
         srcdir
-        pkgconfig
+        relPkgConfig
     case configChanged of
       MonitorChanged monitorReason ->
         return (Left (BuildStatusConfigure $ void monitorReason))
@@ -215,15 +281,16 @@ updatePackageConfigFileMonitor
   -> ElaboratedConfiguredPackage
   -> IO ()
 updatePackageConfigFileMonitor
-  PackageFileMonitor{pkgFileMonitorConfig}
+  PackageFileMonitor{pkgFileMonitorConfig, pkgFileMonitorDistDirLayout}
   srcdir
-  pkg =
+  pkg = do
+    relPkgConfig <- relativiseElabConfigPaths pkgFileMonitorDistDirLayout pkgconfig
     updateFileMonitor
       pkgFileMonitorConfig
       srcdir
       Nothing
       []
-      pkgconfig
+      relPkgConfig
       ()
     where
       (pkgconfig, _buildComponents) = packageFileMonitorKeyValues pkg

@@ -104,7 +104,7 @@ data InstallDirs dir = InstallDirs
   , haddockdir :: dir
   , sysconfdir :: dir
   }
-  deriving (Eq, Read, Show, Functor, Generic)
+  deriving (Eq, Read, Show, Functor, Foldable, Traversable, Generic)
   deriving (Semigroup, Monoid) via Generically (InstallDirs dir)
 
 instance Binary dir => Binary (InstallDirs dir)
