@@ -576,7 +576,11 @@ buildInplaceUnpackedPackage
           whenReconfigure $ do
             mbLBI <- runConfigure
             invalidatePackageRegFileMonitor packageFileMonitor
-            updatePackageConfigFileMonitor packageFileMonitor (getSymbolicPath srcdir) pkg
+            updatePackageConfigFileMonitor
+              distDirectory
+              packageFileMonitor
+              (getSymbolicPath srcdir)
+              pkg
             return mbLBI
         PBBuildPhase{runBuild} ->
           whenRebuild $ withFileMonitor runBuild

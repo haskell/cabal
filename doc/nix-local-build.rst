@@ -104,6 +104,25 @@ for each package using :cfg-field:`profiling-detail`::
 Alternately, you can call ``cabal build --enable-profiling`` to
 temporarily build with profiling.
 
+Reusing a build tree in another directory (e.g. a ``git`` worktree)
+-------------------------------------------------------------------
+
+The build tree (``dist-newstyle``) is relocatable: the project-local paths
+recorded in ``plan.json``, and those used for the up-to-date check, are
+relative to the build tree root. This means it can be moved next to the same
+sources and reused, rather than rebuilding the local packages from scratch::
+
+    $ cabal build
+    $ git worktree add ../my-feature
+    $ cp -R dist-newstyle ../my-feature/
+    $ cd ../my-feature
+    $ cabal build
+    Up to date
+
+This is handy for keeping several worktrees of the same project warm
+without recompiling shared local packages in each one.
+
+
 .. _how reproducible:
 
 How can I have a reproducible set of versions for my dependencies?
@@ -296,6 +315,12 @@ this folder (the most important two are first):
     package provides a library for parsing ``plan.json`` files into a
     Haskell data structure as well as an example tool showing possible
     applications.
+
+    The project-local filesystem paths in ``plan.json`` (such as
+    ``dist-dir``, ``bin-file`` and the local ``pkg-src`` path) are written
+    relative to the build tree root, so the plan stays valid if the build
+    tree is moved. Paths outside the build tree (such as the global store)
+    remain absolute.
 
     .. todo::
 
