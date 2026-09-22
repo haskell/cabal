@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 -- For the handy instance IsString PackageIdentifier
@@ -30,10 +31,20 @@ import Distribution.Client.Targets
   , UserConstraintScope (UserAnyQualifier)
   )
 import Distribution.Client.Types
-  ( PackageLocation (..)
+  ( AllowNewer (..)
+  , PackageLocation (..)
   , PackageSpecifier (..)
   , UnresolvedSourcePackage
   )
+#if MIN_VERSION_GLASGOW_HASKELL(10,0,0,0) && !MIN_VERSION_GLASGOW_HASKELL(10,0,1,0)
+import Distribution.Client.Types
+  ( RelaxDepMod (..)
+  , RelaxDepScope (..)
+  , RelaxDepSubject (..)
+  , RelaxDeps (..)
+  , RelaxedDep (..)
+  )
+#endif
 import Distribution.Solver.Types.ConstraintSource
   ( ConstraintSource (ConstraintSourceUnknown)
   )
@@ -882,8 +893,23 @@ testTargetProblemsCommon config0 = do
                     , ConstraintSourceUnknown
                     )
                   ]
+              , projectConfigAllowNewer = filepathAllowNewer
               }
         }
+
+-- | allow-newer: filepath:base only while we're using a pre-release of ghc-10
+filepathAllowNewer :: Maybe AllowNewer
+#if MIN_VERSION_GLASGOW_HASKELL(10,0,0,0) && !MIN_VERSION_GLASGOW_HASKELL(10,0,1,0)
+filepathAllowNewer =
+  Just . AllowNewer . RelaxDepsSome $
+    [ RelaxedDep
+        (RelaxDepScopePackage "filepath")
+        RelaxDepModNone
+        (RelaxDepSubjectPkg "base")
+    ]
+#else
+filepathAllowNewer = Nothing
+#endif
 
 testTargetProblemsBuild :: ProjectConfig -> (String -> IO ()) -> Assertion
 testTargetProblemsBuild config reportSubCase = do
