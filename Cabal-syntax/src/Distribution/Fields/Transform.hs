@@ -52,6 +52,9 @@ where
 
 import qualified Text.Parsec as P
 
+#if !(MIN_VERSION_base(4,18,0))
+import Control.Applicative
+#endif
 import Distribution.FieldGrammar.Parsec
   ( extractComments
   , interleaveComments

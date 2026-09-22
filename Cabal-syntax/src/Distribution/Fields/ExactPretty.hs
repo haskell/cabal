@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP #-}
 
 module Distribution.Fields.ExactPretty
   ( -- * Render fields
@@ -12,6 +13,9 @@ module Distribution.Fields.ExactPretty
 where
 
 import Control.Monad.State.Strict
+#if !(MIN_VERSION_base(4,18,0))
+import Control.Applicative (liftA2)
+#endif
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BSB
 import qualified Data.ByteString.Char8 as BS8
