@@ -818,12 +818,12 @@ testTargetProblemsCommon config0 = do
 
           ( \_ ->
               TargetComponentNotProjectLocal
-                (pkgIdMap Map.! "filepath")
-                (CTestName "filepath-tests")
+                (pkgIdMap Map.! "bytestring")
+                (CTestName "bytestring-tests")
                 WholeComponent
           , mkTargetComponent
-              (pkgIdMap Map.! "filepath")
-              (CTestName "filepath-tests")
+              (pkgIdMap Map.! "bytestring")
+              (CTestName "bytestring-tests")
           )
         , -- Components can be explicitly @buildable: False@
 
@@ -877,8 +877,12 @@ testTargetProblemsCommon config0 = do
         , projectConfigShared =
             (projectConfigShared config0)
               { projectConfigConstraints =
+                  -- Constrain bytestring to a source instance, not the
+                  -- installed one, so that its test suite is in the plan.  Any
+                  -- package with a test suite would do but the bytestring
+                  -- package has wide upper bounds.
                   [
-                    ( UserConstraint (UserAnyQualifier "filepath") PackagePropertySource
+                    ( UserConstraint (UserAnyQualifier "bytestring") PackagePropertySource
                     , ConstraintSourceUnknown
                     )
                   ]
