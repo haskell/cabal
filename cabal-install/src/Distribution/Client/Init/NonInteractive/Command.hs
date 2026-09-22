@@ -41,7 +41,6 @@ import Distribution.Client.Init.Types
 import Distribution.Client.Compat.Prelude hiding (getLine, head, last, putStr, putStrLn)
 import Prelude ()
 
-import Data.List (last)
 import qualified Data.List.NonEmpty as NEL
 
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
@@ -56,7 +55,7 @@ import Distribution.Simple.Setup (fromFlagOrDefault, pattern Flag, pattern NoFla
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 import Distribution.Types.Dependency (Dependency (..))
 import Distribution.Types.PackageName (PackageName, unPackageName)
-import Distribution.Utils.Generic (safeHead)
+import Distribution.Utils.Generic (safeHead, safeLast)
 import Distribution.Verbosity
 import Distribution.Version (Version)
 
@@ -267,7 +266,7 @@ packageNameHeuristics sourcePkgDb flags = getPackageName flags $ do
   defName <-
     guessPackageName =<< case packageDir flags of
       Flag a -> return a
-      NoFlag -> last . splitDirectories <$> getCurrentDirectory
+      NoFlag -> fromMaybe "" . safeLast . splitDirectories <$> getCurrentDirectory
 
   when (isPkgRegistered defName) $
     putStrLn (inUseMsg defName)
@@ -413,7 +412,7 @@ libOtherModulesHeuristics flags = case otherModules flags of
     if exists
       then do
         otherModules' <- filter isHaskell <$> listFilesRecursive libDir
-        filter ((`elem` otherCandidates) . last . components)
+        filter (maybe False (`elem` otherCandidates) . safeLast . components)
           . catMaybes
           <$> traverse retrieveModuleName otherModules'
       else return []
