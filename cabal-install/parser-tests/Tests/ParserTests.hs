@@ -102,7 +102,7 @@ parserTests =
 
 testPackages :: Assertion
 testPackages = do
-  let expected = [".", "packages/packages.cabal","a","b"]
+  let expected = [".", "packages/packages.cabal", "a", "b"]
   (config, legacy) <- readConfigDefault "packages"
   assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
 
@@ -115,7 +115,7 @@ testPackagesGlob = do
 testPackagesCommaSeparated :: Assertion
 testPackagesCommaSeparated = do
   let expected = ["xL{4,IE-,eK<}fE?e"]
-  --let expected = ["xL{4","IE-","eK<}fE?e"]
+  -- let expected = ["xL{4","IE-","eK<}fE?e"]
   (config, legacy) <- readConfig "packages" "cabal.comma-separated.project"
   assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
 
