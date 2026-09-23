@@ -592,7 +592,9 @@ instance Arbitrary ProjectConfigShared where
     projectConfigConfigFile <- arbitraryFlag arbitraryShortToken
     projectConfigProjectDir <- arbitraryFlag arbitraryShortToken
     projectConfigProjectFile <- arbitraryFlag arbitraryShortToken
-    projectConfigProjectFileParser <- arbitraryFlag arbitrary
+    -- The parser can only be chosen on the command line, not in a project
+    -- file, so the parsec parser never reads it back.
+    let projectConfigProjectFileParser = mempty
     projectConfigIgnoreProject <- arbitrary
     projectConfigHcFlavor <- arbitrary
     projectConfigHcPath <- arbitraryFlag arbitraryShortToken
