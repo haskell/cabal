@@ -1426,6 +1426,32 @@ testTargetProblemsTest config reportSubCase = do
     , (CmdTest.noTestsProblem, mkTargetPackage "q-0.1")
     ]
 
+  reportSubCase "pkg with tests and pkg without tests"
+  do
+    (_, elaboratedPlan, _) <- planProject "targets/tests-and-no-tests" config
+    let resolveTargets =
+          resolveTargetsFromSolver
+            CmdTest.selectPackageTargets
+            CmdTest.selectComponentTarget
+            elaboratedPlan
+            Nothing
+        requestedSelectors =
+          [ mkTargetPackage "p-0.1"
+          , mkTargetPackage "q-0.1"
+          ]
+    targets <- case resolveTargets requestedSelectors of
+      Right ts ->
+        assertFailure $ "expected target problems, but got: " ++ show ts
+      Left problems ->
+        CmdTest.reportTargetProblems
+          testVerbosity
+          (Flag False)
+          requestedSelectors
+          resolveTargets
+          problems
+    distinctTargetComponents targets
+      @?= Set.fromList [("p-0.1-inplace-p-tests", CTestName "p-tests")]
+
   reportSubCase "not a test"
   assertProjectTargetProblems
     "targets/variety"

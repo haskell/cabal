@@ -1,0 +1,8 @@
+cabal-version: 3.8
+name: q
+version: 0.1
+build-type: Simple
+
+library
+  exposed-modules: Q
+  build-depends: base
