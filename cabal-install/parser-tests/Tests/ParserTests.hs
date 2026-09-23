@@ -420,13 +420,17 @@ testProjectConfigLocalPackages = do
     packageConfigTestTestOptions = [toPathTemplate "--some-option", toPathTemplate "42"]
     packageConfigBenchmarkOptions = [toPathTemplate "--some-benchmark-option", toPathTemplate "--another-option"]
 
+-- | The parsers differ on a field with an empty value. The legacy parser
+-- passes the empty rest of the line to the option's reader and so sets the
+-- field to the empty string. The parsec parser sees a field with no lines and
+-- leaves it unset, which is the better behaviour.
 testProjectConfigLocalPackagesEmptyString :: Assertion
 testProjectConfigLocalPackagesEmptyString = do
   (config, legacy) <- readConfig "project-config-local-packages" "cabal.empty-string.project"
-  assertConfigEquals expected config legacy (field . projectConfigLocalPackages . snd . condTreeData)
+  assertEqual "Legacy parser sets the empty string" (toFlag (toPathTemplate "")) (field legacy)
+  assertEqual "Parsec parser leaves the field unset" NoFlag (field config)
   where
-    field = packageConfigTestHumanLog
-    expected = NoFlag
+    field = packageConfigTestHumanLog . projectConfigLocalPackages . snd . condTreeData
 
 testProjectConfigAllPackages :: Assertion
 testProjectConfigAllPackages = do
