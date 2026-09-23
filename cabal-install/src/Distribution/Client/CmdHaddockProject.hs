@@ -48,7 +48,7 @@ import Distribution.Client.ScriptUtils
   , updateContextAndWriteProjectFile
   , withContextAndSelectors
   )
-import Distribution.Client.Setup (ConfigFlags (..), GlobalFlags (..))
+import Distribution.Client.Setup (ConfigFlags (..), GlobalFlags (..), defaultHandlesVerbosity)
 import Distribution.Client.TargetProblem (TargetProblem (..))
 
 import Distribution.Simple.BuildPaths
@@ -87,7 +87,6 @@ import Distribution.Simple.Setup
   , Visibility (..)
   , defaultHaddockFlags
   , haddockProjectCommand
-  , pattern DefaultCommonSetupVerbosity
   )
 import Distribution.Simple.Utils
   ( copyDirectoryRecursive
@@ -354,7 +353,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
   where
     -- build all packages with appropriate haddock flags
     commonFlags = haddockProjectCommonFlags flags
-    DefaultCommonSetupVerbosity verbosity = commonFlags
+    verbosity = defaultHandlesVerbosity commonFlags
 
     haddockFlags =
       defaultHaddockFlags

@@ -35,7 +35,6 @@ module Distribution.Simple.Setup
   , globalCommand
   , CommonSetupFlags (..)
   , commonSetupVerbosity
-  , pattern DefaultCommonSetupVerbosity
   , defaultCommonSetupFlags
   , commonSetupTempFileOptions
   , ConfigFlags (..)

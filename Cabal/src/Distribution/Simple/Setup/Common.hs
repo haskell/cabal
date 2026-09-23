@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Common
@@ -17,7 +16,6 @@
 module Distribution.Simple.Setup.Common
   ( CommonSetupFlags (..)
   , commonSetupVerbosity
-  , pattern DefaultCommonSetupVerbosity
   , defaultCommonSetupFlags
   , withCommonSetupOptions
   , commonSetupTempFileOptions
@@ -114,13 +112,6 @@ defaultCommonSetupFlags =
 -- given handles.
 commonSetupVerbosity :: VerbosityHandles -> CommonSetupFlags -> Verbosity
 commonSetupVerbosity verbHandles = mkVerbosity verbHandles . fromFlag . setupVerbosity
-
--- | Same as 'commonSetupVerbosity', but using the default verbosity handles and
--- 'fromFlagOrDefault' to get the verbosity from the flags.
-pattern DefaultCommonSetupVerbosity :: Verbosity -> CommonSetupFlags
-pattern DefaultCommonSetupVerbosity v <- (mkVerbosity defaultVerbosityHandles . fromFlagOrDefault normal . setupVerbosity -> v)
-
-{-# COMPLETE DefaultCommonSetupVerbosity #-}
 
 -- | Get `TempFileOptions` that respect the `setupKeepTempFiles` flag.
 commonSetupTempFileOptions :: CommonSetupFlags -> TempFileOptions
