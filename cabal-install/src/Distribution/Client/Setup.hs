@@ -224,6 +224,7 @@ import Distribution.Types.UnqualComponentName
   )
 import Distribution.Verbosity
   ( VerbosityFlags
+  , VerbosityHandles
   , defaultVerbosityHandles
   , lessVerbose
   , mkVerbosity
@@ -889,14 +890,10 @@ configPackageDB' cfg =
     userInstall = Cabal.fromFlagOrDefault True (configUserInstall cfg)
 
 -- | The verbosity from the setup verbosity flag, defaulting to 'normal', with
--- the default verbosity handles baked in.
---
--- Only for use where output is known to go to stdout and stderr, such as the
--- legacy @v1-@ command actions. Library code should take 'VerbosityHandles'
--- instead, so that logging can be redirected.
-stdHandlesVerbosity :: CommonSetupFlags -> Verbosity
-stdHandlesVerbosity =
-  mkVerbosity defaultVerbosityHandles . Cabal.fromFlagOrDefault normal . setupVerbosity
+-- the given handles.
+stdHandlesVerbosity :: VerbosityHandles -> CommonSetupFlags -> Verbosity
+stdHandlesVerbosity verbHandles =
+  mkVerbosity verbHandles . Cabal.fromFlagOrDefault normal . setupVerbosity
 
 -- | Configure the compiler, but reduce verbosity during this step.
 configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
