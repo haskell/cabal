@@ -1563,7 +1563,7 @@ hscolour'
         onNoHsColour $ exceptionMessage excep
         return []
       common = hscolourCommonFlags flags
-      CommonSetupVerbosity verbosity = (verbHandles, common)
+      verbosity = commonSetupVerbosity verbHandles common
       distPref = fromFlag $ setupDistPref common
       mbWorkDir = mbWorkDirLBI lbi
       i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path

@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Distribution.Simple.Configure
@@ -193,9 +191,8 @@ import qualified Data.Maybe as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
 
-pattern ConfigVerbosity :: Verbosity -> (VerbosityHandles, ConfigFlags)
-pattern ConfigVerbosity v <- (fmap configCommonFlags -> CommonSetupVerbosity v)
-{-# COMPLETE ConfigVerbosity #-}
+configSetupVerbosity :: VerbosityHandles -> ConfigFlags -> Verbosity
+configSetupVerbosity verbHandles = commonSetupVerbosity verbHandles . configCommonFlags
 
 type UseExternalInternalDeps = Bool
 
@@ -794,7 +791,7 @@ computeLocalBuildConfig
   -> ProgramDb
   -> IO LBC.LocalBuildConfig
 computeLocalBuildConfig verbHandles cfg comp programDb = do
-  let ConfigVerbosity verbosity = (verbHandles, cfg)
+  let verbosity = configSetupVerbosity verbHandles cfg
   rawBuildOptions <- buildOptionsFromConfigFlags verbosity cfg comp
   buildOptions <- adjustBuildOptionsAndWarn verbosity comp programDb rawBuildOptions
   return $
@@ -1072,7 +1069,7 @@ configurePackage
   -> PackageDBStack
   -> IO (LBC.LocalBuildConfig, LBC.PackageBuildDescr)
 configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform packageDbs = do
-  let ConfigVerbosity verbosity = (verbHandles, cfg)
+  let verbosity = configSetupVerbosity verbHandles cfg
       programDb0 = LBC.withPrograms lbc0
 
       -- add extra include/lib dirs as specified in cfg
@@ -1170,7 +1167,7 @@ computePackageInfo
   -> Compiler
   -> IO ([PackageVersionConstraint], PackageInfo)
 computePackageInfo verbHandles cfg lbc0 g_pkg_descr comp = do
-  let ConfigVerbosity verbosity = (verbHandles, cfg)
+  let verbosity = configSetupVerbosity verbHandles cfg
       mbWorkDir = flagToMaybe . setupWorkingDir $ configCommonFlags cfg
 
   let programDb0 = LBC.withPrograms lbc0
@@ -1200,8 +1197,7 @@ computePackageInfoFromIndex
   -> InstalledPackageIndex
   -> IO ([PackageVersionConstraint], PackageInfo)
 computePackageInfoFromIndex verbHandles cfg g_pkg_descr installedPackageSet = do
-  let common = configCommonFlags cfg
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+  let verbosity = configSetupVerbosity verbHandles cfg
       -- The set of package names which are "shadowed" by internal
       -- packages, and which component they map to
       internalPackageSet :: Set LibraryName
@@ -1256,7 +1252,7 @@ finalizePackageDescription
   -> PackageInfo
   -> IO (PackageDBStack, PackageDescription, FlagAssignment)
 finalizePackageDescription verbHandles cfg g_pkg_descr comp platform enabled allConstraints pkgInfo = do
-  let ConfigVerbosity verbosity = (verbHandles, cfg)
+  let verbosity = configSetupVerbosity verbHandles cfg
 
   -- What package database(s) to use
   let packageDbs :: PackageDBStack
@@ -1371,7 +1367,7 @@ finalCheckPackage
     )
   hookedBuildInfo =
     do
-      let ConfigVerbosity verbosity = (verbHandles, cfg)
+      let verbosity = configSetupVerbosity verbHandles cfg
           cabalFileDir = packageRoot $ configCommonFlags cfg
 
       checkCompilerProblems verbosity comp pkg_descr enabled
@@ -1433,7 +1429,7 @@ configureComponents
   promisedDepsSet
   externalPkgDeps =
     do
-      let ConfigVerbosity verbosity = (verbHandles, cfg)
+      let verbosity = configSetupVerbosity verbHandles cfg
           use_external_internal_deps =
             case enabled of
               OneComponentRequestedSpec{} -> True
@@ -2664,7 +2660,7 @@ configCompilerAuxEx
   -> IO (Compiler, Platform, ProgramDb)
 configCompilerAuxEx verbHandles cfg = do
   programDb <- mkProgramDb verbHandles cfg defaultProgramDb
-  let ConfigVerbosity verbosity = (verbHandles, cfg)
+  let verbosity = configSetupVerbosity verbHandles cfg
   configCompilerEx
     (flagToMaybe $ configHcFlavor cfg)
     (flagToMaybe $ configHcPath cfg)
