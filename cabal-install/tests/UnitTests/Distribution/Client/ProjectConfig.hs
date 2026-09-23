@@ -637,15 +637,15 @@ instance Arbitrary ProjectConfigShared where
   shrink ProjectConfigShared{..} =
     runShrinker $
       ProjectConfigShared
-        <$> shrinker projectConfigDistDir
-        <*> shrinker projectConfigConfigFile
-        <*> shrinker projectConfigProjectDir
-        <*> shrinker projectConfigProjectFile
+        <$> shrinkerAla (fmap ShortToken) projectConfigDistDir
+        <*> shrinkerAla (fmap ShortToken) projectConfigConfigFile
+        <*> shrinkerAla (fmap ShortToken) projectConfigProjectDir
+        <*> shrinkerAla (fmap ShortToken) projectConfigProjectFile
         <*> shrinker projectConfigProjectFileParser
         <*> shrinker projectConfigIgnoreProject
         <*> shrinker projectConfigHcFlavor
-        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
-        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
+        <*> shrinkerAla (fmap ShortToken) projectConfigHcPath
+        <*> shrinkerAla (fmap ShortToken) projectConfigHcPkg
         <*> shrinker projectConfigHaddockIndex
         <*> shrinker projectConfigInstallDirs
         <*> shrinker projectConfigPackageDBs
@@ -653,7 +653,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigLocalNoIndexRepos
         <*> shrinker projectConfigActiveRepos
         <*> shrinker projectConfigIndexState
-        <*> shrinker projectConfigStoreDir
+        <*> shrinkerAla (fmap ShortToken) projectConfigStoreDir
         <*> shrinkerPP preShrink_Constraints postShrink_Constraints projectConfigConstraints
         <*> shrinker projectConfigPreferences
         <*> shrinker projectConfigCabalVersion
