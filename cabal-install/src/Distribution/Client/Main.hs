@@ -513,6 +513,10 @@ mainWorker args = do
 
 type Action = GlobalFlags -> IO ()
 
+-- | Use 'defaultVerbosityHandles' for output to stdout and stderr.
+stdVerbosity :: CommonSetupFlags -> Verbosity
+stdVerbosity = setupOrNormalVerbosity defaultVerbosityHandles
+
 -- Duplicated in Distribution.Client.CmdLegacy. Any changes must be
 -- reflected there, as well.
 regularCmd
@@ -552,7 +556,7 @@ wrapperAction command getCommonFlags =
       }
     $ \flags extraArgs globalFlags -> do
       let common = getCommonFlags flags
-          verbosity = setupOrNormalVerbosity defaultVerbosityHandles common
+          verbosity = stdVerbosity common
           mbWorkDir = flagToMaybe $ setupWorkingDir common
       load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
       let config = either (\(SomeException _) -> mempty) id load
@@ -578,7 +582,7 @@ configureAction
   -> Action
 configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let common = configCommonFlags configFlags
-      verbosity = setupOrNormalVerbosity defaultVerbosityHandles common
+      verbosity = stdVerbosity common
 
   config <-
     updateInstallDirs (configUserInstall configFlags)
@@ -617,7 +621,7 @@ reconfigureAction
   -> Action
 reconfigureAction flags@(configFlags, _) _ globalFlags = do
   let common = configCommonFlags configFlags
-      verbosity = setupOrNormalVerbosity defaultVerbosityHandles common
+      verbosity = stdVerbosity common
   config <-
     updateInstallDirs (configUserInstall configFlags)
       <$> loadConfigOrSandboxConfig verbosity globalFlags
@@ -648,7 +652,7 @@ reconfigureAction flags@(configFlags, _) _ globalFlags = do
 buildAction :: BuildFlags -> [String] -> Action
 buildAction buildFlags extraArgs globalFlags = do
   let common = buildCommonFlags buildFlags
-      verbosity = setupOrNormalVerbosity defaultVerbosityHandles common
+      verbosity = stdVerbosity common
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   distPref <- findSavedDistPref config (setupDistPref common)
   -- Calls 'configureAction' to do the real work, so nothing special has to be
@@ -727,7 +731,7 @@ filterBuildFlags' version config buildFlags
 replAction :: ReplFlags -> [String] -> Action
 replAction replFlags extraArgs globalFlags = do
   let common = replCommonFlags replFlags
-      verbosity = setupOrNormalVerbosity defaultVerbosityHandles common
+      verbosity = stdVerbosity common
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   distPref <- findSavedDistPref config (setupDistPref common)
   pkgDesc <- findPackageDesc Nothing
@@ -807,7 +811,7 @@ installAction
 installAction (configFlags, _, installFlags, _, _, _) _ globalFlags
   | fromFlagOrDefault False (installOnly installFlags) = do
       let common = configCommonFlags configFlags
-          verb = setupOrNormalVerbosity defaultVerbosityHandles common
+          verb = stdVerbosity common
       config <- loadConfigOrSandboxConfig verb globalFlags
       dist <- findSavedDistPref config (setupDistPref common)
       let setupOpts = defaultSetupScriptOptions{useDistPref = dist}
@@ -831,7 +835,7 @@ installAction
   extraArgs
   globalFlags = do
     let common = configCommonFlags configFlags
-        verb = setupOrNormalVerbosity defaultVerbosityHandles common
+        verb = stdVerbosity common
     config <-
       updateInstallDirs (configUserInstall configFlags)
         <$> loadConfigOrSandboxConfig verb globalFlags
@@ -921,7 +925,7 @@ testAction
   -> GlobalFlags
   -> IO ()
 testAction (buildFlags, testFlags) extraArgs globalFlags = do
-  let verbosity = setupOrNormalVerbosity defaultVerbosityHandles (buildCommonFlags buildFlags)
+  let verbosity = stdVerbosity (buildCommonFlags buildFlags)
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   distPref <- findSavedDistPref config (setupDistPref $ testCommonFlags testFlags)
   let buildFlags' =
@@ -1037,7 +1041,7 @@ benchmarkAction
   (buildFlags, benchmarkFlags)
   extraArgs
   globalFlags = do
-    let verbosity = setupOrNormalVerbosity defaultVerbosityHandles (buildCommonFlags buildFlags)
+    let verbosity = stdVerbosity (buildCommonFlags buildFlags)
 
     config <- loadConfigOrSandboxConfig verbosity globalFlags
     distPref <- findSavedDistPref config (setupDistPref $ benchmarkCommonFlags benchmarkFlags)
@@ -1113,7 +1117,7 @@ benchmarkAction
 haddockAction :: HaddockFlags -> [String] -> Action
 haddockAction haddockFlags extraArgs globalFlags = do
   let common = haddockCommonFlags haddockFlags
-      verbosity = setupOrNormalVerbosity defaultVerbosityHandles common
+      verbosity = stdVerbosity common
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   distPref <- findSavedDistPref config (setupDistPref common)
   config' <-
@@ -1163,7 +1167,7 @@ haddockAction haddockFlags extraArgs globalFlags = do
 cleanAction :: CleanFlags -> [String] -> Action
 cleanAction cleanFlags extraArgs globalFlags = do
   let common = cleanCommonFlags cleanFlags
-      verbosity = setupOrNormalVerbosity defaultVerbosityHandles common
+      verbosity = stdVerbosity common
   load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
   let config = either (\(SomeException _) -> mempty) id load
   distPref <- findSavedDistPref config $ setupDistPref common
@@ -1440,7 +1444,7 @@ reportAction reportFlags extraArgs globalFlags = do
 runAction :: BuildFlags -> [String] -> Action
 runAction buildFlags extraArgs globalFlags = do
   let common = buildCommonFlags buildFlags
-      verbosity = setupOrNormalVerbosity defaultVerbosityHandles common
+      verbosity = stdVerbosity common
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   distPref <- findSavedDistPref config $ setupDistPref common
   config' <-
