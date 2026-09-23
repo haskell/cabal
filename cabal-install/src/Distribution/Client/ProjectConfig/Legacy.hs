@@ -1240,13 +1240,6 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
 
 parseLegacyProjectConfigFields :: ProjectConfigPath -> [ParseUtils.Field] -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfigFields (ConstraintSourceProjectConfig -> constraintSrc) =
-  parseLegacyProjectConfigFieldsWithConstraintSource constraintSrc
-
-parseLegacyProjectConfigFieldsWithConstraintSource
-  :: ConstraintSource
-  -> [ParseUtils.Field]
-  -> ParseResult LegacyProjectConfig
-parseLegacyProjectConfigFieldsWithConstraintSource constraintSrc =
   parseFieldsAndSections
     (legacyProjectConfigFieldDescrs constraintSrc)
     legacyPackageConfigSectionDescrs
