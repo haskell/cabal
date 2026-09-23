@@ -138,6 +138,20 @@ pull_request_rules:
       - '#approved-reviews-by>=2'
       - '-label~=^blocked:'
 
+  # high priority PRs: don't queue, just merge it immediately
+  - actions:
+      merge:
+        # this is where we differ from the preceding
+        method: squash
+    name: Merge high priority pull requests directly (without a queue)
+    conditions:
+      - base=master
+      - label=merge me
+      - 'label=priority: high :fire:'
+      - label=merge delay passed
+      - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
+
   # merge strategy for release branches
   - actions:
       queue:
