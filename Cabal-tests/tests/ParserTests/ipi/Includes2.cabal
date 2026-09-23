@@ -1,6 +1,7 @@
 name: z-Includes2-z-mylib
 version: 0.1.0.0
 id: Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n
+instance-id: Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n
 instantiated-with: Database=Includes2-0.1.0.0-inplace-mysql:Database.MySQL
 package-name: Includes2
 lib-name: mylib

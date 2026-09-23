@@ -23,7 +23,6 @@ import Distribution.Types.UnitId
 
 import qualified Distribution.InstalledPackageInfo as Installed
 
--- | The first five fields are common across all algebraic variants.
 data ComponentLocalBuildInfo
   = LibComponentLocalBuildInfo
       { componentLocalName :: ComponentName
@@ -38,6 +37,9 @@ data ComponentLocalBuildInfo
       , componentUnitId :: UnitId
       -- ^ The computed 'UnitId' which uniquely identifies this
       -- component.  Might be hashed.
+      , componentInstanceUnitId :: InstanceUnitId
+      -- ^ The 'InstanceUnitId' which uniquely identifies package instance
+      -- (equal to componentUnitId for main component, sub components inherit it from main)
       , componentIsIndefinite_ :: Bool
       -- ^ Is this an indefinite component (i.e. has unfilled holes)?
       , componentInstantiatedWith :: [(ModuleName, OpenModule)]
