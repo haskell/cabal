@@ -36,6 +36,8 @@ options):
 
 Any call to ``cabal build`` will consider ``cabal.project*`` files from parent
 directories when there is none in the current directory.
+If found, the ``cabal.project`` file determines the project root and
+other ``cabal.project.*`` files are read from this location only.
 
 .. _conditionals and imports:
 
