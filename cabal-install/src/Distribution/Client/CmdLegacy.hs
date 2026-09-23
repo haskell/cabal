@@ -51,7 +51,7 @@ wrapperAction command getCommonFlags =
       }
     $ \flags extraArgs globalFlags -> do
       let common = getCommonFlags flags
-          verbosity' = Client.stdHandlesVerbosity defaultVerbosityHandles common
+          verbosity' = Client.setupOrNormalVerbosity defaultVerbosityHandles common
           mbWorkDir = Setup.flagToMaybe $ Setup.setupWorkingDir common
 
       load <- try (loadConfigOrSandboxConfig verbosity' globalFlags)

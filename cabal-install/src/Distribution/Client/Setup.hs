@@ -24,7 +24,7 @@ module Distribution.Client.Setup
   , filterConfigureFlags
   , configPackageDB'
   , configCompilerAux'
-  , stdHandlesVerbosity
+  , setupOrNormalVerbosity
   , configureExCommand
   , ConfigExFlags (..)
   , defaultConfigExFlags
@@ -889,10 +889,9 @@ configPackageDB' cfg =
   where
     userInstall = Cabal.fromFlagOrDefault True (configUserInstall cfg)
 
--- | The verbosity from the setup verbosity flag, defaulting to 'normal', with
--- the given handles.
-stdHandlesVerbosity :: VerbosityHandles -> CommonSetupFlags -> Verbosity
-stdHandlesVerbosity verbHandles =
+-- | The verbosity from the setup verbosity or 'normal' if the flag is not set.
+setupOrNormalVerbosity :: VerbosityHandles -> CommonSetupFlags -> Verbosity
+setupOrNormalVerbosity verbHandles =
   mkVerbosity verbHandles . Cabal.fromFlagOrDefault normal . setupVerbosity
 
 -- | Configure the compiler, but reduce verbosity during this step.

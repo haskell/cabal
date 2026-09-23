@@ -48,7 +48,7 @@ import Distribution.Client.ScriptUtils
   , updateContextAndWriteProjectFile
   , withContextAndSelectors
   )
-import Distribution.Client.Setup (ConfigFlags (..), GlobalFlags (..), stdHandlesVerbosity)
+import Distribution.Client.Setup (ConfigFlags (..), GlobalFlags (..), setupOrNormalVerbosity)
 import Distribution.Client.TargetProblem (TargetProblem (..))
 
 import Distribution.Simple.BuildPaths
@@ -354,7 +354,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
   where
     -- build all packages with appropriate haddock flags
     commonFlags = haddockProjectCommonFlags flags
-    verbosity = stdHandlesVerbosity defaultVerbosityHandles commonFlags
+    verbosity = setupOrNormalVerbosity defaultVerbosityHandles commonFlags
 
     haddockFlags =
       defaultHaddockFlags
