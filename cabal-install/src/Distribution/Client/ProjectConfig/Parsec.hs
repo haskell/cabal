@@ -213,19 +213,22 @@ fieldsToConfig sourceConfigPath xs = do
 -- >>> parseParsec projectPackages "packages" "7{u,{h,{=n}}}"
 -- ([],Right ["7{u,{h,{=n}}}"])
 --
--- >>> parseParsec projectPackages "test-log" ""
+-- >>> parseParsec projectPackages "packages" ""
 -- ([],Right [])
 --
--- >>> parseParsec (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " "
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" "foo"
+-- ([],Right (Last {getLast = Just "foo"}))
+--
+-- An empty value leaves the field unset, where the legacy parser would set it
+-- to the empty string, see 'Distribution.Client.ProjectConfig.Legacy.legacyProjectConfigFieldDescrs'.
+--
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" ""
 -- ([],Right (Last {getLast = Nothing}))
 --
--- >>> parseParsec (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " \n"
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" " "
 -- ([],Right (Last {getLast = Nothing}))
-
--- >>> parseParsec (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" ""
--- ([],Right (Last {getLast = Nothing}))
-
--- >>> parseParsec (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" " "
+--
+-- >>> parseParsec (packageConfigHaddockHtmlLocation . projectConfigLocalPackages) "haddock-html-location" ""
 -- ([],Right (Last {getLast = Nothing}))
 parseProjectConfig :: FilePath -> BS.ByteString -> ParseResult ProjectFileSource ProjectConfig
 parseProjectConfig rootConfig bs =
@@ -441,13 +444,12 @@ cabalSpec :: CabalSpecVersion
 cabalSpec = cabalSpecLatest
 
 -- $setup
--- >>> :set -XViewPatterns
 -- >>> instance (Show a, Show b) => Show (ParseResult a b) where show = show . runParseResult
+--
+-- Parses a project file of one field, going through the lexer as a real
+-- project file would.
 --
 -- >>> :{
 -- parseParsec :: (ProjectConfig -> a) -> String -> String -> ParseResult ProjectFileSource a
--- parseParsec f (toUTF8BS -> field) (toUTF8BS -> s) = f <$>
---   fieldsToConfig
---     nullProjectConfigPath
---     [Field (Name zeroPos field) [FieldLine zeroPos s]]
+-- parseParsec f field s = f <$> parseProjectConfig "" (toUTF8BS (field ++ ": " ++ s))
 -- :}
