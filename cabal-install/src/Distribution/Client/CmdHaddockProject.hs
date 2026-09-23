@@ -102,6 +102,7 @@ import Distribution.Types.PackageName (unPackageName)
 import Distribution.Types.UnitId (unUnitId)
 import Distribution.Types.Version (mkVersion)
 import Distribution.Types.VersionRange (orLaterVersion)
+import Distribution.Verbosity (defaultVerbosityHandles)
 
 import Distribution.Client.Errors
 import System.Directory (doesDirectoryExist, doesFileExist)
@@ -353,7 +354,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
   where
     -- build all packages with appropriate haddock flags
     commonFlags = haddockProjectCommonFlags flags
-    verbosity = stdHandlesVerbosity commonFlags
+    verbosity = stdHandlesVerbosity defaultVerbosityHandles commonFlags
 
     haddockFlags =
       defaultHaddockFlags

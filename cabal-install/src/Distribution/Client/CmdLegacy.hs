@@ -21,7 +21,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Setup as Setup
 import Distribution.Simple.Utils (wrapText)
-import Distribution.Verbosity (VerbosityFlags, normal)
+import Distribution.Verbosity (VerbosityFlags, defaultVerbosityHandles, normal)
 
 import Control.Exception (try)
 import qualified Data.Text as T
@@ -51,7 +51,7 @@ wrapperAction command getCommonFlags =
       }
     $ \flags extraArgs globalFlags -> do
       let common = getCommonFlags flags
-          verbosity' = Client.stdHandlesVerbosity common
+          verbosity' = Client.stdHandlesVerbosity defaultVerbosityHandles common
           mbWorkDir = Setup.flagToMaybe $ Setup.setupWorkingDir common
 
       load <- try (loadConfigOrSandboxConfig verbosity' globalFlags)
