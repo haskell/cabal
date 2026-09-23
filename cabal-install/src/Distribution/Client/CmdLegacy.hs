@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
@@ -20,7 +19,6 @@ import Distribution.Client.SetupWrapper
   , setupWrapper
   )
 import Distribution.Simple.Command
-import Distribution.Simple.Setup (pattern DefaultCommonSetupVerbosity)
 import qualified Distribution.Simple.Setup as Setup
 import Distribution.Simple.Utils (wrapText)
 import Distribution.Verbosity (VerbosityFlags, normal)
@@ -53,7 +51,7 @@ wrapperAction command getCommonFlags =
       }
     $ \flags extraArgs globalFlags -> do
       let common = getCommonFlags flags
-          DefaultCommonSetupVerbosity verbosity' = common
+          verbosity' = Client.defaultHandlesVerbosity common
           mbWorkDir = Setup.flagToMaybe $ Setup.setupWorkingDir common
 
       load <- try (loadConfigOrSandboxConfig verbosity' globalFlags)
