@@ -1282,20 +1282,25 @@ showLegacyProjectConfig config =
 -- >>> parseLegacyConvert projectPackages "packages" "7{u,{h,{=n}}}"
 -- ParseOk [] ["7{u,{h,{=n}}}"]
 --
--- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" ""
+-- A top-level package field lands in the local packages, not in all packages.
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" "foo"
 -- ParseOk [] (Last {getLast = Nothing})
 --
--- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " "
--- ParseOk [] (Last {getLast = Nothing})
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" "foo"
+-- ParseOk [] (Last {getLast = Just "foo"})
 --
--- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" " \n"
--- ParseOk [] (Last {getLast = Nothing})
+-- An empty value sets the field to the empty string, where the parsec parser
+-- would leave it unset, see 'Distribution.Client.ProjectConfig.Parsec.parseProjectConfig'.
 --
--- >>> parseLegacyConvert (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" ""
--- ParseOk [] (Last {getLast = Nothing})
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" ""
+-- ParseOk [] (Last {getLast = Just ""})
 --
--- >>> parseLegacyConvert (packageConfigHaddockHtmlLocation . projectConfigAllPackages) "haddock-html-location" " "
--- ParseOk [] (Last {getLast = Nothing})
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" " "
+-- ParseOk [] (Last {getLast = Just ""})
+--
+-- >>> parseLegacyConvert (packageConfigHaddockHtmlLocation . projectConfigLocalPackages) "haddock-html-location" ""
+-- ParseOk [] (Last {getLast = Just ""})
 legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs constraintSrc =
   [ newLineListField
@@ -2087,18 +2092,13 @@ showTokenQ x@['.'] = Disp.text (show x)
 showTokenQ x = showToken x
 
 -- $setup
--- >>> :{
--- parseLegacy :: (LegacyProjectConfig -> a) -> String -> String -> ParseResult a
--- parseLegacy f field s =  f <$>
---   parseLegacyProjectConfigFieldsWithConstraintSource
---     ConstraintSourceUnknown
---     [ParseUtils.F 1 field s]
--- :}
+-- >>> import Distribution.Utils.Generic (toUTF8BS)
+--
+-- Parses a project file of one field, going through the lexer as a real
+-- project file would.
 --
 -- >>> :{
 -- parseLegacyConvert :: (ProjectConfig -> a) -> String -> String -> ParseResult a
--- parseLegacyConvert f field s =  (f . convertLegacyProjectConfig) <$>
---   parseLegacyProjectConfigFieldsWithConstraintSource
---     ConstraintSourceUnknown
---     [ParseUtils.F 1 field s]
+-- parseLegacyConvert f field s = (f . convertLegacyProjectConfig) <$>
+--   parseLegacyProjectConfig "" (toUTF8BS (field ++ ": " ++ s))
 -- :}
