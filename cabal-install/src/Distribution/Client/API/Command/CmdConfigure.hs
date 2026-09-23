@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: configure
-module Distribution.Client.CmdConfigure
+module Distribution.Client.API.Command.CmdConfigure
   ( configureCommand
   , configureAction
   , configureAction'

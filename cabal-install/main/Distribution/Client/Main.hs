@@ -119,26 +119,26 @@ import Distribution.Client.Targets
   ( readUserTargets
   )
 
-import qualified Distribution.Client.CmdBench as CmdBench
-import qualified Distribution.Client.CmdBuild as CmdBuild
-import qualified Distribution.Client.CmdClean as CmdClean
-import qualified Distribution.Client.CmdConfigure as CmdConfigure
-import qualified Distribution.Client.CmdExec as CmdExec
-import qualified Distribution.Client.CmdFreeze as CmdFreeze
-import qualified Distribution.Client.CmdGenBounds as CmdGenBounds
-import qualified Distribution.Client.CmdHaddock as CmdHaddock
-import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
-import qualified Distribution.Client.CmdInstall as CmdInstall
-import Distribution.Client.CmdLegacy
-import qualified Distribution.Client.CmdListBin as CmdListBin
-import qualified Distribution.Client.CmdOutdated as CmdOutdated
-import qualified Distribution.Client.CmdPath as CmdPath
-import qualified Distribution.Client.CmdRepl as CmdRepl
-import qualified Distribution.Client.CmdRun as CmdRun
-import qualified Distribution.Client.CmdSdist as CmdSdist
-import qualified Distribution.Client.CmdTarget as CmdTarget
-import qualified Distribution.Client.CmdTest as CmdTest
-import qualified Distribution.Client.CmdUpdate as CmdUpdate
+import qualified Distribution.Client.API.Command.CmdBench as CmdBench
+import qualified Distribution.Client.API.Command.CmdBuild as CmdBuild
+import qualified Distribution.Client.API.Command.CmdClean as CmdClean
+import qualified Distribution.Client.API.Command.CmdConfigure as CmdConfigure
+import qualified Distribution.Client.API.Command.CmdExec as CmdExec
+import qualified Distribution.Client.API.Command.CmdFreeze as CmdFreeze
+import qualified Distribution.Client.API.Command.CmdGenBounds as CmdGenBounds
+import qualified Distribution.Client.API.Command.CmdHaddock as CmdHaddock
+import qualified Distribution.Client.API.Command.CmdHaddockProject as CmdHaddockProject
+import qualified Distribution.Client.API.Command.CmdInstall as CmdInstall
+import Distribution.Client.API.Command.CmdLegacy
+import qualified Distribution.Client.API.Command.CmdListBin as CmdListBin
+import qualified Distribution.Client.API.Command.CmdOutdated as CmdOutdated
+import qualified Distribution.Client.API.Command.CmdPath as CmdPath
+import qualified Distribution.Client.API.Command.CmdRepl as CmdRepl
+import qualified Distribution.Client.API.Command.CmdRun as CmdRun
+import qualified Distribution.Client.API.Command.CmdSdist as CmdSdist
+import qualified Distribution.Client.API.Command.CmdTarget as CmdTarget
+import qualified Distribution.Client.API.Command.CmdTest as CmdTest
+import qualified Distribution.Client.API.Command.CmdUpdate as CmdUpdate
 
 import Distribution.Client.Check as Check (check)
 import Distribution.Client.Configure (configure, writeConfigFlags)
@@ -512,7 +512,7 @@ mainWorker args = do
 
 type Action = GlobalFlags -> IO ()
 
--- Duplicated in Distribution.Client.CmdLegacy. Any changes must be
+-- Duplicated in Distribution.Client.API.Command.CmdLegacy. Any changes must be
 -- reflected there, as well.
 regularCmd
   :: CommandUI flags

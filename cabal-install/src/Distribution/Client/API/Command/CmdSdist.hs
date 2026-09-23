@@ -4,7 +4,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Distribution.Client.CmdSdist
+module Distribution.Client.API.Command.CmdSdist
   ( sdistCommand
   , sdistAction
   , packageToSdist
@@ -14,7 +14,7 @@ module Distribution.Client.CmdSdist
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
   ( Plural (..)
   , renderComponentKind
   )

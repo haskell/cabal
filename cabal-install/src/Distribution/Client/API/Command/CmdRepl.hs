@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: repl
-module Distribution.Client.CmdRepl
+module Distribution.Client.API.Command.CmdRepl
   ( -- * The @repl@ CLI and action
     replCommand
   , replAction
@@ -22,7 +22,7 @@ import Prelude ()
 import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
   ( Plural (..)
   , componentKind
   , renderComponentKind

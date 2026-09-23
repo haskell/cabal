@@ -2,7 +2,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
+module Distribution.Client.API.Command.CmdClean (cleanCommand, cleanAction) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()

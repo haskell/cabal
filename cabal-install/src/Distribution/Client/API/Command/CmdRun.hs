@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | cabal-install CLI command: run
-module Distribution.Client.CmdRun
+module Distribution.Client.API.Command.CmdRun
   ( -- * The @run@ CLI and action
     runCommand
   , runAction
@@ -19,7 +19,7 @@ import Distribution.Client.Compat.Prelude hiding (toList)
 import Prelude ()
 
 import qualified Data.Set as Set
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
   ( plural
   , renderListCommaAnd
   , renderListPretty

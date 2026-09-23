@@ -9,7 +9,7 @@
 --
 -- Implementation of the 'v2-exec' command for running an arbitrary executable
 -- in an environment suited to the part of the store built for a project.
-module Distribution.Client.CmdExec
+module Distribution.Client.API.Command.CmdExec
   ( execAction
   , execCommand
   ) where

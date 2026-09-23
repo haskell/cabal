@@ -1,6 +1,6 @@
 -- | Utilities to help format error messages for the various CLI commands.
-module Distribution.Client.CmdErrorMessages
-  ( module Distribution.Client.CmdErrorMessages
+module Distribution.Client.API.Command.CmdErrorMessages
+  ( module Distribution.Client.API.Command.CmdErrorMessages
   , module Distribution.Client.TargetSelector
   ) where
 

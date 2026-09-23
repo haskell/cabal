@@ -1,4 +1,4 @@
-module Distribution.Client.CmdGenBounds
+module Distribution.Client.API.Command.CmdGenBounds
   ( genBounds
   , genBoundsCommand
   , genBoundsAction
@@ -29,7 +29,7 @@ import Distribution.Client.Setup (GlobalFlags (..))
 
 -- Project orchestration imports
 
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
 import Distribution.Client.GenBounds
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions

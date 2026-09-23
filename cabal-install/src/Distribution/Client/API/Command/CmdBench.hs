@@ -1,5 +1,5 @@
 -- | cabal-install CLI command: bench
-module Distribution.Client.CmdBench
+module Distribution.Client.API.Command.CmdBench
   ( -- * The @bench@ CLI and action
     benchCommand
   , benchAction
@@ -15,7 +15,7 @@ module Distribution.Client.CmdBench
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
   ( plural
   , renderTargetProblem
   , renderTargetProblemNoTargets

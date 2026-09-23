@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 
-module Distribution.Client.CmdHaddockProject
+module Distribution.Client.API.Command.CmdHaddockProject
   ( haddockProjectCommand
   , haddockProjectAction
   ) where
@@ -10,8 +10,8 @@ import Control.Monad (mapM)
 import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
-import qualified Distribution.Client.CmdBuild as CmdBuild
-import qualified Distribution.Client.CmdHaddock as CmdHaddock
+import qualified Distribution.Client.API.Command.CmdBuild as CmdBuild
+import qualified Distribution.Client.API.Command.CmdHaddock as CmdHaddock
 
 import Distribution.Client.DistDirLayout
   ( CabalDirLayout (..)

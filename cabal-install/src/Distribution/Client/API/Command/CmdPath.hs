@@ -2,13 +2,13 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
--- Module      :  Distribution.Client.CmdPath
+-- Module      :  Distribution.Client.API.Command.CmdPath
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
 -- Implementation of the 'path' command. Query for project configuration
 -- information.
-module Distribution.Client.CmdPath
+module Distribution.Client.API.Command.CmdPath
   ( pathCommand
   , pathAction
   ) where

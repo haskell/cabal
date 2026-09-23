@@ -42,15 +42,15 @@ import Distribution.Solver.Types.PackageConstraint
   )
 import Distribution.Solver.Types.SourcePackage as SP
 
-import qualified Distribution.Client.CmdBench as CmdBench
-import qualified Distribution.Client.CmdBuild as CmdBuild
-import qualified Distribution.Client.CmdHaddock as CmdHaddock
-import qualified Distribution.Client.CmdListBin as CmdListBin
-import qualified Distribution.Client.CmdRepl as CmdRepl
-import qualified Distribution.Client.CmdRun as CmdRun
-import qualified Distribution.Client.CmdTest as CmdTest
+import qualified Distribution.Client.API.Command.CmdBench as CmdBench
+import qualified Distribution.Client.API.Command.CmdBuild as CmdBuild
+import qualified Distribution.Client.API.Command.CmdHaddock as CmdHaddock
+import qualified Distribution.Client.API.Command.CmdListBin as CmdListBin
+import qualified Distribution.Client.API.Command.CmdRepl as CmdRepl
+import qualified Distribution.Client.API.Command.CmdRun as CmdRun
+import qualified Distribution.Client.API.Command.CmdTest as CmdTest
 
-import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
+import qualified Distribution.Client.API.Command.CmdHaddockProject as CmdHaddockProject
 import Distribution.Client.Config (createDefaultConfigFile)
 import Distribution.Client.GlobalFlags (defaultGlobalFlags)
 import Distribution.Client.Setup (globalStoreDir)

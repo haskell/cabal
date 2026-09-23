@@ -1,5 +1,5 @@
 -- | cabal-install CLI command: build
-module Distribution.Client.CmdBuild
+module Distribution.Client.API.Command.CmdBuild
   ( -- * The @build@ CLI and action
     buildCommand
   , buildAction
@@ -14,7 +14,7 @@ module Distribution.Client.CmdBuild
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
 import Distribution.Client.ProjectFlags
   ( removeIgnoreProjectOption
   )

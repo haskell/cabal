@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 -- | cabal-install CLI command: freeze
-module Distribution.Client.CmdFreeze
+module Distribution.Client.API.Command.CmdFreeze
   ( freezeCommand
   , freezeAction
   ) where

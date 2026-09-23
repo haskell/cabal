@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Distribution.Client.CmdTarget
+module Distribution.Client.API.Command.CmdTarget
   ( targetCommand
   , targetAction
   ) where
@@ -10,8 +10,8 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import qualified Data.Map as Map
-import Distribution.Client.CmdBuild (selectComponentTarget, selectPackageTargets)
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdBuild (selectComponentTarget, selectPackageTargets)
+import Distribution.Client.API.Command.CmdErrorMessages
 import Distribution.Client.InstallPlan
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions

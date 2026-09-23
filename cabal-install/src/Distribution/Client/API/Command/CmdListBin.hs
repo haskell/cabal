@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Distribution.Client.CmdListBin
+module Distribution.Client.API.Command.CmdListBin
   ( listbinCommand
   , listbinAction
 
@@ -16,7 +16,7 @@ module Distribution.Client.CmdListBin
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
   ( plural
   , renderListCommaAnd
   , renderTargetProblem

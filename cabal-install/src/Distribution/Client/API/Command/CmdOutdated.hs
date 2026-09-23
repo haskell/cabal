@@ -3,13 +3,13 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
--- Module      :  Distribution.Client.CmdOutdated
+-- Module      :  Distribution.Client.API.Command.CmdOutdated
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
 -- Implementation of the 'outdated' command. Checks for outdated
 -- dependencies in the package description file or freeze file.
-module Distribution.Client.CmdOutdated
+module Distribution.Client.API.Command.CmdOutdated
   ( outdatedCommand
   , outdatedAction
   , ListOutdatedSettings (..)
@@ -75,7 +75,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Verbosity
 
 import qualified Data.Map.Strict as Map
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.TargetProblem
 import Distribution.Client.Types.PackageSpecifier

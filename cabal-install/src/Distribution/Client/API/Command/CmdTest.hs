@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: test
-module Distribution.Client.CmdTest
+module Distribution.Client.API.Command.CmdTest
   ( -- * The @test@ CLI and action
     testCommand
   , testAction
@@ -18,7 +18,7 @@ module Distribution.Client.CmdTest
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
   ( plural
   , renderTargetProblem
   , renderTargetProblemNoTargets

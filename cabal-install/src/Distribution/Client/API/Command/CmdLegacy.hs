@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
-module Distribution.Client.CmdLegacy (legacyCmd, legacyWrapperCmd, newCmd) where
+module Distribution.Client.API.Command.CmdLegacy (legacyCmd, legacyWrapperCmd, newCmd) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()

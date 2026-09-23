@@ -73,29 +73,7 @@ library
       Distribution.Client.BuildReports.Types
       Distribution.Client.BuildReports.Upload
       Distribution.Client.Check
-      Distribution.Client.CmdBench
-      Distribution.Client.CmdBuild
-      Distribution.Client.CmdClean
-      Distribution.Client.CmdConfigure
-      Distribution.Client.CmdErrorMessages
-      Distribution.Client.CmdExec
-      Distribution.Client.CmdFreeze
-      Distribution.Client.CmdGenBounds
-      Distribution.Client.CmdHaddock
-      Distribution.Client.CmdHaddockProject
-      Distribution.Client.CmdInstall
       Distribution.Client.CmdInstall.ClientInstallFlags
-      Distribution.Client.CmdInstall.ClientInstallTargetSelector
-      Distribution.Client.CmdLegacy
-      Distribution.Client.CmdListBin
-      Distribution.Client.CmdOutdated
-      Distribution.Client.CmdPath
-      Distribution.Client.CmdRepl
-      Distribution.Client.CmdRun
-      Distribution.Client.CmdSdist
-      Distribution.Client.CmdTarget
-      Distribution.Client.CmdTest
-      Distribution.Client.CmdUpdate
       Distribution.Client.Compat.Orphans
       Distribution.Client.Compat.Prelude
       Distribution.Client.Compat.Semaphore
@@ -142,7 +120,6 @@ library
       Distribution.Client.InstallSymlink
       Distribution.Client.JobControl
       Distribution.Client.List
-      Distribution.Client.Main
       Distribution.Client.Manpage
       Distribution.Client.ManpageFlags
       Distribution.Client.NixStyleOptions
@@ -243,7 +220,6 @@ library
       , time       >= 1.5.0.1  && < 1.17
       , zlib       >= 0.6      && < 0.8
       , hackage-security >= 0.6.2.0 && < 0.7
-      , text       >= 1.2.3    && < 1.3 || >= 2.0 && < 2.2
       , parsec     >= 3.1.13.0 && < 3.2
       , open-browser >= 0.2.1.0 && < 0.6
       , regex-base  >= 0.94.0.0 && <0.95

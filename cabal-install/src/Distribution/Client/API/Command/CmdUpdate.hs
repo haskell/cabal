@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: update
-module Distribution.Client.CmdUpdate
+module Distribution.Client.API.Command.CmdUpdate
   ( updateCommand
   , updateAction
   ) where

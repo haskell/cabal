@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: haddock
-module Distribution.Client.CmdHaddock
+module Distribution.Client.API.Command.CmdHaddock
   ( -- * The @haddock@ CLI and action
     haddockCommand
   , haddockAction
@@ -17,7 +17,7 @@ import Distribution.Client.Compat.Prelude
 import System.Directory (makeAbsolute)
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
+import Distribution.Client.API.Command.CmdErrorMessages
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity

@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: install
-module Distribution.Client.CmdInstall
+module Distribution.Client.API.Command.CmdInstall
   ( -- * The @install@ CLI and action
     installCommand
   , installAction
@@ -20,16 +20,16 @@ module Distribution.Client.CmdInstall
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
-import Distribution.Client.CmdSdist
+import Distribution.Client.API.Command.CmdErrorMessages
+import Distribution.Client.API.Command.CmdSdist
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
   , TargetProblem'
   )
 
+import Distribution.Client.API.Command.CmdInstall.ClientInstallTargetSelector
 import Distribution.Client.CmdInstall.ClientInstallFlags
-import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Config
   ( SavedConfig (..)

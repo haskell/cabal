@@ -68,7 +68,7 @@ common cabal-install-internal-dep
       , cabal-install-internal ^>=3.19
 
 library
-    import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-internal-dep
+    import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep, cabal-install-internal-dep
     default-language: GHC2021
     -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
     default-extensions: TypeOperators
@@ -88,15 +88,54 @@ library
         Distribution.Client.API.Config
         Distribution.Client.API.PackageIndex
         Distribution.Client.API.Project
+        Distribution.Client.API.Command.CmdBench
+        Distribution.Client.API.Command.CmdBuild
+        Distribution.Client.API.Command.CmdClean
+        Distribution.Client.API.Command.CmdConfigure
+        Distribution.Client.API.Command.CmdErrorMessages
+        Distribution.Client.API.Command.CmdExec
+        Distribution.Client.API.Command.CmdFreeze
+        Distribution.Client.API.Command.CmdGenBounds
+        Distribution.Client.API.Command.CmdHaddock
+        Distribution.Client.API.Command.CmdHaddockProject
+        Distribution.Client.API.Command.CmdInstall
+        Distribution.Client.API.Command.CmdInstall.ClientInstallTargetSelector
+        Distribution.Client.API.Command.CmdLegacy
+        Distribution.Client.API.Command.CmdListBin
+        Distribution.Client.API.Command.CmdOutdated
+        Distribution.Client.API.Command.CmdPath
+        Distribution.Client.API.Command.CmdRepl
+        Distribution.Client.API.Command.CmdRun
+        Distribution.Client.API.Command.CmdSdist
+        Distribution.Client.API.Command.CmdTarget
+        Distribution.Client.API.Command.CmdTest
+        Distribution.Client.API.Command.CmdUpdate
 
     build-depends:
-      , containers  >= 0.5.6.2 && < 0.9
-      , filepath    >= 1.4.0.0 && < 1.6
+        bytestring >= 0.10.6.0 && < 0.13
+      , containers >= 0.5.6.2  && < 0.9
+      , directory  >= 1.3.7.0  && < 1.4
+      , filepath   >= 1.4.0.0  && < 1.6
+      , network-uri >= 2.6.2.0 && < 2.7
+      , pretty     >= 1.1      && < 1.2
+      , process    >= 1.6.29.0 && < 1.7
+      , time       >= 1.5.0.1  && < 1.17
+      , hackage-security >= 0.6.2.0 && < 0.7
+      , text       >= 1.2.3    && < 1.3 || >= 2.0 && < 2.2
 
 executable cabal
-    import: warnings, base-dep, cabal-install-internal-dep
+    import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-internal-dep
     main-is: Main.hs
+    other-modules:
+        Distribution.Client.Main
     hs-source-dirs: main
+
+    build-depends:
+      , cabal-install
+      , directory  >= 1.3.7.0  && < 1.4
+      , filepath   >= 1.4.0.0  && < 1.6
+      , process    >= 1.6.29.0 && < 1.7
+
     default-language: GHC2021
     -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
     default-extensions: NoImportQualifiedPost
@@ -163,6 +202,7 @@ test-suite unit-tests
     build-depends:
       , array
       , bytestring
+      , cabal-install
       , Cabal-tree-diff
       , Cabal-QuickCheck
       , Cabal-tests
@@ -245,6 +285,7 @@ test-suite integration-tests2
 
   build-depends:
     , bytestring
+    , cabal-install
     , containers
     , directory
     , filepath

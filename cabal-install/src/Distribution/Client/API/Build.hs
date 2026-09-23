@@ -1,6 +1,6 @@
 -- | Tier-0 stable API: building project targets.
 --
--- Thin wrapper over the internal @Distribution.Client.CmdBuild@ and the
+-- Thin wrapper over the internal @Distribution.Client.API.Command.CmdBuild@ and the
 -- orchestration layer (@Distribution.Client.ProjectOrchestration@,
 -- @Distribution.Client.ScriptUtils@).
 --
@@ -23,14 +23,14 @@ module Distribution.Client.API.Build
   ) where
 
 import qualified Data.Map as Map
-import Distribution.Client.CmdBuild
+import Distribution.Client.API.Command.CmdBuild
   ( BuildFlags
   , buildAction
   , defaultBuildFlags
   , selectComponentTarget
   , selectPackageTargets
   )
-import Distribution.Client.CmdErrorMessages (reportTargetProblems)
+import Distribution.Client.API.Command.CmdErrorMessages (reportTargetProblems)
 import Distribution.Client.DistDirLayout (distBuildDirectory)
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..), defaultNixStyleFlags)
