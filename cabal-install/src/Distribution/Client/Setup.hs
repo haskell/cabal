@@ -24,7 +24,7 @@ module Distribution.Client.Setup
   , filterConfigureFlags
   , configPackageDB'
   , configCompilerAux'
-  , defaultHandlesVerbosity
+  , stdHandlesVerbosity
   , configureExCommand
   , ConfigExFlags (..)
   , defaultConfigExFlags
@@ -894,8 +894,8 @@ configPackageDB' cfg =
 -- Only for use where output is known to go to stdout and stderr, such as the
 -- legacy @v1-@ command actions. Library code should take 'VerbosityHandles'
 -- instead, so that logging can be redirected.
-defaultHandlesVerbosity :: CommonSetupFlags -> Verbosity
-defaultHandlesVerbosity =
+stdHandlesVerbosity :: CommonSetupFlags -> Verbosity
+stdHandlesVerbosity =
   mkVerbosity defaultVerbosityHandles . Cabal.fromFlagOrDefault normal . setupVerbosity
 
 -- | Configure the compiler, but reduce verbosity during this step.
