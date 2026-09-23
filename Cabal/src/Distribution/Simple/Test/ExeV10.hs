@@ -201,7 +201,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
     testName' = unUnqualComponentName $ PD.testName suite
 
     distPref = fromFlag $ setupDistPref commonFlags
-    CommonSetupVerbosity verbosity = (verbHandles, commonFlags)
+    verbosity = commonSetupVerbosity verbHandles commonFlags
     details = fromFlag $ testShowDetails flags
     testLogDir = distPref </> makeRelativePathEx "test"
 

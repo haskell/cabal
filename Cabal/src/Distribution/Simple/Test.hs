@@ -67,7 +67,7 @@ test
 test args verbHandles pkg_descr lbi0 flags = do
   curDir <- LBI.absoluteWorkingDirLBI lbi0
   let common = testCommonFlags flags
-      CommonSetupVerbosity verbosity = (verbHandles, common)
+      verbosity = commonSetupVerbosity verbHandles common
       distPref = fromFlag $ setupDistPref common
       i = LBI.interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
       machineTemplate = fromFlag $ testMachineLog flags
