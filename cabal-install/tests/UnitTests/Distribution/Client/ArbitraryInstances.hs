@@ -160,7 +160,7 @@ instance Arbitrary ShortToken where
 -- | The strings that the 'ShortToken' generator produces.
 isShortToken :: String -> Bool
 isShortToken cs =
-  all (\c -> c >= '#' && c <= '~' && c `notElem` "{}") cs
+  all (\c -> c >= '#' && c <= '~' && c `notElem` "{},") cs
     && not ("[]" `isPrefixOf` cs)
 
 arbitraryShortToken :: Gen String
