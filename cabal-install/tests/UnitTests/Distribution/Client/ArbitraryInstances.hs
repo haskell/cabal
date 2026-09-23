@@ -146,17 +146,22 @@ newtype ShortToken = ShortToken {getShortToken :: String}
 instance Arbitrary ShortToken where
   arbitrary =
     ShortToken
-      <$> ( shortListOf1 5 (choose ('#', '~'))
-              `suchThat` all (`notElem` "{}")
-              `suchThat` (not . ("[]" `isPrefixOf`))
-          )
+      <$> (shortListOf1 5 (choose ('#', '~')) `suchThat` isShortToken)
 
   -- TODO: [code cleanup] need to replace parseHaskellString impl to stop
   -- accepting Haskell list syntax [], ['a'] etc, just allow String syntax.
   -- Workaround, don't generate [] as this does not round trip.
 
+  -- Shrinking a 'Char' can produce a space, so filter shrinks back to what
+  -- the generator would have produced.
   shrink (ShortToken cs) =
-    [ShortToken cs' | cs' <- shrink cs, not (null cs')]
+    [ShortToken cs' | cs' <- shrink cs, not (null cs'), isShortToken cs']
+
+-- | The strings that the 'ShortToken' generator produces.
+isShortToken :: String -> Bool
+isShortToken cs =
+  all (\c -> c >= '#' && c <= '~' && c `notElem` "{}") cs
+    && not ("[]" `isPrefixOf` cs)
 
 arbitraryShortToken :: Gen String
 arbitraryShortToken = getShortToken <$> arbitrary
