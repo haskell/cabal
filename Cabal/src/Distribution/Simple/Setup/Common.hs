@@ -108,8 +108,7 @@ defaultCommonSetupFlags =
     , setupKeepTempFiles = NoFlag
     }
 
--- | The verbosity from the setup verbosity flag, using 'fromFlag', and the
--- given handles.
+-- | The verbosity from the setup verbosity flag.
 commonSetupVerbosity :: VerbosityHandles -> CommonSetupFlags -> Verbosity
 commonSetupVerbosity verbHandles = mkVerbosity verbHandles . fromFlag . setupVerbosity
 
