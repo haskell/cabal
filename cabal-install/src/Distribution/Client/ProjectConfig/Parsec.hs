@@ -40,7 +40,6 @@ import Distribution.Simple.Program.Types (programName)
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils (debug, noticeDoc)
 import Distribution.Solver.Types.ProjectConfigPath
-import Distribution.System (buildOS)
 import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.PackageName (PackageName)
@@ -57,7 +56,7 @@ import Distribution.Client.Errors.Parser (ProjectFileSource (..))
 import qualified Distribution.Compat.CharParsing as P
 import Network.URI (URI, uriFragment, uriPath, uriScheme)
 import System.Directory (makeAbsolute)
-import System.FilePath (splitFileName)
+import System.FilePath (normalise, splitFileName)
 import qualified Text.Parsec
 import Text.PrettyPrint (render)
 import qualified Text.PrettyPrint as Disp
@@ -322,8 +321,8 @@ postProcessRemoteRepo pos repo = case uriScheme (remoteRepoURI repo) of
   -- TODO: check that there are no authority, query or fragment
   -- Note: the trailing colon is important
   "file+noindex:" -> do
-    let uri = normaliseFileNoIndexURI buildOS $ remoteRepoURI repo
-    return $ Left $ LocalRepo (remoteRepoName repo) (uriPath uri) (uriFragment uri == "#shared-cache")
+    let uri = remoteRepoURI repo
+    return $ Left $ LocalRepo (remoteRepoName repo) (normalise (uriPath uri)) (uriFragment uri == "#shared-cache")
   _ -> do
     when (remoteRepoKeyThreshold repo > length (remoteRepoRootKeys repo)) $
       warning $
