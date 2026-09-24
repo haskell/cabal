@@ -94,6 +94,7 @@ import Distribution.Client.Types
   , RemoteRepo (..)
   , RepoName (..)
   , emptyRemoteRepo
+  , fileNoIndexURIPath
   , isRelaxDeps
   , unRepoName
   )
@@ -208,6 +209,7 @@ import Distribution.Simple.Utils
   , writeFileAtomic
   )
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.System (buildOS)
 import Distribution.Utils.Path (getSymbolicPath, unsafeMakeSymbolicPath)
 import Distribution.Verbosity
   ( normal
@@ -229,8 +231,7 @@ import System.Directory
   , renameFile
   )
 import System.FilePath
-  ( normalise
-  , takeDirectory
+  ( takeDirectory
   , (</>)
   )
 import System.IO.Error
@@ -1690,7 +1691,7 @@ postProcessRepo lineno reponameStr repo0 = do
         Left $
           LocalRepo
             reponame
-            (normalise (uriPath uri))
+            (fileNoIndexURIPath buildOS uri)
             (uriFragment uri == "#shared-cache")
     _ -> do
       let repo = repo0{remoteRepoName = reponame}
