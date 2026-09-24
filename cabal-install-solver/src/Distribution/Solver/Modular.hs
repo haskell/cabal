@@ -1,7 +1,12 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Distribution.Solver.Modular
-         ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..) ) where
+         ( ModularResolver (..)
+         , modularResolver
+         , SolverConfig(..)
+         , PruneAfterFirstSuccess(..)
+         ) where
 
 -- Here, we try to map between the external cabal-install solver
 -- interface and the internal interface that the solver actually
@@ -50,7 +55,7 @@ import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), PruneAfterFirstSuccess(..), solve )
 import Distribution.Solver.Types.DependencyResolver
-    ( DependencyResolver )
+    ( DependencyResolver (..), ResolverParams (..) )
 import Distribution.Solver.Types.LabeledPackageConstraint
     ( LabeledPackageConstraint, unlabelPackageConstraint )
 import Distribution.Solver.Types.PackageConstraint
@@ -74,29 +79,87 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Solver.Modular.Message ( renderSummarizedMessage )
 
--- | Ties the two worlds together: classic cabal-install vs. the modular
--- solver. Performs the necessary translations before and after.
-modularResolver :: SolverConfig -> DependencyResolver loc
-modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns =
-  uncurry postprocess <$> -- convert install plan
-  solve' sc cinfo idx pkgConfigDB pprefs gcs pns
-    where
-      -- Indices have to be converted into solver-specific uniform index.
-      idx    = convPIs os arch cinfo gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx
-      -- Constraints have to be converted into a finite map indexed by PN.
-      gcs    = M.fromListWith (++) (map pair pcs)
-        where
-          pair lpc = (pcName $ unlabelPackageConstraint lpc, [lpc])
+newtype ModularResolver =
+  ModularResolver
+    { modularResolverConfig :: SolverConfig
+    }
 
-      -- Results have to be converted into an install plan. 'convCP' removes
-      -- package qualifiers, which means that linked packages become duplicates
-      -- and can be removed.
-      postprocess a rdm = ordNubBy nodeKey $
-                          map (convCP iidx sidx) (toCPs a rdm)
+data ModularResolverInputs =
+  ModularResolverInputs
+    { mrCompilerInfo :: CompilerInfo
+    , mrIndex :: Index
+    , mrPkgConfigDb :: Maybe PkgConfigDb
+    , mrPkgPrefs :: PN -> PackagePreferences
+    , mrPkgConstraints :: Map PN [LabeledPackageConstraint]
+    , mrPkgNames :: Set PN
+    }
+
+instance DependencyResolver ModularResolver where
+  type ResolverInputs ModularResolver = ModularResolverInputs
+  type ResolverOutput ModularResolver = (Assignment, RevDepMap)
+  runResolver mr inputs =
+    solve'
+      (modularResolverConfig mr)
+      (mrCompilerInfo inputs)
+      (mrIndex inputs)
+      (mrPkgConfigDb inputs)
+      (mrPkgPrefs inputs)
+      (mrPkgConstraints inputs)
+      (mrPkgNames inputs)
+  convInputs mr rp =
+    ModularResolverInputs
+      { mrCompilerInfo = rpCompilerInfo rp
+      , mrIndex = convPIs os arch 
+                    (rpCompilerInfo rp)
+                    gcs
+                    (shadowPkgs sc)
+                    (strongFlags sc)
+                    (solveExecutables sc)
+                    (rpInstalledPackages rp)
+                    (rpSourcePackages rp)
+      , mrPkgConfigDb = rpPkgConfigDb rp
+      , mrPkgPrefs = rpPkgPrefs rp
+      , mrPkgConstraints = gcs
+      , mrPkgNames = rpPkgNames rp
+      }
+    where
+      sc = modularResolverConfig mr
+      gcs = M.fromListWith (++) (map pair $ rpPkgConstraints rp)
+      pair lpc = (pcName $ unlabelPackageConstraint lpc, [lpc])
+      Platform arch os = rpPlatform rp
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN
       pcName (PackageConstraint scope _) = scopeToPackageName scope
+  convOutput _mr rp = uncurry postprocess
+    where
+      -- Results have to be converted into an install plan. 'convCP' removes
+      -- package qualifiers, which means that linked packages become duplicates
+      -- and can be removed.
+      postprocess a rdm =
+        ordNubBy nodeKey $
+          map
+            (convCP (rpInstalledPackages rp) (rpSourcePackages rp))
+            (toCPs a rdm)
+    
+modularResolver :: SolverConfig -> ModularResolver
+modularResolver sc = ModularResolver sc
+
+--   uncurry postprocess <$> -- convert install plan
+--   solve' sc cinfo idx pkgConfigDB pprefs gcs pns
+--     where
+--       -- Indices have to be converted into solver-specific uniform index.
+--       idx    = convPIs os arch cinfo gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx
+--       -- Constraints have to be converted into a finite map indexed by PN.
+--       gcs    = M.fromListWith (++) (map pair pcs)
+--         where
+--           pair lpc = (pcName $ unlabelPackageConstraint lpc, [lpc])
+-- 
+--       -- Results have to be converted into an install plan. 'convCP' removes
+--       -- package qualifiers, which means that linked packages become duplicates
+--       -- and can be removed.
+--       postprocess a rdm = ordNubBy nodeKey $
+--                           map (convCP iidx sidx) (toCPs a rdm)
 
 -- | Run 'D.S.Modular.Solver.solve' and then produce a summarized log to display
 -- in the error case.

@@ -121,6 +121,7 @@ import Distribution.Solver.Modular
   ( PruneAfterFirstSuccess (..)
   , SolverConfig (..)
   , modularResolver
+  , ModularResolver
   )
 import Distribution.Solver.Modular.Message
   ( renderSummarizedMessage
@@ -850,8 +851,8 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
 
 -- ------------------------------------------------------------
 
-runSolver :: SolverConfig -> DependencyResolver UnresolvedPkgLoc
-runSolver = modularResolver
+getSolver :: SolverConfig -> ModularResolver
+getSolver = modularResolver
 
 -- | Run the dependency solver.
 --
@@ -866,10 +867,9 @@ resolveDependencies
   -> Progress String String SolverInstallPlan
 resolveDependencies platform comp pkgConfigDB params = do
   step (showDepResolverParams finalparams)
-  pkgs <-
-    formatProgress $
-      runSolver
-        ( SolverConfig
+  pkgs <- do
+    let config =
+          SolverConfig
             reordGoals
             cntConflicts
             fineGrained
@@ -885,15 +885,19 @@ resolveDependencies platform comp pkgConfigDB params = do
             order
             verbosity
             (PruneAfterFirstSuccess False)
-        )
-        platform
-        comp
-        installedPkgIndex
-        sourcePkgIndex
-        pkgConfigDB
-        preferences
-        constraints
-        targets
+        solver = getSolver config
+        rparams = ResolverParams
+                      platform
+                      comp
+                      installedPkgIndex
+                      sourcePkgIndex
+                      pkgConfigDB
+                      preferences
+                      constraints
+                      targets
+        inputs = convInputs solver rparams
+    formatProgress $
+      convOutput solver rparams <$> runResolver solver inputs
   validateSolverResult platform comp indGoals pkgs
   where
     finalparams@( DepResolverParams

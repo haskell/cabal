@@ -1,9 +1,13 @@
+{-# LANGUAGE TypeFamilies #-}
+
 module Distribution.Solver.Types.DependencyResolver
-    ( DependencyResolver
+    ( ResolverParams (..)
+    , DependencyResolver (..)
     ) where
 
-import Distribution.Solver.Compat.Prelude ( Maybe, String, Set )
+import Distribution.Solver.Compat.Prelude ( Maybe, String, Set {-, Binary -})
 import Prelude ()
+import Data.Kind
 
 import Distribution.Solver.Types.LabeledPackageConstraint
     ( LabeledPackageConstraint )
@@ -23,20 +27,45 @@ import Distribution.Package ( PackageName )
 import Distribution.Compiler ( CompilerInfo )
 import Distribution.System ( Platform )
 
--- | A dependency resolver is a function that works out an installation plan
--- given the set of installed and available packages and a set of deps to
--- solve for.
+
+-- type DependencyResolver loc = Platform
+--                            -> CompilerInfo
+--                            -> InstalledPackageIndex
+--                            -> PackageIndex (SourcePackage loc)
+--                            -> Maybe PkgConfigDb
+--                            -> (PackageName -> PackagePreferences)
+--                            -> [LabeledPackageConstraint]
+--                            -> Set PackageName
+--                            -> Progress SummarizedMessage String [ResolverPackage loc]
+
+data ResolverParams loc =
+  ResolverParams
+    { rpPlatform :: Platform
+    , rpCompilerInfo :: CompilerInfo
+    , rpInstalledPackages :: InstalledPackageIndex
+    , rpSourcePackages :: PackageIndex (SourcePackage loc)
+    , rpPkgConfigDb :: Maybe PkgConfigDb
+    , rpPkgPrefs :: PackageName -> PackagePreferences
+    , rpPkgConstraints :: [LabeledPackageConstraint]
+    , rpPkgNames :: Set PackageName
+    }
+
+-- | A dependency resolver consists of a function that works out an
+-- installation plan given the set of installed and available packages and a
+-- set of deps to solve for, together with a pair of resolver-specific input
+-- and output types, and a pair of conversion that translate between these
+-- resolver-specific types and the resolver-independent 'ResolverParams' type.
 --
 -- The reason for this interface is because there are dozens of approaches to
 -- solving the package dependency problem and we want to make it easy to swap
 -- in alternatives.
 --
-type DependencyResolver loc = Platform
-                           -> CompilerInfo
-                           -> InstalledPackageIndex
-                           -> PackageIndex (SourcePackage loc)
-                           -> Maybe PkgConfigDb
-                           -> (PackageName -> PackagePreferences)
-                           -> [LabeledPackageConstraint]
-                           -> Set PackageName
-                           -> Progress SummarizedMessage String [ResolverPackage loc]
+-- Both the input and the output type must be binary-serializable, because we
+-- need to use them as keys for re-run checks.
+class {- (Binary (ResolverInputs a), Binary (ResolverOutput a))
+        => -} DependencyResolver a where
+  type ResolverInputs a :: Type
+  type ResolverOutput a :: Type
+  runResolver :: a -> ResolverInputs a -> Progress SummarizedMessage String (ResolverOutput a)
+  convInputs :: a -> ResolverParams loc -> ResolverInputs a
+  convOutput :: a -> ResolverParams loc -> ResolverOutput a -> [ResolverPackage loc]
