@@ -40,6 +40,7 @@ import Distribution.Simple.Program.Types (programName)
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils (debug, noticeDoc)
 import Distribution.Solver.Types.ProjectConfigPath
+import Distribution.System (buildOS)
 import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.PackageName (PackageName)
@@ -54,9 +55,9 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors.Parser (ProjectFileSource (..))
 import qualified Distribution.Compat.CharParsing as P
-import Network.URI (URI, uriFragment, uriPath, uriScheme)
+import Network.URI (URI, uriFragment, uriScheme)
 import System.Directory (makeAbsolute)
-import System.FilePath (normalise, splitFileName)
+import System.FilePath (splitFileName)
 import qualified Text.Parsec
 import Text.PrettyPrint (render)
 import qualified Text.PrettyPrint as Disp
@@ -316,13 +317,19 @@ stanzas :: Set BS.ByteString
 stanzas = Set.fromList ["source-repository-package", "program-options", "program-locations", "repository", "package"]
 
 -- | Currently a duplicate of 'Distribution.Client.Config.postProcessRepo' but migrated to Parsec ParseResult.
+--
+-- A @file+noindex:@ repository is local and its path is read back as a
+-- native path with 'fileNoIndexURIPath', the reading direction. The legacy
+-- printer writes that path with 'normaliseFileNoIndexURI', the writing
+-- direction, so the two must stay inverses of each other for a project file
+-- to round trip.
 postProcessRemoteRepo :: Position -> RemoteRepo -> ParseResult src (Either LocalRepo RemoteRepo)
 postProcessRemoteRepo pos repo = case uriScheme (remoteRepoURI repo) of
   -- TODO: check that there are no authority, query or fragment
   -- Note: the trailing colon is important
   "file+noindex:" -> do
     let uri = remoteRepoURI repo
-    return $ Left $ LocalRepo (remoteRepoName repo) (normalise (uriPath uri)) (uriFragment uri == "#shared-cache")
+    return $ Left $ LocalRepo (remoteRepoName repo) (fileNoIndexURIPath buildOS uri) (uriFragment uri == "#shared-cache")
   _ -> do
     when (remoteRepoKeyThreshold repo > length (remoteRepoRootKeys repo)) $
       warning $
