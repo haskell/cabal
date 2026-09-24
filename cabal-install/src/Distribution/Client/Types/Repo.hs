@@ -21,6 +21,7 @@ module Distribution.Client.Types.Repo
     -- * Windows
   , asPosixPath
   , normaliseFileNoIndexURI
+  , fileNoIndexURIPath
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -229,9 +230,22 @@ repoName (RepoSecure r _) = remoteRepoName r
 
 -- | When on Windows, we need to convert the paths in URIs to be POSIX-style.
 --
+-- This is the writing direction, from the native 'localRepoPath' of a
+-- 'LocalRepo' to the @url@ of a @repository@ section. Use it when printing
+-- or building a @file+noindex:@ URI. For the reading direction, from that URI
+-- back to a native path, use 'fileNoIndexURIPath' instead.
+--
 -- >>> import Network.URI
 -- >>> normaliseFileNoIndexURI Windows (URI "file+noindex:" (Just nullURIAuth) "C:\\dev\\foo" "" "")
 -- file+noindex:C:/dev/foo
+--
+-- Elsewhere, and for other schemes, the URI is left as it is.
+--
+-- >>> import Distribution.System (OS (..))
+-- >>> normaliseFileNoIndexURI Linux (URI "file+noindex:" Nothing "/dev/foo" "" "")
+-- file+noindex:/dev/foo
+-- >>> normaliseFileNoIndexURI Windows (URI "file:" Nothing "C:\\dev\\foo" "" "")
+-- file:C:\dev\foo
 --
 -- Other formats of file paths are not understood by @network-uri@:
 --
@@ -254,7 +268,43 @@ normaliseFileNoIndexURI os uri@(URI scheme _auth path query fragment)
       URI scheme Nothing (asPosixPath path) query fragment
   | otherwise = uri
 
+-- | The path of a @file+noindex:@ URI as a native path, for the
+-- 'localRepoPath' of a 'LocalRepo'.
+--
+-- This is the reading direction, the inverse of 'normaliseFileNoIndexURI'.
+-- Use it when parsing a @repository@ section. Both the legacy and parsec
+-- project file parsers read the path this way. Reading it with
+-- 'normaliseFileNoIndexURI' instead would keep the POSIX-style slashes on
+-- Windows and the two parsers would disagree with each other and with the
+-- path the URI was written from.
+--
+-- On Windows the path is normalised to backslashes, whether it was written
+-- POSIX-style by 'normaliseFileNoIndexURI' or with backslashes by hand.
+--
+-- >>> import Network.URI
+-- >>> import Distribution.System (OS (..))
+-- >>> fileNoIndexURIPath Windows (URI "file+noindex:" Nothing "C:/dev/foo" "" "")
+-- "C:\\dev\\foo"
+-- >>> fileNoIndexURIPath Windows (URI "file+noindex:" Nothing "C:\\dev\\foo" "" "")
+-- "C:\\dev\\foo"
+-- >>> fileNoIndexURIPath Linux (URI "file+noindex:" Nothing "/dev/foo" "" "")
+-- "/dev/foo"
+--
+-- Writing a native path and reading it back gives the native path again.
+--
+-- >>> let uri = normaliseFileNoIndexURI Windows (URI "file+noindex:" Nothing "C:\\dev\\foo" "" "")
+-- >>> (uri, fileNoIndexURIPath Windows uri)
+-- (file+noindex:C:/dev/foo,"C:\\dev\\foo")
+fileNoIndexURIPath :: OS -> URI -> FilePath
+fileNoIndexURIPath Windows = Windows.normalise . uriPath
+fileNoIndexURIPath _ = Posix.normalise . uriPath
+
 -- | Convert a path to POSIX-style.
+--
+-- >>> asPosixPath "C:\\dev\\foo"
+-- "C:/dev/foo"
+-- >>> asPosixPath "/dev/foo"
+-- "/dev/foo"
 asPosixPath :: FilePath -> FilePath
 asPosixPath p =
   -- We don't use 'isPathSeparator' because @Windows.isPathSeparator
