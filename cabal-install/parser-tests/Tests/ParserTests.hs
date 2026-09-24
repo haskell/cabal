@@ -24,7 +24,7 @@ import Distribution.Client.Targets (readUserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDepMod (..), RelaxDepScope (..), RelaxDepSubject (..), RelaxDeps (..), RelaxedDep (..))
 import Distribution.Client.Types.InstallMethod (InstallMethod (..))
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy (..))
-import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), asPosixPath)
+import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Client.Types.SourceRepo
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnvironmentFilesPolicy (..))
@@ -48,7 +48,6 @@ import Distribution.Solver.Types.Settings
   , ReorderGoals (..)
   , StrongFlags (..)
   )
-import Distribution.System (OS (..), buildOS)
 import Distribution.Types.CondTree (CondTree (..))
 import Distribution.Types.Flag (mkFlagAssignment)
 import Distribution.Types.PackageId (PackageIdentifier (..))
@@ -62,7 +61,7 @@ import Distribution.Verbosity
 import GHC.Stack (HasCallStack)
 import Network.URI (parseURI)
 import System.Directory (canonicalizePath, doesFileExist)
-import System.FilePath ((</>))
+import System.FilePath (normalise, (</>))
 import Prelude ()
 
 import Test.Tasty (TestTree, testGroup)
@@ -321,26 +320,24 @@ testRemoteRepos = do
 testLocalNoIndexRepos :: Assertion
 testLocalNoIndexRepos = do
   (config, legacy) <- readConfigDefault "local-no-index-repos"
-  let actualLocalRepos = (fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . snd . condTreeData) config
-  assertBool "Expected LocalNoIndexRepos do not match parsed values" $ compareLists expected actualLocalRepos compareLocalRepos
+  let localRepos = fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . snd . condTreeData
+  assertBool "Expected LocalNoIndexRepos do not match parsed values" $ compareLists expected (localRepos config) compareLocalRepos
+  assertBool "Expected LocalNoIndexRepos do not match legacy parsed values" $ compareLists expected (localRepos legacy) compareLocalRepos
   assertConfigEquals mempty config legacy (projectConfigRemoteRepos . projectConfigShared . snd . condTreeData)
   where
     expected = [myRepository, mySecureRepository]
     myRepository =
       LocalRepo
         { localRepoName = RepoName "my-repository"
-        , localRepoPath = normalisePath "/absolute/path/to/directory"
+        , localRepoPath = normalise "/absolute/path/to/directory"
         , localRepoSharedCache = False
         }
     mySecureRepository =
       LocalRepo
         { localRepoName = RepoName "my-other-repository"
-        , localRepoPath = normalisePath "/another/path/to/repository"
+        , localRepoPath = normalise "/another/path/to/repository"
         , localRepoSharedCache = False
         }
-    normalisePath path = case buildOS of
-      Windows -> asPosixPath path
-      _ -> path
 
 testProjectConfigProvenance :: Assertion
 testProjectConfigProvenance = do
