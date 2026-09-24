@@ -63,7 +63,7 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 
 import qualified Data.Set as Set
 import Distribution.FieldGrammar.Newtypes
-import System.FilePath (splitDirectories, (</>))
+import System.FilePath ((</>))
 
 -- | Main driver for interactive prompt code.
 createProject
@@ -266,7 +266,7 @@ packageNameHeuristics sourcePkgDb flags = getPackageName flags $ do
   defName <-
     guessPackageName =<< case packageDir flags of
       Flag a -> return a
-      NoFlag -> fromMaybe "" . safeLast . splitDirectories <$> getCurrentDirectory
+      NoFlag -> getCurrentDirectory
 
   when (isPkgRegistered defName) $
     putStrLn (inUseMsg defName)
