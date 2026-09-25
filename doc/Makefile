@@ -127,32 +127,41 @@ SETUP_COMMANDS := \
 
 # NOTE: To silence the following warning, redirect stderr to /dev/null:
 #   Warning: this is a debug build of cabal-install with assertions enabled.
-cmd-v1-help/%.txt:
+
+# Build the cabal binary before capturing any help output: with a cold
+# dependency cache, `cabal run` would otherwise interleave the configure
+# logs of freshly built dependencies (process, resolv, network, ...) into
+# the captured stdout and pollute the generated .txt files.
+.PHONY: cmd-help-build
+cmd-help-build:
+	@cabal build -v0 cabal-install:exe:cabal > /dev/null 2>&1
+
+cmd-v1-help/%.txt: | cmd-help-build
 	@mkdir -p $(@D)
 	@cabal run -v0 cabal-install:exe:cabal -- v1-$* --help > $@ 2>/dev/null
 
-cmd-v2-help/%.txt:
+cmd-v2-help/%.txt: | cmd-help-build
 	@mkdir -p $(@D)
 	@cabal run -v0 cabal-install:exe:cabal -- $* --help > $@ 2>/dev/null
 
 # The "You can edit the cabal configuration file..." footer embeds an
 # absolute, machine-specific config path, so strip it for reproducibility.
-cmd-v2-help/help.txt:
+cmd-v2-help/help.txt: | cmd-help-build
 	@mkdir -p $(@D)
 	@cabal run -v0 cabal-install:exe:cabal -- --help 2>/dev/null \
 	  | sed '/^You can edit the cabal configuration file to set defaults:$$/,$$d' > $@
 
-cmd-v2-hidden-help/%.txt:
+cmd-v2-hidden-help/%.txt: | cmd-help-build
 	@mkdir -p $(@D)
 	@cabal run -v0 cabal-install:exe:cabal -- $* --help > $@ 2>/dev/null
 
 # act-as-setup runs Distribution.Simple.defaultMainArgs directly; the "--"
 # forwards args after it verbatim instead of being parsed by cabal itself.
-setup-help/%.txt:
+setup-help/%.txt: | cmd-help-build
 	@mkdir -p $(@D)
 	@cabal run -v0 cabal-install:exe:cabal -- act-as-setup -- $* --help > $@ 2>/dev/null
 
-setup-help/help.txt:
+setup-help/help.txt: | cmd-help-build
 	@mkdir -p $(@D)
 	@cabal run -v0 cabal-install:exe:cabal -- act-as-setup -- --help > $@ 2>/dev/null
 
