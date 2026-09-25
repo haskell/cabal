@@ -19,6 +19,12 @@ module Distribution.Client.Dependency
   , Progress (..)
   , foldProgress
 
+    -- * Converting to and from resolver-specific representations of inputs and
+    -- outputs
+  , getSolver
+  , getFinalParams
+  , getSolverConfig
+
     -- * Alternate, simple resolver that does not do dependencies recursively
   , resolveWithoutDependencies
 
@@ -153,7 +159,6 @@ import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
-import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.Progress
 import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.Settings
@@ -854,84 +859,116 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
 getSolver :: SolverConfig -> ModularResolver
 getSolver = modularResolver
 
+getFinalParams :: CompilerInfo -> DepResolverParams -> DepResolverParams
+getFinalParams comp params =
+  if isJust (compilerInfoWiredInUnitIds comp) || asBool (depResolverAllowBootLibInstalls params)
+    then dependOnWiredIns comp params
+    else dontInstallNonReinstallablePackages params
+
+getSolverConfig :: DepResolverParams -> SolverConfig
+getSolverConfig
+  (DepResolverParams
+    _targets
+    _constraints
+    _prefs
+    _defpref
+    _installedPkgIndex
+    _sourcePkgIndex
+    reordGoals
+    cntConflicts
+    fineGrained
+    minimize
+    indGoals
+    noReinstalls
+    shadowing
+    strFlags
+    _allowBootLibs
+    onlyConstrained_
+    maxBkjumps
+    enableBj
+    solveExes
+    order
+    verbosity) =
+
+  SolverConfig
+    reordGoals
+    cntConflicts
+    fineGrained
+    minimize
+    indGoals
+    noReinstalls
+    shadowing
+    strFlags
+    onlyConstrained_
+    maxBkjumps
+    enableBj
+    solveExes
+    order
+    verbosity
+    (PruneAfterFirstSuccess False)
+
+--     solver = getSolver config
+--     rparams = ResolverParams
+--                   platform
+--                   comp
+--                   installedPkgIndex
+--                   sourcePkgIndex
+--                   pkgConfigDB
+--                   preferences
+--                   constraints
+--                   targets
+--     inputs = convInputs solver rparams
+-- 
+--     preferences :: PackageName -> PackagePreferences
+--     preferences = interpretPackagesPreference targets defpref prefs
+
 -- | Run the dependency solver.
 --
 -- Since this is potentially an expensive operation, the result is wrapped in a
 -- a 'Progress' structure that can be unfolded to provide progress information,
 -- logging messages and the final result or an error.
 resolveDependencies
-  :: Platform
-  -> CompilerInfo
-  -> Maybe PkgConfigDb
+  :: DependencyResolver s
+  => s
   -> DepResolverParams
+  -> ResolverParams UnresolvedPkgLoc
+  -> ResolverInputs s
   -> Progress String String SolverInstallPlan
-resolveDependencies platform comp pkgConfigDB params = do
-  step (showDepResolverParams finalparams)
+resolveDependencies solver params rparams inputs = do
+  step (showDepResolverParams params)
   pkgs <- do
-    let config =
-          SolverConfig
-            reordGoals
-            cntConflicts
-            fineGrained
-            minimize
-            indGoals
-            noReinstalls
-            shadowing
-            strFlags
-            onlyConstrained_
-            maxBkjumps
-            enableBj
-            solveExes
-            order
-            verbosity
-            (PruneAfterFirstSuccess False)
-        solver = getSolver config
-        rparams = ResolverParams
-                      platform
-                      comp
-                      installedPkgIndex
-                      sourcePkgIndex
-                      pkgConfigDB
-                      preferences
-                      constraints
-                      targets
-        inputs = convInputs solver rparams
     formatProgress $
       convOutput solver rparams <$> runResolver solver inputs
-  validateSolverResult platform comp indGoals pkgs
+  validateSolverResult
+    (rpPlatform rparams) 
+    (rpCompilerInfo rparams) indGoals pkgs
   where
-    finalparams@( DepResolverParams
-                    targets
-                    constraints
-                    prefs
-                    defpref
-                    installedPkgIndex
-                    sourcePkgIndex
-                    reordGoals
-                    cntConflicts
-                    fineGrained
-                    minimize
-                    indGoals
-                    noReinstalls
-                    shadowing
-                    strFlags
-                    _allowBootLibs
-                    onlyConstrained_
-                    maxBkjumps
-                    enableBj
-                    solveExes
-                    order
-                    verbosity
-                  ) =
-        if isJust (compilerInfoWiredInUnitIds comp) || asBool (depResolverAllowBootLibInstalls params)
-          then dependOnWiredIns comp params
-          else dontInstallNonReinstallablePackages params
+    DepResolverParams
+      _targets
+      _constraints
+      _prefs
+      _defpref
+      _installedPkgIndex
+      _sourcePkgIndex
+      _reordGoals
+      _cntConflicts
+      _fineGrained
+      _minimize
+      indGoals
+      _noReinstalls
+      _shadowing
+      _strFlags
+      _allowBootLibs
+      _onlyConstrained_
+      _maxBkjumps
+      _enableBj
+      _solveExes
+      _order
+      _verbosity
+      = params
 
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
     formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
-
-    preferences :: PackageName -> PackagePreferences
-    preferences = interpretPackagesPreference targets defpref prefs
 
 -- | Give an interpretation to the global 'PackagesPreference' as
 --  specific per-package 'PackageVersionPreference'.

@@ -1400,6 +1400,7 @@ planPackages
   localPackages
   pkgStanzasEnable =
     resolveDependencies
+      getSolver
       platform
       (compilerInfo comp)
       pkgConfigDB
