@@ -346,13 +346,7 @@ compilerFlagsArg extra bi =
     extensionFlags = ["-X" ++ prettyShow ext | ext <- defaultExtensions bi]
 
 -- | @extra-libraries@ on a library, as @-l@ flags on its
--- @exported_linker_flags@ - a local fork of buck2/prelude/haskell/
--- haskell.bzl (see buck2\/buck2.md) adds this attr to haskell_library(),
--- propagating to whatever finally links against it via the standard
--- native-link-info machinery (unlike plain @linker_flags@, which
--- haskell_library() only ever applies to its own @.so@ link step - see
--- that fork's own commit for the full story of why this was needed
--- instead of just using @linker_flags@ here).
+-- @exported_linker_flags@
 exportedLinkerFlagsArg :: BuildInfo -> [(String, Value)]
 exportedLinkerFlagsArg bi = optionalListArg "exported_linker_flags" ["-l" ++ lib | lib <- extraLibs bi]
 

@@ -206,23 +206,7 @@ buck2Action flags extraArgs globalFlags = do
           installedIndex = PackageIndex.fromList resolvedDeps
 
       -- A real 'LocalBuildInfo' for every local (or quasi-local, per
-      -- 'localPkgs's own comment above) *component* - built the exact
-      -- same way "Distribution.Client.ProjectBuilding.UnpackedPackage"
-      -- builds one for a real build, via
-      -- "Distribution.Client.InLibrary" (an in-process, no-subprocess
-      -- reimplementation of Setup.hs's own configure logic that calls
-      -- straight into the real 'Distribution.Simple.Configure.configureFinal'
-      -- - so the result is exactly what a real @Setup configure@ would
-      -- produce, not a hand-approximation of it). This is what lets
-      -- "Distribution.Client.Buck2.CabalToBuck" call Cabal's own
-      -- @generateCabalMacrosHeader@\/@generatePathsModule@ directly
-      -- instead of reimplementing pieces of them by hand (a real
-      -- maintenance risk otherwise - see buck2.md's own note on this).
-      -- Confirmed via reading 'InLibrary.configure''s own source that
-      -- this is a pure in-memory computation: nothing in it calls
-      -- @writePersistBuildConfig@ or otherwise writes to
-      -- @dist-newstyle@, so this doesn't give local packages a second,
-      -- redundant "configured" state on disk.
+      -- 'localPkgs's own comment above) *component*
       --
       -- Processed in dependency order ('InstallPlan.reverseTopologicalOrder'
       -- - despite the name, dependencies first - not the arbitrary order
