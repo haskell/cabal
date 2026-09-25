@@ -1388,6 +1388,29 @@ after ensuring they are up to date and building them, if necessary.
     target will select all packages of the project and, from those, test all
     their test suites.
 
+Not every target contains test suites: a package can have a library or
+executables but no test suites at all. By default this is not an error:
+``cabal test`` skips such targets with a ``No tests to run for ...`` notice
+and still builds and runs the test suites of the remaining targets::
+
+    $ cabal test pkg-with-tests pkg-without-tests
+    No tests to run for the package pkg-without-tests-0.1.0.0
+    ...
+    Running 1 test suites...
+    Test suite pkg-with-tests-test: PASS
+    1 of 1 test suites (1 of 1 test cases) passed.
+
+If none of the requested targets contain any test suites, nothing is built
+or run: ``cabal test`` prints a notice for each target and exits
+successfully. The same applies to the ``:tests`` filtered form of a package
+target, e.g. ``q:tests``.
+
+Because a successful exit does not imply that any test suite ran, this
+behaviour can hide skipped tests, e.g. in CI. To treat such targets as
+errors instead, pass ``--test-fail-when-no-test-suites``: ``cabal test``
+then exits with failure when any of the requested targets does not contain
+any test suites, instead of skipping it.
+
 ``cabal test`` inherits flags of the ``test`` subcommand of ``Setup.hs``
 (:ref:`see the corresponding section <setup-test>`) with one caveat: every
 ``Setup.hs test`` flag receives the ``test-`` prefix if it already does
