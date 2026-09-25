@@ -53,7 +53,8 @@ import Distribution.Client.ProjectOrchestration
 -- otherwise be ambiguous with 'ProjectPlanning's lower-level original.
 import Distribution.Client.ProjectPlanning hiding (pruneInstallPlanToTargets)
 import Distribution.Client.ProjectPlanning.Types
-  ( elabComponentName
+  ( ElaboratedPackageOrComponent (ElabComponent, ElabPackage)
+  , elabComponentName
   , elabDistDirParams
   , elabExeDependencyPaths
   )
@@ -82,6 +83,7 @@ import Distribution.Simple.Program.Builtin (builtinPrograms)
 import Distribution.Simple.Program.Db (prependProgramSearchPathNoLogging, restoreProgramDb)
 import Distribution.Simple.Register (generateRegistrationInfo)
 import Distribution.Simple.Utils (dieWithException, notice)
+import Distribution.Types.Component (componentName)
 import Distribution.Types.LocalBuildInfo
   ( LocalBuildInfo
   , componentNameCLBIs
@@ -240,11 +242,35 @@ buck2Action flags extraArgs globalFlags = do
         foldM
           ( \(cmap, idx) elab -> do
               lbi <- localBuildInfoFor verbosity (distDirLayout baseCtx) elaboratedPlanOriginal elaboratedShared idx elab
-              case elabComponentName elab of
-                Nothing -> return (cmap, idx)
-                Just cname -> do
-                  idx' <- registerLocalLibrary verbosity lbi (elabPkgDescription elab) cname idx
-                  return (Map.insert (packageName (elabPkgDescription elab), cname) lbi cmap, idx')
+              let pkgDesc = elabPkgDescription elab
+                  -- Per-component elaboration gives one 'elab' per
+                  -- component, correctly named by 'elabComponentName'.
+                  -- But not every package gets elaborated that way: a
+                  -- package elaborated as a whole ('ElabPackage') gets
+                  -- exactly one 'elab' for the *entire* package, and
+                  -- 'elabComponentName' defaults that to just the main
+                  -- library ("there could be more, but default this" -
+                  -- its own haddock) - even though the single 'lbi' this
+                  -- configure call just produced genuinely covers every
+                  -- component of the package (real Cabal's own
+                  -- 'configureFinal' computes a
+                  -- 'ComponentLocalBuildInfo' for each one internally,
+                  -- regardless of elaboration mode). Registering only
+                  -- the library here left every *other* component of
+                  -- such a package (executables, test-suites, ...)
+                  -- with no 'componentLBIs' entry at all - confirmed as
+                  -- the real cause of "no LocalBuildInfo found" wrongly
+                  -- skipping e.g. glean-clang's own executables, which
+                  -- are elaborated this way. So for 'ElabPackage' mode,
+                  -- every buildable component of the package is
+                  -- registered under this same 'lbi', not just the one
+                  -- 'elabComponentName' names.
+                  cnames = case elabPkgOrComp elab of
+                    ElabComponent _ -> maybeToList (elabComponentName elab)
+                    ElabPackage _ -> [componentName comp | comp <- PD.pkgBuildableComponents pkgDesc]
+              idx' <- foldM (\i cname -> registerLocalLibrary verbosity lbi pkgDesc cname i) idx cnames
+              let cmap' = foldl' (\m cname -> Map.insert (packageName pkgDesc, cname) lbi m) cmap cnames
+              return (cmap', idx')
           )
           (Map.empty, installedIndex)
           [ elab
