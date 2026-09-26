@@ -57,7 +57,6 @@ module Distribution.Types.LocalBuildInfo
   , buildDirPBD
   , setupFlagsBuildDir
   , distPrefLBI
-  , packageRoot
   , progPrefix
   , progSuffix
 
@@ -129,8 +128,6 @@ import Distribution.System
 import qualified Data.Map as Map
 import Distribution.Compat.Graph (Graph)
 import qualified Distribution.Compat.Graph as Graph
-
-import qualified System.FilePath as FilePath (takeDirectory)
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
@@ -306,18 +303,6 @@ setupFlagsBuildDir cfg = fromFlag (setupDistPref cfg) </> makeRelativePathEx "bu
 
 distPrefLBI :: LocalBuildInfo -> SymbolicPath Pkg (Dir Dist)
 distPrefLBI = fromFlag . setupDistPref . configCommonFlags . LBC.configFlags . LBC.packageBuildDescr . localBuildDescr
-
--- | The (relative or absolute) path to the package root, based on
---
---  - the working directory flag
---  - the @.cabal@ path
-packageRoot :: CommonSetupFlags -> FilePath
-packageRoot cfg =
-  case flagToMaybe (setupCabalFilePath cfg) of
-    Just cabalPath -> FilePath.takeDirectory $ interpretSymbolicPath mbWorkDir cabalPath
-    Nothing -> maybe "." getSymbolicPath mbWorkDir
-  where
-    mbWorkDir = flagToMaybe $ setupWorkingDir cfg
 
 progPrefix, progSuffix :: LocalBuildInfo -> PathTemplate
 -- NB: make sure to read from 'BuildOptions' rather than the 'ConfigFlags'

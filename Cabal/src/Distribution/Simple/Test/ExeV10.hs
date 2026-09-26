@@ -38,7 +38,7 @@ import Distribution.Verbosity
 import Distribution.Utils.Path
 
 import qualified Data.ByteString.Lazy as LBS
-import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI, packageRoot)
+import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI)
 import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
@@ -89,7 +89,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         map
           (testOption pkg_descr lbi suite)
           (testOptions flags)
-      tixFile = packageRoot (testCommonFlags flags) </> getSymbolicPath (tixFilePath distPref way testName')
+      tixFile = i $ tixFilePath distPref way testName'
 
   shellEnv <-
     getFullEnvironment

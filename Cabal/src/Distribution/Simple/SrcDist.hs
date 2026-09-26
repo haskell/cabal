@@ -271,10 +271,13 @@ listPackageSources' verbosity rip mbWorkDir pkg_descr pps =
       fmap concat
         . withAllLib
         $ \l -> do
-          let lbi = libBuildInfo l
-              incls = getSymbolicPath <$> filter (`notElem` autogenIncludes lbi) (installIncludes lbi)
-              relincdirs = fmap getSymbolicPath $ sameDirectory : mapMaybe symbolicPathRelative_maybe (includeDirs lbi)
-          traverse (fmap (makeSymbolicPath . snd) . findIncludeFile verbosity cwd relincdirs) incls
+          let bi = libBuildInfo l
+              incls = filter (`notElem` autogenIncludes bi) (installIncludes bi)
+              -- Only search the source tree; don't include generated files.
+              relincdirs = sameDirectory : mapMaybe symbolicPathRelative_maybe (includeDirs bi)
+          traverse
+            (fmap relativeSymbolicPath . findFileCwd verbosity FindIncludeFile mbWorkDir relincdirs)
+            incls
     , -- Setup script, if it exists.
       maybe [] (\f -> [makeSymbolicPath f]) <$> findSetupFile cwd
     , -- SetupHooks script, if it exists.
@@ -374,7 +377,13 @@ findMainExeFile verbosity cwd exeBi pps mainPath = do
       (hsSourceDirs exeBi)
       (dropExtensionsSymbolicPath mainPath)
   case ppFile of
-    Nothing -> findFileCwd verbosity cwd (hsSourceDirs exeBi) mainPath
+    Nothing ->
+      findFileCwd
+        verbosity
+        FindHaskellSourceFile
+        cwd
+        (hsSourceDirs exeBi)
+        mainPath
     Just pp -> return pp
 
 -- | Find a module definition file
@@ -388,19 +397,12 @@ findModDefFile
   -> RelativePath Source File
   -> IO (SymbolicPath Pkg File)
 findModDefFile verbosity cwd flibBi _pps modDefPath =
-  findFileCwd verbosity cwd (sameDirectory : hsSourceDirs flibBi) modDefPath
-
--- | Given a list of include paths, try to find the include file named
--- @f@. Return the name of the file and the full path, or exit with error if
--- there's no such file.
-findIncludeFile :: Verbosity -> FilePath -> [FilePath] -> String -> IO (String, FilePath)
-findIncludeFile verbosity cwd fs f = go fs
-  where
-    go [] = dieWithException verbosity $ NoIncludeFileFound f fs
-    go (d : ds) = do
-      let path = d </> f
-      b <- doesFileExist (cwd </> path)
-      if b then return (f, path) else go ds
+  findFileCwd
+    verbosity
+    FindModuleDefFile
+    cwd
+    (sameDirectory : hsSourceDirs flibBi)
+    modDefPath
 
 -- | Remove the auto-generated modules (like 'Paths_*') from 'exposed-modules'
 -- and 'other-modules'.

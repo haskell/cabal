@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -----------------------------------------------------------------------------
 
 -- Module      :  Distribution.Simple.Errors
@@ -11,6 +13,7 @@
 module Distribution.Simple.Errors
   ( CabalException (..)
   , FailedDependency (..)
+  , WhatToFind (..)
   , exceptionCode
   , exceptionMessage
   ) where
@@ -49,10 +52,8 @@ data CabalException
   | -- | @NoLibraryFound@ has been downgraded to a warning, and is therefore no longer emitted.
     NoLibraryFound
   | CompilerNotInstalled CompilerFlavor
-  | CantFindIncludeFile String [String]
   | UnsupportedTestSuite String
   | UnsupportedBenchMark String
-  | NoIncludeFileFound String [String]
   | NoModuleFound ModuleName [Suffix]
   | RegMultipleInstancePkg
   | SuppressingChecksOnFile
@@ -148,7 +149,7 @@ data CabalException
   | Couldn'tFindTestProgLibV09 FilePath
   | TestCoverageSupportLibV09
   | RawSystemStdout String
-  | FindFile FilePath
+  | FindFile WhatToFind FilePath [FilePath]
   | FindModuleFileEx ModuleName [Suffix] [FilePath]
   | MultipleFilesWithExtension String
   | NoDesc
@@ -172,6 +173,20 @@ data CabalException
   | StandaloneBytecodeNotSupportedYet
   deriving (Show)
 
+data WhatToFind
+  = FindIncludeFile
+  | FindHaskellSourceFile
+  | FindModuleDefFile
+  | FindOtherFile -- generic fallback
+  deriving (Show, Eq)
+
+whatToFind :: WhatToFind -> String
+whatToFind = \case
+  FindIncludeFile -> "include file"
+  FindHaskellSourceFile -> "Haskell source file"
+  FindModuleDefFile -> "module definition file"
+  FindOtherFile -> "file"
+
 exceptionCode :: CabalException -> Int
 exceptionCode e = case e of
   NoBenchMarkProgram{} -> 1678
@@ -180,10 +195,10 @@ exceptionCode e = case e of
   NoBenchMark{} -> 1654
   NoLibraryFound -> 2546
   CompilerNotInstalled{} -> 7465
-  CantFindIncludeFile{} -> 3876
+  -- Retired: CantFindIncludeFile{} -> 3876
   UnsupportedTestSuite{} -> 3245
   UnsupportedBenchMark{} -> 9123
-  NoIncludeFileFound{} -> 2987
+  -- Retired: NoIncludeFileFound{} -> 2987
   NoModuleFound{} -> 6421
   RegMultipleInstancePkg{} -> 3421
   SuppressingChecksOnFile{} -> 5436
@@ -319,10 +334,8 @@ exceptionMessage e = case e of
   NoBenchMark bmName -> "no such benchmark: " ++ bmName
   NoLibraryFound -> "No executables and no library found. Nothing to do."
   CompilerNotInstalled compilerFlavor -> "installing with " ++ prettyShow compilerFlavor ++ "is not implemented"
-  CantFindIncludeFile file sd -> "can't find include file " ++ file ++ " in any of the search dirs " ++ intercalate ", " sd
   UnsupportedTestSuite test_type -> "Unsupported test suite type: " ++ test_type
   UnsupportedBenchMark benchMarkType -> "Unsupported benchmark type: " ++ benchMarkType
-  NoIncludeFileFound f sd -> "can't find include file " ++ f ++ " in any of the search dirs " ++ intercalate ", " sd
   NoModuleFound m suffixes ->
     "Could not find module: "
       ++ prettyShow m
@@ -720,7 +733,13 @@ exceptionMessage e = case e of
       ++ "\". Did you build the package first?"
   TestCoverageSupportLibV09 -> "Test coverage is only supported for packages with a library component."
   RawSystemStdout errors -> errors
-  FindFile fileName -> fileName ++ " doesn't exist"
+  FindFile what fileName searchDirs ->
+    "Could not find "
+      ++ whatToFind what
+      ++ " "
+      ++ fileName
+      ++ " in any of the search dirs: "
+      ++ intercalate ", " searchDirs
   FindModuleFileEx mod_name extensions searchPath ->
     "Could not find module: "
       ++ prettyShow mod_name

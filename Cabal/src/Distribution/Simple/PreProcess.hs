@@ -575,10 +575,7 @@ ppHsc2hs bi lbi clbi =
                 , osxFrameworkDirs
                 , platformDefines lbi
                 , -- Options from the current package:
-                  ["-I" ++ u dir | dir <- PD.includeDirs bi]
-                , [ "-I" ++ u (buildDir lbi </> unsafeCoerceSymbolicPath relDir)
-                  | relDir <- mapMaybe symbolicPathRelative_maybe $ PD.includeDirs bi
-                  ]
+                  ["-I" ++ u dir | dir <- includeSearchDirs lbi (Just clbi) (PD.includeDirs bi)]
                 , -- hsc2hs uses the C ABI
                   -- We assume that there are only C sources
                   -- and C++ functions are exported via a C
