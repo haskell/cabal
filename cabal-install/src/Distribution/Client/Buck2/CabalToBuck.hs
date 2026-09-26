@@ -27,7 +27,9 @@ import Distribution.Compiler (CompilerFlavor (GHC))
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Package (packageName)
 import Distribution.PackageDescription
-  ( BuildInfo
+  ( Benchmark (benchmarkInterface, benchmarkName)
+  , BenchmarkInterface (..)
+  , BuildInfo
   , Executable (exeName, modulePath)
   , Library (exposedModules, libBuildInfo, libName)
   , LibraryName (..)
@@ -193,8 +195,8 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
   CLib lib -> library (libTargetName (packageName pkgDesc) (libName lib)) lib
   CExe exe -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (exeName exe)) "executable" $ executable exe
   CTest test -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (testName test)) "test-suite" $ testSuite test
+  CBench bench -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (benchmarkName bench)) "benchmark" $ benchmark bench
   CFLib _ -> skip "foreign library (not supported yet)"
-  CBench _ -> skip "benchmark (not supported yet)"
   where
     skip why = do
       warn verbosity $ "cabal buck2: skipping " ++ why ++ " in package " ++ unPackageName (packageName pkgDesc)
@@ -279,6 +281,51 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
       where
         bi = componentBuildInfo (CExe exe)
         targetName = unUnqualComponentName (exeName exe)
+
+    -- A benchmark's own 'BenchmarkExeV10' is exactly 'TestSuiteExeV10's
+    -- shape (a version-tagged main-is path over the same 'BuildInfo') -
+    -- and unlike a test-suite, @cabal bench@ has no special "run it and
+    -- report a testsuite-style result" semantics of its own, just
+    -- "build and run this executable" - so this reuses 'executable's
+    -- plain @haskell_binary()@ mapping verbatim, with no @cwd@ wrapper
+    -- (matching how a plain executable is already generated here).
+    benchmark bench = case benchmarkInterface bench of
+      BenchmarkExeV10 _ver mainIs -> case lbiClbiFor pkgDesc componentLBIs comp of
+        Nothing -> skip ("benchmark " ++ targetName ++ " (no LocalBuildInfo found for it in the elaborated build plan)")
+        Just (lbi, clbi) -> do
+          mmainSrc <- resolveMainIs verbosity pkgDir bi (getSymbolicPath mainIs)
+          motherSrcs <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) pkgDir bi (otherModules bi)
+          case (mmainSrc, motherSrcs) of
+            (Just mainSrc, Just otherSrcs) -> do
+              (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex pkgDir targetName bi
+              macrosFlags <- macrosFlagsArg pkgDir rootRelPkgDir targetName pkgDesc lbi clbi
+              let (pkgs, deps) = classifyDeps localIndex bi
+                  binCall =
+                    call
+                      "haskell_binary"
+                      ( [ ("name", str targetName)
+                        , ("srcs", VDict (("Main.hs", str mainSrc) : otherSrcs))
+                        ]
+                          ++ compilerFlagsArg macrosFlags bi
+                          ++ linkerFlagsArg bi
+                          ++ optionalListArg "packages" pkgs
+                          ++ optionalListArg "deps" (deps ++ cxxDeps)
+                          ++ [("visibility", strList ["PUBLIC"])]
+                      )
+              return $
+                PackageTargets
+                  (("//buck2:haskell.bzl", ["haskell_binary"]) : cxxLoads)
+                  (cxxCalls ++ [binCall])
+            _ -> skip ("benchmark " ++ targetName ++ " (couldn't resolve all its modules)")
+      _ ->
+        skip
+          ( "benchmark "
+              ++ targetName
+              ++ " (only exitcode-stdio-1.0 benchmarks are supported)"
+          )
+      where
+        bi = componentBuildInfo (CBench bench)
+        targetName = unUnqualComponentName (benchmarkName bench)
 
     testSuite test = case testInterface test of
       TestSuiteExeV10 _ver mainIs -> case lbiClbiFor pkgDesc componentLBIs comp of
@@ -434,19 +481,30 @@ libTargetName _ (LSubLibName n) = unUnqualComponentName n
 
 -- | Split a component's @build-depends@ (each of which may name one or
 -- more specific sub-libraries of a package via @pkg:sublib@ - see
--- 'depLibraries') into external package names (fed to
--- buck2/haskell.bzl's @packages =@ convenience param - which only
--- resolves a package's main library, so a named sub-library of an
--- *external* package still only contributes its package name here, same
--- as before this distinguished sub-libraries at all) and local-project
--- target labels (fed to @deps =@, correctly pointing at the specific
--- local sub-library's own target when one was named).
+-- 'depLibraries') into external *main*-library package names (fed to
+-- buck2/haskell.bzl's @packages =@ convenience param - which only ever
+-- resolves a package's main library, per its own haddock in
+-- buck2/haskell.bzl) and target labels (fed to @deps =@): a local
+-- package's own sub-library target (@//dir:sublib@, via 'libTargetName')
+-- when one was named, an *external* package's own named sub-library
+-- target (@//third-party/haskell:sublib@ - "Distribution.Client.
+-- Buck2.Prebuilt" generates one @haskell_prebuilt_library()@ per library
+-- unit there too, target-named the exact same way via the same
+-- 'libTargetName', not one per package name) when one was named there
+-- instead, or nothing at all for an ordinary external main-library
+-- dependency (that one's covered by @packages =@ already).
 classifyDeps :: LocalPackageIndex -> BuildInfo -> ([String], [String])
 classifyDeps localIndex bi =
-  ( ordNub [unPackageName pn | (pn, _) <- allDeps, not (Map.member pn localIndex)]
-  , ordNub [localTargetLabel dir (libTargetName pn ln) | (pn, ln) <- allDeps, Just (dir, _) <- [Map.lookup pn localIndex]]
+  ( ordNub [unPackageName pn | (pn, LMainLibName) <- allDeps, not (Map.member pn localIndex)]
+  , ordNub $
+      [localTargetLabel dir (libTargetName pn ln) | (pn, ln) <- allDeps, Just (dir, _) <- [Map.lookup pn localIndex]]
+        ++ [ localTargetLabel thirdPartyHaskellDir (libTargetName pn ln)
+           | (pn, ln@(LSubLibName _)) <- allDeps
+           , not (Map.member pn localIndex)
+           ]
   )
   where
+    thirdPartyHaskellDir = "third-party" </> "haskell"
     directDeps =
       ordNub
         [ (depPkgName d, ln)
