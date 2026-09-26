@@ -301,6 +301,199 @@ jobs:
       # See the comment above about running all tests but still failing if one
       # of them does; it also applies here.
 
+  # Validate the repo against GHC's JavaScript backend, using the
+  # `javascript-unknown-ghcjs` cross toolchain from the ghcup `cross` release
+  # channel. See `cabal.validate-js.project` for how the build is set up, and
+  # `Cabal/jsbits/js-backend-polyfills.js` for the RTS primitives we provide
+  # ourselves.
+  #
+  # Known limitations of this job (all caused by the 9.12.2 cross bindist and
+  # the GHC JavaScript backend, not by Cabal itself):
+  #  * `Cabal-tests:test:no-thunks-test` is not run: it needs the
+  #    `unpackClosure#` primop, which the JavaScript backend does not provide.
+  #  * `Cabal-tests:test:rpmvercmp` is not run: its reference implementation
+  #    is a C FFI routine which cannot be bridged to the JavaScript RTS.
+  #  * `cabal-install` unit tests are not run yet: they fail to load due to a
+  #    static-pointers codegen bug in the JavaScript backend (used by
+  #    `hackage-security`).
+  #  * `cabal-testsuite` is not run yet: it executes test scripts in a GHCi
+  #    session, and the cross bindist is "not built for interactive use".
+  validate-javascript:
+    name: Validate javascript ghc-${{ matrix.ghc }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        # Versions available in the ghcup `cross` release channel.
+        ghc: ["9.12.2"]
+    env:
+      # ghcup toolchain id of the JavaScript cross compiler (used with
+      # `ghcup install ghc`).
+      JS_GHC_TOOLCHAIN: javascript-unknown-ghcjs-${{ matrix.ghc }}
+      # Executable names of the cross compiler and its ghc-pkg.
+      JS_GHC: javascript-unknown-ghcjs-ghc-${{ matrix.ghc }}
+      JS_GHC_PKG: javascript-unknown-ghcjs-ghc-pkg-${{ matrix.ghc }}
+      # The emscripten version required by the cross bindist (see the ghcup
+      # pre-install message).
+      EMSDK_VERSION: "3.1.74"
+      # Isolate the store etc. of the JavaScript build from the host one.
+      CABAL_DIR: /home/runner/.cabal-js
+    steps:
+      - uses: actions/checkout@v7
+
+      # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
+      - name: Add manually supplied allow-newer
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.allow-newer != ''
+        run: |
+          echo "allow-newer: ${{ github.event.inputs.allow-newer }}" >> cabal.validate-js.project
+
+      - name: Add manually supplied constraints
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.constraints != ''
+        run: |
+          echo "constraints: ${{ github.event.inputs.constraints }}" >> cabal.validate-js.project
+
+      - uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          # Host toolchain; only used to drive `cabal`, all compilation is
+          # done with the cross compiler installed below.
+          ghc-version: ${{ env.GHC_FOR_RELEASE }}
+          cabal-version: latest
+
+      - name: Cache emsdk, JS store and build directory
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.local/emsdk
+            ~/.cabal-js
+            dist-newstyle-validate-js
+          key: javascript-${{ env.JS_GHC }}-${{ env.EMSDK_VERSION }}-${{ hashFiles('cabal.validate-js.project') }}-${{ github.sha }}
+          restore-keys: |
+            javascript-${{ env.JS_GHC }}-${{ env.EMSDK_VERSION }}-${{ hashFiles('cabal.validate-js.project') }}-
+            javascript-${{ env.JS_GHC }}-${{ env.EMSDK_VERSION }}-
+
+      - name: Install emsdk
+        run: |
+          if [ ! -x "$HOME/.local/emsdk/upstream/emscripten/emcc" ]; then
+            rm -rf "$HOME/.local/emsdk"
+            git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$HOME/.local/emsdk"
+            "$HOME/.local/emsdk/emsdk" install "$EMSDK_VERSION"
+            "$HOME/.local/emsdk/emsdk" activate "$EMSDK_VERSION"
+          fi
+          source "$HOME/.local/emsdk/emsdk_env.sh"
+          emcc --version | head -1
+
+      - name: Install the GHC JavaScript cross toolchain
+        run: |
+          ghcup config add-release-channel cross
+          source "$HOME/.local/emsdk/emsdk_env.sh"
+          if ! command -v "$JS_GHC" > /dev/null 2>&1; then
+            # `emconfigure` makes the bindist's configure script use emcc.
+            emconfigure ghcup install ghc "$JS_GHC_TOOLCHAIN"
+          fi
+          "$JS_GHC" --version
+
+      # See https://github.com/haskell/cabal/pull/8546
+      - name: Work around git problem
+        run: git config --global protocol.file.allow always
+
+      - name: Update the Hackage index (JS store)
+        run: |
+          source "$HOME/.local/emsdk/emsdk_env.sh"
+          cabal update
+
+      # NB: use explicit component targets: `tests: True` is set in the
+      # project file, so a bare package target would also build every test
+      # suite of that package.
+      - name: Build
+        run: |
+          source "$HOME/.local/emsdk/emsdk_env.sh"
+          cabal build \
+            --builddir=dist-newstyle-validate-js \
+            --project-file=cabal.validate-js.project \
+            --with-compiler="$JS_GHC" \
+            --with-hc-pkg="$JS_GHC_PKG" \
+            Cabal Cabal-hooks cabal-testsuite \
+            cabal-install-solver cabal-install-solver:test:unit-tests \
+            cabal-install:exe:cabal \
+            Cabal-tests:test:unit-tests \
+            Cabal-tests:test:check-tests \
+            Cabal-tests:test:parser-tests
+
+      # The test binaries are Node.js scripts, and expect to be run from the
+      # directory of their package (they use relative data file paths).
+      - name: Run lib tests
+        run: |
+          source "$HOME/.local/emsdk/emsdk_env.sh"
+          rc=0
+          for t in unit-tests check-tests parser-tests; do
+            echo "::group::Cabal-tests:test:$t"
+            BIN=$(cabal list-bin \
+              --builddir=dist-newstyle-validate-js \
+              --project-file=cabal.validate-js.project \
+              --with-compiler="$JS_GHC" \
+              --with-hc-pkg="$JS_GHC_PKG" \
+              "Cabal-tests:test:$t")
+            # Only the unit-tests support `--with-ghc` (see `libTests` in
+            # cabal-validate/src/Main.hs).
+            if [ "$t" = "unit-tests" ]; then
+              EXTRA_ARGS=(--with-ghc="$JS_GHC")
+            else
+              EXTRA_ARGS=()
+            fi
+            ( cd Cabal-tests && "$BIN" --hide-successes "${EXTRA_ARGS[@]}" ) || rc=1
+            echo "::endgroup::"
+          done
+          exit $rc
+
+      - name: Run solver tests
+        run: |
+          source "$HOME/.local/emsdk/emsdk_env.sh"
+          BIN=$(cabal list-bin \
+            --builddir=dist-newstyle-validate-js \
+            --project-file=cabal.validate-js.project \
+            --with-compiler="$JS_GHC" \
+            --with-hc-pkg="$JS_GHC_PKG" \
+            cabal-install-solver:test:unit-tests)
+          ( cd cabal-install-solver && "$BIN" --hide-successes )
+
+      # Smoke test the `cabal` executable that we just built for the
+      # JavaScript target: use it to build a project with the cross compiler
+      # and run the resulting executable.
+      - name: Smoke test the JavaScript cabal
+        run: |
+          source "$HOME/.local/emsdk/emsdk_env.sh"
+          REPO_CABAL=$(cabal list-bin \
+            --builddir=dist-newstyle-validate-js \
+            --project-file=cabal.validate-js.project \
+            --with-compiler="$JS_GHC" \
+            --with-hc-pkg="$JS_GHC_PKG" \
+            cabal-install:exe:cabal)
+          SMOKE_DIR=$(mktemp -d)
+          cd "$SMOKE_DIR"
+          cat > smoke.cabal <<'EOF'
+          cabal-version: 3.0
+          name: smoke
+          version: 0
+          build-type: Simple
+
+          executable smoke
+              main-is: Main.hs
+              build-depends: base ^>=4.21
+              default-language: GHC2021
+          EOF
+          printf 'module Main where\nmain :: IO ()\nmain = putStrLn "js smoke ok"\n' > Main.hs
+          echo "packages: ." > cabal.project
+          "$REPO_CABAL" build \
+            --builddir=dist-smoke \
+            --with-compiler="$JS_GHC" \
+            --with-hc-pkg="$JS_GHC_PKG"
+          EXE=$(find dist-smoke -name smoke -type f -perm -u+x | head -1)
+          OUT=$("$EXE")
+          echo "smoke output: $OUT"
+          [ "$OUT" = "js smoke ok" ]
+
   build-alpine:
     name: Build statically linked using alpine
     runs-on: ubuntu-latest
@@ -442,7 +635,7 @@ jobs:
       contents: write
 
     # IMPORTANT! Any job added to the workflow should be added here too
-    needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
+    needs: [validate, validate-old-ghcs, validate-javascript, build-alpine, dogfooding]
 
     steps:
       - uses: actions/download-artifact@v8
@@ -470,7 +663,7 @@ jobs:
       contents: write
 
     # IMPORTANT! Any job added to the workflow should be added here too
-    needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
+    needs: [validate, validate-old-ghcs, validate-javascript, build-alpine, dogfooding]
 
     steps:
     - uses: actions/download-artifact@v8
@@ -505,7 +698,7 @@ jobs:
     name: Validate post job
     runs-on: ubuntu-latest
     # IMPORTANT! Any job added to the workflow should be added here too
-    needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
+    needs: [validate, validate-old-ghcs, validate-javascript, build-alpine, dogfooding]
 
     steps:
       - run: |
