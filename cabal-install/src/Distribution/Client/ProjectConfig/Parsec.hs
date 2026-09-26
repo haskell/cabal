@@ -4,6 +4,7 @@
 module Distribution.Client.ProjectConfig.Parsec
   ( -- * Package configuration
     parseProject
+  , parseProjectConfig
   , ProjectConfig (..)
 
     -- ** Parsing
@@ -54,7 +55,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors.Parser (ProjectFileSource (..))
 import qualified Distribution.Compat.CharParsing as P
-import Network.URI (URI, uriFragment, uriPath, uriScheme)
+import Network.URI (URI, uriFragment, uriScheme)
 import System.Directory (makeAbsolute)
 import System.FilePath (splitFileName)
 import qualified Text.Parsec
@@ -174,18 +175,6 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     parseImport :: Position -> [FieldLine Position] -> ParseResult ProjectFileSource FilePath
     parseImport pos lines' = runFieldParser pos (P.many P.anyChar) cabalSpec lines'
 
-    -- We want a normalized path for @fieldsToConfig@. This eventually surfaces
-    -- in solver rejection messages and build messages "this build was affected
-    -- by the following (project) config files" so we want all paths shown there
-    -- to be relative to the directory of the project, not relative to the file
-    -- they were imported from.
-    fieldsToConfig :: ProjectConfigPath -> [Field Position] -> ParseResult ProjectFileSource ProjectConfig
-    fieldsToConfig sourceConfigPath xs = do
-      let (fs, sectionGroups) = partitionFields xs
-          sections = concat sectionGroups
-      config <- parseFieldGrammarCheckingStanzas cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
-      config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
-      return config'
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
       where
@@ -199,7 +188,51 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     sanityWalkBranch :: CondBranch ConfVar ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ParseResult ProjectFileSource ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
+-- We want a normalized path for @fieldsToConfig@. This eventually surfaces
+-- in solver rejection messages and build messages "this build was affected
+-- by the following (project) config files" so we want all paths shown there
+-- to be relative to the directory of the project, not relative to the file
+-- they were imported from.
+fieldsToConfig :: ProjectConfigPath -> [Field Position] -> ParseResult ProjectFileSource ProjectConfig
+fieldsToConfig sourceConfigPath xs = do
+  let (fs, sectionGroups) = partitionFields xs
+      sections = concat sectionGroups
+  config <- parseFieldGrammarCheckingStanzas cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
+  config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
+  return config'
+  where
     programDb = defaultProgramDb
+
+-- |
+-- >>> parseParsec projectPackages "packages" "foo"
+-- ([],Right ["foo"])
+--
+-- >>> parseParsec projectPackages "packages" "xL{4,IE-,eK<}fE?e"
+-- ([],Right ["xL{4,IE-,eK<}fE?e"])
+--
+-- >>> parseParsec projectPackages "packages" "7{u,{h,{=n}}}"
+-- ([],Right ["7{u,{h,{=n}}}"])
+--
+-- >>> parseParsec projectPackages "packages" ""
+-- ([],Right [])
+--
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" "foo"
+-- ([],Right (Last {getLast = Just "foo"}))
+--
+-- An empty value leaves the field unset, where the legacy parser would set it
+-- to the empty string, see 'Distribution.Client.ProjectConfig.Legacy.legacyProjectConfigFieldDescrs'.
+--
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" ""
+-- ([],Right (Last {getLast = Nothing}))
+--
+-- >>> parseParsec (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" " "
+-- ([],Right (Last {getLast = Nothing}))
+--
+-- >>> parseParsec (packageConfigHaddockHtmlLocation . projectConfigLocalPackages) "haddock-html-location" ""
+-- ([],Right (Last {getLast = Nothing}))
+parseProjectConfig :: FilePath -> BS.ByteString -> ParseResult ProjectFileSource ProjectConfig
+parseProjectConfig rootConfig bs =
+  fieldsToConfig (ProjectConfigPath $ rootConfig :| []) =<< readPreprocessFields bs
 
 startOfSection :: Position -> [SectionArg Position] -> Position
 -- The case where we have no args is the start of the section
@@ -284,13 +317,19 @@ stanzas :: Set BS.ByteString
 stanzas = Set.fromList ["source-repository-package", "program-options", "program-locations", "repository", "package"]
 
 -- | Currently a duplicate of 'Distribution.Client.Config.postProcessRepo' but migrated to Parsec ParseResult.
+--
+-- A @file+noindex:@ repository is local and its path is read back as a
+-- native path with 'fileNoIndexURIPath', the reading direction. The legacy
+-- printer writes that path with 'normaliseFileNoIndexURI', the writing
+-- direction, so the two must stay inverses of each other for a project file
+-- to round trip.
 postProcessRemoteRepo :: Position -> RemoteRepo -> ParseResult src (Either LocalRepo RemoteRepo)
 postProcessRemoteRepo pos repo = case uriScheme (remoteRepoURI repo) of
   -- TODO: check that there are no authority, query or fragment
   -- Note: the trailing colon is important
   "file+noindex:" -> do
-    let uri = normaliseFileNoIndexURI buildOS $ remoteRepoURI repo
-    return $ Left $ LocalRepo (remoteRepoName repo) (uriPath uri) (uriFragment uri == "#shared-cache")
+    let uri = remoteRepoURI repo
+    return $ Left $ LocalRepo (remoteRepoName repo) (fileNoIndexURIPath buildOS uri) (uriFragment uri == "#shared-cache")
   _ -> do
     when (remoteRepoKeyThreshold repo > length (remoteRepoRootKeys repo)) $
       warning $
@@ -409,3 +448,14 @@ warnUnknownFields fieldName fieldLines = for_ fieldLines (\field -> parseWarning
 
 cabalSpec :: CabalSpecVersion
 cabalSpec = cabalSpecLatest
+
+-- $setup
+-- >>> instance (Show a, Show b) => Show (ParseResult a b) where show = show . runParseResult
+--
+-- Parses a project file of one field, going through the lexer as a real
+-- project file would.
+--
+-- >>> :{
+-- parseParsec :: (ProjectConfig -> a) -> String -> String -> ParseResult ProjectFileSource a
+-- parseParsec f field s = f <$> parseProjectConfig "" (toUTF8BS (field ++ ": " ++ s))
+-- :}

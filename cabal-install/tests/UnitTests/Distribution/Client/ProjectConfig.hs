@@ -17,7 +17,6 @@ import System.Directory (canonicalizePath, withCurrentDirectory)
 import System.FilePath
 import System.IO.Unsafe (unsafePerformIO)
 
-import Distribution.Deprecated.ParseUtils
 import qualified Distribution.Deprecated.ReadP as Parse
 
 import Distribution.Package
@@ -48,6 +47,7 @@ import Distribution.Solver.Types.Settings
 
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
+import Distribution.Client.ProjectConfig.Parsec
 
 import UnitTests.Distribution.Client.ArbitraryInstances
 import UnitTests.Distribution.Client.TreeDiffInstances ()
@@ -78,12 +78,12 @@ tests =
       ]
   , testGroup
       "ProjectConfig printing/parsing round trip"
-      [ testProperty "packages" prop_roundtrip_printparse_packages
-      , testProperty "buildonly" prop_roundtrip_printparse_buildonly
-      , testProperty "shared" prop_roundtrip_printparse_shared
-      , testProperty "local" prop_roundtrip_printparse_local
-      , testProperty "specific" prop_roundtrip_printparse_specific
-      , testProperty "all" prop_roundtrip_printparse_all
+      [ testProperty "round trip packages" prop_roundtrip_printparse_packages
+      , testProperty "round trip buildonly" prop_roundtrip_printparse_buildonly
+      , testProperty "round trip shared" prop_roundtrip_printparse_shared
+      , testProperty "round trip local" prop_roundtrip_printparse_local
+      , testProperty "round trip specific" prop_roundtrip_printparse_specific
+      , testProperty "round trip all" prop_roundtrip_printparse_all
       ]
   , testGetProjectRootUsability
   , testFindProjectRoot
@@ -258,15 +258,19 @@ prop_roundtrip_legacytypes_specific config =
 --
 
 roundtrip_printparse :: ProjectConfig -> Property
-roundtrip_printparse config =
-  case fmap convertLegacyProjectConfig (parseLegacyProjectConfig "unused" (toUTF8BS str)) of
-    ParseOk _ x ->
-      counterexample ("shown:\n" ++ str) $
-        x `ediffEq` config{projectConfigProvenance = mempty}
-    ParseFailed err -> counterexample ("shown:\n" ++ str ++ "\nERROR: " ++ show err) False
+roundtrip_printparse config = countering $
+  case runParseResult $ parseProjectConfig "unused" (toUTF8BS str) of
+    (_, Right result) ->
+      ediffEq
+        result{projectConfigProvenance = mempty}
+        config{projectConfigProvenance = mempty}
+    (_, Left err) -> counterexample ("ERROR: " ++ show err) False
   where
     str :: String
     str = showLegacyProjectConfig (convertToLegacyProjectConfig config)
+    countering =
+      counterexample ("shown:\n" ++ str)
+        . counterexample ("shown by line:\n" ++ unlines (map (\s -> "'" ++ s ++ "'") (lines str)))
 
 prop_roundtrip_printparse_all :: ProjectConfig -> Property
 prop_roundtrip_printparse_all config =
@@ -588,7 +592,9 @@ instance Arbitrary ProjectConfigShared where
     projectConfigConfigFile <- arbitraryFlag arbitraryShortToken
     projectConfigProjectDir <- arbitraryFlag arbitraryShortToken
     projectConfigProjectFile <- arbitraryFlag arbitraryShortToken
-    projectConfigProjectFileParser <- arbitraryFlag arbitrary
+    -- The parser can only be chosen on the command line, not in a project
+    -- file, so the parsec parser never reads it back.
+    let projectConfigProjectFileParser = mempty
     projectConfigIgnoreProject <- arbitrary
     projectConfigHcFlavor <- arbitrary
     projectConfigHcPath <- arbitraryFlag arbitraryShortToken
@@ -631,15 +637,15 @@ instance Arbitrary ProjectConfigShared where
   shrink ProjectConfigShared{..} =
     runShrinker $
       ProjectConfigShared
-        <$> shrinker projectConfigDistDir
-        <*> shrinker projectConfigConfigFile
-        <*> shrinker projectConfigProjectDir
-        <*> shrinker projectConfigProjectFile
+        <$> shrinkerAla (fmap ShortToken) projectConfigDistDir
+        <*> shrinkerAla (fmap ShortToken) projectConfigConfigFile
+        <*> shrinkerAla (fmap ShortToken) projectConfigProjectDir
+        <*> shrinkerAla (fmap ShortToken) projectConfigProjectFile
         <*> shrinker projectConfigProjectFileParser
         <*> shrinker projectConfigIgnoreProject
         <*> shrinker projectConfigHcFlavor
-        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
-        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
+        <*> shrinkerAla (fmap ShortToken) projectConfigHcPath
+        <*> shrinkerAla (fmap ShortToken) projectConfigHcPkg
         <*> shrinker projectConfigHaddockIndex
         <*> shrinker projectConfigInstallDirs
         <*> shrinker projectConfigPackageDBs
@@ -647,7 +653,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigLocalNoIndexRepos
         <*> shrinker projectConfigActiveRepos
         <*> shrinker projectConfigIndexState
-        <*> shrinker projectConfigStoreDir
+        <*> shrinkerAla (fmap ShortToken) projectConfigStoreDir
         <*> shrinkerPP preShrink_Constraints postShrink_Constraints projectConfigConstraints
         <*> shrinker projectConfigPreferences
         <*> shrinker projectConfigCabalVersion

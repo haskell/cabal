@@ -24,7 +24,7 @@ import Distribution.Client.Targets (readUserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDepMod (..), RelaxDepScope (..), RelaxDepSubject (..), RelaxDeps (..), RelaxedDep (..))
 import Distribution.Client.Types.InstallMethod (InstallMethod (..))
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy (..))
-import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), asPosixPath)
+import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Client.Types.SourceRepo
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnvironmentFilesPolicy (..))
@@ -48,7 +48,6 @@ import Distribution.Solver.Types.Settings
   , ReorderGoals (..)
   , StrongFlags (..)
   )
-import Distribution.System (OS (..), buildOS)
 import Distribution.Types.CondTree (CondTree (..))
 import Distribution.Types.Flag (mkFlagAssignment)
 import Distribution.Types.PackageId (PackageIdentifier (..))
@@ -62,7 +61,7 @@ import Distribution.Verbosity
 import GHC.Stack (HasCallStack)
 import Network.URI (parseURI)
 import System.Directory (canonicalizePath, doesFileExist)
-import System.FilePath ((</>))
+import System.FilePath (normalise, (</>))
 import Prelude ()
 
 import Test.Tasty (TestTree, testGroup)
@@ -73,7 +72,10 @@ parserTests =
   testGroup
     "project files parsec tests"
     [ testCase "read packages" testPackages
+    , testCase "read packages glob" testPackagesGlob
+    , testCase "read packages comma separated" testPackagesCommaSeparated
     , testCase "read optional-packages" testOptionalPackages
+    , testCase "read optional-packages glob" testOptionalPackagesGlob
     , testCase "read extra-packages" testExtraPackages
     , testCase "read source-repository-package" testSourceRepoList
     , testCase "read project-config-build-only" testProjectConfigBuildOnly
@@ -83,6 +85,7 @@ parserTests =
     , testCase "read local-no-index-repos" testLocalNoIndexRepos
     , testCase "set explicit provenance" testProjectConfigProvenance
     , testCase "read project-config-local-packages" testProjectConfigLocalPackages
+    , testCase "read project-config-local-packages-empty-string" testProjectConfigLocalPackagesEmptyString
     , testCase "read project-config-all-packages" testProjectConfigAllPackages
     , testCase "read project-config-specific-packages" testProjectConfigSpecificPackages
     , testCase "test projectConfigAllPackages concatenation" testAllPackagesConcat
@@ -98,14 +101,33 @@ parserTests =
 
 testPackages :: Assertion
 testPackages = do
-  let expected = [".", "packages/packages.cabal"]
+  let expected = [".", "packages/packages.cabal", "a", "b"]
   (config, legacy) <- readConfigDefault "packages"
+  assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
+
+testPackagesGlob :: Assertion
+testPackagesGlob = do
+  let expected = ["*/*.cabal", "../{foo,bar}/"]
+  (config, legacy) <- readConfig "packages" "cabal.glob.project"
+  assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
+
+testPackagesCommaSeparated :: Assertion
+testPackagesCommaSeparated = do
+  let expected = ["xL{4,IE-,eK<}fE?e"]
+  -- let expected = ["xL{4","IE-","eK<}fE?e"]
+  (config, legacy) <- readConfig "packages" "cabal.comma-separated.project"
   assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
 
 testOptionalPackages :: Assertion
 testOptionalPackages = do
   let expected = [".", "packages/packages.cabal"]
   (config, legacy) <- readConfigDefault "optional-packages"
+  assertConfigEquals expected config legacy (projectPackagesOptional . snd . condTreeData)
+
+testOptionalPackagesGlob :: Assertion
+testOptionalPackagesGlob = do
+  let expected = ["*/*.cabal", "../{foo,bar}/"]
+  (config, legacy) <- readConfig "optional-packages" "cabal.glob.project"
   assertConfigEquals expected config legacy (projectPackagesOptional . snd . condTreeData)
 
 testSourceRepoList :: Assertion
@@ -298,26 +320,24 @@ testRemoteRepos = do
 testLocalNoIndexRepos :: Assertion
 testLocalNoIndexRepos = do
   (config, legacy) <- readConfigDefault "local-no-index-repos"
-  let actualLocalRepos = (fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . snd . condTreeData) config
-  assertBool "Expected LocalNoIndexRepos do not match parsed values" $ compareLists expected actualLocalRepos compareLocalRepos
+  let localRepos = fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . snd . condTreeData
+  assertBool "Expected LocalNoIndexRepos do not match parsed values" $ compareLists expected (localRepos config) compareLocalRepos
+  assertBool "Expected LocalNoIndexRepos do not match legacy parsed values" $ compareLists expected (localRepos legacy) compareLocalRepos
   assertConfigEquals mempty config legacy (projectConfigRemoteRepos . projectConfigShared . snd . condTreeData)
   where
     expected = [myRepository, mySecureRepository]
     myRepository =
       LocalRepo
         { localRepoName = RepoName "my-repository"
-        , localRepoPath = normalisePath "/absolute/path/to/directory"
+        , localRepoPath = normalise "/absolute/path/to/directory"
         , localRepoSharedCache = False
         }
     mySecureRepository =
       LocalRepo
         { localRepoName = RepoName "my-other-repository"
-        , localRepoPath = normalisePath "/another/path/to/repository"
+        , localRepoPath = normalise "/another/path/to/repository"
         , localRepoSharedCache = False
         }
-    normalisePath path = case buildOS of
-      Windows -> asPosixPath path
-      _ -> path
 
 testProjectConfigProvenance :: Assertion
 testProjectConfigProvenance = do
@@ -396,6 +416,18 @@ testProjectConfigLocalPackages = do
     packageConfigTestFailWhenNoTestSuites = Flag True
     packageConfigTestTestOptions = [toPathTemplate "--some-option", toPathTemplate "42"]
     packageConfigBenchmarkOptions = [toPathTemplate "--some-benchmark-option", toPathTemplate "--another-option"]
+
+-- | The parsers differ on a field with an empty value. The legacy parser
+-- passes the empty rest of the line to the option's reader and so sets the
+-- field to the empty string. The parsec parser sees a field with no lines and
+-- leaves it unset, which is the better behaviour.
+testProjectConfigLocalPackagesEmptyString :: Assertion
+testProjectConfigLocalPackagesEmptyString = do
+  (config, legacy) <- readConfig "project-config-local-packages" "cabal.empty-string.project"
+  assertEqual "Legacy parser sets the empty string" (toFlag (toPathTemplate "")) (field legacy)
+  assertEqual "Parsec parser leaves the field unset" NoFlag (field config)
+  where
+    field = packageConfigTestHumanLog . projectConfigLocalPackages . snd . condTreeData
 
 testProjectConfigAllPackages :: Assertion
 testProjectConfigAllPackages = do
