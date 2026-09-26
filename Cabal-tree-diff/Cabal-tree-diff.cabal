@@ -20,3 +20,14 @@ library
     Data.TreeDiff.Instances.CabalLanguage
     Data.TreeDiff.Instances.CabalSPDX
     Data.TreeDiff.Instances.CabalVersion
+
+test-suite spec-version-check
+  type: exitcode-stdio-1.0
+  default-language: GHC2021
+  hs-source-dirs: tests
+  main-is: SpecVersion.hs
+  autogen-modules: Paths_Cabal_tree_diff
+  other-modules: Paths_Cabal_tree_diff
+  build-depends:
+    , base         >= 4.17 && < 5
+    , Cabal-syntax ^>= 3.19

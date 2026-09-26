@@ -502,3 +502,12 @@ test-suite long-tests
     , tasty-quickcheck <0.12
     , QuickCheck >= 2.14 && <2.19
     , pretty-show >= 1.6.15
+
+test-suite spec-version-check
+  import: warnings, base-dep, cabal-syntax-dep
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests
+  main-is: SpecVersion.hs
+  default-language: GHC2021
+  autogen-modules: Paths_cabal_install
+  other-modules: Paths_cabal_install
