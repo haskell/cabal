@@ -32,6 +32,19 @@ import Prelude ()
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+import Control.Concurrent (getNumCapabilities, newEmptyMVar, putMVar, readMVar, setNumCapabilities)
+import Control.Concurrent.STM
+  ( STM
+  , atomically
+  , check
+  , modifyTVar'
+  , newTVarIO
+  , readTVar
+  , readTVarIO
+  , writeTVar
+  )
+import qualified Control.Concurrent.Stream as Stream
+
 import qualified Distribution.Client.CmdBuild as CmdBuild
 import Distribution.Client.CmdErrorMessages (renderCannotPruneDependencies, reportTargetProblems)
 import qualified Distribution.Client.InLibrary as InLibrary
@@ -57,6 +70,7 @@ import Distribution.Client.ProjectPlanning.Types
   , elabComponentName
   , elabDistDirParams
   , elabExeDependencyPaths
+  , elabOrderLibDependencies
   )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -70,9 +84,10 @@ import Distribution.Client.Setup
   )
 import Distribution.Client.Types.PackageLocation (PackageLocation (..))
 import Distribution.Client.Types.ReadyPackage (GenericReadyPackage (ReadyPackage))
+import Distribution.Client.Utils (numberOfProcessors)
 
 import qualified Distribution.PackageDescription as PD
-import Distribution.Package (HasUnitId (installedUnitId), packageId, packageName)
+import Distribution.Package (HasUnitId (installedUnitId), PackageName, packageId, packageName)
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.Simple.Compiler (PackageDBX (GlobalPackageDB))
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -84,6 +99,7 @@ import Distribution.Simple.Program.Db (prependProgramSearchPathNoLogging, restor
 import Distribution.Simple.Register (generateRegistrationInfo)
 import Distribution.Simple.Utils (dieWithException, notice)
 import Distribution.Types.Component (componentName)
+import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Types.LocalBuildInfo
   ( LocalBuildInfo
   , componentNameCLBIs
@@ -206,61 +222,11 @@ buck2Action flags extraArgs globalFlags = do
           installedIndex = PackageIndex.fromList resolvedDeps
 
       -- A real 'LocalBuildInfo' for every local (or quasi-local, per
-      -- 'localPkgs's own comment above) *component*
-      --
-      -- Processed in dependency order ('InstallPlan.reverseTopologicalOrder'
-      -- - despite the name, dependencies first - not the arbitrary order
-      -- 'InstallPlan.toList' returns), threading a *growing*
-      -- 'InstalledPackageIndex' through the fold: a local package that
-      -- build-depends on another local package (e.g. almost everything
-      -- here depends on the local @Cabal@ library) needs that
-      -- dependency's own real 'UnitId' resolvable in the index passed to
-      -- 'localBuildInfoFor' - exactly the role "Note [Per-project
-      -- InstalledPackageIndex]" in
-      -- "Distribution.Client.ProjectBuilding" describes for a real
-      -- build's own incrementally-registered index - so
-      -- 'registerLocalLibrary' below adds each library component's own
-      -- (unbuilt, in-place) 'InstalledPackageInfo' as soon as it's
-      -- configured, before moving on to whatever depends on it.
-      (componentLBIs, _) <-
-        foldM
-          ( \(cmap, idx) elab -> do
-              lbi <- localBuildInfoFor verbosity (distDirLayout baseCtx) elaboratedPlanOriginal elaboratedShared idx elab
-              let pkgDesc = elabPkgDescription elab
-                  -- Per-component elaboration gives one 'elab' per
-                  -- component, correctly named by 'elabComponentName'.
-                  -- But not every package gets elaborated that way: a
-                  -- package elaborated as a whole ('ElabPackage') gets
-                  -- exactly one 'elab' for the *entire* package, and
-                  -- 'elabComponentName' defaults that to just the main
-                  -- library ("there could be more, but default this" -
-                  -- its own haddock) - even though the single 'lbi' this
-                  -- configure call just produced genuinely covers every
-                  -- component of the package (real Cabal's own
-                  -- 'configureFinal' computes a
-                  -- 'ComponentLocalBuildInfo' for each one internally,
-                  -- regardless of elaboration mode). Registering only
-                  -- the library here left every *other* component of
-                  -- such a package (executables, test-suites, ...)
-                  -- with no 'componentLBIs' entry at all - confirmed as
-                  -- the real cause of "no LocalBuildInfo found" wrongly
-                  -- skipping e.g. glean-clang's own executables, which
-                  -- are elaborated this way. So for 'ElabPackage' mode,
-                  -- every buildable component of the package is
-                  -- registered under this same 'lbi', not just the one
-                  -- 'elabComponentName' names.
-                  cnames = case elabPkgOrComp elab of
-                    ElabComponent _ -> maybeToList (elabComponentName elab)
-                    ElabPackage _ -> [componentName comp | comp <- PD.pkgBuildableComponents pkgDesc]
-              idx' <- foldM (\i cname -> registerLocalLibrary verbosity lbi pkgDesc cname i) idx cnames
-              let cmap' = foldl' (\m cname -> Map.insert (packageName pkgDesc, cname) lbi m) cmap cnames
-              return (cmap', idx')
-          )
-          (Map.empty, installedIndex)
-          [ elab
-          | InstallPlan.Configured elab <- InstallPlan.reverseTopologicalOrder elaboratedPlanOriginal
-          , elabLocalToProject elab || elabBuildStyle elab /= BuildAndInstall
-          ]
+      -- 'localPkgs's own comment above) *component*, computed
+      -- concurrently - see 'configureComponentsConcurrently' for why
+      -- this needs to be concurrent at all, and how it stays correct
+      -- while being so.
+      componentLBIs <- configureComponentsConcurrently verbosity (distDirLayout baseCtx) elaboratedPlanOriginal elaboratedShared installedIndex
 
       -- Per-component elaboration gives each local package one
       -- 'ElaboratedConfiguredPackage' per component (library, executable,
@@ -382,24 +348,206 @@ localBuildInfoFor verbosity distDirLayout plan shared ipi elab = do
 -- | If @cname@ names a library component, produce the real, in-place
 -- 'InstalledPackageInfo' for it - the same info a real @Setup register@
 -- would write to @package.conf.inplace@ after building it, without
--- actually writing anything anywhere - and add it to @idx@. Real
--- Cabal's own 'generateRegistrationInfo', in its in-place branch, needs
--- no built object code to do this: an in-place package's ABI hash is
--- always the fixed placeholder @"inplace"@ (see its own haddock), so
--- this is safe to call immediately after 'localBuildInfoFor' configures
--- the component, before anything is actually compiled.
+-- actually writing anything anywhere. Real Cabal's own
+-- 'generateRegistrationInfo', in its in-place branch, needs no built
+-- object code to do this: an in-place package's ABI hash is always the
+-- fixed placeholder @"inplace"@ (see its own haddock), so this is safe
+-- to call immediately after 'localBuildInfoFor' configures the
+-- component, before anything is actually compiled. Deliberately doesn't
+-- take (or update) an 'InstalledPackageIndex' itself, unlike an earlier
+-- version of this function - 'configureComponentsConcurrently' calls
+-- this from multiple threads at once, and folding a growing index
+-- through a sequence of calls only makes sense single-threaded; the
+-- caller is responsible for inserting the result into a shared index
+-- itself (atomically).
 --
 -- Every other kind of component (executable\/test-suite\/benchmark) is
--- skipped: nothing ever depends on one of those by 'UnitId', so they
--- have nothing to contribute to the index.
-registerLocalLibrary :: Verbosity -> LocalBuildInfo -> PackageDescription -> ComponentName -> InstalledPackageIndex -> IO InstalledPackageIndex
-registerLocalLibrary verbosity lbi pkgDesc cname idx = case cname of
+-- skipped ('Nothing'): nothing ever depends on one of those by
+-- 'UnitId', so they have nothing to contribute to the index.
+libraryInstalledPackageInfo :: Verbosity -> LocalBuildInfo -> PackageDescription -> ComponentName -> IO (Maybe InstalledPackageInfo)
+libraryInstalledPackageInfo verbosity lbi pkgDesc cname = case cname of
   CLibName ln
     | Just lib <- listToMaybe [l | l <- PD.allLibraries pkgDesc, PD.libName l == ln]
-    , (clbi : _) <- componentNameCLBIs lbi cname -> do
-        ipi <- generateRegistrationInfo verbosity pkgDesc lib lbi clbi True (relocatable lbi) (distPrefLBI lbi) GlobalPackageDB
-        return (PackageIndex.insert ipi idx)
-  _ -> return idx
+    , (clbi : _) <- componentNameCLBIs lbi cname ->
+        Just <$> generateRegistrationInfo verbosity pkgDesc lib lbi clbi True (relocatable lbi) (distPrefLBI lbi) GlobalPackageDB
+  _ -> return Nothing
+
+-- | The buildable component names for one elaborated node - either the
+-- single component 'elabComponentName' itself names (per-component
+-- elaboration, @ElabComponent@), or *every* buildable component of the
+-- whole package it configured (whole-package elaboration,
+-- @ElabPackage@ - see 'elabComponentName's own haddock, "there could be
+-- more, but default this": one @configureFinal@ call in that mode
+-- genuinely produces a 'ComponentLocalBuildInfo' for every component of
+-- the package internally, regardless of which single one
+-- 'elabComponentName' defaults to).
+componentNamesFor :: ElaboratedConfiguredPackage -> PackageDescription -> [ComponentName]
+componentNamesFor elab pkgDesc = case elabPkgOrComp elab of
+  ElabComponent _ -> maybeToList (elabComponentName elab)
+  ElabPackage _ -> [componentName comp | comp <- PD.pkgBuildableComponents pkgDesc]
+
+-- | 'localBuildInfoFor' (and the library registration that has to
+-- happen right after it, via 'libraryInstalledPackageInfo') for every
+-- local (or quasi-local) component in the plan, run concurrently: each
+-- call is a real Cabal 'Distribution.Simple.Configure.configureFinal',
+-- genuine CPU-bound work, and a large project (Glean, say, with
+-- hundreds of components spread across dozens of packages - a single
+-- package there can have 30+ test-suites) made doing this one
+-- component at a time the dominant cost of the whole @cabal buck2@
+-- command.
+--
+-- The only real ordering constraint is: a component can't be
+-- configured until every *local library* it depends on has already
+-- been configured *and registered* into the 'InstalledPackageIndex'
+-- 'localBuildInfoFor' is given - the same constraint the old sequential
+-- fold enforced by processing the whole plan in
+-- 'InstallPlan.reverseTopologicalOrder', one component at a time. That
+-- full topological order is far stronger than what's actually needed:
+-- most components in a real project (executables, test-suites, ...)
+-- don't depend on each other at all, only on a handful of libraries -
+-- so scheduling by *direct local-library dependency* (via
+-- 'elabOrderLibDependencies') lets every component whose own library
+-- dependencies are already satisfied run immediately, concurrently with
+-- everything else at the same point in the graph, not just within one
+-- "wave" of a full topological sort.
+--
+-- Implemented as a dependency-count-triggered work queue - a component
+-- is submitted to the worker pool the moment its *last* outstanding
+-- local-library dependency finishes, not upfront - via
+-- "Control.Concurrent.Stream"'s 'Stream.streamWithOutput'. Its
+-- "producer" callback only ever gets to submit the dependency-free
+-- roots directly; every other component gets submitted by whichever
+-- *worker* finishes that component's last unmet dependency (via the
+-- same @write@ callback the producer got, smuggled into the worker
+-- closure below) - so the producer itself just submits the roots, then
+-- blocks until every component has been submitted (tracked via
+-- 'enqueuedVar', not until every component has *finished*: submission,
+-- not completion, is the only thing 'Stream.stream_' needs before it
+-- can safely queue its end-of-work markers). This terminates correctly
+-- because every component is submitted exactly once, and by
+-- construction that always happens-before any later 'write' could
+-- possibly be needed for it again.
+configureComponentsConcurrently
+  :: Verbosity
+  -> DistDirLayout
+  -> ElaboratedInstallPlan
+  -> ElaboratedSharedConfig
+  -> InstalledPackageIndex
+  -> IO (Map (PackageName, ComponentName) LocalBuildInfo)
+configureComponentsConcurrently verbosity distDirLayout plan shared installedIndex = do
+  -- cabal-install's own build parallelism doesn't need extra RTS
+  -- capabilities (it's almost entirely "spawn ghc, block on it", and a
+  -- blocked foreign call already releases its capability under the
+  -- threaded RTS) - but 'localBuildInfoFor' below does real, in-Haskell
+  -- CPU work per call, which *does* need more than one capability to
+  -- actually run in parallel. Only ever raises the cap (never lowers an
+  -- explicit @+RTS -N@ the user already asked for).
+  numCaps <- getNumCapabilities
+  when (numCaps < numberOfProcessors) $
+    setNumCapabilities numberOfProcessors
+
+  let localElabs :: Map UnitId ElaboratedConfiguredPackage
+      localElabs =
+        Map.fromList
+          [ (elabUnitId elab, elab)
+          | InstallPlan.Configured elab <- InstallPlan.toList plan
+          , elabLocalToProject elab || elabBuildStyle elab /= BuildAndInstall
+          ]
+
+      -- Direct *local*-library dependencies only - see this function's
+      -- own haddock for why neither an external dependency (already in
+      -- 'installedIndex' before this starts) nor a non-library local
+      -- dependency (nothing ever depends on one by 'UnitId') is a real
+      -- scheduling constraint here.
+      localLibDeps :: UnitId -> [UnitId]
+      localLibDeps uid =
+        [ dep
+        | Just elab <- [Map.lookup uid localElabs]
+        , dep <- elabOrderLibDependencies elab
+        , dep `Map.member` localElabs
+        ]
+
+      -- Reverse adjacency: for each local library, the components that
+      -- become eligible to run the moment *it* finishes.
+      dependents :: Map UnitId [UnitId]
+      dependents =
+        Map.fromListWith (++) [(dep, [uid]) | uid <- Map.keys localElabs, dep <- localLibDeps uid]
+
+      totalNodes = Map.size localElabs
+
+  remainingVar <- newTVarIO (Map.fromList [(uid, length (localLibDeps uid)) | uid <- Map.keys localElabs])
+  enqueuedVar <- newTVarIO Set.empty
+  indexVar <- newTVarIO installedIndex
+
+  let -- Atomically mark every not-yet-submitted node in @uids@ as
+      -- submitted, returning just the ones that weren't already - the
+      -- newly-ready nodes a caller should 'write' to the work queue.
+      markEnqueued :: [UnitId] -> STM [UnitId]
+      markEnqueued uids = do
+        enqueued <- readTVar enqueuedVar
+        let new = filter (`Set.notMember` enqueued) uids
+        writeTVar enqueuedVar (foldr Set.insert enqueued new)
+        return new
+
+      -- Decrement the remaining-dependency count of every dependent of
+      -- @uid@ (a component that just finished); any dependent whose
+      -- count hits zero is now unblocked.
+      unblockDependentsOf :: UnitId -> STM [UnitId]
+      unblockDependentsOf uid = do
+        remaining <- readTVar remainingVar
+        let (remaining', ready) =
+              foldl'
+                ( \(rem_, rs) dep ->
+                    let n = Map.findWithDefault 0 dep rem_ - 1
+                     in (Map.insert dep n rem_, if n == 0 then dep : rs else rs)
+                )
+                (remaining, [])
+                (Map.findWithDefault [] uid dependents)
+        writeTVar remainingVar remaining'
+        markEnqueued ready
+
+  -- 'Stream.streamWithOutput's own "worker" callback (below) isn't
+  -- given the @write@ callback its "producer" gets - only the producer
+  -- is - but a worker here needs to be able to submit a component's
+  -- newly-unblocked dependents itself (see this function's own
+  -- haddock). Published into this 'MVar' the moment the producer
+  -- receives it; 'readMVar' (non-destructive - every worker needs to
+  -- read the same @write@, not consume it) blocks until then, so it's
+  -- safe even though workers and the producer start running
+  -- concurrently in no particular order.
+  writeVar <- newEmptyMVar
+
+  results <-
+    Stream.streamWithOutput
+      numberOfProcessors
+      ( \write -> do
+          putMVar writeVar write
+          roots <- atomically $ markEnqueued [uid | uid <- Map.keys localElabs, null (localLibDeps uid)]
+          traverse_ write roots
+          -- Block until every node has been *submitted* - not until
+          -- every node has *finished* - so 'Stream.stream_' only ever
+          -- queues its end-of-work markers after the last 'write' any
+          -- worker could possibly still make.
+          atomically $ do
+            enqueued <- readTVar enqueuedVar
+            check (Set.size enqueued == totalNodes)
+      )
+      ( \uid -> do
+          let elab = localElabs Map.! uid
+              pkgDesc = elabPkgDescription elab
+          idx <- readTVarIO indexVar
+          lbi <- localBuildInfoFor verbosity distDirLayout plan shared idx elab
+          entries <- for (componentNamesFor elab pkgDesc) $ \cname -> do
+            mipi <- libraryInstalledPackageInfo verbosity lbi pkgDesc cname
+            for_ mipi $ \ipi -> atomically $ modifyTVar' indexVar (PackageIndex.insert ipi)
+            return ((packageName pkgDesc, cname), lbi)
+          newlyReady <- atomically (unblockDependentsOf uid)
+          unless (null newlyReady) $ do
+            write <- readMVar writeVar
+            traverse_ write newlyReady
+          return entries
+      )
+  return (Map.fromList (concat results))
 
 -- | Like 'pruneInstallPlanToDependencies', but when excluding every
 -- selected target would leave a dangling edge, keep exactly the targets
