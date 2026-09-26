@@ -85,7 +85,8 @@ displayMessage (EntryTryingF qfn b) = "trying: " ++ showQFNBool qfn b
 displayMessage (EntryTryingP qpn i) = "trying: " ++ showOption qpn i
 displayMessage (EntryTryingNewP qpn i gr) = "trying: " ++ showOption qpn i ++ showGR gr
 displayMessage (EntryTryingS qsn b) = "trying: " ++ showQSNBool qsn b
-displayMessage (EntryUnknownPackage qpn gr) = "unknown package: " ++ showQPN qpn ++ showGR gr
+displayMessage (EntryUnknownPackage qpn gr repos) =
+  "unknown package: " ++ showQPN qpn ++ showGR gr ++ showReposSearched repos
 displayMessage EntrySuccess = "done"
 displayMessage (EntryFailure c fr) = "fail" ++ showFR c fr
 displayMessage (EntrySkipMany qsn b cs) = "skipping: " ++ showOptions qsn b ++ " " ++ showConflicts cs
@@ -99,8 +100,8 @@ displayMessage (EntryRejectMany qpn is c fr) = "rejecting: " ++ showOptions qpn 
 -- The log contains level numbers, which are useful for any trace that involves
 -- backtracking, because only the level numbers will allow to keep track of
 -- backjumps.
-summarizeMessages :: Progress Message a b -> Progress SummarizedMessage a b
-summarizeMessages = go 0
+summarizeMessages :: [String] -> Progress Message a b -> Progress SummarizedMessage a b
+summarizeMessages repos = go 0
   where
     -- 'go' increments the level for a recursive call when it encounters
     -- 'TryP', 'TryF', or 'TryS' and decrements the level when it encounters 'Leave'.
@@ -126,7 +127,7 @@ summarizeMessages = go 0
         Step (SummarizedMsg $ AtLevel l (EntryTryingNewP qpn' i gr)) (go l ms)
 
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
-        Step (SummarizedMsg $ AtLevel l (EntryUnknownPackage qpn gr)) (go l ms)
+        Step (SummarizedMsg $ AtLevel l (EntryUnknownPackage qpn gr repos)) (go l ms)
 
     -- standard display
     go !l (Step Enter                    ms) = go (l+1) ms
@@ -294,6 +295,13 @@ showOptions q xs = showQPN q ++ "; " ++ L.intercalate ", "
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
 showGR (DependencyGoal dr) = " (dependency of " ++ showDependencyReason dr ++ ")"
+
+-- | List the repositories that were searched for a package that turned out to
+-- be unknown. This helps the user notice when @active-repositories@ is set to
+-- a nonstandard value that excludes a package from the search.
+showReposSearched :: [String] -> String
+showReposSearched [] = ""
+showReposSearched repos = "; searched repositories: " ++ L.intercalate ", " repos
 
 showFR :: ConflictSet -> FailReason -> String
 showFR _ (UnsupportedExtension ext)       = " (conflict: requires " ++ showUnsupportedExtension ext ++ ")"
