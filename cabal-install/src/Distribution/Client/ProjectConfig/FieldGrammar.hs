@@ -11,7 +11,6 @@ module Distribution.Client.ProjectConfig.FieldGrammar
 import Data.Bool (bool)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
-import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGrammar)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
@@ -199,11 +198,9 @@ packageConfigCoverageGrammar =
   (<>)
     <$> optionalFieldDef "coverage" L.packageConfigCoverage mempty
     <*> optionalFieldDef "library-coverage" L.packageConfigCoverage mempty
-      ^^^ deprecatedSince CabalSpecV1_22 "Please use 'coverage' field instead."
 
 packageConfigPreferVersion :: ParsecFieldGrammar ProjectConfigShared (Flag PreferVersion)
 packageConfigPreferVersion =
   mappend . fmap (bool PreferInstalledOrLatest PreferOldest)
     <$> optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty
-      ^^^ deprecatedSince CabalSpecV3_20 "Please use 'prefer-version' field instead."
     <*> optionalFieldDef "prefer-version" L.projectConfigPreferVersion mempty
