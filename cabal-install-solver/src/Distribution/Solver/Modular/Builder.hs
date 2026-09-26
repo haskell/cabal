@@ -34,6 +34,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.ComponentDeps
 import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.Stage (Stage (..))
 import Distribution.Solver.Types.Settings
 
 -- | All state needed to build and link the search tree. It has a type variable
@@ -54,7 +55,13 @@ data BuildState = BS {
 }
 
 -- | Map of available linking targets.
-type LinkingState = M.Map (PN, I) [PackagePath]
+--
+-- Keyed by 'Stage' in addition to package name and instance: a Setup/Build-
+-- stage goal and a Host-stage goal are never valid link targets for each
+-- other, even when they happen to resolve to the same package instance,
+-- because they are built by different toolchains (the fixed boot compiler
+-- vs. the compiler under construction) and cannot share a build artifact.
+type LinkingState = M.Map (PN, I, Stage) [PackagePath]
 
 -- | Extend the set of open goals with the new goals listed.
 --
@@ -142,8 +149,8 @@ addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
 --
 -- For a package, we look up the instances available in the global info,
 -- and then handle each instance in turn.
-addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q _ pn) gr) }) =
-  case M.lookup pn idx of
+addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q (PackagePath s _ _) pn) gr) }) =
+  case M.lookup s idx >>= M.lookup pn of
     Nothing  -> FailF
                 (varToConflictSet (P qpn) `CS.union` goalReasonToConflictSetWithConflict qpn gr)
                 UnknownPackage
@@ -213,7 +220,7 @@ addChildren bs@(BS { next = Instance qpn (PInfo fdeps _ fdefs _) }) =
 -- https://github.com/haskell/cabal/issues/2899
 addLinking :: LinkingState -> TreeF () c a -> TreeF () c (Linker a)
 -- The only nodes of interest are package nodes
-addLinking ls (PChoiceF qpn@(Q pp pn) rdm gr cs) =
+addLinking ls (PChoiceF qpn@(Q pp@(PackagePath s _ _) pn) rdm gr cs) =
   let linkedCs = fmap (`Linker` ls) $
                  W.fromList $ concatMap (linkChoices ls qpn) (W.toList cs)
       unlinkedCs = W.mapWithKey goP cs
@@ -222,7 +229,7 @@ addLinking ls (PChoiceF qpn@(Q pp pn) rdm gr cs) =
       -- Recurse underneath package choices. Here we just need to make sure
       -- that we record the package choice so that it is available below
       goP :: POption -> a -> Linker a
-      goP (POption i Nothing) bs = Linker bs $ M.insertWith (++) (pn, i) [pp] ls
+      goP (POption i Nothing) bs = Linker bs $ M.insertWith (++) (pn, i, s) [pp] ls
       goP _                   _  = alreadyLinked
   in PChoiceF qpn rdm gr allCs
 addLinking ls t = fmap (`Linker` ls) t
@@ -231,8 +238,8 @@ linkChoices :: forall a w . LinkingState
             -> QPN
             -> (w, POption, a)
             -> [(w, POption, a)]
-linkChoices related (Q _pp pn) (weight, POption i Nothing, subtree) =
-    L.map aux (M.findWithDefault [] (pn, i) related)
+linkChoices related (Q (PackagePath s _ _) pn) (weight, POption i Nothing, subtree) =
+    L.map aux (M.findWithDefault [] (pn, i, s) related)
   where
     aux :: PackagePath -> (w, POption, a)
     aux pp = (weight, POption i (Just pp), subtree)
@@ -262,7 +269,7 @@ buildTree idx (IndependentGoals ind) igs =
     topLevelGoal qpn = PkgGoal qpn UserGoal
 
     qpns | ind       = L.map makeIndependent igs
-         | otherwise = L.map (Q (PackagePath DefaultNamespace QualToplevel)) igs
+         | otherwise = L.map (Q (PackagePath Host DefaultNamespace QualToplevel)) igs
 
 {-------------------------------------------------------------------------------
   Goals

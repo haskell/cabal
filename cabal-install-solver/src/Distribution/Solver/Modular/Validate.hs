@@ -31,6 +31,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
+import Distribution.Solver.Types.Stage (Stage, Staged, getStage)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 
@@ -86,9 +87,12 @@ import Distribution.Types.PkgconfigVersionRange
 
 -- | The state needed during validation.
 data ValidateState = VS {
-  supportedExt        :: Extension -> Bool,
-  supportedLang       :: Language  -> Bool,
-  presentPkgs         :: Maybe (PkgconfigName -> PkgconfigVersionRange  -> Bool),
+  -- The supported extensions and languages and the present pkg-config
+  -- packages are per build 'Stage': a goal is validated against the
+  -- compiler and pkg-config database of the stage it is solved for.
+  supportedExt        :: Stage -> Extension -> Bool,
+  supportedLang       :: Stage -> Language  -> Bool,
+  presentPkgs         :: Stage -> Maybe (PkgconfigName -> PkgconfigVersionRange  -> Bool),
   index               :: Index,
 
   -- Saved, scoped, dependencies. Every time 'validate' makes a package choice,
@@ -189,18 +193,18 @@ validate = go
 
     -- What to do for package nodes ...
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
-    goP qpn@(Q _pp pn) (POption i _) r = do
+    goP qpn@(Q (PackagePath s _pns _pq) pn) (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
-      extSupported   <- asks supportedExt  -- obtain the supported extensions
-      langSupported  <- asks supportedLang -- obtain the supported languages
-      pkgPresent     <- asks presentPkgs -- obtain the present pkg-config pkgs
+      extSupported   <- asks (`supportedExt` s)  -- obtain the supported extensions (for this stage)
+      langSupported  <- asks (`supportedLang` s) -- obtain the supported languages (for this stage)
+      pkgPresent     <- asks (`presentPkgs` s)   -- obtain the present pkg-config pkgs (for this stage)
       idx            <- asks index -- obtain the index
       svd            <- asks saved -- obtain saved dependencies
       aComps         <- asks availableComponents
       rComps         <- asks requiredComponents
       qo             <- asks qualifyOptions
       -- obtain dependencies and index-dictated exclusions introduced by the choice
-      let (PInfo deps comps _ mfr) = idx ! pn ! i
+      let (PInfo deps comps _ mfr) = idx ! s ! pn ! i
       -- qualify the deps in the current scope
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
@@ -225,19 +229,19 @@ validate = go
                Left (c, fr)          -> -- We have an inconsistency. We can stop.
                                         return (Fail c fr)
                Right (nppa, rComps') -> -- We have an updated partial assignment for the recursive validation.
-                                        local (\ s -> s { pa = PA nppa pfa psa
-                                                        , saved = nsvd
-                                                        , availableComponents = M.insert qpn comps aComps
-                                                        , requiredComponents = rComps'
-                                                        }) r
+                                        local (\ vs -> vs { pa = PA nppa pfa psa
+                                                          , saved = nsvd
+                                                          , availableComponents = M.insert qpn comps aComps
+                                                          , requiredComponents = rComps'
+                                                          }) r
 
     -- What to do for flag nodes ...
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goF qfn@(FN qpn _f) b r = do
+    goF qfn@(FN qpn@(Q (PackagePath stage _ _) _) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
-      extSupported   <- asks supportedExt  -- obtain the supported extensions
-      langSupported  <- asks supportedLang -- obtain the supported languages
-      pkgPresent     <- asks presentPkgs   -- obtain the present pkg-config pkgs
+      extSupported   <- asks (`supportedExt` stage)  -- obtain the supported extensions (for this stage)
+      langSupported  <- asks (`supportedLang` stage) -- obtain the supported languages (for this stage)
+      pkgPresent     <- asks (`presentPkgs` stage)   -- obtain the present pkg-config pkgs (for this stage)
       svd            <- asks saved         -- obtain saved dependencies
       aComps         <- asks availableComponents
       rComps         <- asks requiredComponents
@@ -263,11 +267,11 @@ validate = go
 
     -- What to do for stanza nodes (similar to flag nodes) ...
     goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goS qsn@(SN qpn _f) b r = do
+    goS qsn@(SN qpn@(Q (PackagePath stage _ _) _) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
-      extSupported   <- asks supportedExt  -- obtain the supported extensions
-      langSupported  <- asks supportedLang -- obtain the supported languages
-      pkgPresent     <- asks presentPkgs -- obtain the present pkg-config pkgs
+      extSupported   <- asks (`supportedExt` stage)  -- obtain the supported extensions (for this stage)
+      langSupported  <- asks (`supportedLang` stage) -- obtain the supported languages (for this stage)
+      pkgPresent     <- asks (`presentPkgs` stage)   -- obtain the present pkg-config pkgs (for this stage)
       svd            <- asks saved         -- obtain saved dependencies
       aComps         <- asks availableComponents
       rComps         <- asks requiredComponents
@@ -561,15 +565,11 @@ extendRequiredComponents eqpn available = foldM extendSingle
 
 
 -- | Interface.
-validateTree :: CompilerInfo -> Index -> Maybe PkgConfigDb -> Tree d c -> Tree d c
-validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
-    supportedExt        = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
-                                (\ es -> let s = S.fromList es in (`S.member` s))
-                                (compilerInfoExtensions cinfo)
-  , supportedLang       = maybe (const True)
-                                (flip L.elem) -- use list lookup because language list is small and no Ord instance
-                                (compilerInfoLanguages  cinfo)
-  , presentPkgs         = pkgConfigPkgIsPresent <$> pkgConfigDb
+validateTree :: Staged CompilerInfo -> Index -> Staged (Maybe PkgConfigDb) -> Tree d c -> Tree d c
+validateTree cinfos idx pkgConfigDbs t = runValidate (validate t) VS {
+    supportedExt        = getStage $ fmap supportedExtOf cinfos
+  , supportedLang       = getStage $ fmap supportedLangOf cinfos
+  , presentPkgs         = getStage $ fmap (fmap pkgConfigPkgIsPresent) pkgConfigDbs
   , index               = idx
   , saved               = M.empty
   , pa                  = PA M.empty M.empty M.empty
@@ -577,3 +577,16 @@ validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
   , requiredComponents  = M.empty
   , qualifyOptions      = defaultQualifyOptions idx
   }
+  where
+    -- if the compiler has no list of extensions, we assume everything is supported
+    supportedExtOf :: CompilerInfo -> Extension -> Bool
+    supportedExtOf cinfo =
+      maybe (const True)
+            (\ es -> let s = S.fromList es in (`S.member` s))
+            (compilerInfoExtensions cinfo)
+
+    supportedLangOf :: CompilerInfo -> Language -> Bool
+    supportedLangOf cinfo =
+      maybe (const True)
+            (flip L.elem) -- use list lookup because language list is small and no Ord instance
+            (compilerInfoLanguages cinfo)

@@ -64,9 +64,9 @@ import Distribution.Solver.Types.Progress
     ( Progress(..), foldProgress )
 import Distribution.Solver.Types.SummarizedMessage
     ( SummarizedMessage(StringMsg) )
+import Distribution.Solver.Types.Stage
+         ( Staged )
 import Distribution.Solver.Types.Variable ( Variable(..) )
-import Distribution.System
-         ( Platform(..) )
 import Distribution.Simple.Setup
          ( BooleanFlag(..) )
 import Distribution.Simple.Utils
@@ -77,12 +77,18 @@ import Distribution.Solver.Modular.Message ( renderSummarizedMessage )
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
-modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns =
+modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
   uncurry postprocess <$> -- convert install plan
   solve' sc cinfo idx pkgConfigDB pprefs gcs pns
     where
-      -- Indices have to be converted into solver-specific uniform index.
-      idx    = convPIs os arch cinfo gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx
+      -- Flag/dependency choices are validated against the compiler and
+      -- pkg-config database of the stage each goal is solved for.
+      cinfo = fmap fst toolchains
+      pkgConfigDB = pkgConfigDbs
+      -- Indices have to be converted into solver-specific uniform index. Which
+      -- stages are solved separately is intrinsic to the staged toolchains (a
+      -- non-cross build has no build stage), so 'convPIs' derives it directly.
+      idx    = convPIs toolchains gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidxs sidx
       -- Constraints have to be converted into a finite map indexed by PN.
       gcs    = M.fromListWith (++) (map pair pcs)
         where
@@ -90,9 +96,10 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
 
       -- Results have to be converted into an install plan. 'convCP' removes
       -- package qualifiers, which means that linked packages become duplicates
-      -- and can be removed.
+      -- and can be removed. Each pre-existing package is resolved against the
+      -- installed-package index of its own stage (see 'convCP').
       postprocess a rdm = ordNubBy nodeKey $
-                          map (convCP iidx sidx) (toCPs a rdm)
+                          map (convCP iidxs sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN
@@ -132,9 +139,9 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
 -- complete, i.e., it shows the whole chain of dependencies from the user
 -- targets to the conflicting packages.
 solve' :: SolverConfig
-       -> CompilerInfo
+       -> Staged CompilerInfo
        -> Index
-       -> Maybe PkgConfigDb
+       -> Staged (Maybe PkgConfigDb)
        -> (PN -> PackagePreferences)
        -> Map PN [LabeledPackageConstraint]
        -> Set PN

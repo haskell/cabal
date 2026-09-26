@@ -16,6 +16,7 @@ import Control.Monad (mapM_)
 import Distribution.Client.Errors
 
 import Distribution.Client.ProjectPlanning hiding (pruneInstallPlanToTargets)
+import Distribution.Client.ProjectPlanning.Stage (withoutStage)
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Types.ConfiguredId (confInstId)
 import Distribution.Client.Utils hiding (pvpize)
@@ -126,7 +127,7 @@ genBoundsAction flags targetStrings globalFlags =
 
       -- Step 4b: Extract which versions we chose for each package from the pruned install plan.
       pkgVersionMap :: Map.Map ComponentId PackageIdentifier
-      pkgVersionMap = Map.fromList (map (InstallPlan.foldPlanPackage externalVersion localVersion) (InstallPlan.toList elaboratedPlan'))
+      pkgVersionMap = Map.fromList (map (InstallPlan.foldPlanPackage (externalVersion . withoutStage) localVersion) (InstallPlan.toList elaboratedPlan'))
 
       externalVersion :: InstalledPackageInfo -> (ComponentId, PackageIdentifier)
       externalVersion pkg = (installedComponentId pkg, packageId pkg)
