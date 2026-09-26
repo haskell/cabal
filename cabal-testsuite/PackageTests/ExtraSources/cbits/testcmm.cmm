@@ -1,0 +1,10 @@
+#include "Cmm.h"
+
+#ifndef DOIT
+#error "It does not work"
+#endif
+
+extraSourcesTestzh (P_ clos)
+{
+    return (clos);
+}
