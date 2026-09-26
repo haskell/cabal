@@ -274,6 +274,23 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
     bytecodeLibFilePath =
       buildTargetDir
         </> makeRelativePathEx (mkBytecodeLibName compiler_id uid)
+    -- Merge the object files into a GHCi library. GHC >= 9.4 exposes its own
+    -- object merging as @ghc --merge-objs@, which uses the merge tool GHC was
+    -- configured with; with older GHCs we have to run @ld -r@ ourselves.
+    combineObjectFiles :: SymbolicPath Pkg File -> [SymbolicPath Pkg File] -> IO ()
+    combineObjectFiles target files
+      | Just ghcProg <- lookupProgram ghcProgram (withPrograms lbi)
+      , ghcSupports GhcMergeObjs ghcProg =
+          runGhcProg
+            mempty
+              { ghcOptMode = toFlag GhcModeMergeObjs
+              , ghcOptInputFiles = toNubListR files
+              , ghcOptOutputFile = toFlag target
+              }
+      | otherwise = do
+          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+          Ld.combineObjectFiles verbosity lbi ldProg target files
+
     ghciLibFilePath = buildTargetDir </> makeRelativePathEx (Internal.mkGHCiLibName uid)
     ghciProfLibFilePath = buildTargetDir </> makeRelativePathEx (Internal.mkGHCiProfLibName uid)
 
@@ -379,11 +396,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
       ProfWay -> do
         Ar.createArLibArchive verbosity lbi profileLibFilePath profObjectFiles
         when (withGHCiLib lbi) $ do
-          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-          Ld.combineObjectFiles
-            verbosity
-            lbi
-            ldProg
+          combineObjectFiles
             ghciProfLibFilePath
             profObjectFiles
       ProfDynWay -> do
@@ -398,11 +411,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
         when (withVanillaLib lbi) $ do
           Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
           when (withGHCiLib lbi) $ do
-            (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-            Ld.combineObjectFiles
-              verbosity
-              lbi
-              ldProg
+            combineObjectFiles
               ghciLibFilePath
               staticObjectFiles
         when (withStaticLib lbi) $ do

@@ -118,9 +118,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
     . addKnownProgram
       ldProgram
         { programFindLocation = findProg ldProgramName extraLdPath
-        , programPostConf = \v cp ->
-            -- Call any existing configuration first and then add any new configuration
-            configureLd v =<< programPostConf ldProgram v cp
+        , programPostConf = ldPostConf
         }
     . addKnownProgram
       arProgram
@@ -226,6 +224,18 @@ configureToolchain _implInfo ghcProg ghcInfo =
               programDefaultArgs gppProg
                 ++ cxxFlags
           }
+
+    -- When GHC can merge objects itself (@ghc --merge-objs@, see
+    -- 'GhcMergeObjs') Cabal never runs @ld@, so we skip probing it.
+    -- The probe below compiles a C file through GHC, which is not always
+    -- possible (#10970), and the @--help@ probe in 'ldProgram' is only
+    -- there to tell whether @ld -r@ works.
+    ldPostConf :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    ldPostConf v cp
+      | ghcSupports GhcMergeObjs ghcProg = return cp
+      | otherwise =
+          -- Call any existing configuration first and then add any new configuration
+          configureLd v =<< programPostConf ldProgram v cp
 
     configureLd :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureLd v ldProg = do
