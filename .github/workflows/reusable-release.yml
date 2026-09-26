@@ -294,7 +294,7 @@ jobs:
           # https://www.msys2.org/docs/updating/
           C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
           C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
-          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -S make mingw-w64-x86_64-clang curl autoconf mingw-w64-x86_64-pkgconf ca-certificates base-devel gettext autoconf make libtool automake python p7zip patch unzip zip git"
+          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -S make mingw-w64-x86_64-clang curl autoconf mingw-w64-x86_64-pkgconf ca-certificates base-devel gettext autoconf make libtool automake python p7zip patch unzip zip mingw-w64-x86_64-git"
           taskkill /F /FI "MODULES eq msys-2.0.dll"
 
       - name: Install GHCup
@@ -338,6 +338,10 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
+      - name: Install Node
+        run: |
+          sudo pkg install -y www/node
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ matrix.branch }}
@@ -590,7 +594,7 @@ jobs:
         run: |
           C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
           C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
-          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -S make mingw-w64-x86_64-clang curl autoconf mingw-w64-x86_64-pkgconf ca-certificates base-devel gettext autoconf make libtool automake python p7zip patch unzip zip git"
+          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -S make mingw-w64-x86_64-clang curl autoconf mingw-w64-x86_64-pkgconf ca-certificates base-devel gettext autoconf make libtool automake python p7zip patch unzip zip mingw-w64-x86_64-git"
           taskkill /F /FI "MODULES eq msys-2.0.dll"
 
       - uses: ./.github/actions/download
@@ -630,6 +634,10 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
+      - name: Install Node
+        run: |
+          sudo pkg install -y www/node
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ matrix.branch }}
