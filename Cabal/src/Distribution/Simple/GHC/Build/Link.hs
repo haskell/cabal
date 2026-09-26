@@ -694,7 +694,7 @@ runReplOrWriteFlags ghcProg verbHandles lbi rflags ghcOpts pkg_name target =
       platform = hostPlatform lbi
       common = configCommonFlags $ configFlags lbi
       mbWorkDir = mbWorkDirLBI lbi
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+      verbosity = commonSetupVerbosity verbHandles common
       tempFileOptions = commonSetupTempFileOptions common
    in case replOptionsFlagOutput (replReplOptions rflags) of
         NoFlag -> do

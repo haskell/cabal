@@ -24,6 +24,7 @@ module Distribution.Client.Setup
   , filterConfigureFlags
   , configPackageDB'
   , configCompilerAux'
+  , setupOrNormalVerbosity
   , configureExCommand
   , ConfigExFlags (..)
   , defaultConfigExFlags
@@ -223,8 +224,10 @@ import Distribution.Types.UnqualComponentName
   )
 import Distribution.Verbosity
   ( VerbosityFlags
+  , VerbosityHandles
   , defaultVerbosityHandles
   , lessVerbose
+  , mkVerbosity
   , normal
   , verboseNoFlags
   , verboseNoTimestamp
@@ -885,6 +888,11 @@ configPackageDB' cfg =
   interpretPackageDbFlags userInstall (configPackageDBs cfg)
   where
     userInstall = Cabal.fromFlagOrDefault True (configUserInstall cfg)
+
+-- | The verbosity from the setup verbosity or 'normal' if the flag is not set.
+setupOrNormalVerbosity :: VerbosityHandles -> CommonSetupFlags -> Verbosity
+setupOrNormalVerbosity verbHandles =
+  mkVerbosity verbHandles . Cabal.fromFlagOrDefault normal . setupVerbosity
 
 -- | Configure the compiler, but reduce verbosity during this step.
 configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
