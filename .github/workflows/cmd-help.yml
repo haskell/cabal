@@ -33,7 +33,8 @@ jobs:
       - uses: haskell-actions/setup@v2
         with:
           ghc-version: 9.12.2
-          cabal-version: latest
+          # must satisfy the setup-depends of cabal-testsuite, see PR #10251
+          cabal-version: 3.18.1.0
       - run: cabal v2-update
       - name: Cache dependencies
         uses: actions/cache@v6
