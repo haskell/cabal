@@ -1,0 +1,125 @@
+name: Check API
+
+# Informational API diff job: it shows which public API of the Cabal
+# packages changes with respect to the PR base. The job fails when the API
+# changed and the PR adds no changelog entry; if a changelog entry is
+# present, the job passes while still showing the diff in its summary.
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+      - '**/*.md'
+      - 'changelog.d/**'
+      - 'release-notes/**'
+  push:
+    branches:
+      - '3.*'
+    paths-ignore:
+      - 'doc/**'
+      - '**/*.md'
+      - 'changelog.d/**'
+      - 'release-notes/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The API depends on the GHC version, so both revisions are always built
+  # with a single pinned GHC. Use the GHC used for releases, see GHC_FOR_RELEASE
+  # in .github/workflows/validate.yml, and bump both together.
+  GHC_VERSION: "9.10.3"
+  # packdiff is not on Hackage yet; it is installed from this pinned commit
+  # (the same one is pinned in the `api-install` target of the Makefile).
+  PACKDIFF_COMMIT: "54e786de55f091cdd3b912bd72ccc0e5e252aa77"
+
+jobs:
+  check-api:
+    name: API diff ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - Cabal-syntax
+          - Cabal
+          - cabal-install
+          - cabal-install-solver
+          - Cabal-hooks
+
+    steps:
+      # fetch-depth: 0 is needed because packdiff checks out the base
+      # revision itself and builds it.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ env.GHC_VERSION }}
+          cabal-version: latest
+
+      # runner.os isn't sufficient for binary compatible caches
+      - name: Get runner OS/version for cache keys
+        id: get-osver
+        run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.get-osver.outputs.osver }}-check-api-${{ env.GHC_VERSION }}-${{ github.sha }}
+          restore-keys: ${{ steps.get-osver.outputs.osver }}-check-api-${{ env.GHC_VERSION }}-
+
+      - name: "Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)"
+        run: git config --global protocol.file.allow always
+
+      - name: Install packdiff
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSL "https://github.com/composewell/packdiff/archive/${PACKDIFF_COMMIT}.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP/packdiff-${PACKDIFF_COMMIT}"
+          cabal install exe:packdiff --installdir="$HOME/.local/bin" --overwrite-policy=always
+
+      - name: Run packdiff
+        run: |
+          set -o pipefail
+          case "${{ github.event_name }}" in
+            pull_request) base="${{ github.event.pull_request.base.sha }}" ;;
+            push)         base="${{ github.event.before }}" ;;
+            *)            base="" ;;
+          esac
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            base="$(git merge-base origin/master HEAD)"
+          fi
+          head="$(git rev-parse HEAD)"
+          echo "Diffing ${{ matrix.package }} API: $base -> $head"
+          packdiff diff ${{ matrix.package }} "$base" ${{ matrix.package }} "$head" | tee api-diff.txt
+
+          sed -n '/API Annotations/,$p' api-diff.txt > api-diff-summary.txt
+          {
+            echo "## API diff \`${{ matrix.package }}\`: \`$(git rev-parse --short "$base")\` -> \`$(git rev-parse --short "$head")\`"
+            echo '```'
+            cat api-diff-summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Diff entries look like "[C] Module.Name"; the annotation legend
+          # ("[A] : Added") has a colon right after the marker and must not match.
+          if ! grep -qE '^\[[ARC]\] [^ :]' api-diff.txt; then
+            echo "No API changes detected in ${{ matrix.package }}."
+            exit 0
+          fi
+
+          # The API changed. This is acceptable when the PR documents the
+          # change in a changelog entry (see the PR template checklist):
+          # the job passes, but keeps showing the diff in its summary.
+          changed_changelogs="$(git diff --name-only --diff-filter=AM "$base" "$head" -- changelog.d/)"
+          if [ -z "$changed_changelogs" ]; then
+            echo "::error::The API of ${{ matrix.package }} changed with respect to the base revision, and this PR adds no changelog entry. See the job summary for the diff. Add a changelog file under changelog.d/ describing the change (or revert the API change)."
+            exit 1
+          fi
+          python3 .github/scripts/api-changelog-check.py "${{ matrix.package }}" api-diff.txt $changed_changelogs
