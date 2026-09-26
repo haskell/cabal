@@ -53,6 +53,7 @@ FORMAT_DIRS_TODO := \
 check:
 	@cd Cabal && cabal check | grep -q "No errors or warnings could be found in the package."
 	@cd cabal-install && cabal check | grep -q "No errors or warnings could be found in the package."
+	@cd cabal-install-internal && cabal check | grep -q "No errors or warnings could be found in the package."
 	@cd Cabal-syntax && cabal check | grep -q "No errors or warnings could be found in the package."
 	@cd Cabal-hooks && cabal check | grep -q "No errors or warnings could be found in the package."
 	@cd hooks-exe && cabal check | grep -q "No errors or warnings could be found in the package."
@@ -271,7 +272,7 @@ validate-via-docker-old:
 # tags
 .PHONY : tags
 tags: ## Generate editor tags, vim ctags and emacs etags.
-	hasktags -b Cabal-syntax/src Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
+	hasktags -b Cabal-syntax/src Cabal/src Cabal-described/src cabal-install/src cabal-install-internal/src cabal-testsuite/src
 
 # bootstrapping
 ##############################################################################

@@ -16,7 +16,9 @@ on:
       - doc/cmd-v2-hidden-help/**
       - doc/setup-help/**
       - cabal-install/src/Distribution/Client/Cmd*.hs
+      - cabal-install-internal/src/Distribution/Client/Cmd*.hs
       - cabal-install/src/Distribution/Client/Main.hs
+      - cabal-install-internal/src/Distribution/Client/Main.hs
       - cabal-install/src/Distribution/Client/Setup.hs
       - Cabal/src/Distribution/Simple.hs
       - Cabal/src/Distribution/Simple/Setup/**
@@ -33,7 +35,8 @@ jobs:
       - uses: haskell-actions/setup@v2
         with:
           ghc-version: 9.12.2
-          cabal-version: latest
+          # must satisfy the setup-depends of cabal-testsuite, see PR #10251
+          cabal-version: 3.18.1.0
       - run: cabal v2-update
       - name: Cache dependencies
         uses: actions/cache@v6

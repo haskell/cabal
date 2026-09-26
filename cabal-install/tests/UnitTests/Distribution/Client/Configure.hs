@@ -2,7 +2,7 @@
 
 module UnitTests.Distribution.Client.Configure (tests) where
 
-import Distribution.Client.CmdConfigure
+import Distribution.Client.API.Command.CmdConfigure
 
 import qualified Data.Map as Map
 import Distribution.Client.NixStyleOptions
