@@ -184,16 +184,22 @@ selectPackageTargets
   -> [AvailableTarget k]
   -> Either TestTargetProblem [k]
 selectPackageTargets targetSelector targets
-  -- If there are any buildable test-suite targets then we select those
+  -- If there are any buildable test-suite targets then we select those.
   | not (null targetsTestsBuildable) =
       Right targetsTestsBuildable
-  -- If there are test-suites but none are buildable then we report those
+  -- If there are test-suites but none are buildable then we report those.
   | not (null targetsTests) =
       Left (TargetProblemNoneEnabled targetSelector targetsTests)
-  -- If there are no test-suite but some other targets then we report that
+  -- If there are no test-suite but some other targets then we report that.
   | not (null targets) =
       Left (noTestsProblem targetSelector)
-  -- If there are no targets at all then we report that
+  -- If pkg:tests comes up empty we report no tests.
+  | TargetPackage _ _ (Just TestKind) <- targetSelector =
+      Left (noTestsProblem targetSelector)
+  -- If all:tests comes up empty we report no tests.
+  | TargetAllPackages (Just TestKind) <- targetSelector =
+      Left (noTestsProblem targetSelector)
+  -- If there are no targets at all then we report that.
   | otherwise =
       Left (TargetProblemNoTargets targetSelector)
   where
