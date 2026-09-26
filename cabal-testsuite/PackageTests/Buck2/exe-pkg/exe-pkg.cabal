@@ -1,0 +1,41 @@
+cabal-version:      2.4
+name:                exe-pkg
+version:             0.1.0.0
+build-type:          Simple
+
+flag loud
+  description: Enable extra-loud output
+  default:     False
+  manual:      True
+
+library
+  exposed-modules:   Greet
+  other-modules:     Paths_exe_pkg
+  autogen-modules:   Paths_exe_pkg
+  hs-source-dirs:    src
+  build-depends:     base, lib-pkg
+  default-language:  Haskell2010
+  default-extensions: CPP
+  if flag(loud)
+    cpp-options:     -DLOUD
+
+executable exe-pkg-exe
+  main-is:            Main.hs
+  hs-source-dirs:     app
+  c-sources:          cbits/helper.c
+  build-depends:      base, exe-pkg
+  default-language:   Haskell2010
+
+test-suite exe-pkg-test
+  type:               exitcode-stdio-1.0
+  main-is:            Spec.hs
+  hs-source-dirs:     test
+  build-depends:      base, exe-pkg
+  default-language:   Haskell2010
+
+benchmark exe-pkg-bench
+  type:               exitcode-stdio-1.0
+  main-is:            Bench.hs
+  hs-source-dirs:     bench
+  build-depends:      base, exe-pkg
+  default-language:   Haskell2010
