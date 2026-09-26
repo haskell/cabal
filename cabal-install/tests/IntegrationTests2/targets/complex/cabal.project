@@ -1,1 +1,9 @@
 packages: q/
+
+if impl(ghc >= 10.0.1)
+  -- When ghc-10.0.1, or later, is released remove this conditional block and
+  -- the allow-newer exception.
+  packages: ghc-10.0.1-is-released-remove-this-workaround/
+elif impl(ghc >= 10.0)
+  -- When using a pre-release of ghc-10
+  allow-newer: filepath:base

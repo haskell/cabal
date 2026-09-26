@@ -32,7 +32,6 @@ import Distribution.Client.Compat.Prelude hiding (many, readFile, (<|>))
 import Distribution.Simple.Setup (fromFlagOrDefault)
 
 import Data.Functor ((<&>))
-import qualified Data.List as L
 import qualified Data.Set as Set
 import Distribution.CabalSpecVersion
 import Distribution.Client.Init.Defaults
@@ -40,7 +39,7 @@ import Distribution.Client.Init.FlagExtractors (getCabalVersionNoPrompt)
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
 import Distribution.FieldGrammar.Newtypes
-import Distribution.Simple.Utils (ordNub)
+import Distribution.Simple.Utils (ordNub, safeLast)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Version
 import System.FilePath
@@ -101,7 +100,7 @@ guessPackageType flags = do
   if fromFlagOrDefault False (initializeTestSuite flags)
     then return TestSuite
     else do
-      let lastDir dirs = L.last . splitDirectories $ dirs
+      let lastDir dirs = fromMaybe "" . safeLast . splitDirectories $ dirs
           srcCandidates = [defaultSourceDir, "src", "source"]
           testCandidates = [defaultTestDir, "test", "tests"]
 
