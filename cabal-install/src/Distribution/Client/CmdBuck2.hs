@@ -32,18 +32,18 @@ import Prelude ()
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Control.Concurrent (getNumCapabilities, newEmptyMVar, putMVar, readMVar, setNumCapabilities)
+import qualified Control.Concurrent.Async as Async
+import Control.Concurrent (getNumCapabilities, setNumCapabilities)
 import Control.Concurrent.STM
   ( STM
   , atomically
-  , check
   , modifyTVar'
   , newTVarIO
   , readTVar
   , readTVarIO
+  , retry
   , writeTVar
   )
-import qualified Control.Concurrent.Stream as Stream
 
 import qualified Distribution.Client.CmdBuild as CmdBuild
 import Distribution.Client.CmdErrorMessages (renderCannotPruneDependencies, reportTargetProblems)
@@ -411,22 +411,47 @@ componentNamesFor elab pkgDesc = case elabPkgOrComp elab of
 -- everything else at the same point in the graph, not just within one
 -- "wave" of a full topological sort.
 --
--- Implemented as a dependency-count-triggered work queue - a component
--- is submitted to the worker pool the moment its *last* outstanding
--- local-library dependency finishes, not upfront - via
--- "Control.Concurrent.Stream"'s 'Stream.streamWithOutput'. Its
--- "producer" callback only ever gets to submit the dependency-free
--- roots directly; every other component gets submitted by whichever
--- *worker* finishes that component's last unmet dependency (via the
--- same @write@ callback the producer got, smuggled into the worker
--- closure below) - so the producer itself just submits the roots, then
--- blocks until every component has been submitted (tracked via
--- 'enqueuedVar', not until every component has *finished*: submission,
--- not completion, is the only thing 'Stream.stream_' needs before it
--- can safely queue its end-of-work markers). This terminates correctly
--- because every component is submitted exactly once, and by
--- construction that always happens-before any later 'write' could
--- possibly be needed for it again.
+-- Implemented as a small hand-rolled STM worker pool, *not* via
+-- "Control.Concurrent.Stream" (an earlier version of this function used
+-- 'Stream.stream'/'Stream.streamWithOutput' - see the git history if
+-- curious): that module is built around a single, sequential producer
+-- enumerating a statically-known worklist up front, and silently breaks
+-- when @write@ is called from multiple concurrent threads reacting to
+-- dynamically-discovered work the way this function needs to. Confirmed
+-- concretely, not just suspected, by reproducing a real, silent bug it
+-- caused here: stress-testing this exact function against the cabal
+-- repo (15+ consecutive `cabal buck2` runs) intermittently generated a
+-- `cabal-install/BUCK.cabal.bzl` missing 3 of its 7 components, with no
+-- error or warning anywhere. Root cause: 'Stream.stream_'s termination
+-- protocol has its single producer decide "everything has been
+-- submitted" from *its own* bookkeeping, then immediately flood the
+-- queue with @maxConcurrency@ end-of-work markers; a worker thread that
+-- has *decided* a dependent is now ready (updating shared "is this
+-- submitted yet" state) but hasn't yet *physically* called @write@ for
+-- it - a real, unavoidable gap between those two steps once @write@
+-- itself is being called from worker threads too, not just the
+-- producer - can lose the race: the producer sees its own bookkeeping
+-- satisfied, floods the end markers, and every worker thread exits
+-- (each on seeing its own marker) before that not-yet-written item ever
+-- reaches the queue. It never re-appears anywhere; the run simply
+-- finishes short.
+--
+-- The fix is to make "this component is now ready" and "a worker can
+-- now see it" the *same* atomic step, which means owning the ready
+-- queue directly instead of going through an opaque library callback:
+-- 'readyVar' is that queue, and 'finishNode' - called once a worker
+-- finishes a component - updates dependency counts *and* pushes any
+-- newly-ready dependents onto it within one STM transaction. A worker
+-- only ever gives up (letting 'popReady' return 'Nothing') once
+-- 'processedVar' - a plain *count of finished components* - has reached
+-- 'totalNodes': at that point every 'finishNode' call that could ever
+-- add something new to 'readyVar' has already happened, so it's
+-- genuinely safe to stop, not just probably-safe the way
+-- 'Stream.stream_'s own submitted-count check turned out to be. An
+-- empty queue with work still outstanding elsewhere correctly makes a
+-- worker 'retry' (STM's blocking retry, which wakes automatically the
+-- moment 'readyVar' or 'processedVar' next changes) rather than give up
+-- early.
 configureComponentsConcurrently
   :: Verbosity
   -> DistDirLayout
@@ -476,78 +501,71 @@ configureComponentsConcurrently verbosity distDirLayout plan shared installedInd
       totalNodes = Map.size localElabs
 
   remainingVar <- newTVarIO (Map.fromList [(uid, length (localLibDeps uid)) | uid <- Map.keys localElabs])
-  enqueuedVar <- newTVarIO Set.empty
+  readyVar <- newTVarIO [uid | uid <- Map.keys localElabs, null (localLibDeps uid)]
+  processedVar <- newTVarIO (0 :: Int)
   indexVar <- newTVarIO installedIndex
+  componentLBIsVar <- newTVarIO Map.empty
 
-  let -- Atomically mark every not-yet-submitted node in @uids@ as
-      -- submitted, returning just the ones that weren't already - the
-      -- newly-ready nodes a caller should 'write' to the work queue.
-      markEnqueued :: [UnitId] -> STM [UnitId]
-      markEnqueued uids = do
-        enqueued <- readTVar enqueuedVar
-        let new = filter (`Set.notMember` enqueued) uids
-        writeTVar enqueuedVar (foldr Set.insert enqueued new)
-        return new
+  let -- Decrement the remaining-dependency count of every dependent of
+      -- @uid@ (a component that just finished); returns whichever
+      -- dependents' count just hit zero.
+      unblockDependentsOf :: UnitId -> Map UnitId Int -> (Map UnitId Int, [UnitId])
+      unblockDependentsOf uid remaining =
+        foldl'
+          ( \(rem_, rs) dep ->
+              let n = Map.findWithDefault 0 dep rem_ - 1
+               in (Map.insert dep n rem_, if n == 0 then dep : rs else rs)
+          )
+          (remaining, [])
+          (Map.findWithDefault [] uid dependents)
 
-      -- Decrement the remaining-dependency count of every dependent of
-      -- @uid@ (a component that just finished); any dependent whose
-      -- count hits zero is now unblocked.
-      unblockDependentsOf :: UnitId -> STM [UnitId]
-      unblockDependentsOf uid = do
+      -- One component just finished: record it, and - in the *same*
+      -- transaction - push any newly-unblocked dependents straight onto
+      -- 'readyVar'. Has to be one atomic step, not two: see this
+      -- function's own haddock for the real bug that came from ever
+      -- letting "this is now ready" and "a worker can see it" drift
+      -- apart, even briefly.
+      finishNode :: UnitId -> STM ()
+      finishNode uid = do
         remaining <- readTVar remainingVar
-        let (remaining', ready) =
-              foldl'
-                ( \(rem_, rs) dep ->
-                    let n = Map.findWithDefault 0 dep rem_ - 1
-                     in (Map.insert dep n rem_, if n == 0 then dep : rs else rs)
-                )
-                (remaining, [])
-                (Map.findWithDefault [] uid dependents)
+        let (remaining', newlyReady) = unblockDependentsOf uid remaining
         writeTVar remainingVar remaining'
-        markEnqueued ready
+        modifyTVar' readyVar (newlyReady ++)
+        modifyTVar' processedVar (+ 1)
 
-  -- 'Stream.streamWithOutput's own "worker" callback (below) isn't
-  -- given the @write@ callback its "producer" gets - only the producer
-  -- is - but a worker here needs to be able to submit a component's
-  -- newly-unblocked dependents itself (see this function's own
-  -- haddock). Published into this 'MVar' the moment the producer
-  -- receives it; 'readMVar' (non-destructive - every worker needs to
-  -- read the same @write@, not consume it) blocks until then, so it's
-  -- safe even though workers and the producer start running
-  -- concurrently in no particular order.
-  writeVar <- newEmptyMVar
+      -- Pop one ready component for a worker to process, or 'Nothing'
+      -- once there's provably nothing left to do, ever: every node that
+      -- could still add something to 'readyVar' has already run
+      -- 'finishNode' by the time 'processedVar' reaches 'totalNodes'.
+      -- An empty queue with work still outstanding elsewhere instead
+      -- 'retry's - STM wakes this automatically the moment 'readyVar'
+      -- or 'processedVar' next changes.
+      popReady :: STM (Maybe UnitId)
+      popReady = do
+        ready <- readTVar readyVar
+        case ready of
+          (uid : rest) -> writeTVar readyVar rest >> return (Just uid)
+          [] -> do
+            processed <- readTVar processedVar
+            if processed == totalNodes then return Nothing else retry
 
-  results <-
-    Stream.streamWithOutput
-      numberOfProcessors
-      ( \write -> do
-          putMVar writeVar write
-          roots <- atomically $ markEnqueued [uid | uid <- Map.keys localElabs, null (localLibDeps uid)]
-          traverse_ write roots
-          -- Block until every node has been *submitted* - not until
-          -- every node has *finished* - so 'Stream.stream_' only ever
-          -- queues its end-of-work markers after the last 'write' any
-          -- worker could possibly still make.
-          atomically $ do
-            enqueued <- readTVar enqueuedVar
-            check (Set.size enqueued == totalNodes)
-      )
-      ( \uid -> do
+      workerLoop :: IO ()
+      workerLoop = do
+        muid <- atomically popReady
+        for_ muid $ \uid -> do
           let elab = localElabs Map.! uid
               pkgDesc = elabPkgDescription elab
           idx <- readTVarIO indexVar
           lbi <- localBuildInfoFor verbosity distDirLayout plan shared idx elab
-          entries <- for (componentNamesFor elab pkgDesc) $ \cname -> do
+          for_ (componentNamesFor elab pkgDesc) $ \cname -> do
             mipi <- libraryInstalledPackageInfo verbosity lbi pkgDesc cname
             for_ mipi $ \ipi -> atomically $ modifyTVar' indexVar (PackageIndex.insert ipi)
-            return ((packageName pkgDesc, cname), lbi)
-          newlyReady <- atomically (unblockDependentsOf uid)
-          unless (null newlyReady) $ do
-            write <- readMVar writeVar
-            traverse_ write newlyReady
-          return entries
-      )
-  return (Map.fromList (concat results))
+            atomically $ modifyTVar' componentLBIsVar (Map.insert (packageName pkgDesc, cname) lbi)
+          atomically (finishNode uid)
+          workerLoop
+
+  Async.replicateConcurrently_ numberOfProcessors workerLoop
+  readTVarIO componentLBIsVar
 
 -- | Like 'pruneInstallPlanToDependencies', but when excluding every
 -- selected target would leave a dangling edge, keep exactly the targets
