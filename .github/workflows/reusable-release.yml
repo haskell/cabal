@@ -340,7 +340,7 @@ jobs:
     steps:
       - name: Install Node
         run: |
-          sudo pkg install -y www/node
+          pkg install -y www/node
 
       - uses: actions/checkout@v7
         with:
@@ -353,10 +353,10 @@ jobs:
 
       - name: Run build
         run: |
-          sudo sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-          sudo pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x
-          sudo tzsetup Etc/GMT
-          sudo adjkerntz -a
+          sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
+          pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x
+          tzsetup Etc/GMT
+          adjkerntz -a
           bash .github/scripts/build.bash
 
       - if: always()
@@ -636,7 +636,7 @@ jobs:
     steps:
       - name: Install Node
         run: |
-          sudo pkg install -y www/node
+          pkg install -y www/node
 
       - uses: actions/checkout@v7
         with:
@@ -654,9 +654,9 @@ jobs:
 
       - name: Run test
         run: |
-          sudo sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-          sudo pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x groff autoconf automake
-          sudo tzsetup Etc/GMT
-          sudo adjkerntz -a
+          sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
+          pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x groff autoconf automake
+          tzsetup Etc/GMT
+          adjkerntz -a
           bash .github/scripts/test.bash
 
