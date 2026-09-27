@@ -46,6 +46,9 @@ jobs:
   validate:
     name: Validate ${{ matrix.sys.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.sys.os }}
+    # GHC 9.10 is currently a bad version on Windows. Keep running the
+    # job but don't block CI on its failures.
+    continue-on-error: ${{ matrix.sys.os == 'windows-latest' && matrix.ghc == '9.10.3' }}
     outputs:
       GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
