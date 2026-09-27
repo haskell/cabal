@@ -377,6 +377,9 @@ jobs:
   dogfooding:
     name: Dogfooding ${{ matrix.sys.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.sys.os }}
+    # It builds with the executable produced by the validate job above,
+    # so apply the same exception for GHC 9.10 on Windows.
+    continue-on-error: ${{ matrix.sys.os == 'windows-latest' && matrix.ghc == '9.10.3' }}
     needs: validate
     strategy:
       matrix:
