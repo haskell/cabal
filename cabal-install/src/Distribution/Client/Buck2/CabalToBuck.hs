@@ -334,43 +334,80 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
           mmainSrc <- resolveMainIs verbosity pkgDir bi (getSymbolicPath mainIs)
           motherSrcs <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) pkgDir bi (otherModules bi)
           case (mmainSrc, motherSrcs) of
-            (Just mainSrc, Just otherSrcs) -> do
-              (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex pkgDir targetName bi
-              macrosFlags <- macrosFlagsArg pkgDir rootRelPkgDir targetName pkgDesc lbi clbi
-              let (pkgs, deps) = classifyDeps localIndex bi
-                  testCall =
-                    call
-                      "haskell_test"
-                      ( [ ("name", str targetName)
-                        , ("srcs", VDict (("Main.hs", str mainSrc) : otherSrcs))
-                        , -- Real `cabal test` always runs a test-suite with its
-                          -- cwd set to the package's own directory - matched
-                          -- here so a test that reads its own fixture files by
-                          -- a package-relative path (extremely common) works
-                          -- the same way under buck2 (see haskell_test()'s own
-                          -- haddock in buck2/haskell.bzl for why this needs a
-                          -- generated wrapper, not just a plain attr).
-                          ("cwd", str rootRelPkgDir)
-                        ]
-                          ++ compilerFlagsArg macrosFlags bi
-                          ++ linkerFlagsArg bi
-                          ++ optionalListArg "packages" pkgs
-                          ++ optionalListArg "deps" (deps ++ cxxDeps)
-                      )
-              return $
-                PackageTargets
-                  (("//buck2:haskell.bzl", ["haskell_test"]) : cxxLoads)
-                  (cxxCalls ++ [testCall])
+            (Just mainSrc, Just otherSrcs) -> mkTestCall lbi clbi (str mainSrc) otherSrcs
             _ -> skip ("test-suite " ++ targetName ++ " (couldn't resolve all its modules)")
-        where
-          bi = componentBuildInfo (CTest test)
-          targetName = unUnqualComponentName (testName test)
+      -- A @detailed-0.9@ test-suite's own module (named via
+      -- @test-module:@, not @other-modules:@ - real Cabal synthesises a
+      -- whole separate internal sub-library exposing just this one
+      -- module, see 'Distribution.Simple.Build.testSuiteLibV09AsLibAndExe')
+      -- exports @tests :: IO ['Distribution.TestSuite.Test']@, and real
+      -- Cabal's own Setup.hs generates a tiny stub 'Main' importing it
+      -- and calling into 'Distribution.Simple.Test.LibV09.stubMain' -
+      -- which then blocks reading a @(logFilePath, testSuiteName)@ pair
+      -- off *stdin*, written by the parent @cabal test@ process, before
+      -- it'll run anything at all (see that module's own 'stubMain').
+      -- That stdin handshake has nothing to do with buck2 - a
+      -- @haskell_test()@ just execs the compiled binary and checks its
+      -- exit code, the same as @exitcode-stdio-1.0@ - so reusing real
+      -- Cabal's own stub verbatim would need a wrapper script to feed it
+      -- a fake handshake for no real benefit (nothing here ever reads
+      -- the machine-readable log it writes). Generates a self-contained
+      -- stub instead, calling only 'Distribution.TestSuite's own public
+      -- API directly (a real, documented, GHC-version-independent
+      -- interface - not reimplementing anything real Cabal doesn't
+      -- already expose for exactly this purpose): runs every 'Test'
+      -- in turn, printing a human-readable pass\/fail\/error line per
+      -- test to stdout, exiting non-zero if anything failed or errored.
+      -- Needs no new build-depends beyond what real Cabal already
+      -- requires the user to declare for their own @tests@ module to
+      -- even type-check (@Distribution.TestSuite@ lives in the @Cabal@
+      -- library itself).
+      TestSuiteLibV09 _ver testModule -> case lbiClbiFor pkgDesc componentLBIs comp of
+        Nothing -> skip ("test-suite " ++ targetName ++ " (no LocalBuildInfo found for it in the elaborated build plan)")
+        Just (lbi, clbi) -> do
+          mtestModSrc <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) pkgDir bi [testModule]
+          motherSrcs <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) pkgDir bi (otherModules bi)
+          case (mtestModSrc, motherSrcs) of
+            (Just testModSrc, Just otherSrcs) -> do
+              stubSrc <- writeDetailedTestStub pkgDir targetName testModule
+              mkTestCall lbi clbi (str stubSrc) (testModSrc ++ otherSrcs)
+            _ -> skip ("test-suite " ++ targetName ++ " (couldn't resolve all its modules)")
       _ ->
         skip
           ( "test-suite "
-              ++ unUnqualComponentName (testName test)
-              ++ " (only exitcode-stdio-1.0 test-suites are supported)"
+              ++ targetName
+              ++ " (only exitcode-stdio-1.0 and detailed-0.9 test-suites are supported)"
           )
+      where
+        bi = componentBuildInfo (CTest test)
+        targetName = unUnqualComponentName (testName test)
+        mkTestCall lbi clbi mainSrc otherSrcs = do
+          (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex pkgDir targetName bi
+          macrosFlags <- macrosFlagsArg pkgDir rootRelPkgDir targetName pkgDesc lbi clbi
+          let (pkgs, deps) = classifyDeps localIndex bi
+              testCall =
+                call
+                  "haskell_test"
+                  ( [ ("name", str targetName)
+                    , ("srcs", VDict (("Main.hs", mainSrc) : otherSrcs))
+                    , -- Real `cabal test` always runs a test-suite with its
+                      -- cwd set to the package's own directory - matched
+                      -- here so a test that reads its own fixture files by
+                      -- a package-relative path (extremely common) works
+                      -- the same way under buck2 (see haskell_test()'s own
+                      -- haddock in buck2/haskell.bzl for why this needs a
+                      -- generated wrapper, not just a plain attr).
+                      ("cwd", str rootRelPkgDir)
+                    ]
+                      ++ compilerFlagsArg macrosFlags bi
+                      ++ linkerFlagsArg bi
+                      ++ optionalListArg "packages" pkgs
+                      ++ optionalListArg "deps" (deps ++ cxxDeps)
+                  )
+          return $
+            PackageTargets
+              (("//buck2:haskell.bzl", ["haskell_test"]) : cxxLoads)
+              (cxxCalls ++ [testCall])
 
 -- | @ghc-options@ + @cpp-options@ + @default-extensions@ (as @-X...@
 -- flags) + @extra@ (the @cabal_macros.h@ include flags from
@@ -601,6 +638,46 @@ writePathsModule pkgDir pkgDesc lbi clbi m = do
   return relPath
   where
     relPath = "cabal-buck2" </> "autogen" </> (ModuleName.toFilePath m <.> "hs")
+
+-- | A @detailed-0.9@ test-suite's own stub @Main@ - see 'testSuite's own
+-- haddock for why this is a from-scratch driver over
+-- @Distribution.TestSuite@'s public API, not real Cabal's own
+-- @Setup.hs@-generated one (@Distribution.Simple.Test.LibV09.stubMain@,
+-- which expects a handshake over stdin buck2 has no way to provide).
+writeDetailedTestStub :: FilePath -> String -> ModuleName.ModuleName -> IO String
+writeDetailedTestStub pkgDir targetName testModule = do
+  createDirectoryIfMissing True (pkgDir </> dir)
+  writeFile (pkgDir </> relPath) contents
+  return relPath
+  where
+    dir = "cabal-buck2" </> "autogen" </> targetName
+    relPath = dir </> "Main.hs"
+    contents =
+      unlines
+        [ "-- @generated by `cabal buck2` - do not edit by hand."
+        , "module Main (main) where"
+        , ""
+        , "import Distribution.TestSuite"
+        , "import qualified " ++ prettyShow testModule ++ " as CabalBuck2TestModule"
+        , "import System.Exit (ExitCode (..), exitWith)"
+        , ""
+        , "main :: IO ()"
+        , "main = do"
+        , "  ts <- CabalBuck2TestModule.tests"
+        , "  oks <- mapM runTest ts"
+        , "  exitWith (if and oks then ExitSuccess else ExitFailure 1)"
+        , ""
+        , "runTest :: Test -> IO Bool"
+        , "runTest (Test ti) = run ti >>= report (name ti)"
+        , "runTest (Group _ _ ts) = and <$> mapM runTest ts"
+        , "runTest (ExtraOptions _ t) = runTest t"
+        , ""
+        , "report :: String -> Progress -> IO Bool"
+        , "report n (Progress msg next) = putStrLn (n ++ \": \" ++ msg) >> next >>= report n"
+        , "report n (Finished Pass) = putStrLn (n ++ \": PASS\") >> return True"
+        , "report n (Finished (Fail msg)) = putStrLn (n ++ \": FAIL: \" ++ msg) >> return False"
+        , "report n (Finished (Error msg)) = putStrLn (n ++ \": ERROR: \" ++ msg) >> return False"
+        ]
 
 -- | 'Nothing' if the main-is file couldn't be found - see 'resolveModules'
 -- for why the caller must skip the whole component rather than emit a

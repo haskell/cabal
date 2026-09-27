@@ -7,9 +7,13 @@ import Test.Cabal.Prelude
 -- This exercises the main mapping rules end to end: a plain library
 -- (lib-pkg), a second package (exe-pkg) whose library depends on it
 -- (cross-package `deps`), an executable with `c-sources` (-> a separate
--- `cxx_library`), a test-suite and a benchmark (only generated because
--- --enable-tests/--enable-benchmarks are passed - a benchmark maps onto
--- a plain haskell_binary(), same as an executable), and a manual flag
+-- `cxx_library`), an exitcode-stdio-1.0 test-suite and a benchmark (only
+-- generated because --enable-tests/--enable-benchmarks are passed - a
+-- benchmark maps onto a plain haskell_binary(), same as an executable),
+-- a detailed-0.9 test-suite (a self-generated stub Main driving
+-- `Distribution.TestSuite`'s own API directly, not real Cabal's own
+-- stdin-driven Setup.hs-generated one - see CabalToBuck.hs's own
+-- `testSuite`/`writeDetailedTestStub` haddock), and a manual flag
 -- gating `cpp-options`.
 --
 -- Runs with `recordMode DoNotRecord`: the per-component "Configuring
@@ -33,10 +37,19 @@ main = cabalTest $ do
     assertFileDoesContain exeBzl "//lib-pkg:lib-pkg"
     assertFileDoesContain exeBzl "-DLOUD"
     assertFileDoesContain exeBzl "'exe-pkg-bench'"
+    assertFileDoesContain exeBzl "'exe-pkg-detailed-test'"
 
     -- The hand-editable BUCK wrapper is created (only once) and loads
     -- the generated file.
     assertFileDoesContain (cwd </> "exe-pkg" </> "BUCK") "generated_targets"
+
+    -- The detailed-0.9 test-suite's stub Main is our own generated
+    -- driver (not real Cabal's stdin-driven one - see basic.test.hs's
+    -- own module-level comment), importing the user's named test-module
+    -- directly.
+    assertFileDoesContain
+        (cwd </> "exe-pkg" </> "cabal-buck2" </> "autogen" </> "exe-pkg-detailed-test" </> "Main.hs")
+        "import qualified DetailedTests as CabalBuck2TestModule"
 
     -- cabal_macros.h / Paths_<pkg>.hs are generated via real Cabal's
     -- own generators (Distribution.Simple.Build.Macros/PathsModule),

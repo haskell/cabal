@@ -39,3 +39,10 @@ benchmark exe-pkg-bench
   hs-source-dirs:     bench
   build-depends:      base, exe-pkg
   default-language:   Haskell2010
+
+test-suite exe-pkg-detailed-test
+  type:               detailed-0.9
+  test-module:        DetailedTests
+  hs-source-dirs:     detailed-test
+  build-depends:      base, Cabal, exe-pkg
+  default-language:   Haskell2010
