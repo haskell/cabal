@@ -35,6 +35,17 @@ main = cabalTest $ do
     assertFileDoesContain exeBzl "haskell_test"
     assertFileDoesContain exeBzl "cxx_library"
     assertFileDoesContain exeBzl "//lib-pkg:lib-pkg"
+
+    -- exported_preprocessor_flags (unlike srcs, a plain attrs.arg() -
+    -- buck2 has no idea `-I...` even names a path) needs its
+    -- `include-dirs:` entry prefixed with this package's own directory
+    -- by hand - every cxx action always runs with the *project root* as
+    -- its cwd, so a bare `-Icbits` resolves to the wrong place for any
+    -- package that isn't at the project root itself. Caught for real
+    -- against a non-fixture project (persistent-sqlite's bundled sqlite3
+    -- amalgamation, `#include <sqlite3.h>`) - see buck2.md's DONE entry
+    -- on this.
+    assertFileDoesContain exeBzl "-Iexe-pkg/cbits"
     assertFileDoesContain exeBzl "-DLOUD"
     assertFileDoesContain exeBzl "'exe-pkg-bench'"
     assertFileDoesContain exeBzl "'exe-pkg-detailed-test'"

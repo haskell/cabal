@@ -241,7 +241,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
         case msrcs of
           Nothing -> skip ("library " ++ targetName ++ " (couldn't resolve all its modules)")
           Just (srcs, srcAutogenExports) -> do
-            (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex pkgDir targetName bi
+            (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex rootRelPkgDir pkgDir targetName bi
             macrosExport <- writeMacrosHeader pkgDir targetName pkgDesc lbi clbi
             let (pkgs, deps) = classifyDeps localIndex bi
                 hlCall =
@@ -270,7 +270,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
         motherSrcs <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) rootRelPkgDir pkgDir bi (otherModules bi)
         case (mmainSrc, motherSrcs) of
           (Just mainSrc, Just (otherSrcs, srcAutogenExports)) -> do
-            (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex pkgDir targetName bi
+            (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex rootRelPkgDir pkgDir targetName bi
             macrosExport <- writeMacrosHeader pkgDir targetName pkgDesc lbi clbi
             let (pkgs, deps) = classifyDeps localIndex bi
                 binCall =
@@ -311,7 +311,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
           motherSrcs <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) rootRelPkgDir pkgDir bi (otherModules bi)
           case (mmainSrc, motherSrcs) of
             (Just mainSrc, Just (otherSrcs, srcAutogenExports)) -> do
-              (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex pkgDir targetName bi
+              (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex rootRelPkgDir pkgDir targetName bi
               macrosExport <- writeMacrosHeader pkgDir targetName pkgDesc lbi clbi
               let (pkgs, deps) = classifyDeps localIndex bi
                   binCall =
@@ -403,7 +403,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
         bi = componentBuildInfo (CTest test)
         targetName = unUnqualComponentName (testName test)
         mkTestCall lbi clbi mainSrc otherSrcs srcAutogenExports = do
-          (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex pkgDir targetName bi
+          (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex rootRelPkgDir pkgDir targetName bi
           macrosExport <- writeMacrosHeader pkgDir targetName pkgDesc lbi clbi
           let (pkgs, deps) = classifyDeps localIndex bi
               testCall =
@@ -766,10 +766,11 @@ sourceDirs bi = case map getSymbolicPath (hsSourceDirs bi) of
 cxxLibraryFor
   :: LocalPackageIndex
   -> FilePath
+  -> FilePath
   -> String
   -> BuildInfo
   -> IO ([(String, [String])], [String], [Call])
-cxxLibraryFor _localIndex _pkgDir targetName bi
+cxxLibraryFor _localIndex rootRelPkgDir _pkgDir targetName bi
   | null srcs = return ([], [], [])
   | otherwise =
       return
@@ -781,7 +782,21 @@ cxxLibraryFor _localIndex _pkgDir targetName bi
   where
     srcs = map getSymbolicPath (cSources bi ++ cxxSources bi)
     cxxTargetName = targetName ++ "-cxx"
-    includeFlags = ["-I" ++ getSymbolicPath d | d <- includeDirs bi]
+    -- Unlike @srcs@ (an @attrs.source()@, resolved by buck2 itself
+    -- relative to this rule's own package - see 'cxxCall's own @srcs@),
+    -- @exported_preprocessor_flags@ is a plain @attrs.arg()@ string list
+    -- - buck2 has no idea @-I<path>@ names a path at all, let alone one
+    -- that needs resolving relative to anything, so a bare
+    -- package-relative @include-dirs:@ entry (e.g. @cbits@) needs
+    -- @rootRelPkgDir@ folded in by hand here, the same way
+    -- 'writeMacrosHeader'\/'cabalComponentArg' already do for other
+    -- flag-embedded paths - every cxx action in this project always runs
+    -- with the *project root* as its cwd (confirmed empirically: a real
+    -- @buck2 build@ of a non-root package's c-sources with a bare
+    -- @-Icbits@ here fails outright, "file not found", since that
+    -- resolves to @\<root\>\/cbits@ instead of
+    -- @\<root\>\/\<pkgDir\>\/cbits@).
+    includeFlags = ["-I" ++ (if rootRelPkgDir == "." then d else rootRelPkgDir </> d) | dir <- includeDirs bi, let d = getSymbolicPath dir]
     pkgconfigNames = ordNub [unPkgconfigName n | PkgconfigDependency n _ <- pkgconfigDepends bi]
     pkgconfigCalls =
       [ call
