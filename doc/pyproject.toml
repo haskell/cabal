@@ -20,7 +20,7 @@ ignore_file   = '.skjoldignore'
 [dependency-groups]
 dev = [
     "certifi>=2026.7.22",
-    "idna>=3.19",
+    "idna>=3.20",
     "jinja2>=3.1.4",
     "packaging>=26.3",
     "pygments>=2.21.0",
@@ -29,5 +29,5 @@ dev = [
     "sphinx-jsonschema>=1.19.2",
     "sphinx-rtd-theme>=3.1.0",
     "sphinxnotes-strike>=1.5",
-    "urllib3>=2.7.0",
+    "urllib3>=2.8.0",
 ]
