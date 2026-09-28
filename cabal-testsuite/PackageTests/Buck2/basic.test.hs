@@ -39,6 +39,20 @@ main = cabalTest $ do
     assertFileDoesContain exeBzl "'exe-pkg-bench'"
     assertFileDoesContain exeBzl "'exe-pkg-detailed-test'"
 
+    -- Every generated rule gets a `cabal_component = (pkg, component)`
+    -- kwarg (see buck2/haskell.bzl's own comment on it) instead of a
+    -- plain, untracked `cabal_macros.h` path folded into compiler_flags
+    -- - see buck2.md's DONE entry on this.
+    assertFileDoesContain exeBzl "cabal_component = ('exe-pkg', 'exe-pkg')"
+    assertFileDoesContain exeBzl "cabal_component = ('exe-pkg', 'exe-pkg-exe')"
+
+    -- Paths_<pkg>.hs and the detailed-0.9 stub Main both live under
+    -- cabal-buck2/autogen/, which now has its own BUCK file (see below)
+    -- - so once generated they're referenced from srcs by that file's
+    -- own export_file() target label, not a same-package-relative path.
+    assertFileDoesContain exeBzl "'Paths_exe_pkg.hs': '//exe-pkg/cabal-buck2/autogen:Paths_exe_pkg'"
+    assertFileDoesContain exeBzl "'Main.hs': '//exe-pkg/cabal-buck2/autogen:exe-pkg-detailed-test-stub-main'"
+
     -- The hand-editable BUCK wrapper is created (only once) and loads
     -- the generated file.
     assertFileDoesContain (cwd </> "exe-pkg" </> "BUCK") "generated_targets"
@@ -60,3 +74,31 @@ main = cabalTest $ do
     assertFileDoesContain
         (cwd </> "exe-pkg" </> "cabal-buck2" </> "autogen" </> "Paths_exe_pkg.hs")
         "version ="
+
+    -- cabal-buck2/autogen/BUCK exports every autogen file (Paths_<pkg>,
+    -- each component's own cabal_macros.h, the detailed-0.9 stub Main)
+    -- as a real, addressable target via export_file() - both what makes
+    -- the cabal_component kwarg's own $(location ...) reference above a
+    -- real, buck2-tracked dependency edge (unlike the untracked raw path
+    -- string this used to be), and what lets a hand-written BUCK rule
+    -- elsewhere in the project reference e.g. Paths_<pkg> directly - see
+    -- buck2.md's DONE entry on this.
+    let autogenBuck = cwd </> "exe-pkg" </> "cabal-buck2" </> "autogen" </> "BUCK"
+    assertFileDoesContain autogenBuck "name = 'exe-pkg-cabal-macros'"
+    assertFileDoesContain autogenBuck "name = 'Paths_exe_pkg'"
+    assertFileDoesContain autogenBuck "name = 'exe-pkg-detailed-test-stub-main'"
+
+    -- Every export_file() must set `out` explicitly to the real file's
+    -- own basename (Paths_exe_pkg.hs, cabal_macros.h, Main.hs) - without
+    -- it, export_file()'s own default (the *rule's* name, e.g. plain
+    -- `Paths_exe_pkg`, no extension - see prelude/export_file.bzl) makes
+    -- the materialised artifact lose its extension, which a real `buck2
+    -- build` doesn't error on but silently drops from the Haskell
+    -- module list entirely (buck2/haskell.bzl's own `is_haskell_src()`
+    -- checks the artifact's filename, not the target label) - caught
+    -- the hard way against a real Glean checkout, not by this fixture,
+    -- since asserting file *content* alone can't see a buck2 artifact's
+    -- own output filename - see buck2.md's DONE entry on this.
+    assertFileDoesContain autogenBuck "out = 'Paths_exe_pkg.hs'"
+    assertFileDoesContain autogenBuck "out = 'cabal_macros.h'"
+    assertFileDoesContain autogenBuck "out = 'Main.hs'"

@@ -21,12 +21,16 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 -- | A Starlark expression, restricted to what BUCK files actually need:
--- string\/bool scalars and (recursively) lists and dicts of them.
+-- string\/bool scalars and (recursively) lists, dicts and tuples of them.
+-- 'VTuple' exists only for @cabal_component = (pkg, component)@ (see
+-- buck2\/haskell.bzl's own @cabal_component@ kwarg) - nothing else
+-- generated here needs Starlark's tuple\/list distinction.
 data Value
   = VStr String
   | VBool Bool
   | VList [Value]
   | VDict [(String, Value)]
+  | VTuple [Value]
 
 str :: String -> Value
 str = VStr
@@ -67,6 +71,11 @@ renderValue ind (VList xs) =
     ++ concat [indent (ind + 1) ++ renderValue (ind + 1) x ++ ",\n" | x <- xs]
     ++ indent ind
     ++ "]"
+-- | Always rendered compactly on one line (unlike 'VList'\/'VDict') - its
+-- only use is @cabal_component = (pkg, component)@, and matching the
+-- pair literal shape it's meant to look like matters more than matching
+-- every other value's one-element-per-line style.
+renderValue _ (VTuple xs) = "(" ++ intercalate ", " (map (renderValue 0) xs) ++ ")"
 renderValue _ (VDict []) = "{}"
 renderValue ind (VDict kvs) =
   "{\n"
