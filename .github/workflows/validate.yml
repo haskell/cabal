@@ -374,6 +374,17 @@ jobs:
   dogfooding:
     name: Dogfooding ${{ matrix.sys.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.sys.os }}
+    # It builds with the executable produced by the validate job above.
+    # GHC 9.10 on Windows currently suffers from two unrelated problems:
+    #
+    #  * `ghc-pkg` intermittently fails with "package.cache: you don't
+    #    have permission to modify this file"
+    #
+    #  * The cli-suite MultiRepl tests fail with
+    #    "removePathForcibly: permission denied" because Windows keeps
+    #    the work tree locked for a moment after the multi-repl GHCi
+    #    test process terminates (see #11933).
+    continue-on-error: ${{ matrix.sys.os == 'windows-latest' && matrix.ghc == '9.10.3' }}
     needs: validate
     strategy:
       matrix:
@@ -432,7 +443,9 @@ jobs:
       # We dont use cache to force a build with a fresh store dir and build dir
       # This way we check cabal can build all its dependencies
       - name: Build using cabal HEAD
-        run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s build
+        # Serialize registrations on Windows to avoid the package cache
+        # race described in the comment on this job.
+        run: sh validate.sh ${{ matrix.sys.os == 'windows-latest' && '-j 1 -v' || env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s build
 
   prerelease-head:
     name: Create a GitHub prerelease with the binary artifacts

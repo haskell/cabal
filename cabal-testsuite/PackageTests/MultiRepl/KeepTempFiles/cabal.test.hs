@@ -2,6 +2,7 @@ import Test.Cabal.Prelude
 
 main = do
   cabalTest' "yes" $ do
+    skipIfCIAndWindows 11933
     skipUnlessGhcVersion ">= 9.4"
     cabal' "clean" []
     res <-
@@ -17,6 +18,7 @@ main = do
     void $ assertGlobMatchesTestDir testDistDir "multi-out*/"
 
   cabalTest' "no" $ do
+    skipIfCIAndWindows 11933
     skipUnlessGhcVersion ">= 9.4"
     cabal' "clean" []
     res <-

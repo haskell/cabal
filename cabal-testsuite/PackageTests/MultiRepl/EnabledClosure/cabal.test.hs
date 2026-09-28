@@ -2,6 +2,7 @@ import Test.Cabal.Prelude
 
 main = do
   cabalTest $ do
+    skipIfCIAndWindows 11933
     skipUnlessGhcVersion ">= 9.4"
     -- Note: only the last package is interactive.
     -- this test should load pkg-b too.
