@@ -1,0 +1,9 @@
+---
+synopsis: Warn on non-ASCII characters in `name`
+packages: [Cabal, cabal-install]
+prs: 11198
+issues: 11197
+---
+
+`cabal check` now warns about packages with non-ASCII characters
+in their name (they are not accepted by Hackage).
