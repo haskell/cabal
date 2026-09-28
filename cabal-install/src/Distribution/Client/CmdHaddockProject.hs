@@ -48,11 +48,7 @@ import Distribution.Client.ScriptUtils
   , updateContextAndWriteProjectFile
   , withContextAndSelectors
   )
-import Distribution.Client.Setup
-  ( CommonSetupFlags (setupVerbosity)
-  , ConfigFlags (..)
-  , GlobalFlags (..)
-  )
+import Distribution.Client.Setup (ConfigFlags (..), GlobalFlags (..), setupOrNormalVerbosity)
 import Distribution.Client.TargetProblem (TargetProblem (..))
 
 import Distribution.Simple.BuildPaths
@@ -106,11 +102,7 @@ import Distribution.Types.PackageName (unPackageName)
 import Distribution.Types.UnitId (unUnitId)
 import Distribution.Types.Version (mkVersion)
 import Distribution.Types.VersionRange (orLaterVersion)
-import Distribution.Verbosity as Verbosity
-  ( defaultVerbosityHandles
-  , mkVerbosity
-  , normal
-  )
+import Distribution.Verbosity (defaultVerbosityHandles)
 
 import Distribution.Client.Errors
 import System.Directory (doesDirectoryExist, doesFileExist)
@@ -362,10 +354,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
   where
     -- build all packages with appropriate haddock flags
     commonFlags = haddockProjectCommonFlags flags
-
-    verbosity =
-      mkVerbosity defaultVerbosityHandles $
-        fromFlagOrDefault normal (setupVerbosity commonFlags)
+    verbosity = setupOrNormalVerbosity defaultVerbosityHandles commonFlags
 
     haddockFlags =
       defaultHaddockFlags
