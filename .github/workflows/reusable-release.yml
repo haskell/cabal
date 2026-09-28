@@ -338,9 +338,11 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - name: Install Node
+      # We need Node for actions and compat for GHCup, so it is better to just
+      # install everything before those two steps.
+      - name: Install requirements (build)
         run: |
-          pkg install -y www/node
+          pkg install -y www/node misc/compat10x misc/compat11x misc/compat12x curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash
 
       - uses: actions/checkout@v6
         with:
@@ -354,7 +356,6 @@ jobs:
       - name: Run build
         run: |
           sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-          pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x
           tzsetup Etc/GMT
           adjkerntz -a
           bash .github/scripts/build.bash
@@ -634,9 +635,11 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - name: Install Node
+      # Same as in `build-freebsd-x86_64`, we install everything needed
+      # before checking out and installing GHCup.
+      - name: Install requirements (test)
         run: |
-          pkg install -y www/node
+          pkg install -y www/node misc/compat10x misc/compat11x misc/compat12x curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash groff autoconf automake
 
       - uses: actions/checkout@v6
         with:
@@ -655,7 +658,6 @@ jobs:
       - name: Run test
         run: |
           sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-          pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x groff autoconf automake
           tzsetup Etc/GMT
           adjkerntz -a
           bash .github/scripts/test.bash
