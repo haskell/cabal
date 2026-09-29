@@ -131,6 +131,7 @@ data CabalException
   | PkgConfigNotFound String String
   | BadVersion String String PkgconfigVersion
   | UnknownCompilerException
+  | GHCJSNotSupported
   | NoWorkingGcc
   | NoOSSupport OS String
   | NoCompilerSupport String
@@ -265,6 +266,7 @@ exceptionCode e = case e of
   PkgConfigNotFound{} -> 7123
   BadVersion{} -> 7600
   UnknownCompilerException{} -> 3022
+  GHCJSNotSupported{} -> 4002
   NoWorkingGcc{} -> 1088
   NoOSSupport{} -> 3339
   NoCompilerSupport{} -> 2290
@@ -587,6 +589,9 @@ exceptionMessage e = case e of
       ++ " system is version "
       ++ prettyShow v
   UnknownCompilerException -> "Unknown compiler"
+  GHCJSNotSupported ->
+    "GHCJS is no longer supported. Use the JavaScript backend of GHC instead, "
+      ++ "for example with --with-compiler=javascript-unknown-ghcjs-ghc."
   NoWorkingGcc ->
     unlines
       [ "No working gcc"

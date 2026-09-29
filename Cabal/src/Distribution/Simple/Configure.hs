@@ -2679,6 +2679,7 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
   (comp, maybePlatform, programDb) <- case hcFlavor of
     GHC -> GHC.configure verbosity hcPath hcPkg progdb
     UHC -> UHC.configure verbosity hcPath progdb
+    GHCJS -> dieWithException verbosity GHCJSNotSupported
     _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
@@ -2698,6 +2699,7 @@ configCompiler mbFlavor hcPath progdb verbosity = do
         case hcFlavor of
           GHC -> GHC.configureCompiler verbosity hcPath progdb
           UHC -> UHC.configure verbosity hcPath progdb
+          GHCJS -> dieWithException verbosity GHCJSNotSupported
           _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
