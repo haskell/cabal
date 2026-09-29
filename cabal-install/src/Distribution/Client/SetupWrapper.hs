@@ -1267,10 +1267,7 @@ compileSetupX
       (compiler, progdb, options'') <- configureCompiler verbosity options'
       pkgDbs <- traverse (traverse (makeRelativeToDirS mbWorkDir)) (coercePackageDBStack (usePackageDB options''))
       let cabalPkgid = PackageIdentifier (mkPackageName "Cabal") cabalLibVersion
-          (program, extraOpts) =
-            case compilerFlavor compiler of
-              GHCJS -> (ghcjsProgram, ["-build-runner"])
-              _ -> (ghcProgram, ["-threaded"])
+          (program, extraOpts) = (ghcProgram, ["-threaded"])
           cabalDep =
             maybe
               []

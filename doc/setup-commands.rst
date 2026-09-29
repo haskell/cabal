@@ -202,9 +202,8 @@ files of a package:
     ``--with-cpphs=/usr/local/bin/cpphs``. The full list of accepted
     programs is as follows:
     ``alex``, ``ar``, ``c2hs``, ``cpphs``, ``doctest``, ``gcc``, ``ghc``,
-    ``ghc-pkg``, ``ghcjs``, ``ghcjs-pkg``, ``haddock``, ``happy``,
-    ``hpc``, ``hsc2hs``, ``hscolour``, ``jhc``, ``ld``, ``pkg-config``,
-    ``runghc``, ``strip``, ``tar``, ``uhc``.
+    ``ghc-pkg``, ``haddock``, ``happy``, ``hpc``, ``hsc2hs``, ``hscolour``,
+    ``jhc``, ``ld``, ``pkg-config``, ``runghc``, ``strip``, ``tar``, ``uhc``.
 
 .. option:: --PROG-options=OPTS
 

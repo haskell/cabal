@@ -374,8 +374,8 @@ Flags for v1-install:
                                 $arch, $benchmark)
 
 The flags --with-PROG and --PROG-option(s) can be used with the following programs:
-  alex ar c2hs cpphs doctest gcc ghc ghc-pkg ghcjs ghcjs-pkg haddock happy hpc
-  hsc2hs hscolour jhc ld pkg-config runghc strip tar uhc
+  alex ar c2hs cpphs doctest gcc ghc ghc-pkg haddock happy hpc hsc2hs hscolour
+  jhc ld pkg-config runghc strip tar uhc
 
 Examples:
   cabal v1-install                     Package in the current directory
