@@ -1690,6 +1690,8 @@ postProcessRepo lineno reponameStr repo0 = do
         Left $
           LocalRepo
             reponame
+            -- Native path, so a repository named here and in a project
+            -- file compares equal and shares one cache key.
             (fileNoIndexURIPath buildOS uri)
             (uriFragment uri == "#shared-cache")
     _ -> do
