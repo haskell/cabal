@@ -158,7 +158,7 @@ compilerVersion = (\(CompilerId _ v) -> v) . compilerId
 -- | Is this compiler compatible with the compiler flavour we're interested in?
 --
 -- For example this checks if the compiler is actually GHC or is another
--- compiler that claims to be compatible with some version of GHC, e.g. GHCJS.
+-- compiler that claims to be compatible with some version of GHC.
 --
 -- > if compilerCompatFlavor GHC compiler then ... else ...
 compilerCompatFlavor :: CompilerFlavor -> Compiler -> Bool

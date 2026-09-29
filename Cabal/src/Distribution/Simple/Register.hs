@@ -56,7 +56,6 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.PackageIndex as Index
 import qualified Distribution.Simple.UHC as UHC
 
@@ -327,10 +326,7 @@ abiHash
   -> IO AbiHash
 abiHash verbosity pkg distPref lbi lib clbi =
   case compilerFlavor comp of
-    GHC -> do
-      mkAbiHash <$> GHC.libAbiHash verbosity pkg lbi' lib clbi
-    GHCJS -> do
-      mkAbiHash <$> GHCJS.libAbiHash verbosity pkg lbi' lib clbi
+    GHC -> mkAbiHash <$> GHC.libAbiHash verbosity pkg lbi' lib clbi
     _ -> return (mkAbiHash "")
   where
     comp = compiler lbi
@@ -379,7 +375,6 @@ createPackageDB
 createPackageDB verbosity comp progdb dbPath =
   case compilerFlavor comp of
     GHC -> HcPkg.init (GHC.hcPkgInfo progdb) verbosity dbPath
-    GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity dbPath
     UHC -> return ()
     _ -> dieWithException verbosity CreatePackageDB
 
@@ -424,7 +419,6 @@ withHcPkg
 withHcPkg verbosity name comp progdb f =
   case compilerFlavor comp of
     GHC -> f (GHC.hcPkgInfo progdb)
-    GHCJS -> f (GHCJS.hcPkgInfo progdb)
     _ -> dieWithException verbosity $ WithHcPkg name
 
 registerPackage
@@ -439,7 +433,6 @@ registerPackage
 registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo registerOptions =
   case compilerFlavor comp of
     GHC -> GHC.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
-    GHCJS -> GHCJS.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
     _
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported

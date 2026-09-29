@@ -31,7 +31,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
 
@@ -657,7 +656,6 @@ componentGhcOptions
 componentGhcOptions verbosity lbi bi clbi odir =
   let f = case compilerFlavor (compiler lbi) of
         GHC -> GHC.componentGhcOptions
-        GHCJS -> GHCJS.componentGhcOptions
         _ ->
           error $
             "Distribution.Simple.Haddock.componentGhcOptions:"
@@ -1041,7 +1039,6 @@ getGhcLibDir
 getGhcLibDir verbosity lbi = do
   l <- case compilerFlavor (compiler lbi) of
     GHC -> GHC.getLibDir verbosity lbi
-    GHCJS -> GHCJS.getLibDir verbosity lbi
     _ -> error "haddock only supports GHC and GHCJS"
   return $ mempty{argGhcLibDir = Flag l}
 
