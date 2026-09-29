@@ -65,7 +65,10 @@ import System.FilePath (normalise, (</>))
 import Prelude ()
 
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, testCase)
+import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
+
+import Data.TreeDiff (ToExpr, ansiWlEditExpr, ediff)
+import UnitTests.Distribution.Client.TreeDiffInstances ()
 
 parserTests :: TestTree
 parserTests =
@@ -601,8 +604,15 @@ readConfigDefault testSubDir = readConfig testSubDir "cabal.project"
 readConfig :: FilePath -> FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfig testSubDir projectFileName = do
   (parsec, legacy) <- readConfigDiverging testSubDir projectFileName
-  assertEqual "Parsec parser disagrees with the legacy parser" legacy parsec
+  assertEdiffEqual "Parsec parser disagrees with the legacy parser" legacy parsec
   return (parsec, legacy)
+
+-- | Like 'assertEqual' but the failure shows a tree diff of the two values
+-- instead of two 'show' dumps.
+assertEdiffEqual :: (Eq a, ToExpr a, HasCallStack) => String -> a -> a -> Assertion
+assertEdiffEqual msg expected actual =
+  unless (expected == actual) . assertFailure $
+    unlines [msg, show (ansiWlEditExpr (ediff expected actual))]
 
 -- | Reads a project file with both parsers without checking that they agree,
 -- for the fixtures where they are known to differ.
