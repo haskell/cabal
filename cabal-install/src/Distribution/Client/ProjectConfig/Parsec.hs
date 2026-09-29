@@ -213,7 +213,9 @@ projectFileParserField = "project-file-parser"
 warnProjectFileParserField :: Fields Position -> ParseResult src ()
 warnProjectFileParserField fs =
   for_ (Map.findWithDefault [] projectFileParserField fs) $ \field ->
-    parseWarning (namelessFieldAnn field) PWTOther $
+    parseWarning
+      (namelessFieldAnn field)
+      PWTOther
       "The project-file-parser field has no effect in a project file, the parser is chosen before the file is read. Use --project-file-parser on the command line instead."
 
 -- |
