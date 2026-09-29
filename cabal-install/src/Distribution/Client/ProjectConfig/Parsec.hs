@@ -197,11 +197,24 @@ fieldsToConfig :: ProjectConfigPath -> [Field Position] -> ParseResult ProjectFi
 fieldsToConfig sourceConfigPath xs = do
   let (fs, sectionGroups) = partitionFields xs
       sections = concat sectionGroups
-  config <- parseFieldGrammarCheckingStanzas cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
+  warnProjectFileParserField fs
+  config <- parseFieldGrammarCheckingStanzas cabalSpec (Map.delete projectFileParserField fs) (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
   config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
   return config'
   where
     programDb = defaultProgramDb
+
+projectFileParserField :: FieldName
+projectFileParserField = "project-file-parser"
+
+-- | The parser is chosen before the project file is read, so this field can
+-- have no effect in a project file. Say so, rather than warn of an unknown
+-- field.
+warnProjectFileParserField :: Fields Position -> ParseResult src ()
+warnProjectFileParserField fs =
+  for_ (Map.findWithDefault [] projectFileParserField fs) $ \field ->
+    parseWarning (namelessFieldAnn field) PWTOther $
+      "The project-file-parser field has no effect in a project file, the parser is chosen before the file is read. Use --project-file-parser on the command line instead."
 
 -- |
 -- >>> parseParsec projectPackages "packages" "foo"
@@ -230,6 +243,14 @@ fieldsToConfig sourceConfigPath xs = do
 --
 -- >>> parseParsec (packageConfigHaddockHtmlLocation . projectConfigLocalPackages) "haddock-html-location" ""
 -- ([],Right (Last {getLast = Nothing}))
+--
+-- A @project-file-parser@ field is dropped with a warning saying why.
+--
+-- >>> :{
+-- let (warnings, result) = runParseResult $ parseProjectConfig "" (toUTF8BS "project-file-parser: legacy\n")
+--  in ([m | PWarningWithSource _ (PWarning _ _ m) <- warnings], projectConfigProjectFileParser . projectConfigShared <$> result)
+-- :}
+-- (["The project-file-parser field has no effect in a project file, the parser is chosen before the file is read. Use --project-file-parser on the command line instead."],Right (Last {getLast = Nothing}))
 parseProjectConfig :: FilePath -> BS.ByteString -> ParseResult ProjectFileSource ProjectConfig
 parseProjectConfig rootConfig bs =
   fieldsToConfig (ProjectConfigPath $ rootConfig :| []) =<< readPreprocessFields bs
@@ -453,6 +474,7 @@ cabalSpec = cabalSpecLatest
 
 -- $setup
 -- >>> instance (Show a, Show b) => Show (ParseResult a b) where show = show . runParseResult
+-- >>> import Distribution.Parsec.Warning (PWarning (..), PWarningWithSource (..))
 --
 -- Parses a project file of one field, going through the lexer as a real
 -- project file would.
