@@ -744,7 +744,7 @@ unregisterWithHandles verbHandles pkg lbi regFlags = do
   setupMessage verbosity "Unregistering" pkgid
   withHcPkg
     verbosity
-    "unregistering is only implemented for GHC and GHCJS"
+    "unregistering is only implemented for GHC"
     (compiler lbi)
     (withPrograms lbi)
     unreg

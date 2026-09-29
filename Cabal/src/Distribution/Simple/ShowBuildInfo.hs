@@ -201,7 +201,6 @@ getCompilerArgs
 getCompilerArgs bi lbi clbi =
   case compilerFlavor $ compiler lbi of
     GHC -> ([], ghcArgs)
-    GHCJS -> ([], ghcArgs)
     c ->
       (
         [ "ShowBuildInfo.getCompilerArgs: Don't know how to get build "

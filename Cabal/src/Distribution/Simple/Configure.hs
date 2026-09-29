@@ -927,13 +927,11 @@ adjustBuildOptions comp programDb opts =
       | GHC <- compilerFlavor comp
       , compilerVersion comp >= mkVersion [8, 0] =
           True
-      | GHCJS <- compilerFlavor comp = True
       | otherwise = False -- not supported by this compiler
     splitObj
       | not (LBC.splitObjs opts) = False
       | splitSec = False -- mutually exclusive with split-sections
       | GHC <- compilerFlavor comp = True
-      | GHCJS <- compilerFlavor comp = True
       | otherwise = False -- not supported by this compiler
     linkerSupportsRelocations :: Maybe Bool
     linkerSupportsRelocations =
