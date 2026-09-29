@@ -275,12 +275,19 @@ normaliseFileNoIndexURI os uri@(URI scheme _auth path query fragment)
 -- Use it when parsing a @repository@ section, in the user config file and in
 -- project files alike.
 --
--- The path is stored native rather than POSIX-style because it is a
--- 'FilePath' like every other in cabal-install, because 'localRepoCacheKey'
--- hashes its spelling to name a cache directory, and because a repository
--- given in both the config file and a project file must compare equal to be
--- deduplicated. Reading with 'normaliseFileNoIndexURI' instead would keep
--- the URI's forward slashes on Windows and break all three.
+-- The path is stored native rather than POSIX-style because:
+--
+-- 1. It is a 'FilePath', like every other path in cabal-install.
+--
+-- 2. 'localRepoCacheKey' hashes its spelling to name a cache directory, so
+--    two spellings of one directory would get two caches.
+--
+-- 3. A repository given in both the config file and a project file must
+--    compare equal to be deduplicated.
+--
+-- Reading with 'normaliseFileNoIndexURI' instead would keep the URI's
+-- forward slashes on Windows, which breaks 2 and 3 and makes 1 the odd one
+-- out.
 --
 -- On Windows the path is normalised to backslashes, whether it was written
 -- POSIX-style by 'normaliseFileNoIndexURI' or with backslashes by hand.
