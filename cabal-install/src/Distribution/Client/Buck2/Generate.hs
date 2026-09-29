@@ -69,10 +69,13 @@ import Distribution.Client.Buck2.Starlark
 -- - used to generate each component's own @cabal_macros.h@\/
 -- @Paths_\<pkg\>@\/@PackageInfo_\<pkg\>@ via Cabal's own real generators
 -- (see "Distribution.Client.Buck2.CabalToBuck") instead of reimplementing
--- pieces of them by hand.
-generateAllPackages :: Verbosity -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> [(FilePath, PackageDescription)] -> IO ()
-generateAllPackages verbosity projectRoot componentLBIs pkgs = do
-  traverse_ (generateOnePackage verbosity localIndex projectRoot componentLBIs) pkgs
+-- pieces of them by hand. @externalBuildTools@ is every
+-- @build-tool-depends:@ executable name "Distribution.Client.Buck2.
+-- Prebuilt" resolved a real external binary (and generated an
+-- @export_file()@ target) for - see 'CabalToBuck.buildToolDependsArg'.
+generateAllPackages :: Verbosity -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> Set String -> [(FilePath, PackageDescription)] -> IO ()
+generateAllPackages verbosity projectRoot componentLBIs externalBuildTools pkgs = do
+  traverse_ (generateOnePackage verbosity localIndex projectRoot componentLBIs externalBuildTools) pkgs
   where
     localIndex :: LocalPackageIndex
     localIndex =
@@ -114,9 +117,9 @@ rootRelativeDir projectRoot pkgDir = case makeRelative projectRoot pkgDir of
   "" -> "."
   rel -> rel
 
-generateOnePackage :: Verbosity -> LocalPackageIndex -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> (FilePath, PackageDescription) -> IO ()
-generateOnePackage verbosity localIndex projectRoot componentLBIs (pkgDir, pkgDesc) = do
-  targets <- generatePackageTargets verbosity localIndex (rootRelativeDir projectRoot pkgDir) componentLBIs pkgDir pkgDesc
+generateOnePackage :: Verbosity -> LocalPackageIndex -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> Set String -> (FilePath, PackageDescription) -> IO ()
+generateOnePackage verbosity localIndex projectRoot componentLBIs externalBuildTools (pkgDir, pkgDesc) = do
+  targets <- generatePackageTargets verbosity localIndex (rootRelativeDir projectRoot pkgDir) componentLBIs externalBuildTools pkgDir pkgDesc
   let pkgName = packageName pkgDesc
   if null (ptCalls targets)
     then warn verbosity $ "cabal buck2: no buck2 targets generated for package " ++ show pkgName

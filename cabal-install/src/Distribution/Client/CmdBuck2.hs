@@ -97,8 +97,9 @@ import Distribution.Simple.Flag (toFlag)
 import Distribution.Simple.Program.Builtin (builtinPrograms)
 import Distribution.Simple.Program.Db (prependProgramSearchPathNoLogging, restoreProgramDb)
 import Distribution.Simple.Register (generateRegistrationInfo)
-import Distribution.Simple.Utils (dieWithException, notice)
-import Distribution.Types.Component (componentName)
+import Distribution.Simple.Utils (dieWithException, notice, ordNub)
+import Distribution.Types.Component (componentBuildInfo, componentName)
+import Distribution.Types.ExeDependency (ExeDependency (..))
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Types.LocalBuildInfo
   ( LocalBuildInfo
@@ -187,14 +188,6 @@ buck2Action flags extraArgs globalFlags = do
       runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
       ensureBuckconfigAndPackage verbosity projectRoot
-      resolvedDeps <-
-        generatePrebuilt
-          verbosity
-          projectRoot
-          (cabalDirLayout baseCtx)
-          (distDirLayout baseCtx)
-          elaboratedShared
-          elaboratedPlanToExecute
 
       -- Every genuinely local package, *plus* every non-local one
       -- whose own build was forced 'inplace' by depending on
@@ -204,6 +197,11 @@ buck2Action flags extraArgs globalFlags = do
       -- local dependency. A real-world example of this is
       -- hackage-security in the cabal project, which is not a local
       -- package but depends on the local Cabal-syntax.
+      --
+      -- Computed before 'generatePrebuilt' (unlike this session's
+      -- earlier ordering) so 'wantedBuildTools' below - derived from it -
+      -- can be passed in as a real parameter, rather than resolved as a
+      -- separate, later, externally-orchestrated step.
       localPkgs <-
         sequenceA
           [ do
@@ -212,6 +210,28 @@ buck2Action flags extraArgs globalFlags = do
           | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlanOriginal
           , elabLocalToProject elab || elabBuildStyle elab /= BuildAndInstall
           ]
+
+      -- Every @pkg:exe@ named in any local component's own
+      -- @build-tool-depends:@, across the whole project - see
+      -- 'generatePrebuilt's own haddock on this parameter for what it
+      -- does with them.
+      let wantedBuildTools =
+            ordNub
+              [ (pn, exeName)
+              | (_dir, pkgDesc) <- localPkgs
+              , comp <- PD.pkgBuildableComponents pkgDesc
+              , ExeDependency pn exeName _ <- PD.buildToolDepends (componentBuildInfo comp)
+              ]
+
+      (externalBuildTools, resolvedDeps) <-
+        generatePrebuilt
+          verbosity
+          projectRoot
+          (cabalDirLayout baseCtx)
+          (distDirLayout baseCtx)
+          elaboratedShared
+          elaboratedPlanToExecute
+          wantedBuildTools
 
       -- A real, correctly-versioned 'InstalledPackageIndex' covering the
       -- whole resolved dependency closure - 'generatePrebuilt' already
@@ -233,7 +253,7 @@ buck2Action flags extraArgs globalFlags = do
       -- ...), all sharing the same directory and the same (whole-package)
       -- 'PackageDescription' - so without this, a package with N
       -- buildable components would get regenerated N times over.
-      generateAllPackages verbosity projectRoot componentLBIs (nubBy ((==) `on` fst) localPkgs)
+      generateAllPackages verbosity projectRoot componentLBIs externalBuildTools (nubBy ((==) `on` fst) localPkgs)
 
       notice verbosity $
         unlines

@@ -70,11 +70,14 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedInstallPlan
   , ElaboratedSharedConfig (pkgConfigCompiler, pkgConfigCompilerProgs, pkgConfigPlatform)
   )
-import Distribution.Client.ProjectPlanning.Types (elabDistDirParams)
+import Distribution.Client.ProjectPlanning.Types (elabComponentName, elabDistDirParams)
+import Distribution.Types.ComponentName (ComponentName (CExeName))
 
 import Distribution.InstalledPackageInfo (parseInstalledPackageInfo)
 import Distribution.Package (HasUnitId (installedUnitId), packageName, packageVersion)
 import Distribution.Simple.BuildPaths (exeExtension)
+import Distribution.Types.PackageName (PackageName)
+import Distribution.Types.UnqualComponentName (UnqualComponentName, unUnqualComponentName)
 import Distribution.Simple.Compiler
   ( Compiler (compilerId, compilerProperties)
   , compilerVersion
@@ -106,14 +109,29 @@ import Distribution.Client.Buck2.CabalToBuck (libTargetName)
 import Distribution.Client.Buck2.Starlark
 
 -- | Generate\/refresh @third-party\/haskell@ from the dependency closure
--- of an already-built, already-pruned install plan. Returns the real,
--- already-parsed 'InstalledPackageInfo' for every resolved dependency
--- (local\/quasi-local packages included, per 'localUnitIds's own
--- haddock) - callers that need a real 'Distribution.Simple.PackageIndex.
--- InstalledPackageIndex' (e.g. to build a genuine 'LocalBuildInfo' via
--- "Distribution.Client.InLibrary", the way "Distribution.Client.CmdBuck2"
--- does) can build one directly from this via 'PackageIndex.fromList'
--- without a second, independent walk of the same @.conf@ files.
+-- of an already-built, already-pruned install plan. Returns:
+--
+--   * The name of every @wantedBuildTools@ pair this project's own
+--     dependency closure resolved a real binary for - each one also
+--     gets a real @export_file()@ target in the generated
+--     @third-party\/haskell\/BUCK@ (@\/\/third-party\/haskell:\<name\>-exe@),
+--     for "Distribution.Client.Buck2.CabalToBuck" to reference from a
+--     component's own @build_tool_depends@ (see that module's own
+--     @buildToolDependsArg@) - a real buck2 dependency edge, not a
+--     host-filesystem symlink farm resolved once at generation time (the
+--     wanted pair's own *local*-package half, if any, is a completely
+--     separate case handled entirely by 'CabalToBuck' itself, referencing
+--     that package's own real, already-generated @haskell_binary()@
+--     target directly - this function only ever sees, and only needs to
+--     handle, already-installed *external* dependencies).
+--   * The real, already-parsed 'InstalledPackageInfo' for every resolved
+--     dependency (local\/quasi-local packages included, per
+--     'localUnitIds's own haddock) - callers that need a real
+--     'Distribution.Simple.PackageIndex.InstalledPackageIndex' (e.g. to
+--     build a genuine 'LocalBuildInfo' via "Distribution.Client.InLibrary",
+--     the way "Distribution.Client.CmdBuck2" does) can build one directly
+--     from this via 'PackageIndex.fromList' without a second, independent
+--     walk of the same @.conf@ files.
 generatePrebuilt
   :: Verbosity
   -> FilePath
@@ -130,8 +148,12 @@ generatePrebuilt
   -- it - which is filtered back out below, since a kept-in local package
   -- already gets a real 'haskell_library()' from
   -- "Distribution.Client.Buck2.Generate", not a prebuilt one here.
-  -> IO [InstalledPackageInfo]
-generatePrebuilt verbosity projectRoot cabalDirLayout distDirLayout shared depsPlan = do
+  -> [(PackageName, UnqualComponentName)]
+  -- ^ Every @pkg:exe@ named in any local component's own
+  -- @build-tool-depends:@, across the whole project - see this
+  -- function's own return-value haddock above.
+  -> IO (Set String, [InstalledPackageInfo])
+generatePrebuilt verbosity projectRoot cabalDirLayout distDirLayout shared depsPlan wantedBuildTools = do
   ghcProg <-
     maybe (dieWithException verbosity Buck2NoGhcProgram) return $
       lookupProgram ghcProgram (pkgConfigCompilerProgs shared)
@@ -252,24 +274,41 @@ generatePrebuilt verbosity projectRoot cabalDirLayout distDirLayout shared depsP
   let packages = filter (\p -> rpUnitId p `Set.notMember` localUnitIds) allResolved
       alexPath = findToolBinary paths shared depsPlan "alex"
       happyPath = findToolBinary paths shared depsPlan "happy"
+      -- Every @build-tool-depends: pkg:exe@ pair the *external*
+      -- (already-installed) dependency closure can resolve a real
+      -- binary for - a local-package pair is never in `depsPlan` at all
+      -- (see this function's own haddock on that parameter), so this
+      -- silently, correctly resolves to nothing for one; entirely
+      -- 'CabalToBuck's own job to notice that case and reference the
+      -- local package's real target directly instead.
+      buildToolPaths =
+        Map.fromList
+          [ (unUnqualComponentName exeName, path)
+          | (pn, exeName) <- ordNub wantedBuildTools
+          , Just path <- [findExeBinaryAbs shared depsPlan pn exeName]
+          ]
 
   -- Needed by any package's own library files, *and* independently by
-  -- alex/happy's own binary path - a build-tool-only dependency (an
-  -- executable, no library) contributes no ResolvedPackage at all (see
-  -- readPackage), so checking `packages` alone would miss a project
-  -- that needs alex/happy but nothing else store-installed.
-  when (any ((== StoreDb) . rpDbKind) packages || any inStore [alexPath, happyPath]) $
-    ensureSymlink (targetDir </> "cabal-store") storeRootAbs
+  -- alex/happy's/any build-tool-depends executable's own binary path -
+  -- a build-tool-only dependency (an executable, no library)
+  -- contributes no ResolvedPackage at all (see readPackage), so
+  -- checking `packages` alone would miss a project that needs alex/
+  -- happy/a preprocessor tool but nothing else store-installed.
+  when
+    ( any ((== StoreDb) . rpDbKind) packages
+        || any inStore (alexPath : happyPath : map (toRepoRelative paths) (Map.elems buildToolPaths))
+    )
+    $ ensureSymlink (targetDir </> "cabal-store") storeRootAbs
 
   notice verbosity "cabal buck2: building filtered store package db"
   setupStoreDB verbosity ghcPkgProg targetStoreDB allResolved
 
   notice verbosity "cabal buck2: generating third-party/haskell/BUCK"
-  writeBuckFile targetDir paths packages
+  writeBuckFile targetDir paths packages buildToolPaths
 
   writeToolsFile targetDir ghcVersionStr ghcDynamic alexPath happyPath
 
-  return (map rpInfo allResolved)
+  return (Map.keysSet buildToolPaths, map rpInfo allResolved)
 
 -- | The repo-relative anchors every generated path is expressed against:
 -- the symlinks 'generatePrebuilt' just created, plus the GHC version
@@ -462,13 +501,38 @@ setupStoreDB verbosity ghcPkgProg targetStoreDB packages = do
     (filter ((/= GlobalDb) . rpDbKind) packages)
   rawSystemExit verbosity Nothing (programPath ghcPkgProg) ["--package-db", targetStoreDB, "recache"]
 
-writeBuckFile :: FilePath -> RepoPaths -> [ResolvedPackage] -> IO ()
-writeBuckFile targetDir paths packages =
+writeBuckFile :: FilePath -> RepoPaths -> [ResolvedPackage] -> Map String FilePath -> IO ()
+writeBuckFile targetDir paths packages buildToolPaths =
   writeFile (targetDir </> "BUCK") (renderFile header [] calls)
   where
     header = "@generated by `cabal buck2` - do not edit by hand.\nRe-run `cabal buck2` to update."
     uidToTarget = Map.fromList [(rpUnitId p, targetName p) | p <- packages]
-    calls = [prebuiltCall paths uidToTarget p | p <- packages]
+    calls =
+      [prebuiltCall paths uidToTarget p | p <- packages]
+        ++ [buildToolExportCall name relPath | (name, relPath) <- Map.toList (Map.mapMaybe (toRepoRelative paths) buildToolPaths)]
+
+-- | One @export_file()@ per resolved @build-tool-depends@ executable -
+-- gives it a real buck2 target ('DefaultInfo' with a single default
+-- output, basename forced to the tool's own bare name, executable bit
+-- forced on regardless of whatever @copy_file@'s own default happens to
+-- preserve) that any component's own @build_tool_depends@ can reference
+-- directly, the same @export_file()@ primitive this project already
+-- uses for autogen files - see "Distribution.Client.Buck2.CabalToBuck"'s
+-- own @buildToolDependsArg@ for the consuming side, and
+-- @buck2\/prelude\/decls\/haskell_common.bzl@'s own comment on the attr
+-- for why this needs to be a real target at all (not a host-filesystem
+-- symlink, superseded by this - see buck2.md's own DONE entry).
+buildToolExportCall :: String -> FilePath -> Call
+buildToolExportCall name relPath =
+  call
+    "export_file"
+    [ ("name", str (name ++ "-exe"))
+    , ("src", str relPath)
+    , ("out", str name)
+    , ("mode", str "copy")
+    , ("executable_bit_override", VBool True)
+    , ("visibility", strList ["PUBLIC"])
+    ]
 
 -- | Unlike a local package (one @haskell_library()@ per library, main or
 -- named sub-library alike - see 'libTargetName'), a *prebuilt* one used
@@ -550,6 +614,42 @@ findToolBinary paths shared plan toolName =
     , let absPath = InstallDirs.bindir (elabInstallDirs elab) </> toolName <.> exeExtension (pkgConfigPlatform shared)
     , Just rel <- [toRepoRelative paths absPath]
     ]
+
+-- | The real, absolute binary path for one @pkg:exe@ pair - 'Nothing' if
+-- that package isn't in the resolved dependency closure at all, or has
+-- no matching executable
+-- component. Unlike 'findToolBinary' (which assumes the executable is
+-- named after its own package - true for alex\/happy, both self-named
+-- single-executable packages), this matches the package and executable
+-- names independently, since a @build-tool-depends: pkg:exe@ entry can
+-- legitimately name them differently.
+--
+-- A package brought in purely as a @build-tool-depends@ needs commonly
+-- elaborate to *two* distinct plan nodes for the same package name - a
+-- whole-package one (@elabComponentName@ @Nothing@ or some other
+-- component) and a real per-executable one (@elabComponentName ==
+-- Just (CExeName exeName)@) - and only the latter's own
+-- 'elabInstallDirs' has a real, populated @bindir@ (confirmed the hard
+-- way: the former's own @bindir@ computes to a real-looking but
+-- entirely empty directory, no error, just @createProcess: posix_spawnp:
+-- does not exist@ at the point of actually trying to run it). Preferring
+-- an exact component-name match - falling back to any match sharing the
+-- package name only if none exists, the same as 'findToolBinary' always
+-- did - fixes this without needing to know in advance which shape a
+-- given package's own plan happens to take.
+findExeBinaryAbs :: ElaboratedSharedConfig -> ElaboratedInstallPlan -> PackageName -> UnqualComponentName -> Maybe FilePath
+findExeBinaryAbs shared plan pn exeName =
+  listToMaybe (exact ++ fallback)
+  where
+    candidates =
+      [ elab
+      | pkg <- InstallPlan.toList plan
+      , Just elab <- [configuredOrInstalled pkg]
+      , packageName elab == pn
+      ]
+    binPathFor elab = InstallDirs.bindir (elabInstallDirs elab) </> unUnqualComponentName exeName <.> exeExtension (pkgConfigPlatform shared)
+    exact = [binPathFor elab | elab <- candidates, elabComponentName elab == Just (CExeName exeName)]
+    fallback = [binPathFor elab | elab <- candidates]
 
 -- | Same package, in either of the two states a *non-local* dependency
 -- that's actually going to be used can be in: 'Configured' (needs

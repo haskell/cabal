@@ -17,7 +17,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import System.Directory (createDirectoryIfMissing, doesFileExist)
-import System.FilePath ((<.>), (</>))
+import System.FilePath ((<.>), (</>), takeExtension)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -36,6 +36,7 @@ import Distribution.PackageDescription
   , PackageDescription
   , TestSuite (testInterface, testName)
   , TestSuiteInterface (..)
+  , buildToolDepends
   , cppOptions
   , cxxOptions
   , cxxSources
@@ -55,6 +56,7 @@ import Distribution.Types.Component (Component (..), componentBuildInfo, compone
 import Distribution.Types.ComponentLocalBuildInfo (ComponentLocalBuildInfo)
 import Distribution.Types.ComponentName (ComponentName)
 import Distribution.Types.Dependency (depLibraries, depPkgName)
+import Distribution.Types.ExeDependency (ExeDependency (..))
 import Distribution.Types.LocalBuildInfo (LocalBuildInfo, componentNameCLBIs)
 import Distribution.Types.PackageName (PackageName, unPackageName)
 import Distribution.Types.PkgconfigDependency (PkgconfigDependency (..))
@@ -116,10 +118,15 @@ generatePackageTargets
   -- compile action's working directory (the project root), distinct from
   -- @pkgDir@ itself (a real filesystem path, used for everything else).
   -> Map (PackageName, ComponentName) LocalBuildInfo
+  -> Set String
+  -- ^ Every @build-tool-depends:@ executable name
+  -- "Distribution.Client.Buck2.Prebuilt" resolved a real *external*
+  -- binary for (and generated an @export_file()@ target for) - see
+  -- 'buildToolDependsArg'.
   -> FilePath
   -> PackageDescription
   -> IO PackageTargets
-generatePackageTargets verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDesc = do
+generatePackageTargets verbosity localIndex rootRelPkgDir componentLBIs externalBuildTools pkgDir pkgDesc = do
   -- Computed up front (silently - see 'skippedLibraries's own haddock),
   -- so every component below - regardless of its own textual position
   -- in the .cabal file relative to the library it depends on - already
@@ -129,7 +136,7 @@ generatePackageTargets verbosity localIndex rootRelPkgDir componentLBIs pkgDir p
   targets <-
     mconcat
       <$> traverse
-        (generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDesc skippedLibs)
+        (generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuildTools pkgDir pkgDesc skippedLibs)
         (pkgBuildableComponents pkgDesc)
   return targets{ptCalls = dedupPkgconfigCalls (ptCalls targets)}
 
@@ -196,12 +203,13 @@ generateComponent
   -> LocalPackageIndex
   -> FilePath
   -> Map (PackageName, ComponentName) LocalBuildInfo
+  -> Set String
   -> FilePath
   -> PackageDescription
   -> Set LibraryName
   -> Component
   -> IO PackageTargets
-generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDesc skippedLibs comp = case comp of
+generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuildTools pkgDir pkgDesc skippedLibs comp = case comp of
   CLib lib -> library (libTargetName (packageName pkgDesc) (libName lib)) lib
   CExe exe -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (exeName exe)) "executable" $ executable exe
   CTest test -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (testName test)) "test-suite" $ testSuite test
@@ -255,6 +263,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
                         ++ exportedLinkerFlagsArg bi
                         ++ optionalListArg "packages" pkgs
                         ++ optionalListArg "deps" (deps ++ cxxDeps)
+                        ++ buildToolDependsArg localIndex externalBuildTools bi
                         ++ [("visibility", strList ["PUBLIC"])]
                     )
             return $
@@ -269,7 +278,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
         mmainSrc <- resolveMainIs verbosity pkgDir bi (getSymbolicPath (modulePath exe))
         motherSrcs <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) rootRelPkgDir pkgDir bi (otherModules bi)
         case (mmainSrc, motherSrcs) of
-          (Just mainSrc, Just (otherSrcs, srcAutogenExports)) -> do
+          (Just mainSrc0, Just (otherSrcs, srcAutogenExports)) -> do
             (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex rootRelPkgDir pkgDir targetName bi
             macrosExport <- writeMacrosHeader pkgDir targetName pkgDesc lbi clbi
             let (pkgs, deps) = classifyDeps localIndex bi
@@ -277,13 +286,14 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
                   call
                     "haskell_binary"
                     ( [ ("name", str targetName)
-                      , ("srcs", VDict (("Main.hs", str mainSrc) : otherSrcs))
+                      , ("srcs", VDict ((mainSrcKeyFor mainSrc0, str mainSrc0) : otherSrcs))
                       , cabalComponentArg rootRelPkgDir targetName
                       ]
                         ++ compilerFlagsArg bi
                         ++ linkerFlagsArg bi
                         ++ optionalListArg "packages" pkgs
                         ++ optionalListArg "deps" (deps ++ cxxDeps)
+                        ++ buildToolDependsArg localIndex externalBuildTools bi
                         ++ [("visibility", strList ["PUBLIC"])]
                     )
             return $
@@ -310,7 +320,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
           mmainSrc <- resolveMainIs verbosity pkgDir bi (getSymbolicPath mainIs)
           motherSrcs <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) rootRelPkgDir pkgDir bi (otherModules bi)
           case (mmainSrc, motherSrcs) of
-            (Just mainSrc, Just (otherSrcs, srcAutogenExports)) -> do
+            (Just mainSrc0, Just (otherSrcs, srcAutogenExports)) -> do
               (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex rootRelPkgDir pkgDir targetName bi
               macrosExport <- writeMacrosHeader pkgDir targetName pkgDesc lbi clbi
               let (pkgs, deps) = classifyDeps localIndex bi
@@ -318,13 +328,14 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
                     call
                       "haskell_binary"
                       ( [ ("name", str targetName)
-                        , ("srcs", VDict (("Main.hs", str mainSrc) : otherSrcs))
+                        , ("srcs", VDict ((mainSrcKeyFor mainSrc0, str mainSrc0) : otherSrcs))
                         , cabalComponentArg rootRelPkgDir targetName
                         ]
                           ++ compilerFlagsArg bi
                           ++ linkerFlagsArg bi
                           ++ optionalListArg "packages" pkgs
                           ++ optionalListArg "deps" (deps ++ cxxDeps)
+                          ++ buildToolDependsArg localIndex externalBuildTools bi
                           ++ [("visibility", strList ["PUBLIC"])]
                       )
               return $
@@ -350,7 +361,8 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
           mmainSrc <- resolveMainIs verbosity pkgDir bi (getSymbolicPath mainIs)
           motherSrcs <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) rootRelPkgDir pkgDir bi (otherModules bi)
           case (mmainSrc, motherSrcs) of
-            (Just mainSrc, Just (otherSrcs, srcAutogenExports)) -> mkTestCall lbi clbi (str mainSrc) otherSrcs srcAutogenExports
+            (Just mainSrc0, Just (otherSrcs, srcAutogenExports)) ->
+              mkTestCall lbi clbi (mainSrcKeyFor mainSrc0) (str mainSrc0) otherSrcs srcAutogenExports
             _ -> skip ("test-suite " ++ targetName ++ " (couldn't resolve all its modules)")
       -- A @detailed-0.9@ test-suite's own module (named via
       -- @test-module:@, not @other-modules:@ - real Cabal synthesises a
@@ -389,6 +401,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
               mkTestCall
                 lbi
                 clbi
+                "Main.hs"
                 (str stubLabel)
                 (testModSrc ++ otherSrcs)
                 (stubAutogenExport : testModAutogenExports ++ otherAutogenExports)
@@ -402,7 +415,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
       where
         bi = componentBuildInfo (CTest test)
         targetName = unUnqualComponentName (testName test)
-        mkTestCall lbi clbi mainSrc otherSrcs srcAutogenExports = do
+        mkTestCall lbi clbi mainSrcKey mainSrc otherSrcs srcAutogenExports = do
           (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex rootRelPkgDir pkgDir targetName bi
           macrosExport <- writeMacrosHeader pkgDir targetName pkgDesc lbi clbi
           let (pkgs, deps) = classifyDeps localIndex bi
@@ -410,7 +423,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
                 call
                   "haskell_test"
                   ( [ ("name", str targetName)
-                    , ("srcs", VDict (("Main.hs", mainSrc) : otherSrcs))
+                    , ("srcs", VDict ((mainSrcKey, mainSrc) : otherSrcs))
                     , cabalComponentArg rootRelPkgDir targetName
                     , -- Real `cabal test` always runs a test-suite with its
                       -- cwd set to the package's own directory - matched
@@ -425,6 +438,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs pkgDir pkgDes
                       ++ linkerFlagsArg bi
                       ++ optionalListArg "packages" pkgs
                       ++ optionalListArg "deps" (deps ++ cxxDeps)
+                      ++ buildToolDependsArg localIndex externalBuildTools bi
                   )
           return $
             PackageTargets
@@ -501,7 +515,7 @@ writeMacrosHeader pkgDir targetName pkgDesc lbi clbi = do
 -- component's own @cabal_macros.h@, so it can inject
 -- @-optP-include -optP$(location ...)@ itself, as a real dependency edge
 -- (unlike a plain path string folded into @compiler_flags@, which isn't
--- buck2-tracked at all - see buck2.md's DONE entry on this). @pkg@ must
+-- buck2-tracked at all). @pkg@ must
 -- match 'localTargetLabel''s own directory convention (@.@ at the
 -- project root) - haskell.bzl computes the matching @export_file()@
 -- label (@\/\/pkg\/cabal-buck2\/autogen:component-cabal-macros@) the
@@ -544,13 +558,12 @@ classifyDeps localIndex bi =
   ( ordNub [unPackageName pn | (pn, LMainLibName) <- allDeps, not (Map.member pn localIndex)]
   , ordNub $
       [localTargetLabel dir (libTargetName pn ln) | (pn, ln) <- allDeps, Just (dir, _) <- [Map.lookup pn localIndex]]
-        ++ [ localTargetLabel thirdPartyHaskellDir (libTargetName pn ln)
+        ++ [ thirdPartyHaskellTargetLabel (libTargetName pn ln)
            | (pn, ln@(LSubLibName _)) <- allDeps
            , not (Map.member pn localIndex)
            ]
   )
   where
-    thirdPartyHaskellDir = "third-party" </> "haskell"
     directDeps =
       ordNub
         [ (depPkgName d, ln)
@@ -576,8 +589,61 @@ classifyDeps localIndex bi =
           let origins = maybe [] snd (Map.lookup pn localIndex)
            in closeOverReexports (p : seen) (rest ++ [(o, LMainLibName) | o <- origins])
 
+thirdPartyHaskellTargetLabel :: String -> String
+thirdPartyHaskellTargetLabel name = "third-party-haskell//:" ++ name
+
 localTargetLabel :: FilePath -> String -> String
 localTargetLabel dir targetName = "//" ++ (if dir == "." then "" else dir) ++ ":" ++ targetName
+
+-- | @build_tool_depends = [...]@ - one real buck2 target label per
+-- @build-tool-depends:@ executable this component declares, letting
+-- buck2\/prelude\/haskell\/compile.bzl's own @compile()@ put each one on
+-- @PATH@ for exactly this rule's own compile actions (see that attr's
+-- own haddock in @buck2\/prelude\/decls\/haskell_common.bzl@) - not a
+-- single project-wide directory shared by every component.
+--
+-- A build-tool-depends naming a *local* package's own executable
+-- component references that component's real, already-generated
+-- @haskell_binary()@ target directly (the exact same label 'executable'
+-- itself produces for it: @unUnqualComponentName exe@ is, by
+-- construction, that function's own @targetName@ too) - buck2 then
+-- builds it as a genuine dependency, unlike the old host-filesystem-
+-- symlink approach, which only ever worked for already-installed
+-- *external* dependencies (a local one doesn't exist on disk at all
+-- until buck2 itself builds it). An external dependency instead
+-- references the @export_file()@-wrapped target
+-- "Distribution.Client.Buck2.Prebuilt" generates for it (see
+-- 'generatePrebuilt' - @externalBuildTools@ here is exactly the set of
+-- names it resolved a real binary for and generated a target for).
+--
+-- An entry naming a tool that's neither a local package's own
+-- executable nor a resolved external one is silently omitted - most
+-- @build-tool-depends@ executables are ordinary Setup.hs-time tools
+-- with nothing to do with GHC needing them on @PATH@, so a miss here is
+-- the overwhelmingly common, unremarkable case (the same reasoning
+-- "Distribution.Client.Buck2.Prebuilt"'s own resolution step already
+-- used); a real @buck2 build@ still fails exactly the way it always did
+-- if the omission actually mattered (a bare tool name GHC can't find).
+--
+-- Known gap, shared with 'classifyDeps's own @deps@ list: if the local
+-- executable a build-tool-depends names is itself skipped (see
+-- 'skippedLibraries's own reasoning, which only covers *libraries*),
+-- this would reference a target that was never generated - unlike the
+-- library case, not currently guarded against. Not a regression versus
+-- the old design (which could never reference a local build-tool-depends
+-- executable at all, skipped or not - the bug this rewrite exists to
+-- fix), so left as a known, pre-existing class of limitation rather than
+-- solved here.
+buildToolDependsArg :: LocalPackageIndex -> Set String -> BuildInfo -> [(String, Value)]
+buildToolDependsArg localIndex externalBuildTools bi =
+  optionalListArg "build_tool_depends" (mapMaybe resolve (ordNub [(pn, exe) | ExeDependency pn exe _ <- buildToolDepends bi]))
+  where
+    resolve (pn, exe) = case Map.lookup pn localIndex of
+      Just (dir, _) -> Just (localTargetLabel dir (unUnqualComponentName exe))
+      Nothing
+        | unUnqualComponentName exe `Set.member` externalBuildTools ->
+            Just (thirdPartyHaskellTargetLabel (unUnqualComponentName exe ++ "-exe"))
+        | otherwise -> Nothing
 
 -- | The target label for one @cabal-buck2\/autogen\/BUCK@ export (see
 -- 'PackageTargets') - needed (not just the plain file path) to reference
@@ -730,6 +796,36 @@ writeDetailedTestStub rootRelPkgDir pkgDir targetName testModule = do
         , "report n (Finished (Fail msg)) = putStrLn (n ++ \": FAIL: \" ++ msg) >> return False"
         , "report n (Finished (Error msg)) = putStrLn (n ++ \": ERROR: \" ++ msg) >> return False"
         ]
+
+-- | The @srcs@ dict key a main-is module should be relocated to (see
+-- @buck2\/haskell.bzl@'s @_resolve_src@: it always relocates a main-is
+-- not already named exactly this key, via a plain @export_file()@
+-- copy) - the real source's own extension, not unconditionally
+-- @Main.hs@. Matters because GHC only invokes its literate preprocessor
+-- (@-pgmL@\/@unlit@) based on a source file's *extension*, not any
+-- flag: relocating a literate @.lhs@ main-is to a plain @Main.hs@ name
+-- would silently disable literate parsing even with
+-- @-pgmL markdown-unlit@ still passed, and GHC would choke on the raw
+-- Markdown as if it were Haskell source.
+--
+-- A @{-\# OPTIONS_GHC ... -F ... -pgmF \<tool\> ... \#-}@ pragma
+-- embedded in the main-is file's own content (e.g. @hspec-discover@'s
+-- own auto-discovery convention) is a known, undetected limitation:
+-- unlike a real @ghc-options:@ flag (e.g. @-pgmL markdown-unlit@, which
+-- reaches GHC completely unmodified and resolves via @PATH@ - see
+-- 'compilerFlagsArg'\/@buck2\/toolchains\/BUCK@'s own @compile_env@),
+-- @hspec-discover@ specifically discovers sibling @*Spec.hs@ modules by
+-- scanning its own argument's *directory*, and buck2's own per-file
+-- relocation (needed regardless of this, to give the module its own
+-- correct path) leaves it scanning a synthetic, single-file directory -
+-- silently finding zero specs rather than failing outright. Not
+-- detected here (deliberately: an earlier revision scanned main-is
+-- content for the pragma to skip the component with a warning instead -
+-- reverted as its own kind of layering violation, reading and
+-- pattern-matching GHC-internal pragma syntax from inside a Cabal-level
+-- tool).
+mainSrcKeyFor :: String -> String
+mainSrcKeyFor mainIsRel = "Main" ++ takeExtension mainIsRel
 
 -- | 'Nothing' if the main-is file couldn't be found - see 'resolveModules'
 -- for why the caller must skip the whole component rather than emit a

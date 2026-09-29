@@ -16,6 +16,15 @@ import Test.Cabal.Prelude
 -- `testSuite`/`writeDetailedTestStub` haddock), and a manual flag
 -- gating `cpp-options`.
 --
+-- Doesn't cover `build-tool-depends:` GHC preprocessor support
+-- (hspec-discover, markdown-unlit - see CabalToBuck.hs's own
+-- `preprocessBuildTools` haddock): cabal-testsuite's own sandbox has no
+-- remote repository configured at all, so a fixture here can't depend
+-- on a real Hackage package the way `hspec-discover`\/`markdown-unlit`
+-- would need - verified instead against a real, unrelated multi-package
+-- project (`haskell-servant/servant`) that genuinely uses both - see
+-- buck2.md's own DONE entry on this.
+--
 -- Runs with `recordMode DoNotRecord`: the per-component "Configuring
 -- ... for ..." notices this prints come from multiple worker threads
 -- configuring independent components concurrently (see buck2.md's own
