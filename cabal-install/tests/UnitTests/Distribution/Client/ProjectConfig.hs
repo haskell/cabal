@@ -17,6 +17,7 @@ import System.Directory (canonicalizePath, withCurrentDirectory)
 import System.FilePath
 import System.IO.Unsafe (unsafePerformIO)
 
+import Distribution.Deprecated.ParseUtils (ParseResult (..))
 import qualified Distribution.Deprecated.ReadP as Parse
 
 import Distribution.Package
@@ -257,15 +258,27 @@ prop_roundtrip_legacytypes_specific config =
 -- Round trip: printing and parsing config
 --
 
+-- | Prints with the legacy printer and parses with both parsers, each of
+-- which must give back the config. The legacy parser is the oracle for the
+-- parsec parser, so the generators avoid the inputs where the two are known
+-- to differ, such as commas and empty values in single-value fields.
 roundtrip_printparse :: ProjectConfig -> Property
-roundtrip_printparse config = countering $
-  case runParseResult $ parseProjectConfig "unused" (toUTF8BS str) of
-    (_, Right result) ->
+roundtrip_printparse config =
+  countering $
+    counterexample "parsec parser" parsecParsed
+      .&&. counterexample "legacy parser" legacyParsed
+  where
+    parsecParsed = case runParseResult $ parseProjectConfig "unused" bs of
+      (_, Right result) -> result `roundTripped` config
+      (_, Left err) -> counterexample ("ERROR: " ++ show err) False
+    legacyParsed = case parseLegacyProjectConfig "unused" bs of
+      ParseOk _ result -> convertLegacyProjectConfig result `roundTripped` config
+      ParseFailed err -> counterexample ("ERROR: " ++ show err) False
+    roundTripped result expected =
       ediffEq
         result{projectConfigProvenance = mempty}
-        config{projectConfigProvenance = mempty}
-    (_, Left err) -> counterexample ("ERROR: " ++ show err) False
-  where
+        expected{projectConfigProvenance = mempty}
+    bs = toUTF8BS str
     str :: String
     str = showLegacyProjectConfig (convertToLegacyProjectConfig config)
     countering =
