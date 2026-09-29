@@ -86,6 +86,7 @@ parserTests =
     , testCase "read install-dirs" testInstallDirs
     , testCase "read remote-repos" testRemoteRepos
     , testCase "read local-no-index-repos" testLocalNoIndexRepos
+    , testCase "read project-file-parser" testProjectFileParser
     , testCase "set explicit provenance" testProjectConfigProvenance
     , testCase "read project-config-local-packages" testProjectConfigLocalPackages
     , testCase "read project-config-local-packages-empty-string" testProjectConfigLocalPackagesEmptyString
@@ -341,6 +342,13 @@ testLocalNoIndexRepos = do
         , localRepoPath = normalise "/another/path/to/repository"
         , localRepoSharedCache = False
         }
+
+-- | The parser is chosen before the project file is read, so neither parser
+-- takes this field from the file.
+testProjectFileParser :: Assertion
+testProjectFileParser = do
+  (config, legacy) <- readConfigDefault "project-file-parser"
+  assertConfigEquals NoFlag config legacy (projectConfigProjectFileParser . projectConfigShared . snd . condTreeData)
 
 testProjectConfigProvenance :: Assertion
 testProjectConfigProvenance = do

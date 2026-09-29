@@ -1509,6 +1509,9 @@ legacySharedConfigFieldDescrs constraintSrc =
     , liftFields
         legacyProjectFlags
         (\flags conf -> conf{legacyProjectFlags = flags})
+        -- The parser is chosen before the project file is read, so this
+        -- field could have no effect. Leave it unrecognised, as parsec does.
+        . filter ((/= "project-file-parser") . ParseUtils.fieldName)
         . commandOptionsToFields
         $ projectFlagsOptions ParseArgs
     , [liftField legacyMultiRepl (\flags conf -> conf{legacyMultiRepl = flags}) (commandOptionToField multiReplOption)]
