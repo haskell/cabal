@@ -329,6 +329,8 @@ postProcessRemoteRepo pos repo = case uriScheme (remoteRepoURI repo) of
   -- Note: the trailing colon is important
   "file+noindex:" -> do
     let uri = remoteRepoURI repo
+    -- Native path, not the URI's POSIX-style one: the config file parser
+    -- stores native too, and the cache key hashes the spelling.
     return $ Left $ LocalRepo (remoteRepoName repo) (fileNoIndexURIPath buildOS uri) (uriFragment uri == "#shared-cache")
   _ -> do
     when (remoteRepoKeyThreshold repo > length (remoteRepoRootKeys repo)) $
