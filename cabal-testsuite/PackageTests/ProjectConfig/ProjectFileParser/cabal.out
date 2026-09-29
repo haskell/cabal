@@ -1,0 +1,11 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - project-file-parser-0 (lib) (first run)
+# cabal build
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "project-file-parser"
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - project-file-parser-0 (lib) (first run)
