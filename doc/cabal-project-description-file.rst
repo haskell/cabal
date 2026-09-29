@@ -1999,7 +1999,7 @@ Most users generally won't need these.
 
     The command line variant of this field is ``--solver=modular``.
 
-.. cfg-field:: max-backjumps: nat
+.. cfg-field:: max-backjumps: integer
                --max-backjumps=N
     :synopsis: Maximum number of solver backjumps.
 
