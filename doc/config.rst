@@ -342,10 +342,6 @@ The list of known programs is:
 | ``ghc-pkg``           | `GHC User's Guide: Package management                                                                                              |
 |                       | <https://downloads.haskell.org/ghc/latest/docs/users_guide/packages.html#package-management-the-ghc-pkg-command>`_                 |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``ghcjs``             | `GHCJS on GitHub <https://github.com/ghcjs/ghcjs>`_                                                                                |
-+-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``ghcjs-pkg``         | The ``ghc-pkg`` of GHCJS, see `GHCJS on GitHub`_.                                                                                  |
-+-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``haddock``           | `Haddock User Guide <https://haskell-haddock.readthedocs.io/latest/>`_                                                             |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``happy``             | `Happy User Guide <https://haskell-happy.readthedocs.io/en/latest/>`_                                                              |
