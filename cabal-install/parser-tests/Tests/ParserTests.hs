@@ -2,12 +2,14 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Tests for the project file parser
-module Tests.ParserTests (parserTests) where
+module Tests.ParserTests (parserTests, packageTestsProjectTests) where
 
+import Control.Exception (try)
 import Control.Monad.IO.Class
   ( MonadIO (liftIO)
   )
 import Data.Either (fromRight)
+import Data.List (isInfixOf)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import qualified Data.Set as Set
@@ -60,8 +62,8 @@ import Distribution.Utils.NubList
 import Distribution.Verbosity
 import GHC.Stack (HasCallStack)
 import Network.URI (parseURI)
-import System.Directory (canonicalizePath, doesFileExist)
-import System.FilePath (normalise, (</>))
+import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (makeRelative, normalise, takeDirectory, takeExtension, takeFileName, (</>))
 import Prelude ()
 
 import Test.Tasty (TestTree, testGroup)
@@ -606,6 +608,61 @@ readConfig testSubDir projectFileName = do
   (parsec, legacy) <- readConfigDiverging testSubDir projectFileName
   assertEdiffEqual "Parsec parser disagrees with the legacy parser" legacy parsec
   return (parsec, legacy)
+
+-- | The project files of the cabal-testsuite package tests, each read with
+-- both parsers, which must agree. These are real project files exercising
+-- far more of the grammar than the fixtures here, so with the legacy parser
+-- as the oracle they are the widest check that the parsec parser has of what
+-- a field means.
+--
+-- Files with an import over HTTP are skipped so that the test needs no
+-- network. Files that both parsers reject are accepted without comparing the
+-- errors, but a file that only one parser rejects is a failure.
+--
+-- The tests are empty when the cabal-testsuite directory is not there, as in
+-- an sdist of cabal-install.
+packageTestsProjectTests :: IO TestTree
+packageTestsProjectTests = do
+  exists <- doesDirectoryExist packageTestsDir
+  files <- if exists then filterM isOffline =<< findProjectFiles packageTestsDir else pure []
+  httpTransport <- configureTransport silentVerbosity [] Nothing
+  pure $
+    testGroup
+      "cabal-testsuite project files"
+      [ testCase (makeRelative packageTestsDir file) (assertParsersAgree httpTransport file)
+      | file <- files
+      ]
+  where
+    packageTestsDir = ".." </> "cabal-testsuite" </> "PackageTests"
+    isOffline file = not . any importsHttp . lines <$> readFile file
+    importsHttp l = "import:" `isPrefixOf` dropWhile isSpace l && "http" `isInfixOf` l
+
+-- | Every @.project@ file under a directory.
+findProjectFiles :: FilePath -> IO [FilePath]
+findProjectFiles dir = do
+  entries <- map (dir </>) <$> listDirectory dir
+  dirs <- filterM doesDirectoryExist entries
+  let files = [e | e <- entries, takeExtension e == ".project"]
+  (sort files ++) . concat <$> traverse findProjectFiles (sort dirs)
+
+-- | Reads one project file with both parsers and checks that they agree.
+assertParsersAgree :: HttpTransport -> FilePath -> Assertion
+assertParsersAgree httpTransport file = do
+  projectRootDir <- canonicalizePath (takeDirectory file)
+  let projectRoot = ProjectRootExplicit projectRootDir (takeFileName file)
+      distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
+      readWith reader = try . runRebuild projectRootDir $ reader silentVerbosity httpTransport distDirLayout ProjectFileKeyMain
+  parsec <- readWith readProjectFileSkeletonParsec
+  legacy <- readWith readProjectFileSkeletonLegacy
+  case (legacy, parsec) of
+    (Right l, Right p) -> assertEdiffEqual "Parsec parser disagrees with the legacy parser" l p
+    (Left _, Left _) -> pure ()
+    (Left e, Right _) -> assertFailure $ "Legacy parser failed where the parsec parser succeeded:\n" ++ displayException (e :: SomeException)
+    (Right _, Left e) -> assertFailure $ "Parsec parser failed where the legacy parser succeeded:\n" ++ displayException (e :: SomeException)
+
+-- | Neither parser's warnings are of interest when comparing them.
+silentVerbosity :: Verbosity
+silentVerbosity = mkVerbosity defaultVerbosityHandles silent
 
 -- | Like 'assertEqual' but the failure shows a tree diff of the two values
 -- instead of two 'show' dumps.
