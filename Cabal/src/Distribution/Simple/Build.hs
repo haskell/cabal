@@ -70,7 +70,6 @@ import Distribution.Backpack
 import Distribution.Backpack.DescribeUnitId
 import Distribution.Package
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.PackageIndex as Index
 import qualified Distribution.Simple.UHC as UHC
 
@@ -443,7 +442,6 @@ startInterpreter
 startInterpreter verbosity programDb comp platform packageDBs =
   case compilerFlavor comp of
     GHC -> GHC.startInterpreter verbosity programDb comp platform packageDBs
-    GHCJS -> GHCJS.startInterpreter verbosity programDb comp platform packageDBs
     _ -> dieWithException verbosity REPLNotSupported
 
 buildComponent
@@ -983,7 +981,6 @@ buildLib verbHandles flags numJobs pkg_descr lbi lib clbi =
   let verbosity = mkVerbosity verbHandles $ fromFlag $ buildVerbosity flags
    in case compilerFlavor (compiler lbi) of
         GHC -> GHC.buildLib verbHandles flags numJobs pkg_descr lbi lib clbi
-        GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
         UHC -> UHC.buildLib verbosity pkg_descr lbi lib clbi
         _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
@@ -1015,7 +1012,6 @@ buildExe
 buildExe verbosity numJobs pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
     GHC -> GHC.buildExe verbosity numJobs pkg_descr lbi exe clbi
-    GHCJS -> GHCJS.buildExe verbosity numJobs pkg_descr lbi exe clbi
     UHC -> UHC.buildExe verbosity pkg_descr lbi exe clbi
     _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
@@ -1029,12 +1025,10 @@ replLib
   -> IO ()
 replLib verbHandles replFlags pkg_descr lbi lib clbi =
   let verbosity = mkVerbosity verbHandles (fromFlag $ replVerbosity replFlags)
-      opts = replReplOptions replFlags
    in case compilerFlavor (compiler lbi) of
         -- 'cabal repl' doesn't need to support 'ghc --make -j', so we just pass
         -- NoFlag as the numJobs parameter.
         GHC -> GHC.replLib verbHandles replFlags NoFlag pkg_descr lbi lib clbi
-        GHCJS -> GHCJS.replLib (replOptionsFlags opts) verbosity NoFlag pkg_descr lbi lib clbi
         _ -> dieWithException verbosity REPLNotSupported
 
 replExe
@@ -1049,15 +1043,6 @@ replExe verbHandles flags pkg_descr lbi exe clbi =
   let verbosity = mkVerbosity verbHandles $ fromFlag $ replVerbosity flags
    in case compilerFlavor (compiler lbi) of
         GHC -> GHC.replExe verbHandles flags NoFlag pkg_descr lbi exe clbi
-        GHCJS ->
-          GHCJS.replExe
-            (replOptionsFlags $ replReplOptions flags)
-            verbosity
-            NoFlag
-            pkg_descr
-            lbi
-            exe
-            clbi
         _ -> dieWithException verbosity REPLNotSupported
 
 replFLib
