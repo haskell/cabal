@@ -246,7 +246,17 @@ buck2Action flags extraArgs globalFlags = do
       -- concurrently - see 'configureComponentsConcurrently' for why
       -- this needs to be concurrent at all, and how it stays correct
       -- while being so.
-      componentLBIs <- configureComponentsConcurrently verbosity (distDirLayout baseCtx) elaboratedPlanOriginal elaboratedShared installedIndex
+      --
+      -- Only components actually selected by the build targets (and
+      -- whatever they depend on) are configured, not everything in
+      -- 'elaboratedPlanOriginal': that also contains e.g. a benchmark
+      -- whose stanza isn't enabled, whose external dependencies
+      -- (correctly) never made it into 'installedIndex' above, so
+      -- configuring it fails outright ("the given installed package
+      -- instance does not exist"). A skipped component just gets no
+      -- rule, with the usual "no LocalBuildInfo found" warning.
+      let selectedPlan = pruneInstallPlanToTargets TargetActionBuild (targetsMap buildCtx) elaboratedPlanOriginal
+      componentLBIs <- configureComponentsConcurrently verbosity (distDirLayout baseCtx) selectedPlan elaboratedShared installedIndex
 
       -- Per-component elaboration gives each local package one
       -- 'ElaboratedConfiguredPackage' per component (library, executable,
