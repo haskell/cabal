@@ -191,5 +191,5 @@ Flags for configure:
                                 use "" to prevent splitting)
 
 The flags --with-PROG and --PROG-option(s) can be used with the following programs:
-  alex ar c2hs cpphs doctest gcc ghc ghc-pkg ghcjs ghcjs-pkg haddock happy hpc
-  hsc2hs hscolour jhc ld pkg-config runghc strip tar uhc
+  alex ar c2hs cpphs doctest gcc ghc ghc-pkg haddock happy hpc hsc2hs hscolour
+  jhc ld pkg-config runghc strip tar uhc
