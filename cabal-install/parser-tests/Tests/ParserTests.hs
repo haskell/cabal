@@ -423,7 +423,7 @@ testProjectConfigLocalPackages = do
 -- leaves it unset, which is the better behaviour.
 testProjectConfigLocalPackagesEmptyString :: Assertion
 testProjectConfigLocalPackagesEmptyString = do
-  (config, legacy) <- readConfig "project-config-local-packages" "cabal.empty-string.project"
+  (config, legacy) <- readConfigDiverging "project-config-local-packages" "cabal.empty-string.project"
   assertEqual "Legacy parser sets the empty string" (toFlag (toPathTemplate "")) (field legacy)
   assertEqual "Parsec parser leaves the field unset" NoFlag (field config)
   where
@@ -595,8 +595,19 @@ verbosity = mkVerbosity defaultVerbosityHandles normal
 readConfigDefault :: FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfigDefault testSubDir = readConfig testSubDir "cabal.project"
 
+-- | Reads a project file with both parsers and, with the legacy parser as the
+-- oracle, checks that the parsec parser agrees with it on the whole config
+-- before the caller looks at any one field.
 readConfig :: FilePath -> FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfig testSubDir projectFileName = do
+  (parsec, legacy) <- readConfigDiverging testSubDir projectFileName
+  assertEqual "Parsec parser disagrees with the legacy parser" legacy parsec
+  return (parsec, legacy)
+
+-- | Reads a project file with both parsers without checking that they agree,
+-- for the fixtures where they are known to differ.
+readConfigDiverging :: FilePath -> FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
+readConfigDiverging testSubDir projectFileName = do
   (TestDir testRootFp projectConfigFp distDirLayout) <- testDirInfo testSubDir projectFileName
   exists <- liftIO $ doesFileExist projectConfigFp
   assertBool ("projectConfig does not exist: " <> projectConfigFp) exists
