@@ -401,31 +401,24 @@ ppCpp = ppCpp' []
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppCpp' extraArgs bi lbi clbi =
   case compilerFlavor (compiler lbi) of
-    GHC -> ppGhcCpp ghcProgram (const True) args bi lbi clbi
+    GHC -> ppGhcCpp args bi lbi clbi
     _ -> ppCpphs args bi lbi clbi
   where
     cppArgs = getCppOptions bi lbi
     args = cppArgs ++ extraArgs
 
 ppGhcCpp
-  :: Program
-  -> (Version -> Bool)
-  -> [String]
+  :: [String]
   -> BuildInfo
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> PreProcessor
-ppGhcCpp program xHs extraArgs _bi lbi clbi =
+ppGhcCpp extraArgs _bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
-        (prog, version, _) <-
-          requireProgramVersion
-            verbosity
-            program
-            anyVersion
-            (withPrograms lbi)
+        (prog, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
         runProgramCwd verbosity (mbWorkDirLBI lbi) prog $
           ["-E", "-cpp"]
             -- This is a bit of an ugly hack. We're going to
@@ -433,7 +426,7 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
             -- so we need GHC not to unlit it now or it'll get
             -- double-unlitted. In the future we might switch to
             -- using cpphs --unlit instead.
-            ++ (if xHs version then ["-x", "hs"] else [])
+            ++ ["-x", "hs"]
             ++ ["-optP-include", "-optP" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
             ++ ["-o", outFile, inFile]
             ++ extraArgs

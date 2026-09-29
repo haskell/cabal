@@ -1155,27 +1155,25 @@ getCachedSetupExecutable
                 True
             createDirectoryIfMissingVerbose verbosity True setupCacheDir
             installExecutableFile verbosity src cachedSetupProgFile
-            -- Do not strip if we're using GHCJS, since the result may be a script
-            when (maybe True ((/= GHCJS) . compilerFlavor) $ useCompiler options') $ do
-              -- Add the relevant PATH overrides for the package to the
-              -- program database.
+            -- Add the relevant PATH overrides for the package to the
+            -- program database.
+            setupProgDb
+              <- prependProgramSearchPath verbosity
+                    (useExtraPathEnv options')
+                    (useExtraEnvOverrides options')
+                    (useProgramDb options')
+                   >>= configureAllKnownPrograms verbosity
+            Strip.stripExe
+              verbosity
+              platform
               setupProgDb
-                <- prependProgramSearchPath verbosity
-                      (useExtraPathEnv options')
-                      (useExtraEnvOverrides options')
-                      (useProgramDb options')
-                     >>= configureAllKnownPrograms verbosity
-              Strip.stripExe
-                verbosity
-                platform
-                setupProgDb
-                cachedSetupProgFile
+              cachedSetupProgFile
     return cachedSetupProgFile
     where
       criticalSection' = maybe id criticalSection $ setupCacheLock options'
 
 -- | If the Setup.hs is out of date wrt the executable then recompile it.
--- Currently this is GHC/GHCJS only. It should really be generalised.
+-- Currently this is GHC only. It should really be generalised.
 compileExe
   :: Verbosity
   -> Platform
@@ -1267,7 +1265,6 @@ compileSetupX
       (compiler, progdb, options'') <- configureCompiler verbosity options'
       pkgDbs <- traverse (traverse (makeRelativeToDirS mbWorkDir)) (coercePackageDBStack (usePackageDB options''))
       let cabalPkgid = PackageIdentifier (mkPackageName "Cabal") cabalLibVersion
-          (program, extraOpts) = (ghcProgram, ["-threaded"])
           cabalDep =
             maybe
               []
@@ -1316,7 +1313,7 @@ compileSetupX
                     [ cppMacrosFile
                     | useVersionMacros options'
                     ]
-              , ghcOptExtra = extraOpts
+              , ghcOptExtra = ["-threaded"]
               , ghcOptExtensions = toNubListR $
                   [ Simple.DisableExtension Simple.ImplicitPrelude
                   | not $ bt == Custom || any (isBasePkgId . snd) selectedDeps
@@ -1343,7 +1340,7 @@ compileSetupX
         rewriteFileEx verbosity (i cppMacrosFile) $
           generatePackageVersionMacros (pkgVersion pkgId) (map snd selectedDeps)
       case useLoggingHandle options' of
-        Nothing -> runDbProgramCwd verbosity mbWorkDir program progdb ghcCmdLine
+        Nothing -> runDbProgramCwd verbosity mbWorkDir ghcProgram progdb ghcCmdLine
         -- If build logging is enabled, redirect compiler output to
         -- the log file.
         Just logHandle -> do
@@ -1351,7 +1348,7 @@ compileSetupX
             getDbProgramOutputCwd
               verbosity
               mbWorkDir
-              program
+              ghcProgram
               progdb
               ghcCmdLine
           hPutStr logHandle output
