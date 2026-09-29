@@ -167,7 +167,6 @@ The following options govern the programs used to process the source
 files of a package:
 
 .. option:: -g, --ghc
-            --ghcjs
             --uhc
             --haskell-suite
 
