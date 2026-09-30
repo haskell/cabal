@@ -3,9 +3,9 @@
 How to use Backpack modules
 ===========================
 
-Cabal and GHC jointly support Backpack, an extension to Haskell's module
+Cabal and :term:`GHC` jointly support :term:`Backpack`, an extension to Haskell's module
 system which makes it possible to parametrize a package over some
-modules, which can be instantiated later arbitrarily by a user.  This
+modules, which can be :term:`instantiated <instantiation>` later arbitrarily by a user.  This
 means you can write a library to be agnostic over some data
 representation, and then instantiate it several times with different
 data representations.  Like C++ templates, instantiated packages are
@@ -17,9 +17,9 @@ are somewhat experimental; while fully supported by cabal-install, they are curr
 A Backpack package is defined by use of the
 :pkg-field:`library:signatures` field, or by (transitive) dependency on
 a package that defines some requirements.  To define a parameterized
-package, define a signature file (file extension ``hsig``) that
+package, define a :term:`signature` file (file extension ``hsig``) that
 specifies the signature of the module you want to parametrize over, and
-add it to your Cabal file in the :pkg-field:`library:signatures` field.
+add it to your :term:`Cabal file` in the :pkg-field:`library:signatures` field.
 
 .. code-block:: haskell
     :caption: .hsig
@@ -66,7 +66,7 @@ just depending on both ``str-impl`` and ``parameterized``:
 Note that due to technical limitations, you cannot directly define
 ``Str`` in the ``combined`` library; it must be placed in its own
 library (you can use :ref:`Sublibraries <sublibs>` to conveniently
-define a sub-library).
+define a :term:`sub-library <sublibrary>`).
 
 However, a more common situation is that your names don't match up
 exactly.  The :pkg-field:`library:mixins` field can be used to rename
@@ -81,7 +81,7 @@ line up the names in one of two ways:
 
 The :pkg-field:`library:mixins` field can also be used to disambiguate
 between multiple instantiations of the same package; for each
-instantiation of the package, give it a separate entry in mixins with
+instantiation of the package, give it a separate entry in :term:`mixins <mixin>` with
 the requirements and provided modules renamed to be distinct.
 
 .. code-block:: cabal

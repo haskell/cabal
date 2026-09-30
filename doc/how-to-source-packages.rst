@@ -1,13 +1,13 @@
 How to deal with package *source code*
 ======================================
 
-We can leave a **"source"** marker in the package description that shows where
+We can leave a **"source"** marker in the :term:`package description` that shows where
 to find the *source code*. This marker is the ``source-repository`` field and is
 described in the :ref:`package author<pkg-authors>` section.
 
 We can direct Cabal to get (or **"source"**) the package *source code* for
 dependencies from a **source code repository** by adding a
-``source-repository-package`` stanza to a project as explained in the
+``source-repository-package`` :term:`stanza` to a :term:`project` as explained in the
 :ref:`package consumer<pkg-consumers>` section.
 
 Getting package *source code* without Cabal
@@ -15,7 +15,7 @@ Getting package *source code* without Cabal
 
 There are two ways to grab the *source code* for a package manually; from a
 **source code repository** such as GitHub [#]_ or from a **package repository**
-such as Hackage.  Cabal automates these two ways of obtaining the *source code*.
+such as :term:`Hackage`.  Cabal automates these two ways of obtaining the *source code*.
 This is described in the :ref:`package consumer<pkg-consumers>` section.
 
 .. Note::
@@ -40,7 +40,7 @@ This is described in the :ref:`package consumer<pkg-consumers>` section.
 
 .. Warning::
 
-   Be careful with the term "revision". On Hackage this refers to an edited
+   Be careful with the term ":term:`revision`". On Hackage this refers to an edited
    version of the package description. With version control systems, a revision
    is a commit. Thankfully, when telling Cabal about a "commit" or "revision",
    the field name is something completely different, a ``tag``.
@@ -52,7 +52,7 @@ Source [code] repositories are a way to specify where to find the source code
 for a package, both for :ref:`package authors<pkg-authors>` and maintainers and
 for :ref:`package consumers<pkg-consumers>`.
 
-A relatively structured set of version control system (VCS) fields, that vary
+A relatively structured set of version control system (:term:`VCS`) fields, that vary
 depending on the :ref:`VCS kind<vcs-kind>`, enables Cabal commands and other
 tools to interpret and make effective use of this information.
 
@@ -116,9 +116,9 @@ tools to interpret and make effective use of this information.
 
 .. Warning::
 
-   Cabal project files (``cabal.project``) don't declare dependencies!
+   Cabal :term:`project files <project file>` (``cabal.project``) don't declare dependencies!
 
-   The union of the dependencies of all project packages [#]_ declares the set
+   The union of the dependencies of all :term:`project packages <project package>` [#]_ declares the set
    of project dependencies.  While the project can tighten version constraint
    ranges with ``constraints`` or loosen them with ``allow-newer`` or
    ``allow-older``, it cannot add package names to or remove package names from
@@ -137,7 +137,7 @@ Dependencies of a project are sourced, by default, from Hackage if they've been
 uploaded and published to this package repository. Cabal will download the
 *source code* ``.tar.gz`` archive for each dependency from Hackage. While we can
 depend on an exact version of a package, more often we'll accept a range of
-versions and the dependency solver picks the exact version from the range to
+versions and the :term:`dependency solver <solver>` picks the exact version from the range to
 download.
 
 We can also :ref:`take a dependency from a source code
@@ -243,7 +243,7 @@ for the ``tag`` field:
 *Source code* when dependency vendoring
 ---------------------------------------
 
-*Vendoring* is where you add the source code of an external package to your
+*Vendoring* is where you add the source code of an :term:`external package` to your
 project, either as a package ``.tar.gz`` archive or as unpacked package source
 code.
 
@@ -300,7 +300,7 @@ There's no need to vendor packages on Hackage if you expect Hackage to always be
 available, as packages cannot be deleted from Hackage. Source code repositories,
 on the other hand, can disappear.
 
-Rather than vendoring, it might be easier to take a
+Rather than :term:`vendoring`, it might be easier to take a
 ``source-repository-package`` dependency on a fork of the upstream source code
 repository, on a fork that you control, especially if you're going to be making
 contributions to the upstream repository.

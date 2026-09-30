@@ -5,7 +5,7 @@ When a Haskell application is slow or uses too much memory,
 Cabal and `GHC <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html>`__
 can help you understand why. The main steps are:
 
-1. Configure the project in a way that makes GHC insert performance-measuring code into your application.
+1. Configure the :term:`project` in a way that makes :term:`GHC` insert performance-measuring code into your application.
 2. Run the application with the right
    `runtime system (RTS) flags <https://downloads.haskell.org/ghc/latest/docs/users_guide/runtime_control.html>`__
    to produce a performance report.
@@ -110,8 +110,8 @@ The setting ``profiling-detail: late-toplevel`` instructs GHC to use so-called
 and insert measuring code only after important optimisations have been applied to your application code.
 This reduces the performance slow-down of profiling itself and gives you more realistic measurements.
 
-The ``program-options`` section allows you to add more settings like GHC options to the local
-packages of your project (See :ref:`Program options<program_options>`).
+The ``program-options`` section allows you to add more settings like GHC options to the :term:`local
+packages <local package>` of your project (See :ref:`Program options<program_options>`).
 The ``ghc-options`` setting allows you to further control which functions and other bindings
 the GHC compiler should profile, as well as other aspects of profiling.
 You can find more information and further options in the

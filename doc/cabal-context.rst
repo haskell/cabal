@@ -7,8 +7,8 @@ easily to other users and developers.
 
 There is a command line tool called :term:`cabal` for working with Cabal
 packages. It helps with installing existing packages and also helps
-people developing their own packages. It can be used to work with local
-packages or to install packages from online package archives, including
+people developing their own packages. It can be used to work with :term:`local
+packages <local package>` or to install packages from online :term:`package archives <repository>`, including
 automatically installing dependencies. By default it is configured to
 use Hackage_ which is Haskell's central
 package archive that contains thousands of libraries and applications in
@@ -46,7 +46,7 @@ format, with the file extension ``.tar.gz``, e.g.
 ``filepath-1.0.tar.gz``.
 
 Note that packages are not part of the Haskell language, rather they are
-a feature provided by the combination of Cabal and GHC (and several
+a feature provided by the combination of Cabal and :term:`GHC` (and several
 other Haskell implementations).
 
 A tool for working with packages
@@ -67,7 +67,7 @@ Developers can use the tool with packages in local directories, e.g.
 
 While working on a package in a local directory, developers can run the
 individual steps to configure and build, and also generate documentation
-and run test suites and benchmarks.
+and run :term:`test suites <test suite>` and benchmarks.
 
 It is also possible to install several local packages at once, e.g.
 
@@ -139,7 +139,7 @@ Cabal and its associated tools and websites covers:
 
 -  web and local Cabal package archives
 
-   -  central Hackage website with 1000's of Cabal packages
+   -  central :term:`Hackage` website with 1000's of Cabal packages
 
 Some parts of the system can be used without others. In particular the
 built-in build system for simple packages is optional: it is possible to
@@ -191,7 +191,7 @@ dependencies. By having package authors specify dependencies it makes it
 possible for tools to install a package and all of its dependencies
 automatically. It also makes it possible to translate (in a
 mostly-automatically way) into another package format like RPM or deb
-which also have automatic dependency resolution.
+which also have automatic :term:`dependency resolution`.
 
 
 .. include:: references.inc

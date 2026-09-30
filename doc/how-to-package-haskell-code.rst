@@ -61,7 +61,7 @@ If you want, you can also try out the interactive mode, for now chose
 One of the important questions is whether the package contains a library
 and/or an executable. Libraries are collections of Haskell modules that
 can be re-used by other Haskell libraries and programs, while executables
-are standalone programs. Test suites can both depend on a library or be
+are standalone programs. :term:`Test suites <test suite>` can both depend on a library or be
 standalone.
 
 For the moment these are the only choices. For more complex packages
@@ -70,7 +70,7 @@ file can be edited afterwards.
 
 After you make your selection (executable; library; library
 and executable; or: test suite) cabal asks us a number of questions starting with
-which version of the cabal specification to use, our package's name
+which version of the :term:`cabal specification <Cabal specification>` to use, our package's name
 (for example, "proglet"), and our package's version.
 
 ::
@@ -134,7 +134,7 @@ you will find the :pkg-section:`executable` or :pkg-section:`library`
 section.
 
 You will see that the fields that have yet to be filled in are commented
-out. Cabal files use "``--``" Haskell-style comment syntax.
+out. :term:`Cabal files <Cabal file>` use "``--``" Haskell-style comment syntax.
 
 .. NOTE::
    Comments are only allowed on lines on their own. Trailing comments on
@@ -241,7 +241,7 @@ the same thing as ``base >=4 && <5``. Please refer to the documentation
 on the :pkg-field:`build-depends` field for more information.
 
 Also, you can factor out shared ``build-depends`` (and other fields such
-as ``ghc-options``) into a ``common`` stanza which you can ``import`` in
+as ``ghc-options``) into a ``common`` :term:`stanza` which you can ``import`` in
 your libraries and executable sections. For example:
 
 ::

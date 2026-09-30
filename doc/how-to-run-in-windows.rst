@@ -13,7 +13,7 @@ tools.
 
 The recommended way of setting up a Haskell environment in Windows is by using
 `GHCup <https://www.haskell.org/ghcup/>`_. Follow the steps outlined in its
-webpage to install at least GHC and Cabal. GHCup will install its own MSYS2
+webpage to install at least :term:`GHC` and Cabal. :term:`GHCup` will install its own :term:`MSYS2`
 system in your computer unless told not to do so: refer to `its documentation
 <https://www.haskell.org/ghcup/install/#windows_1>`_ for more information.
 
@@ -122,7 +122,7 @@ Ensure that Cabal can call Haskell tools
 
 Haskell tools are located in two places:
 
-- ``<ghcup-dir>\bin`` for standard Haskell tools such as GHC, Cabal, Haddock, ``hsc2hs``...
+- ``<ghcup-dir>\bin`` for standard Haskell tools such as GHC, Cabal, :term:`Haddock`, ``hsc2hs``...
 
 - The ``installdir`` that Cabal is configured with for user-installed Haskell tools.
 
@@ -162,7 +162,7 @@ look like this:
 
 .. note::
 
-   Unless told otherwise, the GHCup bootstrap script already sets this configuration file to the right
+   Unless told otherwise, the GHCup bootstrap script already sets this :term:`configuration file` to the right
    values by default.
 
 .. _Further reading:
@@ -184,7 +184,7 @@ These links are outdated but still useful to understand the overall picture:
 
 - GHC's wiki about the Windows platform (outdated, GHC now uses MSYS2):
   https://gitlab.haskell.org/ghc/ghc/-/wikis/building/platforms/windows
-- The Windows toolchain (outdated, GHC now uses the ``CLANG64`` environment):
+- The Windows :term:`toolchain` (outdated, GHC now uses the ``CLANG64`` environment):
   https://gitlab.haskell.org/ghc/ghc/-/wikis/working-conventions/windows-toolchain
 - Haskell Wiki on Windows (outdated, it talks about MSYS and old tools such as
   the Haskell platform): https://wiki.haskell.org/Windows
