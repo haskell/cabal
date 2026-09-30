@@ -18,6 +18,7 @@ import Distribution.Client.ProjectOrchestration
   , resolveTargetsFromSolver
   )
 import Distribution.Client.ProjectPlanning
+import Distribution.Client.ProjectPlanning.Stage (withoutStage)
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -34,6 +35,7 @@ import Distribution.Client.Types
   , PackageSpecifier (..)
   , UnresolvedSourcePackage
   )
+import Distribution.Compat.Graph (nodeKey)
 import Distribution.Solver.Types.ConstraintSource
   ( ConstraintSource (ConstraintSourceUnknown)
   )
@@ -2348,9 +2350,9 @@ expectPackagePreExisting
   -> IO InstalledPackageInfo
 expectPackagePreExisting plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
-  case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
+  case (planpkg, Map.lookup (nodeKey planpkg) buildOutcomes) of
     (InstallPlan.PreExisting pkg, Nothing) ->
-      return pkg
+      return (withoutStage pkg)
     (_, buildResult) -> unexpectedBuildResult "PreExisting" planpkg buildResult
 
 expectPackageConfigured
@@ -2360,7 +2362,7 @@ expectPackageConfigured
   -> IO ElaboratedConfiguredPackage
 expectPackageConfigured plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
-  case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
+  case (planpkg, Map.lookup (nodeKey planpkg) buildOutcomes) of
     (InstallPlan.Configured pkg, Nothing) ->
       return pkg
     (_, buildResult) -> unexpectedBuildResult "Configured" planpkg buildResult
@@ -2372,7 +2374,7 @@ expectPackageInstalled
   -> IO ElaboratedConfiguredPackage
 expectPackageInstalled plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
-  case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
+  case (planpkg, Map.lookup (nodeKey planpkg) buildOutcomes) of
     (InstallPlan.Configured pkg, Just (Right _result)) ->
       -- result isn't used by any test
       return pkg
@@ -2389,7 +2391,7 @@ expectPackageFailed
   -> IO (ElaboratedConfiguredPackage, BuildFailure)
 expectPackageFailed plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
-  case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
+  case (planpkg, Map.lookup (nodeKey planpkg) buildOutcomes) of
     (InstallPlan.Configured pkg, Just (Left failure)) ->
       return (pkg, failure)
     (_, buildResult) -> unexpectedBuildResult "Failed" planpkg buildResult

@@ -160,13 +160,26 @@ buildCabalLibsProject projString verb mbGhc dir = do
       , "Cabal", "Cabal-syntax", "Cabal-hooks", "hooks-exe"
       ] ) { progInvokeCwd = Just dir })
 
-  -- Determine the path to the packagedb in the store for this ghc version
-  storesByGhc <- listDirectory storeRoot
-  case filter (prettyShow pv `isInfixOf`) storesByGhc of
+  -- Determine the path to the packagedb in the store for this ghc version.
+  --
+  -- The store is laid out store/<platform>/<compiler-id>-<abi>/, but these
+  -- libraries are built by the cabal on PATH rather than the one under test,
+  -- and that cabal may still write the older store/<compiler-id>-<abi>/
+  -- layout. Look for a directory named after this ghc at either depth.
+  topEntries <- listDirectory storeRoot
+  nested <- fmap concat . forM topEntries $ \entry -> do
+    let entryDir = storeRoot </> entry
+    isDir <- doesDirectoryExist entryDir
+    if isDir
+      then map (entryDir </>) <$> listDirectory entryDir
+      else return []
+  let candidates =
+        [storeRoot </> entry | entry <- topEntries, prettyShow pv `isInfixOf` entry]
+          ++ [nestedDir | nestedDir <- nested, prettyShow pv `isInfixOf` takeFileName nestedDir]
+  withDb <- filterM (\candidate -> doesDirectoryExist (candidate </> "package.db")) candidates
+  case withDb of
     [] -> return [final_package_db]
-    storeForGhc:_ -> do
-      let storePackageDB = storeRoot </> storeForGhc </> "package.db"
-      return [storePackageDB, final_package_db]
+    storeForGhc:_ -> return [storeForGhc </> "package.db", final_package_db]
 
 
 

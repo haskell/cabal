@@ -1,0 +1,10 @@
+cabal-version: >= 1.10
+name:          hello
+version:       0.1.0.0
+license:       BSD3
+build-type:    Simple
+
+executable hello-world
+  main-is:          Main.hs
+  build-depends:    base
+  default-language: Haskell2010

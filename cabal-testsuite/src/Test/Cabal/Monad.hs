@@ -54,6 +54,7 @@ module Test.Cabal.Monad
 
     -- * Skipping tests
   , skip
+  , withBuildCompiler
   , skipIO
   , skipIf
   , skipIfIO
@@ -129,6 +130,7 @@ import Test.Cabal.Run
 data CommonArgs = CommonArgs
   { argCabalInstallPath :: Maybe FilePath
   , argGhcPath :: Maybe FilePath
+  , argBuildCompilerPath :: Maybe FilePath
   , argHackageRepoToolPath :: Maybe FilePath
   , argHaddockPath :: Maybe FilePath
   , argKeepTmpFiles :: Bool
@@ -152,6 +154,14 @@ commonArgParser = do
           ( help "GHC to ask Cabal to use via --with-ghc flag"
               <> short 'w'
               <> long "with-ghc"
+              <> metavar "PATH"
+          )
+      )
+  argBuildCompilerPath <- optional
+      ( option
+          str
+          ( help "Path to the build compiler (cross-compile build stage). If omitted, tests requiring a separate build compiler are skipped."
+              <> long "with-build-compiler"
               <> metavar "PATH"
           )
       )
@@ -186,6 +196,7 @@ renderCommonArgs :: CommonArgs -> [String]
 renderCommonArgs args =
   maybe [] (\x -> ["--with-cabal", x]) (argCabalInstallPath args)
     ++ maybe [] (\x -> ["--with-ghc", x]) (argGhcPath args)
+    ++ maybe [] (\x -> ["--with-build-compiler", x]) (argBuildCompilerPath args)
     ++ maybe [] (\x -> ["--with-haddock", x]) (argHaddockPath args)
     ++ maybe [] (\x -> ["--with-hackage-repo-tool", x]) (argHackageRepoToolPath args)
     ++ ["--accept" | argAccept args]
@@ -228,6 +239,15 @@ skipIO reason = do
 
 skip :: String -> TestM ()
 skip = liftIO . skipIO
+
+-- | Run a test only when @--with-build-compiler@ was supplied, passing the
+-- build-compiler path to the action. Skips the test otherwise.
+withBuildCompiler :: (FilePath -> TestM ()) -> TestM ()
+withBuildCompiler f = do
+  env <- getTestEnv
+  case testBuildCompilerPath env of
+    Nothing -> skip "no build compiler (pass --with-build-compiler)"
+    Just p -> f p
 
 skipIfIO :: String -> Bool -> IO ()
 skipIfIO reason b = when b (skipIO reason)
@@ -446,6 +466,7 @@ runTestM mode m =
                 , testSetupPath = dist_dir </> "build" </> "setup" </> "setup"
                 , testPackageDbPath = case testArgPackageDb args of [] -> Nothing; xs -> Just xs
                 , testSkipSetupTests = argSkipSetupTests (testCommonArgs args)
+                , testBuildCompilerPath = argBuildCompilerPath (testCommonArgs args)
                 , testHaveCabalShared = runnerWithSharedLib senv
                 , testEnvironment =
                     -- Use UTF-8 output on all platforms.
@@ -621,7 +642,21 @@ getSourceFiles = do
         Nothing
   recordLog r
   _ <- requireSuccess r
-  return (lines $ resultOutput r)
+  case lines (resultOutput r) of
+    [] ->
+      -- The source directory is not part of a git checkout (a jj workspace,
+      -- an unpacked sdist, ...), so git has nothing to say about it. Fall back
+      -- to listing the directory, skipping the build artefacts that git would
+      -- have ignored.
+      liftIO $
+        filter (not . isBuildArtefact)
+          <$> getDirectoryContentsRecursive (testSourceDir env)
+    files -> return files
+  where
+    isBuildArtefact f =
+      any
+        (\d -> d == "dist-newstyle" || d == ".jj" || ".dist" `isSuffixOf` d)
+        (splitDirectories f)
 
 recordLog :: Result -> TestM ()
 recordLog res = do
@@ -860,6 +895,8 @@ data TestEnv = TestEnv
   -- use when compiling custom setups, plus the store with possible dependencies of those setup packages.
   , testSkipSetupTests :: Bool
   -- ^ Skip Setup tests?
+  , testBuildCompilerPath :: Maybe FilePath
+  -- ^ Path to the build compiler for cross-compile tests; 'Nothing' means skip such tests.
   , testHaveCabalShared :: Bool
   -- ^ Do we have shared libraries for the Cabal-under-tests?
   -- This is used for example to determine whether we can build

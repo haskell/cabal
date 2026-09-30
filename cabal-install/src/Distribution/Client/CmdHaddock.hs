@@ -30,7 +30,8 @@ import Distribution.Client.ProjectConfig.Types
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
-  ( ElaboratedSharedConfig (..)
+  ( pkgConfigCompilerProgs
+  , setPkgConfigCompilerProgs
   )
 import Distribution.Client.Setup
   ( GlobalFlags
@@ -206,9 +207,7 @@ haddockAction relFlags targetStrings globalFlags = do
   let buildCtx' =
         buildCtx
           { elaboratedShared =
-              (elaboratedShared buildCtx)
-                { pkgConfigCompilerProgs = progs
-                }
+              setPkgConfigCompilerProgs progs (elaboratedShared buildCtx)
           }
 
   buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx'

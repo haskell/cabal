@@ -1445,8 +1445,20 @@ findDependencyInStore
 findDependencyInStore pkgName = do
   storeDir <- testStoreDir <$> getTestEnv
   liftIO $ do
-    storeDirForGhcVersion : _ <- listDirectory storeDir
-    packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
+    -- The store is laid out store/<platform>/<compiler-id>-<abi>/, so package
+    -- directories sit two levels below the store root. A store written
+    -- without the platform segment is tolerated, since not every store a test
+    -- looks at is written by the cabal under test.
+    storeTopDir : _ <- listDirectory storeDir
+    let storeDirForPlatform = storeDir </> storeTopDir
+    dbHere <- doesDirectoryExist (storeDirForPlatform </> "package.db")
+    storeDirForPlatformAndGhc <-
+      if dbHere
+        then pure storeDirForPlatform
+        else do
+          storeDirForGhcVersion : _ <- listDirectory storeDirForPlatform
+          pure (storeDirForPlatform </> storeDirForGhcVersion)
+    packageDirs <- listDirectory storeDirForPlatformAndGhc
     -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
     -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
     let pkgName' =
@@ -1457,7 +1469,7 @@ findDependencyInStore pkgName = do
     let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
           [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
           (dir : _) -> dir
-    pure (storeDir </> storeDirForGhcVersion </> libDir)
+    pure (storeDirForPlatformAndGhc </> libDir)
 
 -- | It can be easier to paste expected output verbatim into a text file,
 -- especially if it is a multiline string, rather than encoding it as a multiline
