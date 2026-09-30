@@ -25,7 +25,6 @@ import Distribution.PackageDescription
 import Distribution.Simple (PackageDBX (..))
 import Distribution.Simple.Build (addInternalBuildTools)
 import Distribution.Simple.BuildPaths (exeExtension)
-import Distribution.Simple.Compiler (CompilerFlavor (..), compilerFlavor)
 import Distribution.Simple.Flag (fromFlag)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
@@ -51,8 +50,6 @@ import Distribution.Simple.Utils
   )
 import Distribution.System (Platform (..))
 import Distribution.Types.UnqualComponentName
-
-import qualified Distribution.Simple.GHCJS as GHCJS
 
 import Distribution.Client.Errors
 import Distribution.Utils.Path
@@ -160,19 +157,11 @@ run verbosity lbi exe exeArgs = do
 
   (path, runArgs) <-
     let exeName' = prettyShow $ exeName exe
-     in case compilerFlavor (compiler lbiForExe) of
-          GHCJS -> do
-            let (script, cmd, cmdArgs) =
-                  GHCJS.runCmd
-                    (withPrograms lbiForExe)
-                    (i buildPref </> exeName' </> exeName')
-            script' <- tryCanonicalizePath script
-            return (cmd, cmdArgs ++ [script'])
-          _ -> do
-            p <-
-              tryCanonicalizePath $
-                i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbiForExe))
-            return (p, [])
+     in do
+          p <-
+            tryCanonicalizePath $
+              i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbiForExe))
+          return (p, [])
 
   -- Compute the appropriate environment for running the executable
   let progDb = withPrograms lbiForExe

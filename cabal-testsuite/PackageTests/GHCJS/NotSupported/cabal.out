@@ -1,0 +1,3 @@
+# cabal v2-build
+Error: [Cabal-4002]
+GHCJS is no longer supported. Use the JavaScript backend of GHC instead, for example with --with-compiler=javascript-unknown-ghcjs-ghc.

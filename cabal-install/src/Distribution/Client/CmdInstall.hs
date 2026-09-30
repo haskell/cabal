@@ -1288,7 +1288,7 @@ getExistingEnvEntries :: Verbosity -> CompilerFlavor -> Bool -> FilePath -> IO (
 getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile = do
   envFileExists <- doesFileExist envFile
   (usedExisting, allEntries) <-
-    if (compilerFlavor == GHC || compilerFlavor == GHCJS)
+    if compilerFlavor == GHC
       && supportsPkgEnvFiles
       && envFileExists
       then catch ((True,) <$> readGhcEnvironmentFile envFile) $ \(ParseErrorExc parseError) ->
