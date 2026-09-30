@@ -10,6 +10,7 @@ main = do
   -- the build tool on disk failed with
   -- "cannot satisfy -package-id foo-0.1.0.0-inplace".
   cabalTest' "all" $ do
+    skipIfCIAndWindows 11933
     skipUnlessGhcVersion ">= 9.4"
     res <- cabalWithStdin "v2-repl" ["--enable-multi-repl", "all"] "print 0xdeadbeef"
     -- The tool and its library dep are built on disk, not merely loaded in memory

@@ -2,6 +2,7 @@ import Test.Cabal.Prelude
 
 main = do
   cabalTest $ recordMode DoNotRecord $ do
+    skipIfCIAndWindows 11933
     skipUnlessAnyCabalVersion "< 3.11"
     -- Note: only the last package is interactive.
     -- this test should load pkg-b too.

@@ -2,6 +2,7 @@ import Test.Cabal.Prelude
 
 main = cabalTest $ recordMode DoNotRecord $ do
     -- For the multi-repl command
+    skipIfCIAndWindows 11933
     good_ver <- isGhcVersion ">= 9.12"
     skipUnlessGhcVersion ">= 9.4"
     skipUnlessAnyCabalVersion ">= 3.15"

@@ -1264,8 +1264,8 @@ skipIfOSX why = skipIfIO ("OSX " <> why) isOSX
 skipIfCI :: IssueID -> IO ()
 skipIfCI ticket = skipIfIO ("CI, see #" <> show ticket) =<< isCI
 
-skipIfCIAndWindows :: IssueID -> IO ()
-skipIfCIAndWindows ticket = skipIfIO ("Windows CI, see #" <> show ticket) . (isWindows &&) =<< isCI
+skipIfCIAndWindows :: MonadIO m => IssueID -> m ()
+skipIfCIAndWindows ticket = liftIO $ skipIfIO ("Windows CI, see #" <> show ticket) . (isWindows &&) =<< isCI
 
 skipIfCIAndOSX :: IssueID -> IO ()
 skipIfCIAndOSX ticket = skipIfIO ("OSX CI, see #" <> show ticket) . (isOSX &&) =<< isCI
