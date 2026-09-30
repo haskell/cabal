@@ -13,6 +13,7 @@ Cabal-specific terms
 ^^^^^^^^^^^^^^^^^^^^
 
 .. list-table::
+   :class: wrap-cells
    :header-rows: 1
    :widths: 25 75
 
@@ -72,6 +73,7 @@ Haskell-specific terms
 ^^^^^^^^^^^^^^^^^^^^^^
 
 .. list-table::
+   :class: wrap-cells
    :header-rows: 1
    :widths: 25 75
 
@@ -104,6 +106,7 @@ General terms
 ^^^^^^^^^^^^^
 
 .. list-table::
+   :class: wrap-cells
    :header-rows: 1
    :widths: 25 75
 
@@ -122,6 +125,7 @@ Some terms look alike, overlap, or mean something other than what their name
 suggests. This table sets them side by side.
 
 .. list-table::
+   :class: wrap-cells
    :header-rows: 1
    :widths: 35 65
 
