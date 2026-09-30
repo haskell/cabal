@@ -99,11 +99,13 @@ import Distribution.Pretty
 import Prelude ()
 
 import Distribution.Compiler
-import Distribution.Package (PackageName)
+import Distribution.Package (PackageName, mkPackageName, unPackageName)
 import Distribution.Simple.Utils
-import Distribution.Types.UnitId (UnitId)
+import Distribution.Types.UnitId (UnitId, mkUnitId, unUnitId)
 import Distribution.Utils.Path
 import Distribution.Version
+
+import qualified Text.Read as Read
 
 import Language.Haskell.Extension
 
@@ -133,11 +135,101 @@ data Compiler = Compiler
   , compilerProperties :: Map String String
   -- ^ A key-value map for properties not covered by the above fields.
   }
-  deriving (Eq, Generic, Show, Read)
+  deriving (Eq, Generic)
 
 instance Binary Compiler
 instance NFData Compiler
 instance Structured Compiler
+
+instance Show Compiler where
+  showsPrec d (Compiler cid abi compat langs exts wired props) =
+    showParen (d > 10) $
+      showString "Compiler {compilerId = "
+        . shows cid
+        . showString ", compilerAbiTag = "
+        . shows abi
+        . showString ", compilerCompat = "
+        . shows compat
+        . showString ", compilerLanguages = "
+        . shows langs
+        . showString ", compilerExtensions = "
+        . shows exts
+        . showString ", compilerWiredInUnitIds = "
+        . showsWiredInUnitIds wired
+        . showString ", compilerProperties = "
+        . shows props
+        . showChar '}'
+    where
+      showsWiredInUnitIds Nothing = showString "Nothing"
+      showsWiredInUnitIds (Just us) =
+        showString "Just ["
+          . foldr (.) id (intersperse (showString ",") (map (uncurry showsWiredInUnitId) us))
+          . showChar ']'
+
+      showsWiredInUnitId pn uid =
+        showString "(mkPackageName "
+          . shows (unPackageName pn)
+          . showString ",mkUnitId "
+          . shows (unUnitId uid)
+          . showChar ')'
+
+instance Read Compiler where
+  readPrec = Read.parens $ Read.prec 10 $ do
+    Read.Ident "Compiler" <- Read.lexP
+    Read.Punc "{" <- Read.lexP
+    cid <- readField "compilerId" Read.readPrec
+    comma
+    abi <- readField "compilerAbiTag" Read.readPrec
+    comma
+    compat <- readField "compilerCompat" Read.readPrec
+    comma
+    langs <- readField "compilerLanguages" Read.readPrec
+    comma
+    exts <- readField "compilerExtensions" Read.readPrec
+    comma
+    wired <- readField "compilerWiredInUnitIds" readWiredInUnitIds
+    comma
+    props <- readField "compilerProperties" Read.readPrec
+    Read.Punc "}" <- Read.lexP
+    pure (Compiler cid abi compat langs exts wired props)
+    where
+      comma = do
+        Read.Punc "," <- Read.lexP
+        pure ()
+
+      readField name k = do
+        Read.Ident name' <- Read.lexP
+        guard (name' == name)
+        Read.Punc "=" <- Read.lexP
+        k
+
+      readWiredInUnitIds :: Read.ReadPrec (Maybe [(PackageName, UnitId)])
+      readWiredInUnitIds = parseNothing <|> parseJust
+        where
+          parseNothing = do
+            Read.Ident "Nothing" <- Read.lexP
+            pure Nothing
+          parseJust = do
+            Read.Ident "Just" <- Read.lexP
+            Read.Punc "[" <- Read.lexP
+            us <- endOfList <|> parseUs
+            pure (Just us)
+          endOfList = do
+            Read.Punc "]" <- Read.lexP
+            pure []
+          parseUs = do
+            u <- readWiredInUnitId
+            us <- endOfList <|> (comma >> parseUs)
+            pure (u : us)
+          readWiredInUnitId = do
+            Read.Punc "(" <- Read.lexP
+            Read.Ident "mkPackageName" <- Read.lexP
+            pn <- mkPackageName <$> Read.readPrec
+            Read.Punc "," <- Read.lexP
+            Read.Ident "mkUnitId" <- Read.lexP
+            uid <- mkUnitId <$> Read.readPrec
+            Read.Punc ")" <- Read.lexP
+            pure (pn, uid)
 
 showCompilerId :: Compiler -> String
 showCompilerId = prettyShow . compilerId

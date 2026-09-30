@@ -11,6 +11,7 @@ import qualified UnitTests.Distribution.Compat.Time
 import qualified UnitTests.Distribution.Compat.Graph
 import qualified UnitTests.Distribution.PackageDescription.Check
 import qualified UnitTests.Distribution.Simple.Command
+import qualified UnitTests.Distribution.Simple.Compiler
 import qualified UnitTests.Distribution.Simple.Glob
 import qualified UnitTests.Distribution.Simple.Program.GHC
 import qualified UnitTests.Distribution.Simple.Program.Internal
@@ -41,6 +42,8 @@ tests =
         UnitTests.Distribution.Compat.Graph.tests
     , testGroup "Distribution.Simple.Command"
         UnitTests.Distribution.Simple.Command.tests
+    , testGroup "Distribution.Simple.Compiler"
+        UnitTests.Distribution.Simple.Compiler.tests
     , testGroup "Distribution.Simple.Glob"
         UnitTests.Distribution.Simple.Glob.tests
     , UnitTests.Distribution.Simple.Program.GHC.tests
