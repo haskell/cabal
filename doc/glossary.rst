@@ -3,6 +3,123 @@
 Glossary
 ========
 
+Terms by category
+-----------------
+
+The tables below group the terms by subject. Each term is defined in the
+:ref:`alphabetical listing <glossary-listing>` that follows.
+
+Cabal-specific terms
+^^^^^^^^^^^^^^^^^^^^
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Category
+     - Terms
+   * - Names, files and formats
+     - :term:`Cabal`, :term:`cabal`, :term:`cabal-install`,
+       :term:`cabal-install:exe:cabal`, :term:`Cabal-syntax`,
+       :term:`Cabal-hooks`, :term:`Cabal specification`,
+       :term:`package description`, :term:`cabal.project`,
+       :term:`cabal.project.local`, :term:`cabal.project.freeze`,
+       :term:`configuration file`, :term:`setup script`,
+       :term:`SetupHooks.hs`, :term:`plan.json`, :term:`external command`,
+       :term:`cabal script`, :term:`interface stability`
+   * - Packages and projects
+     - :term:`package`, :term:`package ID`, :term:`source package`,
+       :term:`sdist`, :term:`project`, :term:`local package`,
+       :term:`external package`, :term:`dependency`, :term:`vendoring`,
+       :term:`source-repository`, :term:`source-repository-package`,
+       :term:`package location`
+   * - Components and targets
+     - :term:`component`, :term:`main library`, :term:`sublibrary`,
+       :term:`internal library`, :term:`public library`, :term:`visibility`,
+       :term:`executable`, :term:`test suite`, :term:`test suite interface`,
+       :term:`benchmark`, :term:`foreign library`, :term:`target`,
+       :term:`target form`, :term:`per-component build`
+   * - Package description syntax
+     - :term:`field`, :term:`stanza`, :term:`common stanza`, :term:`import`,
+       :term:`conditional`, :term:`flag`, :term:`automatic flag`,
+       :term:`manual flag`, :term:`flag assignment`,
+       :term:`build information`, :term:`custom field`, :term:`build type`,
+       :term:`autogen module`, :term:`Paths module`,
+       :term:`PackageInfo module`, :term:`data files`,
+       :term:`extra source files`
+   * - Dependencies and versions
+     - :term:`version range`, :term:`version bound`, :term:`caret operator`,
+       :term:`build tool dependency`, :term:`pkg-config dependency`,
+       :term:`setup dependency`, :term:`mixin`, :term:`preferred version`
+   * - Solver and plans
+     - :term:`solver`, :term:`dependency resolution`, :term:`build plan`,
+       :term:`constraint`, :term:`preference`, :term:`allow-newer`,
+       :term:`index state`, :term:`goal`, :term:`backjump`,
+       :term:`conflict set`
+   * - Builds, stores and directories
+     - :term:`Nix-style local builds`, :term:`v1- commands`,
+       :term:`v2- commands`, :term:`legacy`, :term:`global`, :term:`store`,
+       :term:`in-place`, :term:`build directory`, :term:`cabal directory`,
+       :term:`install directory`, :term:`path variable`,
+       :term:`prefix independence`, :term:`program options`,
+       :term:`package stanza`, :term:`multi-repl`, :term:`offline mode`
+   * - Repositories
+     - :term:`repository`, :term:`package index`, :term:`secure repository`,
+       :term:`local no-index repository`, :term:`active repositories`,
+       :term:`revision`, :term:`package candidate`
+
+Haskell-specific terms
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Category
+     - Terms
+   * - Compilers and ecosystem tools
+     - :term:`GHC`, :term:`GHCi`, :term:`REPL`, :term:`ghc-pkg`,
+       :term:`GHCup`, :term:`GHCJS`, :term:`compiler flavor`,
+       :term:`toolchain`, :term:`Hackage`, :term:`Stackage`, :term:`Stack`,
+       :term:`snapshot`, :term:`resolver`, :term:`HLS`, :term:`Haddock`,
+       :term:`Hoogle`, :term:`HsColour`, :term:`hpc`, :term:`PVP`
+   * - Language
+     - :term:`module`, :term:`exposed module`, :term:`other module`,
+       :term:`language`, :term:`language extension`, :term:`FFI`
+   * - GHC's package model
+     - :term:`GHC package`, :term:`unit`, :term:`unit ID`,
+       :term:`installed package ID`, :term:`component ID`, :term:`ABI hash`,
+       :term:`home unit`, :term:`package database`,
+       :term:`package environment`, :term:`boot package`,
+       :term:`wired-in package`
+   * - Backpack
+     - :term:`Backpack`, :term:`signature`, :term:`indefinite package`,
+       :term:`instantiation`, :term:`reexported module`
+   * - Build variants
+     - :term:`way`, :term:`vanilla`, :term:`profiling`, :term:`cost centre`,
+       :term:`shared library`, :term:`static linking`,
+       :term:`optimization level`
+
+General terms
+^^^^^^^^^^^^^
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Category
+     - Terms
+   * - Tools and standards
+     - :term:`pkg-config`, :term:`SPDX license expression`,
+       :term:`XDG Base Directory Specification`, :term:`PATH`, :term:`VCS`,
+       :term:`tarball`, :term:`response file`, :term:`TUF`, :term:`Nix`,
+       :term:`MSYS2`
+
+.. _glossary-listing:
+
+Alphabetical listing
+--------------------
+
 .. glossary::
    :sorted:
 
