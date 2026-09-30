@@ -1,0 +1,17 @@
+cabal-version: 2.4
+name: relocatable-reuse
+version: 0.1.0.0
+build-type: Simple
+data-files: data/hello.txt
+
+library
+  exposed-modules: MyLib
+  hs-source-dirs: src
+  build-depends: base
+  default-language: Haskell2010
+
+executable rr-exe
+  main-is: Main.hs
+  hs-source-dirs: app
+  build-depends: base, relocatable-reuse
+  default-language: Haskell2010
