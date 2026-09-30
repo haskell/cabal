@@ -1,0 +1,9 @@
+/* The theme stops text in table cells from wrapping, except within inline
+ * literals. Instead, wrap the text and keep each literal on one line. */
+.wy-table-responsive table td {
+    white-space: normal;
+}
+
+.rst-content table.docutils code.literal {
+    white-space: nowrap;
+}
