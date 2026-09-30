@@ -1,0 +1,40 @@
+name:         oeis
+version:      0.3.1
+stability:    experimental
+category:     Math
+synopsis:     Interface to the Online Encyclopedia of Integer Sequences
+description:  Interface to the Online Encyclopedia of Integer Sequences. See <http://oeis.org/>.
+author:       Brent Yorgey
+maintainer:   Brian Lewis <brian@lorf.org>
+license:      BSD3
+license-file: LICENSE
+
+cabal-version: >= 1.6
+build-type:    Custom
+
+data-files:
+  README
+  example/Catalan.hs
+
+extra-source-files:
+  src/test.hs
+
+library
+  hs-source-dirs:
+    src
+
+  exposed-modules:
+    Math.OEIS
+
+  build-depends:
+    base    == 3.* || == 4.*,
+    network == 2.*,
+    HTTP    >= 4000.0.2 || == 4000.1.*
+
+  ghc-options: -Wall
+  if impl(ghc >= 6.8)
+    ghc-options: -fwarn-tabs
+
+source-repository head
+  type:     git
+  location: git://github.com/bsl/oeis.git

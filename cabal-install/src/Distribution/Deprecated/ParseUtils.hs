@@ -441,7 +441,7 @@ legacyFields :: [Fields.Field Parsec.Position] -> [Field]
 legacyFields = map legacyField
 
 legacyField :: Fields.Field Parsec.Position -> Field
-legacyField (Fields.Field (Fields.Name pos name) fls) =
+legacyField (Fields.Field _ (Fields.Name pos name) fls) =
   F (posToLineNo pos) (fromUTF8BS name) (Fields.fieldLinesToString fls)
 legacyField (Fields.Section (Fields.Name pos name) args fs) =
   Section (posToLineNo pos) (fromUTF8BS name) (Fields.sectionArgsToString args) (legacyFields fs)
