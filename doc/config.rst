@@ -325,51 +325,52 @@ The list of known programs is:
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | Program               | Notes                                                                                                                              |
 +=======================+====================================================================================================================================+
-| ``alex``              | `<https://haskell-alex.readthedocs.io/en/latest/>`_                                                                                |
+| ``alex``              | `Alex User Guide <https://haskell-alex.readthedocs.io/en/latest/>`_                                                                |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``ar``                | Usually provided by GHC's ``"ar command"`` entry in ``ghc --info``. Note this might refer to ``llvm-ar`` instead of GNU's ``ar``.  |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``c2hs``              | `<https://hackage.haskell.org/package/c2hs>`_                                                                                      |
+| ``c2hs``              | :hackage-pkg:`c2hs on Hackage <c2hs>`                                                                                              |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``cpphs``             | `<https://hackage.haskell.org/package/cpphs>`_                                                                                     |
+| ``cpphs``             | :hackage-pkg:`cpphs on Hackage <cpphs>`                                                                                            |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``doctest``           | `<https://hackage.haskell.org/package/doctest>`_                                                                                   |
+| ``doctest``           | :hackage-pkg:`doctest on Hackage <doctest>`                                                                                        |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``gcc``               | Usually provided by GHC's ``"C compiler command"`` entry in ``ghc --info``. Note this might refer to ``clang`` instead of ``gcc``. |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``ghc``               | `<https://downloads.haskell.org/ghc/latest/docs/users_guide/>`_                                                                    |
+| ``ghc``               | `GHC User's Guide <https://downloads.haskell.org/ghc/latest/docs/users_guide/>`_                                                   |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``ghc-pkg``           | `<https://downloads.haskell.org/ghc/latest/docs/users_guide/packages.html#package-management-the-ghc-pkg-command>`_                |
+| ``ghc-pkg``           | `GHC User's Guide: Package management                                                                                              |
+|                       | <https://downloads.haskell.org/ghc/latest/docs/users_guide/packages.html#package-management-the-ghc-pkg-command>`_                 |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``ghcjs``             | `<https://github.com/ghcjs/ghcjs>`_                                                                                                |
+| ``ghcjs``             | `GHCJS on GitHub <https://github.com/ghcjs/ghcjs>`_                                                                                |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``ghcjs-pkg``         | The ``ghc-pkg`` of GHCJS, see `<https://github.com/ghcjs/ghcjs>`_.                                                                 |
+| ``ghcjs-pkg``         | The ``ghc-pkg`` of GHCJS, see `GHCJS on GitHub`_.                                                                                  |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``haddock``           | `<https://haskell-haddock.readthedocs.io/latest/>`_                                                                                |
+| ``haddock``           | `Haddock User Guide <https://haskell-haddock.readthedocs.io/latest/>`_                                                             |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``happy``             | `<https://haskell-happy.readthedocs.io/en/latest/>`_                                                                               |
+| ``happy``             | `Happy User Guide <https://haskell-happy.readthedocs.io/en/latest/>`_                                                              |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``hpc``               | `<https://hackage.haskell.org/package/hpc>`_                                                                                       |
+| ``hpc``               | :hackage-pkg:`hpc on Hackage <hpc>`                                                                                                |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``hsc2hs``            | `<https://hackage.haskell.org/package/hsc2hs>`_                                                                                    |
+| ``hsc2hs``            | :hackage-pkg:`hsc2hs on Hackage <hsc2hs>`                                                                                          |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``hscolour``          | `<https://hackage.haskell.org/package/hscolour>`_                                                                                  |
+| ``hscolour``          | :hackage-pkg:`hscolour on Hackage <hscolour>`                                                                                      |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``jhc``               | `<http://repetae.net/computer/jhc/>`_                                                                                              |
+| ``jhc``               | `jhc homepage <http://repetae.net/computer/jhc/>`_                                                                                 |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``ld``                | Usually provided by GHC's ``"ld command"`` entry in ``ghc --info``.                                                                |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``pkg-config``        | Used to find the dependencies listed in :pkg-field:`pkgconfig-depends`, see                                                        |
-|                       | `<https://www.freedesktop.org/wiki/Software/pkg-config/>`_.                                                                        |
+| ``pkg-config``        | Used to find the dependencies listed in :pkg-field:`pkgconfig-depends`, see the                                                    |
+|                       | `pkg-config homepage <https://www.freedesktop.org/wiki/Software/pkg-config/>`_.                                                    |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``runghc``            | `<https://downloads.haskell.org/ghc/latest/docs/users_guide/runghc.html>`_                                                         |
+| ``runghc``            | `GHC User's Guide: Using runghc <https://downloads.haskell.org/ghc/latest/docs/users_guide/runghc.html>`_                          |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``strip``             | Used when installing if :cfg-field:`executable-stripping` or :cfg-field:`library-stripping` is enabled, see                        |
-|                       | `<https://sourceware.org/binutils/docs/binutils/strip.html>`_.                                                                     |
+|                       | `GNU strip <https://sourceware.org/binutils/docs/binutils/strip.html>`_.                                                           |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``tar``               | Used by :ref:`setup-sdist` to create the source tarball, see `<https://www.gnu.org/software/tar/>`_.                               |
+| ``tar``               | Used by :ref:`setup-sdist` to create the source tarball, see `GNU tar <https://www.gnu.org/software/tar/>`_.                       |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``uhc``               | `<https://github.com/UU-ComputerScience/uhc>`_                                                                                     |
+| ``uhc``               | `UHC on GitHub <https://github.com/UU-ComputerScience/uhc>`_                                                                       |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 
 .. warning::
