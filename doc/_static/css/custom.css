@@ -1,0 +1,6 @@
+/* The theme keeps every table cell on one line and scrolls the table
+   sideways. Tables given the wrap-cells class wrap their cell text instead. */
+.wy-table-responsive table.wrap-cells td,
+.wy-table-responsive table.wrap-cells th {
+    white-space: normal;
+}
