@@ -1,0 +1,12 @@
+cabal-version: 3.4
+name: extra-source-opts-old-spec
+version: 0
+
+-- Per-file options in extra-source fields are only available from
+-- cabal-version: 3.20.  Below that they must be rejected rather than
+-- interpreted, so that a package cannot express something an older Cabal would
+-- not understand (see #9331).
+library
+  default-language: Haskell2010
+  build-depends: base
+  c-sources: cbits/foo.c (-DFOO)

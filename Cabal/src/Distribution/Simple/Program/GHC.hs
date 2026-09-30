@@ -521,7 +521,8 @@ data GhcOptions = GhcOptions
   , ghcOptCppOptions :: [String]
   -- ^ Options to pass through to CPP; the @ghc -optP@ flag.
   , ghcOptJSppOptions :: [String]
-  -- ^ Options to pass through to CPP; the @ghc -optJSP@ flag. @since 3.16.0.0
+  -- ^ Options to pass through to the JavaScript preprocessor; the
+  -- @ghc -optJSP@ flag (GHC >= 9.12). @since 3.16.0.0
   , ghcOptCppIncludePath :: NubListR (SymbolicPath Pkg (Dir Include))
   -- ^ Search path for CPP includes like header files; the @ghc -I@ flag.
   , ghcOptCppIncludes :: NubListR (SymbolicPath Pkg File)
@@ -874,7 +875,12 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 
           ["-I" ++ u dir | dir <- flags ghcOptCppIncludePath]
         , ["-optP" ++ opt | opt <- ghcOptCppOptions opts]
-        , ["-optJSP" ++ opt | opt <- ghcOptJSppOptions opts]
+        , -- The JavaScript preprocessor flag (-optJSP) only exists since GHC
+          -- 9.12; passing it to an older GHC is an error.
+          let ghc912 = case compilerCompatVersion GHC comp of
+                Just v -> v >= mkVersion [9, 12]
+                Nothing -> False
+           in ["-optJSP" ++ opt | ghc912, opt <- ghcOptJSppOptions opts]
         , concat
             [ ["-optP-include", "-optP" ++ u inc]
             | inc <- flags ghcOptCppIncludes

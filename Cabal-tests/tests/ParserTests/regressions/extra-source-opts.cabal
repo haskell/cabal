@@ -1,0 +1,20 @@
+cabal-version: 3.20
+name: extra-source-opts
+version: 0
+
+-- Per-file options on extra source files, available from cabal-version: 3.20.
+-- Accepted on all five extra-source kinds.  The text between the parentheses
+-- is taken verbatim; only '(' and ')' are structural (they may nest, and a
+-- backslash escapes them), and the text is split into individual options the
+-- same way --PROG-options is.
+library
+  default-language: Haskell2010
+  build-depends: base
+  c-sources:
+    cbits/foo.c (-DFOO -O2)
+    cbits/bar.c
+    cbits/quoted.c ("-DGREETING=\"hi there\"" -DPAREN=\) -DNESTED=f(1))
+  cxx-sources: cbits/baz.cpp (-std=c++17)
+  asm-sources: cbits/qux.s (-DASM)
+  cmm-sources: cbits/rts.cmm (-DCMM)
+  js-sources: jsbits/glue.js (-DJS)

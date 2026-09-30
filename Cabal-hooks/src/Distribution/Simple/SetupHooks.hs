@@ -210,6 +210,7 @@ module Distribution.Simple.SetupHooks
   , Component(..), ComponentName(..), componentName
   , ModuleName
   , BuildInfo(..), emptyBuildInfo
+  , ExtraSource(..), extraSourceFromPath
   , TargetInfo(..), ComponentLocalBuildInfo(..)
 
     -- **** Components
@@ -232,6 +233,7 @@ import Distribution.PackageDescription
   , emptyLibrary, emptyForeignLib
   , emptyExecutable, emptyBenchmark, emptyTestSuite
   , BuildInfo(..), emptyBuildInfo
+  , ExtraSource(..), extraSourceFromPath
   , ComponentName(..), LibraryName(..)
   )
 import Distribution.Simple.BuildPaths

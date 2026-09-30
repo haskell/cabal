@@ -927,11 +927,11 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
     autogenExtraSourcesPaths =
       concatMap
         (mapMaybe relativeToAutogen)
-        [ cSources compBuildInfo
-        , cxxSources compBuildInfo
-        , cmmSources compBuildInfo
-        , asmSources compBuildInfo
-        , jsSources compBuildInfo
+        [ map extraSourceFile (cSources compBuildInfo)
+        , map extraSourceFile (cxxSources compBuildInfo)
+        , map extraSourceFile (cmmSources compBuildInfo)
+        , map extraSourceFile (asmSources compBuildInfo)
+        , map extraSourceFile (jsSources compBuildInfo)
         ]
     extraBundledLibsPaths :: [RelativePath Source File]
     extraBundledLibsPaths =

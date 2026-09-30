@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE DataKinds #-}
 module Distribution.Described (
     Described (..),
     describeDoc,
@@ -31,6 +32,7 @@ module Distribution.Described (
     csUpper,
     csNotSpace,
     csNotSpaceOrComma,
+    csExtraSourceOptChar,
     -- * tasty
     testDescribed,
     ) where
@@ -77,6 +79,7 @@ import Distribution.Types.Dependency               (Dependency)
 import Distribution.Types.ExecutableScope          (ExecutableScope)
 import Distribution.Types.ExeDependency            (ExeDependency)
 import Distribution.Types.ExposedModule            (ExposedModule)
+import Distribution.Types.ExtraSource              (ExtraSource)
 import Distribution.Types.Flag                     (FlagAssignment, FlagName)
 import Distribution.Types.ForeignLib               (LibVersionInfo)
 import Distribution.Types.ForeignLibOption         (ForeignLibOption)
@@ -96,7 +99,7 @@ import Distribution.Types.SourceRepo               (RepoType)
 import Distribution.Types.TestType                 (TestType)
 import Distribution.Types.UnitId                   (UnitId)
 import Distribution.Types.UnqualComponentName      (UnqualComponentName)
-import Distribution.Utils.Path                     (SymbolicPath, RelativePath)
+import Distribution.Utils.Path                     (SymbolicPath, RelativePath, FileOrDir(..), Pkg)
 import Distribution.Verbosity                      (VerbosityFlags)
 import Distribution.Version                        (Version, VersionRange)
 import Language.Haskell.Extension                  (Extension, Language, knownLanguages)
@@ -202,6 +205,13 @@ csNotSpace = CS.difference CS.universe $ CS.singleton ' '
 
 csNotSpaceOrComma :: CS.CharSet
 csNotSpaceOrComma = CS.difference csNotSpace $ CS.singleton ','
+
+-- | Characters that may appear verbatim in the per-file options on an extra
+-- source. Keep in sync with @parsecExtraSourceOpts@ in
+-- "Distribution.Types.ExtraSource": there @(@, @)@ and @\\@ are the only
+-- characters with any meaning.
+csExtraSourceOptChar :: CS.CharSet
+csExtraSourceOptChar = CS.difference csNotSpace $ CS.fromList "()\\"
 
 -------------------------------------------------------------------------------
 -- Special
@@ -402,6 +412,19 @@ instance Described ExposedModule where
 
 instance Described Extension where
     describe _ = RETodo
+
+instance Described ExtraSource where
+    describe _ = REAppend
+        [ describe (Proxy :: Proxy (SymbolicPath Pkg File))
+        , REOpt (RESpaces1 <> reChar '(' <> reSpacedList opt <> reChar ')')
+        ]
+      where
+        -- The text between the parentheses is taken verbatim; only a
+        -- parenthesis or a backslash has to be escaped. Parentheses may also
+        -- nest as long as they balance, which a regular grammar cannot
+        -- express; escaping them always works.
+        opt = REMunch1 reEps (REUnion [RECharSet csExtraSourceOptChar, escaped])
+        escaped = reChar '\\' <> reChars "()\\"
 
 instance Described FlagAssignment where
     describe _ = REMunch RESpaces1 $
