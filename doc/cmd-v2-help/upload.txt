@@ -34,3 +34,22 @@ Relevant global configuration keys:
   username
   password
   password-command
+
+Global flags:
+ -V, --version                # Print version information
+ --full-version               # Print full version information with git
+                                revision (if available) and compiler
+ --numeric-version            # Print just the version number
+ --config-file=FILE           # Set an alternate location for the config file
+ --ignore-expiry              # Ignore expiry dates on signed metadata (use
+                                only in exceptional circumstances)
+ --http-transport=HttpTransport
+                              # Set a transport for http(s) requests. Accepts
+                                'curl', 'wget', 'powershell', and
+                                'plain-http'. (default: 'curl')
+ --store-dir=DIR              # The location of the build store
+ --active-repositories=REPOS  # The active package repositories (set to
+                                ':none' to disable all repositories)
+
+Global flags must be given before the command, e.g.
+`cabal --store-dir=DIR build`.
