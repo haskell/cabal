@@ -1097,7 +1097,7 @@ This command takes the following options:
     communicating via a semaphore.
 
     The expected use is that the system controlling the build (e.g.
-    ``cabal-install``, ``stack``, ``nix`` or ``buck2``) (a jobserver) creates or
+    ``cabal``, ``stack``, ``nix`` or ``buck2``) (a jobserver) creates or
     obtains a semaphore using the ``semaphore-compat`` library. It then passes
     the semaphore to jobserver clients in order to control the amount of
     parallelism. This is done by passing the corresponding semaphore identifier

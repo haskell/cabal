@@ -925,7 +925,7 @@ symlinks/copies their executables in ``installdir`` (usually ``~/.local/bin``).
   than ``all`` as the target. To overwrite an installation, use
   ``--overwrite-policy=always`` as the default policy is ``never``.
 
-For example this command will build the latest :term:`cabal-install:exe:cabal` and symlink
+For example this command will build the latest :term:`cabal-install` and symlink
 its :term:`cabal` executable:
 
 ::
