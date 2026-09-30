@@ -1265,6 +1265,35 @@ showLegacyProjectConfig config =
     -- but requires re-work of how we annotate provenance.
     constraintSrc = ConstraintSourceProjectConfig nullProjectConfigPath
 
+-- |
+-- >>> parseLegacyConvert projectPackages "packages" "foo"
+-- ParseOk [] ["foo"]
+--
+-- >>> parseLegacyConvert projectPackages "packages" "xL{4,IE-,eK<}fE?e"
+-- ParseOk [] ["xL{4,IE-,eK<}fE?e"]
+--
+-- >>> parseLegacyConvert projectPackages "packages" "7{u,{h,{=n}}}"
+-- ParseOk [] ["7{u,{h,{=n}}}"]
+--
+-- A top-level package field lands in the local packages, not in all packages.
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigAllPackages) "test-log" "foo"
+-- ParseOk [] (Last {getLast = Nothing})
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" "foo"
+-- ParseOk [] (Last {getLast = Just "foo"})
+--
+-- An empty value sets the field to the empty string, where the parsec parser
+-- would leave it unset, see 'Distribution.Client.ProjectConfig.Parsec.parseProjectConfig'.
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" ""
+-- ParseOk [] (Last {getLast = Just ""})
+--
+-- >>> parseLegacyConvert (packageConfigTestHumanLog . projectConfigLocalPackages) "test-log" " "
+-- ParseOk [] (Last {getLast = Just ""})
+--
+-- >>> parseLegacyConvert (packageConfigHaddockHtmlLocation . projectConfigLocalPackages) "haddock-html-location" ""
+-- ParseOk [] (Last {getLast = Just ""})
 legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs constraintSrc =
   [ newLineListField
@@ -2054,3 +2083,15 @@ showTokenQ "" = Disp.empty
 showTokenQ x@('-' : '-' : _) = Disp.text (show x)
 showTokenQ x@['.'] = Disp.text (show x)
 showTokenQ x = showToken x
+
+-- $setup
+-- >>> import Distribution.Utils.Generic (toUTF8BS)
+--
+-- Parses a project file of one field, going through the lexer as a real
+-- project file would.
+--
+-- >>> :{
+-- parseLegacyConvert :: (ProjectConfig -> a) -> String -> String -> ParseResult a
+-- parseLegacyConvert f field s = (f . convertLegacyProjectConfig) <$>
+--   parseLegacyProjectConfig "" (toUTF8BS (field ++ ": " ++ s))
+-- :}

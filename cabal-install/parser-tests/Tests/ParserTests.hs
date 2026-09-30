@@ -2,12 +2,14 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Tests for the project file parser
-module Tests.ParserTests (parserTests) where
+module Tests.ParserTests (parserTests, packageTestsProjectTests) where
 
+import Control.Exception (try)
 import Control.Monad.IO.Class
   ( MonadIO (liftIO)
   )
 import Data.Either (fromRight)
+import Data.List (isInfixOf)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import qualified Data.Set as Set
@@ -24,7 +26,7 @@ import Distribution.Client.Targets (readUserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDepMod (..), RelaxDepScope (..), RelaxDepSubject (..), RelaxDeps (..), RelaxedDep (..))
 import Distribution.Client.Types.InstallMethod (InstallMethod (..))
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy (..))
-import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), asPosixPath)
+import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Client.Types.SourceRepo
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnvironmentFilesPolicy (..))
@@ -48,7 +50,6 @@ import Distribution.Solver.Types.Settings
   , ReorderGoals (..)
   , StrongFlags (..)
   )
-import Distribution.System (OS (..), buildOS)
 import Distribution.Types.CondTree (CondTree (..))
 import Distribution.Types.Flag (mkFlagAssignment)
 import Distribution.Types.PackageId (PackageIdentifier (..))
@@ -61,19 +62,25 @@ import Distribution.Utils.NubList
 import Distribution.Verbosity
 import GHC.Stack (HasCallStack)
 import Network.URI (parseURI)
-import System.Directory (canonicalizePath, doesFileExist)
-import System.FilePath ((</>))
+import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (makeRelative, normalise, takeDirectory, takeExtension, takeFileName, (</>))
 import Prelude ()
 
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, testCase)
+import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
+
+import Data.TreeDiff (ToExpr, ansiWlEditExpr, ediff)
+import UnitTests.Distribution.Client.TreeDiffInstances ()
 
 parserTests :: TestTree
 parserTests =
   testGroup
     "project files parsec tests"
     [ testCase "read packages" testPackages
+    , testCase "read packages glob" testPackagesGlob
+    , testCase "read packages comma separated" testPackagesCommaSeparated
     , testCase "read optional-packages" testOptionalPackages
+    , testCase "read optional-packages glob" testOptionalPackagesGlob
     , testCase "read extra-packages" testExtraPackages
     , testCase "read source-repository-package" testSourceRepoList
     , testCase "read project-config-build-only" testProjectConfigBuildOnly
@@ -83,6 +90,7 @@ parserTests =
     , testCase "read local-no-index-repos" testLocalNoIndexRepos
     , testCase "set explicit provenance" testProjectConfigProvenance
     , testCase "read project-config-local-packages" testProjectConfigLocalPackages
+    , testCase "read project-config-local-packages-empty-string" testProjectConfigLocalPackagesEmptyString
     , testCase "read project-config-all-packages" testProjectConfigAllPackages
     , testCase "read project-config-specific-packages" testProjectConfigSpecificPackages
     , testCase "test projectConfigAllPackages concatenation" testAllPackagesConcat
@@ -98,14 +106,33 @@ parserTests =
 
 testPackages :: Assertion
 testPackages = do
-  let expected = [".", "packages/packages.cabal"]
+  let expected = [".", "packages/packages.cabal", "a", "b"]
   (config, legacy) <- readConfigDefault "packages"
+  assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
+
+testPackagesGlob :: Assertion
+testPackagesGlob = do
+  let expected = ["*/*.cabal", "../{foo,bar}/"]
+  (config, legacy) <- readConfig "packages" "cabal.glob.project"
+  assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
+
+testPackagesCommaSeparated :: Assertion
+testPackagesCommaSeparated = do
+  let expected = ["xL{4,IE-,eK<}fE?e"]
+  -- let expected = ["xL{4","IE-","eK<}fE?e"]
+  (config, legacy) <- readConfig "packages" "cabal.comma-separated.project"
   assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
 
 testOptionalPackages :: Assertion
 testOptionalPackages = do
   let expected = [".", "packages/packages.cabal"]
   (config, legacy) <- readConfigDefault "optional-packages"
+  assertConfigEquals expected config legacy (projectPackagesOptional . snd . condTreeData)
+
+testOptionalPackagesGlob :: Assertion
+testOptionalPackagesGlob = do
+  let expected = ["*/*.cabal", "../{foo,bar}/"]
+  (config, legacy) <- readConfig "optional-packages" "cabal.glob.project"
   assertConfigEquals expected config legacy (projectPackagesOptional . snd . condTreeData)
 
 testSourceRepoList :: Assertion
@@ -298,26 +325,24 @@ testRemoteRepos = do
 testLocalNoIndexRepos :: Assertion
 testLocalNoIndexRepos = do
   (config, legacy) <- readConfigDefault "local-no-index-repos"
-  let actualLocalRepos = (fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . snd . condTreeData) config
-  assertBool "Expected LocalNoIndexRepos do not match parsed values" $ compareLists expected actualLocalRepos compareLocalRepos
+  let localRepos = fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . snd . condTreeData
+  assertBool "Expected LocalNoIndexRepos do not match parsed values" $ compareLists expected (localRepos config) compareLocalRepos
+  assertBool "Expected LocalNoIndexRepos do not match legacy parsed values" $ compareLists expected (localRepos legacy) compareLocalRepos
   assertConfigEquals mempty config legacy (projectConfigRemoteRepos . projectConfigShared . snd . condTreeData)
   where
     expected = [myRepository, mySecureRepository]
     myRepository =
       LocalRepo
         { localRepoName = RepoName "my-repository"
-        , localRepoPath = normalisePath "/absolute/path/to/directory"
+        , localRepoPath = normalise "/absolute/path/to/directory"
         , localRepoSharedCache = False
         }
     mySecureRepository =
       LocalRepo
         { localRepoName = RepoName "my-other-repository"
-        , localRepoPath = normalisePath "/another/path/to/repository"
+        , localRepoPath = normalise "/another/path/to/repository"
         , localRepoSharedCache = False
         }
-    normalisePath path = case buildOS of
-      Windows -> asPosixPath path
-      _ -> path
 
 testProjectConfigProvenance :: Assertion
 testProjectConfigProvenance = do
@@ -396,6 +421,18 @@ testProjectConfigLocalPackages = do
     packageConfigTestFailWhenNoTestSuites = Flag True
     packageConfigTestTestOptions = [toPathTemplate "--some-option", toPathTemplate "42"]
     packageConfigBenchmarkOptions = [toPathTemplate "--some-benchmark-option", toPathTemplate "--another-option"]
+
+-- | The parsers differ on a field with an empty value. The legacy parser
+-- passes the empty rest of the line to the option's reader and so sets the
+-- field to the empty string. The parsec parser sees a field with no lines and
+-- leaves it unset, which is the better behaviour.
+testProjectConfigLocalPackagesEmptyString :: Assertion
+testProjectConfigLocalPackagesEmptyString = do
+  (config, legacy) <- readConfigDiverging "project-config-local-packages" "cabal.empty-string.project"
+  assertEqual "Legacy parser sets the empty string" (toFlag (toPathTemplate "")) (field legacy)
+  assertEqual "Parsec parser leaves the field unset" NoFlag (field config)
+  where
+    field = packageConfigTestHumanLog . projectConfigLocalPackages . snd . condTreeData
 
 testProjectConfigAllPackages :: Assertion
 testProjectConfigAllPackages = do
@@ -563,8 +600,81 @@ verbosity = mkVerbosity defaultVerbosityHandles normal
 readConfigDefault :: FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfigDefault testSubDir = readConfig testSubDir "cabal.project"
 
+-- | Reads a project file with both parsers and, with the legacy parser as the
+-- oracle, checks that the parsec parser agrees with it on the whole config
+-- before the caller looks at any one field.
 readConfig :: FilePath -> FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfig testSubDir projectFileName = do
+  (parsec, legacy) <- readConfigDiverging testSubDir projectFileName
+  assertEdiffEqual "Parsec parser disagrees with the legacy parser" legacy parsec
+  return (parsec, legacy)
+
+-- | The project files of the cabal-testsuite package tests, each read with
+-- both parsers, which must agree. These are real project files exercising
+-- far more of the grammar than the fixtures here, so with the legacy parser
+-- as the oracle they are the widest check that the parsec parser has of what
+-- a field means.
+--
+-- Files with an import over HTTP are skipped so that the test needs no
+-- network. Files that both parsers reject are accepted without comparing the
+-- errors, but a file that only one parser rejects is a failure.
+--
+-- The tests are empty when the cabal-testsuite directory is not there, as in
+-- an sdist of cabal-install.
+packageTestsProjectTests :: IO TestTree
+packageTestsProjectTests = do
+  exists <- doesDirectoryExist packageTestsDir
+  files <- if exists then filterM isOffline =<< findProjectFiles packageTestsDir else pure []
+  httpTransport <- configureTransport silentVerbosity [] Nothing
+  pure $
+    testGroup
+      "cabal-testsuite project files"
+      [ testCase (makeRelative packageTestsDir file) (assertParsersAgree httpTransport file)
+      | file <- files
+      ]
+  where
+    packageTestsDir = ".." </> "cabal-testsuite" </> "PackageTests"
+    isOffline file = not . any importsHttp . lines <$> readFile file
+    importsHttp l = "import:" `isPrefixOf` dropWhile isSpace l && "http" `isInfixOf` l
+
+-- | Every @.project@ file under a directory.
+findProjectFiles :: FilePath -> IO [FilePath]
+findProjectFiles dir = do
+  entries <- map (dir </>) <$> listDirectory dir
+  dirs <- filterM doesDirectoryExist entries
+  let files = [e | e <- entries, takeExtension e == ".project"]
+  (sort files ++) . concat <$> traverse findProjectFiles (sort dirs)
+
+-- | Reads one project file with both parsers and checks that they agree.
+assertParsersAgree :: HttpTransport -> FilePath -> Assertion
+assertParsersAgree httpTransport file = do
+  projectRootDir <- canonicalizePath (takeDirectory file)
+  let projectRoot = ProjectRootExplicit projectRootDir (takeFileName file)
+      distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
+      readWith reader = try . runRebuild projectRootDir $ reader silentVerbosity httpTransport distDirLayout ProjectFileKeyMain
+  parsec <- readWith readProjectFileSkeletonParsec
+  legacy <- readWith readProjectFileSkeletonLegacy
+  case (legacy, parsec) of
+    (Right l, Right p) -> assertEdiffEqual "Parsec parser disagrees with the legacy parser" l p
+    (Left _, Left _) -> pure ()
+    (Left e, Right _) -> assertFailure $ "Legacy parser failed where the parsec parser succeeded:\n" ++ displayException (e :: SomeException)
+    (Right _, Left e) -> assertFailure $ "Parsec parser failed where the legacy parser succeeded:\n" ++ displayException (e :: SomeException)
+
+-- | Neither parser's warnings are of interest when comparing them.
+silentVerbosity :: Verbosity
+silentVerbosity = mkVerbosity defaultVerbosityHandles silent
+
+-- | Like 'assertEqual' but the failure shows a tree diff of the two values
+-- instead of two 'show' dumps.
+assertEdiffEqual :: (Eq a, ToExpr a, HasCallStack) => String -> a -> a -> Assertion
+assertEdiffEqual msg expected actual =
+  unless (expected == actual) . assertFailure $
+    unlines [msg, show (ansiWlEditExpr (ediff expected actual))]
+
+-- | Reads a project file with both parsers without checking that they agree,
+-- for the fixtures where they are known to differ.
+readConfigDiverging :: FilePath -> FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
+readConfigDiverging testSubDir projectFileName = do
   (TestDir testRootFp projectConfigFp distDirLayout) <- testDirInfo testSubDir projectFileName
   exists <- liftIO $ doesFileExist projectConfigFp
   assertBool ("projectConfig does not exist: " <> projectConfigFp) exists
