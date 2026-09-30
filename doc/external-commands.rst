@@ -1,7 +1,7 @@
 External Commands
 =================
 
-``cabal-install`` provides a system for external commands, akin to the ones used by tools like ``git`` or ``cargo``.
+``cabal-install`` provides a system for :term:`external commands <external command>`, akin to the ones used by tools like ``git`` or ``cargo``.
 
 If you execute ``cabal <cmd>``, ``cabal-install`` will search the path for an executable named ``cabal-<cmd>`` and execute it. An error will be thrown in case the custom command is not found. The exit code of cabal when calling an external command is the same as the exit code
 of the command.

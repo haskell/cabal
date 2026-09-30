@@ -6,7 +6,7 @@ Installing :term:`cabal`
 
 The easiest and recommended way to install the :term:`cabal` command-line tool
 on Linux, macOS, FreeBSD or Windows is through `ghcup <https://www.haskell.org/ghcup/>`__.
-It installs the “Haskell toolchain”, which includes :term:`cabal`,
+It installs the “Haskell :term:`toolchain`”, which includes :term:`cabal`,
 the Haskell compiler `GHC <https://www.haskell.org/ghc/>`__
 and optionally other useful Haskell tools.
 
@@ -42,7 +42,7 @@ in a terminal. This generates the following files in a new ``myapp`` directory:
         ├── CHANGELOG.md
         └── myapp.cabal
 
-The ``myapp.cabal`` file is a package description file, commonly referred to as a “Cabal file”:
+The ``myapp.cabal`` file is a :term:`package description` file, commonly referred to as a “Cabal file”:
 
 .. code-block:: cabal
 
@@ -60,7 +60,7 @@ The ``myapp.cabal`` file is a package description file, commonly referred to as 
 
 .. warning::
 
-    The version bounds on base, a boot library distributed with GHC
+    The :term:`version bounds <version bound>` on base, a :term:`boot library <boot package>` distributed with :term:`GHC`
     [#boot-packages]_, are tied to the GHC version visible when ``cabal init``
     is run. If run with a later version of GHC you might see a difference in the
     version bounds.
@@ -71,7 +71,7 @@ The ``myapp.cabal`` file is a package description file, commonly referred to as 
         + build-depends:    base ^>=4.20.0.0
 
 It contains metadata (package name and version, author name, license, etc.) and sections
-to define package components. Components can be used to split large codebases into smaller,
+to define package :term:`components <component>`. Components can be used to split large codebases into smaller,
 more manageable building blocks.
 A component can be of one of several types (executable, library, etc.) and describes,
 among other things, the location of source files and its dependencies.

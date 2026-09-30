@@ -6,7 +6,7 @@ Configuration
 Overview
 --------
 
-The global configuration file for :term:`cabal-install:exe:cabal` is by default
+The :term:`global configuration file <configuration file>` for :term:`cabal-install:exe:cabal` is by default
 ``$XDG_CONFIG_HOME/cabal/config``. If you do not have this file, :term:`cabal` will create
 it for you on the first call to ``cabal update``
 (details see `configuration file discovery`_).
@@ -55,8 +55,8 @@ Various environment variables affect :term:`cabal-install:exe:cabal`.
    If set, *all* :term:`cabal-install:exe:cabal` content files will be stored as
    subdirectories of this directory, including the configuration file
    if ``CABAL_CONFIG`` is unset.  If ``CABAL_DIR`` is unset, :term:`cabal`
-   will store data files according to the XDG Base Directory
-   Specification (see `directories`_).
+   will store data files according to the :term:`XDG Base Directory
+   Specification` (see `directories`_).
 
    .. note::
 
@@ -69,7 +69,7 @@ Various environment variables affect :term:`cabal-install:exe:cabal`.
 ``CABAL_BUILDDIR``
 
     The override for default ``dist`` build directory.
-    Note, the nix-style builds build directory (``dist-newstyle``)
+    Note, the :term:`nix-style builds <Nix-style local builds>` build directory (``dist-newstyle``)
     is not affected by this environment variable.
 
 .. _config-file-discovery:
@@ -115,7 +115,7 @@ file:
   and expect that its contents will be reconstructed as needed.
 
 * ``$XDG_STATE_HOME/cabal`` for compiled libraries and other stateful
-  artifacts, including the Cabal store.  Defaults to
+  artifacts, including the :term:`Cabal store <store>`.  Defaults to
   ``~/.local/state/cabal`` on Unix and ``%LOCALAPPDATA%/cabal`` on
   Windows.  Deleting this directory might cause installed programs to
   stop working.
@@ -129,8 +129,8 @@ Repository specification
 ------------------------
 
 An important part of the configuration is the specification of the
-repository. When :term:`cabal` creates a default config file, it configures
-the repository to be the central Hackage server:
+:term:`repository`. When :term:`cabal` creates a default config file, it configures
+the repository to be the central :term:`Hackage` server:
 
 ::
 
@@ -153,7 +153,7 @@ with standard root keys, so it is not necessary to specify ``secure`` or
 ``root-keys``. If no repositories are listed, Cabal will default to
 ``hackage.haskell.org``.
 
-For non-Hackage repositories that support the TUF security infrastructure you
+For non-Hackage repositories that support the :term:`TUF` security infrastructure you
 can enable secure access to the repository by specifying:
 
 ::
@@ -200,7 +200,7 @@ repository.
 
 :term:`cabal` will construct the index automatically from the
 ``package-name-version.tar.gz`` files in the directory, and will use optional
-corresponding ``package-name-version.cabal`` files as new revisions.
+corresponding ``package-name-version.cabal`` files as new :term:`revisions <revision>`.
 
 .. note::
    On Windows systems, the URL must start directly with the absolute path as in
@@ -247,7 +247,7 @@ For example, if ``/absolute/path/to/directory`` looks like
         bar-0.2.0.0.tar.gz
         preferred-versions
 
-then package deprecations and preferences will be taken into account by the solver.
+then package deprecations and preferences will be taken into account by the :term:`solver`.
 
 The contents of ``preferred-versions`` is a list of package version constraints, e.g.
 ::
@@ -311,7 +311,7 @@ Program options
 
 Programs that :term:`cabal` knows about can be provided with options that will be
 passed in whenever the program is invoked by :term:`cabal`. The configuration file
-can contain a stanza of ``program-default-options`` with ``<prog>-options``
+can contain a :term:`stanza` of ``program-default-options`` with ``<prog>-options``
 fields to specify these.
 
 ::
@@ -382,7 +382,7 @@ The list of known programs is:
   third parties.
 
   In particular this means that for example ``gcc-options`` will be used when :term:`cabal`
-  invokes ``gcc``, which is **not** when C sources are compiled by GHC (even though GHC
+  invokes ``gcc``, which is **not** when C sources are compiled by :term:`GHC` (even though GHC
   might invoke ``gcc`` internally). In order to provide options through GHC for those programs, one has to check the
   GHC User guide's `Section <https://downloads.haskell.org/ghc/latest/docs/users_guide/phases.html#forcing-options-to-a-particular-phase>`_.
   In short, those options have to be given as ``-opt<phase>`` flags to GHC.
@@ -391,6 +391,6 @@ The list of known programs is:
 
   The only case that violates the rule specified in this last warning above is
   ``ld-options``, which get passed as ``-optl`` options when GHC is invoked for
-  linking, as with the :pkg-field:`ld-options` field in package descriptions.
+  linking, as with the :pkg-field:`ld-options` field in :term:`package descriptions <package description>`.
   Notably, although ``gcc-options`` could be passed as :pkg-field:`cc-options`
   in the appropriate phases, they are actually **not** passed.

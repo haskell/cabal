@@ -54,7 +54,7 @@ of digits such as "1.0.1" or "2.0". There are a range of common
 conventions for "versioning" packages, that is giving some meaning to
 the version number in terms of changes in the package, such as
 e.g. `SemVer <http://semver.org>`__; however, for packages intended to be
-distributed via Hackage Haskell's `Package Versioning Policy <https://pvp.haskell.org/>`_ applies
+distributed via :term:`Hackage` Haskell's `Package Versioning Policy <https://pvp.haskell.org/>`_ applies
 (see also the `PVP/SemVer FAQ section <https://pvp.haskell.org/faq/#semver>`__).
 
 The combination of package name and version is called the *package ID*
@@ -65,9 +65,9 @@ For Cabal packages, the combination of the package name and version
 *uniquely* identifies each package. Or to put it another way: two
 packages with the same name and version are considered to *be* the same.
 
-Strictly speaking, the package ID only identifies each Cabal *source*
-package; the same Cabal source package can be configured and built in
-different ways. There is a separate installed package ID that uniquely
+Strictly speaking, the :term:`package ID` only identifies each Cabal *source*
+package; the same Cabal :term:`source package` can be configured and built in
+different ways. There is a separate :term:`installed package ID` that uniquely
 identifies each installed package instance. Most of the time however,
 users need not be aware of this detail.
 
@@ -82,13 +82,13 @@ Cabal packages
     Cabal packages are really source packages. That is they contain
     Haskell (and sometimes C) source code.
 
-    Cabal packages can be compiled to produce GHC packages. They can
+    Cabal packages can be compiled to produce :term:`GHC packages <GHC package>`. They can
     also be translated into operating system packages.
 
 GHC packages
-    This is GHC's view on packages. GHC only cares about library
+    This is :term:`GHC`'s view on packages. GHC only cares about library
     packages, not executables. Library packages have to be registered
-    with GHC for them to be available in GHCi or to be used when
+    with GHC for them to be available in :term:`GHCi` or to be used when
     compiling other programs or packages.
 
     The low-level tool ``ghc-pkg`` is used to register GHC packages and
@@ -213,7 +213,7 @@ these to increase portability. Where necessary however it is possible to
 use specific features of specific implementations.
 
 For example a package author can list in the package's ``.cabal`` what
-language extensions the code uses. This allows Cabal to figure out if
+:term:`language extensions <language extension>` the code uses. This allows Cabal to figure out if
 the language extension is supported by the Haskell implementation that
 the user picks. Additionally, certain language extensions such as
 Template Haskell require special handling from the build system and by
@@ -239,4 +239,4 @@ hatch" available. The developer can specify implementation-specific
 options and more generally there is a configuration mechanism to
 customise many aspects of how a package is built depending on the
 Haskell implementation, the operating system, computer architecture and
-user-specified configuration flags.
+user-specified configuration :term:`flags <flag>`.

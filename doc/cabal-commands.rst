@@ -83,14 +83,14 @@ Arguments and flags common to some or all commands are:
     manually. This file will only be used if one does not exist in the
     project directory already. Typically, this can be set from the
     global cabal ``config`` file so as to provide a default set of
-    partial constraints to be used by projects, providing a way for
+    partial :term:`constraints <constraint>` to be used by projects, providing a way for
     users to peg themselves to stable package collections.
 
 
 .. option:: --allow-newer[=DEPS], --allow-older[=DEPS]
 
     Selectively relax upper or lower bounds in dependencies without
-    editing the package description respectively.
+    editing the :term:`package description` respectively.
 
     The following description focuses on upper bounds and the
     :option:`--allow-newer` flag, but applies analogously to
@@ -100,7 +100,7 @@ Arguments and flags common to some or all commands are:
     If you want to install a package A that depends on B >= 1.0 && <
     2.0, but you have the version 2.0 of B installed, you can compile A
     against B 2.0 by using ``cabal install --allow-newer=B A``. This
-    works for the whole package index: if A also depends on C that in
+    works for the whole :term:`package index`: if A also depends on C that in
     turn depends on B < 2.0, C's dependency on B will be also relaxed.
 
     Example:
@@ -149,17 +149,17 @@ Arguments and flags common to some or all commands are:
 
     Finally, one can enable :option:`--allow-newer` permanently by setting
     ``allow-newer: True`` in the :ref:`config file <config-file-discovery>`. Enabling
-    'allow-newer' selectively is also supported in the config file
+    'allow-newer' selectively is also supported in the :term:`config file <configuration file>`
     (``allow-newer: foo, bar, baz:base``).
 
 .. option:: --preference=CONSTRAINT
 
-    Specify a soft constraint on versions of a package. The solver will
+    Specify a soft constraint on versions of a package. The :term:`solver` will
     attempt to satisfy these preferences on a "best-effort" basis.
 
 .. option:: --enable-build-info
 
-    Generate accurate build information for build components.
+    Generate accurate build information for build :term:`components <component>`.
 
     Information contains meta information, such as component type, compiler type, and
     Cabal library version used during the build, but also fine grained information,
@@ -218,10 +218,10 @@ Arguments and flags common to some or all commands are:
 Target Forms
 ------------
 
-A cabal command target can take any of the following forms:
+A cabal command :term:`target` can take any of the following forms:
 
 -  A package target: ``[pkg:]package``, which specifies that all enabled
-   components of a package to be built. By default, test suites and
+   components of a package to be built. By default, :term:`test suites <test suite>` and
    benchmarks are *not* enabled, unless they are explicitly requested
    (e.g., via ``--enable-tests``.)
 
@@ -229,7 +229,7 @@ A cabal command target can take any of the following forms:
    a specific component (e.g., a library, executable, test suite or
    benchmark) to be built.
 
--  All packages: ``all``, which specifies all packages within the project.
+-  All packages: ``all``, which specifies all packages within the :term:`project`.
 
 -  Components of a particular type: ``package:ctypes``, ``all:ctypes``:
    which specifies all components of the given type. Where valid
@@ -297,7 +297,7 @@ cabal update
 ^^^^^^^^^^^^
 
 ``cabal update`` updates the state of the package index. If the
-project contains multiple remote package repositories it will update
+project contains multiple remote package :term:`repositories <repository>` it will update
 the index of all of them (e.g. when using overlays).
 
 Some examples:
@@ -326,7 +326,7 @@ cabal list
 
 .. option:: --package-db=DB
 
-    Append the given package database to the list of used package
+    Append the given :term:`package database` to the list of used package
     databases. See `cabal info`_ for a thorough explanation.
 
 .. option:: -w PATH or -wPATH, --with-compiler=PATH
@@ -431,12 +431,12 @@ The ``cabal get`` command supports the following options:
 
 .. option:: --index-state=STATE
 
-    Pin your request to a specific Hackage index state. Available
+    Pin your request to a specific :term:`Hackage` :term:`index state`. Available
     ``STATE`` formats: Unix timestamps (e.g. ``@1474732068``),
     ISO8601 UTC timestamps (e.g. ``2016-09-24T17:47:48Z``), or ``HEAD``
     (default).
     This determines which package versions are available as well as which
-    ``.cabal`` file revision is selected (unless ``--pristine`` is used).
+    ``.cabal`` file :term:`revision` is selected (unless ``--pristine`` is used).
 
 .. option:: --pristine
 
@@ -496,7 +496,7 @@ which applies flags to every package that would be built. The motivation
 for this is to avoid an innocuous addition to the flags of a package
 resulting in a rebuild of every package in the store (which might need
 to happen if a flag actually applied to every transitive dependency). To
-apply options to an external package, use a ``package`` stanza in a
+apply options to an :term:`external package`, use a ``package`` :term:`stanza` in a
 ``cabal.project`` file.
 
 There are two ways of modifying the ``cabal.project.local`` file through
@@ -555,14 +555,14 @@ cabal gen-bounds
 
 Generate PVP-compliant dependency bounds for packages in the project based
 on currently installed versions. This is helpful when creating or updating
-package dependencies to ensure compatibility with specific version ranges.
+package dependencies to ensure compatibility with specific :term:`version ranges <version range>`.
 
 To use it, run `cabal gen-bounds` in a directory containing a cabal.project file or
 within a subdirectory of a multi-package project. The command will analyze
-the project structure and suggest appropriate version bounds for dependencies based
+the project structure and suggest appropriate :term:`version bounds <version bound>` for dependencies based
 on the currently installed versions of those packages.
 
-The suggested bounds follow the Package Versioning Policy (PVP) convention,
+The suggested bounds follow the Package Versioning Policy (:term:`PVP`) convention,
 allowing changes in the last segment of the version number. These suggestions
 are formatted as Cabal constraint expressions that can be directly copied
 into your .cabal file in the appropriate `build-depends` section.
@@ -691,7 +691,7 @@ Examples:
     :since: 2.4
 
     Read dependency version bounds from the v2-style freeze file
-    related to the named project file (i.e., ``$PROJECTFILE.freeze``)
+    related to the named :term:`project file` (i.e., ``$PROJECTFILE.freeze``)
     instead of the package description file. If multiple ``--project-file``
     flags are provided, only the final one is considered. This flag
     must only be passed in when ``--new-freeze-file`` is present.
@@ -898,12 +898,12 @@ Some example targets:
 
 Beyond a list of targets, ``cabal build`` accepts all the flags that
 ``cabal configure`` takes. Most of these flags are only taken into
-consideration when building local packages; however, some flags may
+consideration when building :term:`local packages <local package>`; however, some flags may
 cause extra store packages to be built (for example,
 ``--enable-profiling`` will automatically make sure profiling libraries
 for all transitive dependencies are built and installed.)
 
-When building a script, the executable is cached under the cabal directory.
+When building a script, the executable is cached under the :term:`cabal directory`.
 See ``cabal run`` for more information on scripts.
 
 In addition ``cabal build`` accepts these flags:
@@ -964,7 +964,7 @@ example, this command will build the latest Cabal library and install it:
 
     $ cabal install --lib Cabal
 
-This works by managing GHC package environment files. By default, it is writing
+This works by managing :term:`GHC` :term:`package environment` files. By default, it is writing
 to the global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
 ``install`` provides the ``--package-env`` flag to control which of these
 environments is modified.
@@ -1007,7 +1007,7 @@ GHC manual <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/pack
 cabal haddock
 ^^^^^^^^^^^^^
 
-``cabal haddock [FLAGS] [TARGET]`` builds Haddock documentation for
+``cabal haddock [FLAGS] [TARGET]`` builds :term:`Haddock` documentation for
 the specified packages within the project.
 
 If a target is not a library :cfg-field:`haddock-benchmarks`,
@@ -1101,7 +1101,7 @@ We can also scope to test suite targets as they produce binaries.
     /.../dist-newstyle/.../unit-tests/unit-tests
 
 It can also be used to display the location of the cached executable for a
-cabal script.
+:term:`cabal script`.
 
 ::
 
@@ -1118,7 +1118,7 @@ cabal repl
 
 ``cabal repl TARGET [FLAGS]``
 opens an interactive session for the target component within the project and
-loads all of the modules of the target into GHCi as interpreted bytecode.
+loads all of the modules of the target into :term:`GHCi` as interpreted bytecode.
 The available targets are the same as for the ``build`` command: individual components
 within packages in the project, including libraries, executables, test-suites
 and benchmarks (see `the build section <#cabal-build>`__ for the target syntax).
@@ -1146,7 +1146,7 @@ configuration from the 'cabal.project', 'cabal.project.local' and other files.
     ``--ghc-option`` or ``--ghc-options``. As a result, ``--ghc-options`` will
     not (reliably) work to pass flags to ``ghci`` (or other REPLs).
     ``--repl-options`` bypasses this and allows you to specify options to the
-    invoked REPL without influencing the build configuration for other packages.
+    invoked :term:`REPL` without influencing the build configuration for other packages.
 
     Note: ``--repl-options`` does not accept double quotes (``""``) to pass options
     containing spaces to the REPL.
@@ -1215,7 +1215,7 @@ See ``cabal run`` for more information on scripts.
 .. option:: --enable-multi-repl
 
     Allow starting GHCi with multiple targets.
-    This requires GHC with multiple home unit support (GHC-9.4+)
+    This requires GHC with multiple :term:`home unit` support (GHC-9.4+)
 
     The closure of required components will be loaded.
 
@@ -1648,7 +1648,7 @@ the custom publishing of Haddock documentation to Hackage.
 cabal upload
 ^^^^^^^^^^^^
 
-``cabal upload [FLAGS] TARFILES`` uploads source packages or documentation
+``cabal upload [FLAGS] TARFILES`` uploads :term:`source packages <source package>` or documentation
 to Hackage.
 
 .. option:: --publish
