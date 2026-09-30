@@ -235,7 +235,7 @@ Caching
 
 Cabal supports a robust caching system which helps to reduce
 the time it takes to execute a rebuild cycle. While the details of how
-:term:`cabal-install:exe:cabal` does caching are an implementation detail and may
+:term:`cabal` does caching are an implementation detail and may
 change in the future, knowing what gets cached is helpful for
 understanding the performance characteristics of invocations to
 ``build``. The cached intermediate results are stored in

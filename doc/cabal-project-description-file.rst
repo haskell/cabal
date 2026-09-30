@@ -42,7 +42,7 @@ directories when there is none in the current directory.
 Conditionals and imports
 ------------------------
 
-As of :term:`cabal-install:exe:cabal` version 3.8, cabal supports conditional logic and
+As of version 3.8, :term:`cabal` supports conditional logic and
 imports in ``cabal.project`` files.
 
     .. warning::
@@ -113,7 +113,7 @@ You *must* provide a non-empty list of :term:`local packages <local package>` in
 out either a ``packages`` field or an ``optional-packages`` field or both to
 satisfy this requirement.
 
-When ``cabal.project`` doesn't exist, :term:`cabal-install:exe:cabal` fabricates an ephemeral
+When ``cabal.project`` doesn't exist, :term:`cabal` fabricates an ephemeral
 project for its own use with this simple content, a glob that will find any (but
 expects to find one) package in the current directory:
 
@@ -245,7 +245,7 @@ consider during package retrieval. This allows use of a package from a
 remote version control system, rather than looking for that package in
 Hackage.
 
-Since version 3.4, cabal-install creates tarballs for each package coming from a
+Since version 3.4, :term:`cabal` creates tarballs for each package coming from a
 ``source-repository-package`` stanza (effectively applying cabal sdists to such
 packages). It gathers the names of the packages from the appropriate ``.cabal``
 file in the version control repository, and allows their use just like Hackage
@@ -381,7 +381,7 @@ Job and concurrency options
     This option instructs cabal to control parallelism by creating a new system semaphore,
     whose number of tokens is specified by ``--jobs`` (or ``-j``).
     This semaphore is passed to :term:`GHC`, which allows it to use any leftover parallelism
-    that :term:`cabal-install:exe:cabal` is not using.
+    that :term:`cabal` is not using.
 
     Requires ``ghc >= 9.8``.
 

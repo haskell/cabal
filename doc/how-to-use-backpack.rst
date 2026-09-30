@@ -11,7 +11,7 @@ representation, and then instantiate it several times with different
 data representations.  Like C++ templates, instantiated packages are
 recompiled for each instantiation, which means you do not pay any
 runtime cost for parametrizing packages in this way.  Backpack modules
-are somewhat experimental; while fully supported by cabal-install, they are currently
+are somewhat experimental; while fully supported by :term:`cabal`, they are currently
 `not supported by Stack <https://github.com/commercialhaskell/stack/issues/2540>`__.
 
 A Backpack package is defined by use of the

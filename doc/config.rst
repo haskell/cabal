@@ -6,7 +6,7 @@ Configuration
 Overview
 --------
 
-The :term:`global configuration file <configuration file>` for :term:`cabal-install:exe:cabal` is by default
+The :term:`global configuration file <configuration file>` for :term:`cabal` is by default
 ``$XDG_CONFIG_HOME/cabal/config``. If you do not have this file, :term:`cabal` will create
 it for you on the first call to ``cabal update``
 (details see `configuration file discovery`_).
@@ -45,14 +45,14 @@ files created by older versions of :term:`cabal`.
 Environment variables
 ---------------------
 
-Various environment variables affect :term:`cabal-install:exe:cabal`.
+Various environment variables affect :term:`cabal`.
 
 ``CABAL_CONFIG``
    The variable to find global configuration file.
 
 ``CABAL_DIR``
 
-   If set, *all* :term:`cabal-install:exe:cabal` content files will be stored as
+   If set, *all* :term:`cabal` content files will be stored as
    subdirectories of this directory, including the configuration file
    if ``CABAL_CONFIG`` is unset.  If ``CABAL_DIR`` is unset, :term:`cabal`
    will store data files according to the :term:`XDG Base Directory
@@ -63,7 +63,7 @@ Various environment variables affect :term:`cabal-install:exe:cabal`.
        For backwards compatibility, if the directory ``~/.cabal`` on
        Unix or ``%APPDATA%\cabal`` on Windows exists, and
        ``$XDG_CONFIG_HOME/cabal/config`` does not exist, and
-       ``CABAL_DIR`` is unset, :term:`cabal-install:exe:cabal` will behave as if
+       ``CABAL_DIR`` is unset, :term:`cabal` will behave as if
        ``CABAL_DIR`` was set to point at this directory.
 
 ``CABAL_BUILDDIR``
@@ -89,7 +89,7 @@ The configuration file location is determined as follows:
 
 If the configuration file does not exist, and it was not given
 explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
-:term:`cabal-install:exe:cabal` will generate the default one, with directories
+:term:`cabal` will generate the default one, with directories
 based on ``$CABAL_DIR`` (if set) or according to the XDG Base
 Directory Specification, as listed below.
 
@@ -227,7 +227,7 @@ then the cache will be stored inside the :cfg-field:`remote-repo-cache` director
 The part of the path will be used to determine the cache key part.
 
 .. note::
-    :term:`cabal-install:exe:cabal` creates a ``.cache`` file, and will aggressively use
+    :term:`cabal` creates a ``.cache`` file, and will aggressively use
     its contents if it exists. Therefore if you change the contents of
     the directory, remember to wipe the cache too.
 
