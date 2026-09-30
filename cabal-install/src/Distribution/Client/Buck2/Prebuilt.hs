@@ -34,7 +34,6 @@ import qualified Data.ByteString as BS
 import Data.Char (isHexDigit)
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 
 import System.Directory
   ( createDirectoryIfMissing
@@ -61,16 +60,14 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.Client.DistDirLayout
   ( CabalDirLayout (cabalStoreDirLayout)
-  , DistDirLayout (distBuildDirectory, distDirectory)
   , StoreDirLayout (storeDirectory, storePackageDBPath)
   )
 import Distribution.Client.ProjectPlanning
-  ( BuildStyle (BuildAndInstall)
-  , ElaboratedConfiguredPackage (elabBuildStyle, elabInstallDirs, elabLocalToProject)
+  ( ElaboratedConfiguredPackage (elabInstallDirs)
   , ElaboratedInstallPlan
   , ElaboratedSharedConfig (pkgConfigCompiler, pkgConfigCompilerProgs, pkgConfigPlatform)
   )
-import Distribution.Client.ProjectPlanning.Types (elabComponentName, elabDistDirParams)
+import Distribution.Client.ProjectPlanning.Types (elabComponentName)
 import Distribution.Types.ComponentName (ComponentName (CExeName))
 
 import Distribution.InstalledPackageInfo (parseInstalledPackageInfo)
@@ -79,7 +76,7 @@ import Distribution.Simple.BuildPaths (exeExtension)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Types.UnqualComponentName (UnqualComponentName, unUnqualComponentName)
 import Distribution.Simple.Compiler
-  ( Compiler (compilerId, compilerProperties)
+  ( Compiler (compilerProperties)
   , compilerVersion
   )
 import Distribution.Simple.GHC (getGlobalPackageDB)
@@ -125,8 +122,7 @@ import Distribution.Client.Buck2.Starlark
 --     target directly - this function only ever sees, and only needs to
 --     handle, already-installed *external* dependencies).
 --   * The real, already-parsed 'InstalledPackageInfo' for every resolved
---     dependency (local\/quasi-local packages included, per
---     'localUnitIds's own haddock) - callers that need a real
+--     dependency - callers that need a real
 --     'Distribution.Simple.PackageIndex.InstalledPackageIndex' (e.g. to
 --     build a genuine 'LocalBuildInfo' via "Distribution.Client.InLibrary",
 --     the way "Distribution.Client.CmdBuck2" does) can build one directly
@@ -137,23 +133,22 @@ generatePrebuilt
   -> FilePath
   -- ^ project root (the buck2 cell root)
   -> CabalDirLayout
-  -> DistDirLayout
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -- ^ 'elaboratedPlanToExecute': already pruned to exactly the (test\/
-  -- benchmark-flag-aware) dependency closure that was just built. Local
-  -- packages are *usually* not in this plan - except when
-  -- 'CmdBuck2.pruneToDependenciesNeeded' had to keep one in because
-  -- something else (e.g. another local package's Custom Setup.hs) needed
-  -- it - which is filtered back out below, since a kept-in local package
-  -- already gets a real 'haskell_library()' from
-  -- "Distribution.Client.Buck2.Generate", not a prebuilt one here.
+  -- benchmark-flag-aware) dependency closure that was just built. Never
+  -- contains a package buck2 builds from source itself (a local package,
+  -- or a non-local one built @inplace@ because it depends on one - see
+  -- 'CmdBuck2.isBuiltByBuck2'): those get a real @haskell_library()@ from
+  -- "Distribution.Client.Buck2.Generate" instead, and are excluded from
+  -- this plan before it's even built. So every unit id here is either a
+  -- GHC global\/boot package or one installed to the cabal store.
   -> [(PackageName, UnqualComponentName)]
   -- ^ Every @pkg:exe@ named in any local component's own
   -- @build-tool-depends:@, across the whole project - see this
   -- function's own return-value haddock above.
   -> IO (Set String, [InstalledPackageInfo])
-generatePrebuilt verbosity projectRoot cabalDirLayout distDirLayout shared depsPlan wantedBuildTools = do
+generatePrebuilt verbosity projectRoot cabalDirLayout shared depsPlan wantedBuildTools = do
   ghcProg <-
     maybe (dieWithException verbosity Buck2NoGhcProgram) return $
       lookupProgram ghcProgram (pkgConfigCompilerProgs shared)
@@ -167,12 +162,6 @@ generatePrebuilt verbosity projectRoot cabalDirLayout distDirLayout shared depsP
       storeLayout = cabalStoreDirLayout cabalDirLayout
       storeDB = storePackageDBPath storeLayout compiler
       storeRootAbs = storeDirectory storeLayout compiler
-      -- Mirrors DistDirLayout's own (unexported) distPackageDBPath: the
-      -- package db every *inplace*-built package - every local package,
-      -- plus any non-local one that itself ends up depending on a local
-      -- package (see 'pruneToDependenciesNeeded's own haddock) - gets
-      -- registered into.
-      inplaceDB = distDirectory distDirLayout </> "packagedb" </> prettyShow (compilerId compiler)
       targetDir = projectRoot </> "third-party" </> "haskell"
       targetStoreDB = targetDir </> "store-db"
       ghcBinAbs = takeDirectory (programPath ghcProg)
@@ -180,99 +169,21 @@ generatePrebuilt verbosity projectRoot cabalDirLayout distDirLayout shared depsP
   globalDB <- getGlobalPackageDB verbosity ghcProg
   let globalRootAbs = takeDirectory globalDB
 
-      -- Every non-local package's elaborated node, keyed by unit id -
-      -- needed both to tell local packages apart from non-local ones
-      -- (below) and, for a non-local-but-inplace package, to derive its
-      -- real build directory (see 'inplaceExtraRoots').
-      elabByUnit =
-        Map.fromList
-          [ (installedUnitId elab, elab)
-          | pkg <- InstallPlan.toList depsPlan
-          , Just elab <- [configuredOrInstalled pkg]
-          ]
       allUnitIds = ordNub [installedUnitId pkg | pkg <- InstallPlan.toList depsPlan]
-      -- A *local* unit id can genuinely turn up in 'depsPlan' (see this
-      -- function's own haddock on 'pruneToDependenciesNeeded' kicking
-      -- in) - its own real @haskell_library()@ already comes from
-      -- "Distribution.Client.Buck2.Generate", so it must never also get
-      -- a @haskell_prebuilt_library()@ rule here. But its @.conf@ still
-      -- needs to be *registered* (just not exposed as a rule): a non-
-      -- local package that itself depends on it (e.g. hackage-security,
-      -- via its own @cabal-syntax@ flag, on the local in-tree Cabal-
-      -- syntax) has a real compiled interface whose own @depends:@
-      -- names that local package's unit id directly, and ghc-pkg's
-      -- dependency-closure check for *that* package fails outright
-      -- ("cannot satisfy ...: unusable due to missing dependencies") if
-      -- nothing registers it anywhere - independent of whether anything
-      -- ever actually exposes or links against this registration
-      -- directly (nothing does: every real consumer depends on the
-      -- local package via its own buck2 target instead).
-      --
-      -- Also excludes any non-local package whose own build is forced
-      -- inplace by depending on a local one (e.g. hackage-security
-      -- itself) - "Distribution.Client.CmdBuck2" gives these a real
-      -- buck2 rule from their own source too (the same reasoning as for
-      -- a genuinely local package: an inplace package is compiled
-      -- directly against whatever its dependencies actually were at
-      -- that build, so reusing its already-compiled interface here -
-      -- built against the *original*, non-buck2 copy of whatever local
-      -- package it depends on - would leave GHC with two nominally
-      -- distinct, incompatible copies of that local package's types in
-      -- the one build). Must match 'CmdBuck2.buck2Action's own widened
-      -- "is this local-ish" predicate exactly, or a package would get
-      -- both a prebuilt rule here *and* a real one from Generate.hs -
-      -- buck2 rejects the resulting duplicate target outright.
-      localUnitIds =
-        Set.fromList
-          [ installedUnitId pkg
-          | pkg <- InstallPlan.toList depsPlan
-          , Just elab <- [configuredOrInstalled pkg]
-          , elabLocalToProject elab || elabBuildStyle elab /= BuildAndInstall
-          ]
-      -- A package built inplace (see 'inplaceDB' above) - local or not -
-      -- has no stable install location the way a store package does -
-      -- its library-dirs, read from its own minimal in-tree .conf, come
-      -- back empty. Its real build output lives under a per-package
-      -- directory 'distBuildDirectory' can compute exactly (from the
-      -- same elaborated node), so that's symlinked in individually
-      -- instead of trying to find one shared anchor for every such
-      -- package, and used directly (see 'readPackage') in place of the
-      -- .conf's own (empty) library-dirs. Not that it matters for a
-      -- *local* unit id's own libraries specifically - nothing here ever
-      -- links against them, only against its real buck2 target - but
-      -- computing this uniformly over every inplace id (rather than
-      -- special-casing local ones out) costs nothing and stays correct
-      -- if that ever changes.
-      inplaceBuildDirs =
-        Map.fromList
-          [ (uid, distBuildDirectory distDirLayout (elabDistDirParams shared elab) </> "build")
-          | uid <- allUnitIds
-          , classifyUnitId uid == InplaceDb
-          , Just elab <- [Map.lookup uid elabByUnit]
-          ]
-      inplaceExtraRoots = [(dir, "inplace" </> unUnitId uid) | (uid, dir) <- Map.toList inplaceBuildDirs]
       paths =
         RepoPaths
           { rpGhcVersion = ghcVersionStr
           , rpGlobalRootAbs = globalRootAbs
           , rpStoreRootAbs = storeRootAbs
-          , rpExtraRoots = inplaceExtraRoots
           }
 
   createDirectoryIfMissing True targetDir
   ensureSymlink (targetDir </> ("ghc-" ++ ghcVersionStr)) globalRootAbs
   ensureSymlink (targetDir </> "ghc-bin") ghcBinAbs
-  for_ inplaceExtraRoots $ \(absDir, relName) -> do
-    createDirectoryIfMissing True (takeDirectory (targetDir </> relName))
-    ensureSymlink (targetDir </> relName) absDir
 
   notice verbosity "cabal buck2: resolving prebuilt dependency closure"
-  allResolved <- catMaybes <$> traverse (readPackage verbosity paths storeDB inplaceDB inplaceBuildDirs) allUnitIds
-  -- Registered (for ghc-pkg's own dependency-closure check - see
-  -- 'localUnitIds's haddock) but never turned into a rule: a local
-  -- package already gets a real one from "Distribution.Client.Buck2.Generate".
-  let packages = filter (\p -> rpUnitId p `Set.notMember` localUnitIds) allResolved
-      alexPath = findToolBinary paths shared depsPlan "alex"
+  packages <- catMaybes <$> traverse (readPackage verbosity paths storeDB) allUnitIds
+  let alexPath = findToolBinary paths shared depsPlan "alex"
       happyPath = findToolBinary paths shared depsPlan "happy"
       -- Every @build-tool-depends: pkg:exe@ pair the *external*
       -- (already-installed) dependency closure can resolve a real
@@ -301,44 +212,37 @@ generatePrebuilt verbosity projectRoot cabalDirLayout distDirLayout shared depsP
     $ ensureSymlink (targetDir </> "cabal-store") storeRootAbs
 
   notice verbosity "cabal buck2: building filtered store package db"
-  setupStoreDB verbosity ghcPkgProg targetStoreDB allResolved
+  setupStoreDB verbosity ghcPkgProg targetStoreDB packages
 
   notice verbosity "cabal buck2: generating third-party/haskell/BUCK"
   writeBuckFile targetDir paths packages buildToolPaths
 
   writeToolsFile targetDir ghcVersionStr ghcDynamic alexPath happyPath
 
-  return (Map.keysSet buildToolPaths, map rpInfo allResolved)
+  return (Map.keysSet buildToolPaths, map rpInfo packages)
 
 -- | The repo-relative anchors every generated path is expressed against:
 -- the symlinks 'generatePrebuilt' just created, plus the GHC version
 -- string (needed for both the global db's own relative path and
--- shared-library sonames). 'rpExtraRoots' holds one more anchor per
--- non-local-but-inplace package (see 'generatePrebuilt's own haddock on
--- 'inplaceExtraRoots') - empty for the overwhelming majority of projects,
--- which have none of those.
+-- shared-library sonames).
 data RepoPaths = RepoPaths
   { rpGhcVersion :: String
   , rpGlobalRootAbs :: FilePath
   , rpStoreRootAbs :: FilePath
-  , rpExtraRoots :: [(FilePath, FilePath)]
   }
 
--- | Which of the (now three) package dbs a unit id's @.conf@ lives in -
--- decided entirely by the unit id's own shape, no searching required
--- (unlike the Python predecessor, which had to glob for the store root,
--- not knowing its ABI-tag suffix in advance): GHC's global\/boot packages
--- have a plain @name-version@ id; a package installed to the store gets a
--- hash-suffixed one; a package built @inplace@ - every local package,
--- plus any non-local one that itself ends up depending on a local
--- package (see 'pruneToDependenciesNeeded's own haddock in CmdBuck2) -
--- gets an @-inplace@-suffixed one.
-data PkgDbKind = GlobalDb | StoreDb | InplaceDb
+-- | Which of the two package dbs a unit id's @.conf@ lives in - decided
+-- entirely by the unit id's own shape, no searching required (unlike the
+-- Python predecessor, which had to glob for the store root, not knowing
+-- its ABI-tag suffix in advance): GHC's global\/boot packages have a plain
+-- @name-version@ id; a package installed to the store gets a
+-- hash-suffixed one. (An @-inplace@ id - a package buck2 builds itself -
+-- never gets here: see 'generatePrebuilt's plan parameter.)
+data PkgDbKind = GlobalDb | StoreDb
   deriving (Eq)
 
 classifyUnitId :: UnitId -> PkgDbKind
 classifyUnitId uid
-  | "-inplace" `isSuffixOf` s = InplaceDb
   | hasStoreHashSuffix s = StoreDb
   | otherwise = GlobalDb
   where
@@ -361,16 +265,15 @@ data ResolvedPackage = ResolvedPackage
   , rpSharedLibs :: [(String, FilePath)]
   }
 
-confPath :: FilePath -> FilePath -> FilePath -> UnitId -> FilePath
-confPath globalRootAbs storeDB inplaceDB uid = case classifyUnitId uid of
+confPath :: FilePath -> FilePath -> UnitId -> FilePath
+confPath globalRootAbs storeDB uid = case classifyUnitId uid of
   GlobalDb -> globalRootAbs </> "package.conf.d" </> unUnitId uid <.> "conf"
   StoreDb -> storeDB </> unUnitId uid <.> "conf"
-  InplaceDb -> inplaceDB </> unUnitId uid <.> "conf"
 
-readPackage :: Verbosity -> RepoPaths -> FilePath -> FilePath -> Map UnitId FilePath -> UnitId -> IO (Maybe ResolvedPackage)
-readPackage verbosity paths storeDB inplaceDB inplaceBuildDirs uid = do
+readPackage :: Verbosity -> RepoPaths -> FilePath -> UnitId -> IO (Maybe ResolvedPackage)
+readPackage verbosity paths storeDB uid = do
   let dbKind = classifyUnitId uid
-      path = confPath (rpGlobalRootAbs paths) storeDB inplaceDB uid
+      path = confPath (rpGlobalRootAbs paths) storeDB uid
   exists <- doesFileExist path
   if not exists
     then do
@@ -387,17 +290,7 @@ readPackage verbosity paths storeDB inplaceDB inplaceBuildDirs uid = do
           -- level above the .conf file's own db directory, e.g.
           -- ".../lib" for a ".../lib/package.conf.d/<uid>.conf" file) -
           -- not the db directory itself.
-          let munged = mungePkgroot (takeDirectory (takeDirectory path)) ipi0
-              -- An inplace package's own .conf (unlike a store/global
-              -- one) never has real library-dirs at all - Cabal derives
-              -- its actual build output location separately, computed
-              -- from the elaborated plan into 'inplaceBuildDirs' up in
-              -- 'generatePrebuilt' (the same directory just symlinked in
-              -- as this unit's own 'rpExtraRoots' entry), not from
-              -- anything baked into the .conf file itself.
-              ipi = case Map.lookup uid inplaceBuildDirs of
-                Just dir -> munged{libraryDirs = [dir], libraryDynDirs = [dir]}
-                Nothing -> munged
+          let ipi = mungePkgroot (takeDirectory (takeDirectory path)) ipi0
               isRts = prettyShow (packageName ipi) == "rts"
           staticLibs <- findLibs paths (libraryDirs ipi) ["lib" ++ stem <.> "a" | stem <- hsLibraries ipi]
           -- GHC doesn't build profiled RTS libraries the normal way - see
@@ -487,10 +380,9 @@ ensureSymlink link target = do
   createFileLink target link
 
 -- | The filtered, recached db every non-global package's generated rule
--- points its @db =@ at - holding both store packages' @.conf@s and (see
--- 'generatePrebuilt's own haddock) any non-local-but-inplace package's,
--- since @ghc-pkg@'s recache doesn't care which original db a symlinked
--- @.conf@ came from, only that it's present here.
+-- points its @db =@ at - holding the store packages' @.conf@s (symlinked
+-- in from the real store, since @ghc-pkg@'s recache doesn't care which
+-- original db a symlinked @.conf@ came from, only that it's present here).
 setupStoreDB :: Verbosity -> ConfiguredProgram -> FilePath -> [ResolvedPackage] -> IO ()
 setupStoreDB verbosity ghcPkgProg targetStoreDB packages = do
   exists <- doesPathExist targetStoreDB
@@ -575,19 +467,16 @@ prebuiltCall paths uidToTarget p =
     extraLinkerFlags = ["-l" ++ lib | lib <- extraLibraries info]
     depTargets = ordNub [":" ++ t | d <- depends info, Just t <- [Map.lookup d uidToTarget]]
 
--- | Convert an absolute path under GHC's libdir, the cabal store, or one
--- of the per-package inplace-build anchors, into one relative to
--- @third-party\/haskell@, via whichever symlink 'generatePrebuilt' pointed
--- there actually contains it - the same translation
--- gen-haskell-prebuilt.py's own @abs_to_rel@ did (extended here with the
--- inplace anchors it never needed).
+-- | Convert an absolute path under GHC's libdir or the cabal store into
+-- one relative to @third-party\/haskell@, via whichever symlink
+-- 'generatePrebuilt' pointed there actually contains it - the same
+-- translation gen-haskell-prebuilt.py's own @abs_to_rel@ did.
 toRepoRelative :: RepoPaths -> FilePath -> Maybe FilePath
 toRepoRelative paths path
   | not (isAbsolute path) = Nothing
   | otherwise =
       relTo (rpGlobalRootAbs paths) ("ghc-" ++ rpGhcVersion paths) path
         <|> relTo (rpStoreRootAbs paths) "cabal-store" path
-        <|> foldr (\(root, prefix) acc -> relTo root prefix path <|> acc) Nothing (rpExtraRoots paths)
 
 relTo :: FilePath -> FilePath -> FilePath -> Maybe FilePath
 relTo root repoRelPrefix path =

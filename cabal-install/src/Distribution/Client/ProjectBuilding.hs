@@ -26,6 +26,9 @@ module Distribution.Client.ProjectBuilding
     -- | Now we actually execute the plan.
   , rebuildTargets
 
+    -- ** Source unpacking without building
+  , unpackInplaceSources
+
     -- ** Build outcomes
 
     -- | This is the outcome for each package of executing the plan.
@@ -784,31 +787,90 @@ withTarballLocalDirectory
       -- appropriate location under the shared dist dir, and then build it
       -- inplace there
       BuildInplaceOnly{} -> do
-        let srcrootdir = distUnpackedSrcRootDirectory
-            srcdir = distUnpackedSrcDirectory pkgid
+        let srcdir = distUnpackedSrcDirectory pkgid
             builddir =
               makeSymbolicPath $
                 makeRelative (normalise srcdir) $
                   distBuildDirectory dparams
         -- TODO: [nice to have] ^^ do this relative stuff better
-        exists <- doesDirectoryExist srcdir
-        -- TODO: [nice to have] use a proper file monitor rather
-        -- than this dir exists test
-        unless exists $ do
-          createDirectoryIfMissingVerbose verbosity True srcrootdir
-          unpackPackageTarball
-            verbosity
-            tarball
-            srcrootdir
-            pkgid
-            pkgTextOverride
-          moveTarballShippedDistDirectory
+        unpackInplaceTarball verbosity distDirLayout tarball pkgid dparams pkgTextOverride
+        buildPkg (makeSymbolicPath srcdir) builddir
+
+-- | Make sure the tarball has been unpacked to the appropriate location
+-- under the shared dist dir, where a 'BuildInplaceOnly' package is built
+-- (and where its source can be found afterwards).
+unpackInplaceTarball
+  :: Verbosity
+  -> DistDirLayout
+  -> FilePath
+  -> PackageId
+  -> DistDirParams
+  -> Maybe CabalFileText
+  -> IO ()
+unpackInplaceTarball
+  verbosity
+  distDirLayout@DistDirLayout{..}
+  tarball
+  pkgid
+  dparams
+  pkgTextOverride = do
+    let srcrootdir = distUnpackedSrcRootDirectory
+        srcdir = distUnpackedSrcDirectory pkgid
+    exists <- doesDirectoryExist srcdir
+    -- TODO: [nice to have] use a proper file monitor rather
+    -- than this dir exists test
+    unless exists $ do
+      createDirectoryIfMissingVerbose verbosity True srcrootdir
+      unpackPackageTarball
+        verbosity
+        tarball
+        srcrootdir
+        pkgid
+        pkgTextOverride
+      moveTarballShippedDistDirectory
+        verbosity
+        distDirLayout
+        srcrootdir
+        pkgid
+        dparams
+
+-- | Fetch (if not already downloaded) and unpack the source of each given
+-- package to where an inplace build of it would find it, /without/
+-- building anything - for a client that generates its own build rules
+-- from these packages' source rather than having cabal build them (see
+-- "Distribution.Client.CmdBuck2"). Packages whose source isn't a tarball
+-- (a user-managed local directory, a source-repository checkout) need no
+-- unpacking and are left alone.
+unpackInplaceSources
+  :: Verbosity
+  -> DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ((RepoContext -> IO ()) -> IO ())
+  -> [ElaboratedConfiguredPackage]
+  -> IO ()
+unpackInplaceSources verbosity distDirLayout sharedConfig withRepoCtx pkgs =
+  unless (null pkgs) $
+    withRepoCtx $ \repoctx ->
+      for_ pkgs $ \pkg -> do
+        mtarball <- case elabPkgSourceLocation pkg of
+          LocalTarballPackage tarball -> return (Just tarball)
+          loc@RemoteTarballPackage{} -> fetched repoctx loc
+          loc@RepoTarballPackage{} -> fetched repoctx loc
+          _ -> return Nothing
+        for_ mtarball $ \tarball ->
+          unpackInplaceTarball
             verbosity
             distDirLayout
-            srcrootdir
-            pkgid
-            dparams
-        buildPkg (makeSymbolicPath srcdir) builddir
+            tarball
+            (packageId pkg)
+            (elabDistDirParams sharedConfig pkg)
+            (elabPkgDescriptionOverride pkg)
+  where
+    fetched repoctx loc = do
+      loc' <- fetchPackage verbosity repoctx loc
+      return $ case downloadedSourceLocation loc' of
+        Just (DownloadedTarball tarball) -> Just tarball
+        Nothing -> Nothing
 
 unpackPackageTarball
   :: Verbosity

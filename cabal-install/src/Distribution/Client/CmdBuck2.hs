@@ -59,6 +59,8 @@ import Distribution.Client.NixStyleOptions
   , defaultNixStyleFlags
   , nixStyleOptions
   )
+import Distribution.Client.ProjectBuilding (unpackInplaceSources)
+import Distribution.Client.ProjectConfig (projectConfigWithBuilderRepoContext)
 import Distribution.Client.ProjectOrchestration
 -- 'pruneInstallPlanToTargets' is hidden: 'ProjectOrchestration' re-exports
 -- its own wrapper of the same name (taking a 'TargetsMap' directly,
@@ -87,7 +89,7 @@ import Distribution.Client.Types.ReadyPackage (GenericReadyPackage (ReadyPackage
 import Distribution.Client.Utils (numberOfProcessors)
 
 import qualified Distribution.PackageDescription as PD
-import Distribution.Package (HasUnitId (installedUnitId), PackageName, packageId, packageName)
+import Distribution.Package (PackageName, packageId, packageName)
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.Simple.Compiler (PackageDBX (GlobalPackageDB))
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -177,9 +179,27 @@ buck2Action flags extraArgs globalFlags = do
                 Nothing
                 targetSelectors
           let elaboratedPlan' = pruneInstallPlanToTargets TargetActionBuild targets elaboratedPlan
+              -- Nothing local gets built by cabal here - buck2 builds all
+              -- of it from source. That's not just the selected targets
+              -- themselves (which 'cabal build --only-dependencies' would
+              -- exclude anyway) but every unit for which
+              -- 'isBuiltByBuck2' holds: e.g. hackage-security, a non-local
+              -- package the solver plans 'inplace' because it depends on
+              -- the local Cabal-syntax, which would otherwise be built
+              -- here as a "dependency" (and drag Cabal-syntax in with it).
+              -- Excluding all of them together can't leave a dangling
+              -- edge: nothing external can depend on a local package
+              -- (that's precisely what would make it inplace itself).
+              excluded =
+                Map.keysSet targets
+                  <> Set.fromList
+                    [ elabUnitId elab
+                    | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlan'
+                    , isBuiltByBuck2 elab
+                    ]
           elaboratedPlan'' <-
             either (dieWithException verbosity . ReportCannotPruneDependencies . renderCannotPruneDependencies) return $
-              pruneToDependenciesNeeded (Map.keysSet targets) elaboratedPlan'
+              pruneInstallPlanToDependencies excluded elaboratedPlan'
           return (elaboratedPlan'', targets)
 
       notice verbosity "cabal buck2: building dependencies (cabal build all --only-dependencies)"
@@ -187,28 +207,36 @@ buck2Action flags extraArgs globalFlags = do
       buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
       runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
+      -- Nothing above built any package buck2 builds itself (see
+      -- 'isBuiltByBuck2'), but the ones that come from a tarball (e.g.
+      -- hackage-security, above) still need their source on disk, which
+      -- cabal only fetches and unpacks as a side effect of building them:
+      -- do just that part.
+      unpackInplaceSources
+        verbosity
+        (distDirLayout baseCtx)
+        elaboratedShared
+        (projectConfigWithBuilderRepoContext verbosity (buildSettings baseCtx))
+        [ elab
+        | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlanOriginal
+        , isBuiltByBuck2 elab
+        , not (elabLocalToProject elab)
+        ]
+
       ensureBuckconfigAndPackage verbosity projectRoot
 
-      -- Every genuinely local package, *plus* every non-local one
-      -- whose own build was forced 'inplace' by depending on
-      -- one. When a non-local package is forced inplace we must
-      -- include it in the set of buck2-built packages, otherwise the
-      -- build will contain multiple incompatible versions of the
-      -- local dependency. A real-world example of this is
-      -- hackage-security in the cabal project, which is not a local
-      -- package but depends on the local Cabal-syntax.
+      -- Every package buck2 builds from source - see 'isBuiltByBuck2'.
       --
-      -- Computed before 'generatePrebuilt' (unlike this session's
-      -- earlier ordering) so 'wantedBuildTools' below - derived from it -
-      -- can be passed in as a real parameter, rather than resolved as a
-      -- separate, later, externally-orchestrated step.
+      -- Computed before 'generatePrebuilt' so 'wantedBuildTools' below -
+      -- derived from it - can be passed in as a real parameter, rather
+      -- than resolved as a separate, later, externally-orchestrated step.
       localPkgs <-
         sequenceA
           [ do
               dir <- packageSourceDir verbosity (distDirLayout baseCtx) elab
               return (dir, elabPkgDescription elab)
           | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlanOriginal
-          , elabLocalToProject elab || elabBuildStyle elab /= BuildAndInstall
+          , isBuiltByBuck2 elab
           ]
 
       -- Every @pkg:exe@ named in any local component's own
@@ -228,7 +256,6 @@ buck2Action flags extraArgs globalFlags = do
           verbosity
           projectRoot
           (cabalDirLayout baseCtx)
-          (distDirLayout baseCtx)
           elaboratedShared
           elaboratedPlanToExecute
           wantedBuildTools
@@ -597,33 +624,19 @@ configureComponentsConcurrently verbosity distDirLayout plan shared installedInd
   Async.replicateConcurrently_ numberOfProcessors workerLoop
   readTVarIO componentLBIsVar
 
--- | Like 'pruneInstallPlanToDependencies', but when excluding every
--- selected target would leave a dangling edge, keep exactly the targets
--- the failure says are still needed instead of giving up outright - and
--- retry, since keeping one target in can itself reveal another one is
--- needed too (transitively).
+-- | Does buck2 (rather than cabal) build this package from source? True
+-- for every genuinely local package, *plus* every non-local one whose own
+-- build was forced 'inplace' by depending on one - when a non-local
+-- package is forced inplace it must be built by buck2 from source too,
+-- otherwise the build would contain multiple incompatible versions of the
+-- local dependency. A real-world example is hackage-security in the cabal
+-- project, which is not a local package but depends on the local
+-- Cabal-syntax.
 --
--- This is a real project shape, not a hypothetical: a @build-type:
--- Custom@ local package's Setup.hs can have @setup-depends@ on another
--- *local* package (e.g. cabal-testsuite's Setup needs Cabal-syntax to be
--- built) - the Setup component that creates is a real node in the plan,
--- but isn't itself one of the ordinary library\/exe\/test\/bench targets
--- 'resolveTargetsFromSolver' selects, so plain
--- 'pruneInstallPlanToDependencies' (asked to exclude literally every
--- selected target) sees its now-dangling edge to Cabal-syntax and
--- refuses outright, even though building Cabal-syntax here is exactly
--- what's needed - it's a real dependency of the build, just not of any
--- selected target directly.
-pruneToDependenciesNeeded
-  :: Set UnitId
-  -> ElaboratedInstallPlan
-  -> Either CannotPruneDependencies ElaboratedInstallPlan
-pruneToDependenciesNeeded excluded plan =
-  case pruneInstallPlanToDependencies excluded plan of
-    Right pruned -> Right pruned
-    Left err@(CannotPruneDependencies broken)
-      | Set.null keepIds || excluded' == excluded -> Left err
-      | otherwise -> pruneToDependenciesNeeded excluded' plan
-      where
-        keepIds = Set.fromList [installedUnitId dep | (_, missing) <- broken, dep <- missing]
-        excluded' = excluded `Set.difference` keepIds
+-- Used both to decide what @cabal buck2@ must /not/ build itself (see
+-- 'buck2Action') and which packages get generated buck2 rules; must match
+-- "Distribution.Client.Buck2.Prebuilt"'s @localUnitIds@ exactly, or a
+-- package would get both a prebuilt rule and a real one - buck2 rejects
+-- the resulting duplicate target outright.
+isBuiltByBuck2 :: ElaboratedConfiguredPackage -> Bool
+isBuiltByBuck2 elab = elabLocalToProject elab || elabBuildStyle elab /= BuildAndInstall
