@@ -169,7 +169,6 @@ files of a package:
 .. option:: -g, --ghc
             --ghcjs
             --uhc
-            --haskell-suite
 
     Specify which Haskell implementation to use to build the package. At
     most one of these flags may be given. If none is given, the
