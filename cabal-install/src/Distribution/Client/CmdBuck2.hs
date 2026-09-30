@@ -59,6 +59,7 @@ import Distribution.Client.NixStyleOptions
   , defaultNixStyleFlags
   , nixStyleOptions
   )
+import Distribution.Client.JobControl (parStratNumJobs)
 import Distribution.Client.ProjectBuilding (unpackInplaceSources)
 import Distribution.Client.ProjectConfig (projectConfigWithBuilderRepoContext)
 import Distribution.Client.ProjectOrchestration
@@ -99,7 +100,7 @@ import Distribution.Simple.Flag (toFlag)
 import Distribution.Simple.Program.Builtin (builtinPrograms)
 import Distribution.Simple.Program.Db (prependProgramSearchPathNoLogging, restoreProgramDb)
 import Distribution.Simple.Register (generateRegistrationInfo)
-import Distribution.Simple.Utils (dieWithException, notice, ordNub)
+import Distribution.Simple.Utils (dieWithException, info, notice, ordNub)
 import Distribution.Types.Component (componentBuildInfo, componentName)
 import Distribution.Types.ExeDependency (ExeDependency (..))
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo)
@@ -283,7 +284,14 @@ buck2Action flags extraArgs globalFlags = do
       -- instance does not exist"). A skipped component just gets no
       -- rule, with the usual "no LocalBuildInfo found" warning.
       let selectedPlan = pruneInstallPlanToTargets TargetActionBuild (targetsMap buildCtx) elaboratedPlanOriginal
-      componentLBIs <- configureComponentsConcurrently verbosity (distDirLayout baseCtx) selectedPlan elaboratedShared installedIndex
+      componentLBIs <-
+        configureComponentsConcurrently
+          verbosity
+          (distDirLayout baseCtx)
+          (parStratNumJobs (buildSettingNumJobs (buildSettings baseCtx)))
+          selectedPlan
+          elaboratedShared
+          installedIndex
 
       -- Per-component elaboration gives each local package one
       -- 'ElaboratedConfiguredPackage' per component (library, executable,
@@ -512,21 +520,27 @@ componentNamesFor elab pkgDesc = case elabPkgOrComp elab of
 configureComponentsConcurrently
   :: Verbosity
   -> DistDirLayout
+  -> Int
+  -- ^ Maximum number of components to configure at once (from
+  -- @-j@\/@jobs:@, like a @cabal build@ would use).
   -> ElaboratedInstallPlan
   -> ElaboratedSharedConfig
   -> InstalledPackageIndex
   -> IO (Map (PackageName, ComponentName) LocalBuildInfo)
-configureComponentsConcurrently verbosity distDirLayout plan shared installedIndex = do
+configureComponentsConcurrently verbosity distDirLayout numJobs plan shared installedIndex = do
   -- cabal-install's own build parallelism doesn't need extra RTS
   -- capabilities (it's almost entirely "spawn ghc, block on it", and a
   -- blocked foreign call already releases its capability under the
   -- threaded RTS) - but 'localBuildInfoFor' below does real, in-Haskell
   -- CPU work per call, which *does* need more than one capability to
-  -- actually run in parallel. Only ever raises the cap (never lowers an
-  -- explicit @+RTS -N@ the user already asked for).
+  -- actually run in parallel (but never more than the machine has). Only
+  -- ever raises the cap (never lowers an explicit @+RTS -N@ the user
+  -- already asked for).
   numCaps <- getNumCapabilities
-  when (numCaps < numberOfProcessors) $
-    setNumCapabilities numberOfProcessors
+  info verbosity $ "cabal buck2: configuring components with up to " ++ show numJobs ++ " job(s)"
+  let wantedCaps = min numJobs numberOfProcessors
+  when (numCaps < wantedCaps) $
+    setNumCapabilities wantedCaps
 
   let localElabs :: Map UnitId ElaboratedConfiguredPackage
       localElabs =
@@ -621,7 +635,7 @@ configureComponentsConcurrently verbosity distDirLayout plan shared installedInd
           atomically (finishNode uid)
           workerLoop
 
-  Async.replicateConcurrently_ numberOfProcessors workerLoop
+  Async.replicateConcurrently_ numJobs workerLoop
   readTVarIO componentLBIsVar
 
 -- | Does buck2 (rather than cabal) build this package from source? True
