@@ -49,11 +49,17 @@ type PId = UnitId
 --
 -- TODO: More information is needed about the repo.
 data Loc = Inst PId | InRepo
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Structured Loc
+instance Binary Loc
 
 -- | Instance. A version number and a location.
 data I = I Ver Loc
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Structured I
+instance Binary I
 
 -- | String representation of an instance.
 showI :: I -> String

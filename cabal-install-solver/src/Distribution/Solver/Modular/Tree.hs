@@ -21,7 +21,9 @@ import Control.Monad hiding (mapM, sequence)
 import Data.Foldable
 import Data.Traversable
 import Prelude hiding (foldr, mapM, sequence)
+import GHC.Generics
 
+import Distribution.Compat.Binary (Binary)
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
@@ -34,6 +36,7 @@ import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.PackagePath
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnitId (UnitId)
+import Distribution.Utils.Structured (Structured (..))
 import Language.Haskell.Extension (Extension, Language)
 
 type Weight = Double
@@ -129,11 +132,17 @@ data FailReason = UnsupportedExtension Extension
                 | DependenciesNotLinked String
                 | CyclicDependencies
                 | UnsupportedSpecVer Ver
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance Structured FailReason
+instance Binary FailReason
 
 -- | Information about a dependency involved in a conflict, for error messages.
 data ConflictingDep = ConflictingDep (DependencyReason QPN) (PkgComponent QPN) CI
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance Structured ConflictingDep
+instance Binary ConflictingDep
 
 -- | Functor for the tree type. 'a' is the type of nodes' children. 'd' and 'c'
 -- have the same meaning as in 'Tree'.
