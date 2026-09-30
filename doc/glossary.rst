@@ -115,6 +115,93 @@ General terms
        :term:`tarball`, :term:`response file`, :term:`TUF`, :term:`Nix`,
        :term:`MSYS2`
 
+Easily confused terms
+---------------------
+
+Some terms look alike, overlap, or mean something other than what their name
+suggests. This table sets them side by side.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Terms
+     - How they differ
+   * - :term:`Cabal`, :term:`cabal`, :term:`cabal-install`
+     - The build system and its library, the command line tool, and the
+       package that provides the tool.
+   * - :term:`Cabal specification`, :term:`cabal`
+     - The ``cabal-version`` field gives the version of the file format a
+       package is written in, not the version of the tool or the library.
+   * - :term:`project`, :term:`package`
+     - A package is what gets distributed. A project is a set of packages
+       that are built together.
+   * - :term:`package`, :term:`source package`, :term:`GHC package`,
+       :term:`unit`
+     - A package is source code. Building it produces units, and the library
+       units are what GHC calls packages.
+   * - :term:`package ID`, :term:`unit ID`, :term:`installed package ID`,
+       :term:`component ID`
+     - A package ID names a source package. The other three identify one
+       particular build of one of its components.
+   * - :term:`store`, :term:`package database`, :term:`package environment`
+     - The store holds built external packages. A package database is where
+       GHC finds registered libraries, and the store contains one. A package
+       environment is a file listing the databases and units that GHC sees by
+       default.
+   * - :term:`local package`, :term:`external package`, :term:`vendoring`
+     - Local means listed in the project, not stored on this machine.
+       Vendoring turns an external package into a local one.
+   * - :term:`main library`, :term:`sublibrary`, :term:`internal library`,
+       :term:`public library`, :term:`foreign library`
+     - A sublibrary is any named library. An internal library is a private
+       sublibrary; a public library can be used from other packages. A
+       foreign library is for programs not written in Haskell.
+   * - :term:`target`, :term:`component`
+     - A component is a part of a package. A target is what a command is
+       asked to act on, which is often a component but can also be a package,
+       a module, a file or a script.
+   * - :term:`flag`, :term:`automatic flag`, :term:`manual flag`
+     - A flag is declared by a package. It is neither a command line option
+       nor a compiler option, though both are also called flags. The solver
+       may change an automatic flag but never a manual one.
+   * - :term:`version range`, :term:`version bound`, :term:`constraint`,
+       :term:`preference`
+     - A package declares a version range for each dependency, and a bound is
+       one end of that range. Constraints and preferences come from the
+       project or the user: the solver must satisfy the first and may drop
+       the second.
+   * - :term:`build plan`, :term:`install plan`
+     - Two names for the same thing.
+   * - :term:`stanza`, :term:`section`
+     - Two names for the same thing.
+   * - :term:`source-repository`, :term:`source-repository-package`
+     - The first is information in a package description and does not affect
+       the build. The second, in a project file, makes the build fetch a
+       package from a repository.
+   * - :term:`repository`, :term:`package index`, :term:`index state`
+     - A repository holds packages, its index lists them, and an index state
+       is that list as it stood at a point in time. None of these is a
+       :term:`VCS` repository.
+   * - :term:`revision`
+     - On Hackage, an edited package description for a version that is
+       already published. In a VCS, a commit.
+   * - :term:`build type`, :term:`cabal.project.local`
+     - ``Configure`` is a build type that runs a ``./configure`` script.
+       The ``cabal configure`` command is unrelated: it saves settings to
+       ``cabal.project.local``.
+   * - :term:`install directory`, :term:`package environment`
+     - ``cabal install`` installs executables. A library is made available to
+       GHC outside a project through a package environment.
+   * - :term:`Nix-style local builds`, :term:`Nix`, :term:`v2- commands`
+     - Nix-style local builds borrow an idea from Nix and do not use it. They
+       are what the ``v2-`` commands do, and those are now the default.
+   * - :term:`boot package`, :term:`wired-in package`
+     - Boot packages ship with GHC. Wired-in packages are the boot packages
+       that cannot be replaced by another version.
+   * - :term:`global`, :term:`legacy`
+     - Each has several meanings in this guide; see its definition.
+
 .. _glossary-listing:
 
 Alphabetical listing
