@@ -1,0 +1,7 @@
+packages: .
+
+package *
+  tests: False
+
+package *
+  tests: True
