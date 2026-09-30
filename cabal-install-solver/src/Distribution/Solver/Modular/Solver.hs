@@ -74,7 +74,10 @@ data SolverConfig = SolverConfig {
   solveExecutables       :: SolveExecutables,
   goalOrder              :: Maybe (Variable QPN -> Variable QPN -> Ordering),
   solverVerbosity        :: VerbosityLevel,
-  pruneAfterFirstSuccess :: PruneAfterFirstSuccess
+  pruneAfterFirstSuccess :: PruneAfterFirstSuccess,
+  -- | The names of the repositories that were searched for packages. Used to
+  -- enrich the @unknown package@ failure message.
+  reposSearched          :: [String]
 }
 
 -- | Whether to remove all choices after the first successful choice at each

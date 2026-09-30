@@ -24,6 +24,7 @@ module Distribution.Client.IndexUtils
   , getSourcePackagesAtIndexState
   , ActiveRepos
   , filterSkippedActiveRepos
+  , activeReposNames
   , applyStrategy
   , addIndex
   , deprecationAwareStrategy
