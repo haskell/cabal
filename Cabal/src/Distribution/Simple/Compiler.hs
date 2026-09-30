@@ -324,28 +324,14 @@ parsecOptimisationLevel :: CabalParsing m => m OptimisationLevel
 parsecOptimisationLevel = boolParser <|> intParser
   where
     boolParser = bool NoOptimisation NormalOptimisation <$> parsec
-    intParser = intToOptimisationLevel <$> integral
+    intParser = intToEnum "optimisation level" <$> integral
 
 flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing = NormalOptimisation
-flagToOptimisationLevel (Just s) = case reads s of
-  [(i, "")] -> intToOptimisationLevel i
-  _ -> error $ "Can't parse optimisation level " ++ s
-
-intToOptimisationLevel :: Int -> OptimisationLevel
-intToOptimisationLevel i
-  | i >= minLevel && i <= maxLevel = toEnum i
-  | otherwise =
-      error $
-        "Bad optimisation level: "
-          ++ show i
-          ++ ". Valid values are "
-          ++ show minLevel
-          ++ ".."
-          ++ show maxLevel
-  where
-    minLevel = fromEnum (minBound :: OptimisationLevel)
-    maxLevel = fromEnum (maxBound :: OptimisationLevel)
+flagToOptimisationLevel (Just s)
+  | Just i <- readMaybe s = intToEnum "optimisation level" i
+  | Just b <- readMaybe s = if b then NormalOptimisation else NoOptimisation
+  | otherwise = error $ "Can't parse optimisation level: " ++ s
 
 -- ------------------------------------------------------------
 
@@ -371,21 +357,17 @@ instance Parsec DebugInfoLevel where
   parsec = parsecDebugInfoLevel
 
 parsecDebugInfoLevel :: CabalParsing m => m DebugInfoLevel
-parsecDebugInfoLevel = flagToDebugInfoLevel . pure <$> parsecToken
+parsecDebugInfoLevel = boolParser <|> intParser
+  where
+    boolParser = bool NoDebugInfo NormalDebugInfo <$> parsec
+    intParser = intToEnum "debug info level" <$> integral
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
-flagToDebugInfoLevel (Just s) = case reads s of
-  [(i, "")]
-    | i >= fromEnum (minBound :: DebugInfoLevel)
-        && i <= fromEnum (maxBound :: DebugInfoLevel) ->
-        toEnum i
-    | otherwise ->
-        error $
-          "Bad debug info level: "
-            ++ show i
-            ++ ". Valid values are 0..3"
-  _ -> error $ "Can't parse debug info level " ++ s
+flagToDebugInfoLevel (Just s)
+  | Just i <- readMaybe s = intToEnum "debug info level" i
+  | Just b <- readMaybe s = if b then NormalDebugInfo else NoDebugInfo
+  | otherwise = error $ "Can't parse debug info level " ++ s
 
 -- ------------------------------------------------------------
 
