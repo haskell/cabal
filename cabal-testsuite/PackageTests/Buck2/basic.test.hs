@@ -87,8 +87,8 @@ main = cabalTest $ do
     -- cabal-buck2/autogen/, which now has its own BUCK file (see below)
     -- - so once generated they're referenced from srcs by that file's
     -- own export_file() target label, not a same-package-relative path.
-    assertFileDoesContain exeBzl "'Paths_exe_pkg.hs': '//exe-pkg/cabal-buck2/autogen:Paths_exe_pkg'"
-    assertFileDoesContain exeBzl "'Main.hs': '//exe-pkg/cabal-buck2/autogen:exe-pkg-detailed-test-stub-main'"
+    assertFileDoesContain exeBzl "'Paths_exe_pkg': '//exe-pkg/cabal-buck2/autogen:Paths_exe_pkg'"
+    assertFileDoesContain exeBzl "'Main': '//exe-pkg/cabal-buck2/autogen:exe-pkg-detailed-test-stub-main'"
 
     -- The hand-editable BUCK wrapper is created (only once) and loads
     -- the generated file.

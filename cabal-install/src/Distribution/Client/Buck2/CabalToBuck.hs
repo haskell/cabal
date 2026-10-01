@@ -17,7 +17,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import System.Directory (createDirectoryIfMissing, doesFileExist)
-import System.FilePath ((<.>), (</>), takeExtension)
+import System.FilePath ((<.>), (</>))
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -311,7 +311,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                   call
                     "haskell_binary"
                     ( [ ("name", str targetName)
-                      , ("srcs", VDict ((mainSrcKeyFor mainSrc0, str mainSrc0) : otherSrcs))
+                      , ("srcs", VDict (("Main", str mainSrc0) : otherSrcs))
                       , cabalComponentArg rootRelPkgDir targetName
                       ]
                         ++ compilerFlagsArg usesPkgGhcOptions bi
@@ -354,7 +354,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                     call
                       "haskell_binary"
                       ( [ ("name", str targetName)
-                        , ("srcs", VDict ((mainSrcKeyFor mainSrc0, str mainSrc0) : otherSrcs))
+                        , ("srcs", VDict (("Main", str mainSrc0) : otherSrcs))
                         , cabalComponentArg rootRelPkgDir targetName
                         ]
                           ++ compilerFlagsArg usesPkgGhcOptions bi
@@ -389,7 +389,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
           motherSrcs <- resolveModules verbosity pkgDesc (Just (lbi, clbi)) rootRelPkgDir pkgDir bi (otherModules bi)
           case (mmainSrc, motherSrcs) of
             (Just mainSrc0, Just (otherSrcs, srcAutogenExports)) ->
-              mkTestCall lbi clbi (mainSrcKeyFor mainSrc0) (str mainSrc0) otherSrcs srcAutogenExports
+              mkTestCall lbi clbi (str mainSrc0) otherSrcs srcAutogenExports
             _ -> skip ("test-suite " ++ targetName ++ " (couldn't resolve all its modules)")
       -- A @detailed-0.9@ test-suite's own module (named via
       -- @test-module:@, not @other-modules:@ - real Cabal synthesises a
@@ -428,7 +428,6 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
               mkTestCall
                 lbi
                 clbi
-                "Main.hs"
                 (str stubLabel)
                 (testModSrc ++ otherSrcs)
                 (stubAutogenExport : testModAutogenExports ++ otherAutogenExports)
@@ -442,7 +441,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
       where
         bi = componentBuildInfo (CTest test)
         targetName = unUnqualComponentName (testName test)
-        mkTestCall lbi clbi mainSrcKey mainSrc otherSrcs srcAutogenExports = do
+        mkTestCall lbi clbi mainSrc otherSrcs srcAutogenExports = do
           (cxxLoads, cxxDeps, cxxCalls) <- cxxLibraryFor localIndex rootRelPkgDir pkgDir targetName bi
           macrosExport <- writeMacrosHeader pkgDir targetName pkgDesc lbi clbi
           let (pkgs, deps) = classifyDeps localIndex bi
@@ -450,7 +449,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                 call
                   "haskell_test"
                   ( [ ("name", str targetName)
-                    , ("srcs", VDict ((mainSrcKey, mainSrc) : otherSrcs))
+                    , ("srcs", VDict (("Main", mainSrc) : otherSrcs))
                     , cabalComponentArg rootRelPkgDir targetName
                     , -- Real `cabal test` always runs a test-suite with its
                       -- cwd set to the package's own directory - matched
@@ -749,10 +748,9 @@ autogenExportLabel rootRelPkgDir = localTargetLabel autogenDir
 
 -- | Resolve each module in @hs-source-dirs@ to its real file, trying
 -- @.hs@\/@.lhs@\/@.hsc@ in turn (the extensions buck2/hsc2hs.bzl knows how
--- to handle) - returning @(moduleDerivedPath, realRelativePath)@ pairs for
--- the dict form of @srcs@, which - unlike the plain-list form - is
--- unaffected by @hs-source-dirs@ not matching the BUCK package's own
--- directory. The package's @Paths_<pkg>@ autogen module (if listed) is
+-- to handle) - returning @(moduleName, realRelativePath)@ pairs for the
+-- dict form of @srcs@, which - unlike the plain-list form - is unaffected
+-- by @hs-source-dirs@ not matching the BUCK package's own directory. The package's @Paths_<pkg>@ autogen module (if listed) is
 -- special-cased: no such file exists anywhere - Cabal's own Setup.hs
 -- generates it fresh on every real build - so 'writePathsModule' stands
 -- one in ourselves rather than searching for it, which needs this
@@ -787,17 +785,16 @@ resolveOne verbosity pkgDesc mlbiClbi rootRelPkgDir pkgDir dirs m
         return Nothing
       Just (lbi, clbi) -> do
         (label, autogenExport) <- writePathsModule rootRelPkgDir pkgDir pkgDesc lbi clbi m
-        return (Just (ModuleName.toFilePath m <.> "hs", str label, [autogenExport]))
+        return (Just (prettyShow m, str label, [autogenExport]))
   | otherwise = do
       let modPath = ModuleName.toFilePath m
-          hsPath = modPath <.> "hs"
       -- buck2/haskell.bzl's own srcs-resolution (_resolve_src) auto-detects
       -- .hsc/.x/.y by the *source* file's extension and runs it through
       -- hsc2hs()/alex()/happy() - already loaded by haskell.bzl itself, so
       -- nothing extra needs to be loaded here for that to work.
       found <- firstExisting pkgDir dirs [modPath <.> ext | ext <- ["hs", "lhs", "hsc", "x", "y"]]
       case found of
-        Just real -> return (Just (hsPath, str real, []))
+        Just real -> return (Just (prettyShow m, str real, []))
         Nothing -> do
           warn verbosity $
             "cabal buck2: couldn't find a source file for module "
@@ -883,36 +880,6 @@ writeDetailedTestStub rootRelPkgDir pkgDir targetName testModule = do
         , "report n (Finished (Fail msg)) = putStrLn (n ++ \": FAIL: \" ++ msg) >> return False"
         , "report n (Finished (Error msg)) = putStrLn (n ++ \": ERROR: \" ++ msg) >> return False"
         ]
-
--- | The @srcs@ dict key a main-is module should be relocated to (see
--- @buck2\/haskell.bzl@'s @_resolve_src@: it always relocates a main-is
--- not already named exactly this key, via a plain @export_file()@
--- copy) - the real source's own extension, not unconditionally
--- @Main.hs@. Matters because GHC only invokes its literate preprocessor
--- (@-pgmL@\/@unlit@) based on a source file's *extension*, not any
--- flag: relocating a literate @.lhs@ main-is to a plain @Main.hs@ name
--- would silently disable literate parsing even with
--- @-pgmL markdown-unlit@ still passed, and GHC would choke on the raw
--- Markdown as if it were Haskell source.
---
--- A @{-\# OPTIONS_GHC ... -F ... -pgmF \<tool\> ... \#-}@ pragma
--- embedded in the main-is file's own content (e.g. @hspec-discover@'s
--- own auto-discovery convention) is a known, undetected limitation:
--- unlike a real @ghc-options:@ flag (e.g. @-pgmL markdown-unlit@, which
--- reaches GHC completely unmodified and resolves via @PATH@ - see
--- 'compilerFlagsArg'\/@buck2\/toolchains\/BUCK@'s own @compile_env@),
--- @hspec-discover@ specifically discovers sibling @*Spec.hs@ modules by
--- scanning its own argument's *directory*, and buck2's own per-file
--- relocation (needed regardless of this, to give the module its own
--- correct path) leaves it scanning a synthetic, single-file directory -
--- silently finding zero specs rather than failing outright. Not
--- detected here (deliberately: an earlier revision scanned main-is
--- content for the pragma to skip the component with a warning instead -
--- reverted as its own kind of layering violation, reading and
--- pattern-matching GHC-internal pragma syntax from inside a Cabal-level
--- tool).
-mainSrcKeyFor :: String -> String
-mainSrcKeyFor mainIsRel = "Main" ++ takeExtension mainIsRel
 
 -- | 'Nothing' if the main-is file couldn't be found - see 'resolveModules'
 -- for why the caller must skip the whole component rather than emit a
