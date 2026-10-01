@@ -17,11 +17,10 @@ on:
 
 env:
   GHC_VERSION: 9.6.7
-  # A dated release of https://github.com/facebook/buck2/releases. The
-  # prelude in buck2/ uses `eager_materialization_enabled` (an argument of
-  # `ctx.actions.run`) which releases after 2026-09-01 no longer accept, so
-  # this can't be moved forward until the prelude is brought up to date.
-  BUCK2_VERSION: "2026-09-01"
+  # A dated release of https://github.com/facebook/buck2/releases
+  # This is chosen to be compatible with the prelude in the buck2
+  # submodule; earlier or later versions are not guaranteed to work.
+  BUCK2_VERSION: "2026-10-01"
 
 jobs:
   buck2:
