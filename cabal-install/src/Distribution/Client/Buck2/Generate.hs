@@ -53,6 +53,7 @@ import Distribution.Types.LocalBuildInfo (LocalBuildInfo)
 import Distribution.Types.ModuleReexport
   ( ModuleReexport (moduleReexportOriginalName, moduleReexportOriginalPackage)
   )
+import Distribution.Simple.InstallDirs (PathTemplate)
 import Distribution.Types.PackageName (PackageName)
 
 import Distribution.Simple.Utils (notice, ordNub, warn)
@@ -73,9 +74,9 @@ import Distribution.Client.Buck2.Starlark
 -- @build-tool-depends:@ executable name "Distribution.Client.Buck2.
 -- Prebuilt" resolved a real external binary (and generated an
 -- @export_file()@ target) for - see 'CabalToBuck.buildToolDependsArg'.
-generateAllPackages :: Verbosity -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> Set String -> [(FilePath, PackageDescription)] -> IO ()
-generateAllPackages verbosity projectRoot componentLBIs externalBuildTools pkgs = do
-  traverse_ (generateOnePackage verbosity localIndex projectRoot componentLBIs externalBuildTools) pkgs
+generateAllPackages :: Verbosity -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> Set String -> Map (PackageName, ComponentName) [PathTemplate] -> [(FilePath, PackageDescription)] -> IO ()
+generateAllPackages verbosity projectRoot componentLBIs externalBuildTools projectTestOptions pkgs = do
+  traverse_ (generateOnePackage verbosity localIndex projectRoot componentLBIs externalBuildTools projectTestOptions) pkgs
   where
     localIndex :: LocalPackageIndex
     localIndex =
@@ -117,9 +118,9 @@ rootRelativeDir projectRoot pkgDir = case makeRelative projectRoot pkgDir of
   "" -> "."
   rel -> rel
 
-generateOnePackage :: Verbosity -> LocalPackageIndex -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> Set String -> (FilePath, PackageDescription) -> IO ()
-generateOnePackage verbosity localIndex projectRoot componentLBIs externalBuildTools (pkgDir, pkgDesc) = do
-  targets <- generatePackageTargets verbosity localIndex (rootRelativeDir projectRoot pkgDir) componentLBIs externalBuildTools pkgDir pkgDesc
+generateOnePackage :: Verbosity -> LocalPackageIndex -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> Set String -> Map (PackageName, ComponentName) [PathTemplate] -> (FilePath, PackageDescription) -> IO ()
+generateOnePackage verbosity localIndex projectRoot componentLBIs externalBuildTools projectTestOptions (pkgDir, pkgDesc) = do
+  targets <- generatePackageTargets verbosity localIndex (rootRelativeDir projectRoot pkgDir) componentLBIs externalBuildTools projectTestOptions pkgDir pkgDesc
   let pkgName = packageName pkgDesc
   if null (ptCalls targets)
     then warn verbosity $ "cabal buck2: no buck2 targets generated for package " ++ show pkgName
@@ -199,6 +200,7 @@ renderGeneratedBzl pkgName targets =
     ++ "\n"
     ++ concatMap (uncurry renderLoad) (ptLoads targets)
     ++ "\n"
+    ++ concatMap (\(name, v) -> renderBinding name v ++ "\n") (ptConstants targets)
     ++ "def generated_targets():\n"
     ++ indentBlock (intercalate "\n" (map renderCall (ptCalls targets)))
 

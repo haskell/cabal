@@ -98,7 +98,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Command (CommandUI (..), usageAlternatives)
 import Distribution.Simple.Flag (toFlag)
 import Distribution.Simple.Program.Builtin (builtinPrograms)
-import Distribution.Simple.Program.Db (prependProgramSearchPathNoLogging, restoreProgramDb)
+import Distribution.Simple.Program.Db (prependProgramSearchPathNoLogging, restoreProgramDb, userSpecifyArgss)
 import Distribution.Simple.Register (generateRegistrationInfo)
 import Distribution.Simple.Utils (dieWithException, info, notice, ordNub)
 import Distribution.Types.Component (componentBuildInfo, componentName)
@@ -252,6 +252,18 @@ buck2Action flags extraArgs globalFlags = do
               , ExeDependency pn exeName _ <- PD.buildToolDepends (componentBuildInfo comp)
               ]
 
+      -- The project's @test-options:@ per test-suite - only the
+      -- elaborated package has them (they aren't part of the .cabal file
+      -- or the 'LocalBuildInfo').
+      let projectTestOptions =
+            Map.fromList
+              [ ((packageName elab, cname), elabTestTestOptions elab)
+              | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlanOriginal
+              , isBuiltByBuck2 elab
+              , not (null (elabTestTestOptions elab))
+              , cname@CTestName{} <- componentNamesFor elab (elabPkgDescription elab)
+              ]
+
       (externalBuildTools, resolvedDeps) <-
         generatePrebuilt
           verbosity
@@ -298,7 +310,7 @@ buck2Action flags extraArgs globalFlags = do
       -- ...), all sharing the same directory and the same (whole-package)
       -- 'PackageDescription' - so without this, a package with N
       -- buildable components would get regenerated N times over.
-      generateAllPackages verbosity projectRoot componentLBIs externalBuildTools (nubBy ((==) `on` fst) localPkgs)
+      generateAllPackages verbosity projectRoot componentLBIs externalBuildTools projectTestOptions (nubBy ((==) `on` fst) localPkgs)
 
       notice verbosity $
         unlines
@@ -384,11 +396,17 @@ localBuildInfoFor verbosity distDirLayout plan shared ipi elab = do
       -- 'setupHsScriptOptions''s @useExtraPathEnv@ - just via a search
       -- path prepend instead of a subprocess's environment, since this
       -- runs in-process.
+      -- The user-specified program arguments (@ghc-options:@ from
+      -- cabal.project, @--ghc-options@, ...) are applied by Cabal's own
+      -- top-level @configure@, which 'InLibrary.configure' skips - so
+      -- without this the 'LocalBuildInfo' wouldn't have them, unlike one
+      -- from a real @Setup configure@.
       progDb =
-        prependProgramSearchPathNoLogging
-          (elabExeDependencyPaths elab ++ elabProgramPathExtra elab)
-          []
-          (restoreProgramDb builtinPrograms (pkgConfigCompilerProgs shared))
+        userSpecifyArgss (Map.toList (elabProgramArgs elab)) $
+          prependProgramSearchPathNoLogging
+            (elabExeDependencyPaths elab ++ elabProgramPathExtra elab)
+            []
+            (restoreProgramDb builtinPrograms (pkgConfigCompilerProgs shared))
       buildType = PD.buildType (elabPkgDescription elab)
       inputs =
         InLibrary.libraryConfigureInputsFromElabPackage

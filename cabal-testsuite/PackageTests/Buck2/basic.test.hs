@@ -57,6 +57,23 @@ main = cabalTest $ do
     assertFileDoesContain exeBzl "-Iexe-pkg/cbits"
     assertFileDoesContain exeBzl "-DLOUD"
     assertFileDoesContain exeBzl "'exe-pkg-bench'"
+
+    -- `ghc-options:` and `test-options:` from cabal.project (not the
+    -- .cabal file) reach the generated rules: the former as one
+    -- file-level `GHC_OPTIONS` constant per package, appended to every
+    -- component's flags rather than repeated in each; the latter as
+    -- `test_args` with template variables expanded per test-suite.
+    -- cabal-install's own always-added `-hide-all-packages` (a workaround
+    -- for custom Setup.hs scripts) is deliberately not copied over.
+    assertFileDoesContain exeBzl "GHC_OPTIONS = ["
+    assertFileDoesContain exeBzl "'-fno-ignore-asserts'"
+    assertFileDoesContain exeBzl "] + GHC_OPTIONS,"
+    assertFileDoesNotContain exeBzl "-hide-all-packages"
+    assertFileDoesNotContain libBzl "GHC_OPTIONS"
+    assertFileDoesContain exeBzl "test_args"
+    assertFileDoesContain exeBzl "'--opt-one'"
+    assertFileDoesContain exeBzl "'--opt-two=exe-pkg-test'"
+    assertFileDoesNotContain libBzl "test_args"
     assertFileDoesContain exeBzl "'exe-pkg-detailed-test'"
 
     -- Every generated rule gets a `cabal_component = (pkg, component)`

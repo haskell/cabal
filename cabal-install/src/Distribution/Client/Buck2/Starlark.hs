@@ -14,6 +14,7 @@ module Distribution.Client.Buck2.Starlark
   , call
   , renderCall
   , renderLoad
+  , renderBinding
   , renderFile
   ) where
 
@@ -31,6 +32,12 @@ data Value
   | VList [Value]
   | VDict [(String, Value)]
   | VTuple [Value]
+  | -- | A reference to a name bound at the top level of the same file
+    -- (see 'renderBinding') - used to share one list between many rules.
+    VVar String
+  | -- | @a + b + ...@, for appending lists (e.g. a rule's own flags and a
+    -- shared 'VVar' of flags every rule gets).
+    VConcat [Value]
 
 str :: String -> Value
 str = VStr
@@ -76,6 +83,8 @@ renderValue ind (VList xs) =
 -- pair literal shape it's meant to look like matters more than matching
 -- every other value's one-element-per-line style.
 renderValue _ (VTuple xs) = "(" ++ intercalate ", " (map (renderValue 0) xs) ++ ")"
+renderValue _ (VVar name) = name
+renderValue ind (VConcat xs) = intercalate " + " (map (renderValue ind) xs)
 renderValue _ (VDict []) = "{}"
 renderValue ind (VDict kvs) =
   "{\n"
@@ -98,6 +107,10 @@ renderCall (Call fn args) =
       | (k, v) <- args
       ]
     ++ ")\n"
+
+-- | Render a top-level @NAME = value@ statement.
+renderBinding :: String -> Value -> String
+renderBinding name v = name ++ " = " ++ renderValue 0 v ++ "\n"
 
 -- | Render a @load("target", "name1", "name2")@ statement.
 renderLoad :: String -> [String] -> String

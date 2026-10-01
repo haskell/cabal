@@ -25,7 +25,7 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
 import Distribution.Compiler (CompilerFlavor (GHC))
 import qualified Distribution.ModuleName as ModuleName
-import Distribution.Package (packageName)
+import Distribution.Package (packageId, packageName)
 import Distribution.PackageDescription
   ( Benchmark (benchmarkInterface, benchmarkName)
   , BenchmarkInterface (..)
@@ -52,12 +52,13 @@ import Distribution.PackageDescription
   , pkgconfigDepends
   , targetBuildDepends
   )
+import Distribution.Simple.Compiler (compilerInfo)
 import Distribution.Types.Component (Component (..), componentBuildInfo, componentName)
 import Distribution.Types.ComponentLocalBuildInfo (ComponentLocalBuildInfo)
 import Distribution.Types.ComponentName (ComponentName)
 import Distribution.Types.Dependency (depLibraries, depPkgName)
 import Distribution.Types.ExeDependency (ExeDependency (..))
-import Distribution.Types.LocalBuildInfo (LocalBuildInfo, componentNameCLBIs)
+import Distribution.Types.LocalBuildInfo (LocalBuildInfo (compiler, hostPlatform, withPrograms), componentNameCLBIs, localUnitId)
 import Distribution.Types.PackageName (PackageName, unPackageName)
 import Distribution.Types.PkgconfigDependency (PkgconfigDependency (..))
 import Distribution.Types.PkgconfigName (unPkgconfigName)
@@ -68,6 +69,17 @@ import Distribution.Verbosity (VerbosityFlags (vLevel), VerbosityLevel (Silent),
 import Distribution.Simple.Build.Macros (generateCabalMacrosHeader)
 import Distribution.Simple.Build.PathsModule (generatePathsModule)
 import Distribution.Simple.BuildPaths (autogenPathsModuleName)
+import Distribution.Simple.InstallDirs
+  ( PathTemplate
+  , PathTemplateVariable (TestSuiteNameVar)
+  , fromPathTemplate
+  , initialPathTemplateEnv
+  , substPathTemplate
+  , toPathTemplate
+  )
+import Distribution.Simple.Program.Builtin (ghcProgram)
+import Distribution.Simple.Program.Db (lookupProgram)
+import Distribution.Simple.Program.Types (programOverrideArgs)
 import Distribution.Simple.Utils (ordNub, warn)
 
 import Distribution.Client.Buck2.Starlark
@@ -93,18 +105,21 @@ data PackageTargets = PackageTargets
   { ptLoads :: [(String, [String])]
   , ptCalls :: [Call]
   , ptAutogenExports :: [(String, FilePath)]
+  , ptConstants :: [(String, Value)]
+  -- ^ Top-level bindings in the generated @.bzl@ that the calls refer to
+  -- by name (see 'VVar'): currently just 'pkgGhcOptionsVar'.
   }
 
 instance Semigroup PackageTargets where
-  PackageTargets l1 c1 e1 <> PackageTargets l2 c2 e2 =
-    PackageTargets (foldl' addLoad l1 l2) (c1 ++ c2) (ordNub (e1 ++ e2))
+  PackageTargets l1 c1 e1 k1 <> PackageTargets l2 c2 e2 k2 =
+    PackageTargets (foldl' addLoad l1 l2) (c1 ++ c2) (ordNub (e1 ++ e2)) (k1 ++ k2)
     where
       addLoad acc (tgt, names) = case lookup tgt acc of
         Nothing -> acc ++ [(tgt, names)]
         Just _ -> map (\(t, ns) -> if t == tgt then (t, ordNub (ns ++ names)) else (t, ns)) acc
 
 instance Monoid PackageTargets where
-  mempty = PackageTargets [] [] []
+  mempty = PackageTargets [] [] [] []
 
 -- | Generate the buck2 targets for every buildable component of a local
 -- package. @pkgDir@ is the package's own directory (where the generated
@@ -123,10 +138,12 @@ generatePackageTargets
   -- "Distribution.Client.Buck2.Prebuilt" resolved a real *external*
   -- binary for (and generated an @export_file()@ target for) - see
   -- 'buildToolDependsArg'.
+  -> Map (PackageName, ComponentName) [PathTemplate]
+  -- ^ The project's @test-options:@ for each test-suite (see 'testSuiteArgs').
   -> FilePath
   -> PackageDescription
   -> IO PackageTargets
-generatePackageTargets verbosity localIndex rootRelPkgDir componentLBIs externalBuildTools pkgDir pkgDesc = do
+generatePackageTargets verbosity localIndex rootRelPkgDir componentLBIs externalBuildTools projectTestOptions pkgDir pkgDesc = do
   -- Computed up front (silently - see 'skippedLibraries's own haddock),
   -- so every component below - regardless of its own textual position
   -- in the .cabal file relative to the library it depends on - already
@@ -136,9 +153,13 @@ generatePackageTargets verbosity localIndex rootRelPkgDir componentLBIs external
   targets <-
     mconcat
       <$> traverse
-        (generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuildTools pkgDir pkgDesc skippedLibs)
+        (generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuildTools projectTestOptions pkgDir pkgDesc skippedLibs)
         (pkgBuildableComponents pkgDesc)
-  return targets{ptCalls = dedupPkgconfigCalls (ptCalls targets)}
+  return
+    targets
+      { ptCalls = dedupPkgconfigCalls (ptCalls targets)
+      , ptConstants = [(pkgGhcOptionsVar, strList opts) | let opts = packageGhcOptions pkgDesc componentLBIs, not (null opts)]
+      }
 
 -- | Which of this package's own libraries 'generateComponent' is going
 -- to skip (unresolvable modules - see 'resolveModules'), found out
@@ -204,12 +225,13 @@ generateComponent
   -> FilePath
   -> Map (PackageName, ComponentName) LocalBuildInfo
   -> Set String
+  -> Map (PackageName, ComponentName) [PathTemplate]
   -> FilePath
   -> PackageDescription
   -> Set LibraryName
   -> Component
   -> IO PackageTargets
-generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuildTools pkgDir pkgDesc skippedLibs comp = case comp of
+generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuildTools projectTestOptions pkgDir pkgDesc skippedLibs comp = case comp of
   CLib lib -> library (libTargetName (packageName pkgDesc) (libName lib)) lib
   CExe exe -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (exeName exe)) "executable" $ executable exe
   CTest test -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (testName test)) "test-suite" $ testSuite test
@@ -219,6 +241,8 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
     skip why = do
       warn verbosity $ "cabal buck2: skipping " ++ why ++ " in package " ++ unPackageName (packageName pkgDesc)
       return mempty
+
+    usesPkgGhcOptions = not (null (packageGhcOptions pkgDesc componentLBIs))
 
     -- A component that build-depends on one of *this same package's*
     -- own libraries, when that library was itself skipped (see
@@ -259,7 +283,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                       , ("srcs", VDict srcs)
                       , cabalComponentArg rootRelPkgDir targetName
                       ]
-                        ++ compilerFlagsArg bi
+                        ++ compilerFlagsArg usesPkgGhcOptions bi
                         ++ exportedLinkerFlagsArg bi
                         ++ optionalListArg "packages" pkgs
                         ++ optionalListArg "deps" (deps ++ cxxDeps)
@@ -271,6 +295,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                 (("//buck2:haskell.bzl", ["haskell_library"]) : cxxLoads)
                 (cxxCalls ++ [hlCall])
                 (macrosExport : srcAutogenExports)
+                []
 
     executable exe = case lbiClbiFor pkgDesc componentLBIs comp of
       Nothing -> skip ("executable " ++ targetName ++ " (no LocalBuildInfo found for it in the elaborated build plan)")
@@ -289,8 +314,8 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                       , ("srcs", VDict ((mainSrcKeyFor mainSrc0, str mainSrc0) : otherSrcs))
                       , cabalComponentArg rootRelPkgDir targetName
                       ]
-                        ++ compilerFlagsArg bi
-                        ++ linkerFlagsArg bi
+                        ++ compilerFlagsArg usesPkgGhcOptions bi
+                        ++ linkerFlagsArg usesPkgGhcOptions bi
                         ++ optionalListArg "packages" pkgs
                         ++ optionalListArg "deps" (deps ++ cxxDeps)
                         ++ buildToolDependsArg localIndex externalBuildTools bi
@@ -301,6 +326,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                 (("//buck2:haskell.bzl", ["haskell_binary"]) : cxxLoads)
                 (cxxCalls ++ [binCall])
                 (macrosExport : srcAutogenExports)
+                []
           _ -> skip ("executable " ++ targetName ++ " (couldn't resolve all its modules)")
       where
         bi = componentBuildInfo (CExe exe)
@@ -331,8 +357,8 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                         , ("srcs", VDict ((mainSrcKeyFor mainSrc0, str mainSrc0) : otherSrcs))
                         , cabalComponentArg rootRelPkgDir targetName
                         ]
-                          ++ compilerFlagsArg bi
-                          ++ linkerFlagsArg bi
+                          ++ compilerFlagsArg usesPkgGhcOptions bi
+                          ++ linkerFlagsArg usesPkgGhcOptions bi
                           ++ optionalListArg "packages" pkgs
                           ++ optionalListArg "deps" (deps ++ cxxDeps)
                           ++ buildToolDependsArg localIndex externalBuildTools bi
@@ -343,6 +369,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                   (("//buck2:haskell.bzl", ["haskell_binary"]) : cxxLoads)
                   (cxxCalls ++ [binCall])
                   (macrosExport : srcAutogenExports)
+                  []
             _ -> skip ("benchmark " ++ targetName ++ " (couldn't resolve all its modules)")
       _ ->
         skip
@@ -434,8 +461,11 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
                       -- generated wrapper, not just a plain attr).
                       ("cwd", str rootRelPkgDir)
                     ]
-                      ++ compilerFlagsArg bi
-                      ++ linkerFlagsArg bi
+                      -- Not 'optionalListArg': it de-duplicates, which would
+                      -- corrupt a repeated option or its value.
+                      ++ [("test_args", strList args) | let args = testSuiteArgs pkgDesc lbi test (Map.findWithDefault [] (packageName pkgDesc, componentName comp) projectTestOptions), not (null args)]
+                      ++ compilerFlagsArg usesPkgGhcOptions bi
+                      ++ linkerFlagsArg usesPkgGhcOptions bi
                       ++ optionalListArg "packages" pkgs
                       ++ optionalListArg "deps" (deps ++ cxxDeps)
                       ++ buildToolDependsArg localIndex externalBuildTools bi
@@ -445,6 +475,7 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
               (("//buck2:haskell.bzl", ["haskell_test"]) : cxxLoads)
               (cxxCalls ++ [testCall])
               (macrosExport : srcAutogenExports)
+              []
 
 -- | @ghc-options@ + @cpp-options@ + @default-extensions@ (as @-X...@
 -- flags), the sources of per-component GHC flags buck2's @compiler_flags@
@@ -454,9 +485,9 @@ generateComponent verbosity localIndex rootRelPkgDir componentLBIs externalBuild
 -- injected by buck2\/haskell.bzl's own @cabal_component@ kwarg (see
 -- 'cabalComponentArg'), which - unlike a plain string folded into this
 -- list - can be a real, buck2-tracked dependency edge.
-compilerFlagsArg :: BuildInfo -> [(String, Value)]
-compilerFlagsArg bi =
-  optionalListArg "compiler_flags" (hcOptions GHC bi ++ cppOptions bi ++ languageFlag ++ extensionFlags)
+compilerFlagsArg :: Bool -> BuildInfo -> [(String, Value)]
+compilerFlagsArg usesPkgGhcOptions bi =
+  flagsArg "compiler_flags" usesPkgGhcOptions (hcOptions GHC bi ++ cppOptions bi ++ languageFlag ++ extensionFlags)
   where
     -- default-language isn't just documentation: GHC2021/GHC2024 each
     -- imply a large bundle of extensions (TypeApplications among them) -
@@ -487,8 +518,64 @@ exportedLinkerFlagsArg bi = optionalListArg "exported_linker_flags" ["-l" ++ lib
 -- @linker_flags@, or it's silently dropped. A compile-only flag showing
 -- up here too (e.g. @-Wall@) is harmless: GHC's link-mode invocation
 -- just ignores flags that don't apply to it.
-linkerFlagsArg :: BuildInfo -> [(String, Value)]
-linkerFlagsArg bi = optionalListArg "linker_flags" (["-l" ++ lib | lib <- extraLibs bi] ++ hcOptions GHC bi)
+linkerFlagsArg :: Bool -> BuildInfo -> [(String, Value)]
+linkerFlagsArg usesPkgGhcOptions bi = flagsArg "linker_flags" usesPkgGhcOptions (["-l" ++ lib | lib <- extraLibs bi] ++ hcOptions GHC bi)
+
+-- | The name of the file-level constant holding 'packageGhcOptions'.
+pkgGhcOptionsVar :: String
+pkgGhcOptionsVar = "GHC_OPTIONS"
+
+-- | A flags kwarg: the component's own flags, followed - if the package
+-- has any project-supplied GHC options - by a reference to the
+-- file-level constant holding them, so they're written out once per
+-- package rather than once per rule. Cabal puts these after the
+-- component's own @ghc-options@, so they can override them.
+flagsArg :: String -> Bool -> [String] -> [(String, Value)]
+flagsArg name usesPkgGhcOptions own = case (ordNub own, usesPkgGhcOptions) of
+  ([], False) -> []
+  ([], True) -> [(name, VVar pkgGhcOptionsVar)]
+  (xs, False) -> [(name, strList xs)]
+  (xs, True) -> [(name, VConcat [strList xs, VVar pkgGhcOptionsVar])]
+
+-- | The project-supplied GHC options (see 'ghcProgramArgs') for a
+-- package. Cabal gives every component of a package the same ones (they
+-- come from the package's @cabal.project@ stanza, not from anything
+-- per-component), so any one component's will do; empty if none of its
+-- components were configured at all.
+packageGhcOptions :: PackageDescription -> Map (PackageName, ComponentName) LocalBuildInfo -> [String]
+packageGhcOptions pkgDesc componentLBIs =
+  fromMaybe [] . listToMaybe $
+    [ ghcProgramArgs lbi
+    | comp <- pkgBuildableComponents pkgDesc
+    , Just (lbi, _) <- [lbiClbiFor pkgDesc componentLBIs comp]
+    ]
+
+-- | Extra GHC arguments the *project* supplies rather than the @.cabal@
+-- file: @ghc-options:@ under @package@\/@program-options@ in
+-- @cabal.project@, or @--ghc-options@ on the command line. Cabal applies
+-- these to every GHC invocation for the component, after the @.cabal@
+-- file's own @ghc-options@ (so they can override them) - taken from the
+-- configured @ghc@ program in the 'LocalBuildInfo', which is exactly
+-- where Cabal itself finds them, rather than reading the elaborated plan.
+ghcProgramArgs :: LocalBuildInfo -> [String]
+ghcProgramArgs lbi =
+  -- cabal-install itself adds @-hide-all-packages@ to every GHC invocation
+  -- (a workaround for custom Setup scripts that call GHC directly), which
+  -- means nothing for a buck2 rule - the rule already passes it, and it's
+  -- position-sensitive among GHC's package flags.
+  filter (/= "-hide-all-packages") $
+    maybe [] programOverrideArgs (lookupProgram ghcProgram (withPrograms lbi))
+
+-- | The arguments @cabal test@ would pass to this test-suite's executable
+-- for the project's @test-options:@ (\/@--test-options@), with the same
+-- @$pkgid@\/@$test-suite@-style template variables expanded - Cabal's own
+-- expansion (in "Distribution.Simple.Test.ExeV10") isn't exported.
+testSuiteArgs :: PackageDescription -> LocalBuildInfo -> TestSuite -> [PathTemplate] -> [String]
+testSuiteArgs pkgDesc lbi test = map (fromPathTemplate . substPathTemplate env)
+  where
+    env =
+      initialPathTemplateEnv (packageId pkgDesc) (localUnitId lbi) (compilerInfo (compiler lbi)) (hostPlatform lbi)
+        ++ [(TestSuiteNameVar, toPathTemplate (unUnqualComponentName (testName test)))]
 
 -- | Writes this component's @cabal_macros.h@ to a real file next to the
 -- package's own sources - exactly how real Cabal wires this up, just
