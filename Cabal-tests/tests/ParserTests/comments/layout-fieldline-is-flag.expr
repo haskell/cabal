@@ -1,0 +1,7 @@
+[
+  Comment
+    "    -- The previous thing shouldn't be parsed as a comment because it's a flag"
+    (Position 11 1),
+  Comment
+    "    -- This however, is a comment"
+    (Position 12 1)]
