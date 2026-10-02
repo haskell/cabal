@@ -88,6 +88,7 @@ import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Lazy as LT
 import qualified Data.Time as Time
 import qualified Distribution.Compat.Binary as Binary
@@ -171,18 +172,18 @@ structureBuilder s0 = State.evalState (go s0) Map.empty
     go :: Structure -> State.State (Map.Map String (NonEmpty TypeRep)) Builder.Builder
     go (Nominal t v n s) = withTypeRep t $ do
       s' <- traverse go s
-      return $ mconcat $ Builder.word8 1 : Builder.word32LE v : Builder.stringUtf8 n : s'
+      return $ mconcat $ Builder.word8 1 : Builder.word32LE v : structuredString n : s'
     go (Newtype t v n s) = withTypeRep t $ do
       s' <- go s
-      return $ mconcat [Builder.word8 2, Builder.word32LE v, Builder.stringUtf8 n, s']
+      return $ mconcat [Builder.word8 2, Builder.word32LE v, structuredString n, s']
     go (Structure t v n s) = withTypeRep t $ do
       s' <- goSop s
-      return $ mconcat [Builder.word8 3, Builder.word32LE v, Builder.stringUtf8 n, s']
+      return $ mconcat [Builder.word8 3, Builder.word32LE v, structuredString n, s']
 
     withTypeRep t k = do
       acc <- State.get
       case insert t acc of
-        Nothing -> return $ mconcat [Builder.word8 0, Builder.stringUtf8 (show t)]
+        Nothing -> return $ mconcat [Builder.word8 0, structuredString (show t)]
         Just acc' -> do
           State.put acc'
           k
@@ -194,7 +195,12 @@ structureBuilder s0 = State.evalState (go s0) Map.empty
 
     part (cn, s) = do
       s' <- traverse go s
-      return $ Monoid.mconcat [Builder.stringUtf8 cn, Monoid.mconcat s']
+      return $ Monoid.mconcat [structuredString cn, Monoid.mconcat s']
+
+    structuredString :: String -> Builder.Builder
+    structuredString s =
+      let bs = TE.encodeUtf8 (T.pack s)
+       in Builder.word32LE (fromIntegral (BS.length bs)) <> Builder.byteString bs
 
     insert :: TypeRep -> Map.Map String (NonEmpty TypeRep) -> Maybe (Map.Map String (NonEmpty TypeRep))
     insert tr m = case Map.lookup trShown m of
