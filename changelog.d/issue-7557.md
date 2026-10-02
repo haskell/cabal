@@ -1,14 +1,15 @@
 ---
-synopsis: "`cabal bench` no longer runs benchmarks in parallel"
+synopsis: "`cabal bench` runs benchmarks one at a time, once everything is built"
 packages: [cabal-install]
 prs: 0000
 issues: 7557
 ---
 
-When building in parallel (e.g. with `-j`), `cabal bench` used to run several
-benchmarks at the same time, so that they competed for resources and skewed each
-other's results. Benchmarks are now run one at a time, while components are
-still built in parallel.
+`cabal bench` used to run each benchmark as soon as it was built. When building
+in parallel (e.g. with `-j`), several benchmarks could thus run at the same time,
+and while other components were still being built, so that they competed for
+resources, which skewed their results.
 
-Note that other components may still be built while a benchmark is running.
-Use `-j1` to avoid that.
+Now, `cabal bench` first builds everything (still in parallel), and only then
+runs the benchmarks, one at a time. Without `--keep-going`, no benchmark is run
+if the build fails.

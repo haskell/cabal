@@ -20,6 +20,7 @@ module Distribution.Client.ProjectBuilding.UnpackedPackage
     -- ** Auxiliary definitions
   , buildAndRegisterUnpackedPackage
   , PackageBuildingPhase
+  , DeferredBenchmarks
 
     -- ** Utilities
   , annotateFailure
@@ -157,6 +158,11 @@ data PackageBuildingPhase r where
   PBTestPhase :: {runTest :: IO ()} -> PackageBuildingPhase ()
   PBBenchPhase :: {runBench :: IO ()} -> PackageBuildingPhase ()
 
+-- | The benchmarks of the packages built so far, which are run once all the
+-- packages are built.
+-- See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
+type DeferredBenchmarks = TVar [(UnitId, IO ())]
+
 -- | Structures the phases of building and registering a package amongst others
 -- (see t'PackageBuildingPhase'). Delegates logic specific to a certain
 -- building style (notably, inplace vs install) to the delegate function that
@@ -173,8 +179,8 @@ buildAndRegisterUnpackedPackage
   -- ^ Serialises package registration
   -> Lock
   -- ^ Serialises access to the setup executable cache
-  -> Lock
-  -- ^ Serialises running benchmarks
+  -> DeferredBenchmarks
+  -- ^ Benchmarks to run once all the packages are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -197,7 +203,7 @@ buildAndRegisterUnpackedPackage
     }
   registerLock
   cacheLock
-  benchLock
+  deferredBenchmarks
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
     , pkgConfigCompilerProgs = progdb
@@ -291,15 +297,10 @@ buildAndRegisterUnpackedPackage
 
     -- Bench phase
     --
-    -- Benchmarks are run one at a time, even when building in parallel, as
-    -- concurrently running benchmarks would compete for resources and skew
-    -- each other's results (#7557). Other components may still be built while
-    -- a benchmark is running.
-    --
-    -- The lock is taken outside of 'timedDelegate', so that @--build-timings@
-    -- does not count the time spent waiting for other benchmarks to finish.
+    -- The benchmarks are not run here, but once all the packages are built.
+    -- See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
     whenBench $
-      criticalSection benchLock $
+      deferBenchmark $
         timedDelegate $
           PBBenchPhase $
             annotateFailure mlogFile BenchFailed $
@@ -325,6 +326,10 @@ buildAndRegisterUnpackedPackage
     return ()
     where
       uid = installedUnitId rpkg
+
+      deferBenchmark :: IO () -> IO ()
+      deferBenchmark bench =
+        atomically $ modifyTVar deferredBenchmarks ((uid, bench) :)
 
       timedDelegate :: forall r. PackageBuildingPhase r -> IO r
       timedDelegate phase
@@ -538,8 +543,8 @@ buildInplaceUnpackedPackage
   -- ^ Serialises package registration
   -> Lock
   -- ^ Serialises access to the setup executable cache
-  -> Lock
-  -- ^ Serialises running benchmarks
+  -> DeferredBenchmarks
+  -- ^ Benchmarks to run once all the packages are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -559,7 +564,7 @@ buildInplaceUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingHaddockOpen}
   registerLock
   cacheLock
-  benchLock
+  deferredBenchmarks
   pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
   plan
   rpkg@(ReadyPackage pkg)
@@ -583,7 +588,7 @@ buildInplaceUnpackedPackage
       buildSettings
       registerLock
       cacheLock
-      benchLock
+      deferredBenchmarks
       pkgshared
       plan
       rpkg
@@ -778,8 +783,8 @@ buildAndInstallUnpackedPackage
   -- ^ Serialises package registration
   -> Lock
   -- ^ Serialises access to the setup executable cache
-  -> Lock
-  -- ^ Serialises running benchmarks
+  -> DeferredBenchmarks
+  -- ^ Benchmarks to run once all the packages are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -797,7 +802,7 @@ buildAndInstallUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingLogFile}
   registerLock
   cacheLock
-  benchLock
+  deferredBenchmarks
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
     , pkgConfigPlatform = platform
@@ -829,7 +834,7 @@ buildAndInstallUnpackedPackage
       buildSettings
       registerLock
       cacheLock
-      benchLock
+      deferredBenchmarks
       pkgshared
       plan
       rpkg

@@ -83,8 +83,9 @@ import qualified Data.Set as Set
 
 import qualified Text.PrettyPrint as Disp
 
-import Control.Concurrent.STM (TVar, newTVarIO)
-import Control.Exception (assert, handle)
+import Control.Concurrent.STM (TVar, newTVarIO, readTVarIO)
+import Control.Exception (assert, handle, try)
+import Data.Either (isLeft)
 import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
@@ -95,7 +96,7 @@ import Distribution.Client.Errors
 import Distribution.Simple.Flag (fromFlagOrDefault)
 
 import Distribution.Client.ProjectBuilding.PackageFileMonitor
-import Distribution.Client.ProjectBuilding.UnpackedPackage (annotateFailureNoLog, buildAndInstallUnpackedPackage, buildInplaceUnpackedPackage)
+import Distribution.Client.ProjectBuilding.UnpackedPackage (DeferredBenchmarks, annotateFailureNoLog, buildAndInstallUnpackedPackage, buildInplaceUnpackedPackage)
 
 ------------------------------------------------------------------------------
 
@@ -355,7 +356,10 @@ rebuildTargets
         registerLock <- newLock -- serialise registration
         cacheLock <- newLock -- serialise access to setup exe cache
         -- TODO: [code cleanup] eliminate setup exe cache
-        benchLock <- newLock -- serialise running benchmarks
+
+        -- See Note [Running benchmarks]
+        deferredBenchmarks <- newTVarIO []
+
         info verbosity $
           "Executing install plan "
             ++ case buildSettingNumJobs of
@@ -382,7 +386,7 @@ rebuildTargets
 
         -- Concurrency control: create the job controller and concurrency limits
         -- for downloading, building and installing.
-        withJobControl (newJobControlFromParStrat verbosity (Just compiler) buildSettingNumJobs Nothing) $ \jobControl -> do
+        buildOutcomes <- withJobControl (newJobControlFromParStrat verbosity (Just compiler) buildSettingNumJobs Nothing) $ \jobControl -> do
           -- Before traversing the install plan, preemptively find all packages that
           -- will need to be downloaded and start downloading them.
           asyncDownloadPackages
@@ -411,12 +415,17 @@ rebuildTargets
                       downloadMap
                       registerLock
                       cacheLock
-                      benchLock
+                      deferredBenchmarks
                       sharedPackageConfig
                       installPlan
                       ipiTVar
                       pkg
                       pkgBuildStatus
+
+        -- Once the packages are built, run their benchmarks.
+        -- See Note [Running benchmarks]
+        runDeferredBenchmarks keepGoing installPlan buildOutcomes
+          =<< readTVarIO deferredBenchmarks
     where
       keepGoing = buildSettingKeepGoing
       withRepoCtx =
@@ -499,6 +508,56 @@ configuring individual packages.
     invocation.
 -}
 
+{- Note [Running benchmarks]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Benchmarks must not run at the same time as other benchmarks, or while other
+packages are being built: they would compete for resources, which skews their
+results (#7557). Yet the packages of the plan are built in parallel, and with
+per-component builds every benchmark suite is a package of its own.
+
+So, the bench phase of a package (see 'buildAndRegisterUnpackedPackage') does
+not run its benchmarks, but adds them to the 'DeferredBenchmarks'. Once all
+the packages are built, 'rebuildTargets' runs them one at a time, in plan
+order, with 'runDeferredBenchmarks', and records their failures in the
+'BuildOutcomes'.
+
+Unless we keep going after failures, no benchmark is run if a package failed
+to build, and no more benchmarks are run once one of them failed.
+-}
+
+-- | Run the deferred benchmarks of the packages that were built successfully,
+-- one at a time, in plan order. See Note [Running benchmarks].
+runDeferredBenchmarks
+  :: Bool
+  -- ^ Keep going after failure
+  -> ElaboratedInstallPlan
+  -> BuildOutcomes
+  -> [(UnitId, IO ())]
+  -> IO BuildOutcomes
+runDeferredBenchmarks keepGoing installPlan buildOutcomes deferred
+  | not keepGoing && any isLeft buildOutcomes = return buildOutcomes
+  | otherwise = go buildOutcomes benchmarks
+  where
+    deferredMap = Map.fromList deferred
+    benchmarks =
+      [ (uid, bench)
+      | pkg <- InstallPlan.executionOrder installPlan
+      , let uid = nodeKey pkg
+      , Just (Right _) <- [Map.lookup uid buildOutcomes]
+      , Just bench <- [Map.lookup uid deferredMap]
+      ]
+
+    go outcomes [] = return outcomes
+    go outcomes ((uid, bench) : rest) = do
+      result <- try bench
+      case result of
+        Right () -> go outcomes rest
+        Left (failure :: BuildFailure)
+          | keepGoing -> go outcomes' rest
+          | otherwise -> return outcomes'
+          where
+            outcomes' = Map.insert uid (Left failure) outcomes
+
 -- | Create a package DB if it does not currently exist.
 createPackageDBIfMissing
   :: Verbosity
@@ -543,8 +602,8 @@ rebuildTarget
   -- ^ Serialises package registration
   -> Lock
   -- ^ Serialises access to the setup executable cache
-  -> Lock
-  -- ^ Serialises running benchmarks
+  -> DeferredBenchmarks
+  -- ^ Benchmarks to run once all the packages are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> TVar InstalledPackageIndex
@@ -560,7 +619,7 @@ rebuildTarget
   downloadMap
   registerLock
   cacheLock
-  benchLock
+  deferredBenchmarks
   sharedPackageConfig
   plan
   ipiTVar
@@ -647,7 +706,7 @@ rebuildTarget
           buildSettings
           registerLock
           cacheLock
-          benchLock
+          deferredBenchmarks
           sharedPackageConfig
           plan
           rpkg
@@ -665,7 +724,7 @@ rebuildTarget
           buildSettings
           registerLock
           cacheLock
-          benchLock
+          deferredBenchmarks
           sharedPackageConfig
           plan
           rpkg
