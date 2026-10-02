@@ -18,7 +18,8 @@ main = cabalTest $ do
     recordMode DoNotRecord $ cabal "buck2" []
 
     let exeBzl = cwd </> "exe-pkg" </> "BUCK.cabal.bzl"
-    assertFileDoesContain exeBzl "haskell_library"
-    assertFileDoesContain exeBzl "haskell_binary"
+    assertFileDoesContain exeBzl "'kind': 'library'"
+    assertFileDoesContain exeBzl "'kind': 'executable'"
     assertFileDoesNotContain exeBzl "'exe-pkg-bench'"
-    assertFileDoesNotContain exeBzl "haskell_test"
+    assertFileDoesNotContain exeBzl "'kind': 'test-suite'"
+    assertFileDoesNotContain exeBzl "'kind': 'benchmark'"

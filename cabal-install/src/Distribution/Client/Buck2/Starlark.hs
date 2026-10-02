@@ -1,7 +1,7 @@
 -- | A minimal Starlark (BUCK file) pretty-printer.
 --
 -- This deliberately doesn't attempt to represent the whole Starlark
--- language: it covers exactly the subset (string/bool scalars, lists,
+-- language: it covers exactly the subset (string/int/bool scalars, lists,
 -- dicts, @load@ statements and top-level rule calls) that generated
 -- @BUCK@\/@.bzl@ files need, so every generator in "Distribution.Client.Buck2"
 -- builds output through the same renderer instead of hand-formatting
@@ -22,22 +22,13 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 -- | A Starlark expression, restricted to what BUCK files actually need:
--- string\/bool scalars and (recursively) lists, dicts and tuples of them.
--- 'VTuple' exists only for @cabal_component = (pkg, component)@ (see
--- buck2\/haskell.bzl's own @cabal_component@ kwarg) - nothing else
--- generated here needs Starlark's tuple\/list distinction.
+-- scalars and (recursively) lists and dicts of them.
 data Value
   = VStr String
+  | VInt Int
   | VBool Bool
   | VList [Value]
   | VDict [(String, Value)]
-  | VTuple [Value]
-  | -- | A reference to a name bound at the top level of the same file
-    -- (see 'renderBinding') - used to share one list between many rules.
-    VVar String
-  | -- | @a + b + ...@, for appending lists (e.g. a rule's own flags and a
-    -- shared 'VVar' of flags every rule gets).
-    VConcat [Value]
 
 str :: String -> Value
 str = VStr
@@ -71,6 +62,7 @@ renderStr s = '\'' : concatMap escape s ++ "'"
 
 renderValue :: Int -> Value -> String
 renderValue _ (VStr s) = renderStr s
+renderValue _ (VInt n) = show n
 renderValue _ (VBool b) = if b then "True" else "False"
 renderValue _ (VList []) = "[]"
 renderValue ind (VList xs) =
@@ -78,13 +70,6 @@ renderValue ind (VList xs) =
     ++ concat [indent (ind + 1) ++ renderValue (ind + 1) x ++ ",\n" | x <- xs]
     ++ indent ind
     ++ "]"
--- | Always rendered compactly on one line (unlike 'VList'\/'VDict') - its
--- only use is @cabal_component = (pkg, component)@, and matching the
--- pair literal shape it's meant to look like matters more than matching
--- every other value's one-element-per-line style.
-renderValue _ (VTuple xs) = "(" ++ intercalate ", " (map (renderValue 0) xs) ++ ")"
-renderValue _ (VVar name) = name
-renderValue ind (VConcat xs) = intercalate " + " (map (renderValue ind) xs)
 renderValue _ (VDict []) = "{}"
 renderValue ind (VDict kvs) =
   "{\n"

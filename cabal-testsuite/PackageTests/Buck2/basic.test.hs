@@ -34,65 +34,63 @@ main = cabalTest $ do
     cwd <- fmap testCurrentDir getTestEnv
     recordMode DoNotRecord $ cabal "buck2" ["--enable-tests", "--enable-benchmarks", "-f+loud"]
 
+    -- The generated file is a build spec - a plain dict describing each
+    -- component as Cabal sees it - interpreted by buck2/cabal.bzl, which
+    -- decides which rules, labels and flags that becomes.
     let libBzl = cwd </> "lib-pkg" </> "BUCK.cabal.bzl"
-    assertFileDoesContain libBzl "haskell_library"
-    assertFileDoesContain libBzl "'lib-pkg'"
+    assertFileDoesContain libBzl "local_build_spec"
+    assertFileDoesContain libBzl "'kind': 'library'"
+    assertFileDoesContain libBzl "'name': 'lib-pkg'"
+    assertFileDoesNotContain libBzl "haskell_library("
 
     let exeBzl = cwd </> "exe-pkg" </> "BUCK.cabal.bzl"
-    assertFileDoesContain exeBzl "haskell_library"
-    assertFileDoesContain exeBzl "haskell_binary"
-    assertFileDoesContain exeBzl "haskell_test"
-    assertFileDoesContain exeBzl "cxx_library"
-    assertFileDoesContain exeBzl "//lib-pkg:lib-pkg"
+    assertFileDoesContain exeBzl "'kind': 'library'"
+    assertFileDoesContain exeBzl "'kind': 'executable'"
+    assertFileDoesContain exeBzl "'kind': 'test-suite'"
+    assertFileDoesContain exeBzl "'kind': 'benchmark'"
+    assertFileDoesContain exeBzl "'name': 'exe-pkg-bench'"
 
-    -- exported_preprocessor_flags (unlike srcs, a plain attrs.arg() -
-    -- buck2 has no idea `-I...` even names a path) needs its
-    -- `include-dirs:` entry prefixed with this package's own directory
-    -- by hand - every cxx action always runs with the *project root* as
-    -- its cwd, so a bare `-Icbits` resolves to the wrong place for any
-    -- package that isn't at the project root itself. Caught for real
-    -- against a non-fixture project (persistent-sqlite's bundled sqlite3
-    -- amalgamation, `#include <sqlite3.h>`) - see buck2.md's DONE entry
-    -- on this.
-    assertFileDoesContain exeBzl "-Iexe-pkg/cbits"
-    assertFileDoesContain exeBzl "-DLOUD"
-    assertFileDoesContain exeBzl "'exe-pkg-bench'"
+    -- A dependency on another local package carries that package's
+    -- directory (from which the target label is made).
+    assertFileDoesContain exeBzl "'package': 'lib-pkg'"
+    assertFileDoesContain exeBzl "'dir': 'lib-pkg'"
+
+    -- C sources and include directories are recorded as written in the
+    -- .cabal file; cabal.bzl turns them into a cxx_library() and makes
+    -- the include paths relative to the project root.
+    assertFileDoesContain exeBzl "'cbits/helper.c'"
+    assertFileDoesContain exeBzl "'include_dirs'"
+    assertFileDoesContain exeBzl "'-DLOUD'"
 
     -- `ghc-options:` and `test-options:` from cabal.project (not the
-    -- .cabal file) reach the generated rules: the former as one
-    -- file-level `GHC_OPTIONS` constant per package, appended to every
-    -- component's flags rather than repeated in each; the latter as
-    -- `test_args` with template variables expanded per test-suite.
-    -- cabal-install's own always-added `-hide-all-packages` (a workaround
-    -- for custom Setup.hs scripts) is deliberately not copied over.
-    assertFileDoesContain exeBzl "GHC_OPTIONS = ["
+    -- .cabal file) reach the spec: the former once per package, the
+    -- latter as `test_args` with template variables expanded per
+    -- test-suite. cabal-install's own always-added `-hide-all-packages`
+    -- (a workaround for custom Setup.hs scripts) is deliberately not
+    -- copied over.
+    assertFileDoesContain exeBzl "'ghc_options'"
     assertFileDoesContain exeBzl "'-fno-ignore-asserts'"
-    assertFileDoesContain exeBzl "] + GHC_OPTIONS,"
     assertFileDoesNotContain exeBzl "-hide-all-packages"
-    assertFileDoesNotContain libBzl "GHC_OPTIONS"
-    assertFileDoesContain exeBzl "test_args"
+    assertFileDoesNotContain libBzl "'ghc_options'"
+    assertFileDoesContain exeBzl "'test_args'"
     assertFileDoesContain exeBzl "'--opt-one'"
     assertFileDoesContain exeBzl "'--opt-two=exe-pkg-test'"
-    assertFileDoesNotContain libBzl "test_args"
+    assertFileDoesNotContain libBzl "'test_args'"
     assertFileDoesContain exeBzl "'exe-pkg-detailed-test'"
 
-    -- Every generated rule gets a `cabal_component = (pkg, component)`
-    -- kwarg (see buck2/haskell.bzl's own comment on it) instead of a
-    -- plain, untracked `cabal_macros.h` path folded into compiler_flags
-    -- - see buck2.md's DONE entry on this.
-    assertFileDoesContain exeBzl "cabal_component = ('exe-pkg', 'exe-pkg')"
-    assertFileDoesContain exeBzl "cabal_component = ('exe-pkg', 'exe-pkg-exe')"
-
     -- Paths_<pkg>.hs and the detailed-0.9 stub Main both live under
-    -- cabal-buck2/autogen/, which now has its own BUCK file (see below)
-    -- - so once generated they're referenced from srcs by that file's
-    -- own export_file() target label, not a same-package-relative path.
-    assertFileDoesContain exeBzl "'Paths_exe_pkg': '//exe-pkg/cabal-buck2/autogen:Paths_exe_pkg'"
-    assertFileDoesContain exeBzl "'Main': '//exe-pkg/cabal-buck2/autogen:exe-pkg-detailed-test-stub-main'"
+    -- cabal-buck2/autogen/, which has its own BUCK file (see below):
+    -- the spec names them, and cabal.bzl refers to them by that file's
+    -- export_file() target.
+    assertFileDoesContain exeBzl "'Paths_exe_pkg': {"
+    assertFileDoesContain exeBzl "'autogen': 'Paths_exe_pkg'"
+    assertFileDoesContain exeBzl "'autogen': 'exe-pkg-detailed-test-stub-main'"
 
     -- The hand-editable BUCK wrapper is created (only once) and loads
-    -- the generated file.
+    -- the generated file, whose entry point passes customisation through
+    -- to cabal.bzl's cabal_targets().
     assertFileDoesContain (cwd </> "exe-pkg" </> "BUCK") "generated_targets"
+    assertFileDoesContain exeBzl "def generated_targets(**kwargs):"
 
     -- The detailed-0.9 test-suite's stub Main is our own generated
     -- driver (not real Cabal's stdin-driven one - see basic.test.hs's
