@@ -170,7 +170,11 @@ buildAndRegisterUnpackedPackage
   -- name of the semaphore is created freshly each time.
   -> BuildTimeSettings
   -> Lock
+  -- ^ Serialises package registration
   -> Lock
+  -- ^ Serialises access to the setup executable cache
+  -> Lock
+  -- ^ Serialises running benchmarks
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -193,6 +197,7 @@ buildAndRegisterUnpackedPackage
     }
   registerLock
   cacheLock
+  benchLock
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
     , pkgConfigCompilerProgs = progdb
@@ -285,16 +290,25 @@ buildAndRegisterUnpackedPackage
               (InLibraryArgs $ InLibraryPostConfigureArgs STestPhase mbLBI)
 
     -- Bench phase
+    --
+    -- Benchmarks are run one at a time, even when building in parallel, as
+    -- concurrently running benchmarks would compete for resources and skew
+    -- each other's results (#7557). Other components may still be built while
+    -- a benchmark is running.
+    --
+    -- The lock is taken outside of 'timedDelegate', so that @--build-timings@
+    -- does not count the time spent waiting for other benchmarks to finish.
     whenBench $
-      timedDelegate $
-        PBBenchPhase $
-          annotateFailure mlogFile BenchFailed $
-            setup
-              benchCommand
-              Cabal.benchmarkCommonFlags
-              (return . benchFlags)
-              benchArgs
-              (InLibraryArgs $ InLibraryPostConfigureArgs SBenchPhase mbLBI)
+      criticalSection benchLock $
+        timedDelegate $
+          PBBenchPhase $
+            annotateFailure mlogFile BenchFailed $
+              setup
+                benchCommand
+                Cabal.benchmarkCommonFlags
+                (return . benchFlags)
+                benchArgs
+                (InLibraryArgs $ InLibraryPostConfigureArgs SBenchPhase mbLBI)
 
     -- Repl phase
     whenRepl $
@@ -521,7 +535,11 @@ buildInplaceUnpackedPackage
   -> Maybe SemaphoreIdentifier
   -> BuildTimeSettings
   -> Lock
+  -- ^ Serialises package registration
   -> Lock
+  -- ^ Serialises access to the setup executable cache
+  -> Lock
+  -- ^ Serialises running benchmarks
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -541,6 +559,7 @@ buildInplaceUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingHaddockOpen}
   registerLock
   cacheLock
+  benchLock
   pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
   plan
   rpkg@(ReadyPackage pkg)
@@ -564,6 +583,7 @@ buildInplaceUnpackedPackage
       buildSettings
       registerLock
       cacheLock
+      benchLock
       pkgshared
       plan
       rpkg
@@ -755,7 +775,11 @@ buildAndInstallUnpackedPackage
   -- name of the semaphore is created freshly each time.
   -> BuildTimeSettings
   -> Lock
+  -- ^ Serialises package registration
   -> Lock
+  -- ^ Serialises access to the setup executable cache
+  -> Lock
+  -- ^ Serialises running benchmarks
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -773,6 +797,7 @@ buildAndInstallUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingLogFile}
   registerLock
   cacheLock
+  benchLock
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
     , pkgConfigPlatform = platform
@@ -804,6 +829,7 @@ buildAndInstallUnpackedPackage
       buildSettings
       registerLock
       cacheLock
+      benchLock
       pkgshared
       plan
       rpkg

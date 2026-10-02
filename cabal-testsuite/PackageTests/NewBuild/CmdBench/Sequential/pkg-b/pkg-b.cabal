@@ -1,0 +1,10 @@
+cabal-version: 3.0
+name: pkg-b
+version: 1.0
+build-type: Simple
+
+benchmark b1
+    type: exitcode-stdio-1.0
+    main-is: Bench.hs
+    build-depends: base, directory
+    default-language: Haskell2010

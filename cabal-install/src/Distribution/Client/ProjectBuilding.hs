@@ -355,6 +355,7 @@ rebuildTargets
         registerLock <- newLock -- serialise registration
         cacheLock <- newLock -- serialise access to setup exe cache
         -- TODO: [code cleanup] eliminate setup exe cache
+        benchLock <- newLock -- serialise running benchmarks
         info verbosity $
           "Executing install plan "
             ++ case buildSettingNumJobs of
@@ -410,6 +411,7 @@ rebuildTargets
                       downloadMap
                       registerLock
                       cacheLock
+                      benchLock
                       sharedPackageConfig
                       installPlan
                       ipiTVar
@@ -538,7 +540,11 @@ rebuildTarget
   -> BuildTimeSettings
   -> AsyncFetchMap
   -> Lock
+  -- ^ Serialises package registration
   -> Lock
+  -- ^ Serialises access to the setup executable cache
+  -> Lock
+  -- ^ Serialises running benchmarks
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> TVar InstalledPackageIndex
@@ -554,6 +560,7 @@ rebuildTarget
   downloadMap
   registerLock
   cacheLock
+  benchLock
   sharedPackageConfig
   plan
   ipiTVar
@@ -640,6 +647,7 @@ rebuildTarget
           buildSettings
           registerLock
           cacheLock
+          benchLock
           sharedPackageConfig
           plan
           rpkg
@@ -657,6 +665,7 @@ rebuildTarget
           buildSettings
           registerLock
           cacheLock
+          benchLock
           sharedPackageConfig
           plan
           rpkg

@@ -1337,6 +1337,11 @@ they are up to date.
 ``cabal bench`` inherits flags of the ``bench`` subcommand of ``Setup.hs``,
 :ref:`see the corresponding section <setup-bench>`.
 
+When building in parallel (e.g. with ``-j``), the benchmarks are still run one
+at a time, so that they do not compete for resources and skew each other's
+results. Other components may still be built while a benchmark is running;
+use ``-j1`` to avoid that.
+
 cabal test
 ^^^^^^^^^^
 
