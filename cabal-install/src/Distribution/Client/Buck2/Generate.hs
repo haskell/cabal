@@ -66,7 +66,7 @@ import Distribution.Client.Buck2.Starlark
 -- directory containing @.buckconfig@), used to turn each package's
 -- absolute directory into the cell-relative one buck2 target labels need.
 -- @componentLBIs@ is a real, Cabal-computed 'LocalBuildInfo' for every
--- local (or quasi-local) *component* - see "Distribution.Client.CmdBuck2"
+-- local (or quasi-local) *component* - see "Distribution.Client.Buck2.Configure"
 -- - used to generate each component's own @cabal_macros.h@\/
 -- @Paths_\<pkg\>@\/@PackageInfo_\<pkg\>@ via Cabal's own real generators
 -- (see "Distribution.Client.Buck2.CabalToBuck") instead of reimplementing

@@ -185,7 +185,7 @@ skippedLibraries verbosity pkgDesc pkgDir componentLBIs =
       return $ if isNothing msrcs then Just (libName lib) else Nothing
 
 -- | Look up a component's real, Cabal-computed 'LocalBuildInfo' (from
--- "Distribution.Client.CmdBuck2") plus its own 'ComponentLocalBuildInfo'
+-- "Distribution.Client.Buck2.Configure") plus its own 'ComponentLocalBuildInfo'
 -- within it (via 'componentNameCLBIs') - 'Nothing' if either lookup fails
 -- (e.g. a component that isn't part of the elaborated build plan, such as
 -- a test-suite when tests aren't enabled), in which case callers skip the

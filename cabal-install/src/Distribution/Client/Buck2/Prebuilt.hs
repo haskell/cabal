@@ -125,7 +125,7 @@ import Distribution.Client.Buck2.Starlark
 --     dependency - callers that need a real
 --     'Distribution.Simple.PackageIndex.InstalledPackageIndex' (e.g. to
 --     build a genuine 'LocalBuildInfo' via "Distribution.Client.InLibrary",
---     the way "Distribution.Client.CmdBuck2" does) can build one directly
+--     the way "Distribution.Client.Buck2.Configure" does) can build one directly
 --     from this via 'PackageIndex.fromList' without a second, independent
 --     walk of the same @.conf@ files.
 generatePrebuilt
@@ -139,7 +139,7 @@ generatePrebuilt
   -- benchmark-flag-aware) dependency closure that was just built. Never
   -- contains a package buck2 builds from source itself (a local package,
   -- or a non-local one built @inplace@ because it depends on one - see
-  -- 'CmdBuck2.isBuiltByBuck2'): those get a real @haskell_library()@ from
+  -- 'Distribution.Client.Buck2.LocalPackages.isBuiltLocally'): those get a real @haskell_library()@ from
   -- "Distribution.Client.Buck2.Generate" instead, and are excluded from
   -- this plan before it's even built. So every unit id here is either a
   -- GHC global\/boot package or one installed to the cabal store.
