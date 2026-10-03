@@ -114,7 +114,7 @@ import qualified Data.List.NonEmpty as NE
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar)
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
-import Data.IORef (newIORef, readIORef, writeIORef)
+import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
 import GHC.Clock (getMonotonicTime)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
@@ -161,7 +161,7 @@ data PackageBuildingPhase r where
 -- | The benchmarks of the units built so far, which are run once all the units
 -- of the plan are built.
 -- See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
-type DeferredBenchmarks = TVar [(UnitId, IO ())]
+type DeferredBenchmarks = IORef [(UnitId, IO ())]
 
 -- | Structures the phases of building and registering a package amongst others
 -- (see t'PackageBuildingPhase'). Delegates logic specific to a certain
@@ -329,7 +329,7 @@ buildAndRegisterUnpackedPackage
 
       deferBenchmark :: IO () -> IO ()
       deferBenchmark bench =
-        atomically $ modifyTVar deferredBenchmarks ((uid, bench) :)
+        atomicModifyIORef' deferredBenchmarks (\queued -> ((uid, bench) : queued, ()))
 
       timedDelegate :: forall r. PackageBuildingPhase r -> IO r
       timedDelegate phase

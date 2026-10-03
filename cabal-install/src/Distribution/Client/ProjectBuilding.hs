@@ -83,9 +83,10 @@ import qualified Data.Set as Set
 
 import qualified Text.PrettyPrint as Disp
 
-import Control.Concurrent.STM (TVar, newTVarIO, readTVarIO)
+import Control.Concurrent.STM (TVar, newTVarIO)
 import Control.Exception (assert, handle, try)
 import Data.Either (isLeft)
+import Data.IORef (newIORef, readIORef)
 import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
@@ -358,7 +359,7 @@ rebuildTargets
         -- TODO: [code cleanup] eliminate setup exe cache
 
         -- See Note [Running benchmarks]
-        deferredBenchmarks <- newTVarIO []
+        deferredBenchmarks <- newIORef []
 
         info verbosity $
           "Executing install plan "
@@ -425,7 +426,7 @@ rebuildTargets
         -- Once the units are built, run their benchmarks.
         -- See Note [Running benchmarks]
         runDeferredBenchmarks keepGoing installPlan buildOutcomes
-          =<< readTVarIO deferredBenchmarks
+          =<< readIORef deferredBenchmarks
     where
       keepGoing = buildSettingKeepGoing
       withRepoCtx =
