@@ -1,0 +1,18 @@
+BS.concat
+  [
+    "cabal-version: 3.0\n",
+    "name: simple\n",
+    "version: 1.0\n",
+    "\n",
+    "library\n",
+    "  -- before\n",
+    "  build-depends:\n",
+    "    -- within\n",
+    "    base > 4.8\n",
+    "    -- after\n",
+    "\n",
+    "library namedLibrary\n",
+    "  build-depends: base <= 5\n",
+    "its-a-new-field:\n",
+    "  , value\n",
+    "  , value on another line,\n"]
