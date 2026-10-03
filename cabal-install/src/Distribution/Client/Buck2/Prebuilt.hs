@@ -413,7 +413,7 @@ writeBuckFile targetDir paths packages buildToolPaths =
 -- own @buildToolDependsArg@ for the consuming side, and
 -- @buck2\/prelude\/decls\/haskell_common.bzl@'s own comment on the attr
 -- for why this needs to be a real target at all (not a host-filesystem
--- symlink, superseded by this - see buck2.md's own DONE entry).
+-- symlink, superseded by this).
 buildToolExportCall :: String -> FilePath -> Call
 buildToolExportCall name relPath =
   call

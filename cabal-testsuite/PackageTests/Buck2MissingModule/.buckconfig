@@ -1,0 +1,4 @@
+# Placeholder: this test only checks `cabal buck2`'s generated files, it
+# never actually invokes a real buck2 binary, so this doesn't need to be
+# a functional buck2 config - it only needs to exist so that
+# `ensureBuckconfigAndPackage` sees it's already there and leaves it alone.
