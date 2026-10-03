@@ -1,7 +1,7 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 module Distribution.Fields.ConfVar
@@ -20,6 +20,7 @@ where
 import Data.Functor ((<&>))
 import Distribution.Compat.CharParsing (char, integral)
 import Distribution.Compat.Prelude
+{- FOURMOLU_DISABLE -}
 import Distribution.Fields.Field
   ( SectionArg (..)
   , sectionArgAnn
@@ -29,6 +30,7 @@ import Distribution.Fields.Field
   , pattern Section
 #endif
   )
+{- FOURMOLU_ENABLE -}
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser (readFields)
 import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
