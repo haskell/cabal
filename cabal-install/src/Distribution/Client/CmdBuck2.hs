@@ -164,11 +164,11 @@ buck2Action flags extraArgs globalFlags = do
       let projectRoot = distProjectRootDirectory (distDirLayout baseCtx)
       checkBuck2Prelude verbosity projectRoot
 
-      -- The same target resolution + pruning 'CmdBuild.buildAction ["all"]
-      -- --only-dependencies' does, inlined here (rather than delegated to
-      -- it as an opaque action) so 'elaboratedPlanToExecute' below - the
-      -- exact, test/benchmark-flag-aware dependency closure that's about
-      -- to be built - stays in hand for 'generatePrebuilt'.
+      -- Construct a plan for building dependencies of the project:
+      -- similar to what @cabal build all --only-dependencies@ does,
+      -- except that we also skip building any non-local packages that
+      -- happen to be part of the build plan because they depend on a
+      -- local package (see 'isBuiltLocally').
       buildCtx@ProjectBuildContext{elaboratedPlanOriginal, elaboratedPlanToExecute, elaboratedShared} <-
         runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
           targets <-
@@ -180,23 +180,12 @@ buck2Action flags extraArgs globalFlags = do
                 Nothing
                 targetSelectors
           let elaboratedPlan' = pruneInstallPlanToTargets TargetActionBuild targets elaboratedPlan
-              -- Nothing local gets built by cabal here - buck2 builds all
-              -- of it from source. That's not just the selected targets
-              -- themselves (which 'cabal build --only-dependencies' would
-              -- exclude anyway) but every unit for which
-              -- 'isBuiltByBuck2' holds: e.g. hackage-security, a non-local
-              -- package the solver plans 'inplace' because it depends on
-              -- the local Cabal-syntax, which would otherwise be built
-              -- here as a "dependency" (and drag Cabal-syntax in with it).
-              -- Excluding all of them together can't leave a dangling
-              -- edge: nothing external can depend on a local package
-              -- (that's precisely what would make it inplace itself).
               excluded =
                 Map.keysSet targets
                   <> Set.fromList
                     [ elabUnitId elab
                     | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlan'
-                    , isBuiltByBuck2 elab
+                    , isBuiltLocally elab
                     ]
           elaboratedPlan'' <-
             either (dieWithException verbosity . ReportCannotPruneDependencies . renderCannotPruneDependencies) return $
@@ -209,10 +198,9 @@ buck2Action flags extraArgs globalFlags = do
       runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
       -- Nothing above built any package buck2 builds itself (see
-      -- 'isBuiltByBuck2'), but the ones that come from a tarball (e.g.
-      -- hackage-security, above) still need their source on disk, which
-      -- cabal only fetches and unpacks as a side effect of building them:
-      -- do just that part.
+      -- 'isBuiltLocally'), but the ones that come from a tarball
+      -- still need their source on disk, which cabal only fetches and
+      -- unpacks as a side effect of building them: do just that part.
       unpackInplaceSources
         verbosity
         (distDirLayout baseCtx)
@@ -220,13 +208,13 @@ buck2Action flags extraArgs globalFlags = do
         (projectConfigWithBuilderRepoContext verbosity (buildSettings baseCtx))
         [ elab
         | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlanOriginal
-        , isBuiltByBuck2 elab
+        , isBuiltLocally elab
         , not (elabLocalToProject elab)
         ]
 
       ensureBuckconfigAndPackage verbosity projectRoot
 
-      -- Every package buck2 builds from source - see 'isBuiltByBuck2'.
+      -- Every package buck2 builds from source - see 'isBuiltLocally'.
       --
       -- Computed before 'generatePrebuilt' so 'wantedBuildTools' below -
       -- derived from it - can be passed in as a real parameter, rather
@@ -237,7 +225,7 @@ buck2Action flags extraArgs globalFlags = do
               dir <- packageSourceDir verbosity (distDirLayout baseCtx) elab
               return (dir, elabPkgDescription elab)
           | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlanOriginal
-          , isBuiltByBuck2 elab
+          , isBuiltLocally elab
           ]
 
       -- Every @pkg:exe@ named in any local component's own
@@ -259,7 +247,7 @@ buck2Action flags extraArgs globalFlags = do
             Map.fromList
               [ ((packageName elab, cname), elabTestTestOptions elab)
               | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlanOriginal
-              , isBuiltByBuck2 elab
+              , isBuiltLocally elab
               , not (null (elabTestTestOptions elab))
               , cname@CTestName{} <- componentNamesFor elab (elabPkgDescription elab)
               ]
@@ -670,5 +658,5 @@ configureComponentsConcurrently verbosity distDirLayout numJobs plan shared inst
 -- "Distribution.Client.Buck2.Prebuilt"'s @localUnitIds@ exactly, or a
 -- package would get both a prebuilt rule and a real one - buck2 rejects
 -- the resulting duplicate target outright.
-isBuiltByBuck2 :: ElaboratedConfiguredPackage -> Bool
-isBuiltByBuck2 elab = elabLocalToProject elab || elabBuildStyle elab /= BuildAndInstall
+isBuiltLocally :: ElaboratedConfiguredPackage -> Bool
+isBuiltLocally elab = elabLocalToProject elab || elabBuildStyle elab /= BuildAndInstall
