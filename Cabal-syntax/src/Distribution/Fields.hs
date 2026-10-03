@@ -1,8 +1,9 @@
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | Utilities to work with @.cabal@ like file structure.
+{- FOURMOLU_DISABLE -}
 module Distribution.Fields
   ( -- * Types
     Field
@@ -63,6 +64,7 @@ module Distribution.Fields
   , genericFromParsecFields
   , fromParsecFields
   ) where
+{- FOURMOLU_ENABLE -}
 
 import Distribution.Fields.Field
 import Distribution.Fields.ParseResult

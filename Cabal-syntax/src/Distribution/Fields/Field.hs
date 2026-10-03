@@ -5,6 +5,7 @@
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
 -- These types are parameterized by an annotation.
+{- FOURMOLU_DISABLE -}
 module Distribution.Fields.Field
   ( -- * Cabal file
     Field
@@ -48,6 +49,7 @@ module Distribution.Fields.Field
   , sectionArgsToString
   , fieldLinesToString
   ) where
+{- FOURMOLU_ENABLE -}
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
