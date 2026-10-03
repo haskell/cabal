@@ -422,7 +422,7 @@ rebuildTargets
                       pkg
                       pkgBuildStatus
 
-        -- Once the packages are built, run their benchmarks.
+        -- Once the units are built, run their benchmarks.
         -- See Note [Running benchmarks]
         runDeferredBenchmarks keepGoing installPlan buildOutcomes
           =<< readTVarIO deferredBenchmarks
@@ -510,22 +510,29 @@ configuring individual packages.
 
 {- Note [Running benchmarks]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Benchmarks must not run at the same time as other benchmarks, or while other
-packages are being built: they would compete for resources, which skews their
-results (#7557). Yet the packages of the plan are built in parallel, and with
-per-component builds every benchmark suite is a package of its own.
+Benchmarks must not run at the same time as other benchmarks, or while
+something else is being built: they would compete for resources, which skews
+their results (#7557).
 
-So, the bench phase of a package (see 'buildAndRegisterUnpackedPackage') does
-not run its benchmarks, but adds them to the 'DeferredBenchmarks'. Once all
-the packages are built, 'rebuildTargets' runs them one at a time, in plan
-order, with 'runDeferredBenchmarks', and records their failures in the
-'BuildOutcomes'.
+Yet 'InstallPlan.execute' builds the units of the plan in parallel. A unit is
+a single component of a package, or a whole package when it cannot be built
+per component (see 'NotPerComponentReason'). So the benchmark suites of a
+project, even those of the same package, are usually separate units. If each
+unit ran its benchmarks in its bench phase, right after it is built, they
+could run at the same time as each other, or while other units are still
+being built. (A whole-package unit runs all of its benchmarks with a single
+@Setup bench@ invocation, which runs them one at a time.)
 
-Unless we keep going after failures, no benchmark is run if a package failed
-to build, and no more benchmarks are run once one of them failed.
+So, the bench phase of a unit (see 'buildAndRegisterUnpackedPackage') does not
+run its benchmarks, but adds them to the 'DeferredBenchmarks'. Once all the
+units are built, 'rebuildTargets' runs them one at a time, in plan order, with
+'runDeferredBenchmarks', and records their failures in the 'BuildOutcomes'.
+
+Unless we keep going after failures, no benchmark is run if a unit failed to
+build, and no more benchmarks are run once one of them failed.
 -}
 
--- | Run the deferred benchmarks of the packages that were built successfully,
+-- | Run the deferred benchmarks of the units that were built successfully,
 -- one at a time, in plan order. See Note [Running benchmarks].
 runDeferredBenchmarks
   :: Bool
@@ -603,7 +610,7 @@ rebuildTarget
   -> Lock
   -- ^ Serialises access to the setup executable cache
   -> DeferredBenchmarks
-  -- ^ Benchmarks to run once all the packages are built
+  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> TVar InstalledPackageIndex

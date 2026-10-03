@@ -158,8 +158,8 @@ data PackageBuildingPhase r where
   PBTestPhase :: {runTest :: IO ()} -> PackageBuildingPhase ()
   PBBenchPhase :: {runBench :: IO ()} -> PackageBuildingPhase ()
 
--- | The benchmarks of the packages built so far, which are run once all the
--- packages are built.
+-- | The benchmarks of the units built so far, which are run once all the units
+-- of the plan are built.
 -- See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
 type DeferredBenchmarks = TVar [(UnitId, IO ())]
 
@@ -180,7 +180,7 @@ buildAndRegisterUnpackedPackage
   -> Lock
   -- ^ Serialises access to the setup executable cache
   -> DeferredBenchmarks
-  -- ^ Benchmarks to run once all the packages are built
+  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -297,7 +297,7 @@ buildAndRegisterUnpackedPackage
 
     -- Bench phase
     --
-    -- The benchmarks are not run here, but once all the packages are built.
+    -- The benchmarks are not run here, but once all the units are built.
     -- See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
     whenBench $
       deferBenchmark $
@@ -544,7 +544,7 @@ buildInplaceUnpackedPackage
   -> Lock
   -- ^ Serialises access to the setup executable cache
   -> DeferredBenchmarks
-  -- ^ Benchmarks to run once all the packages are built
+  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -784,7 +784,7 @@ buildAndInstallUnpackedPackage
   -> Lock
   -- ^ Serialises access to the setup executable cache
   -> DeferredBenchmarks
-  -- ^ Benchmarks to run once all the packages are built
+  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
