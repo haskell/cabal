@@ -20,6 +20,7 @@ module Distribution.Client.ProjectBuilding.UnpackedPackage
     -- ** Auxiliary definitions
   , buildAndRegisterUnpackedPackage
   , PackageBuildingPhase
+  , DeferredBenchmarks
 
     -- ** Utilities
   , annotateFailure
@@ -113,7 +114,7 @@ import qualified Data.List.NonEmpty as NE
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar)
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
-import Data.IORef (newIORef, readIORef, writeIORef)
+import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
 import GHC.Clock (getMonotonicTime)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
@@ -157,6 +158,11 @@ data PackageBuildingPhase r where
   PBTestPhase :: {runTest :: IO ()} -> PackageBuildingPhase ()
   PBBenchPhase :: {runBench :: IO ()} -> PackageBuildingPhase ()
 
+-- | The benchmarks of the units built so far, which are run once all the units
+-- of the plan are built.
+-- See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
+type DeferredBenchmarks = IORef [(UnitId, IO ())]
+
 -- | Structures the phases of building and registering a package amongst others
 -- (see t'PackageBuildingPhase'). Delegates logic specific to a certain
 -- building style (notably, inplace vs install) to the delegate function that
@@ -170,7 +176,11 @@ buildAndRegisterUnpackedPackage
   -- name of the semaphore is created freshly each time.
   -> BuildTimeSettings
   -> Lock
+  -- ^ Serialises package registration
   -> Lock
+  -- ^ Serialises access to the setup executable cache
+  -> DeferredBenchmarks
+  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -193,6 +203,7 @@ buildAndRegisterUnpackedPackage
     }
   registerLock
   cacheLock
+  deferredBenchmarks
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
     , pkgConfigCompilerProgs = progdb
@@ -285,16 +296,20 @@ buildAndRegisterUnpackedPackage
               (InLibraryArgs $ InLibraryPostConfigureArgs STestPhase mbLBI)
 
     -- Bench phase
+    --
+    -- The benchmarks are not run here, but once all the units are built.
+    -- See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
     whenBench $
-      timedDelegate $
-        PBBenchPhase $
-          annotateFailure mlogFile BenchFailed $
-            setup
-              benchCommand
-              Cabal.benchmarkCommonFlags
-              (return . benchFlags)
-              benchArgs
-              (InLibraryArgs $ InLibraryPostConfigureArgs SBenchPhase mbLBI)
+      deferBenchmark $
+        timedDelegate $
+          PBBenchPhase $
+            annotateFailure mlogFile BenchFailed $
+              setup
+                benchCommand
+                Cabal.benchmarkCommonFlags
+                (return . benchFlags)
+                benchArgs
+                (InLibraryArgs $ InLibraryPostConfigureArgs SBenchPhase mbLBI)
 
     -- Repl phase
     whenRepl $
@@ -311,6 +326,10 @@ buildAndRegisterUnpackedPackage
     return ()
     where
       uid = installedUnitId rpkg
+
+      deferBenchmark :: IO () -> IO ()
+      deferBenchmark bench =
+        atomicModifyIORef' deferredBenchmarks (\queued -> ((uid, bench) : queued, ()))
 
       timedDelegate :: forall r. PackageBuildingPhase r -> IO r
       timedDelegate phase
@@ -521,7 +540,11 @@ buildInplaceUnpackedPackage
   -> Maybe SemaphoreIdentifier
   -> BuildTimeSettings
   -> Lock
+  -- ^ Serialises package registration
   -> Lock
+  -- ^ Serialises access to the setup executable cache
+  -> DeferredBenchmarks
+  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -541,6 +564,7 @@ buildInplaceUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingHaddockOpen}
   registerLock
   cacheLock
+  deferredBenchmarks
   pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
   plan
   rpkg@(ReadyPackage pkg)
@@ -564,6 +588,7 @@ buildInplaceUnpackedPackage
       buildSettings
       registerLock
       cacheLock
+      deferredBenchmarks
       pkgshared
       plan
       rpkg
@@ -755,7 +780,11 @@ buildAndInstallUnpackedPackage
   -- name of the semaphore is created freshly each time.
   -> BuildTimeSettings
   -> Lock
+  -- ^ Serialises package registration
   -> Lock
+  -- ^ Serialises access to the setup executable cache
+  -> DeferredBenchmarks
+  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -773,6 +802,7 @@ buildAndInstallUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingLogFile}
   registerLock
   cacheLock
+  deferredBenchmarks
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
     , pkgConfigPlatform = platform
@@ -804,6 +834,7 @@ buildAndInstallUnpackedPackage
       buildSettings
       registerLock
       cacheLock
+      deferredBenchmarks
       pkgshared
       plan
       rpkg

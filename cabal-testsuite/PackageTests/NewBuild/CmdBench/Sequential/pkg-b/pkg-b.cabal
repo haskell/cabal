@@ -1,0 +1,17 @@
+cabal-version: 3.0
+name: pkg-b
+version: 1.0
+build-type: Simple
+
+-- The benchmark depends on a library, so that it is still being built when
+-- the benchmarks of pkg-a are ready to run.
+library
+    exposed-modules: PkgB
+    build-depends: base
+    default-language: Haskell2010
+
+benchmark b1
+    type: exitcode-stdio-1.0
+    main-is: Bench.hs
+    build-depends: base, directory, pkg-b
+    default-language: Haskell2010
