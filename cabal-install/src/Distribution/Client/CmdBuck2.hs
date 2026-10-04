@@ -43,15 +43,14 @@ import Distribution.Client.Setup
   , InstallFlags (installOnlyDeps)
   )
 
-import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Command (CommandUI (..), usageAlternatives)
 import Distribution.Simple.Flag (toFlag)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Utils (dieWithException, notice)
 import Distribution.Verbosity (normal)
 
 import Distribution.Client.Buck2.BuildDependencies (buildDependencies)
 import Distribution.Client.Buck2.Configure (configureComponents)
-import Distribution.Client.Buck2.Write (writeAllPackages)
 import Distribution.Client.Buck2.LocalPackages
   ( builtLocalPackages
   , projectTestOptions
@@ -62,6 +61,7 @@ import Distribution.Client.Buck2.Setup
   ( checkBuck2Prelude
   , ensureBuckconfigAndPackage
   )
+import Distribution.Client.Buck2.Write (writeAllPackages)
 import Distribution.Client.Errors (CabalInstallException (Buck2ActionExtraArgs))
 
 buck2Command :: CommandUI (NixStyleFlags ())

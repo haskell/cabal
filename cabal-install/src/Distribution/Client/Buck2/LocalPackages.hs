@@ -15,22 +15,22 @@ import Prelude ()
 
 import qualified Data.Map as Map
 
-import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.DistDirLayout (DistDirLayout (distUnpackedSrcDirectory))
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectPlanning
   ( ElaboratedConfiguredPackage (..)
   , ElaboratedInstallPlan
   )
 import Distribution.Client.ProjectPlanning.Types
-  ( ElaboratedPackageOrComponent (ElabComponent, ElabPackage)
-  , BuildStyle (BuildAndInstall)
+  ( BuildStyle (BuildAndInstall)
+  , ElaboratedPackageOrComponent (ElabComponent, ElabPackage)
   , elabComponentName
   )
 import Distribution.Client.Types.PackageLocation (PackageLocation (..))
 
 import Distribution.Package (PackageName, packageId, packageName)
-import qualified Distribution.PackageDescription as PD
 import Distribution.PackageDescription (PackageDescription)
+import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.InstallDirs (PathTemplate)
 import Distribution.Simple.Utils (dieWithException, ordNub)
 import Distribution.Types.Component (componentBuildInfo, componentName)
@@ -95,8 +95,8 @@ builtLocalPackages :: Verbosity -> DistDirLayout -> ElaboratedInstallPlan -> IO 
 builtLocalPackages verbosity distDirLayout plan =
   fmap (nubBy ((==) `on` fst)) . sequenceA $
     [ do
-        dir <- packageSourceDir verbosity distDirLayout elab
-        return (dir, elabPkgDescription elab)
+      dir <- packageSourceDir verbosity distDirLayout elab
+      return (dir, elabPkgDescription elab)
     | InstallPlan.Configured elab <- InstallPlan.toList plan
     , isBuiltLocally elab
     ]

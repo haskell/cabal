@@ -73,8 +73,6 @@ import Distribution.Types.ComponentName (ComponentName (CExeName))
 import Distribution.InstalledPackageInfo (parseInstalledPackageInfo)
 import Distribution.Package (HasUnitId (installedUnitId), packageName, packageVersion)
 import Distribution.Simple.BuildPaths (exeExtension)
-import Distribution.Types.PackageName (PackageName)
-import Distribution.Types.UnqualComponentName (UnqualComponentName, unUnqualComponentName)
 import Distribution.Simple.Compiler
   ( Compiler (compilerProperties)
   , compilerVersion
@@ -96,7 +94,9 @@ import Distribution.Types.InstalledPackageInfo
       , sourceLibName
       )
   )
+import Distribution.Types.PackageName (PackageName)
 import Distribution.Types.UnitId (UnitId, unUnitId)
+import Distribution.Types.UnqualComponentName (UnqualComponentName, unUnqualComponentName)
 
 import Distribution.Client.Errors
   ( CabalInstallException (Buck2NoGhcPkgProgram, Buck2NoGhcProgram)

@@ -17,6 +17,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding (unpackInplaceSources)
 import Distribution.Client.ProjectConfig (projectConfigWithBuilderRepoContext)
 import Distribution.Client.ProjectOrchestration
+
 -- 'pruneInstallPlanToTargets' is hidden: 'ProjectOrchestration' re-exports
 -- its own wrapper of the same name (taking a 'TargetsMap' directly,
 -- matching what 'resolveTargetsFromSolver' below returns), which would

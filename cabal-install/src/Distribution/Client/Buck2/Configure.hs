@@ -17,11 +17,11 @@ import Control.Concurrent.STM
   , readTVarIO
   )
 
-import qualified Distribution.Client.InLibrary as InLibrary
-import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.DistDirLayout
   ( DistDirLayout (distBuildDirectory)
   )
+import qualified Distribution.Client.InLibrary as InLibrary
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.JobControl (parStratNumJobs)
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning hiding (pruneInstallPlanToTargets)
@@ -33,12 +33,12 @@ import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Types.ReadyPackage (GenericReadyPackage (ReadyPackage))
 import Distribution.Client.Utils (numberOfProcessors)
 
-import qualified Distribution.PackageDescription as PD
 import Distribution.Package (PackageName, packageName)
 import Distribution.PackageDescription (PackageDescription)
+import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler (PackageDBX (GlobalPackageDB))
-import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program.Builtin (builtinPrograms)
 import Distribution.Simple.Program.Db (prependProgramSearchPathNoLogging, restoreProgramDb, userSpecifyArgss)
 import Distribution.Simple.Register (generateRegistrationInfo)

@@ -40,10 +40,10 @@ import Distribution.PackageDescription
   , TestSuite (testInterface, testName)
   , TestSuiteInterface (..)
   , buildToolDepends
+  , cSources
   , cppOptions
   , cxxOptions
   , cxxSources
-  , cSources
   , defaultExtensions
   , defaultLanguage
   , extraLibs

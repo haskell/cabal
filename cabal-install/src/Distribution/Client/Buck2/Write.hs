@@ -49,12 +49,12 @@ import Distribution.PackageDescription
   , PackageDescription
   , library
   )
+import Distribution.Simple.InstallDirs (PathTemplate)
 import Distribution.Types.ComponentName (ComponentName)
 import Distribution.Types.LocalBuildInfo (LocalBuildInfo)
 import Distribution.Types.ModuleReexport
   ( ModuleReexport (moduleReexportOriginalName, moduleReexportOriginalPackage)
   )
-import Distribution.Simple.InstallDirs (PathTemplate)
 import Distribution.Types.PackageName (PackageName)
 
 import Distribution.Simple.Utils (notice, ordNub, warn)
@@ -91,7 +91,7 @@ writeAllPackages verbosity projectRoot componentLBIs externalBuildTools projectT
     -- module, not an explicit `origin-package:Module` - Cabal itself
     -- resolves that form by searching the reexporting package's own
     -- build-depends for whichever one actually defines it, which for a
-    -- *local* origin this index can do too (an external origin doesn't
+    -- \*local* origin this index can do too (an external origin doesn't
     -- need this: its real .conf file already declares the reexport
     -- directly to ghc-pkg).
     moduleOwners :: Map.Map ModuleName.ModuleName PackageName
