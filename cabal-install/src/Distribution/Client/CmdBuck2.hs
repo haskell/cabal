@@ -15,7 +15,7 @@
 --      'LocalBuildInfo' they are generated from - see
 --      "Distribution.Client.Buck2.Configure".
 --   5. Generate a @BUCK.cabal.bzl@ (and, where missing, a @BUCK@) for
---      every local package - see "Distribution.Client.Buck2.Generate".
+--      every local package - see "Distribution.Client.Buck2.Write".
 module Distribution.Client.CmdBuck2
   ( buck2Command
   , buck2Action
@@ -51,7 +51,7 @@ import Distribution.Verbosity (normal)
 
 import Distribution.Client.Buck2.BuildDependencies (buildDependencies)
 import Distribution.Client.Buck2.Configure (configureComponents)
-import Distribution.Client.Buck2.Generate (generateAllPackages)
+import Distribution.Client.Buck2.Write (writeAllPackages)
 import Distribution.Client.Buck2.LocalPackages
   ( builtLocalPackages
   , projectTestOptions
@@ -120,7 +120,7 @@ buck2Action flags extraArgs globalFlags = do
       -- file of the resolved dependency closure.
       componentLBIs <- configureComponents verbosity baseCtx buildCtx (PackageIndex.fromList resolvedDeps)
 
-      generateAllPackages
+      writeAllPackages
         verbosity
         projectRoot
         componentLBIs

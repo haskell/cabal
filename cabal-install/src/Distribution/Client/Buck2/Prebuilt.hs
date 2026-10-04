@@ -102,7 +102,7 @@ import Distribution.Client.Errors
   ( CabalInstallException (Buck2NoGhcPkgProgram, Buck2NoGhcProgram)
   )
 
-import Distribution.Client.Buck2.CabalToBuck (libTargetName)
+import Distribution.Client.Buck2.Generate (libTargetName)
 import Distribution.Client.Buck2.Starlark
 
 -- | Generate\/refresh @third-party\/haskell@ from the dependency closure
@@ -112,12 +112,12 @@ import Distribution.Client.Buck2.Starlark
 --     dependency closure resolved a real binary for - each one also
 --     gets a real @export_file()@ target in the generated
 --     @third-party\/haskell\/BUCK@ (@\/\/third-party\/haskell:\<name\>-exe@),
---     for "Distribution.Client.Buck2.CabalToBuck" to reference from a
+--     for "Distribution.Client.Buck2.Generate" to reference from a
 --     component's own @build_tool_depends@ (see that module's own
 --     @buildToolDependsArg@) - a real buck2 dependency edge, not a
 --     host-filesystem symlink farm resolved once at generation time (the
 --     wanted pair's own *local*-package half, if any, is a completely
---     separate case handled entirely by 'CabalToBuck' itself, referencing
+--     separate case handled entirely by "Distribution.Client.Buck2.Generate" itself, referencing
 --     that package's own real, already-generated @haskell_binary()@
 --     target directly - this function only ever sees, and only needs to
 --     handle, already-installed *external* dependencies).
@@ -190,7 +190,7 @@ generatePrebuilt verbosity projectRoot cabalDirLayout shared depsPlan wantedBuil
       -- binary for - a local-package pair is never in `depsPlan` at all
       -- (see this function's own haddock on that parameter), so this
       -- silently, correctly resolves to nothing for one; entirely
-      -- 'CabalToBuck's own job to notice that case and reference the
+      -- 'Distribution.Client.Buck2.Generate's own job to notice that case and reference the
       -- local package's real target directly instead.
       buildToolPaths =
         Map.fromList
@@ -409,7 +409,7 @@ writeBuckFile targetDir paths packages buildToolPaths =
 -- forced on regardless of whatever @copy_file@'s own default happens to
 -- preserve) that any component's own @build_tool_depends@ can reference
 -- directly, the same @export_file()@ primitive this project already
--- uses for autogen files - see "Distribution.Client.Buck2.CabalToBuck"'s
+-- uses for autogen files - see "Distribution.Client.Buck2.Generate"'s
 -- own @buildToolDependsArg@ for the consuming side, and
 -- @buck2\/prelude\/decls\/haskell_common.bzl@'s own comment on the attr
 -- for why this needs to be a real target at all (not a host-filesystem

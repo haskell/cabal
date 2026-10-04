@@ -12,12 +12,12 @@ import Test.Cabal.Prelude
 -- benchmark maps onto a plain haskell_binary(), same as an executable),
 -- a detailed-0.9 test-suite (a self-generated stub Main driving
 -- `Distribution.TestSuite`'s own API directly, not real Cabal's own
--- stdin-driven Setup.hs-generated one - see CabalToBuck.hs's own
+-- stdin-driven Setup.hs-generated one - see Generate.hs's own
 -- `testSuite`/`writeDetailedTestStub` haddock), and a manual flag
 -- gating `cpp-options`.
 --
 -- Doesn't cover `build-tool-depends:` GHC preprocessor support
--- (hspec-discover, markdown-unlit - see CabalToBuck.hs's own
+-- (hspec-discover, markdown-unlit - see Generate.hs's own
 -- `preprocessBuildTools` haddock): cabal-testsuite's own sandbox has no
 -- remote repository configured at all, so a fixture here can't depend
 -- on a real Hackage package the way `hspec-discover`\/`markdown-unlit`

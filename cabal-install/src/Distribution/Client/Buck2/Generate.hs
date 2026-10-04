@@ -1,240 +1,683 @@
--- | Writes the per-package @BUCK.cabal.bzl@\/@BUCK@\/@cabal-buck2\/autogen\/
--- BUCK@ files for every local project package.
+-- | Turns one local package's already-resolved 'PackageDescription' (flags
+-- and conditionals already flattened by the solver, so gated
+-- @cxx-sources@\/@ghc-options@\/etc. from an @if flag(...)@ stanza show up
+-- here exactly as they should for the resolved build) into the build spec
+-- for its @BUCK.cabal.bzl@ file (see buck2\/cabal.bzl for what interprets it),
+-- plus the autogen files its components need.
 --
--- Three files, not one, per package directory:
---
---   * @BUCK.cabal.bzl@ is fully regenerated on every run (it's marked
---     @\@generated@ and never hand-edited) and defines a single
---     @generated_targets()@ macro with one rule call per buildable
---     component. Deliberately kept at the package root (*not* under
---     @cabal-buck2\/@ alongside the generated @Paths_\<pkg\>@ module and
---     each component's own @cabal_macros.h@ - see
---     "Distribution.Client.Buck2.CabalToBuck") - buck2's @load()@ only
---     accepts a bare same-package filename for a same-package path (no
---     @\/@ allowed - see 'renderBuckWrapper's own haddock), and a fully
---     cell-qualified path instead would make every hand-maintained
---     @BUCK@ depend on its own package's location in the project, which
---     defeats the point of it being freely hand-editable\/relocatable.
---   * @BUCK@ is created only if it doesn't already exist, as a two-line
---     file that loads and calls that macro. This is the file a user is
---     free to hand-edit - to add extra targets, or stop calling
---     @generated_targets()@ altogether for a package that needs fully
---     custom rules - without a re-run of @cabal buck2@ ever touching it.
---   * @cabal-buck2\/autogen\/BUCK@ (see 'generateAutogenBuck') is fully
---     regenerated on every run too, and gives every autogen file its own
---     real, addressable buck2 target (via @export_file()@) - both so a
---     generated rule's own @cabal_component@ kwarg picks up
---     @cabal_macros.h@ as a real, buck2-tracked dependency edge instead
---     of an untracked path string folded into @compiler_flags@, and so
---     that other, hand-written @BUCK@ files anywhere in the project (not
---     just this package's own) can reference e.g. @Paths_\<pkg\>@
---     directly, instead of hand-rolling a stand-in for it.
+-- This module does no IO: the files it generates are returned as data,
+-- problems as warnings, and the source files that exist are an input (see
+-- 'sourceCandidates'). "Distribution.Client.Buck2.Write" does the IO.
 module Distribution.Client.Buck2.Generate
-  ( generateAllPackages
+  ( LocalPackageIndex
+  , AutogenFile (..)
+  , PackageTargets (..)
+  , generatePackageTargets
+  , sourceCandidates
+  , libTargetName
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import System.Directory (createDirectoryIfMissing, doesFileExist)
-import System.FilePath (makeRelative, takeDirectory, takeFileName, (</>))
+import System.FilePath ((<.>), (</>))
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+import qualified Distribution.Compat.NonEmptySet as NES
+import Distribution.Compiler (CompilerFlavor (GHC))
 import qualified Distribution.ModuleName as ModuleName
-import Distribution.Package (packageName)
+import Distribution.Package (packageId, packageName)
 import Distribution.PackageDescription
-  ( Library (exposedModules, reexportedModules)
+  ( Benchmark (benchmarkInterface, benchmarkName)
+  , BenchmarkInterface (..)
+  , BuildInfo
+  , Executable (exeName, modulePath)
+  , Library (exposedModules, libBuildInfo, libName)
+  , LibraryName (..)
   , PackageDescription
-  , library
+  , TestSuite (testInterface, testName)
+  , TestSuiteInterface (..)
+  , buildToolDepends
+  , cppOptions
+  , cxxOptions
+  , cxxSources
+  , cSources
+  , defaultExtensions
+  , defaultLanguage
+  , extraLibs
+  , hcOptions
+  , hsSourceDirs
+  , includeDirs
+  , otherModules
+  , pkgBuildableComponents
+  , pkgconfigDepends
+  , targetBuildDepends
   )
+import Distribution.Simple.Compiler (compilerInfo)
+import Distribution.Types.Component (Component (..), componentBuildInfo, componentName)
+import Distribution.Types.ComponentLocalBuildInfo (ComponentLocalBuildInfo)
 import Distribution.Types.ComponentName (ComponentName)
-import Distribution.Types.LocalBuildInfo (LocalBuildInfo)
-import Distribution.Types.ModuleReexport
-  ( ModuleReexport (moduleReexportOriginalName, moduleReexportOriginalPackage)
+import Distribution.Types.Dependency (depLibraries, depPkgName)
+import Distribution.Types.ExeDependency (ExeDependency (..))
+import Distribution.Types.LocalBuildInfo (LocalBuildInfo (compiler, hostPlatform, withPrograms), componentNameCLBIs, localUnitId)
+import Distribution.Types.PackageName (PackageName, unPackageName)
+import Distribution.Types.PkgconfigDependency (PkgconfigDependency (..))
+import Distribution.Types.PkgconfigName (unPkgconfigName)
+import Distribution.Types.UnqualComponentName (unUnqualComponentName)
+import Distribution.Utils.Path (getSymbolicPath)
+
+import Distribution.Simple.Build.Macros (generateCabalMacrosHeader)
+import Distribution.Simple.Build.PathsModule (generatePathsModule)
+import Distribution.Simple.BuildPaths (autogenPathsModuleName)
+import Distribution.Simple.InstallDirs
+  ( PathTemplate
+  , PathTemplateVariable (TestSuiteNameVar)
+  , fromPathTemplate
+  , initialPathTemplateEnv
+  , substPathTemplate
+  , toPathTemplate
   )
-import Distribution.Simple.InstallDirs (PathTemplate)
-import Distribution.Types.PackageName (PackageName)
+import Distribution.Simple.Program.Builtin (ghcProgram)
+import Distribution.Simple.Program.Db (lookupProgram)
+import Distribution.Simple.Program.Types (programOverrideArgs)
+import Distribution.Simple.Utils (ordNub)
 
-import Distribution.Simple.Utils (notice, ordNub, warn)
-
-import Distribution.Client.Buck2.CabalToBuck
 import Distribution.Client.Buck2.Starlark
 
--- | Generate\/refresh @BUCK.cabal.bzl@ (and @BUCK@, where missing) for
--- every local package. @projectRoot@ is the buck2 cell root (the
--- directory containing @.buckconfig@), used to turn each package's
--- absolute directory into the cell-relative one buck2 target labels need.
--- @componentLBIs@ is a real, Cabal-computed 'LocalBuildInfo' for every
--- local (or quasi-local) *component* - see "Distribution.Client.Buck2.Configure"
--- - used to generate each component's own @cabal_macros.h@\/
--- @Paths_\<pkg\>@\/@PackageInfo_\<pkg\>@ via Cabal's own real generators
--- (see "Distribution.Client.Buck2.CabalToBuck") instead of reimplementing
--- pieces of them by hand. @externalBuildTools@ is every
--- @build-tool-depends:@ executable name "Distribution.Client.Buck2.
--- Prebuilt" resolved a real external binary (and generated an
--- @export_file()@ target) for - see 'CabalToBuck.buildToolDependsArg'.
-generateAllPackages :: Verbosity -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> Set String -> Map (PackageName, ComponentName) [PathTemplate] -> [(FilePath, PackageDescription)] -> IO ()
-generateAllPackages verbosity projectRoot componentLBIs externalBuildTools projectTestOptions pkgs = do
-  traverse_ (generateOnePackage verbosity localIndex projectRoot componentLBIs externalBuildTools projectTestOptions) pkgs
+-- | Maps every local project package's name to the buck2 cell-relative
+-- directory its @BUCK@ file lives in (@.@ for one at the project root), so
+-- a dependency on another local package can be turned into a fully
+-- qualified target label - plus the set of other packages its main
+-- library's @reexported-modules@ re-export from (see 'classifyDeps').
+type LocalPackageIndex = Map PackageName (FilePath, [PackageName])
+
+-- | A generated file that lives in the package's @cabal-buck2\/autogen@
+-- directory (a component's @cabal_macros.h@, the package's own
+-- @Paths_\<pkg\>@ module, a @detailed-0.9@ test-suite's stub @Main@), and
+-- needs an @export_file()@ entry in @cabal-buck2\/autogen\/BUCK@ (see
+-- "Distribution.Client.Buck2.Write", which writes both) so it can be
+-- referenced - by a component's @cabal_component@, or by a hand-written rule
+-- elsewhere in the project - as a real, buck2-tracked target instead of an
+-- untracked path string.
+data AutogenFile = AutogenFile
+  { autogenName :: String
+  -- ^ The name of its @export_file()@ target.
+  , autogenPath :: FilePath
+  -- ^ Relative to @cabal-buck2\/autogen@.
+  , autogenContents :: String
+  }
+  deriving (Eq, Ord)
+
+-- | What is generated for one package: its build spec (see 'packageSpec'),
+-- and the autogen files it needs.
+data PackageTargets = PackageTargets
+  { ptSpec :: Value
+  , ptComponentCount :: Int
+  , ptAutogenFiles :: [AutogenFile]
+  }
+
+-- | One component's contribution to a 'PackageTargets': its entry in the
+-- spec (none if it was skipped), its autogen files, and the warnings
+-- produced along the way.
+data ComponentTargets = ComponentTargets
+  { ctSpec :: [Value]
+  , ctAutogen :: [AutogenFile]
+  , ctWarnings :: [String]
+  }
+
+instance Semigroup ComponentTargets where
+  ComponentTargets s1 a1 w1 <> ComponentTargets s2 a2 w2 = ComponentTargets (s1 ++ s2) (a1 ++ a2) (w1 ++ w2)
+
+instance Monoid ComponentTargets where
+  mempty = ComponentTargets [] [] []
+
+componentTargets :: Value -> [AutogenFile] -> ComponentTargets
+componentTargets component files = mempty{ctSpec = [component], ctAutogen = files}
+
+-- | Generate the buck2 targets for every buildable component of a local
+-- package, along with the warnings for the components that had to be
+-- skipped (and why). This does no IO: the source files it looks for are
+-- given as a set of paths (relative to the package's directory), which
+-- must include every path 'sourceCandidates' lists that exists.
+generatePackageTargets
+  :: LocalPackageIndex
+  -> FilePath
+  -- ^ The package's own buck2 cell-relative directory (@.@ at the project
+  -- root).
+  -> Map (PackageName, ComponentName) LocalBuildInfo
+  -> Set String
+  -- ^ Every @build-tool-depends:@ executable name
+  -- "Distribution.Client.Buck2.Prebuilt" resolved a real *external*
+  -- binary for (and generated an @export_file()@ target for) - see
+  -- 'specComponent'.
+  -> Map (PackageName, ComponentName) [PathTemplate]
+  -- ^ The project's @test-options:@ for each test-suite (see 'testSuiteArgs').
+  -> Set FilePath
+  -> PackageDescription
+  -> (Maybe PackageTargets, [String])
+generatePackageTargets localIndex rootRelPkgDir componentLBIs externalBuildTools projectTestOptions sources pkgDesc =
+  (targets, concatMap ctWarnings results)
   where
-    localIndex :: LocalPackageIndex
-    localIndex =
-      Map.fromList
-        [ (packageName pkgDesc, (rootRelativeDir projectRoot pkgDir, reexportOrigins pkgDesc))
-        | (pkgDir, pkgDesc) <- pkgs
-        ]
-    -- Every module exposed by any local package's main library, to
-    -- resolve a `reexported-modules:` entry that (as is typical - see
-    -- Cabal.cabal's own reexport of Cabal-syntax) names only the bare
-    -- module, not an explicit `origin-package:Module` - Cabal itself
-    -- resolves that form by searching the reexporting package's own
-    -- build-depends for whichever one actually defines it, which for a
-    -- *local* origin this index can do too (an external origin doesn't
-    -- need this: its real .conf file already declares the reexport
-    -- directly to ghc-pkg).
-    moduleOwners :: Map.Map ModuleName.ModuleName PackageName
-    moduleOwners =
-      Map.fromList
-        [ (m, packageName pkgDesc)
-        | (_, pkgDesc) <- pkgs
-        , Just lib <- [library pkgDesc]
-        , m <- exposedModules lib
-        ]
-    reexportOrigins pkgDesc =
+    generate = generateComponent localIndex componentLBIs externalBuildTools projectTestOptions sources pkgDesc
+    comps = pkgBuildableComponents pkgDesc
+
+    -- Worked out ahead of the other components, so that one that
+    -- build-depends on a library of this package that won't get a rule
+    -- (unresolvable modules) can skip itself too, instead of emitting a
+    -- rule whose @deps@ references a target that was never generated -
+    -- buck2 fails that outright at analysis time ("Unknown target"), for
+    -- the *entire* build, the same class of problem 'resolveModules'
+    -- exists to avoid for a single component's own missing source file.
+    -- Libraries themselves never depend on this set.
+    skippedLibs =
+      Set.fromList [libName lib | comp@(CLib lib) <- comps, null (ctSpec (generate Set.empty comp))]
+
+    results = map (generate skippedLibs) comps
+    components = concatMap ctSpec results
+    targets
+      | null components = Nothing
+      | otherwise =
+          Just
+            PackageTargets
+              { ptSpec = packageSpec pkgDesc rootRelPkgDir (packageGhcOptions pkgDesc componentLBIs) components
+              , ptComponentCount = length components
+              , ptAutogenFiles = dedupAutogenFiles (concatMap ctAutogen results)
+              }
+
+-- | Look up a component's real, Cabal-computed 'LocalBuildInfo' (from
+-- "Distribution.Client.Buck2.Configure") plus its own 'ComponentLocalBuildInfo'
+-- within it (via 'componentNameCLBIs') - 'Nothing' if either lookup fails
+-- (e.g. a component that isn't part of the elaborated build plan, such as
+-- a test-suite when tests aren't enabled), in which case callers skip the
+-- component rather than emit a rule built from fabricated data.
+lbiClbiFor :: PackageDescription -> Map (PackageName, ComponentName) LocalBuildInfo -> Component -> Maybe (LocalBuildInfo, ComponentLocalBuildInfo)
+lbiClbiFor pkgDesc componentLBIs comp = do
+  lbi <- Map.lookup (packageName pkgDesc, componentName comp) componentLBIs
+  clbi <- listToMaybe (componentNameCLBIs lbi (componentName comp))
+  return (lbi, clbi)
+
+-- | Two components referencing the same autogen file (the package's
+-- @Paths_\<pkg\>@ module) each produce it; keep one entry per target, at the
+-- position of the first, with the contents of the last.
+dedupAutogenFiles :: [AutogenFile] -> [AutogenFile]
+dedupAutogenFiles files =
+  [ f{autogenContents = latest Map.! autogenName f}
+  | f <- nubBy ((==) `on` autogenName) files
+  ]
+  where
+    latest = Map.fromList [(autogenName f, autogenContents f) | f <- files]
+
+generateComponent
+  :: LocalPackageIndex
+  -> Map (PackageName, ComponentName) LocalBuildInfo
+  -> Set String
+  -> Map (PackageName, ComponentName) [PathTemplate]
+  -> Set FilePath
+  -> PackageDescription
+  -> Set LibraryName
+  -> Component
+  -> ComponentTargets
+generateComponent localIndex componentLBIs externalBuildTools projectTestOptions sources pkgDesc skippedLibs comp = case comp of
+  CLib lib -> library (libTargetName (packageName pkgDesc) (libName lib)) lib
+  CExe exe -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (exeName exe)) "executable" $ executable exe
+  CTest test -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (testName test)) "test-suite" $ testSuite test
+  CBench bench -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (benchmarkName bench)) "benchmark" $ benchmark bench
+  CFLib _ -> skip "foreign library (not supported yet)"
+  where
+    skip = skipBecause []
+
+    -- Skip a component, with the warnings for the problems that led to it
+    -- followed by the skip itself.
+    skipBecause problems why =
+      mempty{ctWarnings = problems ++ ["cabal buck2: skipping " ++ why ++ " in package " ++ unPackageName (packageName pkgDesc)]}
+
+    -- A component that build-depends on one of *this same package's*
+    -- own libraries, when that library was itself skipped (see
+    -- 'skippedLibs'), can't be built either - it would emit a rule
+    -- whose own @deps@ references a target that was never generated,
+    -- which buck2 rejects outright ("Unknown target") at analysis time
+    -- for the whole build, not just a warning. cabal-testsuite's own
+    -- @test-runtime-deps@ executable (build-depends on cabal-testsuite's
+    -- own library) is exactly this case.
+    ifNotOnSkippedLib bi targetName kind act =
+      case [ln | d <- targetBuildDepends bi, depPkgName d == packageName pkgDesc, ln <- NES.toList (depLibraries d), ln `Set.member` skippedLibs] of
+        (ln : _) ->
+          skip
+            ( kind
+                ++ " "
+                ++ targetName
+                ++ " (depends on "
+                ++ libTargetName (packageName pkgDesc) ln
+                ++ ", itself skipped)"
+            )
+        [] -> act
+
+    library targetName lib = case lbiClbiFor pkgDesc componentLBIs comp of
+      Nothing -> skip ("library " ++ targetName ++ " (no LocalBuildInfo found for it in the elaborated build plan)")
+      Just (lbi, clbi) -> case resolveModules sources pkgDesc (Just (lbi, clbi)) bi (exposedModules lib ++ otherModules bi) of
+        Left problems -> skipBecause problems ("library " ++ targetName ++ " (couldn't resolve all its modules)")
+        Right (srcs, srcAutogen) ->
+          componentTargets
+            (specComponent localIndex externalBuildTools "library" targetName bi [("srcs", VDict [(m, srcSpec x) | (m, x) <- srcs])])
+            (macrosHeader targetName pkgDesc lbi clbi : srcAutogen)
+      where
+        bi = libBuildInfo lib
+
+    -- An executable, benchmark or test-suite: all the same shape (a main
+    -- module over some others), differing only in the spec's @kind@ and
+    -- extras.
+    executableLike kind targetName lbi clbi bi mainSrc otherSrcs extra srcAutogen =
+      componentTargets
+        ( specComponent
+            localIndex
+            externalBuildTools
+            kind
+            targetName
+            bi
+            ([("main_is", srcSpec mainSrc)] ++ [("srcs", VDict [(m, srcSpec x) | (m, x) <- otherSrcs]) | not (null otherSrcs)] ++ extra)
+        )
+        (macrosHeader targetName pkgDesc lbi clbi : srcAutogen)
+
+    -- The shape shared by an executable, an @exitcode-stdio-1.0@
+    -- test-suite and benchmark: a @main-is@ file over the @other-modules@.
+    mainIsComponent kind targetName bi mainIs extra = case lbiClbiFor pkgDesc componentLBIs comp of
+      Nothing -> skip (kind ++ " " ++ targetName ++ " (no LocalBuildInfo found for it in the elaborated build plan)")
+      Just (lbi, clbi) -> case (resolveMainIs sources bi mainIs, resolveModules sources pkgDesc (Just (lbi, clbi)) bi (otherModules bi)) of
+        (Right mainSrc, Right (otherSrcs, srcAutogen)) ->
+          executableLike kind targetName lbi clbi bi (SrcFile mainSrc) otherSrcs (extra lbi) srcAutogen
+        (mainRes, othersRes) ->
+          skipBecause (problemsOf mainRes ++ problemsOf othersRes) (kind ++ " " ++ targetName ++ " (couldn't resolve all its modules)")
+
+    executable exe = mainIsComponent "executable" targetName bi (getSymbolicPath (modulePath exe)) (const [])
+      where
+        bi = componentBuildInfo (CExe exe)
+        targetName = unUnqualComponentName (exeName exe)
+
+    -- A benchmark's own 'BenchmarkExeV10' is exactly 'TestSuiteExeV10's
+    -- shape (a version-tagged main-is path over the same 'BuildInfo') -
+    -- and unlike a test-suite, @cabal bench@ has no special "run it and
+    -- report a testsuite-style result" semantics of its own, just
+    -- "build and run this executable" - so this maps onto the same thing
+    -- as an executable.
+    benchmark bench = case benchmarkInterface bench of
+      BenchmarkExeV10 _ver mainIs -> mainIsComponent "benchmark" targetName bi (getSymbolicPath mainIs) (const [])
+      _ ->
+        skip
+          ( "benchmark "
+              ++ targetName
+              ++ " (only exitcode-stdio-1.0 benchmarks are supported)"
+          )
+      where
+        bi = componentBuildInfo (CBench bench)
+        targetName = unUnqualComponentName (benchmarkName bench)
+
+    testSuite test = case testInterface test of
+      TestSuiteExeV10 _ver mainIs -> mainIsComponent "test-suite" targetName bi (getSymbolicPath mainIs) testArgs
+      -- A @detailed-0.9@ test-suite's own module (named via
+      -- @test-module:@, not @other-modules:@ - real Cabal synthesises a
+      -- whole separate internal sub-library exposing just this one
+      -- module, see 'Distribution.Simple.Build.testSuiteLibV09AsLibAndExe')
+      -- exports @tests :: IO ['Distribution.TestSuite.Test']@, and real
+      -- Cabal's own Setup.hs generates a tiny stub 'Main' importing it
+      -- and calling into 'Distribution.Simple.Test.LibV09.stubMain' -
+      -- which then blocks reading a @(logFilePath, testSuiteName)@ pair
+      -- off *stdin*, written by the parent @cabal test@ process, before
+      -- it'll run anything at all (see that module's own 'stubMain').
+      -- That stdin handshake has nothing to do with buck2 - a
+      -- @haskell_test()@ just execs the compiled binary and checks its
+      -- exit code, the same as @exitcode-stdio-1.0@ - so reusing real
+      -- Cabal's own stub verbatim would need a wrapper script to feed it
+      -- a fake handshake for no real benefit (nothing here ever reads
+      -- the machine-readable log it writes). Generates a self-contained
+      -- stub instead, calling only 'Distribution.TestSuite's own public
+      -- API directly (a real, documented, GHC-version-independent
+      -- interface - not reimplementing anything real Cabal doesn't
+      -- already expose for exactly this purpose): runs every 'Test'
+      -- in turn, printing a human-readable pass\/fail\/error line per
+      -- test to stdout, exiting non-zero if anything failed or errored.
+      -- Needs no new build-depends beyond what real Cabal already
+      -- requires the user to declare for their own @tests@ module to
+      -- even type-check (@Distribution.TestSuite@ lives in the @Cabal@
+      -- library itself).
+      TestSuiteLibV09 _ver testModule -> case lbiClbiFor pkgDesc componentLBIs comp of
+        Nothing -> skip ("test-suite " ++ targetName ++ " (no LocalBuildInfo found for it in the elaborated build plan)")
+        Just (lbi, clbi) -> case (resolveModules sources pkgDesc (Just (lbi, clbi)) bi [testModule], resolveModules sources pkgDesc (Just (lbi, clbi)) bi (otherModules bi)) of
+          (Right (testModSrc, testModAutogen), Right (otherSrcs, otherAutogen)) ->
+            let (stubSrc, stubFile) = detailedTestStub targetName testModule
+             in executableLike "test-suite" targetName lbi clbi bi stubSrc (testModSrc ++ otherSrcs) (testArgs lbi) (stubFile : testModAutogen ++ otherAutogen)
+          (testModRes, othersRes) ->
+            skipBecause (problemsOf testModRes ++ problemsOf othersRes) ("test-suite " ++ targetName ++ " (couldn't resolve all its modules)")
+      _ ->
+        skip
+          ( "test-suite "
+              ++ targetName
+              ++ " (only exitcode-stdio-1.0 and detailed-0.9 test-suites are supported)"
+          )
+      where
+        bi = componentBuildInfo (CTest test)
+        targetName = unUnqualComponentName (testName test)
+        testArgs lbi =
+          [ ("test_args", strList args)
+          | let args = testSuiteArgs pkgDesc lbi test (Map.findWithDefault [] (packageName pkgDesc, componentName comp) projectTestOptions)
+          , not (null args)
+          ]
+
+    problemsOf = either id (const [])
+
+-- | The version of the build spec format; must match @SCHEMA_VERSION@ in
+-- buck2\/cabal.bzl, which turns a spec into buck2 rules.
+specSchemaVersion :: Int
+specSchemaVersion = 1
+
+-- | A package's build spec: everything the generated rules are built from
+-- that comes from Cabal rather than from buck2 conventions (see
+-- buck2\/cabal.bzl for the schema).
+packageSpec :: PackageDescription -> FilePath -> [String] -> [Value] -> Value
+packageSpec pkgDesc rootRelPkgDir projectGhcOptions components =
+  VDict $
+    [ ("schema", VInt specSchemaVersion)
+    , ("package", VDict [("name", str (unPackageName (packageName pkgDesc))), ("dir", str rootRelPkgDir)])
+    ]
+      ++ listField "ghc_options" projectGhcOptions
+      ++ [("components", VList components)]
+
+-- | One component of a build spec. @extra@ holds what depends on the kind
+-- of component (its sources, main module, test arguments).
+specComponent :: LocalPackageIndex -> Set String -> String -> String -> BuildInfo -> [(String, Value)] -> Value
+specComponent localIndex externalBuildTools kind name bi extra =
+  VDict $
+    [("kind", str kind), ("name", str name)]
+      ++ extra
+      ++ listField "ghc_options" (hcOptions GHC bi)
+      ++ listField "cpp_options" (cppOptions bi)
+      ++ [("language", str (prettyShow lang)) | Just lang <- [defaultLanguage bi]]
+      ++ listField "extensions" (map prettyShow (defaultExtensions bi))
+      ++ listField "extra_libraries" (extraLibs bi)
+      ++ valuesField "deps" (map depSpec (libraryDeps localIndex bi))
+      ++ valuesField "build_tools" (mapMaybe buildToolSpec (ordNub [(pn, exe) | ExeDependency pn exe _ <- buildToolDepends bi]))
+      ++ listField "c_sources" (map getSymbolicPath (cSources bi))
+      ++ listField "cxx_sources" (map getSymbolicPath (cxxSources bi))
+      ++ listField "cxx_options" (cxxOptions bi)
+      ++ listField "include_dirs" (map getSymbolicPath (includeDirs bi))
+      ++ listField "pkgconfig" (ordNub [unPkgconfigName n | PkgconfigDependency n _ <- pkgconfigDepends bi])
+  where
+    depSpec (pn, ln) =
+      VDict $
+        [("package", str (unPackageName pn))]
+          ++ [("library", str (unUnqualComponentName n)) | LSubLibName n <- [ln]]
+          ++ [("dir", str dir) | Just (dir, _) <- [Map.lookup pn localIndex]]
+    -- A tool that's neither built by this project nor resolved to a real
+    -- external binary can't be put on PATH by buck2: dropped, silently -
+    -- most build-tool-depends are Setup.hs-time tools nothing needs on PATH.
+    buildToolSpec (pn, exe) = case Map.lookup pn localIndex of
+      Just (dir, _) -> Just (VDict [("exe", str n), ("dir", str dir)])
+      Nothing
+        | n `Set.member` externalBuildTools -> Just (VDict [("exe", str n), ("external", VBool True)])
+        | otherwise -> Nothing
+      where
+        n = unUnqualComponentName exe
+
+-- | A list-valued field, omitted if empty.
+listField :: String -> [String] -> [(String, Value)]
+listField _ [] = []
+listField k xs = [(k, strList xs)]
+
+valuesField :: String -> [Value] -> [(String, Value)]
+valuesField _ [] = []
+valuesField k xs = [(k, VList xs)]
+
+-- | The project-supplied GHC options (see 'ghcProgramArgs') for a
+-- package. Cabal gives every component of a package the same ones (they
+-- come from the package's @cabal.project@ stanza, not from anything
+-- per-component), so any one component's will do; empty if none of its
+-- components were configured at all.
+packageGhcOptions :: PackageDescription -> Map (PackageName, ComponentName) LocalBuildInfo -> [String]
+packageGhcOptions pkgDesc componentLBIs =
+  fromMaybe [] . listToMaybe $
+    [ ghcProgramArgs lbi
+    | comp <- pkgBuildableComponents pkgDesc
+    , Just (lbi, _) <- [lbiClbiFor pkgDesc componentLBIs comp]
+    ]
+
+-- | Extra GHC arguments the *project* supplies rather than the @.cabal@
+-- file: @ghc-options:@ under @package@\/@program-options@ in
+-- @cabal.project@, or @--ghc-options@ on the command line. Cabal applies
+-- these to every GHC invocation for the component, after the @.cabal@
+-- file's own @ghc-options@ (so they can override them) - taken from the
+-- configured @ghc@ program in the 'LocalBuildInfo', which is exactly
+-- where Cabal itself finds them, rather than reading the elaborated plan.
+ghcProgramArgs :: LocalBuildInfo -> [String]
+ghcProgramArgs lbi =
+  -- cabal-install itself adds @-hide-all-packages@ to every GHC invocation
+  -- (a workaround for custom Setup scripts that call GHC directly), which
+  -- means nothing for a buck2 rule - the rule already passes it, and it's
+  -- position-sensitive among GHC's package flags.
+  filter (/= "-hide-all-packages") $
+    maybe [] programOverrideArgs (lookupProgram ghcProgram (withPrograms lbi))
+
+-- | The arguments @cabal test@ would pass to this test-suite's executable
+-- for the project's @test-options:@ (\/@--test-options@), with the same
+-- @$pkgid@\/@$test-suite@-style template variables expanded - Cabal's own
+-- expansion (in "Distribution.Simple.Test.ExeV10") isn't exported.
+testSuiteArgs :: PackageDescription -> LocalBuildInfo -> TestSuite -> [PathTemplate] -> [String]
+testSuiteArgs pkgDesc lbi test = map (fromPathTemplate . substPathTemplate env)
+  where
+    env =
+      initialPathTemplateEnv (packageId pkgDesc) (localUnitId lbi) (compilerInfo (compiler lbi)) (hostPlatform lbi)
+        ++ [(TestSuiteNameVar, toPathTemplate (unUnqualComponentName (testName test)))]
+
+-- | This component's @cabal_macros.h@, exactly as real Cabal generates it
+-- ahead of a build. Produced unconditionally, like real Cabal: harmless for a
+-- component that never enables CPP (the header only matters if\/when cpp
+-- actually runs). @cabal_component@ (in buck2\/cabal.bzl's rules) is what
+-- wires the component up to include it.
+macrosHeader :: String -> PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> AutogenFile
+macrosHeader targetName pkgDesc lbi clbi =
+  AutogenFile
+    { autogenName = targetName ++ "-cabal-macros"
+    , autogenPath = targetName </> "cabal_macros.h"
+    , autogenContents = generateCabalMacrosHeader pkgDesc lbi clbi
+    }
+
+-- | The buck2 target name for one of a package's libraries: the package
+-- name itself for the main (unnamed) library, matching every other
+-- reference to it (@packages = [...]@, other packages' @build-depends@,
+-- ...); the sub-library's own unqualified name otherwise - always unique
+-- within one package's BUCK file, since Cabal itself already requires
+-- every component name in a package to be distinct.
+libTargetName :: PackageName -> LibraryName -> String
+libTargetName pn LMainLibName = unPackageName pn
+libTargetName _ (LSubLibName n) = unUnqualComponentName n
+
+-- | Every library a component depends on: its @build-depends@ (each of which may name
+-- more than one library of a package via @pkg:sublib@ - see
+-- 'depLibraries'), closed over the reexports of local packages.
+libraryDeps :: LocalPackageIndex -> BuildInfo -> [(PackageName, LibraryName)]
+libraryDeps localIndex bi = closeOverReexports [] directDeps
+  where
+    directDeps =
       ordNub
-        [ pn
-        | Just lib <- [library pkgDesc]
-        , reexport <- reexportedModules lib
-        , Just pn <- [originPackage reexport]
-        , pn /= packageName pkgDesc
+        [ (depPkgName d, ln)
+        | d <- targetBuildDepends bi
+        , ln <- NES.toList (depLibraries d)
         ]
-    originPackage reexport = case moduleReexportOriginalPackage reexport of
-      Just pn -> Just pn
-      Nothing -> Map.lookup (moduleReexportOriginalName reexport) moduleOwners
+    -- A local package's buck2 haskell_library() rule only ever declares
+    -- its own real source modules - unlike a real GHC package db entry,
+    -- it has no way to also claim modules reexported (`reexported-
+    -- modules:` in the .cabal file) from elsewhere. So a component that
+    -- depends on a local package with reexports (e.g. `Cabal` re-
+    -- exporting a chunk of `Cabal-syntax`) needs the reexport's origin
+    -- package added as an explicit direct dependency too, or - once
+    -- compile.bzl's `-hide-all-packages` is in effect - GHC can't find
+    -- the reexported module at all: "Could not load module ...". This
+    -- closure adds those origins (transitively, in case a reexporting
+    -- package itself depends on another reexporting package).
+    closeOverReexports seen [] = seen
+    closeOverReexports seen (p@(pn, _) : rest)
+      | p `elem` seen = closeOverReexports seen rest
+      | otherwise =
+          let origins = maybe [] snd (Map.lookup pn localIndex)
+           in closeOverReexports (p : seen) (rest ++ [(o, LMainLibName) | o <- origins])
 
-rootRelativeDir :: FilePath -> FilePath -> FilePath
-rootRelativeDir projectRoot pkgDir = case makeRelative projectRoot pkgDir of
-  "" -> "."
-  rel -> rel
+-- | A source file in a component's @srcs@: either a real file in the
+-- package (relative to its directory), or one generated into the package's
+-- @cabal-buck2\/autogen@ directory, named by its @export_file()@ entry there
+-- (see 'PackageTargets').
+data Src = SrcFile FilePath | SrcAutogen String
 
-generateOnePackage :: Verbosity -> LocalPackageIndex -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> Set String -> Map (PackageName, ComponentName) [PathTemplate] -> (FilePath, PackageDescription) -> IO ()
-generateOnePackage verbosity localIndex projectRoot componentLBIs externalBuildTools projectTestOptions (pkgDir, pkgDesc) = do
-  sources <- Set.fromList <$> filterM (doesFileExist . (pkgDir </>)) (sourceCandidates pkgDesc)
-  let (mtargets, warnings) = generatePackageTargets localIndex (rootRelativeDir projectRoot pkgDir) componentLBIs externalBuildTools projectTestOptions sources pkgDesc
-      pkgName = packageName pkgDesc
-  traverse_ (warn verbosity) warnings
-  case mtargets of
-    Nothing -> warn verbosity $ "cabal buck2: no buck2 targets generated for package " ++ show pkgName
-    Just targets -> do
-      let bzlPath = pkgDir </> "BUCK.cabal.bzl"
-          buckPath = pkgDir </> "BUCK"
-      writeFile bzlPath (renderGeneratedBzl pkgName (ptSpec targets))
-      buckExists <- doesFileExist buckPath
-      unless buckExists $ writeFile buckPath renderBuckWrapper
-      generateAutogenBuck pkgDir pkgName targets
-      notice verbosity $
-        "cabal buck2: generated "
-          ++ (rootRelativeDir projectRoot pkgDir </> "BUCK.cabal.bzl")
-          ++ " ("
-          ++ show (ptComponentCount targets)
-          ++ " component(s))"
-          ++ (if buckExists then "" else ", created " ++ (rootRelativeDir projectRoot pkgDir </> "BUCK"))
+-- | As it appears in a build spec.
+srcSpec :: Src -> Value
+srcSpec (SrcFile p) = str p
+srcSpec (SrcAutogen n) = VDict [("autogen", str n)]
 
--- | The package's autogen files (see 'AutogenFile') and
--- @cabal-buck2\/autogen\/BUCK@: one @export_file()@ per file, so
--- each is a real, addressable buck2 target - referenced by this same
--- package's own generated rules via their @cabal_component@ kwarg
--- (see @cabal_component@ in buck2\/haskell.bzl), and just as easily
--- by a hand-written rule anywhere else in the project (the point of
--- this file existing at all). Fully regenerated on every run, like
--- @BUCK.cabal.bzl@ itself - never hand-edited, so no separate wrapper
--- file is needed here the way @BUCK@ is for it. @export_file@ is a
--- builtin buck2\/prelude rule, so this needs no @load()@ statement at
--- all.
-generateAutogenBuck :: FilePath -> PackageName -> PackageTargets -> IO ()
-generateAutogenBuck pkgDir pkgName targets
-  | null files = return ()
-  | otherwise = do
-      createDirectoryIfMissing True autogenDir
-      for_ files $ \f -> do
-        createDirectoryIfMissing True (takeDirectory (autogenDir </> autogenPath f))
-        writeFile (autogenDir </> autogenPath f) (autogenContents f)
-      writeFile (autogenDir </> "BUCK") (renderFile header [] exportCalls)
+-- | Resolve each module in @hs-source-dirs@ to its real file, trying
+-- @.hs@\/@.lhs@\/@.hsc@ (and the other extensions buck2\/haskell.bzl knows
+-- how to preprocess) in turn - returning @(moduleName, source)@ pairs for the
+-- dict form of @srcs@, which - unlike the plain-list form - is unaffected
+-- by @hs-source-dirs@ not matching the BUCK package's own directory. Files
+-- are looked up in @sources@ (see 'sourceCandidates'). The package's
+-- @Paths_\<pkg\>@ module (if listed) is special-cased: no such file exists
+-- anywhere - Cabal's own Setup.hs generates it fresh on every real build -
+-- so 'pathsModuleFile' stands one in, which needs this component's real
+-- 'LocalBuildInfo'\/'ComponentLocalBuildInfo' (see 'lbiClbiFor'); without
+-- one that module fails to resolve, like a missing source file. Also returns
+-- the autogen files picked up along the way - in practice just the
+-- @Paths_\<pkg\>@ one, at most once, if that module was among @mods@.
+--
+-- 'Left' (with a description of each module that couldn't be resolved) if
+-- *any* module couldn't be - the caller skips the whole component in that
+-- case, rather than emitting a rule that references a source file that
+-- doesn't exist: buck2 doesn't merely warn about that, it fails outright
+-- while evaluating the @BUCK@ file, which (since a @buck2 build //...@
+-- evaluates every @BUCK@ file up front) would otherwise take the *entire*
+-- build down over one unresolvable module in one component of one package.
+resolveModules :: Set FilePath -> PackageDescription -> Maybe (LocalBuildInfo, ComponentLocalBuildInfo) -> BuildInfo -> [ModuleName.ModuleName] -> Either [String] ([(String, Src)], [AutogenFile])
+resolveModules sources pkgDesc mlbiClbi bi mods =
+  case partitionEithers (map (resolveOne sources pkgDesc mlbiClbi bi) mods) of
+    ([], triples) -> Right ([(n, v) | (n, v, _) <- triples], concat [fs | (_, _, fs) <- triples])
+    (problems, _) -> Left problems
+
+resolveOne :: Set FilePath -> PackageDescription -> Maybe (LocalBuildInfo, ComponentLocalBuildInfo) -> BuildInfo -> ModuleName.ModuleName -> Either String (String, Src, [AutogenFile])
+resolveOne sources pkgDesc mlbiClbi bi m
+  | m == autogenPathsModuleName pkgDesc = case mlbiClbi of
+      Nothing ->
+        Left $ "cabal buck2: couldn't generate " ++ prettyShow m ++ " (no LocalBuildInfo available for this component)"
+      Just (lbi, clbi) ->
+        let file = pathsModuleFile pkgDesc lbi clbi m
+         in Right (prettyShow m, SrcAutogen (autogenName file), [file])
+  | otherwise = case firstExisting sources (moduleCandidates bi m) of
+      Just real -> Right (prettyShow m, SrcFile real, [])
+      Nothing ->
+        Left $
+          "cabal buck2: couldn't find a source file for module "
+            ++ prettyShow m
+            ++ " under "
+            ++ intercalate ", " (sourceDirs bi)
+
+-- | Cabal's own Setup.hs generates a @Paths_\<pkg\>@ module fresh at
+-- configure\/build time (giving @version@\/@getDataFileName@\/etc) - no
+-- real source file for it exists anywhere to find. Generated here from
+-- real Cabal's own 'generatePathsModule' (given this component's real
+-- 'LocalBuildInfo'\/'ComponentLocalBuildInfo' - see 'lbiClbiFor'), so
+-- install-dir\/relocatability logic matches a plain @cabal build@ exactly.
+-- It is referenced from @srcs@ by its @export_file()@ target rather than a
+-- path: @cabal-buck2\/autogen\/@ has its own @BUCK@ file, so it is a
+-- different buck2 package from the one the sources are in, and a file living
+-- there can no longer be named by a package-relative path.
+pathsModuleFile :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> ModuleName.ModuleName -> AutogenFile
+pathsModuleFile pkgDesc lbi clbi m =
+  AutogenFile
+    { autogenName = ModuleName.toFilePath m
+    , autogenPath = ModuleName.toFilePath m <.> "hs"
+    , autogenContents = generatePathsModule pkgDesc lbi clbi
+    }
+
+-- | A @detailed-0.9@ test-suite's own stub @Main@ - see 'testSuite's own
+-- haddock for why this is a from-scratch driver over
+-- @Distribution.TestSuite@'s public API, not real Cabal's own
+-- @Setup.hs@-generated one (@Distribution.Simple.Test.LibV09.stubMain@,
+-- which expects a handshake over stdin buck2 has no way to provide).
+-- Returned as the test-suite's @main_is@ source, along with the file,
+-- referenced by target for the same reason as 'pathsModuleFile'.
+detailedTestStub :: String -> ModuleName.ModuleName -> (Src, AutogenFile)
+detailedTestStub targetName testModule = (SrcAutogen name, file)
   where
-    files = ptAutogenFiles targets
-    autogenDir = pkgDir </> "cabal-buck2" </> "autogen"
-    header =
-      "@generated by `cabal buck2` from "
-        ++ prettyShow pkgName
-        ++ ".cabal - do not edit by hand.\nRe-run `cabal buck2` after editing the .cabal file to refresh this file."
-    exportCalls =
-      [ call
-        "export_file"
-        [ ("name", str (autogenName f))
-        , ("src", str (autogenPath f))
-        , -- export_file()'s own `out` defaults to the *rule's* name, not
-          -- to `src`'s basename (see buck2/prelude/export_file.bzl) - so
-          -- without this, the materialised artifact would be named e.g.
-          -- `exe-pkg-detailed-test-stub-main` instead of `Main.hs`,
-          -- losing the source file's real extension. Harmless for a
-          -- consumer that only ever references the file opaquely (e.g.
-          -- cabal_component's own `$(location ...)` include-path use),
-          -- but a real, silent bug for one referenced from `srcs`:
-          -- buck2/haskell.bzl's own `is_haskell_src()` check (and GHC's
-          -- own module-name-from-extension logic) both key off the
-          -- artifact's own filename, not the target label - an artifact
-          -- missing its `.hs` extension is silently treated as a
-          -- non-Haskell "hidden" input instead of a compiled module,
-          -- with no error from buck2 itself, just GHC's own unhelpful
-          -- "Could not find module".
-          ("out", str (takeFileName (autogenPath f)))
-        , ("visibility", strList ["PUBLIC"])
+    name = targetName ++ "-stub-main"
+    file = AutogenFile{autogenName = name, autogenPath = targetName </> "Main.hs", autogenContents = contents}
+    contents =
+      unlines
+        [ "-- @generated by `cabal buck2` - do not edit by hand."
+        , "module Main (main) where"
+        , ""
+        , "import Distribution.TestSuite"
+        , "import qualified " ++ prettyShow testModule ++ " as CabalBuck2TestModule"
+        , "import System.Exit (ExitCode (..), exitWith)"
+        , ""
+        , "main :: IO ()"
+        , "main = do"
+        , "  ts <- CabalBuck2TestModule.tests"
+        , "  oks <- mapM runTest ts"
+        , "  exitWith (if and oks then ExitSuccess else ExitFailure 1)"
+        , ""
+        , "runTest :: Test -> IO Bool"
+        , "runTest (Test ti) = run ti >>= report (name ti)"
+        , "runTest (Group _ _ ts) = and <$> mapM runTest ts"
+        , "runTest (ExtraOptions _ t) = runTest t"
+        , ""
+        , "report :: String -> Progress -> IO Bool"
+        , "report n (Progress msg next) = putStrLn (n ++ \": \" ++ msg) >> next >>= report n"
+        , "report n (Finished Pass) = putStrLn (n ++ \": PASS\") >> return True"
+        , "report n (Finished (Fail msg)) = putStrLn (n ++ \": FAIL: \" ++ msg) >> return False"
+        , "report n (Finished (Error msg)) = putStrLn (n ++ \": ERROR: \" ++ msg) >> return False"
         ]
-      | f <- files
-      ]
 
-renderGeneratedBzl :: PackageName -> Value -> String
-renderGeneratedBzl pkgName spec =
-  unlines
-    [ "# @generated by `cabal buck2` from " ++ prettyShow pkgName ++ ".cabal - do not edit by hand."
-    , "# Re-run `cabal buck2` after editing the .cabal file to refresh this file."
-    , ""
-    ]
-    ++ renderLoad "//buck2:cabal.bzl" ["cabal_targets"]
-    ++ "\n"
-    ++ renderBinding "local_build_spec" spec
-    ++ "\n"
-    -- kwargs: customisation passed by the BUCK file (see cabal_targets()
-    -- in buck2/cabal.bzl).
-    ++ "def generated_targets(**kwargs):\n    cabal_targets(local_build_spec, **kwargs)\n"
+-- | The files a module's source could be, in order of preference: in each
+-- of the @hs-source-dirs@ in turn, with each extension buck2/haskell.bzl's
+-- own srcs-resolution (@_resolve_src@) knows to run through
+-- hsc2hs()\/alex()\/happy().
+moduleCandidates :: BuildInfo -> ModuleName.ModuleName -> [FilePath]
+moduleCandidates bi m = [dir </> ModuleName.toFilePath m <.> ext | dir <- sourceDirs bi, ext <- ["hs", "lhs", "hsc", "x", "y"]]
 
--- | buck2's @load()@ doesn't accept a same-package path containing a
--- @\/@ (@:cabal-buck2\/targets.bzl@ fails outright: "Unable to parse
--- import spec ... but got a path") - only a bare same-package filename
--- (@:filename.bzl@) or a fully cell-qualified one
--- (@\/\/package\/path:filename.bzl@) work, and the latter would make
--- this hand-maintained file depend on its own package's location in the
--- project (confirmed empirically against the real buck2 binary while
--- trying @BUCK.cabal.bzl@ living under @cabal-buck2\/@ instead - reverted
--- for exactly this reason). Keeping @BUCK.cabal.bzl@ at the package root
--- avoids the whole issue: it's a same-package, no-slash filename either
--- way.
-renderBuckWrapper :: String
-renderBuckWrapper =
-  unlines
-    [ "# Hand-maintained: add extra targets below, or stop calling"
-    , "# generated_targets() to fully take over this package's BUCK rules."
-    , "#"
-    , "# generated_targets() can be customised (see cabal_targets() in"
-    , "# buck2/cabal.bzl), e.g."
-    , "#"
-    , "#     generated_targets("
-    , "#         defaults = {\"*\": {\"compiler_flags\": [\"-O2\"]}},"
-    , "#         overrides = {\"my-test\": {\"test_args\": [\"--quick\"]}},"
-    , "#     )"
-    , "load(\":BUCK.cabal.bzl\", \"generated_targets\")"
-    , ""
-    , "generated_targets()"
-    ]
+mainIsCandidates :: BuildInfo -> FilePath -> [FilePath]
+mainIsCandidates bi mainIs = [dir </> mainIs | dir <- sourceDirs bi]
+
+firstExisting :: Set FilePath -> [FilePath] -> Maybe FilePath
+firstExisting sources = find (`Set.member` sources)
+
+-- | 'Left' if the main-is file couldn't be found - see 'resolveModules'
+-- for why the caller must skip the whole component rather than emit a
+-- rule pointing at a nonexistent file.
+resolveMainIs :: Set FilePath -> BuildInfo -> FilePath -> Either [String] FilePath
+resolveMainIs sources bi mainIs =
+  maybe (Left ["cabal buck2: couldn't find main-is file " ++ mainIs ++ " under " ++ intercalate ", " (sourceDirs bi)]) Right $
+    firstExisting sources (mainIsCandidates bi mainIs)
+
+-- | Every path (relative to the package's directory) that
+-- 'generatePackageTargets' may look for a component's source in. The
+-- generator does no IO, so callers check which of these exist and pass those
+-- in.
+sourceCandidates :: PackageDescription -> [FilePath]
+sourceCandidates pkgDesc = ordNub (concatMap candidates (pkgBuildableComponents pkgDesc))
+  where
+    candidates comp = case comp of
+      CLib lib -> modules bi (exposedModules lib ++ otherModules bi)
+      CExe exe -> mainIs bi (getSymbolicPath (modulePath exe)) ++ modules bi (otherModules bi)
+      CTest test -> case testInterface test of
+        TestSuiteExeV10 _ main -> mainIs bi (getSymbolicPath main) ++ modules bi (otherModules bi)
+        TestSuiteLibV09 _ testModule -> modules bi (testModule : otherModules bi)
+        _ -> []
+      CBench bench -> case benchmarkInterface bench of
+        BenchmarkExeV10 _ main -> mainIs bi (getSymbolicPath main) ++ modules bi (otherModules bi)
+        _ -> []
+      CFLib _ -> []
+      where
+        bi = componentBuildInfo comp
+    modules bi = concatMap (moduleCandidates bi)
+    mainIs = mainIsCandidates
+
+sourceDirs :: BuildInfo -> [FilePath]
+sourceDirs bi = case map getSymbolicPath (hsSourceDirs bi) of
+  [] -> ["."]
+  ds -> ds
