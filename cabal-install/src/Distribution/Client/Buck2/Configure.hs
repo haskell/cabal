@@ -1,5 +1,5 @@
--- | Configuring the components of the packages that buck2 builds from
--- source, to get the 'LocalBuildInfo' that generating their rules needs.
+-- | Configure the components of the packages that buck2 builds from
+-- source, to get the 'LocalBuildInfo'.
 module Distribution.Client.Buck2.Configure
   ( configureComponents
   ) where
@@ -60,23 +60,17 @@ import System.FilePath ((</>))
 import Distribution.Client.Buck2.LocalPackages (componentNamesFor, isBuiltLocally, packageSourceDir)
 import Distribution.Client.Buck2.Schedule (runDependencyGraph)
 
--- | A real 'LocalBuildInfo' for every component of every package buck2
--- builds from source, keyed by package and component name.
---
--- Only components actually selected by the build targets (and whatever
--- they depend on) are configured, not everything in the plan: that also
--- contains e.g. a benchmark whose stanza isn't enabled, whose external
--- dependencies (correctly) never made it into @installedIndex@, so
--- configuring it fails outright ("the given installed package instance
--- does not exist"). A skipped component just gets no rule.
+-- | Get a real 'LocalBuildInfo' for every component in the
+-- 'ProjectBuildContext', keyed by package and component name.  Only
+-- components actually selected by the build targets (and whatever
+-- they depend on) are configured.
 --
 -- @installedIndex@ must cover the whole resolved dependency closure of the
 -- project. Each library is added to it, configured and registered in-place,
--- before the components that depend on it are configured. The components are
--- configured concurrently, since a real Cabal 'configureFinal' is CPU-bound
--- work and a large project - hundreds of components across dozens of
--- packages, with a single package having 30+ test-suites - made doing it one
--- component at a time the dominant cost of the whole command.
+-- before the components that depend on it are configured.
+--
+-- Configuration happens concurrently as far as possible, because
+-- this can take a while for projects with a lot of components to build.
 configureComponents
   :: Verbosity
   -> ProjectBaseContext
@@ -92,16 +86,7 @@ configureComponents verbosity baseCtx buildCtx installedIndex =
     (elaboratedShared buildCtx)
     installedIndex
 
--- | A real 'LocalBuildInfo' for one local (or quasi-local) *component*,
--- computed the same way a real build does - via
--- "Distribution.Client.InLibrary", which wraps Cabal's own
--- 'Distribution.Simple.Configure.configureFinal' - rather than
--- hand-assembling the pieces 'Distribution.Simple.Build.Macros.
--- generateCabalMacrosHeader'\/'Distribution.Simple.Build.PathsModule.
--- generatePathsModule' need. @elab@'s own 'elabPkgOrComp' determines
--- which single component gets configured here (matching real Cabal:
--- per-component elaboration means one 'ElaboratedConfiguredPackage' -
--- and so one call here - per component, not per package).
+-- | A real 'LocalBuildInfo' for one local (or quasi-local) *component*.
 localBuildInfoFor
   :: Verbosity
   -> DistDirLayout
@@ -171,24 +156,7 @@ localBuildInfoFor verbosity distDirLayout plan shared ipi elab = do
   InLibrary.configure inputs cfg
 
 -- | If @cname@ names a library component, produce the real, in-place
--- 'InstalledPackageInfo' for it - the same info a real @Setup register@
--- would write to @package.conf.inplace@ after building it, without
--- actually writing anything anywhere. Real Cabal's own
--- 'generateRegistrationInfo', in its in-place branch, needs no built
--- object code to do this: an in-place package's ABI hash is always the
--- fixed placeholder @"inplace"@ (see its own haddock), so this is safe
--- to call immediately after 'localBuildInfoFor' configures the
--- component, before anything is actually compiled. Deliberately doesn't
--- take (or update) an 'InstalledPackageIndex' itself, unlike an earlier
--- version of this function - 'configureComponentsConcurrently' calls
--- this from multiple threads at once, and folding a growing index
--- through a sequence of calls only makes sense single-threaded; the
--- caller is responsible for inserting the result into a shared index
--- itself (atomically).
---
--- Every other kind of component (executable\/test-suite\/benchmark) is
--- skipped ('Nothing'): nothing ever depends on one of those by
--- 'UnitId', so they have nothing to contribute to the index.
+-- 'InstalledPackageInfo' for it.
 libraryInstalledPackageInfo :: Verbosity -> LocalBuildInfo -> PackageDescription -> ComponentName -> IO (Maybe InstalledPackageInfo)
 libraryInstalledPackageInfo verbosity lbi pkgDesc cname = case cname of
   CLibName ln
@@ -197,17 +165,9 @@ libraryInstalledPackageInfo verbosity lbi pkgDesc cname = case cname of
         Just <$> generateRegistrationInfo verbosity pkgDesc lib lbi clbi True (relocatable lbi) (distPrefLBI lbi) GlobalPackageDB
   _ -> return Nothing
 
--- | 'localBuildInfoFor' (and the library registration that has to
--- happen right after it, via 'libraryInstalledPackageInfo') for every
--- local (or quasi-local) component in the plan, run concurrently.
---
--- The only real ordering constraint is: a component can't be configured
--- until every *local library* it depends on has already been configured
--- *and registered* into the 'InstalledPackageIndex' 'localBuildInfoFor' is
--- given. Most components in a real project (executables, test-suites, ...)
--- don't depend on each other at all, only on a handful of libraries, so
--- they are scheduled by direct local-library dependency (via
--- 'elabOrderLibDependencies') using 'runDependencyGraph'.
+-- | Obtain the 'LocalBuildInfo' for all the components by configuring
+-- them concurrently as far as possible, respecting dependency constraints
+-- and the @-jNUM@ flag.
 configureComponentsConcurrently
   :: Verbosity
   -> DistDirLayout
@@ -219,14 +179,6 @@ configureComponentsConcurrently
   -> InstalledPackageIndex
   -> IO (Map (PackageName, ComponentName) LocalBuildInfo)
 configureComponentsConcurrently verbosity distDirLayout numJobs plan shared installedIndex = do
-  -- cabal-install's own build parallelism doesn't need extra RTS
-  -- capabilities (it's almost entirely "spawn ghc, block on it", and a
-  -- blocked foreign call already releases its capability under the
-  -- threaded RTS) - but 'localBuildInfoFor' below does real, in-Haskell
-  -- CPU work per call, which *does* need more than one capability to
-  -- actually run in parallel (but never more than the machine has). Only
-  -- ever raises the cap (never lowers an explicit @+RTS -N@ the user
-  -- already asked for).
   numCaps <- getNumCapabilities
   info verbosity $ "cabal buck2: configuring components with up to " ++ show numJobs ++ " job(s)"
   let wantedCaps = min numJobs numberOfProcessors

@@ -28,20 +28,8 @@ import Distribution.Simple.Utils (ordNub)
 -- rest are cancelled and the exception is rethrown. The graph must be
 -- acyclic.
 --
--- Jobs are scheduled by their direct dependencies alone, so a job runs as soon
--- as the jobs it depends on are done, whatever else is still running - not
--- wave by wave of a topological sort.
---
--- This is a small hand-rolled STM worker pool rather than something built on
--- "Control.Concurrent.Stream", whose termination protocol assumes a single
--- producer that knows the whole worklist up front. With jobs enqueued by the
--- workers as they unblock their dependents, its producer can decide that all
--- work has been submitted, and stop every worker, while a worker has decided a
--- dependent is ready but not yet queued it; that dependent is then silently
--- never run. Here, instead, 'finishJob' marks a job done and queues the newly
--- ready jobs in one STM transaction, and a worker only gives up once the
--- count of finished jobs reaches the total, at which point nothing more can be
--- queued. An empty queue with work outstanding makes a worker 'retry'.
+-- Jobs are scheduled by their direct dependencies alone, so a job is
+-- available to run as soon as the jobs it depends on are done.
 runDependencyGraph :: Ord k => Int -> Map k [k] -> (k -> IO ()) -> IO ()
 runDependencyGraph numWorkers deps process = do
   let jobs = Map.keysSet deps

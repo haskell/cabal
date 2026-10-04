@@ -1,28 +1,25 @@
--- | Turns the already-resolved, already-built dependency closure of the
--- project (everything @cabal buck2@ just built via @--only-dependencies@)
--- into @third-party\/haskell@: a @haskell_prebuilt_library()@ per package,
--- a filtered\/recached package db holding just the @.conf@ files those
--- rules reference, and repo-relative symlinks to GHC and the cabal store
--- so the generated paths aren't host-specific.
+-- | Register all the external packages and tools that the project
+-- depends on for buck2 under @third-party/haskell@.
 --
--- This is an in-process rewrite of what used to be the external
--- @buck2\/gen-haskell-prebuilt.py@ script. Doing it here instead means:
+-- Here's what we generate:
 --
---   * no re-deriving GHC's version\/paths from @dist-newstyle\/cache\/
---     plan.json@ - they're already sitting in the 'ElaboratedSharedConfig'
---     \/'CabalDirLayout' this command already elaborated.
---   * no shelling out to a (possibly different-version) @cabal@ on
---     @$PATH@ - which used to cause index-cache parse errors when it
---     didn't match the @cabal@ actually running.
---   * no globbing for the store root's ABI-tag suffix - 'storeDirectory'
---     computes it exactly.
---   * the dependency closure comes from 'elaboratedPlanToExecute' - the
---     exact, already test\/benchmark-flag-pruned plan @cabal buck2@ just
---     built - rather than re-walking every local component's
---     @build-depends@ unconditionally (which used to pull in test-only
---     dependencies that were never actually built when
---     @--enable-tests@ wasn't passed, producing spurious "not found"
---     warnings).
+--  * @third-party/haskell/ghc-bin@: symlink to the GHC bin dir
+--
+--  * @third-party/haskell/ghc-<version>@: a symlink to the GHC lib dir
+--
+--  * @third-party/haskell/cabal-store@: symlink to the Cabal store
+--
+--  * @third-party/haskell/build-tools@: contains symlinks to all the build
+--    tools this project depends on
+--
+--  * @third-party/haskell/BUCK@: all the @haskell_prebuilt_library()@ rules
+--    for every external package that this project depends on. These
+--    are either GHC built-in packages in @ghc-<version>@ or Cabal store
+--    packages in @cabal-store@.
+--
+--  * @third-party/haskell/tools.bzl@: paths and constants for tools we
+--    depend on.
+
 module Distribution.Client.Buck2.Prebuilt
   ( generatePrebuilt
   ) where

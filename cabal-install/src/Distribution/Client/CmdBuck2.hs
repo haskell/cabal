@@ -2,20 +2,33 @@
 --
 -- Sets up (or refreshes) a buck2 build for the current project, using the
 -- prelude and support scripts checked out at @buck2\/@ (a checkout of
--- <https://github.com/simonmar/haskell-buck2>, see @buck2\/README.md@):
+-- <https://github.com/simonmar/haskell-buck2>, see @buck2\/README.md@).
 --
---   1. Build every dependency (never the local packages themselves), the
---      same as @cabal build all --only-dependencies@ would - see
---      "Distribution.Client.Buck2.BuildDependencies".
---   2. Create @.buckconfig@\/@PACKAGE@ if they don't exist yet (copied
---      verbatim from @buck2\/example@).
---   3. Turn the resolved dependency closure into @third-party\/haskell@ -
---      see "Distribution.Client.Buck2.Prebuilt".
---   4. Configure every component of the local packages, to get the
---      'LocalBuildInfo' they are generated from - see
---      "Distribution.Client.Buck2.Configure".
---   5. Generate a @BUCK.cabal.bzl@ (and, where missing, a @BUCK@) for
---      every local package - see "Distribution.Client.Buck2.Write".
+-- There are 6 main pieces to this, each with a small API:
+--
+--   1. "Distribution.Client.Buck2.BuildDependencies": Build every
+--      dependency (never the local packages themselves), the same as
+--      @cabal build all --only-dependencies@ would.
+--
+--   2. "Distribution.Client.Buck2.Setup": Create
+--      @.buckconfig@\/@PACKAGE@ if they don't exist yet. These are
+--      boilerplate copied from @buck2\/example@.
+--
+--   3. "Distribution.Client.Buck2.Prebuilt": Tell @buck2@ about all
+--      the library and tool dependencies. These are all recorded
+--      under @third-party\/haskell@.
+--
+--   4. "Distribution.Client.Buck2.Configure": Configure every
+--      component of the local packages, to get the 'LocalBuildInfo'.
+--
+--   5. "Distribution.Client.Buck2.Generate": Generate buck2 targets
+--      for each local component to be built. A pure function of
+--      'PackageDescription', 'LocalBuildInfo' and a few other things.
+--
+--   6. "Distribution.Client.Buck2.Write": Write the generated buck2
+--      targets for each package to @BUCK.cabal.bzl@, and the autogen
+--      files into @cabal-buck2/autogen@ in each package's directory.
+
 module Distribution.Client.CmdBuck2
   ( buck2Command
   , buck2Action
@@ -64,6 +77,7 @@ import Distribution.Client.Buck2.Setup
 import Distribution.Client.Buck2.Write (writeAllPackages)
 import Distribution.Client.Errors (CabalInstallException (Buck2ActionExtraArgs))
 
+-- | The @cabal buck2@ CLI command
 buck2Command :: CommandUI (NixStyleFlags ())
 buck2Command =
   CommandUI
@@ -86,6 +100,7 @@ buck2Command =
     , commandOptions = nixStyleOptions (const [])
     }
 
+-- | Implement @cabal buck2@
 buck2Action :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 buck2Action flags extraArgs globalFlags = do
   unless (null extraArgs) $

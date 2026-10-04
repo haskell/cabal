@@ -1,13 +1,20 @@
--- | Turns one local package's already-resolved 'PackageDescription' (flags
--- and conditionals already flattened by the solver, so gated
--- @cxx-sources@\/@ghc-options@\/etc. from an @if flag(...)@ stanza show up
--- here exactly as they should for the resolved build) into the build spec
--- for its @BUCK.cabal.bzl@ file (see buck2\/cabal.bzl for what interprets it),
--- plus the autogen files its components need.
+-- | Generate all the info that buck2 needs to build the components of
+-- a package, as a pure function from the 'PackageDescription',
+-- 'LocalBuildInfo'(s) and a few other things.
 --
--- This module does no IO: the files it generates are returned as data,
--- problems as warnings, and the source files that exist are an input (see
--- 'sourceCandidates'). "Distribution.Client.Buck2.Write" does the IO.
+-- The buck2 build spec is in the form of a JSON blob that will be
+-- emitted into @BUCK.cabal.bzl@ and interpreted by @buck2@ to produce
+-- the final build targets (the interpreter is
+-- @buck2/cabal.bzl@). It's done this way rather than emitting targets
+-- directly so that a custom @BUCK@ file can override or customise the
+-- targets.
+--
+-- Here we also produce the content for the autogen files, such as
+-- @cabal_macros.h@ and @Paths_<pkg>.hs@.
+--
+-- All the content we generate here will be written to files later in
+-- "Distribution.Client.Buck2.Write".
+
 module Distribution.Client.Buck2.Generate
   ( LocalPackageIndex
   , AutogenFile (..)
@@ -186,12 +193,11 @@ generatePackageTargets localIndex rootRelPkgDir componentLBIs externalBuildTools
               , ptAutogenFiles = dedupAutogenFiles (concatMap ctAutogen results)
               }
 
--- | Look up a component's real, Cabal-computed 'LocalBuildInfo' (from
--- "Distribution.Client.Buck2.Configure") plus its own 'ComponentLocalBuildInfo'
--- within it (via 'componentNameCLBIs') - 'Nothing' if either lookup fails
--- (e.g. a component that isn't part of the elaborated build plan, such as
--- a test-suite when tests aren't enabled), in which case callers skip the
--- component rather than emit a rule built from fabricated data.
+-- | Look up a component's 'LocalBuildInfo' and
+-- 'ComponentLocalBuildInfo' -- 'Nothing' if either lookup fails
+-- (e.g. a component that isn't part of the elaborated build plan,
+-- such as a test-suite when tests aren't enabled), in which case
+-- callers skip the component.
 lbiClbiFor :: PackageDescription -> Map (PackageName, ComponentName) LocalBuildInfo -> Component -> Maybe (LocalBuildInfo, ComponentLocalBuildInfo)
 lbiClbiFor pkgDesc componentLBIs comp = do
   lbi <- Map.lookup (packageName pkgDesc, componentName comp) componentLBIs

@@ -1,8 +1,4 @@
--- | The non-BUCK-file-generation setup steps from buck2\/README.md's "How
--- to use it": checking for a @buck2\/@ checkout, and creating
--- @.buckconfig@\/@PACKAGE@ if they don't exist yet (see
--- "Distribution.Client.Buck2.Prebuilt" for turning the resolved
--- dependency closure into @third-party\/haskell@).
+-- | Set up the project for building with @buck2@
 module Distribution.Client.Buck2.Setup
   ( checkBuck2Prelude
   , ensureBuckconfigAndPackage
@@ -18,20 +14,13 @@ import Distribution.Simple.Utils (dieWithException, notice)
 
 import Distribution.Client.Errors (CabalInstallException (Buck2NoPrelude))
 
--- | Check that @buck2\/@ (the checkout of
--- <https://github.com/simonmar/haskell-buck2>) exists, dying with
--- instructions to clone it if it doesn't - everything downstream of this
--- (@.buckconfig@\/@PACKAGE@'s own @load()@s, third-party generation)
--- depends on it being there.
+-- | Check that the @buck2@ support code is at @buck2\/@
 checkBuck2Prelude :: Verbosity -> FilePath -> IO ()
 checkBuck2Prelude verbosity projectRoot = do
   exists <- doesDirectoryExist (projectRoot </> "buck2")
   unless exists $ dieWithException verbosity Buck2NoPrelude
 
--- | Copies @.buckconfig@\/@PACKAGE@ verbatim from @buck2\/example@ - the
--- version of these two files that's actually exercised by buck2\/'s own
--- CI, rather than a copy hardcoded here that could silently drift from
--- what a newer buck2\/ checkout expects.
+-- | Copy @.buckconfig@ and @PACKAGE@ if they don't exist
 ensureBuckconfigAndPackage :: Verbosity -> FilePath -> IO ()
 ensureBuckconfigAndPackage verbosity projectRoot = do
   copyIfMissing verbosity (exampleDir </> ".buckconfig") (projectRoot </> ".buckconfig")
