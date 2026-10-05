@@ -29,6 +29,7 @@ import Prelude ()
 
 import System.FilePath ((<.>), (</>))
 
+import Data.Either (fromLeft)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -370,7 +371,7 @@ generateComponent localIndex componentLBIs externalBuildTools projectTestOptions
           , not (null args)
           ]
 
-    problemsOf = either id (const [])
+    problemsOf = fromLeft []
 
 -- | The version of the build spec format; must match @SCHEMA_VERSION@ in
 -- buck2\/cabal.bzl, which turns a spec into buck2 rules.
