@@ -28,7 +28,6 @@
 --   6. "Distribution.Client.Buck2.Write": Write the generated buck2
 --      targets for each package to @BUCK.cabal.bzl@, and the autogen
 --      files into @cabal-buck2/autogen@ in each package's directory.
-
 module Distribution.Client.CmdBuck2
   ( buck2Command
   , buck2Action

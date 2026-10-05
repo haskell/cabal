@@ -19,7 +19,6 @@
 --
 --  * @third-party/haskell/tools.bzl@: paths and constants for tools we
 --    depend on.
-
 module Distribution.Client.Buck2.Prebuilt
   ( generatePrebuilt
   ) where

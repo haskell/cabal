@@ -2,19 +2,18 @@
 -- a package, as a pure function from the 'PackageDescription',
 -- 'LocalBuildInfo'(s) and a few other things.
 --
--- The buck2 build spec is in the form of a JSON blob that will be
--- emitted into @BUCK.cabal.bzl@ and interpreted by @buck2@ to produce
--- the final build targets (the interpreter is
--- @buck2/cabal.bzl@). It's done this way rather than emitting targets
--- directly so that a custom @BUCK@ file can override or customise the
--- targets.
+-- The buck2 build spec is described by the data types in
+-- "Distribution.Client.Buck2.Spec", and will be emitted into
+-- @BUCK.cabal.bzl@ and interpreted by @buck2@ to produce the final
+-- build targets (the interpreter is @buck2/cabal.bzl@). It's done
+-- this way rather than emitting targets directly so that a custom
+-- @BUCK@ file can override or customise the targets.
 --
 -- Here we also produce the content for the autogen files, such as
 -- @cabal_macros.h@ and @Paths_<pkg>.hs@.
 --
 -- All the content we generate here will be written to files later in
 -- "Distribution.Client.Buck2.Write".
-
 module Distribution.Client.Buck2.Generate
   ( LocalPackageIndex
   , AutogenFile (..)

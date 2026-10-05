@@ -50,7 +50,6 @@ import Distribution.Client.Buck2.Starlark
 --   * @cabal-buck2\/autogen\/BUCK@ (see 'writeAutogenBuck') has
 --     @export_file()@ rules for the autogen files, so they can be
 --     easily referenced from anywhere else.
-
 writeAllPackages :: Verbosity -> FilePath -> Map (PackageName, ComponentName) LocalBuildInfo -> Set String -> Map (PackageName, ComponentName) [PathTemplate] -> [(FilePath, PackageDescription)] -> IO ()
 writeAllPackages verbosity projectRoot componentLBIs externalBuildTools projectTestOptions pkgs = do
   traverse_ (writeOnePackage verbosity localIndex projectRoot componentLBIs externalBuildTools projectTestOptions) pkgs
@@ -142,10 +141,10 @@ writeAutogenBuck pkgDir pkgName targets
         [ ("name", str (autogenName f))
         , ("src", str (autogenPath f))
         , ("out", str (takeFileName (autogenPath f)))
-          -- For @Paths_<pkg>.hs@ it's important the exported file has the
+        , -- For @Paths_<pkg>.hs@ it's important the exported file has the
           -- same name, because the buck2 Haskell rules derive the
           -- module name from it.
-        , ("visibility", strList ["PUBLIC"])
+          ("visibility", strList ["PUBLIC"])
         ]
       | f <- files
       ]

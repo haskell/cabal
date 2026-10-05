@@ -1,7 +1,7 @@
--- | The build spec: a description of a package's components as Cabal sees
--- them, from which buck2\/cabal.bzl creates the buck2 rules. See that file
--- for the schema these types correspond to; "Distribution.Client.Buck2.Write"
--- is what turns them into the Starlark it reads.
+-- | The build spec: a description of a package's components from
+-- which buck2\/cabal.bzl creates the buck2 rules.
+-- "Distribution.Client.Buck2.Write" writes the spec into the
+-- @BUCK.cabal.bzl@ file.
 module Distribution.Client.Buck2.Spec
   ( specSchemaVersion
   , BuildSpec (..)
