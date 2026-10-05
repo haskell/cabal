@@ -134,7 +134,8 @@ splitRunArgs verbosity lbi args =
 
 -- | Run a given executable.
 run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
-run verbosity lbi exe exeArgs = do
+run verbosity lbi exe@Executable{exeName} exeArgs = do
+  let exeName' = prettyShow exeName
   curDir <- absoluteWorkingDirLBI lbi
   let distPref = fromFlag $ configDistPref $ configFlags lbi
       buildPref = buildDir lbi
@@ -155,12 +156,9 @@ run verbosity lbi exe exeArgs = do
                 (withPrograms lbi)
           }
 
-  let exeName' = prettyShow $ exeName exe
-  path <-
+  exePath <-
     tryCanonicalizePath $
       i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbiForExe))
-
-  let runArgs = []
 
   -- Compute the appropriate environment for running the executable
   let progDb = withPrograms lbiForExe
@@ -174,7 +172,7 @@ run verbosity lbi exe exeArgs = do
     if withDynExe lbiForExe
       then do
         let (Platform _ os) = hostPlatform lbiForExe
-        clbi <- case componentNameTargets' pkg_descr lbiForExe (CExeName (exeName exe)) of
+        clbi <- case componentNameTargets' pkg_descr lbiForExe (CExeName exeName) of
           [target] -> return (targetCLBI target)
           [] -> dieWithException verbosity CouldNotFindExecutable
           _ -> dieWithException verbosity FoundMultipleMatchingExes
@@ -182,5 +180,5 @@ run verbosity lbi exe exeArgs = do
         return (addLibraryPath os paths env)
       else return env
 
-  notice verbosity $ "Running " ++ prettyShow (exeName exe) ++ "..."
-  rawSystemExitWithEnvCwd verbosity mbWorkDir path (runArgs ++ exeArgs) env'
+  notice verbosity $ "Running " ++ exeName' ++ "..."
+  rawSystemExitWithEnvCwd verbosity mbWorkDir exePath exeArgs env'
