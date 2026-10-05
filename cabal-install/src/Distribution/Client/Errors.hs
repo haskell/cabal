@@ -190,7 +190,6 @@ data CabalInstallException
   | Buck2ActionExtraArgs [String]
   | Buck2NonLocalPackageLocation String
   | Buck2NoGhcProgram
-  | Buck2NoGhcPkgProgram
   deriving (Show)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -352,7 +351,6 @@ exceptionCodeCabalInstall e = case e of
   Buck2ActionExtraArgs{} -> 7170
   Buck2NonLocalPackageLocation{} -> 7171
   Buck2NoGhcProgram{} -> 7172
-  Buck2NoGhcPkgProgram{} -> 7173
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -911,8 +909,6 @@ exceptionMessageCabalInstall e = case e of
       ++ " isn't an unpacked local directory - can't generate a BUCK file for it."
   Buck2NoGhcProgram ->
     "cabal buck2: no 'ghc' program configured for this project - internal error."
-  Buck2NoGhcPkgProgram ->
-    "cabal buck2: no 'ghc-pkg' program configured for this project - internal error."
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]

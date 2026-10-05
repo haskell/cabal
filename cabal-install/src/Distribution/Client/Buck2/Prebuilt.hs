@@ -76,10 +76,10 @@ import Distribution.Simple.Compiler
   )
 import Distribution.Simple.GHC (getGlobalPackageDB)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Simple.Program.Builtin (ghcPkgProgram, ghcProgram)
+import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (lookupProgram)
-import Distribution.Simple.Program.Types (ConfiguredProgram, programPath)
-import Distribution.Simple.Utils (dieWithException, notice, ordNub, rawSystemExit, warn)
+import Distribution.Simple.Program.Types (programPath)
+import Distribution.Simple.Utils (dieWithException, notice, ordNub, warn)
 import Distribution.Types.InstalledPackageInfo
   ( InstalledPackageInfo
       ( depends
@@ -96,7 +96,7 @@ import Distribution.Types.UnitId (UnitId, unUnitId)
 import Distribution.Types.UnqualComponentName (UnqualComponentName, unUnqualComponentName)
 
 import Distribution.Client.Errors
-  ( CabalInstallException (Buck2NoGhcPkgProgram, Buck2NoGhcProgram)
+  ( CabalInstallException (Buck2NoGhcProgram)
   )
 
 import Distribution.Client.Buck2.Generate (libTargetName)
@@ -149,10 +149,6 @@ generatePrebuilt verbosity projectRoot cabalDirLayout shared depsPlan wantedBuil
   ghcProg <-
     maybe (dieWithException verbosity Buck2NoGhcProgram) return $
       lookupProgram ghcProgram (pkgConfigCompilerProgs shared)
-  ghcPkgProg <-
-    maybe (dieWithException verbosity Buck2NoGhcPkgProgram) return $
-      lookupProgram ghcPkgProgram (pkgConfigCompilerProgs shared)
-
   let compiler = pkgConfigCompiler shared
       ghcVersionStr = prettyShow (compilerVersion compiler)
       ghcDynamic = Map.lookup "GHC Dynamic" (compilerProperties compiler) == Just "YES"
@@ -160,7 +156,6 @@ generatePrebuilt verbosity projectRoot cabalDirLayout shared depsPlan wantedBuil
       storeDB = storePackageDBPath storeLayout compiler
       storeRootAbs = storeDirectory storeLayout compiler
       targetDir = projectRoot </> "third-party" </> "haskell"
-      targetStoreDB = targetDir </> "store-db"
       ghcBinAbs = takeDirectory (programPath ghcProg)
 
   globalDB <- getGlobalPackageDB verbosity ghcProg
@@ -172,6 +167,7 @@ generatePrebuilt verbosity projectRoot cabalDirLayout shared depsPlan wantedBuil
           { rpGhcVersion = ghcVersionStr
           , rpGlobalRootAbs = globalRootAbs
           , rpStoreRootAbs = storeRootAbs
+          , rpStoreDbRel = makeRelative storeRootAbs storeDB
           }
 
   createDirectoryIfMissing True targetDir
@@ -208,8 +204,8 @@ generatePrebuilt verbosity projectRoot cabalDirLayout shared depsPlan wantedBuil
     )
     $ ensureSymlink (targetDir </> "cabal-store") storeRootAbs
 
-  notice verbosity "cabal buck2: building filtered store package db"
-  setupStoreDB verbosity ghcPkgProg targetStoreDB packages
+  -- An earlier version generated a filtered copy of the store's package db here.
+  removeStaleStoreDB (targetDir </> "store-db")
 
   notice verbosity "cabal buck2: generating third-party/haskell/BUCK"
   writeBuckFile targetDir paths packages buildToolPaths
@@ -226,6 +222,8 @@ data RepoPaths = RepoPaths
   { rpGhcVersion :: String
   , rpGlobalRootAbs :: FilePath
   , rpStoreRootAbs :: FilePath
+  , rpStoreDbRel :: FilePath
+  -- ^ The store's package db, relative to 'rpStoreRootAbs'.
   }
 
 -- | Which of the two package dbs a unit id's @.conf@ lives in - decided
@@ -250,13 +248,11 @@ classifyUnitId uid
 
 -- | A resolved package: its metadata plus which package db it came from
 -- (needed to pick the right @db =@ value in the generated rule, and to
--- know where to find its @.conf@ file to symlink into the filtered store
--- db).
+-- know where to find its @.conf@ file).
 data ResolvedPackage = ResolvedPackage
   { rpInfo :: InstalledPackageInfo
   , rpUnitId :: UnitId
   , rpDbKind :: PkgDbKind
-  , rpConfPath :: FilePath
   , rpStaticLibs :: [FilePath]
   , rpProfiledLibs :: [FilePath]
   , rpSharedLibs :: [(String, FilePath)]
@@ -298,7 +294,7 @@ readPackage verbosity paths storeDB uid = do
               then return []
               else findLibs paths (libraryDirs ipi) ["lib" ++ stem ++ "_p" <.> "a" | stem <- hsLibraries ipi]
           sharedLibs <- findSharedLibs paths ipi
-          return $ Just (ResolvedPackage ipi uid dbKind path staticLibs profiledLibs sharedLibs)
+          return $ Just (ResolvedPackage ipi uid dbKind staticLibs profiledLibs sharedLibs)
 
 -- | Resolve each candidate filename against @dirs@ in turn, keeping only
 -- the ones that actually exist on disk (unlike gen-haskell-prebuilt.py's
@@ -376,19 +372,11 @@ ensureSymlink link target = do
   when exists $ removeFile link
   createFileLink target link
 
--- | The filtered, recached db every non-global package's generated rule
--- points its @db =@ at - holding the store packages' @.conf@s (symlinked
--- in from the real store, since @ghc-pkg@'s recache doesn't care which
--- original db a symlinked @.conf@ came from, only that it's present here).
-setupStoreDB :: Verbosity -> ConfiguredProgram -> FilePath -> [ResolvedPackage] -> IO ()
-setupStoreDB verbosity ghcPkgProg targetStoreDB packages = do
-  exists <- doesPathExist targetStoreDB
-  when exists $ removeDirectoryRecursive targetStoreDB
-  createDirectoryIfMissing True targetStoreDB
-  traverse_
-    (\p -> createFileLink (rpConfPath p) (targetStoreDB </> unUnitId (rpUnitId p) <.> "conf"))
-    (filter ((/= GlobalDb) . rpDbKind) packages)
-  rawSystemExit verbosity Nothing (programPath ghcPkgProg) ["--package-db", targetStoreDB, "recache"]
+-- | Remove the filtered package db that earlier versions generated.
+removeStaleStoreDB :: FilePath -> IO ()
+removeStaleStoreDB dir = do
+  exists <- doesPathExist dir
+  when exists $ removeDirectoryRecursive dir
 
 writeBuckFile :: FilePath -> RepoPaths -> [ResolvedPackage] -> Map String FilePath -> IO ()
 writeBuckFile targetDir paths packages buildToolPaths =
@@ -446,7 +434,7 @@ prebuiltCall paths uidToTarget p =
     ( [ ("name", str (targetName p))
       , ("version", str (prettyShow (packageVersion (rpInfo p))))
       , ("id", str (unUnitId (rpUnitId p)))
-      , ("db", str (if rpDbKind p == GlobalDb then globalDbRel else "store-db"))
+      , ("db", str (if rpDbKind p == GlobalDb then globalDbRel else "cabal-store" </> rpStoreDbRel paths))
       , ("static_libs", strList (rpStaticLibs p))
       ]
         ++ [("profiled_static_libs", strList (rpProfiledLibs p)) | not (null (rpProfiledLibs p))]
