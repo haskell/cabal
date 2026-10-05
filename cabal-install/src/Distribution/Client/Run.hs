@@ -155,13 +155,12 @@ run verbosity lbi exe exeArgs = do
                 (withPrograms lbi)
           }
 
-  (path, runArgs) <-
-    let exeName' = prettyShow $ exeName exe
-     in do
-          p <-
-            tryCanonicalizePath $
-              i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbiForExe))
-          return (p, [])
+  let exeName' = prettyShow $ exeName exe
+  path <-
+    tryCanonicalizePath $
+      i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbiForExe))
+
+  let runArgs = []
 
   -- Compute the appropriate environment for running the executable
   let progDb = withPrograms lbiForExe
