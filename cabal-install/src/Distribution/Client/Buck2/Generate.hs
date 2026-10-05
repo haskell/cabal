@@ -92,7 +92,7 @@ import Distribution.Simple.Program.Db (lookupProgram)
 import Distribution.Simple.Program.Types (programOverrideArgs)
 import Distribution.Simple.Utils (ordNub)
 
-import Distribution.Client.Buck2.Starlark
+import Distribution.Client.Buck2.Spec
 
 -- | Maps every local project package's name to the buck2 cell-relative
 -- directory its @BUCK@ file lives in (@.@ for one at the project root), so
@@ -118,10 +118,10 @@ data AutogenFile = AutogenFile
   }
   deriving (Eq, Ord)
 
--- | What is generated for one package: its build spec (see 'packageSpec'),
+-- | What is generated for one package: its build spec,
 -- and the autogen files it needs.
 data PackageTargets = PackageTargets
-  { ptSpec :: Value
+  { ptSpec :: BuildSpec
   , ptComponentCount :: Int
   , ptAutogenFiles :: [AutogenFile]
   }
@@ -130,7 +130,7 @@ data PackageTargets = PackageTargets
 -- spec (none if it was skipped), its autogen files, and the warnings
 -- produced along the way.
 data ComponentTargets = ComponentTargets
-  { ctSpec :: [Value]
+  { ctSpec :: [SpecComponent]
   , ctAutogen :: [AutogenFile]
   , ctWarnings :: [String]
   }
@@ -141,7 +141,7 @@ instance Semigroup ComponentTargets where
 instance Monoid ComponentTargets where
   mempty = ComponentTargets [] [] []
 
-componentTargets :: Value -> [AutogenFile] -> ComponentTargets
+componentTargets :: SpecComponent -> [AutogenFile] -> ComponentTargets
 componentTargets component files = mempty{ctSpec = [component], ctAutogen = files}
 
 -- | Generate the buck2 targets for every buildable component of a local
@@ -228,9 +228,9 @@ generateComponent
   -> ComponentTargets
 generateComponent localIndex componentLBIs externalBuildTools projectTestOptions sources pkgDesc skippedLibs comp = case comp of
   CLib lib -> library (libTargetName (packageName pkgDesc) (libName lib)) lib
-  CExe exe -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (exeName exe)) "executable" $ executable exe
-  CTest test -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (testName test)) "test-suite" $ testSuite test
-  CBench bench -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (benchmarkName bench)) "benchmark" $ benchmark bench
+  CExe exe -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (exeName exe)) Executable $ executable exe
+  CTest test -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (testName test)) TestSuite $ testSuite test
+  CBench bench -> ifNotOnSkippedLib (componentBuildInfo comp) (unUnqualComponentName (benchmarkName bench)) Benchmark $ benchmark bench
   CFLib _ -> skip "foreign library (not supported yet)"
   where
     skip = skipBecause []
@@ -252,7 +252,7 @@ generateComponent localIndex componentLBIs externalBuildTools projectTestOptions
       case [ln | d <- targetBuildDepends bi, depPkgName d == packageName pkgDesc, ln <- NES.toList (depLibraries d), ln `Set.member` skippedLibs] of
         (ln : _) ->
           skip
-            ( kind
+            ( kindName kind
                 ++ " "
                 ++ targetName
                 ++ " (depends on "
@@ -267,37 +267,30 @@ generateComponent localIndex componentLBIs externalBuildTools projectTestOptions
         Left problems -> skipBecause problems ("library " ++ targetName ++ " (couldn't resolve all its modules)")
         Right (srcs, srcAutogen) ->
           componentTargets
-            (specComponent localIndex externalBuildTools "library" targetName bi [("srcs", VDict [(m, srcSpec x) | (m, x) <- srcs])])
+            (specComponent localIndex externalBuildTools Library targetName bi){scSrcs = srcs}
             (macrosHeader targetName pkgDesc lbi clbi : srcAutogen)
       where
         bi = libBuildInfo lib
 
     -- An executable, benchmark or test-suite: all the same shape (a main
-    -- module over some others), differing only in the spec's @kind@ and
-    -- extras.
-    executableLike kind targetName lbi clbi bi mainSrc otherSrcs extra srcAutogen =
+    -- module over some others), differing only in the spec's kind and test
+    -- arguments.
+    executableLike kind targetName lbi clbi bi mainSrc otherSrcs testArgs srcAutogen =
       componentTargets
-        ( specComponent
-            localIndex
-            externalBuildTools
-            kind
-            targetName
-            bi
-            ([("main_is", srcSpec mainSrc)] ++ [("srcs", VDict [(m, srcSpec x) | (m, x) <- otherSrcs]) | not (null otherSrcs)] ++ extra)
-        )
+        (specComponent localIndex externalBuildTools kind targetName bi){scMainIs = Just mainSrc, scSrcs = otherSrcs, scTestArgs = testArgs}
         (macrosHeader targetName pkgDesc lbi clbi : srcAutogen)
 
     -- The shape shared by an executable, an @exitcode-stdio-1.0@
     -- test-suite and benchmark: a @main-is@ file over the @other-modules@.
     mainIsComponent kind targetName bi mainIs extra = case lbiClbiFor pkgDesc componentLBIs comp of
-      Nothing -> skip (kind ++ " " ++ targetName ++ " (no LocalBuildInfo found for it in the elaborated build plan)")
+      Nothing -> skip (kindName kind ++ " " ++ targetName ++ " (no LocalBuildInfo found for it in the elaborated build plan)")
       Just (lbi, clbi) -> case (resolveMainIs sources bi mainIs, resolveModules sources pkgDesc (Just (lbi, clbi)) bi (otherModules bi)) of
         (Right mainSrc, Right (otherSrcs, srcAutogen)) ->
           executableLike kind targetName lbi clbi bi (SrcFile mainSrc) otherSrcs (extra lbi) srcAutogen
         (mainRes, othersRes) ->
-          skipBecause (problemsOf mainRes ++ problemsOf othersRes) (kind ++ " " ++ targetName ++ " (couldn't resolve all its modules)")
+          skipBecause (problemsOf mainRes ++ problemsOf othersRes) (kindName kind ++ " " ++ targetName ++ " (couldn't resolve all its modules)")
 
-    executable exe = mainIsComponent "executable" targetName bi (getSymbolicPath (modulePath exe)) (const [])
+    executable exe = mainIsComponent Executable targetName bi (getSymbolicPath (modulePath exe)) (const [])
       where
         bi = componentBuildInfo (CExe exe)
         targetName = unUnqualComponentName (exeName exe)
@@ -309,7 +302,7 @@ generateComponent localIndex componentLBIs externalBuildTools projectTestOptions
     -- "build and run this executable" - so this maps onto the same thing
     -- as an executable.
     benchmark bench = case benchmarkInterface bench of
-      BenchmarkExeV10 _ver mainIs -> mainIsComponent "benchmark" targetName bi (getSymbolicPath mainIs) (const [])
+      BenchmarkExeV10 _ver mainIs -> mainIsComponent Benchmark targetName bi (getSymbolicPath mainIs) (const [])
       _ ->
         skip
           ( "benchmark "
@@ -321,7 +314,7 @@ generateComponent localIndex componentLBIs externalBuildTools projectTestOptions
         targetName = unUnqualComponentName (benchmarkName bench)
 
     testSuite test = case testInterface test of
-      TestSuiteExeV10 _ver mainIs -> mainIsComponent "test-suite" targetName bi (getSymbolicPath mainIs) testArgs
+      TestSuiteExeV10 _ver mainIs -> mainIsComponent TestSuite targetName bi (getSymbolicPath mainIs) testArgs
       -- A @detailed-0.9@ test-suite's own module (named via
       -- @test-module:@, not @other-modules:@ - real Cabal synthesises a
       -- whole separate internal sub-library exposing just this one
@@ -353,7 +346,7 @@ generateComponent localIndex componentLBIs externalBuildTools projectTestOptions
         Just (lbi, clbi) -> case (resolveModules sources pkgDesc (Just (lbi, clbi)) bi [testModule], resolveModules sources pkgDesc (Just (lbi, clbi)) bi (otherModules bi)) of
           (Right (testModSrc, testModAutogen), Right (otherSrcs, otherAutogen)) ->
             let (stubSrc, stubFile) = detailedTestStub targetName testModule
-             in executableLike "test-suite" targetName lbi clbi bi stubSrc (testModSrc ++ otherSrcs) (testArgs lbi) (stubFile : testModAutogen ++ otherAutogen)
+             in executableLike TestSuite targetName lbi clbi bi stubSrc (testModSrc ++ otherSrcs) (testArgs lbi) (stubFile : testModAutogen ++ otherAutogen)
           (testModRes, othersRes) ->
             skipBecause (problemsOf testModRes ++ problemsOf othersRes) ("test-suite " ++ targetName ++ " (couldn't resolve all its modules)")
       _ ->
@@ -365,75 +358,62 @@ generateComponent localIndex componentLBIs externalBuildTools projectTestOptions
       where
         bi = componentBuildInfo (CTest test)
         targetName = unUnqualComponentName (testName test)
-        testArgs lbi =
-          [ ("test_args", strList args)
-          | let args = testSuiteArgs pkgDesc lbi test (Map.findWithDefault [] (packageName pkgDesc, componentName comp) projectTestOptions)
-          , not (null args)
-          ]
+        testArgs lbi = testSuiteArgs pkgDesc lbi test (Map.findWithDefault [] (packageName pkgDesc, componentName comp) projectTestOptions)
 
     problemsOf = fromLeft []
 
--- | The version of the build spec format; must match @SCHEMA_VERSION@ in
--- buck2\/cabal.bzl, which turns a spec into buck2 rules.
-specSchemaVersion :: Int
-specSchemaVersion = 1
-
--- | A package's build spec: everything the generated rules are built from
--- that comes from Cabal rather than from buck2 conventions (see
--- buck2\/cabal.bzl for the schema).
-packageSpec :: PackageDescription -> FilePath -> [String] -> [Value] -> Value
+-- | A package's build spec.
+packageSpec :: PackageDescription -> FilePath -> [String] -> [SpecComponent] -> BuildSpec
 packageSpec pkgDesc rootRelPkgDir projectGhcOptions components =
-  VDict $
-    [ ("schema", VInt specSchemaVersion)
-    , ("package", VDict [("name", str (unPackageName (packageName pkgDesc))), ("dir", str rootRelPkgDir)])
-    ]
-      ++ listField "ghc_options" projectGhcOptions
-      ++ [("components", VList components)]
+  BuildSpec
+    { specPackageName = unPackageName (packageName pkgDesc)
+    , specPackageDir = rootRelPkgDir
+    , specGhcOptions = projectGhcOptions
+    , specComponents = components
+    }
 
--- | One component of a build spec. @extra@ holds what depends on the kind
--- of component (its sources, main module, test arguments).
-specComponent :: LocalPackageIndex -> Set String -> String -> String -> BuildInfo -> [(String, Value)] -> Value
-specComponent localIndex externalBuildTools kind name bi extra =
-  VDict $
-    [("kind", str kind), ("name", str name)]
-      ++ extra
-      ++ listField "ghc_options" (hcOptions GHC bi)
-      ++ listField "cpp_options" (cppOptions bi)
-      ++ [("language", str (prettyShow lang)) | Just lang <- [defaultLanguage bi]]
-      ++ listField "extensions" (map prettyShow (defaultExtensions bi))
-      ++ listField "extra_libraries" (extraLibs bi)
-      ++ valuesField "deps" (map depSpec (libraryDeps localIndex bi))
-      ++ valuesField "build_tools" (mapMaybe buildToolSpec (ordNub [(pn, exe) | ExeDependency pn exe _ <- buildToolDepends bi]))
-      ++ listField "c_sources" (map getSymbolicPath (cSources bi))
-      ++ listField "cxx_sources" (map getSymbolicPath (cxxSources bi))
-      ++ listField "cxx_options" (cxxOptions bi)
-      ++ listField "include_dirs" (map getSymbolicPath (includeDirs bi))
-      ++ listField "pkgconfig" (ordNub [unPkgconfigName n | PkgconfigDependency n _ <- pkgconfigDepends bi])
+-- | A component of a build spec, from its 'BuildInfo'. The kind-specific
+-- parts (main module, other sources, test arguments) are left empty.
+specComponent :: LocalPackageIndex -> Set String -> ComponentKind -> String -> BuildInfo -> SpecComponent
+specComponent localIndex externalBuildTools kind name bi =
+  SpecComponent
+    { scKind = kind
+    , scName = name
+    , scMainIs = Nothing
+    , scSrcs = []
+    , scTestArgs = []
+    , scGhcOptions = hcOptions GHC bi
+    , scCppOptions = cppOptions bi
+    , scLanguage = prettyShow <$> defaultLanguage bi
+    , scExtensions = map prettyShow (defaultExtensions bi)
+    , scExtraLibraries = extraLibs bi
+    , scDeps = map depSpec (libraryDeps localIndex bi)
+    , scBuildTools = mapMaybe buildToolSpec (ordNub [(pn, exe) | ExeDependency pn exe _ <- buildToolDepends bi])
+    , scCSources = map getSymbolicPath (cSources bi)
+    , scCxxSources = map getSymbolicPath (cxxSources bi)
+    , scCxxOptions = cxxOptions bi
+    , scIncludeDirs = map getSymbolicPath (includeDirs bi)
+    , scPkgconfig = ordNub [unPkgconfigName n | PkgconfigDependency n _ <- pkgconfigDepends bi]
+    }
   where
     depSpec (pn, ln) =
-      VDict $
-        [("package", str (unPackageName pn))]
-          ++ [("library", str (unUnqualComponentName n)) | LSubLibName n <- [ln]]
-          ++ [("dir", str dir) | Just (dir, _) <- [Map.lookup pn localIndex]]
+      SpecDep
+        { depPackage = unPackageName pn
+        , depLibrary = case ln of
+            LSubLibName n -> Just (unUnqualComponentName n)
+            LMainLibName -> Nothing
+        , depDir = fst <$> Map.lookup pn localIndex
+        }
     -- A tool that's neither built by this project nor resolved to a real
     -- external binary can't be put on PATH by buck2: dropped, silently -
     -- most build-tool-depends are Setup.hs-time tools nothing needs on PATH.
     buildToolSpec (pn, exe) = case Map.lookup pn localIndex of
-      Just (dir, _) -> Just (VDict [("exe", str n), ("dir", str dir)])
+      Just (dir, _) -> Just (LocalTool n dir)
       Nothing
-        | n `Set.member` externalBuildTools -> Just (VDict [("exe", str n), ("external", VBool True)])
+        | n `Set.member` externalBuildTools -> Just (ExternalTool n)
         | otherwise -> Nothing
       where
         n = unUnqualComponentName exe
-
--- | A list-valued field, omitted if empty.
-listField :: String -> [String] -> [(String, Value)]
-listField _ [] = []
-listField k xs = [(k, strList xs)]
-
-valuesField :: String -> [Value] -> [(String, Value)]
-valuesField _ [] = []
-valuesField k xs = [(k, VList xs)]
 
 -- | The project-supplied GHC options (see 'ghcProgramArgs') for a
 -- package. Cabal gives every component of a package the same ones (they
@@ -527,17 +507,6 @@ libraryDeps localIndex bi = closeOverReexports [] directDeps
       | otherwise =
           let origins = maybe [] snd (Map.lookup pn localIndex)
            in closeOverReexports (p : seen) (rest ++ [(o, LMainLibName) | o <- origins])
-
--- | A source file in a component's @srcs@: either a real file in the
--- package (relative to its directory), or one generated into the package's
--- @cabal-buck2\/autogen@ directory, named by its @export_file()@ entry there
--- (see 'PackageTargets').
-data Src = SrcFile FilePath | SrcAutogen String
-
--- | As it appears in a build spec.
-srcSpec :: Src -> Value
-srcSpec (SrcFile p) = str p
-srcSpec (SrcAutogen n) = VDict [("autogen", str n)]
 
 -- | Resolve each module in @hs-source-dirs@ to its real file, trying
 -- @.hs@\/@.lhs@\/@.hsc@ (and the other extensions buck2\/haskell.bzl knows
