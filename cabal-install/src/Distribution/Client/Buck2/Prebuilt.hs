@@ -269,7 +269,12 @@ readPackage verbosity paths storeDB uid = do
   exists <- doesFileExist path
   if not exists
     then do
-      warn verbosity $ "cabal buck2: no .conf file for " ++ unUnitId uid ++ " (expected at " ++ path ++ ")"
+      warn verbosity $
+        "cabal buck2: no .conf file for "
+          ++ unUnitId uid
+          ++ " (expected at "
+          ++ path
+          ++ "); packages are only found in GHC's global package db and the cabal store, not in other package dbs"
       return Nothing
     else do
       contents <- BS.readFile path

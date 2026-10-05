@@ -30,7 +30,11 @@ import Test.Cabal.Prelude
 -- configuring independent components concurrently (see buck2.md's own
 -- DONE entry on parallelising this), so their relative order isn't
 -- deterministic - only the *file content* assertions below are.
-main = cabalTest $ do
+-- `noCabalPackageDb`: `cabal buck2` finds installed packages only in GHC's
+-- global package db and the cabal store. Without it the testsuite puts the
+-- in-tree Cabal, an `-inplace` package in an extra package db, in front of
+-- cabal, and the fixture's detailed-0.9 test-suite depends on Cabal.
+main = cabalTest $ noCabalPackageDb $ do
     cwd <- fmap testCurrentDir getTestEnv
     recordMode DoNotRecord $ cabal "buck2" ["--enable-tests", "--enable-benchmarks", "-f+loud"]
 
