@@ -167,6 +167,142 @@ For these test executables, `-p` which applies a regex filter to the test
 names. When running `cabal-install` test suites, one need only use `cabal test` or
 `cabal run <test-target>` in order to test locally.
 
+## Using the Haskell Debugger
+
+We can debug `cabal` with the [Haskell debugger][hdb] to set breakpoints, step
+through, and watch variables. This can be done from the command line or within
+any editor that supports the [Debug Adapter Protocol][debug-protocol], such as
+VS Code.
+
+To get set up:
+
+1. Install `hdb`. It needs GHC 9.14 or later, and the `ghc` on your `PATH` when
+   you run `hdb` has to be the version `hdb` was built with.
+
+2. Make sure the `cabal` on your `PATH` supports `cabal repl --with-repl`
+   (cabal-install 3.16 or later). `hdb` uses [hie-bios][hie-bios] to find out
+   how to load the project and hie-bios in turn runs this command.
+
+[hdb]: https://well-typed.github.io/haskell-debugger/
+[debug-protocol]: https://microsoft.github.io/debug-adapter-protocol/
+[hie-bios]: https://github.com/haskell/hie-bios
+
+### Debugging Project and Cradle
+
+We have a project and cradle for debugging:
+
+* [`cabal.hdb.project`](./cabal.hdb.project) with a subset of packages, leaving
+  out `cabal-testsuite`.
+
+* [`hie-hdb.yaml`](./hie-hdb.yaml) uses this project and lists which components
+  to load.  Breakpoints can only be set in those components. Everything else is
+  a compiled dependency. The cradle is not named `hie.yaml` so that the Haskell
+  Language Server won't pick it up. This means it has to be given explicitly to
+  `hdb`.
+
+> [!WARNING]
+> Do not use `cabal.project`, the default project, for debugging. `hdb` tries to
+> load every component of every package but will fail with:
+>
+> ```
+> Failed to get compiler options using hie-bios cradle
+> ```
+>
+> This is because `cabal-testsuite` and its custom setup uses an older and
+> incompatible version of `Cabal`.
+
+### Debugging from the Command Line
+
+Run `hdb` from the root of the repository, giving it the cradle, the file with
+`main` in it and, after `--`, the arguments for `cabal`:
+
+```
+$ hdb --cradle-file hie-hdb.yaml cabal-install/main/Main.hs -- --version
+```
+
+Each time it starts, `hdb` loads all of the components as bytecode, more than
+500 modules. Expect this to take a while and a decent chunk of memory. The first
+time, `hie-bios` also builds the dependencies into its own build directory,
+under `~/.cache/hie-bios`, leaving `dist-newstyle` alone.
+
+Once loaded, set breakpoints by file and line, with the path relative to the
+root of the repository, and then `run`:
+
+```
+(hdb) break cabal-install/src/Distribution/Client/Main.hs 323
+(hdb) run
+Stopped at breakpoint
+(hdb) variables
+_result : IO () = <fn> :: IO ()
+args : [String] = [...]
+  0 : [Char] = "--version"
+(hdb) next
+(hdb) continue
+cabal-install version 3.19.0.0
+compiled using version 3.19.0.0 of the Cabal library
+(hdb) exit
+```
+
+The commands are `break`, `delete`, `run`, `continue`, `next` (step over),
+`step` (step in), `finish` (step out), `variables`, `print`, `backtrace`,
+`threads` and `exit`.
+
+The `cabal` being debugged runs in the root of the repository. To have it work
+on another project, use `--project-dir`:
+
+```
+$ hdb --cradle-file hie-hdb.yaml cabal-install/main/Main.hs -- \
+    build all --dry-run --project-dir=/path/to/project
+```
+
+> [!TIP]
+> If a breakpoint is not hit, check that `cabal` has not skipped that work.
+> For instance, the solver does not run when the project already has an
+> up-to-date plan. If `hdb` fails to start, add `-v 3` to see what hie-bios
+> and `cabal repl` are doing.
+
+### Debugging from VS Code
+
+Install the [Haskell Debugger
+extension](https://marketplace.visualstudio.com/items?itemName=Well-Typed.haskell-debugger-extension)
+and start VS Code from a shell that has the right `ghc` and `hdb` on its
+`PATH`. Then add a configuration to `.vscode/launch.json`, changing `entryArgs`
+to the arguments for `cabal`:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "haskell-debugger",
+      "request": "launch",
+      "name": "cabal --version",
+      "projectRoot": "${workspaceFolder}",
+      "entryFile": "cabal-install/main/Main.hs",
+      "entryPoint": "main",
+      "entryArgs": ["--version"],
+      "extraGhcArgs": [],
+      "cradleFile": "hie-hdb.yaml"
+    }
+  ]
+}
+```
+
+The `cradleFile` is relative to the `projectRoot`.
+
+### Debugging a Test Suite
+
+To debug a test suite, add its component to `componentsToLoad` in
+`hie-hdb.yaml`, for example `cabal-install:test:unit-tests`, and give `hdb` the
+file with the `main` of the test suite and the arguments for the test suite:
+
+```
+$ hdb --cradle-file hie-hdb.yaml cabal-install/tests/UnitTests.hs -- -p "parse examples"
+```
+
+Breakpoints can then be set in the tests as well. Keep in mind that the test
+suite runs in the root of the repository, not in the directory of its package.
+
 ## Running other checks locally
 
 Various other checks done by CI can be run locally to make sure your code doesn't
