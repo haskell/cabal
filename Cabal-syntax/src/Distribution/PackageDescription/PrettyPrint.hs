@@ -27,6 +27,9 @@ module Distribution.PackageDescription.PrettyPrint
     -- ** Supplementary build information
   , writeHookedBuildInfo
   , showHookedBuildInfo
+
+    -- ** Prettyprint, exported for exactprint
+  , ppCondition
   ) where
 
 import Distribution.Compat.Prelude
@@ -54,11 +57,10 @@ import Distribution.PackageDescription.FieldGrammar
 import Distribution.Pretty
 import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 
+import Distribution.Fields.ConfVar
 import qualified Distribution.PackageDescription.FieldGrammar as FG
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
-
-import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Compat.NonEmptySet as NES
@@ -182,35 +184,6 @@ ppCondBenchmarks v suites =
     ppCondTree2 v benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)
   | (n, condTree) <- suites
   ]
-
-ppCondition :: Condition ConfVar -> Doc
-ppCondition (Var x) = ppConfVar x
-ppCondition (Lit b) = text (show b)
-ppCondition (CNot c) = char '!' <<>> ppCondition c
-ppCondition (COr c1 c2) =
-  parens
-    ( hsep
-        [ ppCondition c1
-        , text "||"
-            <+> ppCondition c2
-        ]
-    )
-ppCondition (CAnd c1 c2) =
-  parens
-    ( hsep
-        [ ppCondition c1
-        , text "&&"
-            <+> ppCondition c2
-        ]
-    )
-ppConfVar :: ConfVar -> Doc
-ppConfVar (OS os) = text "os" <<>> parens (pretty os)
-ppConfVar (Arch arch) = text "arch" <<>> parens (pretty arch)
-ppConfVar (PackageFlag name) = text "flag" <<>> parens (ppFlagName name)
-ppConfVar (Impl c v) = text "impl" <<>> parens (pretty c <+> pretty v)
-
-ppFlagName :: FlagName -> Doc
-ppFlagName = text . unFlagName
 
 ppIfCondition :: Condition ConfVar -> [PrettyField ()] -> PrettyField ()
 ppIfCondition c = PrettySection () "if" [ppCondition c]

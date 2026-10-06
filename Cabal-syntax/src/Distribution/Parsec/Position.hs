@@ -4,6 +4,7 @@ module Distribution.Parsec.Position
   , retPos
   , showPos
   , zeroPos
+  , onePos
   , positionCol
   , positionRow
   ) where
@@ -34,6 +35,9 @@ showPos (Position row col) = show row ++ ":" ++ show col
 
 zeroPos :: Position
 zeroPos = Position 0 0
+
+onePos :: Position
+onePos = Position 1 1
 
 -- | @since 3.0.0.0
 positionCol :: Position -> Int
