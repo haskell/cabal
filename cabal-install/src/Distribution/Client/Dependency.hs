@@ -14,7 +14,7 @@
 -- Top level interface to dependency resolution.
 module Distribution.Client.Dependency
   ( -- * The main package dependency resolver
-    DepResolverParams
+    DepResolverParams (..)
   , resolveDependencies
   , Progress (..)
   , foldProgress
@@ -24,6 +24,7 @@ module Distribution.Client.Dependency
   , getSolver
   , getFinalParams
   , getSolverConfig
+  , mkResolverParams
 
     -- * Alternate, simple resolver that does not do dependencies recursively
   , resolveWithoutDependencies
@@ -34,6 +35,7 @@ module Distribution.Client.Dependency
   , scopeToplevel
   , PackagesPreferenceDefault (..)
   , PackagePreference (..)
+  , interpretPackagesPreference
 
     -- ** Standard policy
   , basicInstallPolicy
@@ -134,6 +136,9 @@ import Distribution.Solver.Modular.Message
   )
 import Distribution.Solver.Types.SummarizedMessage
   ( SummarizedMessage (..)
+  )
+import Distribution.Solver.Types.PkgConfigDb
+  ( PkgConfigDb
   )
 import Distribution.System
   ( Platform
@@ -856,8 +861,8 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
 
 -- ------------------------------------------------------------
 
-getSolver :: SolverConfig -> ModularResolver
-getSolver = modularResolver
+getSolver :: DepResolverParams -> ModularResolver
+getSolver = modularResolver . getSolverConfig
 
 getFinalParams :: CompilerInfo -> DepResolverParams -> DepResolverParams
 getFinalParams comp params =
@@ -1356,3 +1361,28 @@ instance Show ResolveNoDepsError where
       ++ prettyShow name
       ++ " that satisfies "
       ++ prettyShow (simplifyVersionRange ver)
+
+mkResolverParams :: Platform
+                 -> CompilerInfo
+                 -> InstalledPackageIndex
+                 -> Maybe PkgConfigDb
+                 -> DepResolverParams
+                 -> ResolverParams UnresolvedPkgLoc
+mkResolverParams platform comp installedPkgIndex pkgConfigDB depResolverParams =
+  ResolverParams
+    { rpPlatform = platform
+    , rpCompilerInfo = comp
+    , rpInstalledPackages = installedPkgIndex
+    , rpSourcePackages = depResolverSourcePkgIndex depResolverParams
+    , rpPkgConfigDb = pkgConfigDB
+    , rpPkgPrefs = pkgPrefs
+    , rpPkgConstraints = depResolverConstraints depResolverParams
+    , rpPkgNames = depResolverTargets depResolverParams
+    }
+  where
+      pkgPrefs :: PackageName -> PackagePreferences
+      pkgPrefs =
+        interpretPackagesPreference
+          (depResolverTargets depResolverParams)
+          (depResolverPreferenceDefault depResolverParams)
+          (depResolverPreferences depResolverParams)

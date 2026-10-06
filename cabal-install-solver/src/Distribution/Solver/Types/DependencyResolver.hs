@@ -27,17 +27,6 @@ import Distribution.Package ( PackageName )
 import Distribution.Compiler ( CompilerInfo )
 import Distribution.System ( Platform )
 
-
--- type DependencyResolver loc = Platform
---                            -> CompilerInfo
---                            -> InstalledPackageIndex
---                            -> PackageIndex (SourcePackage loc)
---                            -> Maybe PkgConfigDb
---                            -> (PackageName -> PackagePreferences)
---                            -> [LabeledPackageConstraint]
---                            -> Set PackageName
---                            -> Progress SummarizedMessage String [ResolverPackage loc]
-
 data ResolverParams loc =
   ResolverParams
     { rpPlatform :: Platform
@@ -69,3 +58,4 @@ class {- (Binary (ResolverInputs a), Binary (ResolverOutput a))
   runResolver :: a -> ResolverInputs a -> Progress SummarizedMessage String (ResolverOutput a)
   convInputs :: a -> ResolverParams loc -> ResolverInputs a
   convOutput :: a -> ResolverParams loc -> ResolverOutput a -> [ResolverPackage loc]
+
