@@ -303,6 +303,26 @@ $ hdb --cradle-file hie-hdb.yaml cabal-install/tests/UnitTests.hs -- -p "parse e
 Breakpoints can then be set in the tests as well. Keep in mind that the test
 suite runs in the root of the repository, not in the directory of its package.
 
+Some tests read or write files relative to the directory of their package. To
+run a test suite from there with the command line debugger, start `hdb` in the
+package directory, giving it the absolute path of the cradle and paths relative
+to the package for the file with `main` and for breakpoints:
+
+```
+$ cd cabal-install
+$ hdb --cradle-file "$(realpath ../hie-hdb.yaml)" tests/UnitTests.hs -- -p "parse examples"
+(hdb) break tests/UnitTests.hs 32
+```
+
+`hdb` has no setting for the working directory of the program being debugged.
+When it is started from an editor, the way to change directory is to stop at a
+breakpoint on the first line of `main` and evaluate this, in the debug console
+for VS Code, before continuing:
+
+```
+System.Directory.setCurrentDirectory "cabal-install"
+```
+
 ## Running other checks locally
 
 Various other checks done by CI can be run locally to make sure your code doesn't
