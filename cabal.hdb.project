@@ -13,3 +13,11 @@ import: project-cabal/pkgs/tests.config
 import: project-cabal/constraints.config
 
 tests: True
+
+-- The debugger loads packages as bytecode, ignoring optimization flags and
+-- warning that it does so.
+optimization: False
+
+-- Keep compiler warnings out of the debugger's console.
+program-options
+  ghc-options: -w
