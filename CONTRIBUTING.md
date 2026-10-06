@@ -261,6 +261,11 @@ $ hdb --cradle-file hie-hdb.yaml cabal-install/main/Main.hs -- \
 > up-to-date plan. If `hdb` fails to start, add `-v 3` to see what hie-bios
 > and `cabal repl` are doing.
 
+> [!TIP]
+> Each time it stops or evaluates an expression, `hdb` repeats some warnings
+> from GHC, such as `<interactive>:1:1: warning: [GHC-15328] [-Wdeprecations]`.
+> Add `--extra-ghc-args=-w` before the file with `main` in it to silence these.
+
 ### Debugging from VS Code
 
 Install the [Haskell Debugger
@@ -281,14 +286,16 @@ to the arguments for `cabal`:
       "entryFile": "cabal-install/main/Main.hs",
       "entryPoint": "main",
       "entryArgs": ["--version"],
-      "extraGhcArgs": [],
+      "extraGhcArgs": ["-w"],
       "cradleFile": "hie-hdb.yaml"
     }
   ]
 }
 ```
 
-The `cradleFile` is relative to the `projectRoot`.
+The `cradleFile` is relative to the `projectRoot`. The `-w` in `extraGhcArgs`
+keeps the debug console free of the warnings GHC would otherwise repeat each
+time the debugger stops or evaluates an expression.
 
 ### Debugging a Test Suite
 
