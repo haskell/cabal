@@ -301,10 +301,17 @@ time the debugger stops or evaluates an expression.
 
 To debug a test suite, add its component to `componentsToLoad` in
 `hie-hdb.yaml`, for example `cabal-install:test:unit-tests`, and give `hdb` the
-file with the `main` of the test suite and the arguments for the test suite:
+file with the `main` of the test suite and the arguments for the test suite.
+Where we would run a test with:
 
 ```
-$ hdb --cradle-file hie-hdb.yaml cabal-install/tests/UnitTests.hs -- -p "parse examples"
+$ cabal run cabal-install:test:unit-tests -- --pattern simpleTest1
+```
+
+The equivalent for debugging that test is:
+
+```
+$ hdb --cradle-file hie-hdb.yaml cabal-install/tests/UnitTests.hs -- --pattern simpleTest1
 ```
 
 Breakpoints can then be set in the tests as well. Keep in mind that the test
@@ -317,7 +324,7 @@ to the package for the file with `main` and for breakpoints:
 
 ```
 $ cd cabal-install
-$ hdb --cradle-file "$(realpath ../hie-hdb.yaml)" tests/UnitTests.hs -- -p "parse examples"
+$ hdb --cradle-file "$(realpath ../hie-hdb.yaml)" tests/UnitTests.hs -- --pattern simpleTest1
 (hdb) break tests/UnitTests.hs 32
 ```
 
