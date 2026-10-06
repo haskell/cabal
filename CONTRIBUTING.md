@@ -317,6 +317,16 @@ $ hdb --cradle-file hie-hdb.yaml cabal-install/tests/UnitTests.hs -- --pattern s
 Breakpoints can then be set in the tests as well. Keep in mind that the test
 suite runs in the root of the repository, not in the directory of its package.
 
+> [!NOTE]
+> A test suite ends by exiting with an exit code, which is an exception that
+> the debugger reports as uncaught. So when all tests pass, expect to see
+> `ExitSuccess`, and from VS Code:
+>
+> ```
+> Uncaught exception of type SomeException was thrown!
+> ExitSuccess
+> ```
+
 Some tests read or write files relative to the directory of their package. To
 run a test suite from there with the command line debugger, start `hdb` in the
 package directory, giving it the absolute path of the cradle and paths relative
