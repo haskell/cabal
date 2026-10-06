@@ -326,6 +326,9 @@ suite runs in the root of the repository, not in the directory of its package.
 > Uncaught exception of type SomeException was thrown!
 > ExitSuccess
 > ```
+>
+> This goes to the debug console. The output of the test suite itself, with the
+> results of the tests, can be seen in the terminal window.
 
 Some tests read or write files relative to the directory of their package. To
 run a test suite from there with the command line debugger, start `hdb` in the
