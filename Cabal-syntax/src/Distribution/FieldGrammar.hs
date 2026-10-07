@@ -25,7 +25,6 @@ module Distribution.FieldGrammar
   , takeFields
   , runFieldParser
   , runFieldParser'
-  , defaultFreeTextFieldDefST
 
     -- * Newtypes
   , module Distribution.FieldGrammar.Newtypes
