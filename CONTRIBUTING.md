@@ -167,6 +167,41 @@ For these test executables, `-p` which applies a regex filter to the test
 names. When running `cabal-install` test suites, one need only use `cabal test` or
 `cabal run <test-target>` in order to test locally.
 
+## Using Haskell Language Server
+
+[Haskell Language Server][hls] (HLS) works on this repository through the
+[`hie.yaml`](./hie.yaml) cradle in the root, which points it at the
+[`cabal.hie.project`](./cabal.hie.project) project rather than the default
+`cabal.project`. With that in place, there is nothing to set up beyond having
+an HLS that matches the `ghc` on your `PATH`.
+
+> [!WARNING]
+> Without `hie.yaml`, HLS tries to load the default project and fails with
+> `Failed to parse result of calling cabal` when the `cabal` on your `PATH` is
+> cabal-install 3.18 or later, including a build of this repository. HLS uses
+> [hie-bios][hie-bios], which asks `cabal repl --with-repl` for the flags to
+> load the project, and that fails to resolve dependencies because
+> `cabal-testsuite` has a custom setup depending on an older and incompatible
+> version of `Cabal`. hie-bios then falls back to an older method that
+> cabal-install 3.18 broke. The `cabal.hie.project` project leaves out
+> `cabal-testsuite`, so its own code is the one part of the repository that HLS
+> doesn't cover.
+
+To check the setup from the command line, run HLS on a file. It loads the file
+the same way as it would in an editor and reports what it found:
+
+```
+$ haskell-language-server-9.14.1 cabal-install/main/Main.hs
+...
+Completed (1 file worked, 0 files failed)
+```
+
+HLS and the Haskell debugger share a build directory under `~/.cache/hie-bios`,
+which is why they share a project. Starting the debugger while HLS is still
+loading, or the other way around, can make them trip over each other in there.
+
+[hls]: https://haskell-language-server.readthedocs.io/
+
 ## Using the Haskell Debugger
 
 We can debug `cabal` with the [Haskell debugger][hdb] to set breakpoints, step
@@ -191,14 +226,15 @@ To get set up:
 
 We have a project and cradle for debugging:
 
-* [`cabal.hdb.project`](./cabal.hdb.project) with a subset of packages, leaving
-  out `cabal-testsuite`.
+* [`cabal.hie.project`](./cabal.hie.project) with a subset of packages, leaving
+  out `cabal-testsuite`. This is the same project that Haskell Language Server
+  uses.
 
 * [`hie-hdb.yaml`](./hie-hdb.yaml) uses this project and lists which components
   to load.  Breakpoints can only be set in those components. Everything else is
-  a compiled dependency. The cradle is not named `hie.yaml` so that the Haskell
-  Language Server won't pick it up. This means it has to be given explicitly to
-  `hdb`.
+  a compiled dependency. This is a separate cradle from the `hie.yaml` that
+  Haskell Language Server uses, as it loads many components at once, so it has
+  to be given explicitly to `hdb`.
 
 > [!WARNING]
 > Do not use `cabal.project`, the default project, for debugging. `hdb` tries to
