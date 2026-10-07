@@ -1,11 +1,12 @@
 # A hie-bios cradle for debugging cabal with the Haskell debugger (hdb), see
 # the "Using the Haskell debugger" section of CONTRIBUTING.md.
 #
-# This file is deliberately not named hie.yaml so that HLS does not pick it up.
-# Pass it to hdb explicitly, with --cradle-file or "cradleFile".
+# This is not the hie.yaml that Haskell Language Server uses, because it loads
+# many components at once. Pass it to hdb explicitly, with --cradle-file or
+# "cradleFile".
 cradle:
   cabal:
-    cabalProject: cabal.hdb.project
+    cabalProject: cabal.hie.project
     # Breakpoints can only be set in the components loaded here. To debug a
     # test suite, add its component, e.g. cabal-install:test:unit-tests.
     componentsToLoad:
