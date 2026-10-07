@@ -243,10 +243,6 @@ compiled using version 3.19.0.0 of the Cabal library
 (hdb) exit
 ```
 
-The commands are `break`, `delete`, `run`, `continue`, `next` (step over),
-`step` (step in), `finish` (step out), `variables`, `print`, `backtrace`,
-`threads` and `exit`.
-
 The `cabal` being debugged runs in the root of the repository. To have it work
 on another project, use `--project-dir`:
 
