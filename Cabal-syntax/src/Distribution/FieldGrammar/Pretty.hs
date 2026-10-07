@@ -4,13 +4,14 @@ module Distribution.FieldGrammar.Pretty
   ) where
 
 import Data.Coerce (Coercible, coerce)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
 import Distribution.Pretty (Pretty (..), showFreeText, showFreeTextV3)
-import Distribution.Utils.Generic (toUTF8BS)
 import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
 import Prelude ()
@@ -84,7 +85,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   freeTextField fn l = PrettyFG pp
     where
-      pp v s = maybe mempty (ppField fn . showFT) (aview l s)
+      pp v s = maybe mempty (ppField fn . showFT . T.unpack) (aview l s)
         where
           showFT
             | v >= CabalSpecV3_0 = showFreeTextV3
@@ -93,13 +94,11 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   -- it's ok to just show, as showFreeText of empty string is empty.
   freeTextFieldDef fn l = PrettyFG pp
     where
-      pp v s = ppField fn (showFT (aview l s))
+      pp v s = ppField fn (showFT (T.unpack (aview l s)))
         where
           showFT
             | v >= CabalSpecV3_0 = showFreeTextV3
             | otherwise = showFreeText
-
-  freeTextFieldDefST = defaultFreeTextFieldDefST
 
   monoidalFieldAla
     :: forall s proxy a b
@@ -117,7 +116,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
       pp xs =
         -- always print the field, even its Doc is empty.
         -- i.e. don't use ppField
-        [ PrettyField () (toUTF8BS n) $ PP.vcat $ map PP.text $ lines s
+        [ PrettyField () (T.encodeUtf8 n) $ PP.vcat $ map (PP.text . T.unpack) $ T.lines s
         | (n, s) <- xs
         -- fnPfx `isPrefixOf` n
         ]
