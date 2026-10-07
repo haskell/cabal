@@ -1,0 +1,20 @@
+-- A project for the tools that load this repository through hie-bios: Haskell
+-- Language Server (via hie.yaml) and the Haskell debugger (via hie-hdb.yaml).
+-- See the "Using Haskell Language Server" and "Using the Haskell Debugger"
+-- sections of CONTRIBUTING.md.
+--
+-- This leaves out cabal-testsuite because `cabal repl --with-repl`, that
+-- hie-bios relies on, needs Cabal >= 3.16 for the setup of every package in the
+-- project and the custom setup of cabal-testsuite depends on an older Cabal.
+import: project-cabal/ghc-options.config
+import: project-cabal/ghc-latest.config
+import: project-cabal/pkgs/cabal.config
+import: project-cabal/pkgs/install.config
+import: project-cabal/pkgs/tests.config
+import: project-cabal/constraints.config
+
+tests: True
+
+-- The tools load packages as bytecode, ignoring optimization flags and warning
+-- that they do so.
+optimization: False
