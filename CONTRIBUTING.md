@@ -310,9 +310,6 @@ The equivalent for debugging that test is:
 $ hdb --cradle-file hie-hdb.yaml cabal-install/tests/UnitTests.hs -- --pattern simpleTest1
 ```
 
-Breakpoints can then be set in the tests as well. Keep in mind that the test
-suite runs in the root of the repository, not in the directory of its package.
-
 > [!NOTE]
 > A test suite ends by exiting with an exit code, which is an exception that
 > the debugger reports as uncaught. So when all tests pass, expect to see
@@ -326,10 +323,11 @@ suite runs in the root of the repository, not in the directory of its package.
 > This goes to the debug console. The output of the test suite itself, with the
 > results of the tests, can be seen in the terminal window.
 
-Some tests read or write files relative to the directory of their package. To
-run a test suite from there with the command line debugger, start `hdb` in the
-package directory, giving it the absolute path of the cradle and paths relative
-to the package for the file with `main` and for breakpoints:
+A test suite runs in the root of the repository, not in the directory of its
+package.  Some tests read or write files relative to the directory of their
+package. To run a test suite from there with the command line debugger, start
+`hdb` in the package directory, giving it the absolute path of the cradle and
+paths relative to the package for the file with `main` and for breakpoints:
 
 ```
 $ cd cabal-install
