@@ -335,7 +335,7 @@ optDescrParser = \case
           (O.eitherReader (runReadE reader))
           (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
     ]
-  OptArg desc optFlags placeHolder reader (_defaultText, defaultFn) _show ->
+  OptArg desc optFlags placeHolder reader defaultFn _show ->
     [ Endo
         <$> ( O.option
                 (O.eitherReader (runReadE reader))
@@ -370,7 +370,7 @@ optDescrToGetOpt :: OptDescr flags -> [GetOpt.OptDescr ()]
 optDescrToGetOpt = \case
   ReqArg desc (shortFlags, longFlags) placeHolder _reader _showFlag ->
     [GetOpt.Option shortFlags longFlags (GetOpt.ReqArg (const ()) placeHolder) desc]
-  OptArg desc (shortFlags, longFlags) placeHolder _reader (_defaultValue, _defaultSetter) _showFlag ->
+  OptArg desc (shortFlags, longFlags) placeHolder _reader _defaultFn _showFlag ->
     [GetOpt.Option shortFlags longFlags (GetOpt.OptArg (const ()) placeHolder) desc]
   ChoiceOpt choices ->
     [ GetOpt.Option shortFlags longFlags (GetOpt.NoArg ()) desc
