@@ -439,7 +439,7 @@ renderOptionRows colorizeWarning maxFlagColumnWidth descColumn helpOutputWidth o
   let rendered = [renderOption (index == 0) opt | (index, opt) <- zip [0 :: Int ..] options]
    in (concatMap fst rendered, concatMap snd rendered)
   where
-    descriptionMarker = "• "
+    descriptionMarker = "# "
     markerPadding = replicate (length descriptionMarker) ' '
     descriptionIndent = replicate (2 + descColumn) ' '
     descriptionWidth = max 20 (helpOutputWidth - (2 + descColumn) - length descriptionMarker)
