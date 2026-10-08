@@ -508,13 +508,25 @@ renderOptionRows colorizeWarning maxFlagColumnWidth descColumn helpOutputWidth o
             <> "\n"
             <> concat [descriptionIndent <> markerPadding <> line <> "\n" | line <- continuation]
 
+-- | Wrap a description to the given width, one paragraph per input line. A
+-- paragraph that starts with a @- @ list marker gets a hanging indent, so its
+-- continuation lines align with the text after the marker.
 wrapDescription :: Int -> String -> [String]
 wrapDescription width description =
   case concatMap wrapParagraph (lines description) of
     [] -> [""]
     wrapped -> wrapped
   where
-    wrapParagraph paragraph
+    wrapParagraph paragraph =
+      case stripPrefix listMarker paragraph of
+        Just item ->
+          zipWith (<>) (listMarker : repeat listIndent) (wrapWords (width - length listMarker) item)
+        Nothing -> wrapWords width paragraph
+
+    listMarker = "- "
+    listIndent = map (const ' ') listMarker
+
+    wrapWords w paragraph
       | null ws = [""]
       | otherwise = reverse (foldl' step [""] ws)
       where
@@ -522,7 +534,7 @@ wrapDescription width description =
 
         step (current : previous) word
           | null current = word : previous
-          | length current + 1 + length word <= width = (current <> " " <> word) : previous
+          | length current + 1 + length word <= w = (current <> " " <> word) : previous
           | otherwise = word : current : previous
         step [] _ = []
 
