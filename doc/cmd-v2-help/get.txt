@@ -17,13 +17,14 @@ Flags for get:
                               # Copy the package's source repository (ie git
                                 clone, darcs get, etc as appropriate).
  --index-state=STATE          # Use source package index state as it existed
-                                at a previous time. Accepts unix-timestamps
-                                (e.g. '@1474732068'), ISO8601 UTC timestamps
-                                (e.g. '2016-09-24T17:47:48Z'), or 'HEAD'
-                                (default: 'HEAD'). This determines which
-                                package versions are available as well as
-                                .cabal file revision is selected (unless
-                                --pristine is used).
+                                at a previous time. Accepts:
+                                - a unix timestamp, e.g. '@1474732068',
+                                - an ISO8601 UTC timestamp, e.g.
+                                  '2016-09-24T17:47:48Z',
+                                - 'HEAD', the default.
+                                This determines which package versions are
+                                available as well as .cabal file revision is
+                                selected (unless --pristine is used).
  --only-package-description   # Unpack only the package description file.
  --package-description-only   # A synonym for --only-package-description.
  --pristine                   # Unpack the original pristine tarball, rather
