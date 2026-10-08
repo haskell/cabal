@@ -89,7 +89,6 @@ import Distribution.Simple.Command
   , commandAddAction
   , commandParseArgs
   )
-import Distribution.Simple.Utils (ordNub)
 
 import Options.Applicative
   ( ParserInfo
@@ -707,7 +706,6 @@ helpText helpColor replaceBuildAlias buildCommand invokedName pname =
 renderGroup :: HelpColor -> Int -> Int -> Int -> (OptionGroupKey, [OptionField a]) -> (String, [String])
 renderGroup helpColor maxFlagColumnWidth descColumn helpOutputWidth (title, options)
   | null options = ("", [])
-  | title == InstallLayoutOptions = renderInstallLayoutGroupCompact helpColor helpOutputWidth options
   | otherwise =
       let (rows, warnings) =
             renderOptionRows
@@ -722,20 +720,6 @@ renderGroup helpColor maxFlagColumnWidth descColumn helpOutputWidth (title, opti
               <> rows
           , warnings
           )
-
-renderInstallLayoutGroupCompact :: HelpColor -> Int -> [OptionField a] -> (String, [String])
-renderInstallLayoutGroupCompact helpColor helpOutputWidth options =
-  ( "\n"
-      <> colorizeHeader helpColor (show InstallLayoutOptions <> ":")
-      <> "\n"
-      <> concat [flagIndent <> line <> "\n" | line <- wrappedFlagLines]
-  , []
-  )
-  where
-    flagColumns = map (fst . getOptToColumns) (concatMap optionFieldToGetOpt options)
-    compactFlags = ordNub flagColumns
-    flagsLine = intercalate ", " compactFlags
-    wrappedFlagLines = wrapDescription (max 40 (helpOutputWidth - 2)) flagsLine
 
 -- | Leading indent of each flag row.
 flagIndent :: String
