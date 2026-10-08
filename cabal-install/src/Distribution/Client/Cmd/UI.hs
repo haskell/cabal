@@ -298,7 +298,11 @@ parsedCommandParser flagParsers = toParsed <$> many (cmdItemParser flagParsers)
           targets = [t | CmdItemTarget t <- items]
           listOptionsSeen = any isListOptions items
        in ParsedCommand
-            { parsedFlagEdits = mconcat edits
+            { -- Apply edits in command-line order, first to last, so that a
+              -- later option overrides an earlier one and list options
+              -- accumulate in the order given. @Endo f <> Endo g@ applies
+              -- @g@ first, so the list is reversed before being combined.
+              parsedFlagEdits = mconcat (reverse edits)
             , parsedTargets = targets
             , parsedListOptions = listOptionsSeen
             }
