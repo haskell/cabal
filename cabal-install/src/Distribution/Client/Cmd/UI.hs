@@ -213,7 +213,7 @@ parseCommand
   -> [String]
   -> CommandParse action
 parseCommand examples cmdui action invokedName cmdArgs =
-  case execParserPure defaultPrefs pInfo cmdArgs of
+  case execParserPure defaultPrefs pInfo (supplyOptArgDefaults optionFields cmdArgs) of
     Success parsed ->
       if parsedListOptions parsed
         then CommandList (cmdListOptions cmdui)
@@ -229,7 +229,29 @@ parseCommand examples cmdui action invokedName cmdArgs =
       CommandErrors ["Shell completion is not supported by this parser path."]
   where
     pInfo = parserInfo invokedName examples flagParsers cmdui
-    flagParsers = cmdOptionParsers (commandOptions cmdui ParseArgs)
+    optionFields = commandOptions cmdui ParseArgs
+    flagParsers = cmdOptionParsers optionFields
+
+-- | Insert an empty argument after each bare occurrence of an
+-- optional-argument option, so that @--allow-newer@ and @-j@ keep their
+-- GetOpt meaning: the option's default, with the next word left as a
+-- positional argument. Attached forms such as @--allow-newer=base@ and
+-- @-j4@ are left alone, as is everything after @--@.
+supplyOptArgDefaults :: [OptionField flags] -> [String] -> [String]
+supplyOptArgDefaults fields = go
+  where
+    go [] = []
+    go ("--" : rest) = "--" : rest
+    go (arg : rest)
+      | arg `elem` bareForms = arg : "" : go rest
+      | otherwise = arg : go rest
+
+    bareForms =
+      [ form
+      | OptionField _ descrs <- fields
+      , OptArg _ (shortFlags, longFlags) _ _ _ _ <- descrs
+      , form <- map (\c -> ['-', c]) shortFlags ++ map ("--" ++) longFlags
+      ]
 
 parseCommandWithOptparse
   :: CommandUI globalFlags
@@ -340,13 +362,19 @@ optDescrParser = \case
           (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
     ]
   OptArg desc optFlags placeHolder reader defaultFn _show ->
+    -- optparse-applicative has no optional-argument options: an option
+    -- either always takes an argument or never does, and a bare @-j@ would
+    -- swallow the next word as its value. 'supplyOptArgDefaults' gives each
+    -- bare occurrence an empty argument instead, which the reader maps to the
+    -- option's default. An explicit @--jobs=@ therefore also means the default.
     [ Endo
-        <$> ( O.option
-                (O.eitherReader (runReadE reader))
-                (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
-                <|> O.flag' defaultFn (flagMods optFlags <> O.internal)
-            )
+        <$> O.option
+          (O.eitherReader readOrDefault)
+          (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
     ]
+    where
+      readOrDefault "" = Right defaultFn
+      readOrDefault s = runReadE reader s
   ChoiceOpt choices ->
     [ Endo setFn
       <$ O.flag' () (flagMods optFlags <> O.help desc)
