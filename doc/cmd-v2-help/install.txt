@@ -85,10 +85,29 @@ Unsupported options:
  --root-cmd=COMMAND           # (No longer supported, do not use.)
 
 Install layout options:
- --builddir=DIR, --program-prefix=PREFIX, --program-suffix=SUFFIX,
- --ipid=IPID, --cid=CID, --reinstall, --avoid-reinstalls, --force-reinstalls,
- --run-tests, --haddock-resources-dir=DIR, --haddock-output-dir=DIR,
- --project-dir=DIR, --installdir=DIR
+ --builddir=DIR               # The directory where Cabal puts generated build
+                                files (default dist)
+ --program-prefix=PREFIX      # Prefix to be applied to installed executables
+ --program-suffix=SUFFIX      # Suffix to be applied to installed executables
+ --ipid=IPID                  # Installed package ID to compile this package
+                                as
+ --cid=CID                    # Installed component ID to compile this
+                                component as
+ --reinstall                  # Install even if it means installing the same
+                                version again.
+ --avoid-reinstalls           # Do not select versions that would
+                                destructively overwrite installed packages.
+ --force-reinstalls           # Reinstall packages even if they will most
+                                likely break other installed packages.
+ --run-tests                  # Run package test suites during installation.
+ --haddock-resources-dir=DIR  # Location of Haddocks static / auxiliary files
+ --haddock-output-dir=DIR     # Generate haddock documentation into this
+                                directory. This flag is provided as a
+                                technology preview and is subject to change in
+                                the next releases.
+ --project-dir=DIR            # Set the path of the project directory
+ --installdir=DIR             # Where to install (by symlinking or copying)
+                                the executables in.
 
 Irrelevant options:
  --[enable|disable]-per-component
