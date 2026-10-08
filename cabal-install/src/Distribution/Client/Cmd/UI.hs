@@ -441,8 +441,8 @@ renderOptionRows colorizeWarning maxFlagColumnWidth descColumn helpOutputWidth o
   where
     descriptionMarker = "# "
     markerPadding = replicate (length descriptionMarker) ' '
-    descriptionIndent = replicate (2 + descColumn) ' '
-    descriptionWidth = max 20 (helpOutputWidth - (2 + descColumn) - length descriptionMarker)
+    descriptionIndent = replicate (length flagIndent + descColumn) ' '
+    descriptionWidth = max 20 (helpOutputWidth - (length flagIndent + descColumn) - length descriptionMarker)
 
     renderOption isFirstInGroup opt =
       let (flagColumn, description) = getOptToColumns opt
@@ -482,17 +482,17 @@ renderOptionRows colorizeWarning maxFlagColumnWidth descColumn helpOutputWidth o
     renderInline flagColumn descriptionLines =
       let padding = max 1 (descColumn - length flagColumn)
        in case descriptionLines of
-            [] -> "  " <> flagColumn <> "\n"
+            [] -> flagIndent <> flagColumn <> "\n"
             firstLineText : continuation ->
-              let firstLine = "  " <> flagColumn <> replicate padding ' ' <> descriptionMarker <> firstLineText <> "\n"
+              let firstLine = flagIndent <> flagColumn <> replicate padding ' ' <> descriptionMarker <> firstLineText <> "\n"
                   continuationLines = [descriptionIndent <> markerPadding <> line <> "\n" | line <- continuation]
                in firstLine <> concat continuationLines
 
     renderStacked flagColumn descriptionLines =
       case descriptionLines of
-        [] -> "  " <> flagColumn <> "\n"
+        [] -> flagIndent <> flagColumn <> "\n"
         firstLineText : continuation ->
-          "  "
+          flagIndent
             <> flagColumn
             <> "\n"
             <> descriptionIndent
@@ -718,7 +718,7 @@ renderInstallLayoutGroupCompact helpColor helpOutputWidth options =
   ( "\n"
       <> colorizeHeader helpColor (show InstallLayoutOptions <> ":")
       <> "\n"
-      <> concat ["  " <> line <> "\n" | line <- wrappedFlagLines]
+      <> concat [flagIndent <> line <> "\n" | line <- wrappedFlagLines]
   , []
   )
   where
@@ -726,6 +726,10 @@ renderInstallLayoutGroupCompact helpColor helpOutputWidth options =
     compactFlags = ordNub flagColumns
     flagsLine = intercalate ", " compactFlags
     wrappedFlagLines = wrapDescription (max 40 (helpOutputWidth - 2)) flagsLine
+
+-- | Leading indent of each flag row.
+flagIndent :: String
+flagIndent = " "
 
 -- | Whether command help is rendered with ANSI colour codes. Colour is for
 -- terminals only; redirected output such as the generated docs is plain text.
