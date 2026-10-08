@@ -304,12 +304,12 @@ examples :: String -> String -> String
 examples pname invokedName =
   unlines
     [ "Examples:"
-    , "  - " <> pname <> " " <> invokedName
-    , "      Install the package in the current directory"
-    , "  - " <> pname <> " " <> invokedName <> " pkgname"
-    , "      Install the package named pkgname (fetching it from hackage if necessary)"
-    , "  - " <> pname <> " " <> invokedName <> " ./pkgfoo"
-    , "      Install the package in the ./pkgfoo directory"
+    , "- " <> pname <> " " <> invokedName
+    , "    Install the package in the current directory"
+    , "- " <> pname <> " " <> invokedName <> " pkgname"
+    , "    Install the package named pkgname (fetching it from hackage if necessary)"
+    , "- " <> pname <> " " <> invokedName <> " ./pkgfoo"
+    , "    Install the package in the ./pkgfoo directory"
     ]
 
 installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)

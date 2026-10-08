@@ -68,16 +68,16 @@ examples :: String -> String -> String
 examples pname invokedName =
   unlines
     [ "Examples:"
-    , "  - " <> pname <> " " <> invokedName
-    , "      Build the package in the current directory or all packages in the project"
-    , "  - " <> pname <> " " <> invokedName <> " pkgname"
-    , "      Build the package named pkgname in the project"
-    , "  - " <> pname <> " " <> invokedName <> " ./pkgfoo"
-    , "      Build the package in the ./pkgfoo directory"
-    , "  - " <> pname <> " " <> invokedName <> " cname"
-    , "      Build the component named cname in the project"
-    , "  - " <> pname <> " " <> invokedName <> " cname --enable-profiling"
-    , "      Build the component in profiling mode (including dependencies as needed)"
+    , "- " <> pname <> " " <> invokedName
+    , "    Build the package in the current directory or all packages in the project"
+    , "- " <> pname <> " " <> invokedName <> " pkgname"
+    , "    Build the package named pkgname in the project"
+    , "- " <> pname <> " " <> invokedName <> " ./pkgfoo"
+    , "    Build the package in the ./pkgfoo directory"
+    , "- " <> pname <> " " <> invokedName <> " cname"
+    , "    Build the component named cname in the project"
+    , "- " <> pname <> " " <> invokedName <> " cname --enable-profiling"
+    , "    Build the component in profiling mode (including dependencies as needed)"
     ]
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
