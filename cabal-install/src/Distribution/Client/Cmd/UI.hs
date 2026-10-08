@@ -39,6 +39,7 @@ module Distribution.Client.Cmd.UI
   , wrapDescription
   , capitalizeDescription
   , helpText
+  , stripAnsiCodes
 
     -- * Option grouping helpers
   , groupPredicates
@@ -726,6 +727,15 @@ renderInstallLayoutGroupCompact helpOutputWidth options =
 
 colorizeHeader :: String -> String
 colorizeHeader text = "\ESC[32m" <> text <> "\ESC[0m"
+
+-- | Remove the ANSI colour codes added by the @colorize*@ functions, for
+-- output that is not going to a terminal.
+stripAnsiCodes :: String -> String
+stripAnsiCodes = go
+  where
+    go [] = []
+    go ('\ESC' : '[' : rest) = go (drop 1 (dropWhile (/= 'm') rest))
+    go (c : rest) = c : go rest
 
 colorizeWarningHeader :: String -> String
 colorizeWarningHeader text = "\ESC[31m" <> text <> "\ESC[0m"

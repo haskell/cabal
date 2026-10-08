@@ -186,6 +186,7 @@ import Distribution.Client.Cmd.UI
   ( cmdSpec
   , commandParserByName
   , parseCommandWithOptparseMany
+  , stripAnsiCodes
   )
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
@@ -276,7 +277,7 @@ import System.Directory
   ( doesFileExist
   , withCurrentDirectory
   )
-import System.Environment (getEnvironment, getExecutablePath, getProgName)
+import System.Environment (getEnvironment, getExecutablePath, getProgName, lookupEnv)
 import System.FilePath
   ( dropExtension
   , splitExtension
@@ -286,6 +287,7 @@ import System.FilePath
   )
 import System.IO
   ( BufferMode (LineBuffering)
+  , hIsTerminalDevice
   , hPutStrLn
   , hSetBuffering
   , stderr
@@ -422,7 +424,13 @@ mainWorker args = do
 
     printCommandHelp help = do
       pname <- getProgName
-      putStr (help pname)
+      -- The command help may contain colour codes. Keep them only when writing
+      -- to a terminal and the user has not opted out with NO_COLOR, so that
+      -- redirected output such as the generated docs stays plain text.
+      isTerminal <- hIsTerminalDevice stdout
+      noColor <- lookupEnv "NO_COLOR"
+      let useColor = isTerminal && maybe True null noColor
+      putStr $ if useColor then help pname else stripAnsiCodes (help pname)
     printGlobalHelp help = do
       pname <- getProgName
       configFile <- defaultConfigFile
