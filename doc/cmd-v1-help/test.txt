@@ -42,12 +42,13 @@ Flags for v1-test:
  --machine-log=TEMPLATE       # Produce a machine-readable log file (name
                                 template can use $pkgid, $compiler, $os,
                                 $arch, $result)
- --show-details=FILTER        # 'always': always show results of individual
-                                test cases. 'never': never show results of
-                                individual test cases. 'failures': show
-                                results of failing test cases. 'streaming':
-                                show results of test cases in real
-                                time.'direct': send results of test cases in
+ --show-details=always|never|failures|streaming|direct
+                              # Allowed values: - always: always show results
+                                of individual test cases, - never: never show
+                                results of individual test cases, - failures:
+                                show results of failing test cases, -
+                                streaming: show results of test cases in real
+                                time, - direct: send results of test cases in
                                 real time; no log file.
  --keep-tix-files             # Keep .tix files for HPC between test runs
  --test-wrapper=FILE          # Run test through a wrapper.
