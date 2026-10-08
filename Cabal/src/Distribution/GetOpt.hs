@@ -38,6 +38,8 @@ module Distribution.GetOpt
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.List (stripPrefix)
+
 -- | What to do with options following non-options
 data ArgOrder a
   = -- | no option processing after first non-option
@@ -170,21 +172,36 @@ fmtLong (OptArg _ ad) lo =
   let opt = "--" ++ lo
    in opt ++ "[=" ++ ad ++ "]"
 
+-- | Wrap text to the given width. Each line of the input is wrapped on its
+-- own, so a description written with explicit line breaks, such as a list of
+-- allowed values, keeps those breaks. A line that starts with a @- @ list
+-- marker gets a hanging indent, so its continuation lines align with the text
+-- after the marker.
 wrapText :: Int -> String -> [String]
-wrapText width = map unwords . wrap 0 [] . words
+wrapText width = concatMap wrapLine . lines
   where
-    wrap :: Int -> [String] -> [String] -> [[String]]
-    wrap 0 [] (w : ws)
-      | length w + 1 > width =
-          wrap (length w) [w] ws
-    wrap col line (w : ws)
-      | col + length w + 1 > width =
-          reverse line : wrap 0 [] (w : ws)
-    wrap col line (w : ws) =
+    wrapLine line = case stripPrefix listMarker line of
+      Just item ->
+        zipWith (++) (listMarker : repeat listIndent) (wrapWords (width - length listMarker) item)
+      Nothing -> wrapWords width line
+
+    listMarker = "- "
+    listIndent = map (const ' ') listMarker
+
+    wrapWords w = map unwords . wrap w 0 [] . words
+
+    wrap :: Int -> Int -> [String] -> [String] -> [[String]]
+    wrap width' 0 [] (w : ws)
+      | length w + 1 > width' =
+          wrap width' (length w) [w] ws
+    wrap width' col line (w : ws)
+      | col + length w + 1 > width' =
+          reverse line : wrap width' 0 [] (w : ws)
+    wrap width' col line (w : ws) =
       let col' = col + length w + 1
-       in wrap col' (w : line) ws
-    wrap _ [] [] = []
-    wrap _ line [] = [reverse line]
+       in wrap width' col' (w : line) ws
+    wrap _ _ [] [] = []
+    wrap _ _ line [] = [reverse line]
 
 -- |
 -- Process the command-line, and return the list of values that matched
