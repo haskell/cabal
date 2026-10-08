@@ -3030,8 +3030,8 @@ initOptions _ =
   [ option
       ['i']
       ["interactive"]
-      ( "Interactive mode. Creates a prompt tree for project creation. \n"
-          ++ "If -n/--non-interactive is issued, a simple project with inferred defaults \n"
+      ( "Interactive mode. Creates a prompt tree for project creation. "
+          ++ "If -n/--non-interactive is issued, a simple project with inferred defaults "
           ++ "is created. If --simple is issued, then sensible defaults will be chosen as well."
       )
       IT.interactive
