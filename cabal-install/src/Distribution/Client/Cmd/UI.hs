@@ -642,30 +642,21 @@ helpText helpColor replaceBuildAlias buildCommand invokedName pname =
     commonHelpOptions =
       [GetOpt.Option ['h'] ["help"] (GetOpt.NoArg ()) "Show this help text"]
 
+    -- Match the column layout of 'Distribution.GetOpt.usageInfo', which the
+    -- other commands still use: after the one-space indent, flags are padded
+    -- to 28 columns so the description marker lands in column 30, and flags
+    -- wider than that are stacked above their description.
     maxFlagColumnWidth :: Int
-    maxFlagColumnWidth = 30
-
-    helpOutputWidth :: Int
-    helpOutputWidth = 100
-
-    allOptions :: [GetOpt.OptDescr ()]
-    allOptions =
-      commonHelpOptions
-        ++ concatMap optionFieldToGetOpt optsUngrouped
-        ++ concatMap (concatMap optionFieldToGetOpt . snd) optsGrouped
+    maxFlagColumnWidth = 28
 
     descColumn :: Int
-    descColumn =
-      min
-        maxFlagColumnWidth
-        ( maximum
-            ( 0
-                : map
-                  (length . fst . getOptToColumns)
-                  allOptions
-            )
-        )
-        + 2
+    descColumn = maxFlagColumnWidth + 1
+
+    -- The legacy layout wraps descriptions to stay strictly under 47
+    -- columns, so its lines reach column 78 at most; wrapping at 78 here
+    -- reproduces the same line breaks.
+    helpOutputWidth :: Int
+    helpOutputWidth = 78
 
     (ungroupedRows, ungroupedWarnings) =
       renderOptionRows
