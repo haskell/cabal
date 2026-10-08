@@ -524,10 +524,10 @@ globalCommand commands =
       , option
           []
           ["http-transport"]
-          "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
+          "Set a transport for http(s) requests (default: curl)."
           globalHttpTransport
           (\v flags -> flags{globalHttpTransport = v})
-          (reqArgFlag "HttpTransport")
+          (reqArgFlag "curl|wget|powershell|plain-http")
       , option
           []
           ["store-dir", "storedir"]
@@ -1955,11 +1955,14 @@ getCommand =
         , option
             []
             ["index-state"]
-            ( "Use source package index state as it existed at a previous time. "
-                ++ "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps "
-                ++ "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD'). "
-                ++ "This determines which package versions are available as well as "
-                ++ ".cabal file revision is selected (unless --pristine is used)."
+            ( unlines
+                [ "Use source package index state as it existed at a previous time. Accepts:"
+                , "- a unix timestamp, e.g. '@1474732068',"
+                , "- an ISO8601 UTC timestamp, e.g. '2016-09-24T17:47:48Z',"
+                , "- 'HEAD', the default."
+                , "This determines which package versions are available as well as "
+                    ++ ".cabal file revision is selected (unless --pristine is used)."
+                ]
             )
             getIndexState
             (\v flags -> flags{getIndexState = v})
@@ -2685,9 +2688,12 @@ installOptions showOrParseArgs =
        , option
           []
           ["index-state"]
-          ( "Use source package index state as it existed at a previous time. "
-              ++ "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps "
-              ++ "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD')."
+          ( unlines
+              [ "Use source package index state as it existed at a previous time. Accepts:"
+              , "- a unix timestamp, e.g. '@1474732068',"
+              , "- an ISO8601 UTC timestamp, e.g. '2016-09-24T17:47:48Z',"
+              , "- 'HEAD', the default."
+              ]
           )
           installIndexState
           (\v flags -> flags{installIndexState = v})
@@ -3697,7 +3703,13 @@ optionSolverFlags
     , option
         []
         ["prefer-version"]
-        "Select which version of a package that the solver should prefer. Oldest is useful to determine lower bounds in build-depends section. Latest will prefer the latest version. Installed-or-latest will prefer installed versions and the latest version otherwise."
+        ( unlines
+            [ "Select which version of a package that the solver should prefer:"
+            , "- oldest: useful to determine lower bounds in the build-depends section,"
+            , "- latest: prefer the latest version,"
+            , "- installed-or-latest: prefer installed versions and the latest version otherwise."
+            ]
+        )
         getpo
         setpo
         ( reqArg
