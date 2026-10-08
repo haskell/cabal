@@ -89,7 +89,7 @@ data ModularResolverInputs =
     { mrCompilerInfo :: CompilerInfo
     , mrIndex :: Index
     , mrPkgConfigDb :: Maybe PkgConfigDb
-    , mrPkgPrefs :: PN -> PackagePreferences
+    , mrPkgPrefs :: Map PN PackagePreferences
     , mrPkgConstraints :: Map PN [LabeledPackageConstraint]
     , mrPkgNames :: Set PN
     }
@@ -198,7 +198,7 @@ solve' :: SolverConfig
        -> CompilerInfo
        -> Index
        -> Maybe PkgConfigDb
-       -> (PN -> PackagePreferences)
+       -> Map PN PackagePreferences
        -> Map PN [LabeledPackageConstraint]
        -> Set PN
        -> Progress SummarizedMessage String (Assignment, RevDepMap)
@@ -209,7 +209,10 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
               -> RetryLog SummarizedMessage SolverFailure (Assignment, RevDepMap)
     runSolver keepLog sc' =
         displayLogMessages keepLog $
-        solve sc' cinfo idx pkgConfigDB pprefs gcs pns
+        solve sc' cinfo idx pkgConfigDB pprefs' gcs pns
+
+    pprefs' :: PN -> PackagePreferences
+    pprefs' pn = fromMaybe (error $ "No prefs found for " ++ show pn) $ M.lookup pn pprefs
 
     createErrorMsg :: SolverFailure
                    -> RetryLog SummarizedMessage String (Assignment, RevDepMap)

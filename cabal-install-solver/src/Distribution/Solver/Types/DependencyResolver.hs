@@ -1,11 +1,14 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Distribution.Solver.Types.DependencyResolver
     ( ResolverParams (..)
     , DependencyResolver (..)
     ) where
 
-import Distribution.Solver.Compat.Prelude ( Maybe, String, Set {-, Binary -})
+import Distribution.Solver.Compat.Prelude
+    ( Binary, Generic, Maybe, String, Set, Map
+    )
 import Prelude ()
 import Data.Kind
 
@@ -34,10 +37,13 @@ data ResolverParams loc =
     , rpInstalledPackages :: InstalledPackageIndex
     , rpSourcePackages :: PackageIndex (SourcePackage loc)
     , rpPkgConfigDb :: Maybe PkgConfigDb
-    , rpPkgPrefs :: PackageName -> PackagePreferences
+    , rpPkgPrefs :: PackagesPreferenceSource
     , rpPkgConstraints :: [LabeledPackageConstraint]
     , rpPkgNames :: Set PackageName
     }
+    deriving (Generic)
+
+deriving instance Binary loc => Binary (ResolverParams loc)
 
 -- | A dependency resolver consists of a function that works out an
 -- installation plan given the set of installed and available packages and a

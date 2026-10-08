@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Distribution.Client.Dependency.Types
   ( PreSolver (..)
   , Solver (..)
@@ -60,4 +63,4 @@ data PackagesPreferenceDefault
     --
     -- * This is the standard policy for install.
     PreferLatestForSelected
-  deriving (Show)
+  deriving (Show, Generic, Binary)

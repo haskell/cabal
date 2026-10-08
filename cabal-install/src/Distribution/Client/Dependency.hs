@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 -----------------------------------------------------------------------------
 
 -- |
@@ -282,6 +285,7 @@ data PackagePreference
   | -- | If we would prefer to enable these optional stanzas
     -- (i.e. test suites and/or benchmarks)
     PackageStanzasPreference PackageName [OptionalStanza]
+  deriving (Generic, Binary)
 
 -- | Provide a textual representation of a package preference
 -- for debugging purposes.
@@ -975,6 +979,10 @@ resolveDependencies solver params rparams inputs = do
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
     formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
 
+type PackagesPreferenceSource =
+    (Set PackageName, PackagesPreferenceDefault, [PackagePreference])
+  deriving (Generic, Binary)
+
 -- | Give an interpretation to the global 'PackagesPreference' as
 --  specific per-package 'PackageVersionPreference'.
 interpretPackagesPreference
@@ -1380,9 +1388,9 @@ mkResolverParams platform comp installedPkgIndex pkgConfigDB depResolverParams =
     , rpPkgNames = depResolverTargets depResolverParams
     }
   where
-      pkgPrefs :: PackageName -> PackagePreferences
+      pkgPrefs :: PackagesPreferenceSource
       pkgPrefs =
-        interpretPackagesPreference
+        PackagesPreferenceSource
           (depResolverTargets depResolverParams)
           (depResolverPreferenceDefault depResolverParams)
           (depResolverPreferences depResolverParams)

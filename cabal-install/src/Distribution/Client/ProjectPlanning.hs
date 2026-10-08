@@ -870,23 +870,24 @@ rebuildInstallPlan
 
               liftIO $ do
                 notice verbosity "Resolving dependencies..."
-                planOrError <-
-                  foldProgress logMsg (pure . Left) (pure . Right) $
-                    planPackages
-                      verbosity
-                      compiler
-                      platform
-                      solverSettings
-                      (installedPackages <> installedPkgIndex)
-                      sourcePkgDb
-                      pkgConfigDb
-                      localPackages
-                      localPackagesEnabledStanzas
-                case planOrError of
-                  Left msg -> do
-                    reportPlanningFailure projectConfig compiler platform localPackages
-                    dieWithException verbosity $ PhaseRunSolverErr msg
-                  Right plan -> return (plan, pkgConfigDb, tis, ar)
+              planOrError <-
+                planPackages
+                  verbosity
+                  logMsg
+                  distProjectCacheFile
+                  compiler
+                  platform
+                  solverSettings
+                  (installedPackages <> installedPkgIndex)
+                  sourcePkgDb
+                  pkgConfigDb
+                  localPackages
+                  localPackagesEnabledStanzas
+              liftIO $ case planOrError of
+                Left msg -> do
+                  reportPlanningFailure projectConfig compiler platform localPackages
+                  dieWithException verbosity $ PhaseRunSolverErr msg
+                Right plan -> return (plan, pkgConfigDb, tis, ar)
           where
             sourcePackages :: [SourcePackage UnresolvedPkgLoc]
             sourcePackages = [pkg | SpecificSourcePackage pkg <- localPackages]
@@ -1382,6 +1383,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 
 planPackages
   :: Verbosity
+  -> (String -> IO (Either String SolverInstallPlan) -> IO (Either String SolverInstallPlan))
+  -> (String -> FilePath)
   -> Compiler
   -> Platform
   -> SolverSettings
@@ -1390,9 +1393,11 @@ planPackages
   -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> Map PackageName (Map OptionalStanza Bool)
-  -> Progress String String SolverInstallPlan
+  -> Rebuild (Either String SolverInstallPlan)
 planPackages
   verbosity
+  logMsg
+  distProjectCacheFile
   comp
   platform
   SolverSettings{..}
@@ -1401,13 +1406,22 @@ planPackages
   pkgConfigDb
   localPackages
   pkgStanzasEnable =
-    resolveDependencies
-      solver
-      depResolverParams
-      rparams
-      inputs
+      rerunIfChanged
+        verbosity
+        fileMonitorResolverInputs
+        fileMonitorResolverInputsKey $ do
+          liftIO $
+            foldProgress logMsg (pure . Left) (pure . Right) $
+            resolveDependencies
+              solver
+              depResolverParams
+              rparams
+              inputs
 
     where
+      fileMonitorResolverInputs = newFileMonitor (distProjectCacheFile "rinputs")
+      fileMonitorResolverInputsKey = (rparams, inputs)
+
       solver = getSolver depResolverParams
 
       inputs :: ResolverInputs ModularResolver
