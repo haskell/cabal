@@ -52,12 +52,12 @@ Flags for v1-freeze:
                                 section.
  --prefer-version=oldest|latest|installed-or-latest
                               # Select which version of a package that the
-                                solver should prefer. Oldest is useful to
-                                determine lower bounds in build-depends
-                                section. Latest will prefer the latest
-                                version. Installed-or-latest will prefer
-                                installed versions and the latest version
-                                otherwise.
+                                solver should prefer:
+                                - oldest: useful to determine lower bounds in
+                                  the build-depends section,
+                                - latest: prefer the latest version,
+                                - installed-or-latest: prefer installed
+                                  versions and the latest version otherwise.
  --shadow-installed-packages  # If multiple package instances of the same
                                 version are installed, treat all but one as
                                 shadowed.

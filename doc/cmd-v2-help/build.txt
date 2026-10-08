@@ -44,12 +44,12 @@ Flags for build:
 
  --prefer-version=oldest|latest|installed-or-latest
                               # Select which version of a package that the
-                                solver should prefer. Oldest is useful to
-                                determine lower bounds in build-depends
-                                section. Latest will prefer the latest
-                                version. Installed-or-latest will prefer
-                                installed versions and the latest version
-                                otherwise.
+                                solver should prefer:
+                                - oldest: useful to determine lower bounds in
+                                  the build-depends section,
+                                - latest: prefer the latest version,
+                                - installed-or-latest: prefer installed
+                                  versions and the latest version otherwise.
  --strong-flags               # Do not defer flag choices (this used to be the
                                 default in cabal-install <= 1.20).
  --project-file=FILE          # Set the path of the cabal.project file
@@ -128,15 +128,15 @@ Test options:
  --test-show-details=always|never|failures|streaming|direct
                               # Allowed values:
                                 - always: always show results of individual
-                                test cases,
+                                  test cases,
                                 - never: never show results of individual test
-                                cases,
+                                  cases,
                                 - failures: show results of failing test
-                                cases,
+                                  cases,
                                 - streaming: show results of test cases in
-                                real time,
+                                  real time,
                                 - direct: send results of test cases in real
-                                time; no log file.
+                                  time; no log file.
  --test-keep-tix-files        # Keep .tix files for HPC between test runs
  --test-wrapper=FILE          # Run test through a wrapper.
 
@@ -180,11 +180,24 @@ Profiling options:
  --[enable|disable]-executable-profiling
                               # Toggle Executable profiling (DEPRECATED)
  --profiling-detail=level     # Profiling detail level for executable and
-                                library (default, none, exported-functions,
-                                toplevel-functions, all-functions, late).
+                                library.
+                                Allowed values:
+                                - default,
+                                - none,
+                                - exported-functions (or exported),
+                                - toplevel-functions (or toplevel, top),
+                                - all-functions (or all),
+                                - late-toplevel (or late).
 
  --library-profiling-detail=level
                               # Profiling detail level for libraries only.
+                                Allowed values:
+                                - default,
+                                - none,
+                                - exported-functions (or exported),
+                                - toplevel-functions (or toplevel, top),
+                                - all-functions (or all),
+                                - late-toplevel (or late).
 
 Dependency solving options:
  --allow-depending-on-private-libs
@@ -239,10 +252,11 @@ Dependency solving options:
                                 build the given packages
  --dependencies-only          # A synonym for --only-dependencies
  --index-state=STATE          # Use source package index state as it existed
-                                at a previous time. Accepts unix-timestamps
-                                (e.g. '@1474732068'), ISO8601 UTC timestamps
-                                (e.g. '2016-09-24T17:47:48Z'), or 'HEAD'
-                                (default: 'HEAD').
+                                at a previous time. Accepts:
+                                - a unix timestamp, e.g. '@1474732068',
+                                - an ISO8601 UTC timestamp, e.g.
+                                  '2016-09-24T17:47:48Z',
+                                - 'HEAD', the default.
 
 Executable build options:
  --[enable|disable]-executable-dynamic
@@ -362,7 +376,7 @@ Logging and reporting options:
                                 server:
                                 - none: do not report,
                                 - anonymous: report without identifying
-                                information,
+                                  information,
                                 - detailed: report with full details.
  --report-planning-failure    # Generate build reports when the dependency
                                 solver fails. This is used by the Hackage

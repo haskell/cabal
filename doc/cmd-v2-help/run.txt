@@ -70,10 +70,23 @@ Flags for run:
  --[enable|disable]-executable-profiling
                               # Toggle Executable profiling (DEPRECATED)
  --profiling-detail=level     # Profiling detail level for executable and
-                                library (default, none, exported-functions,
-                                toplevel-functions, all-functions, late).
+                                library.
+                                Allowed values:
+                                - default,
+                                - none,
+                                - exported-functions (or exported),
+                                - toplevel-functions (or toplevel, top),
+                                - all-functions (or all),
+                                - late-toplevel (or late).
  --library-profiling-detail=level
                               # Profiling detail level for libraries only.
+                                Allowed values:
+                                - default,
+                                - none,
+                                - exported-functions (or exported),
+                                - toplevel-functions (or toplevel, top),
+                                - all-functions (or all),
+                                - late-toplevel (or late).
  -O[n], --enable-optimization[=n]
                               # Build with optimization (n is 0--2, default is
                                 1)
@@ -224,12 +237,12 @@ Flags for run:
                                 section.
  --prefer-version=oldest|latest|installed-or-latest
                               # Select which version of a package that the
-                                solver should prefer. Oldest is useful to
-                                determine lower bounds in build-depends
-                                section. Latest will prefer the latest
-                                version. Installed-or-latest will prefer
-                                installed versions and the latest version
-                                otherwise.
+                                solver should prefer:
+                                - oldest: useful to determine lower bounds in
+                                  the build-depends section,
+                                - latest: prefer the latest version,
+                                - installed-or-latest: prefer installed
+                                  versions and the latest version otherwise.
  --shadow-installed-packages  # If multiple package instances of the same
                                 version are installed, treat all but one as
                                 shadowed.
@@ -256,10 +269,11 @@ Flags for run:
                                 build the given packages
  --dependencies-only          # A synonym for --only-dependencies
  --index-state=STATE          # Use source package index state as it existed
-                                at a previous time. Accepts unix-timestamps
-                                (e.g. '@1474732068'), ISO8601 UTC timestamps
-                                (e.g. '2016-09-24T17:47:48Z'), or 'HEAD'
-                                (default: 'HEAD').
+                                at a previous time. Accepts:
+                                - a unix timestamp, e.g. '@1474732068',
+                                - an ISO8601 UTC timestamp, e.g.
+                                  '2016-09-24T17:47:48Z',
+                                - 'HEAD', the default.
  --root-cmd=COMMAND           # (No longer supported, do not use.)
  --build-summary=TEMPLATE     # Save build summaries to file (name template
                                 can use $pkgid, $compiler, $os, $arch)
@@ -267,9 +281,11 @@ Flags for run:
                                 $pkgid, $compiler, $os, $arch)
  --remote-build-reporting=none|anonymous|detailed
                               # Generate build reports to send to a remote
-                                server: - none: do not report, - anonymous:
-                                report without identifying information, -
-                                detailed: report with full details.
+                                server:
+                                - none: do not report,
+                                - anonymous: report without identifying
+                                  information,
+                                - detailed: report with full details.
  --report-planning-failure    # Generate build reports when the dependency
                                 solver fails. This is used by the Hackage
                                 build bot.
@@ -318,13 +334,17 @@ Flags for run:
                                 template can use $pkgid, $compiler, $os,
                                 $arch, $result)
  --test-show-details=always|never|failures|streaming|direct
-                              # Allowed values: - always: always show results
-                                of individual test cases, - never: never show
-                                results of individual test cases, - failures:
-                                show results of failing test cases, -
-                                streaming: show results of test cases in real
-                                time, - direct: send results of test cases in
-                                real time; no log file.
+                              # Allowed values:
+                                - always: always show results of individual
+                                  test cases,
+                                - never: never show results of individual test
+                                  cases,
+                                - failures: show results of failing test
+                                  cases,
+                                - streaming: show results of test cases in
+                                  real time,
+                                - direct: send results of test cases in real
+                                  time; no log file.
  --test-keep-tix-files        # Keep .tix files for HPC between test runs
  --test-wrapper=FILE          # Run test through a wrapper.
  --test-fail-when-no-test-suites

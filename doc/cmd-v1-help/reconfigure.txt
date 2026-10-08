@@ -59,10 +59,23 @@ Flags for v1-reconfigure:
  --[enable|disable]-executable-profiling
                               # Toggle Executable profiling (DEPRECATED)
  --profiling-detail=level     # Profiling detail level for executable and
-                                library (default, none, exported-functions,
-                                toplevel-functions, all-functions, late).
+                                library.
+                                Allowed values:
+                                - default,
+                                - none,
+                                - exported-functions (or exported),
+                                - toplevel-functions (or toplevel, top),
+                                - all-functions (or all),
+                                - late-toplevel (or late).
  --library-profiling-detail=level
                               # Profiling detail level for libraries only.
+                                Allowed values:
+                                - default,
+                                - none,
+                                - exported-functions (or exported),
+                                - toplevel-functions (or toplevel, top),
+                                - all-functions (or all),
+                                - late-toplevel (or late).
  -O[n], --enable-optimization[=n]
                               # Build with optimization (n is 0--2, default is
                                 1)
