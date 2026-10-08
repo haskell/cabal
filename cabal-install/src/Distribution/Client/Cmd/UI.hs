@@ -39,7 +39,7 @@ module Distribution.Client.Cmd.UI
   , wrapDescription
   , capitalizeDescription
   , helpText
-  , stripAnsiCodes
+  , HelpColor (..)
 
     -- * Option grouping helpers
   , groupPredicates
@@ -207,13 +207,14 @@ cmdListOptions command =
     _ -> []
 
 parseCommand
-  :: Examples
+  :: HelpColor
+  -> Examples
   -> CommandUI (NixStyleFlags a)
   -> (NixStyleFlags a -> [String] -> action)
   -> String
   -> [String]
   -> CommandParse action
-parseCommand examples cmdui action invokedName cmdArgs =
+parseCommand helpColor examples cmdui action invokedName cmdArgs =
   case execParserPure defaultPrefs pInfo (supplyOptArgDefaults optionFields cmdArgs) of
     Success parsed ->
       if parsedListOptions parsed
@@ -224,7 +225,7 @@ parseCommand examples cmdui action invokedName cmdArgs =
     Failure failure ->
       let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
        in if exitCode == ExitSuccess
-            then CommandHelp (helpText (replaceCommandAlias (commandName cmdui)) cmdui invokedName)
+            then CommandHelp (helpText helpColor (replaceCommandAlias (commandName cmdui)) cmdui invokedName)
             else CommandErrors [msg]
     CompletionInvoked _ ->
       CommandErrors ["Shell completion is not supported by this parser path."]
@@ -277,14 +278,15 @@ data NamedCommandParser action = NamedCommandParser
 
 -- | Wrap a command's optparse parser together with the names it should match.
 commandParserByName
-  :: Examples
+  :: HelpColor
+  -> Examples
   -> CommandUI (NixStyleFlags flags)
   -> (NixStyleFlags flags -> [String] -> action)
   -> NamedCommandParser action
-commandParserByName examples command action =
+commandParserByName helpColor examples command action =
   NamedCommandParser
     { namedCommandNames = commandNames command
-    , namedCommandParser = \name args -> parseCommand examples command action name args
+    , namedCommandParser = \name args -> parseCommand helpColor examples command action name args
     }
 
 -- | Parse a command using a list of name/parser associations, picking the first
@@ -622,19 +624,19 @@ groupPredicates =
   , (ProgramOverrideOptions, keepProgOptions)
   ]
 
-helpText :: ReplaceCommandAlias -> CommandUI (NixStyleFlags a) -> String -> String -> String
-helpText replaceBuildAlias buildCommand invokedName pname =
+helpText :: HelpColor -> ReplaceCommandAlias -> CommandUI (NixStyleFlags a) -> String -> String -> String
+helpText helpColor replaceBuildAlias buildCommand invokedName pname =
   commandSynopsis buildCommand
     <> "\n\n"
-    <> colorizeUsageHeader (replaceBuildAlias invokedName (commandUsage buildCommand pname))
+    <> colorizeUsageHeader helpColor (replaceBuildAlias invokedName (commandUsage buildCommand pname))
     <> maybe "" (('\n' :) . ($ pname)) (commandDescription buildCommand)
     <> "\n"
-    <> colorizeHeader "Flags for build:"
+    <> colorizeHeader helpColor "Flags for build:"
     <> "\n"
     <> ungroupedRows
     <> groupedRows
     <> warningSection
-    <> maybe "" (('\n' :) . colorizeExamplesHeader . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
+    <> maybe "" (('\n' :) . colorizeExamplesHeader helpColor . replaceBuildAlias invokedName . ($ pname)) (commandNotes buildCommand)
   where
     commonHelpOptions :: [GetOpt.OptDescr ()]
     commonHelpOptions =
@@ -667,13 +669,13 @@ helpText replaceBuildAlias buildCommand invokedName pname =
 
     (ungroupedRows, ungroupedWarnings) =
       renderOptionRows
-        colorizeWarningHeader
+        (colorizeWarningHeader helpColor)
         maxFlagColumnWidth
         descColumn
         helpOutputWidth
         (commonHelpOptions ++ concatMap optionFieldToGetOpt optsUngrouped)
 
-    renderGroupToWidth = renderGroup maxFlagColumnWidth descColumn helpOutputWidth
+    renderGroupToWidth = renderGroup helpColor maxFlagColumnWidth descColumn helpOutputWidth
     renderedGroups = map renderGroupToWidth optsGrouped
 
     groupedRows = concatMap fst renderedGroups
@@ -685,36 +687,36 @@ helpText replaceBuildAlias buildCommand invokedName pname =
         [] -> ""
         warnings ->
           "\n"
-            <> colorizeWarningHeader "Warnings:"
+            <> colorizeWarningHeader helpColor "Warnings:"
             <> "\n"
             <> concat ["  - " <> warning <> "\n" | warning <- warnings]
 
     (optsGrouped, optsUngrouped) =
       groupSequentially (commandOptions buildCommand ShowArgs) groupPredicates
 
-renderGroup :: Int -> Int -> Int -> (OptionGroupKey, [OptionField a]) -> (String, [String])
-renderGroup maxFlagColumnWidth descColumn helpOutputWidth (title, options)
+renderGroup :: HelpColor -> Int -> Int -> Int -> (OptionGroupKey, [OptionField a]) -> (String, [String])
+renderGroup helpColor maxFlagColumnWidth descColumn helpOutputWidth (title, options)
   | null options = ("", [])
-  | title == InstallLayoutOptions = renderInstallLayoutGroupCompact helpOutputWidth options
+  | title == InstallLayoutOptions = renderInstallLayoutGroupCompact helpColor helpOutputWidth options
   | otherwise =
       let (rows, warnings) =
             renderOptionRows
-              colorizeWarningHeader
+              (colorizeWarningHeader helpColor)
               maxFlagColumnWidth
               descColumn
               helpOutputWidth
               (concatMap optionFieldToGetOpt options)
        in ( "\n"
-              <> colorizeHeader (show title <> ":")
+              <> colorizeHeader helpColor (show title <> ":")
               <> "\n"
               <> rows
           , warnings
           )
 
-renderInstallLayoutGroupCompact :: Int -> [OptionField a] -> (String, [String])
-renderInstallLayoutGroupCompact helpOutputWidth options =
+renderInstallLayoutGroupCompact :: HelpColor -> Int -> [OptionField a] -> (String, [String])
+renderInstallLayoutGroupCompact helpColor helpOutputWidth options =
   ( "\n"
-      <> colorizeHeader (show InstallLayoutOptions <> ":")
+      <> colorizeHeader helpColor (show InstallLayoutOptions <> ":")
       <> "\n"
       <> concat ["  " <> line <> "\n" | line <- wrappedFlagLines]
   , []
@@ -725,23 +727,23 @@ renderInstallLayoutGroupCompact helpOutputWidth options =
     flagsLine = intercalate ", " compactFlags
     wrappedFlagLines = wrapDescription (max 40 (helpOutputWidth - 2)) flagsLine
 
-colorizeHeader :: String -> String
-colorizeHeader text = "\ESC[32m" <> text <> "\ESC[0m"
+-- | Whether command help is rendered with ANSI colour codes. Colour is for
+-- terminals only; redirected output such as the generated docs is plain text.
+data HelpColor = HelpColor | HelpPlain
+  deriving (Eq, Show)
 
--- | Remove the ANSI colour codes added by the @colorize*@ functions, for
--- output that is not going to a terminal.
-stripAnsiCodes :: String -> String
-stripAnsiCodes = go
-  where
-    go [] = []
-    go ('\ESC' : '[' : rest) = go (drop 1 (dropWhile (/= 'm') rest))
-    go (c : rest) = c : go rest
+colorize :: HelpColor -> String -> String -> String
+colorize HelpPlain _ text = text
+colorize HelpColor code text = "\ESC[" <> code <> "m" <> text <> "\ESC[0m"
 
-colorizeWarningHeader :: String -> String
-colorizeWarningHeader text = "\ESC[31m" <> text <> "\ESC[0m"
+colorizeHeader :: HelpColor -> String -> String
+colorizeHeader helpColor = colorize helpColor "32"
 
-colorizeUsageHeader :: String -> String
-colorizeUsageHeader = T.unpack . T.replace (T.pack "Usage:") (T.pack $ colorizeHeader "Usage:") . T.pack
+colorizeWarningHeader :: HelpColor -> String -> String
+colorizeWarningHeader helpColor = colorize helpColor "31"
 
-colorizeExamplesHeader :: String -> String
-colorizeExamplesHeader = T.unpack . T.replace (T.pack "Examples:") (T.pack $ colorizeHeader "Examples:") . T.pack
+colorizeUsageHeader :: HelpColor -> String -> String
+colorizeUsageHeader helpColor = T.unpack . T.replace (T.pack "Usage:") (T.pack $ colorizeHeader helpColor "Usage:") . T.pack
+
+colorizeExamplesHeader :: HelpColor -> String -> String
+colorizeExamplesHeader helpColor = T.unpack . T.replace (T.pack "Examples:") (T.pack $ colorizeHeader helpColor "Examples:") . T.pack

@@ -183,10 +183,10 @@ import Distribution.PackageDescription
   )
 
 import Distribution.Client.Cmd.UI
-  ( cmdSpec
+  ( HelpColor (..)
+  , cmdSpec
   , commandParserByName
   , parseCommandWithOptparseMany
-  , stripAnsiCodes
   )
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
@@ -387,15 +387,25 @@ mainWorker args = do
     -- Tries to parse the command line arguments with optparse-applicative
     -- first, and if that fails, falls back to the standard command registry.
     commandsParse :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
-    commandsParse argv =
-      case parseCommandWithOptparseMany globalCmd parsersByName argv of
+    commandsParse argv = do
+      helpColor <- helpColorMode
+      case parseCommandWithOptparseMany globalCmd (parsersByName helpColor) argv of
         Just parsed -> pure parsed
         Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
 
-    parsersByName =
-      [ commandParserByName CmdBuild.examples CmdBuild.buildCommand CmdBuild.buildAction
-      , commandParserByName CmdInstall.examples CmdInstall.installCommand CmdInstall.installAction
+    parsersByName helpColor =
+      [ commandParserByName helpColor CmdBuild.examples CmdBuild.buildCommand CmdBuild.buildAction
+      , commandParserByName helpColor CmdInstall.examples CmdInstall.installCommand CmdInstall.installAction
       ]
+
+    -- Colour the command help only when writing to a terminal and the user
+    -- has not opted out with NO_COLOR, so that redirected output such as the
+    -- generated docs stays plain text.
+    helpColorMode :: IO HelpColor
+    helpColorMode = do
+      isTerminal <- hIsTerminalDevice stdout
+      noColor <- lookupEnv "NO_COLOR"
+      pure $ if isTerminal && maybe True null noColor then HelpColor else HelpPlain
 
     delegateToExternal
       :: [Command Action]
@@ -424,13 +434,7 @@ mainWorker args = do
 
     printCommandHelp help = do
       pname <- getProgName
-      -- The command help may contain colour codes. Keep them only when writing
-      -- to a terminal and the user has not opted out with NO_COLOR, so that
-      -- redirected output such as the generated docs stays plain text.
-      isTerminal <- hIsTerminalDevice stdout
-      noColor <- lookupEnv "NO_COLOR"
-      let useColor = isTerminal && maybe True null noColor
-      putStr $ if useColor then help pname else stripAnsiCodes (help pname)
+      putStr (help pname)
     printGlobalHelp help = do
       pname <- getProgName
       configFile <- defaultConfigFile
