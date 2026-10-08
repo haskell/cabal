@@ -544,27 +544,28 @@ runDeferredBenchmarks
   -> IO BuildOutcomes
 runDeferredBenchmarks keepGoing installPlan buildOutcomes deferred
   | not keepGoing && any isLeft buildOutcomes = return buildOutcomes
-  | otherwise = go buildOutcomes benchmarks
+  | otherwise = go buildOutcomes (InstallPlan.executionOrder installPlan)
   where
     deferredMap = Map.fromList deferred
-    benchmarks =
-      [ (uid, bench)
-      | pkg <- InstallPlan.executionOrder installPlan
-      , let uid = nodeKey pkg
-      , Just (Right _) <- [Map.lookup uid buildOutcomes]
-      , Just bench <- [Map.lookup uid deferredMap]
-      ]
 
+    -- Run the benchmarks of the given units, in order, and record their
+    -- failures. Unless we keep going, stop at the first failure.
+    go :: BuildOutcomes -> [ElaboratedReadyPackage] -> IO BuildOutcomes
     go outcomes [] = return outcomes
-    go outcomes ((uid, bench) : rest) = do
-      result <- try bench
-      case result of
-        Right () -> go outcomes rest
-        Left (failure :: BuildFailure)
-          | keepGoing -> go outcomes' rest
-          | otherwise -> return outcomes'
-          where
-            outcomes' = Map.insert uid (Left failure) outcomes
+    go outcomes (pkg : pkgs)
+      | Just (Right _) <- Map.lookup uid outcomes
+      , Just bench <- Map.lookup uid deferredMap = do
+          result <- try bench
+          case result of
+            Right () -> go outcomes pkgs
+            Left failure
+              | keepGoing -> go outcomes' pkgs
+              | otherwise -> return outcomes'
+              where
+                outcomes' = Map.insert uid (Left failure) outcomes
+      | otherwise = go outcomes pkgs
+      where
+        uid = nodeKey pkg
 
 -- | Create a package DB if it does not currently exist.
 createPackageDBIfMissing
