@@ -185,20 +185,27 @@ commandNames command =
   where
     name = commandName command
 
+-- | Register a command under each of its names (see 'commandNames'), so that
+-- the global help and the command registry list @build@, @new-build@ and
+-- @v2-build@ alike, as "Distribution.Client.CmdLegacy" does for the other
+-- commands.
 cmdSpec
   :: CommandUI flags
   -> (flags -> [String] -> action)
   -> [CommandSpec action]
 cmdSpec command action =
-  [CommandSpec ui (`commandAddAction` action) NormalCommand]
+  [ CommandSpec (renamed name) (`commandAddAction` action) NormalCommand
+  | name <- commandNames command
+  ]
   where
-    ui =
-      command
-        { commandName = stripVersionPrefix (commandName command)
-        , commandUsage = stripVersionPrefix . commandUsage command
-        , commandDescription = (stripVersionPrefix .) <$> commandDescription command
-        , commandNotes = (stripVersionPrefix .) <$> commandNotes command
-        }
+    renamed name =
+      let rename = replaceCommandAlias (commandName command) name
+       in command
+            { commandName = name
+            , commandUsage = rename . commandUsage command
+            , commandDescription = (rename .) <$> commandDescription command
+            , commandNotes = (rename .) <$> commandNotes command
+            }
 
 cmdListOptions :: CommandUI flags -> [String]
 cmdListOptions command =
