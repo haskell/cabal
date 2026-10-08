@@ -631,7 +631,7 @@ helpText helpColor replaceBuildAlias buildCommand invokedName pname =
     <> colorizeUsageHeader helpColor (replaceBuildAlias invokedName (commandUsage buildCommand pname))
     <> maybe "" (('\n' :) . ($ pname)) (commandDescription buildCommand)
     <> "\n"
-    <> colorizeHeader helpColor "Flags for build:"
+    <> colorizeHeader helpColor ("Flags for " <> replaceBuildAlias invokedName (commandName buildCommand) <> ":")
     <> "\n"
     <> ungroupedRows
     <> groupedRows
