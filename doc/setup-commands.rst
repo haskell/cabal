@@ -1436,13 +1436,18 @@ the package.
 
 .. option:: --test-options=TEMPLATES
 
-    Give extra options to the test executables.
+    Give extra options to the test executables. Options are split on
+    spaces; use ``""`` to prevent splitting. Template variables allowed
+    are: ``$pkgid``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
+    ``$abitag`` and ``$test-suite``.
 
 .. option:: --test-option=TEMPLATE
 
     Give an extra option to the test executables. There is no need to
     quote options containing spaces because a single option is assumed,
-    so options will not be split on spaces.
+    so options will not be split on spaces. Template variables allowed
+    are: ``$pkgid``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
+    ``$abitag`` and ``$test-suite``.
 
 .. option:: --test-wrapper=FILE
 
@@ -1464,13 +1469,18 @@ the package.
 
 .. option:: --benchmark-options=TEMPLATES
 
-    Give extra options to the benchmark executables.
+    Give extra options to the benchmark executables. Options are split
+    on spaces; use ``""`` to prevent splitting. Template variables
+    allowed are: ``$pkgid``, ``$compiler``, ``$os``, ``$arch``,
+    ``$abi``, ``$abitag`` and ``$benchmark``.
 
 .. option:: --benchmark-option=TEMPLATE
 
     Give an extra option to the benchmark executables. There is no need to
     quote options containing spaces because a single option is assumed,
-    so options will not be split on spaces.
+    so options will not be split on spaces. Template variables allowed
+    are: ``$pkgid``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
+    ``$abitag`` and ``$benchmark``.
 
 .. _setup-sdist:
 
