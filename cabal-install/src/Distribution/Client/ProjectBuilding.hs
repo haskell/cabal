@@ -86,7 +86,6 @@ import qualified Text.PrettyPrint as Disp
 import Control.Concurrent.STM (TVar, newTVarIO)
 import Control.Exception (assert, handle, try)
 import Data.Either (isLeft)
-import Data.IORef (newIORef, readIORef)
 import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
@@ -97,7 +96,7 @@ import Distribution.Client.Errors
 import Distribution.Simple.Flag (fromFlagOrDefault)
 
 import Distribution.Client.ProjectBuilding.PackageFileMonitor
-import Distribution.Client.ProjectBuilding.UnpackedPackage (DeferredBenchmarks, annotateFailureNoLog, buildAndInstallUnpackedPackage, buildInplaceUnpackedPackage)
+import Distribution.Client.ProjectBuilding.UnpackedPackage (DeferredBenchmark, annotateFailureNoLog, buildAndInstallUnpackedPackage, buildInplaceUnpackedPackage)
 
 ------------------------------------------------------------------------------
 
@@ -357,10 +356,6 @@ rebuildTargets
         registerLock <- newLock -- serialise registration
         cacheLock <- newLock -- serialise access to setup exe cache
         -- TODO: [code cleanup] eliminate setup exe cache
-
-        -- See Note [Running benchmarks]
-        deferredBenchmarks <- newIORef []
-
         info verbosity $
           "Executing install plan "
             ++ case buildSettingNumJobs of
@@ -387,7 +382,7 @@ rebuildTargets
 
         -- Concurrency control: create the job controller and concurrency limits
         -- for downloading, building and installing.
-        buildOutcomes <- withJobControl (newJobControlFromParStrat verbosity (Just compiler) buildSettingNumJobs Nothing) $ \jobControl -> do
+        outcomes <- withJobControl (newJobControlFromParStrat verbosity (Just compiler) buildSettingNumJobs Nothing) $ \jobControl -> do
           -- Before traversing the install plan, preemptively find all packages that
           -- will need to be downloaded and start downloading them.
           asyncDownloadPackages
@@ -416,7 +411,6 @@ rebuildTargets
                       downloadMap
                       registerLock
                       cacheLock
-                      deferredBenchmarks
                       sharedPackageConfig
                       installPlan
                       ipiTVar
@@ -425,8 +419,7 @@ rebuildTargets
 
         -- Once the units are built, run their benchmarks.
         -- See Note [Running benchmarks]
-        runDeferredBenchmarks keepGoing installPlan buildOutcomes
-          =<< readIORef deferredBenchmarks
+        runDeferredBenchmarks keepGoing installPlan outcomes
     where
       keepGoing = buildSettingKeepGoing
       withRepoCtx =
@@ -525,7 +518,8 @@ being built. (A whole-package unit runs all of its benchmarks with a single
 @Setup bench@ invocation, which runs them one at a time.)
 
 So, the bench phase of a unit (see 'buildAndRegisterUnpackedPackage') does not
-run its benchmarks, but adds them to the 'DeferredBenchmarks'. Once all the
+run its benchmarks, but returns them as a 'DeferredBenchmark', which
+'rebuildTarget' returns along with the 'BuildResult' of the unit. Once all the
 units are built, 'rebuildTargets' runs them one at a time, in plan order, with
 'runDeferredBenchmarks', and records their failures in the 'BuildOutcomes'.
 
@@ -539,31 +533,35 @@ runDeferredBenchmarks
   :: Bool
   -- ^ Keep going after failure
   -> ElaboratedInstallPlan
-  -> BuildOutcomes
-  -> [(UnitId, IO ())]
+  -> Map.Map UnitId (Either BuildFailure (BuildResult, Maybe DeferredBenchmark))
+  -- ^ The outcomes of the build, along with the benchmarks of the units that
+  -- were built successfully
   -> IO BuildOutcomes
-runDeferredBenchmarks keepGoing installPlan buildOutcomes deferred
-  | not keepGoing && any isLeft buildOutcomes = return buildOutcomes
+runDeferredBenchmarks keepGoing installPlan outcomes
+  | not keepGoing && any isLeft outcomes = return buildOutcomes
   | otherwise = go buildOutcomes (InstallPlan.executionOrder installPlan)
   where
-    deferredMap = Map.fromList deferred
+    buildOutcomes :: BuildOutcomes
+    buildOutcomes = fmap (fmap fst) outcomes
+
+    benchmarks :: Map.Map UnitId DeferredBenchmark
+    benchmarks = Map.mapMaybe (either (const Nothing) snd) outcomes
 
     -- Run the benchmarks of the given units, in order, and record their
     -- failures. Unless we keep going, stop at the first failure.
     go :: BuildOutcomes -> [ElaboratedReadyPackage] -> IO BuildOutcomes
-    go outcomes [] = return outcomes
-    go outcomes (pkg : pkgs)
-      | Just (Right _) <- Map.lookup uid outcomes
-      , Just bench <- Map.lookup uid deferredMap = do
+    go acc [] = return acc
+    go acc (pkg : pkgs)
+      | Just bench <- Map.lookup uid benchmarks = do
           result <- try bench
           case result of
-            Right () -> go outcomes pkgs
+            Right () -> go acc pkgs
             Left failure
-              | keepGoing -> go outcomes' pkgs
-              | otherwise -> return outcomes'
+              | keepGoing -> go acc' pkgs
+              | otherwise -> return acc'
               where
-                outcomes' = Map.insert uid (Left failure) outcomes
-      | otherwise = go outcomes pkgs
+                acc' = Map.insert uid (Left failure) acc
+      | otherwise = go acc pkgs
       where
         uid = nodeKey pkg
 
@@ -611,14 +609,12 @@ rebuildTarget
   -- ^ Serialises package registration
   -> Lock
   -- ^ Serialises access to the setup executable cache
-  -> DeferredBenchmarks
-  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> TVar InstalledPackageIndex
   -> ElaboratedReadyPackage
   -> BuildStatus
-  -> IO BuildResult
+  -> IO (BuildResult, Maybe DeferredBenchmark)
 rebuildTarget
   verbosity
   distDirLayout@DistDirLayout{distBuildDirectory}
@@ -628,7 +624,6 @@ rebuildTarget
   downloadMap
   registerLock
   cacheLock
-  deferredBenchmarks
   sharedPackageConfig
   plan
   ipiTVar
@@ -647,7 +642,7 @@ rebuildTarget
           BuildStatusDownload ->
             void $ waitAsyncPackageDownload verbosity downloadMap pkg
           _ -> return ()
-        return $ BuildResult DocsNotTried TestsNotTried Nothing
+        return (BuildResult DocsNotTried TestsNotTried Nothing, Nothing)
     | otherwise =
         -- We rely on the 'BuildStatus' to decide which phase to start from:
         case pkgBuildStatus of
@@ -661,7 +656,7 @@ rebuildTarget
     where
       unexpectedState = error "rebuildTarget: unexpected package status"
 
-      downloadPhase :: IO BuildResult
+      downloadPhase :: IO (BuildResult, Maybe DeferredBenchmark)
       downloadPhase = do
         downsrcloc <-
           annotateFailureNoLog DownloadFailed $
@@ -670,7 +665,7 @@ rebuildTarget
           DownloadedTarball tarball -> unpackTarballPhase tarball
       -- TODO: [nice to have] git/darcs repos etc
 
-      unpackTarballPhase :: FilePath -> IO BuildResult
+      unpackTarballPhase :: FilePath -> IO (BuildResult, Maybe DeferredBenchmark)
       unpackTarballPhase tarball =
         withTarballLocalDirectory
           verbosity
@@ -690,7 +685,7 @@ rebuildTarget
       -- 'BuildInplaceOnly' style packages. 'BuildAndInstall' style packages
       -- would only start from download or unpack phases.
       --
-      rebuildPhase :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> IO BuildResult
+      rebuildPhase :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> IO (BuildResult, Maybe DeferredBenchmark)
       rebuildPhase buildStatus srcdir =
         assert
           (isInplaceBuildStyle $ elabBuildStyle pkg)
@@ -705,7 +700,7 @@ rebuildTarget
               makeRelative (normalise $ getSymbolicPath srcdir) distdir
       -- TODO: [nice to have] ^^ do this relative stuff better
 
-      buildAndInstall :: SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO BuildResult
+      buildAndInstall :: SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO (BuildResult, Maybe DeferredBenchmark)
       buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
           verbosity
@@ -715,7 +710,6 @@ rebuildTarget
           buildSettings
           registerLock
           cacheLock
-          deferredBenchmarks
           sharedPackageConfig
           plan
           rpkg
@@ -723,7 +717,7 @@ rebuildTarget
           srcdir
           builddir
 
-      buildInplace :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO BuildResult
+      buildInplace :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO (BuildResult, Maybe DeferredBenchmark)
       buildInplace buildStatus srcdir builddir =
         -- TODO: [nice to have] use a relative build dir rather than absolute
         buildInplaceUnpackedPackage
@@ -733,7 +727,6 @@ rebuildTarget
           buildSettings
           registerLock
           cacheLock
-          deferredBenchmarks
           sharedPackageConfig
           plan
           rpkg

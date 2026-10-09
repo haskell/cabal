@@ -20,7 +20,7 @@ module Distribution.Client.ProjectBuilding.UnpackedPackage
     -- ** Auxiliary definitions
   , buildAndRegisterUnpackedPackage
   , PackageBuildingPhase
-  , DeferredBenchmarks
+  , DeferredBenchmark
 
     -- ** Utilities
   , annotateFailure
@@ -114,7 +114,7 @@ import qualified Data.List.NonEmpty as NE
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar)
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
-import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
+import Data.IORef (newIORef, readIORef, writeIORef)
 import GHC.Clock (getMonotonicTime)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
@@ -158,10 +158,9 @@ data PackageBuildingPhase r where
   PBTestPhase :: {runTest :: IO ()} -> PackageBuildingPhase ()
   PBBenchPhase :: {runBench :: IO ()} -> PackageBuildingPhase ()
 
--- | The benchmarks of the units built so far, which are run once all the units
--- of the plan are built.
--- See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
-type DeferredBenchmarks = IORef [(UnitId, IO ())]
+-- | The benchmarks of a unit, to be run once all the units of the plan are
+-- built. See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
+type DeferredBenchmark = IO ()
 
 -- | Structures the phases of building and registering a package amongst others
 -- (see t'PackageBuildingPhase'). Delegates logic specific to a certain
@@ -179,8 +178,6 @@ buildAndRegisterUnpackedPackage
   -- ^ Serialises package registration
   -> Lock
   -- ^ Serialises access to the setup executable cache
-  -> DeferredBenchmarks
-  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -192,7 +189,8 @@ buildAndRegisterUnpackedPackage
   -> Maybe FilePath
   -- ^ The path to an /initialized/ log file
   -> (forall r. PackageBuildingPhase r -> IO r)
-  -> IO ()
+  -> IO (Maybe DeferredBenchmark)
+  -- ^ The benchmarks of the unit, if any, to run once all the units are built
 buildAndRegisterUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout{distTempDirectory}
@@ -203,7 +201,6 @@ buildAndRegisterUnpackedPackage
     }
   registerLock
   cacheLock
-  deferredBenchmarks
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
     , pkgConfigCompilerProgs = progdb
@@ -297,19 +294,22 @@ buildAndRegisterUnpackedPackage
 
     -- Bench phase
     --
-    -- The benchmarks are not run here, but once all the units are built.
+    -- The benchmarks are not run here, but returned, to be run once all the
+    -- units are built.
     -- See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
-    whenBench $
-      deferBenchmark $
-        timedDelegate $
-          PBBenchPhase $
-            annotateFailure mlogFile BenchFailed $
-              setup
-                benchCommand
-                Cabal.benchmarkCommonFlags
-                (return . benchFlags)
-                benchArgs
-                (InLibraryArgs $ InLibraryPostConfigureArgs SBenchPhase mbLBI)
+    let deferredBenchmark
+          | null (elabBenchTargets pkg) = Nothing
+          | otherwise =
+              Just $
+                timedDelegate $
+                  PBBenchPhase $
+                    annotateFailure mlogFile BenchFailed $
+                      setup
+                        benchCommand
+                        Cabal.benchmarkCommonFlags
+                        (return . benchFlags)
+                        benchArgs
+                        (InLibraryArgs $ InLibraryPostConfigureArgs SBenchPhase mbLBI)
 
     -- Repl phase
     whenRepl $
@@ -323,13 +323,9 @@ buildAndRegisterUnpackedPackage
               replArgs
               (InLibraryArgs $ InLibraryPostConfigureArgs SReplPhase mbLBI)
 
-    return ()
+    return deferredBenchmark
     where
       uid = installedUnitId rpkg
-
-      deferBenchmark :: IO () -> IO ()
-      deferBenchmark bench =
-        atomicModifyIORef' deferredBenchmarks (\queued -> ((uid, bench) : queued, ()))
 
       timedDelegate :: forall r. PackageBuildingPhase r -> IO r
       timedDelegate phase
@@ -364,10 +360,6 @@ buildAndRegisterUnpackedPackage
 
       whenTest action
         | null (elabTestTargets pkg) = return ()
-        | otherwise = action
-
-      whenBench action
-        | null (elabBenchTargets pkg) = return ()
         | otherwise = action
 
       whenRepl action
@@ -543,8 +535,6 @@ buildInplaceUnpackedPackage
   -- ^ Serialises package registration
   -> Lock
   -- ^ Serialises access to the setup executable cache
-  -> DeferredBenchmarks
-  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
@@ -552,7 +542,7 @@ buildInplaceUnpackedPackage
   -> BuildStatusRebuild
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
-  -> IO BuildResult
+  -> IO (BuildResult, Maybe DeferredBenchmark)
 buildInplaceUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout
@@ -564,7 +554,6 @@ buildInplaceUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingHaddockOpen}
   registerLock
   cacheLock
-  deferredBenchmarks
   pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
   plan
   rpkg@(ReadyPackage pkg)
@@ -581,87 +570,89 @@ buildInplaceUnpackedPackage
       True
       (distPackageCacheDirectory dparams)
 
-    buildAndRegisterUnpackedPackage
-      verbosity
-      distDirLayout
-      maybe_semaphore
-      buildSettings
-      registerLock
-      cacheLock
-      deferredBenchmarks
-      pkgshared
-      plan
-      rpkg
-      ipiTVar
-      srcdir
-      builddir
-      Nothing -- no log file for inplace builds!
-      $ \case
-        PBConfigurePhase{runConfigure} ->
-          whenReconfigure $ do
-            mbLBI <- runConfigure
-            invalidatePackageRegFileMonitor packageFileMonitor
-            updatePackageConfigFileMonitor packageFileMonitor (getSymbolicPath srcdir) pkg
-            return mbLBI
-        PBBuildPhase{runBuild} ->
-          whenRebuild $ withFileMonitor runBuild
-        PBReplPhase{runRepl} ->
-          withFileMonitor runRepl
-        PBHaddockPhase{runHaddock} -> do
-          withFileMonitor runHaddock
-          let haddockTarget = elabHaddockForHackage pkg
-          when (haddockTarget == Cabal.ForHackage) $ do
-            let dest = distDirectory </> name <.> "tar.gz"
-                name = haddockDirName haddockTarget (elabPkgDescription pkg)
-                docDir =
-                  distBuildDirectory distDirLayout dparams
-                    </> "doc"
-                    </> "html"
-            Tar.createTarGzFile dest docDir name
-            notice verbosity $ "Documentation tarball created: " ++ dest
+    deferredBenchmark <-
+      buildAndRegisterUnpackedPackage
+        verbosity
+        distDirLayout
+        maybe_semaphore
+        buildSettings
+        registerLock
+        cacheLock
+        pkgshared
+        plan
+        rpkg
+        ipiTVar
+        srcdir
+        builddir
+        Nothing -- no log file for inplace builds!
+        $ \case
+          PBConfigurePhase{runConfigure} ->
+            whenReconfigure $ do
+              mbLBI <- runConfigure
+              invalidatePackageRegFileMonitor packageFileMonitor
+              updatePackageConfigFileMonitor packageFileMonitor (getSymbolicPath srcdir) pkg
+              return mbLBI
+          PBBuildPhase{runBuild} ->
+            whenRebuild $ withFileMonitor runBuild
+          PBReplPhase{runRepl} ->
+            withFileMonitor runRepl
+          PBHaddockPhase{runHaddock} -> do
+            withFileMonitor runHaddock
+            let haddockTarget = elabHaddockForHackage pkg
+            when (haddockTarget == Cabal.ForHackage) $ do
+              let dest = distDirectory </> name <.> "tar.gz"
+                  name = haddockDirName haddockTarget (elabPkgDescription pkg)
+                  docDir =
+                    distBuildDirectory distDirLayout dparams
+                      </> "doc"
+                      </> "html"
+              Tar.createTarGzFile dest docDir name
+              notice verbosity $ "Documentation tarball created: " ++ dest
 
-          when (buildSettingHaddockOpen && haddockTarget /= Cabal.ForHackage) $ do
-            let dest = docDir </> "index.html"
-                name = haddockDirName haddockTarget (elabPkgDescription pkg)
-                docDir = case distHaddockOutputDir of
-                  Nothing -> distBuildDirectory distDirLayout dparams </> "doc" </> "html" </> name
-                  Just dir -> dir
-            catch
-              (void $ openBrowser dest)
-              ( \(_ :: ErrorCall) ->
-                  dieWithException verbosity $
-                    FindOpenProgramLocationErr $
-                      "Unsupported OS: " <> show os
-              )
-        PBInstallPhase{runCopy = _runCopy, runRegister} -> do
-          -- PURPOSELY omitted: no copy!
+            when (buildSettingHaddockOpen && haddockTarget /= Cabal.ForHackage) $ do
+              let dest = docDir </> "index.html"
+                  name = haddockDirName haddockTarget (elabPkgDescription pkg)
+                  docDir = case distHaddockOutputDir of
+                    Nothing -> distBuildDirectory distDirLayout dparams </> "doc" </> "html" </> name
+                    Just dir -> dir
+              catch
+                (void $ openBrowser dest)
+                ( \(_ :: ErrorCall) ->
+                    dieWithException verbosity $
+                      FindOpenProgramLocationErr $
+                        "Unsupported OS: " <> show os
+                )
+          PBInstallPhase{runCopy = _runCopy, runRegister} -> do
+            -- PURPOSELY omitted: no copy!
 
-          whenReRegister $ do
-            -- Register locally
-            mipkg <-
-              if elabRequiresRegistration pkg
-                then do
-                  ipkg <-
-                    runRegister
-                      (elabRegisterPackageDBStack pkg)
-                      Cabal.defaultRegisterOptions
-                  -- Keep the per-project running InstalledPackageIndex up to date.
-                  -- See (ProjIPI2) from Note [Per-project InstalledPackageIndex]
-                  -- in Distribution.Client.ProjectBuilding.
-                  atomically $ modifyTVar ipiTVar (PackageIndex.insert ipkg)
-                  return (Just ipkg)
-                else return Nothing
+            whenReRegister $ do
+              -- Register locally
+              mipkg <-
+                if elabRequiresRegistration pkg
+                  then do
+                    ipkg <-
+                      runRegister
+                        (elabRegisterPackageDBStack pkg)
+                        Cabal.defaultRegisterOptions
+                    -- Keep the per-project running InstalledPackageIndex up to date.
+                    -- See (ProjIPI2) from Note [Per-project InstalledPackageIndex]
+                    -- in Distribution.Client.ProjectBuilding.
+                    atomically $ modifyTVar ipiTVar (PackageIndex.insert ipkg)
+                    return (Just ipkg)
+                  else return Nothing
 
-            updatePackageRegFileMonitor packageFileMonitor (getSymbolicPath srcdir) mipkg
-        PBTestPhase{runTest} -> runTest
-        PBBenchPhase{runBench} -> runBench
+              updatePackageRegFileMonitor packageFileMonitor (getSymbolicPath srcdir) mipkg
+          PBTestPhase{runTest} -> runTest
+          PBBenchPhase{runBench} -> runBench
 
     return
-      BuildResult
-        { buildResultDocs = docsResult
-        , buildResultTests = testsResult
-        , buildResultLogFile = Nothing
-        }
+      ( BuildResult
+          { buildResultDocs = docsResult
+          , buildResultTests = testsResult
+          , buildResultLogFile = Nothing
+          }
+      , deferredBenchmark
+      )
     where
       docsResult = DocsNotTried
       testsResult = TestsNotTried
@@ -783,15 +774,13 @@ buildAndInstallUnpackedPackage
   -- ^ Serialises package registration
   -> Lock
   -- ^ Serialises access to the setup executable cache
-  -> DeferredBenchmarks
-  -- ^ Benchmarks to run once all the units are built
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
   -> TVar InstalledPackageIndex
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
-  -> IO BuildResult
+  -> IO (BuildResult, Maybe DeferredBenchmark)
 buildAndInstallUnpackedPackage
   verbosity
   distDirLayout
@@ -802,7 +791,6 @@ buildAndInstallUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingLogFile}
   registerLock
   cacheLock
-  deferredBenchmarks
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
     , pkgConfigPlatform = platform
@@ -827,91 +815,91 @@ buildAndInstallUnpackedPackage
 
     initLogFile
 
-    buildAndRegisterUnpackedPackage
-      verbosity
-      distDirLayout
-      maybe_semaphore
-      buildSettings
-      registerLock
-      cacheLock
-      deferredBenchmarks
-      pkgshared
-      plan
-      rpkg
-      ipiTVar
-      srcdir
-      builddir
-      mlogFile
-      $ \case
-        PBConfigurePhase{runConfigure} -> do
-          noticeProgress ProgressStarting
-          runConfigure
-        PBBuildPhase{runBuild} -> do
-          noticeProgress ProgressBuilding
-          _monitors <- runBuild
-          return ()
-        PBHaddockPhase{runHaddock} -> do
-          noticeProgress ProgressHaddock
-          _monitors <- runHaddock
-          return ()
-        PBInstallPhase{runCopy, runRegister, getInstalledPackageInfo} -> do
-          noticeProgress ProgressInstalling
+    deferredBenchmark <-
+      buildAndRegisterUnpackedPackage
+        verbosity
+        distDirLayout
+        maybe_semaphore
+        buildSettings
+        registerLock
+        cacheLock
+        pkgshared
+        plan
+        rpkg
+        ipiTVar
+        srcdir
+        builddir
+        mlogFile
+        $ \case
+          PBConfigurePhase{runConfigure} -> do
+            noticeProgress ProgressStarting
+            runConfigure
+          PBBuildPhase{runBuild} -> do
+            noticeProgress ProgressBuilding
+            _monitors <- runBuild
+            return ()
+          PBHaddockPhase{runHaddock} -> do
+            noticeProgress ProgressHaddock
+            _monitors <- runHaddock
+            return ()
+          PBInstallPhase{runCopy, runRegister, getInstalledPackageInfo} -> do
+            noticeProgress ProgressInstalling
 
-          -- Create an IORef used to retrieve the InstalledPackageInfo computed
-          -- by running "register".
-          ipkgRef <- newIORef Nothing
+            -- Create an IORef used to retrieve the InstalledPackageInfo computed
+            -- by running "register".
+            ipkgRef <- newIORef Nothing
 
-          let registerPkg
-                | not (elabRequiresRegistration pkg) =
-                    debug verbosity $
-                      "registerPkg: elab does NOT require registration for "
-                        ++ prettyShow uid
-                | otherwise = do
-                    assert
-                      ( elabRegisterPackageDBStack pkg
-                          == storePackageDBStack compiler (elabPackageDbs pkg)
-                      )
-                      (return ())
-                    ipkg <-
-                      runRegister
-                        (elabRegisterPackageDBStack pkg)
-                        Cabal.defaultRegisterOptions
-                          { Cabal.registerMultiInstance = True
-                          , Cabal.registerSuppressFilesCheck = True
-                          }
-                    -- Write the InstalledPackageInfo to the IORef
-                    writeIORef ipkgRef (Just ipkg)
+            let registerPkg
+                  | not (elabRequiresRegistration pkg) =
+                      debug verbosity $
+                        "registerPkg: elab does NOT require registration for "
+                          ++ prettyShow uid
+                  | otherwise = do
+                      assert
+                        ( elabRegisterPackageDBStack pkg
+                            == storePackageDBStack compiler (elabPackageDbs pkg)
+                        )
+                        (return ())
+                      ipkg <-
+                        runRegister
+                          (elabRegisterPackageDBStack pkg)
+                          Cabal.defaultRegisterOptions
+                            { Cabal.registerMultiInstance = True
+                            , Cabal.registerSuppressFilesCheck = True
+                            }
+                      -- Write the InstalledPackageInfo to the IORef
+                      writeIORef ipkgRef (Just ipkg)
 
-          -- Actual installation
-          void $
-            newStoreEntry
-              verbosity
-              storeDirLayout
-              compiler
-              uid
-              (copyPkgFiles verbosity pkgshared pkg runCopy)
-              registerPkg
+            -- Actual installation
+            void $
+              newStoreEntry
+                verbosity
+                storeDirLayout
+                compiler
+                uid
+                (copyPkgFiles verbosity pkgshared pkg runCopy)
+                registerPkg
 
-          -- Keep the per-project running InstalledPackageIndex TVar up to date.
-          -- This must run regardless of whether newStoreEntry won or lost the
-          -- race (UseNewStoreEntry/UseExistingStoreEntry).
-          --
-          -- See (ProjIPI2) in Note [Per-project InstalledPackageIndex].
-          when (elabRequiresRegistration pkg) $ do
-            -- If we won the race, we use the InstalledPackageInfo that was
-            -- computed by 'runRegister'. If we lost, then we fall back to
-            -- 'getInstalledPackageInfo' which re-runs 'Cabal register'
-            -- (takes ~100ms).
-            mipkg <- readIORef ipkgRef
-            ipkg <- maybe getInstalledPackageInfo return mipkg
-            atomically $ modifyTVar ipiTVar (PackageIndex.insert ipkg)
+            -- Keep the per-project running InstalledPackageIndex TVar up to date.
+            -- This must run regardless of whether newStoreEntry won or lost the
+            -- race (UseNewStoreEntry/UseExistingStoreEntry).
+            --
+            -- See (ProjIPI2) in Note [Per-project InstalledPackageIndex].
+            when (elabRequiresRegistration pkg) $ do
+              -- If we won the race, we use the InstalledPackageInfo that was
+              -- computed by 'runRegister'. If we lost, then we fall back to
+              -- 'getInstalledPackageInfo' which re-runs 'Cabal register'
+              -- (takes ~100ms).
+              mipkg <- readIORef ipkgRef
+              ipkg <- maybe getInstalledPackageInfo return mipkg
+              atomically $ modifyTVar ipiTVar (PackageIndex.insert ipkg)
 
-        -- No tests on install
-        PBTestPhase{} -> return ()
-        -- No bench on install
-        PBBenchPhase{} -> return ()
-        -- No repl on install
-        PBReplPhase{} -> return ()
+          -- No tests on install
+          PBTestPhase{} -> return ()
+          -- No bench on install
+          PBBenchPhase{} -> return ()
+          -- No repl on install
+          PBReplPhase{} -> return ()
 
     -- TODO: [nice to have] we currently rely on Setup.hs copy to do the right
     -- thing. Although we do copy into an image dir and do the move into the
@@ -930,11 +918,13 @@ buildAndInstallUnpackedPackage
     noticeProgress ProgressCompleted
 
     return
-      BuildResult
-        { buildResultDocs = docsResult
-        , buildResultTests = testsResult
-        , buildResultLogFile = mlogFile
-        }
+      ( BuildResult
+          { buildResultDocs = docsResult
+          , buildResultTests = testsResult
+          , buildResultLogFile = mlogFile
+          }
+      , deferredBenchmark
+      )
     where
       uid = installedUnitId rpkg
       pkgid = packageId rpkg
