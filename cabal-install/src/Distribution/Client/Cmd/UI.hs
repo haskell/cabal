@@ -31,7 +31,6 @@ import Prelude ()
 import Data.List (stripPrefix)
 import Data.Monoid (Endo (..))
 
-import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
 import Distribution.ReadE (runReadE)
 import Distribution.Simple.Command
   ( CommandParse (..)
@@ -46,7 +45,7 @@ import Options.Applicative
   ( ParserInfo
   , ParserResult (..)
   , asum
-  , defaultPrefs
+  , disambiguate
   , execParserPure
   , flag'
   , fullDesc
@@ -55,6 +54,7 @@ import Options.Applicative
   , info
   , long
   , metavar
+  , prefs
   , progDesc
   , renderFailure
   , strArgument
@@ -72,8 +72,8 @@ data NamedCommandParser action = NamedCommandParser
 
 -- | Wrap a command's optparse parser together with the names it should match.
 commandParserByName
-  :: CommandUI (NixStyleFlags flags)
-  -> (NixStyleFlags flags -> [String] -> action)
+  :: CommandUI flags
+  -> (flags -> [String] -> action)
   -> NamedCommandParser action
 commandParserByName command action =
   NamedCommandParser
@@ -139,14 +139,16 @@ renameCommand name command =
 -- of options come from "Distribution.Simple.Command", so they are the same
 -- as for commands that are not parsed this way.
 parseCommand
-  :: CommandUI (NixStyleFlags a)
-  -> (NixStyleFlags a -> [String] -> action)
+  :: CommandUI flags
+  -> (flags -> [String] -> action)
   -> String
   -- ^ The name the command was invoked by.
   -> [String]
   -> CommandParse action
 parseCommand cmdui action invokedName cmdArgs =
-  case execParserPure defaultPrefs pInfo (supplyOptArgDefaults optionFields cmdArgs) of
+  -- 'disambiguate' accepts an unambiguous prefix of a long option, as
+  -- "Distribution.GetOpt" does.
+  case execParserPure (prefs disambiguate) pInfo (supplyOptArgDefaults optionFields cmdArgs) of
     Success parsed
       | parsedListOptions parsed -> legacy ["--list-options"]
       | otherwise ->
@@ -193,7 +195,7 @@ supplyOptArgDefaults fields = go
       , form <- map (\c -> ['-', c]) shortFlags ++ map ("--" ++) longFlags
       ]
 
-parserInfo :: String -> [O.Parser (CmdItem a)] -> CommandUI flags -> ParserInfo (ParsedCommand a)
+parserInfo :: String -> [O.Parser (CmdItem flags)] -> CommandUI flags -> ParserInfo (ParsedCommand flags)
 parserInfo invokedName flagParsers cmdui =
   info
     (parsedCommandParser flagParsers <**> helper)
@@ -201,18 +203,18 @@ parserInfo invokedName flagParsers cmdui =
 
 -- | One item of a command line: a flag, a target, or the request to list
 -- the options.
-data CmdItem a
-  = CmdItemFlag (Endo (NixStyleFlags a))
+data CmdItem flags
+  = CmdItemFlag (Endo flags)
   | CmdItemTarget String
   | CmdItemListOptions
 
-data ParsedCommand a = ParsedCommand
-  { parsedFlagEdits :: Endo (NixStyleFlags a)
+data ParsedCommand flags = ParsedCommand
+  { parsedFlagEdits :: Endo flags
   , parsedTargets :: [String]
   , parsedListOptions :: Bool
   }
 
-parsedCommandParser :: [O.Parser (CmdItem a)] -> O.Parser (ParsedCommand a)
+parsedCommandParser :: [O.Parser (CmdItem flags)] -> O.Parser (ParsedCommand flags)
 parsedCommandParser flagParsers = toParsed <$> many (cmdItemParser flagParsers)
   where
     toParsed items =
@@ -233,7 +235,7 @@ parsedCommandParser flagParsers = toParsed <$> many (cmdItemParser flagParsers)
     isListOptions CmdItemListOptions = True
     isListOptions _ = False
 
-cmdItemParser :: [O.Parser (CmdItem a)] -> O.Parser (CmdItem a)
+cmdItemParser :: [O.Parser (CmdItem flags)] -> O.Parser (CmdItem flags)
 cmdItemParser flags =
   asum
     ( flags
@@ -243,7 +245,7 @@ cmdItemParser flags =
            ]
     )
 
-cmdOptionParsers :: [OptionField (NixStyleFlags a)] -> [O.Parser (CmdItem a)]
+cmdOptionParsers :: [OptionField flags] -> [O.Parser (CmdItem flags)]
 cmdOptionParsers fields = (fmap . fmap) CmdItemFlag (optionFieldFlagParsers fields)
 
 optionFieldFlagParsers :: [OptionField flags] -> [O.Parser (Endo flags)]
