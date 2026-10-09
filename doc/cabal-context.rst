@@ -5,10 +5,10 @@ Haskell_ software. It helps people to
 configure, build and install Haskell software and to distribute it
 easily to other users and developers.
 
-There is a command line tool called ``cabal`` for working with Cabal
+There is a command line tool called :term:`cabal` for working with Cabal
 packages. It helps with installing existing packages and also helps
-people developing their own packages. It can be used to work with local
-packages or to install packages from online package archives, including
+people developing their own packages. It can be used to work with :term:`local
+packages <local package>` or to install packages from online :term:`package archives <repository>`, including
 automatically installing dependencies. By default it is configured to
 use Hackage_ which is Haskell's central
 package archive that contains thousands of libraries and applications in
@@ -46,13 +46,13 @@ format, with the file extension ``.tar.gz``, e.g.
 ``filepath-1.0.tar.gz``.
 
 Note that packages are not part of the Haskell language, rather they are
-a feature provided by the combination of Cabal and GHC (and several
+a feature provided by the combination of Cabal and :term:`GHC` (and several
 other Haskell implementations).
 
 A tool for working with packages
 --------------------------------
 
-There is a command line tool, called "``cabal``", that users and
+There is a command line tool, called ":term:`cabal`", that users and
 developers can use to build and install Cabal packages. It can be used
 for both local packages and for packages available remotely over the
 network. It can automatically install Cabal packages plus any other
@@ -67,7 +67,7 @@ Developers can use the tool with packages in local directories, e.g.
 
 While working on a package in a local directory, developers can run the
 individual steps to configure and build, and also generate documentation
-and run test suites and benchmarks.
+and run :term:`test suites <test suite>` and benchmarks.
 
 It is also possible to install several local packages at once, e.g.
 
@@ -76,7 +76,7 @@ It is also possible to install several local packages at once, e.g.
     $ cabal install foo/ bar/
 
 Developers and users can use the tool to install packages from remote
-Cabal package archives. By default, the ``cabal`` tool is configured to
+Cabal package archives. By default, the :term:`cabal` tool is configured to
 use the central Haskell package archive called
 Hackage_ but it is possible to use it
 with any other suitable archive.
@@ -102,7 +102,7 @@ which Haskell implementation to use and whether to build optimised code
 or build with the ability to profile code. It is not expected that users
 will have to modify any of the information in the ``.cabal`` file.
 
-Note that ``cabal`` is not the only tool for working with Cabal
+Note that :term:`cabal` is not the only tool for working with Cabal
 packages. Due to the standardised format and a library for reading
 ``.cabal`` files, there are several other special-purpose tools.
 
@@ -134,12 +134,12 @@ Cabal and its associated tools and websites covers:
 -  packaging for distribution
 -  automated package management
 
-   -  natively using the ``cabal`` command line tool; or
+   -  natively using the :term:`cabal` command line tool; or
    -  by translation into native package formats such as RPM or deb
 
 -  web and local Cabal package archives
 
-   -  central Hackage website with 1000's of Cabal packages
+   -  central :term:`Hackage` website with 1000's of Cabal packages
 
 Some parts of the system can be used without others. In particular the
 built-in build system for simple packages is optional: it is possible to
@@ -191,7 +191,7 @@ dependencies. By having package authors specify dependencies it makes it
 possible for tools to install a package and all of its dependencies
 automatically. It also makes it possible to translate (in a
 mostly-automatically way) into another package format like RPM or deb
-which also have automatic dependency resolution.
+which also have automatic :term:`dependency resolution`.
 
 
 .. include:: references.inc

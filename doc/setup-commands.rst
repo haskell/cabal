@@ -5,11 +5,11 @@ Setup.hs Commands
 
 .. highlight:: console
 
-GHC provides the commands ``runhaskell`` and ``runghc`` (they are equivalent)
+:term:`GHC` provides the commands ``runhaskell`` and ``runghc`` (they are equivalent)
 to allow you to run Haskell programs without first having to compile them
 (scripts). The low-level Cabal interface is implemented using ``Setup.hs``
-scripts. You should prefer using higher level interface provided by nix-style
-builds. However, the documentation of the low level interface below may be helpful
+scripts. You should prefer using higher level interface provided by :term:`nix-style
+builds <Nix-style local builds>`. However, the documentation of the low level interface below may be helpful
 to high level interface users as well, because it delves into internal details
 common to both and omitted elsewhere.
 
@@ -130,7 +130,7 @@ and all options specified with :option:`--configure-option` are passed on.
    detect and warn in this situation, but it is not perfect.
 
 In Cabal 2.0, support for a single positional argument was added to
-``runhaskell Setup.hs configure`` This makes Cabal configure the specific component to
+``runhaskell Setup.hs configure`` This makes Cabal configure the specific :term:`component` to
 be configured. Specified names can be qualified with ``lib:`` or
 ``exe:`` in case just a name is ambiguous (as would be the case for a
 package named ``p`` which has a library and an executable named ``p``.)
@@ -144,7 +144,7 @@ This has the following effects:
    the set of databases via :option:`--package-db` (and related flags): these
    dependencies are assumed to be up-to-date. A dependency can be
    explicitly specified using :option:`--dependency` simply by giving the name
-   of the sublibrary; e.g., the dependency for a sublibrary
+   of the :term:`sublibrary`; e.g., the dependency for a sublibrary
    named ``foo`` is given as
    ``--dependency=Lib:foo=foo-0.1-abc``.
 
@@ -173,7 +173,7 @@ files of a package:
 
     Specify which Haskell implementation to use to build the package. At
     most one of these flags may be given. If none is given, the
-    implementation under which the setup script was compiled or
+    implementation under which the :term:`setup script` was compiled or
     interpreted is used.
 
 .. option:: -w PATH or -wPATH, --with-compiler=PATH
@@ -221,7 +221,7 @@ files of a package:
 
     Note: if *prog* is ``ghc``, then options that do not affect build
     artifacts, such as warning flags, are dropped. This is because
-    ``--ghc-options`` applies to GHC for the entire build plan, not just the
+    ``--ghc-options`` applies to GHC for the entire :term:`build plan`, not just the
     current package, and recompiling the entire dependency tree is probably
     unintended. If you want to apply some options to ``cabal repl`` only, pass
     ``--repl-options`` to ``cabal repl``.
@@ -279,7 +279,7 @@ package:
 
 .. option:: --dynlibdir=DIR
 
-    Dynamic libraries are installed here.
+    :term:`Dynamic libraries <shared library>` are installed here.
 
     By default, this is set to `$libdir/$abi`, which is usually not equal to
     `$libdir/$libsubdir`.
@@ -312,7 +312,7 @@ package:
 
 .. option:: --datadir=DIR
 
-    Architecture-independent data files are installed here.
+    Architecture-independent :term:`data files` are installed here.
 
     In the simple build system, *dir* may contain the following path
     variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$libsubdir``,
@@ -451,7 +451,7 @@ $arch
     e.g. ``i386``, ``x86_64``, ``ppc`` or ``sparc``
 $abitag
     An optional tag that a compiler can use for telling incompatible
-    ABI's on the same architecture apart. GHCJS encodes the underlying
+    ABI's on the same architecture apart. :term:`GHCJS` encodes the underlying
     GHC version in the ABI tag.
 $abi
     A shortcut for getting a path that completely identifies the
@@ -527,7 +527,7 @@ On Windows it is possible to obtain the pathname of the running program.
 This means that we can construct an installable executable package that
 is independent of its absolute install location. The executable can find
 its auxiliary files by finding its own path and knowing the location of
-the other files relative to ``$bindir``. Prefix independence is
+the other files relative to ``$bindir``. :term:`Prefix independence <prefix independence>` is
 particularly useful: it means the user can choose the install location
 (i.e. the value of ``$prefix``) at install-time, rather than having to
 bake the path into the binary when it is built.
@@ -553,7 +553,7 @@ to the library package.
 Controlling Flag Assignments
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Flag assignments (see :ref:`resolution-of-conditions-and-flags`)
+:term:`Flag assignments <flag assignment>` (see :ref:`resolution-of-conditions-and-flags`)
 can be controlled with the following command line options.
 
 .. option:: -f flagname or -f -flagname
@@ -577,7 +577,7 @@ Building Test Suites
 
 .. option:: --enable-tests
 
-    Build the test suites defined in the package description file during
+    Build the :term:`test suites <test suite>` defined in the :term:`package description` file during
     the ``build`` stage. Check for dependencies required by the test
     suites. If the package is configured with this option, it will be
     possible to run the test suites with the ``test`` command after the
@@ -607,7 +607,7 @@ Miscellaneous options
 
     Does a per-user installation. This changes the `default installation
     prefix <#paths-in-the-simple-build-system>`__. It also allow
-    dependencies to be satisfied by the user's package database, in
+    dependencies to be satisfied by the user's :term:`package database`, in
     addition to the global database. This also implies a default of
     ``--user`` for any subsequent ``install`` command, as packages
     registered in the global database should not depend on packages
@@ -644,7 +644,7 @@ Miscellaneous options
     built; this identifier is passed on to GHC and serves as the basis
     for linker symbols and the ``id`` field in a ``ghc-pkg``
     registration. When a package has multiple components, the actual
-    component identifiers are derived off of this identifier. E.g., a
+    :term:`component identifiers <component ID>` are derived off of this identifier. E.g., a
     sublibrary ``foo`` from package ``p-0.1-abcd`` will get the
     identifier ``p-0.1-abcd-foo``.
 
@@ -659,7 +659,7 @@ Miscellaneous options
     appropriate for production use, taking more time to build faster
     libraries and programs.
 
-    The optional *n* value is the optimisation level. Some compilers
+    The optional *n* value is the :term:`optimisation level <optimization level>`. Some compilers
     support multiple optimisation levels. The range is 0 to 2. Level 0
     is equivalent to :option:`--disable-optimization`, level 1 is the
     default if no *n* parameter is given. Level 2 is higher optimisation
@@ -714,7 +714,7 @@ Miscellaneous options
     Some compilers that support profiling, notably GHC, can allocate
     costs to different parts of the program and there are different
     levels of granularity or detail with which this can be done. In
-    particular for GHC this concept is called "cost centers", and GHC
+    particular for GHC this concept is called ":term:`cost centers <cost centre>`", and GHC
     can automatically add cost centers, and can do so in different ways.
 
     This flag covers both libraries and executables, but can be
@@ -779,7 +779,7 @@ Miscellaneous options
 
 .. option:: --enable-library-for-ghci
 
-    (default) Build libraries suitable for use with GHCi.
+    (default) Build libraries suitable for use with :term:`GHCi`.
 
 .. option:: --disable-library-for-ghci
 
@@ -943,7 +943,7 @@ Miscellaneous options
 
     Very much like ``--dependency`` but the package doesn't need to already
     be installed. This is useful when attempting to start multiple component
-    sessions with cabal's multi-repl or projects such as Haskell Language Server.
+    sessions with cabal's :term:`multi-repl` or projects such as :term:`Haskell Language Server <HLS>`.
 
     Several checks which are enabled for ``--dependency``s are disabled for promised
     dependencies, so prefer to use ``--dependency`` if you know that the dependency
@@ -953,15 +953,15 @@ Miscellaneous options
 
     This changes Cabal to require every dependency be explicitly
     specified using :option:`--dependency`, rather than use Cabal's (very
-    simple) dependency solver. This is useful for programmatic use of
+    simple) :term:`dependency solver <solver>`. This is useful for programmatic use of
     Cabal's API, where you want to error if you didn't specify enough
     :option:`--dependency` flags.
 
 
 .. option:: -c CONSTRAINT or -cCONSTRAINT, --constraint=CONSTRAINT
 
-    Restrict solutions involving a package to given version
-    bounds, flag settings, and other properties.
+    Restrict solutions involving a package to given :term:`version
+    bounds <version bound>`, flag settings, and other properties.
 
     The following considers only install plans where ``bar``,
     if used, is restricted to version 2.1:
@@ -1009,7 +1009,7 @@ Miscellaneous options
         # Require that bar have test suites and benchmarks enabled.
         $ cabal install --constraint="bar test" --constraint="bar bench"
 
-    To specify multiple constraints, you may pass the
+    To specify multiple :term:`constraints <constraint>`, you may pass the
     ``constraint`` option multiple times.
 
     By default, constraints only apply to build dependencies
@@ -1050,10 +1050,10 @@ Miscellaneous options
 .. option:: --disable-response-files
 
     Enable workaround for older versions of programs such as ``ar`` or
-    ``ld`` that do not support response file arguments (i.e. ``@file``
+    ``ld`` that do not support :term:`response file` arguments (i.e. ``@file``
     arguments). You may want this flag only if you specify custom ar
     executable. For system ``ar`` or the one bundled with ``ghc`` on
-    Windows the ``cabal`` should do the right thing and hence should
+    Windows the :term:`cabal` should do the right thing and hence should
     normally not require this flag.
 
 .. _setup-build:
@@ -1097,7 +1097,7 @@ This command takes the following options:
     communicating via a semaphore.
 
     The expected use is that the system controlling the build (e.g.
-    ``cabal-install``, ``stack``, ``nix`` or ``buck2``) (a jobserver) creates or
+    ``cabal``, ``stack``, ``nix`` or ``buck2``) (a jobserver) creates or
     obtains a semaphore using the ``semaphore-compat`` library. It then passes
     the semaphore to jobserver clients in order to control the amount of
     parallelism. This is done by passing the corresponding semaphore identifier
@@ -1114,7 +1114,7 @@ runhaskell Setup.hs haddock
 .. program:: runhaskell Setup.hs haddock
 
 Build the documentation for the package using Haddock_.
-By default, only the documentation for the exposed modules is generated
+By default, only the documentation for the :term:`exposed modules <exposed module>` is generated
 (but see the :option:`--executables` and :option:`--internal` flags below).
 
 This command takes the following options:
@@ -1197,7 +1197,7 @@ This command takes the following options:
 .. option:: --for-hackage
 
     Sets flags to generate Haddock_ documentation that is suitable for upload to
-    Hackage.
+    :term:`Hackage`.
 
     Equivalent to setting :option:`--hoogle`, :option:`--html`,
     :option:`--html-location` equal to ``/package/$pkg-$version/docs``,
@@ -1487,7 +1487,7 @@ the package.
 runhaskell Setup.hs sdist
 -------------------------
 
-Create a system- and compiler-independent source distribution in a file
+Create a system- and compiler-independent :term:`source distribution <sdist>` in a file
 *package*-*version*\ ``.tar.gz`` in the ``dist`` subdirectory, for
 distribution to package builders. When unpacked, the commands listed in
 this section will be available.
@@ -1506,7 +1506,7 @@ This command takes the following option:
 .. option:: --snapshot
 
     Append today's date (in "YYYYMMDD" format) to the version number for
-    the generated source package. The original package is unaffected.
+    the generated :term:`source package`. The original package is unaffected.
 
 
 .. include:: references.inc
@@ -1562,7 +1562,7 @@ Flags for repl:
 
 .. option:: --repl-no-load
 
-    Disable loading of project modules at REPL startup.
+    Disable loading of project modules at :term:`REPL` startup.
 
 .. option:: --repl-options=FLAG
 

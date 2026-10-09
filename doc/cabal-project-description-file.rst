@@ -5,8 +5,8 @@ Project Description — cabal.project File
 
 ``cabal.project`` files support a variety of options which configure the
 details of your build. The general syntax of a ``cabal.project`` file is
-similar to that of a Cabal file: there are a number of fields, some of
-which live inside stanzas (groups of fields that apply to only part of a
+similar to that of a :term:`Cabal file`: there are a number of fields, some of
+which live inside :term:`stanzas <stanza>` (groups of fields that apply to only part of a
 project or can be referenced as a unit):
 
 ::
@@ -19,10 +19,10 @@ project or can be referenced as a unit):
 
 In general, the accepted field names coincide with the accepted command
 line flags that ``cabal install`` and other commands take. For example,
-``cabal configure --enable-profiling`` will write out a project
-file with ``profiling: True``.
+``cabal configure --enable-profiling`` will write out a :term:`project
+file` with ``profiling: True``.
 
-The full configuration of a project is determined by combining the
+The full configuration of a :term:`project` is determined by combining the
 following sources (later entries override earlier ones, except for appendable
 options):
 
@@ -42,18 +42,18 @@ directories when there is none in the current directory.
 Conditionals and imports
 ------------------------
 
-As of ``cabal-install`` version 3.8, cabal supports conditional logic and
+As of version 3.8, :term:`cabal` supports conditional logic and
 imports in ``cabal.project`` files.
 
     .. warning::
 
       While :ref:`conditional blocks<conditional-blocks>` can appear anywhere
-      within component or common sections of a package, their placement within a
+      within :term:`component` or common sections of a package, their placement within a
       project is restricted.  Conditions may only be introduced at the top level
       of a project.
 
       Of the :ref:`condition tests<conditions>`, only packages can test for
-      flags. Projects can test for operating system, architecture, compiler and
+      :term:`flags <flag>`. Projects can test for operating system, architecture, compiler and
       the boolean constants.
 
       - :samp:`os({name})`
@@ -82,7 +82,7 @@ cabal.project files or v1-style cabal.config freeze files. As a usage example:
 
 .. warning::
 
-    Conditionals are resolved *last*, irrespective of their lexical position.
+    :term:`Conditionals <conditional>` are resolved *last*, irrespective of their lexical position.
 
     ::
 
@@ -97,8 +97,8 @@ commands (update, sdist) to require ghc present where otherwise it
 would not be necessitated.
 
 One use case for imports is to specify a `Stackage <https://www.stackage.org/>`
-snapshot, so that your cabal project can use the same set of packages as
-that snapshot. To use the ``lts-21.25`` resolver, you can write
+:term:`snapshot`, so that your cabal project can use the same set of packages as
+that snapshot. To use the ``lts-21.25`` :term:`resolver`, you can write
 ``import: https://www.stackage.org/lts-21.25/cabal.config`` in your
 ``cabal.project``.
 
@@ -109,11 +109,11 @@ more information.
 Specifying the local packages
 -----------------------------
 
-You *must* provide a non-empty list of local packages in your project, filling
+You *must* provide a non-empty list of :term:`local packages <local package>` in your project, filling
 out either a ``packages`` field or an ``optional-packages`` field or both to
 satisfy this requirement.
 
-When ``cabal.project`` doesn't exist, ``cabal-install`` fabricates an ephemeral
+When ``cabal.project`` doesn't exist, :term:`cabal` fabricates an ephemeral
 project for its own use with this simple content, a glob that will find any (but
 expects to find one) package in the current directory:
 
@@ -129,7 +129,7 @@ project are:
 
     :default: empty
 
-    Specifies the list of package locations which contain the local
+    Specifies the list of :term:`package locations <package location>` which contain the local
     packages to be built by this project. Package locations can take the
     following forms:
 
@@ -171,7 +171,7 @@ project are:
 .. cfg-field:: extra-packages: package list with version bounds (comma separated)
     :synopsis: Adds external packages as local
 
-    Specifies a list of external packages from Hackage, which
+    Specifies a list of :term:`external packages <external package>` from :term:`Hackage`, which
     should be considered local packages. The motivation for
     :cfg-field:`extra-packages` is making libraries that are not
     dependencies of any package in the project available for use in ghci.
@@ -245,7 +245,7 @@ consider during package retrieval. This allows use of a package from a
 remote version control system, rather than looking for that package in
 Hackage.
 
-Since version 3.4, cabal-install creates tarballs for each package coming from a
+Since version 3.4, :term:`cabal` creates tarballs for each package coming from a
 ``source-repository-package`` stanza (effectively applying cabal sdists to such
 packages). It gathers the names of the packages from the appropriate ``.cabal``
 file in the version control repository, and allows their use just like Hackage
@@ -338,7 +338,7 @@ Verbosity options
 
     :default: 1
 
-    Control the verbosity of ``cabal`` commands, valid values are from 0
+    Control the verbosity of :term:`cabal` commands, valid values are from 0
     to 3.
 
     The command line variant of this field is ``--verbose=2``; a short
@@ -380,8 +380,8 @@ Job and concurrency options
 
     This option instructs cabal to control parallelism by creating a new system semaphore,
     whose number of tokens is specified by ``--jobs`` (or ``-j``).
-    This semaphore is passed to GHC, which allows it to use any leftover parallelism
-    that ``cabal-install`` is not using.
+    This semaphore is passed to :term:`GHC`, which allows it to use any leftover parallelism
+    that :term:`cabal` is not using.
 
     Requires ``ghc >= 9.8``.
 
@@ -464,7 +464,7 @@ Environment options
 
     :default: ``False``
 
-    If ``True``, Cabal refuses to download packages from remote repositories.
+    If ``True``, Cabal refuses to download packages from remote :term:`repositories <repository>`.
 
     The command line variant of this field is ``--offline``.
 
@@ -475,7 +475,7 @@ Environment options
 
     :default: unset
 
-    Set the package environment file that may be modified by
+    Set the :term:`package environment` file that may be modified by
     ``cabal install --lib``.
 
     The command line variants of this field are ``--package-env=ENV`` and
@@ -484,7 +484,7 @@ Environment options
 .. cfg-field:: store-dir: filepath
                --store-dir=DIR
 
-    Specifies the name of the directory of the global package store.
+    Specifies the name of the directory of the :term:`global package store <store>`.
 
 .. cfg-field:: package-dbs: package DB stack (comma separated)
                --package-db=[clear, global, user, PATH]
@@ -492,16 +492,16 @@ Environment options
     :since: 3.7
 
     By modifying ``package-dbs`` you can modify the default package environment
-    which ``cabal`` will see. The package databases you add using ``package-dbs``
+    which :term:`cabal` will see. The :term:`package databases <package database>` you add using ``package-dbs``
     will not be written into and only used as immutable package stores to initialise
-    the environment with additional packages that ``cabal`` can choose to use.
+    the environment with additional packages that :term:`cabal` can choose to use.
 
     There are three package databases involved with most builds:
 
     global
         Compiler installation of rts, base, etc.
     store
-        Nix-style local build cache
+        :term:`Nix-style local build <Nix-style local builds>` cache
     in-place
         Project-specific build directory
 
@@ -549,14 +549,14 @@ Environment options
 Solver options
 --------------
 
-The following settings control the behavior of the dependency solver:
+The following settings control the behavior of the :term:`dependency solver <solver>`:
 
 .. cfg-field:: constraints: CONSTRAINT (comma separated list)
                -c CONSTRAINT or -cCONSTRAINT, --constraint=CONSTRAINT
                --constraint="pkg >= 2.0", -c "pkg >= 2.0"
     :synopsis: Extra dependencies constraints.
 
-    Add extra constraints to the version bounds, flag settings,
+    Add extra :term:`constraints <constraint>` to the :term:`version bounds <version bound>`, flag settings,
     and other properties a solver can pick for a
     package. For example:
 
@@ -568,7 +568,7 @@ The following settings control the behavior of the dependency solver:
     which case the specified constraints are intersected. This is
     useful, since the syntax does not allow you to specify multiple
     constraints at once. For example, to specify both version bounds and
-    flag assignments, you would write:
+    :term:`flag assignments <flag assignment>`, you would write:
 
     ::
 
@@ -622,7 +622,7 @@ The following settings control the behavior of the dependency solver:
 
     Allow the solver to pick more recent version of some packages than
     would normally be permitted by the :pkg-field:`build-depends` bounds
-    of packages in the install plan. This option may be useful if the
+    of packages in the :term:`install plan`. This option may be useful if the
     dependency solver cannot otherwise find a valid install plan.
 
     For example, to relax ``pkg``\ s :pkg-field:`build-depends` upper bound on
@@ -727,10 +727,10 @@ The following settings control the behavior of the dependency solver:
 
    :default: ``HEAD``
 
-   This allows to change the source package index state the solver uses
+   This allows to change the source package :term:`index state` the solver uses
    to compute install-plans. This is particularly useful in
    combination with freeze-files in order to also freeze the state the
-   package index was in at the time the install-plan was frozen.
+   :term:`package index` was in at the time the install-plan was frozen.
 
    ::
 
@@ -932,7 +932,7 @@ Install options
     :default: ``never``
 
     Controls what ``cabal install`` does when an executable already exists in
-    the target installation directory.
+    the target :term:`installation directory <install directory>`.
 
     The command line variant of this field is
     ``--overwrite-policy=POLICY``.
@@ -1014,8 +1014,8 @@ On the command line, these options are applied to all local packages.
 There is no per-package command line interface.
 
 Some flags were added by more recent versions of the Cabal library. This
-means that they are NOT supported by packages which use Custom setup
-scripts that require a version of the Cabal library older than when the
+means that they are NOT supported by packages which use Custom :term:`setup
+scripts <setup script>` that require a version of the Cabal library older than when the
 feature was added.
 
 .. cfg-section:: package name or *
@@ -1074,7 +1074,7 @@ feature was added.
 
     Specify the path to a particular compiler to be used. If not an
     absolute path, it will be resolved according to the ``PATH``
-    environment. The type of the compiler (GHC, GHCJS, etc) must be
+    environment. The type of the compiler (GHC, :term:`GHCJS`, etc) must be
     consistent with the setting of the :cfg-field:`compiler` field.
 
     The most common use of this option is to specify a different version
@@ -1122,7 +1122,7 @@ feature was added.
     Build with optimization. This is appropriate for production use,
     taking more time to build faster libraries and programs.
 
-    The optional *nat* value is the optimisation level. Some compilers
+    The optional *nat* value is the :term:`optimisation level <optimization level>`. Some compilers
     support multiple optimisation levels. The range is 0 to 2. Level 0
     disables optimization, level 1 is the default. Level 2 is higher
     optimisation if the compiler supports it. Level 2 is likely to lead
@@ -1151,7 +1151,7 @@ feature was added.
 
     A list of extra arguments to pass to the external ``./configure``
     script, if one is used. This is only useful for packages which have
-    the ``Configure`` build type. See also the section on
+    the ``Configure`` :term:`build type`. See also the section on
     :ref:`system-dependent parameters`.
 
     The command line variant of this flag is ``--configure-option=arg``,
@@ -1163,7 +1163,7 @@ feature was added.
 
     :default: ``ghc``
 
-    Specify the compiler toolchain to be used. This is independent of
+    Specify the compiler :term:`toolchain` to be used. This is independent of
     ``with-compiler``, because the choice of toolchain affects Cabal's
     build logic.
 
@@ -1179,10 +1179,10 @@ feature was added.
 
     :default: ``False``
 
-    Force test suites to be enabled. For most users this should not be
+    Force :term:`test suites <test suite>` to be enabled. For most users this should not be
     needed, as we always attempt to solve for test suite dependencies,
     even when this value is ``False``; furthermore, test suites are
-    automatically enabled if they are requested as a built target.
+    automatically enabled if they are requested as a built :term:`target`.
 
     The command line variant of this flag is ``--enable-tests`` and
     ``--disable-tests``.
@@ -1388,7 +1388,7 @@ Dynamic linking options
 
     :default: False
 
-    Build shared library. This implies a separate compiler run to
+    Build :term:`shared library`. This implies a separate compiler run to
     generate position independent code as required on most platforms.
 
     The command line variant of this flag is ``--enable-shared`` and
@@ -1416,7 +1416,7 @@ Dynamic linking options
 
     :default: True
 
-    Build libraries suitable for use with GHCi. This involves an extra
+    Build libraries suitable for use with :term:`GHCi`. This involves an extra
     linking step after the build.
 
     Not all platforms support GHCi and indeed on some platforms, trying
@@ -1440,7 +1440,7 @@ Dynamic linking options
     9.15 or newer; older compilers ignore the flag.
 
     Profiled bytecode libraries are not currently supported. Bytecode files are always
-    produced alongside a vanilla object format.
+    produced alongside a :term:`vanilla` object format.
 
     The command line variant of this flag is
     ``--enable-library-bytecode`` and ``--disable-library-bytecode``.
@@ -1560,7 +1560,7 @@ Profiling options
     :cfg-field:`library-profiling` and :cfg-field:`executable-profiling`.
 
     For useful profiling, it can be important to control precisely what
-    cost centers are allocated; see :cfg-field:`profiling-detail`.
+    :term:`cost centers <cost centre>` are allocated; see :cfg-field:`profiling-detail`.
 
     The command line variant of this flag is ``--enable-profiling`` and
     ``--disable-profiling``.
@@ -1709,7 +1709,7 @@ Haddock options
 
     :default: False
 
-    Enables building of Haddock documentation.
+    Enables building of :term:`Haddock` documentation.
     Implied when calling ``cabal haddock``.
 
     The command line variant of this flag is ``--enable-documentation``
@@ -2005,7 +2005,7 @@ Most users generally won't need these.
 
     :default: 4000
 
-    Maximum number of backjumps (backtracking multiple steps) allowed
+    Maximum number of :term:`backjumps <backjump>` (backtracking multiple steps) allowed
     while solving. Set -1 to allow unlimited backtracking, and 0 to
     disable backtracking completely.
 
@@ -2065,7 +2065,7 @@ Most users generally won't need these.
     :default: False
 
     When there is no solution, try to improve the solver error message
-    by finding a minimal conflict set. This option may increase run
+    by finding a minimal :term:`conflict set`. This option may increase run
     time significantly, so it is off by default.
 
     The command line variant of this field is
