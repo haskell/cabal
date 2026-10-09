@@ -379,7 +379,7 @@ elementInLayoutContext ilevel name =
 --                             | arg* '\\n'? '{' elements '\\n'? '}'
 elementInNonLayoutContext :: Name Position -> Parser (Field (WithComments Position))
 elementInNonLayoutContext name =
-  (do colon; noComments <$> fieldInlineOrBraces name) -- inline field or braces can never have comments
+  (do colon; fieldInlineOrBraces name) -- inline field or braces can never have comments
     <|> ( do
             args <- many sectionArg
             openBrace
@@ -402,8 +402,11 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
     braces :: Parser (Field (WithComments Position))
     braces = do
       openBrace
-      preCmts <- many tokComment
-      ls <- inLexerMode (LexerMode in_field_braces) (many $ commentsAfter fieldContent)
+      (preCmts, ls) <- inLexerMode (LexerMode in_field_braces)
+          ( (,)
+            <$> many tokComment
+            <*> many (commentsAfter fieldContent)
+          )
       closeBrace
       return $ Field (WithComments preCmts <$> name) ls
 
@@ -438,17 +441,21 @@ sectionLayoutOrBraces ilevel =
 --
 -- fieldInlineOrBraces   ::= '\\n'? '{' content '}'
 --                         | content
-fieldInlineOrBraces :: Name Position -> Parser (Field Position)
+fieldInlineOrBraces :: Name Position -> Parser (Field (WithComments Position))
 fieldInlineOrBraces name =
   ( do
       openBrace
-      ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
+      (preCmts, ls) <- inLexerMode (LexerMode in_field_braces)
+        ( (,)
+          <$> many tokComment
+          <*> many (commentsAfter fieldContent)
+        )
       closeBrace
-      return (Field name ls)
+      return (Field (WithComments preCmts <$> name) ls)
   )
     <|> ( do
             ls <- inLexerMode (LexerMode in_field_braces) (option [] (fmap (\l -> [l]) fieldContent))
-            return (Field name ls)
+            return (Field (WithComments [] <$> name) (map (WithComments [] <$>) ls))
         )
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
