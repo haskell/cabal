@@ -45,7 +45,7 @@ import Options.Applicative
   ( ParserInfo
   , ParserResult (..)
   , asum
-  , disambiguate
+  , defaultPrefs
   , execParserPure
   , flag'
   , fullDesc
@@ -54,7 +54,6 @@ import Options.Applicative
   , info
   , long
   , metavar
-  , prefs
   , progDesc
   , renderFailure
   , strArgument
@@ -122,8 +121,10 @@ replaceText needle replacement = go
       | Just remainder <- stripPrefix needle input = replacement ++ go remainder
       | otherwise = char : go rest
 
--- | The command as it presents itself under the given name: its usage,
--- description and notes refer to that name instead of the canonical one.
+-- | The command as it presents itself under the given name. As
+-- "Distribution.Client.CmdLegacy" does, every @v2-@ prefix in its usage,
+-- description and notes is rewritten to the prefix of that name, so that
+-- references to other commands follow the invoked spelling too.
 renameCommand :: String -> CommandUI flags -> CommandUI flags
 renameCommand name command =
   command
@@ -133,7 +134,8 @@ renameCommand name command =
     , commandNotes = (rename .) <$> commandNotes command
     }
   where
-    rename = replaceText (commandName command) name
+    rename = replaceText "v2-" prefix
+    prefix = take (length name - length (stripVersionPrefix (commandName command))) name
 
 -- | Parse a command's arguments with optparse-applicative. Help and the list
 -- of options come from "Distribution.Simple.Command", so they are the same
@@ -146,25 +148,27 @@ parseCommand
   -> [String]
   -> CommandParse action
 parseCommand cmdui action invokedName cmdArgs =
-  -- 'disambiguate' accepts an unambiguous prefix of a long option, as
-  -- "Distribution.GetOpt" does.
-  case execParserPure (prefs disambiguate) pInfo (supplyOptArgDefaults optionFields cmdArgs) of
-    Success parsed
-      | parsedListOptions parsed -> legacy ["--list-options"]
-      | otherwise ->
-          let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags cmdui)
-           in CommandReadyToGo (action flags (parsedTargets parsed))
-    Failure failure ->
-      let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
-       in if exitCode == ExitSuccess
-            then legacy ["--help"]
-            else CommandErrors [msg]
-    CompletionInvoked _ ->
-      CommandErrors ["Shell completion is not supported by this parser path."]
+  case expandAbbreviations (optionLongNames optionFields) cmdArgs of
+    Left ambiguous -> CommandErrors [ambiguous]
+    Right expanded -> parseExpanded expanded
   where
     pInfo = parserInfo invokedName flagParsers cmdui
     optionFields = commandOptions cmdui ParseArgs
     flagParsers = cmdOptionParsers optionFields
+
+    parseExpanded args = case execParserPure defaultPrefs pInfo (supplyOptArgDefaults optionFields args) of
+      Success parsed
+        | parsedListOptions parsed -> legacy ["--list-options"]
+        | otherwise ->
+            let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags cmdui)
+             in CommandReadyToGo (action flags (parsedTargets parsed))
+      Failure failure ->
+        let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
+         in if exitCode == ExitSuccess
+              then legacy ["--help"]
+              else CommandErrors [msg]
+      CompletionInvoked _ ->
+        CommandErrors ["Shell completion is not supported by this parser path."]
 
     -- Help and the options list, rendered by "Distribution.Simple.Command"
     -- for the command under the name it was invoked by.
@@ -173,6 +177,56 @@ parseCommand cmdui action invokedName cmdArgs =
         CommandHelp helpText -> CommandHelp helpText
         CommandList options -> CommandList options
         _ -> CommandErrors ["Unexpected result from the command parser."]
+
+-- | The long names of all the options, plus the common @--help@ and
+-- @--list-options@.
+optionLongNames :: [OptionField flags] -> [String]
+optionLongNames fields =
+  ["help", "list-options"]
+    ++ [ name
+       | OptionField _ descrs <- fields
+       , descr <- descrs
+       , (_, longs) <- optFlagsOf descr
+       , name <- longs
+       ]
+  where
+    optFlagsOf = \case
+      ReqArg _ optFlags _ _ _ -> [optFlags]
+      OptArg _ optFlags _ _ _ _ -> [optFlags]
+      ChoiceOpt choices -> [optFlags | (_, optFlags, _, _) <- choices]
+      BoolOpt _ trueFlags falseFlags _ _ -> [trueFlags, falseFlags]
+
+-- | Expand each abbreviated long option to its full name, as
+-- "Distribution.GetOpt" does: an exact name wins, otherwise a unique prefix
+-- is accepted, and an ambiguous prefix is an error naming the candidates.
+-- optparse-applicative's own disambiguation has no preference for an exact
+-- name, so @--lib@ would be ambiguous with @--libdir@. Everything after
+-- @--@ is left alone, as are unknown names, which optparse-applicative
+-- reports.
+expandAbbreviations :: [String] -> [String] -> Either String [String]
+expandAbbreviations longNames = go
+  where
+    go [] = Right []
+    go ("--" : rest) = Right ("--" : rest)
+    go (arg : rest)
+      | Just body <- stripPrefix "--" arg
+      , not (null body) =
+          let (name, value) = break (== '=') body
+           in do
+                name' <- expand name
+                (("--" ++ name' ++ value) :) <$> go rest
+      | otherwise = (arg :) <$> go rest
+
+    expand name
+      | name `elem` longNames = Right name
+      | otherwise = case filter (name `isPrefixOf`) longNames of
+          [full] -> Right full
+          [] -> Right name
+          candidates ->
+            Left $
+              unlines $
+                ("option `--" ++ name ++ "' is ambiguous; could be one of:")
+                  : map ("  --" ++) candidates
 
 -- | Insert an empty argument after each bare occurrence of an
 -- optional-argument option, so that @--allow-newer@ and @-j@ keep their
