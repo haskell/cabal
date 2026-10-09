@@ -150,9 +150,6 @@ import Distribution.Simple.Utils
   , rewriteFileLBS
   , tryFindPackageDesc
   )
-import Distribution.Utils.Generic
-  ( safeHead
-  )
 
 import Distribution.Compat.Stack
 import Distribution.ReadE
@@ -175,7 +172,6 @@ import Distribution.Client.SetupHooks.CallHooksExe
 
 import Control.Concurrent.STM (TVar, readTVarIO)
 import qualified Data.ByteString.Lazy as BS
-import Data.List (foldl1')
 import Data.Kind (Type, Constraint)
 import qualified Data.Map.Lazy as Map
 import Data.Type.Equality  ( type (==) )
@@ -199,15 +195,6 @@ import qualified System.Win32 as Win32
 
 --------------------------------------------------------------------------------
 
-data AllowInLibrary
-  = AllowInLibrary
-  | Don'tAllowInLibrary
-  deriving Eq
-
-data SetupKind
-  = InLibrary
-  | GeneralSetup
-
 -- | If we end up using the in-library method, we use the v'InLibraryLBI'
 -- constructor. If not, we use the 'NotInLibraryNoLBI' constructor.
 --
@@ -215,6 +202,9 @@ data SetupKind
 -- e.g. for a package with Hooks build-type, it depends on whether the Cabal
 -- version used by the package matches with the Cabal version that cabal-install
 -- was built against.
+--
+-- Post-configure phases given 'NotInLibraryNoLBI' always use the external
+-- method (see 'inLibraryMethod').
 data InLibraryLBI
   = InLibraryLBI LocalBuildInfo
   | NotInLibraryNoLBI
@@ -267,23 +257,53 @@ type family InLibraryPhaseRes flags where
 
 -- | @Setup@ encapsulates the outcome of configuring a setup method to build a
 -- particular package.
-data Setup kind = Setup
-  { setupMethod :: SetupMethod kind
+data Setup spec = Setup
+  { setupMethod :: SetupMethod spec
   , setupScriptOptions :: SetupScriptOptions
   , setupVersion :: Version
   , setupBuildType :: BuildType
   , setupPackage :: PackageDescription
   }
 
-data ASetup = forall kind. ASetup ( Setup kind )
-
 -- | @SetupMethod@ represents one of the methods used to run Cabal commands.
-data SetupMethod (kind :: SetupKind) where
+--
+-- The in-library method can only be chosen when the 'SetupRunnerArgs' allow
+-- it, and it carries everything needed to run in-library.
+data SetupMethod (spec :: SetupWrapperSpec) where
   -- | Directly use Cabal library functions, bypassing the Setup
   -- mechanism entirely.
-    LibraryMethod :: SetupMethod InLibrary
+    LibraryMethod :: InLibraryRun flags -> SetupMethod (TryInLibrary flags)
   -- | run Cabal commands through a custom \"Setup\" executable
-    ExternalMethod :: FilePath -> SetupMethod GeneralSetup
+    ExternalMethod :: FilePath -> SetupMethod spec
+
+-- | The arguments to the in-library method, once we know it can be used.
+--
+-- Unlike 'InLibraryArgs', post-configure phases carry a 'LocalBuildInfo':
+-- without one, the in-library method is not available.
+data InLibraryRun (flags :: Type) where
+  InLibraryConfigure
+    :: ElaboratedSharedConfig
+    -> ElaboratedReadyPackage
+    -> TVar InstalledPackageIndex
+    -> InLibraryRun ConfigFlags
+  InLibraryPostConfigure
+    :: SPostConfigurePhase flags
+    -> LocalBuildInfo
+    -> InLibraryRun flags
+
+-- | The in-library method for the given arguments, if they permit one.
+--
+-- A post-configure phase without a 'LocalBuildInfo' means the package was
+-- configured by an external Setup, so later phases must use one too.
+inLibraryMethod :: SetupRunnerArgs spec -> Maybe (SetupMethod spec)
+inLibraryMethod NotInLibrary = Nothing
+inLibraryMethod (InLibraryArgs libArgs) = case libArgs of
+  InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar ->
+    Just $ LibraryMethod $ InLibraryConfigure elabSharedConfig elabReadyPkg ipiTVar
+  InLibraryPostConfigureArgs sPhase (InLibraryLBI lbi) ->
+    Just $ LibraryMethod $ InLibraryPostConfigure sPhase lbi
+  InLibraryPostConfigureArgs _ NotInLibraryNoLBI ->
+    Nothing
 
 -- TODO: The 'setupWrapper' and 'SetupScriptOptions' should be split into two
 -- parts: one that has no policy and just does as it's told with all the
@@ -446,9 +466,10 @@ getSetup
   :: Verbosity
   -> SetupScriptOptions
   -> Maybe PackageDescription
-  -> AllowInLibrary
-  -> IO ASetup
-getSetup verbosity options mpkg allowInLibrary = do
+  -> Maybe (SetupMethod spec)
+  -- ^ the in-library method, if the arguments permit one
+  -> IO (Setup spec)
+getSetup verbosity options mpkg mbLibraryMethod = do
   pkg <- maybe getPkg return mpkg
   let options' =
         options
@@ -465,15 +486,15 @@ getSetup verbosity options mpkg allowInLibrary = do
       buildType' = case (buildType pkg, isMainLibOrExeComponent options) of
         (Configure, False) -> Simple
         (bt, _) -> bt
-  withSetupMethod verbosity options' pkg buildType' allowInLibrary $
-    \ (version, method, options'') ->
-        ASetup $ Setup
-          { setupMethod = method
-          , setupScriptOptions = options''
-          , setupVersion = version
-          , setupBuildType = buildType'
-          , setupPackage = pkg
-          }
+  (version, method, options'') <-
+    chooseSetupMethod verbosity options' pkg buildType' mbLibraryMethod
+  return Setup
+    { setupMethod = method
+    , setupScriptOptions = options''
+    , setupVersion = version
+    , setupBuildType = buildType'
+    , setupPackage = pkg
+    }
   where
     mbWorkDir = useWorkingDir options
     getPkg =
@@ -483,45 +504,47 @@ getSetup verbosity options mpkg allowInLibrary = do
 -- | Decide if we're going to be able to do a direct internal call to the
 -- entry point in the Cabal library or if we're going to have to compile
 -- and execute an external Setup.hs script.
-withSetupMethod
+chooseSetupMethod
   :: Verbosity
   -> SetupScriptOptions
   -> PackageDescription
   -> BuildType
-  -> AllowInLibrary
-  -> ( forall kind. (Version, SetupMethod kind, SetupScriptOptions ) -> r )
-  -> IO r
-withSetupMethod verbosity options pkg buildType' allowInLibrary with
-  | buildType' == Custom
-      || maybe False (cabalVersion /=) (useCabalSpecVersion options)
-      || not (cabalVersion `withinRange` useCabalVersion options)
-      || allowInLibrary == Don'tAllowInLibrary
-      || (buildType' == Hooks && not hasHooksMain) =
-      withExternalSetupMethod
-  | buildType' == Hooks = do
-      -- NB: needs 'hooksMain' available in Cabal to compile the external
-      -- hooks executable, hence the 'not hasHooksMain' guard above.
-      compileExternalExe verbosity options pkg buildType' WantHooks
-      externalHooksABI <-
-        externalSetupHooksABI verbosity $
-          hooksProgFilePath (useWorkingDir options) (useDistPref options)
-      let internalHooksABI = hooksVersion
-      if externalHooksABI == internalHooksABI
-        then do
-          debug verbosity "Using in-library setup method with build-type Hooks."
-          return $ with (cabalVersion, LibraryMethod, options)
-        else do
-          debug verbosity "Hooks ABI mismatch; falling back to external setup method."
-          withExternalSetupMethod
-  | otherwise = do
-      debug verbosity $ "Using in-library setup method with build-type " ++ show buildType'
-      return $ with (cabalVersion, LibraryMethod, options)
+  -> Maybe (SetupMethod spec)
+  -- ^ the in-library method, if the arguments permit one
+  -> IO (Version, SetupMethod spec, SetupScriptOptions)
+chooseSetupMethod verbosity options pkg buildType' mbLibraryMethod =
+  case mbLibraryMethod of
+    Nothing -> externalMethod
+    Just libraryMethod
+      | buildType' == Custom
+          || maybe False (cabalVersion /=) (useCabalSpecVersion options)
+          || not (cabalVersion `withinRange` useCabalVersion options)
+          || (buildType' == Hooks && not hasHooksMain) ->
+          externalMethod
+      | buildType' == Hooks -> do
+          -- NB: needs 'hooksMain' available in Cabal to compile the external
+          -- hooks executable, hence the 'not hasHooksMain' guard above.
+          compileExternalExe verbosity options pkg buildType' WantHooks
+          externalHooksABI <-
+            externalSetupHooksABI verbosity $
+              hooksProgFilePath (useWorkingDir options) (useDistPref options)
+          let internalHooksABI = hooksVersion
+          if externalHooksABI == internalHooksABI
+            then do
+              debug verbosity "Using in-library setup method with build-type Hooks."
+              return (cabalVersion, libraryMethod, options)
+            else do
+              debug verbosity "Hooks ABI mismatch; falling back to external setup method."
+              externalMethod
+      | otherwise -> do
+          debug verbosity $ "Using in-library setup method with build-type " ++ show buildType'
+          return (cabalVersion, libraryMethod, options)
   where
     hasHooksMain =
       case cabalLibFromOptions options of
         Just (v, _) -> v >= mkVersion [3, 17]
         Nothing     -> False
-    withExternalSetupMethod = do
+    externalMethod = do
       debug verbosity $ "Using external setup method with build-type " ++ show buildType'
       debug verbosity $ case useSetupDependencies options of
         ExplicitSetupDeps deps ->
@@ -530,15 +553,17 @@ withSetupMethod verbosity options pkg buildType' allowInLibrary with
         ImplicitSetupDeps deps ->
           "Using implicit dependencies: "
             ++ show (map (prettyShow . snd) deps)
-      with <$> compileExternalExe verbosity options pkg buildType' WantSetup
+      (version, path, options') <-
+        compileExternalExe verbosity options pkg buildType' WantSetup
+      return (version, ExternalMethod path, options')
 
-runSetupMethod :: WithCallStack (SetupMethod GeneralSetup -> SetupRunner UseGeneralSetup)
+runSetupMethod :: WithCallStack (SetupMethod UseGeneralSetup -> SetupRunner UseGeneralSetup)
 runSetupMethod (ExternalMethod path) = externalSetupMethod path
 
 -- | Run a configured 'Setup' with specific arguments.
 runSetup
   :: Verbosity
-  -> Setup GeneralSetup
+  -> Setup UseGeneralSetup
   -> [String]
   -- ^ command-line arguments
   -> SetupRunnerArgs UseGeneralSetup
@@ -596,7 +621,7 @@ verbosityHack ver args0
 -- | Run a command through a configured 'Setup'.
 runSetupCommand
   :: Verbosity
-  -> Setup GeneralSetup
+  -> Setup UseGeneralSetup
   -> CommandUI flags
   -- ^ command definition
   -> (flags -> CommonSetupFlags)
@@ -631,18 +656,16 @@ setupWrapper
   -> SetupRunnerArgs setupSpec
   -> IO (SetupRunnerRes setupSpec)
 setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wrapperArgs = do
-  let allowInLibrary = case wrapperArgs of
-        InLibraryArgs {} -> AllowInLibrary
-        NotInLibrary -> Don'tAllowInLibrary
-  ASetup (setup :: Setup kind) <- getSetup verbosity options mpkg allowInLibrary
+  setup <- getSetup verbosity options mpkg (inLibraryMethod wrapperArgs)
   let version = setupVersion setup
   flags <- getFlags version
   let
     verbHandles = verbosityHandles verbosity
     extraArgs = getExtraArgs version
-    notInLibraryMethod :: kind ~ GeneralSetup => IO (SetupRunnerRes setupSpec)
-    notInLibraryMethod = do
-      runSetupCommand verbosity setup cmd getCommonFlags flags extraArgs NotInLibrary
+  case setupMethod setup of
+    ExternalMethod path -> do
+      runSetupCommand verbosity setup{setupMethod = ExternalMethod path}
+        cmd getCommonFlags flags extraArgs NotInLibrary
       return $ case wrapperArgs of
        NotInLibrary -> ()
        InLibraryArgs libArgs ->
@@ -657,87 +680,71 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                SRegisterPhase -> ()
                STestPhase     -> ()
                SBenchPhase    -> ()
-  case setupMethod setup of
-    LibraryMethod ->
-      case wrapperArgs of
-        InLibraryArgs libArgs ->
-          case libArgs of
-            InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar -> do
-              -- Start from the pre-configured compiler ProgramDb, augmented
-              -- with all builtin programs (restored as unconfigured).
-              -- This ensures:
-              --   (a) configureAllKnownPrograms inside configureFinal skips
-              --       compiler programs (already configured at project level),
-              --   (b) builtin preprocessors like alex and happy are present as
-              --       unconfigured programs, so configureFinal's
-              --       configureAllKnownPrograms can find them using the
-              --       per-package search path (respecting extra-prog-path).
-              -- See (1) in Note [Constructing the ProgramDb].
+    LibraryMethod (InLibraryConfigure elabSharedConfig elabReadyPkg ipiTVar) -> do
+      -- Start from the pre-configured compiler ProgramDb, augmented
+      -- with all builtin programs (restored as unconfigured).
+      -- This ensures:
+      --   (a) configureAllKnownPrograms inside configureFinal skips
+      --       compiler programs (already configured at project level),
+      --   (b) builtin preprocessors like alex and happy are present as
+      --       unconfigured programs, so configureFinal's
+      --       configureAllKnownPrograms can find them using the
+      --       per-package search path (respecting extra-prog-path).
+      -- See (1) in Note [Constructing the ProgramDb].
 
-              -- Apply per-package user-supplied program args/paths.
-              -- See (2)(a) in Note [Constructing the ProgramDb]
-              baseProgDb <-
-                -- Use 'mkProgramDb' to pass user-supplied per-package
-                -- program options (--PROG-options=...).
-                mkProgramDb verbHandles flags
-                  (restoreProgramDb builtinPrograms $
-                    pkgConfigCompilerProgs elabSharedConfig)
-              setupProgDb <-
-                prependProgramSearchPath verbosity
-                  (useExtraPathEnv options)
-                  (useExtraEnvOverrides options)
-                  baseProgDb
-              -- Read the project InstalledPackageIndex to avoid needing to query
-              -- @ghc-pkg@ to obtain it.
-              -- in Distribution.Client.ProjectBuilding.
-              ipi <- readTVarIO ipiTVar
-              lbi0 <-
-                InLibrary.configure
-                  (InLibrary.libraryConfigureInputsFromElabPackage
-                     verbHandles
-                     (setupBuildType setup)
-                     setupProgDb
-                     elabSharedConfig
-                     elabReadyPkg
-                     ipi
-                     extraArgs
-                  )
-                  flags
-              let progs0 = LBI.withPrograms lbi0
-              -- See (2)(b) in Note [Constructing the ProgramDb]
-              progs1 <- updatePathProgDb verbosity progs0
-              let
-                  lbi =
-                    lbi0
-                      { LBI.withPrograms = progs1
-                      }
-                  mbWorkDir = useWorkingDir options
-                  distPref = useDistPref options
-              -- Write the LocalBuildInfo to disk. This is needed, for instance, if we
-              -- skip re-configuring; we retrieve the LocalBuildInfo stored on disk from
-              -- the previous invocation of 'configure' and pass it to 'build'.
-              writePersistBuildConfig mbWorkDir distPref lbi
-              return (InLibraryLBI lbi)
-            InLibraryPostConfigureArgs sPhase mbLBI ->
-              case mbLBI of
-                NotInLibraryNoLBI ->
-                  error "internal error: in-library post-conf but no LBI"
-                  -- To avoid running into the above error, we must ensure that
-                  -- when we skip re-configuring, we retrieve the cached
-                  -- LocalBuildInfo (see "whenReconfigure"
-                  --   in Distribution.Client.ProjectBuilding.UnpackedPackage).
-                InLibraryLBI lbi ->
-                  case sPhase of
-                    SBuildPhase    -> InLibrary.build    verbHandles flags lbi extraArgs
-                    SHaddockPhase  -> InLibrary.haddock  verbHandles flags lbi extraArgs
-                    SReplPhase     -> InLibrary.repl     verbHandles flags lbi extraArgs
-                    SCopyPhase     -> InLibrary.copy     verbHandles flags lbi extraArgs
-                    STestPhase     -> InLibrary.test     verbHandles flags lbi extraArgs
-                    SBenchPhase    -> InLibrary.bench    verbHandles flags lbi extraArgs
-                    SRegisterPhase -> InLibrary.register             flags lbi extraArgs
-        NotInLibrary ->
-          error "internal error: NotInLibrary argument but getSetup chose InLibrary"
-    ExternalMethod {} -> notInLibraryMethod
+      -- Apply per-package user-supplied program args/paths.
+      -- See (2)(a) in Note [Constructing the ProgramDb]
+      baseProgDb <-
+        -- Use 'mkProgramDb' to pass user-supplied per-package
+        -- program options (--PROG-options=...).
+        mkProgramDb verbHandles flags
+          (restoreProgramDb builtinPrograms $
+            pkgConfigCompilerProgs elabSharedConfig)
+      setupProgDb <-
+        prependProgramSearchPath verbosity
+          (useExtraPathEnv options)
+          (useExtraEnvOverrides options)
+          baseProgDb
+      -- Read the project InstalledPackageIndex to avoid needing to query
+      -- @ghc-pkg@ to obtain it.
+      -- in Distribution.Client.ProjectBuilding.
+      ipi <- readTVarIO ipiTVar
+      lbi0 <-
+        InLibrary.configure
+          (InLibrary.libraryConfigureInputsFromElabPackage
+             verbHandles
+             (setupBuildType setup)
+             setupProgDb
+             elabSharedConfig
+             elabReadyPkg
+             ipi
+             extraArgs
+          )
+          flags
+      let progs0 = LBI.withPrograms lbi0
+      -- See (2)(b) in Note [Constructing the ProgramDb]
+      progs1 <- updatePathProgDb verbosity progs0
+      let
+          lbi =
+            lbi0
+              { LBI.withPrograms = progs1
+              }
+          mbWorkDir = useWorkingDir options
+          distPref = useDistPref options
+      -- Write the LocalBuildInfo to disk. This is needed, for instance, if we
+      -- skip re-configuring; we retrieve the LocalBuildInfo stored on disk from
+      -- the previous invocation of 'configure' and pass it to 'build'.
+      writePersistBuildConfig mbWorkDir distPref lbi
+      return (InLibraryLBI lbi)
+    LibraryMethod (InLibraryPostConfigure sPhase lbi) ->
+      case sPhase of
+        SBuildPhase    -> InLibrary.build    verbHandles flags lbi extraArgs
+        SHaddockPhase  -> InLibrary.haddock  verbHandles flags lbi extraArgs
+        SReplPhase     -> InLibrary.repl     verbHandles flags lbi extraArgs
+        SCopyPhase     -> InLibrary.copy     verbHandles flags lbi extraArgs
+        STestPhase     -> InLibrary.test     verbHandles flags lbi extraArgs
+        SBenchPhase    -> InLibrary.bench    verbHandles flags lbi extraArgs
+        SRegisterPhase -> InLibrary.register             flags lbi extraArgs
 
 {- Note [Constructing the ProgramDb]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -873,7 +880,7 @@ compileExternalExe
   -> PackageDescription
   -> BuildType
   -> WantedExternalExe exe
-  -> IO (If (exe == HooksExe) () (Version, SetupMethod GeneralSetup, SetupScriptOptions))
+  -> IO (If (exe == HooksExe) () (Version, FilePath, SetupScriptOptions))
 compileExternalExe verbosity options pkg bt wantedExe = do
   createDirectoryIfMissingVerbose verbosity True $ i (setupDir options)
   (cabalLibVersion, mCabalLibInstalledPkgId, options') <-
@@ -923,7 +930,7 @@ compileExternalExe verbosity options pkg bt wantedExe = do
 
   case wantedExe of
     WantHooks -> return ()
-    WantSetup -> return (cabalLibVersion, ExternalMethod exePath', options'')
+    WantSetup -> return (cabalLibVersion, exePath', options'')
   where
     mbWorkDir = useWorkingDir options
     -- See Note [Symbolic paths] in Distribution.Utils.Path
@@ -990,38 +997,50 @@ updateSetupScript verbosity options _ Custom = do
     customSetupLhs = workingDir options </> "Setup.lhs"
     i = interpretSymbolicPath (useWorkingDir options)
 updateSetupScript verbosity options cabalLibVersion Hooks = do
+  unless (cabalLibVersion >= mkVersion [3, 13, 0]) $
+    die' verbosity $
+      "Using 'build-type: Hooks' requires Cabal >= 3.13, but Cabal-"
+        ++ prettyShow cabalLibVersion ++ " was selected."
   let customSetupHooks = workingDir options </> "SetupHooks.hs"
   useHs <- doesFileExist customSetupHooks
   unless useHs $
     die' verbosity "Using 'build-type: Hooks' but there is no SetupHooks.hs file."
   copyFileVerbose verbosity customSetupHooks (i (setupHooks options))
-  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript Hooks cabalLibVersion)
+  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript HooksScript cabalLibVersion)
   rewriteFileLBS verbosity (i (hooksHs options)) hooksExeScript
   where
     i = interpretSymbolicPath (useWorkingDir options)
-updateSetupScript verbosity options cabalLibVersion bt' =
-  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript bt' cabalLibVersion)
+updateSetupScript verbosity _ _ Make =
+  die' verbosity "'build-type: Make' is no longer supported."
+updateSetupScript verbosity options cabalLibVersion Simple =
+  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript SimpleScript cabalLibVersion)
+  where
+    i = interpretSymbolicPath (useWorkingDir options)
+updateSetupScript verbosity options cabalLibVersion Configure =
+  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript ConfigureScript cabalLibVersion)
   where
     i = interpretSymbolicPath (useWorkingDir options)
 
+-- | The build types for which we generate the @Setup.hs@ script ourselves.
+data GeneratedSetupScript
+  = SimpleScript
+  | ConfigureScript
+  | -- | Requires Cabal >= 3.13.
+    HooksScript
+
 -- | The source code for a non-Custom 'Setup' executable.
-buildTypeScript :: BuildType -> Version -> BS.ByteString
+buildTypeScript :: GeneratedSetupScript -> Version -> BS.ByteString
 buildTypeScript bt cabalLibVersion = "{-# LANGUAGE NoImplicitPrelude #-}\n" <> case bt of
-  Simple -> "import Distribution.Simple; main = defaultMain\n"
-  Configure
+  SimpleScript -> "import Distribution.Simple; main = defaultMain\n"
+  ConfigureScript
     | cabalLibVersion >= mkVersion [3, 13, 0]
     -> "import Distribution.Simple; main = defaultMainWithSetupHooks autoconfSetupHooks\n"
     | cabalLibVersion >= mkVersion [1, 3, 10]
     -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
     | otherwise
     -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
-  Make -> error "buildtypeScript Make is no longer supported"
-  Hooks
-    | cabalLibVersion >= mkVersion [3, 13, 0]
-    -> "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
-    | otherwise
-    -> error "buildTypeScript Hooks with Cabal < 3.13"
-  Custom -> error "buildTypeScript Custom"
+  HooksScript ->
+    "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
 
 -- | The source code for an external hooks executable.
 hooksExeScript :: BS.ByteString
@@ -1478,12 +1497,14 @@ installedCabalVersion verbosity pkgId _bt options' compiler progdb = do
   let cabalDepName = mkPackageName "Cabal"
       cabalDepVersion = useCabalVersion options'
       options'' = options'{usePackageIndex = Just index}
-  case PackageIndex.lookupDependency index cabalDepName cabalDepVersion of
-    [] ->
+      pkgs = PackageIndex.lookupDependency index cabalDepName cabalDepVersion
+  -- 'lookupDependency' never returns a version without any package, but
+  -- the type does not say so.
+  case nonEmpty [ (v, ipkginfo) | (v, ipkginfo : _) <- pkgs ] of
+    Nothing ->
       dieWithException verbosity $ InstalledCabalVersion (packageName pkgId) (useCabalVersion options')
-    pkgs ->
-      let ipkginfo = fromMaybe err $ safeHead . snd . bestVersion fst $ pkgs
-          err = error "Distribution.Client.installedCabalVersion: empty version list"
+    Just pkgs' ->
+      let ipkginfo = snd $ bestVersion fst pkgs'
        in return
             ( packageVersion ipkginfo
             , Just . IPI.installedComponentId $ ipkginfo
@@ -1495,7 +1516,7 @@ installedCabalVersion verbosity pkgId _bt options' compiler progdb = do
 -- Pick the best version from a non-empty list, preferring the one that
 -- matches or is closest to the currently running @cabal-install@\'s own
 -- @Cabal@ library version.
-bestVersion :: (a -> Version) -> [a] -> a
+bestVersion :: (a -> Version) -> NonEmpty a -> a
 bestVersion f = firstMaximumBy (comparing (preference . f))
   where
     -- Like maximumBy, but picks the first maximum element instead of the
@@ -1507,10 +1528,8 @@ bestVersion f = firstMaximumBy (comparing (preference . f))
     -- `maximumBy cmp . reverse`, but the problem is that the behaviour of
     -- maximumBy is not fully specified in the case when there is not a single
     -- greatest element.
-    firstMaximumBy :: (a -> a -> Ordering) -> [a] -> a
-    firstMaximumBy _ [] =
-      error "Distribution.Client.firstMaximumBy: empty list"
-    firstMaximumBy cmp xs = foldl1' maxBy xs
+    firstMaximumBy :: (a -> a -> Ordering) -> NonEmpty a -> a
+    firstMaximumBy cmp (a0 :| as) = foldl' maxBy a0 as
       where
         maxBy x y = case cmp x y of GT -> x; EQ -> x; LT -> y
 
