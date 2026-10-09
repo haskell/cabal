@@ -106,6 +106,7 @@ library
         Distribution.Client.CmdClean
         Distribution.Client.CmdConfigure
         Distribution.Client.CmdErrorMessages
+        Distribution.Client.Cmd.UI
         Distribution.Client.CmdExec
         Distribution.Client.CmdFreeze
         Distribution.Client.CmdHaddock
@@ -256,6 +257,7 @@ library
       , HTTP       >= 4000.1.5 && < 4000.6
       , mtl        >= 2.0      && < 2.4
       , network-uri >= 2.6.2.0 && < 2.7
+      , optparse-applicative >= 0.18 && < 0.19
       , pretty     >= 1.1      && < 1.2
       , process    >= 1.6.29.0 && < 1.7
       , random     >= 1.2      && < 1.4
