@@ -390,8 +390,23 @@ mainWorker args = do
         Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
 
     parsersByName =
-      [ commandParserByName CmdBuild.buildCommand CmdBuild.buildAction
+      [ commandParserByName CmdConfigure.configureCommand CmdConfigure.configureAction
+      , commandParserByName CmdUpdate.updateCommand CmdUpdate.updateAction
+      , commandParserByName CmdBuild.buildCommand CmdBuild.buildAction
+      , commandParserByName CmdRepl.replCommand CmdRepl.replAction
+      , commandParserByName CmdFreeze.freezeCommand CmdFreeze.freezeAction
+      , commandParserByName CmdHaddock.haddockCommand CmdHaddock.haddockAction
+      , commandParserByName CmdHaddockProject.haddockProjectCommand CmdHaddockProject.haddockProjectAction
       , commandParserByName CmdInstall.installCommand CmdInstall.installAction
+      , commandParserByName CmdRun.runCommand CmdRun.runAction
+      , commandParserByName CmdTest.testCommand CmdTest.testAction
+      , commandParserByName CmdBench.benchCommand CmdBench.benchAction
+      , commandParserByName CmdExec.execCommand CmdExec.execAction
+      , commandParserByName CmdClean.cleanCommand CmdClean.cleanAction
+      , commandParserByName CmdSdist.sdistCommand CmdSdist.sdistAction
+      , commandParserByName CmdTarget.targetCommand CmdTarget.targetAction
+      , commandParserByName CmdGenBounds.genBoundsCommand CmdGenBounds.genBoundsAction
+      , commandParserByName CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
       ]
 
     globalCmd = globalCommand commands
