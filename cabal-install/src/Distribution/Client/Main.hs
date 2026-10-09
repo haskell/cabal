@@ -182,6 +182,10 @@ import Distribution.PackageDescription
   , buildable
   )
 
+import Distribution.Client.Cmd.UI
+  ( commandParserByName
+  , parseCommandWithOptparseMany
+  )
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import Distribution.PackageDescription.PrettyPrint
@@ -345,7 +349,7 @@ warnIfAssertionsAreEnabled =
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
-    command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
+    command <- commandsParse args
     case command of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
@@ -377,6 +381,21 @@ mainWorker args = do
             warnIfAssertionsAreEnabled
             action globalFlags
   where
+    -- Parse the command line with optparse-applicative for the commands that
+    -- support it, falling back to the command registry for the others.
+    commandsParse :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
+    commandsParse argv =
+      case parseCommandWithOptparseMany globalCmd parsersByName argv of
+        Just parsed -> pure parsed
+        Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
+
+    parsersByName =
+      [ commandParserByName CmdBuild.buildCommand CmdBuild.buildAction
+      , commandParserByName CmdInstall.installCommand CmdInstall.installAction
+      ]
+
+    globalCmd = globalCommand commands
+
     delegateToExternal
       :: [Command Action]
       -> String
