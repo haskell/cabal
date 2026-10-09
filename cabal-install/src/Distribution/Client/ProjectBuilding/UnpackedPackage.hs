@@ -20,7 +20,6 @@ module Distribution.Client.ProjectBuilding.UnpackedPackage
     -- ** Auxiliary definitions
   , buildAndRegisterUnpackedPackage
   , PackageBuildingPhase
-  , DeferredBenchmark
 
     -- ** Utilities
   , annotateFailure
@@ -157,10 +156,6 @@ data PackageBuildingPhase r where
     -> PackageBuildingPhase ()
   PBTestPhase :: {runTest :: IO ()} -> PackageBuildingPhase ()
   PBBenchPhase :: {runBench :: IO ()} -> PackageBuildingPhase ()
-
--- | The benchmarks of a unit, to be run once all the units of the plan are
--- built. See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
-type DeferredBenchmark = IO ()
 
 -- | Structures the phases of building and registering a package amongst others
 -- (see t'PackageBuildingPhase'). Delegates logic specific to a certain
@@ -300,7 +295,7 @@ buildAndRegisterUnpackedPackage
     let deferredBenchmark
           | null (elabBenchTargets pkg) = Nothing
           | otherwise =
-              Just $
+              Just . DeferredBenchmark $
                 timedDelegate $
                   PBBenchPhase $
                     annotateFailure mlogFile BenchFailed $
@@ -542,7 +537,7 @@ buildInplaceUnpackedPackage
   -> BuildStatusRebuild
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
-  -> IO (BuildResult, Maybe DeferredBenchmark)
+  -> IO BuildResult
 buildInplaceUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout
@@ -646,13 +641,12 @@ buildInplaceUnpackedPackage
           PBBenchPhase{runBench} -> runBench
 
     return
-      ( BuildResult
-          { buildResultDocs = docsResult
-          , buildResultTests = testsResult
-          , buildResultLogFile = Nothing
-          }
-      , deferredBenchmark
-      )
+      BuildResult
+        { buildResultDocs = docsResult
+        , buildResultTests = testsResult
+        , buildResultLogFile = Nothing
+        , buildResultBenchmark = deferredBenchmark
+        }
     where
       docsResult = DocsNotTried
       testsResult = TestsNotTried
@@ -780,7 +774,7 @@ buildAndInstallUnpackedPackage
   -> TVar InstalledPackageIndex
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
-  -> IO (BuildResult, Maybe DeferredBenchmark)
+  -> IO BuildResult
 buildAndInstallUnpackedPackage
   verbosity
   distDirLayout
@@ -918,13 +912,12 @@ buildAndInstallUnpackedPackage
     noticeProgress ProgressCompleted
 
     return
-      ( BuildResult
-          { buildResultDocs = docsResult
-          , buildResultTests = testsResult
-          , buildResultLogFile = mlogFile
-          }
-      , deferredBenchmark
-      )
+      BuildResult
+        { buildResultDocs = docsResult
+        , buildResultTests = testsResult
+        , buildResultLogFile = mlogFile
+        , buildResultBenchmark = deferredBenchmark
+        }
     where
       uid = installedUnitId rpkg
       pkgid = packageId rpkg
