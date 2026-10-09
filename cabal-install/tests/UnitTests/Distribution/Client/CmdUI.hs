@@ -17,6 +17,7 @@ import Distribution.Simple.Command
   , commandParseArgs
   , commandShowOptions
   )
+import Distribution.Utils.Generic (ordNub)
 
 import qualified Distribution.Client.CmdBench as CmdBench
 import qualified Distribution.Client.CmdBuild as CmdBuild
@@ -36,8 +37,9 @@ import qualified Distribution.Client.CmdTarget as CmdTarget
 import qualified Distribution.Client.CmdTest as CmdTest
 import qualified Distribution.Client.CmdUpdate as CmdUpdate
 
+import Control.Monad (void)
 import Data.Either (isRight)
-import Data.List (inits, isPrefixOf, nub)
+import Data.List (inits, isPrefixOf)
 import Data.Maybe (listToMaybe)
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -112,8 +114,8 @@ coverageTest (SomeCommand command) =
       , Just reader <- [readerOf descr]
       , null (acceptedValues reader)
       ]
-    readerOf (ReqArg _ _ _ reader _) = Just (fmap (const ()) . runReadE reader)
-    readerOf (OptArg _ _ _ reader _ _) = Just (fmap (const ()) . runReadE reader)
+    readerOf (ReqArg _ _ _ reader _) = Just (void . runReadE reader)
+    readerOf (OptArg _ _ _ reader _ _) = Just (void . runReadE reader)
     readerOf _ = Nothing
 
 -- | Candidate argument values; each option uses the ones its reader accepts.
@@ -176,7 +178,7 @@ optionSpellings command = concatMap spellings descrs ++ abbreviations
 
     -- The names the legacy parser disambiguates against include the common
     -- --help and --list-options, which the generated lines never use.
-    allLongNames = nub $ ["help", "list-options"] ++ concatMap longNamesOf descrs
+    allLongNames = ordNub (["help", "list-options"] ++ concatMap longNamesOf descrs)
     longNamesOf (ReqArg _ (_, longs) _ _ _) = longs
     longNamesOf (OptArg _ (_, longs) _ _ _ _) = longs
     longNamesOf (ChoiceOpt choices) = concat [longs | (_, (_, longs), _, _) <- choices]
