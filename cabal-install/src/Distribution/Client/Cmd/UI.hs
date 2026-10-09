@@ -199,10 +199,12 @@ optionLongNames fields =
 -- | Expand each abbreviated long option to its full name, as
 -- "Distribution.GetOpt" does: an exact name wins, otherwise a unique prefix
 -- is accepted, and an ambiguous prefix is an error naming the candidates.
--- optparse-applicative's own disambiguation has no preference for an exact
--- name, so @--lib@ would be ambiguous with @--libdir@. Everything after
--- @--@ is left alone, as are unknown names, which optparse-applicative
--- reports.
+-- optparse-applicative's own 'disambiguate' preference gives no precedence
+-- to an exact name, so @--lib@ would be ambiguous with @--libdir@; upstream
+-- considers that correct and will not change it, see
+-- <https://github.com/pcapriotti/optparse-applicative/issues/419>.
+-- Everything after @--@ is left alone, as are unknown names, which
+-- optparse-applicative reports.
 expandAbbreviations :: [String] -> [String] -> Either String [String]
 expandAbbreviations longNames = go
   where
