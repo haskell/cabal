@@ -16,6 +16,8 @@ on:
       - doc/cmd-v2-hidden-help/**
       - doc/setup-help/**
       - cabal-install/src/Distribution/Client/Cmd*.hs
+      - cabal-install/src/Distribution/Client/NixStyleOptions.hs
+      - cabal-install/src/Distribution/Client/ProjectFlags.hs
       - cabal-install/src/Distribution/Client/Main.hs
       - cabal-install/src/Distribution/Client/Setup.hs
       - Cabal/src/Distribution/Simple.hs
