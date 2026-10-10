@@ -1,0 +1,21 @@
+#!/bin/sh
+# A hand-written configure script: check that Cabal tells us which compiler
+# it is configuring the package with, by path rather than by name.
+hc=; hcpkg=; hcvar=
+for arg in "$@"; do
+  case $arg in
+    --with-compiler=*) hc=${arg#--with-compiler=} ;;
+    --with-hc-pkg=*) hcpkg=${arg#--with-hc-pkg=} ;;
+    HC=*) hcvar=${arg#HC=} ;;
+  esac
+done
+fail() { echo "configure: $1" >&2; exit 1; }
+[ -n "$hc" ] || fail "no --with-compiler argument"
+[ -x "$hc" ] || fail "--with-compiler is not an executable path: $hc"
+[ -n "$hcpkg" ] || fail "no --with-hc-pkg argument"
+[ -x "$hcpkg" ] || fail "--with-hc-pkg is not an executable path: $hcpkg"
+[ "$hcvar" = "$hc" ] || fail "HC= argument ($hcvar) differs from --with-compiler ($hc)"
+[ -n "$GHC" ] || fail "GHC is not set in the environment"
+[ "$GHC" = "$hc" ] || fail "GHC ($GHC) differs from --with-compiler ($hc)"
+[ -n "$GHC_PKG" ] || fail "GHC_PKG is not set in the environment"
+"$hc" --numeric-version > /dev/null || fail "cannot run $hc"
