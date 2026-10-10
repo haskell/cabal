@@ -1,4 +1,5 @@
 # cabal v2-sdist
 Wrote tarball sdist to <ROOT>/dist-newstyle/sdist/a-0.1.tar.gz
 Wrote tarball sdist to <ROOT>/dist-newstyle/sdist/b-0.1.tar.gz
-Wrote tarball sdist to <ROOT>/dist-newstyle/sdist/a-0.1.tar.gz
+# cabal v2-sdist
+Wrote source list to <ROOT>/lists/a-0.1.list

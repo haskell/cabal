@@ -115,6 +115,7 @@ import Distribution.Simple.Utils
   ( dieWithException
   , notice
   , ordNub
+  , ordNubBy
   , withOutputMarker
   , wrapText
   )
@@ -372,7 +373,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
 reifyTargetSelectors :: [PackageSpecifier UnresolvedSourcePackage] -> [TargetSelector] -> Either [TargetProblem] [UnresolvedSourcePackage]
 reifyTargetSelectors pkgs sels =
   case partitionEithers (foldMap go sels) of
-    ([], sels') -> Right sels'
+    ([], sels') -> Right (ordNubBy packageId sels')
     (errs, _) -> Left errs
   where
     -- there can be pkgs which are in extra-packages:
