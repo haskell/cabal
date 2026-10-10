@@ -1,0 +1,48 @@
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV3_18,
+    package = PackageIdentifier {
+      pkgName = PackageName "tlc",
+      pkgVersion = mkVersion [0, 1]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis = "",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Nothing,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [
+      SymbolicPath "src/runtime/*.c",
+      SymbolicPath "lib/**/*.hs"],
+    dataDir = SymbolicPath "lib",
+    extraSrcFiles = [
+      SymbolicPath "changelog"],
+    extraTmpFiles = [],
+    extraDocFiles = [
+      SymbolicPath "docs/*.md"],
+    extraFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Nothing,
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [],
+  condTestSuites = [],
+  condBenchmarks = []}
