@@ -1,0 +1,3 @@
+-- The glob pattern syntax example from the users guide.
+-- https://github.com/haskell/cabal/blob/d8c1b6f68df0a736c32a15ae85db9ffaf002ecb8/doc/cabal-project-description-file.rst?plain=1#L146
+packages: */*.cabal ../{foo,bar}/
