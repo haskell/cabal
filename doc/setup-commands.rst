@@ -167,7 +167,6 @@ The following options govern the programs used to process the source
 files of a package:
 
 .. option:: -g, --ghc
-            --ghcjs
             --uhc
             --haskell-suite
 
@@ -203,9 +202,8 @@ files of a package:
     ``--with-cpphs=/usr/local/bin/cpphs``. The full list of accepted
     programs is as follows:
     ``alex``, ``ar``, ``c2hs``, ``cpphs``, ``doctest``, ``gcc``, ``ghc``,
-    ``ghc-pkg``, ``ghcjs``, ``ghcjs-pkg``, ``haddock``, ``happy``,
-    ``hpc``, ``hsc2hs``, ``hscolour``, ``jhc``, ``ld``, ``pkg-config``,
-    ``runghc``, ``strip``, ``tar``, ``uhc``.
+    ``ghc-pkg``, ``haddock``, ``happy``, ``hpc``, ``hsc2hs``, ``hscolour``,
+    ``jhc``, ``ld``, ``pkg-config``, ``runghc``, ``strip``, ``tar``, ``uhc``.
 
 .. option:: --PROG-options=OPTS
 
@@ -451,8 +449,9 @@ $arch
     e.g. ``i386``, ``x86_64``, ``ppc`` or ``sparc``
 $abitag
     An optional tag that a compiler can use for telling incompatible
-    ABI's on the same architecture apart. GHCJS encodes the underlying
-    GHC version in the ABI tag.
+    ABI's on the same architecture apart. GHC uses the part of its project
+    unit id that is not already in its version, e.g. ``inplace`` for an
+    in-tree build.
 $abi
     A shortcut for getting a path that completely identifies the
     platform in terms of binary compatibility. Expands to the same value

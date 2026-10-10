@@ -28,10 +28,10 @@
 --
 -- The division between the shared and per-package config is not set in stone
 -- for all time. For example if we wanted to generalise the install plan to
--- describe a situation where we want to build some packages with GHC and some
--- with GHCJS then the platform and compiler would no longer be shared between
--- all packages but would have to be per-package (probably with some sanity
--- condition on the graph structure).
+-- describe a situation where we want to build some packages with one compiler
+-- and some with another then the platform and compiler would no longer be
+-- shared between all packages but would have to be per-package (probably with
+-- some sanity condition on the graph structure).
 module Distribution.Client.ProjectPlanning
   ( -- * Types for the elaborated install plan
     ElaboratedInstallPlan
@@ -214,7 +214,6 @@ import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import qualified Distribution.Simple.Setup as Cabal
@@ -1540,7 +1539,7 @@ planPackages
         | isGHC, compVer >= mkVersion [8, 2] = mkVersion [2, 0]
         | otherwise = mkVersion [1, 24]
         where
-          isGHC = compFlav `elem` [GHC, GHCJS]
+          isGHC = compFlav == GHC
           compFlav = compilerFlavor comp
           compVer = compilerVersion comp
 
@@ -2585,7 +2584,6 @@ elaborateInstallPlan
       compilerShouldUseSharedLibByDefault =
         case compilerFlavor compiler of
           GHC -> GHC.compilerBuildWay compiler == DynWay && canBuildSharedLibs
-          GHCJS -> GHCJS.isDynamic compiler
           _ -> False
 
       compilerShouldUseProfilingLibByDefault =

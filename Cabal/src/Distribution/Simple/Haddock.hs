@@ -31,7 +31,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
 
@@ -657,11 +656,10 @@ componentGhcOptions
 componentGhcOptions verbosity lbi bi clbi odir =
   let f = case compilerFlavor (compiler lbi) of
         GHC -> GHC.componentGhcOptions
-        GHCJS -> GHCJS.componentGhcOptions
         _ ->
           error $
             "Distribution.Simple.Haddock.componentGhcOptions:"
-              ++ "haddock only supports GHC and GHCJS"
+              ++ "haddock only supports GHC"
    in f verbosity lbi bi clbi odir
 
 {-
@@ -1041,8 +1039,7 @@ getGhcLibDir
 getGhcLibDir verbosity lbi = do
   l <- case compilerFlavor (compiler lbi) of
     GHC -> GHC.getLibDir verbosity lbi
-    GHCJS -> GHCJS.getLibDir verbosity lbi
-    _ -> error "haddock only supports GHC and GHCJS"
+    _ -> error "haddock only supports GHC"
   return $ mempty{argGhcLibDir = Flag l}
 
 -- | If Hi Haddock is supported, this function creates temporary directories

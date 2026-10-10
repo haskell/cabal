@@ -158,7 +158,7 @@ compilerVersion = (\(CompilerId _ v) -> v) . compilerId
 -- | Is this compiler compatible with the compiler flavour we're interested in?
 --
 -- For example this checks if the compiler is actually GHC or is another
--- compiler that claims to be compatible with some version of GHC, e.g. GHCJS.
+-- compiler that claims to be compatible with some version of GHC.
 --
 -- > if compilerCompatFlavor GHC compiler then ... else ...
 compilerCompatFlavor :: CompilerFlavor -> Compiler -> Bool
@@ -517,7 +517,6 @@ coverageSupported :: Compiler -> Bool
 coverageSupported comp =
   case compilerFlavor comp of
     GHC -> True
-    GHCJS -> True
     _ -> False
 
 -- | Does this compiler support profiling?
@@ -525,7 +524,6 @@ profilingSupported :: Compiler -> Bool
 profilingSupported comp =
   case compilerFlavor comp of
     GHC -> True
-    GHCJS -> True
     _ -> False
 
 -- | Returns Just if we can certainly determine whether a way is supported
@@ -595,7 +593,6 @@ ghcSupported :: String -> Compiler -> Bool
 ghcSupported key comp =
   case compilerFlavor comp of
     GHC -> checkProp
-    GHCJS -> checkProp
     _ -> False
   where
     checkProp =

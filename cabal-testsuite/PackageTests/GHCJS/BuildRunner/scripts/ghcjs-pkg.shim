@@ -1,2 +1,0 @@
-path = "sh.exe"
-args = "scripts/ghcjs-pkg"
