@@ -120,6 +120,7 @@ import Distribution.Client.Targets
   )
 
 import qualified Distribution.Client.CmdBench as CmdBench
+import qualified Distribution.Client.CmdBuck2 as CmdBuck2
 import qualified Distribution.Client.CmdBuild as CmdBuild
 import qualified Distribution.Client.CmdClean as CmdClean
 import qualified Distribution.Client.CmdConfigure as CmdConfigure
@@ -473,6 +474,7 @@ mainWorker args = do
       , hiddenCmd actAsSetupCommand actAsSetupAction
       , hiddenCmd manpageCommand (manpageAction commandSpecs)
       , regularCmd CmdListBin.listbinCommand CmdListBin.listbinAction
+      , regularCmd CmdBuck2.buck2Command CmdBuck2.buck2Action
       ]
         ++ concat
           [ newCmd CmdConfigure.configureCommand CmdConfigure.configureAction

@@ -100,8 +100,19 @@ library
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
+        Distribution.Client.Buck2.BuildDependencies
+        Distribution.Client.Buck2.Configure
+        Distribution.Client.Buck2.Generate
+        Distribution.Client.Buck2.LocalPackages
+        Distribution.Client.Buck2.Prebuilt
+        Distribution.Client.Buck2.Schedule
+        Distribution.Client.Buck2.Setup
+        Distribution.Client.Buck2.Spec
+        Distribution.Client.Buck2.Starlark
+        Distribution.Client.Buck2.Write
         Distribution.Client.Check
         Distribution.Client.CmdBench
+        Distribution.Client.CmdBuck2
         Distribution.Client.CmdBuild
         Distribution.Client.CmdClean
         Distribution.Client.CmdConfigure

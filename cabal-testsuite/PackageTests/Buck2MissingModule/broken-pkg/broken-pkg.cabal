@@ -1,0 +1,22 @@
+cabal-version:      2.4
+name:               broken-pkg
+version:            0.1.0.0
+build-type:         Simple
+
+library
+  exposed-modules:  Present, Absent
+  hs-source-dirs:   src
+  build-depends:    base
+  default-language: Haskell2010
+
+executable uses-lib
+  main-is:          UsesLib.hs
+  hs-source-dirs:   app
+  build-depends:    base, broken-pkg
+  default-language: Haskell2010
+
+executable standalone
+  main-is:          Standalone.hs
+  hs-source-dirs:   app
+  build-depends:    base
+  default-language: Haskell2010

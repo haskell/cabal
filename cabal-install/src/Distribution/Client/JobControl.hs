@@ -27,6 +27,7 @@ module Distribution.Client.JobControl
   , criticalSection
 
     -- * Higher level utils
+  , parStratNumJobs
   , newJobControlFromParStrat
   , withJobControl
   , mapConcurrentWithJobs
@@ -276,6 +277,13 @@ criticalSection (Lock lck) act = bracket_ (takeMVar lck) (putMVar lck ()) act
 --------------------------------------------------------------------------------
 -- More high level utils
 --------------------------------------------------------------------------------
+
+-- | How many jobs a parallel strategy allows to run at once: @-j@ with no
+-- number means one per processor, @-jsem N@ is treated as @-jN@.
+parStratNumJobs :: ParStratInstall -> Int
+parStratNumJobs Serial = 1
+parStratNumJobs (NumJobs n) = fromMaybe numberOfProcessors n
+parStratNumJobs (UseSem n) = n
 
 newJobControlFromParStrat
   :: Verbosity

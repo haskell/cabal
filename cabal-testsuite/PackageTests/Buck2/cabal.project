@@ -1,0 +1,5 @@
+packages: lib-pkg exe-pkg
+
+package exe-pkg
+  ghc-options: -fno-ignore-asserts
+  test-options: --opt-one --opt-two=$test-suite

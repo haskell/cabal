@@ -109,3 +109,12 @@ bench.html
 
 # ignore the downloaded binary files
 scripts/release/binary-downloads/
+
+# Output of cabal buck2
+BUCK
+BUCK.cabal.bzl
+cabal-buck2/
+/.buckconfig
+/PACKAGE
+/buck-out
+/third-party/haskell
