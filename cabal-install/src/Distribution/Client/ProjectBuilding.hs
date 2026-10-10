@@ -84,7 +84,8 @@ import qualified Data.Set as Set
 import qualified Text.PrettyPrint as Disp
 
 import Control.Concurrent.STM (TVar, newTVarIO)
-import Control.Exception (assert, handle)
+import Control.Exception (assert, handle, try)
+import Data.Either (isLeft)
 import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
@@ -381,7 +382,7 @@ rebuildTargets
 
         -- Concurrency control: create the job controller and concurrency limits
         -- for downloading, building and installing.
-        withJobControl (newJobControlFromParStrat verbosity (Just compiler) buildSettingNumJobs Nothing) $ \jobControl -> do
+        buildOutcomes <- withJobControl (newJobControlFromParStrat verbosity (Just compiler) buildSettingNumJobs Nothing) $ \jobControl -> do
           -- Before traversing the install plan, preemptively find all packages that
           -- will need to be downloaded and start downloading them.
           asyncDownloadPackages
@@ -415,6 +416,10 @@ rebuildTargets
                       ipiTVar
                       pkg
                       pkgBuildStatus
+
+        -- Once the units are built, run their benchmarks.
+        -- See Note [Running benchmarks]
+        runDeferredBenchmarks keepGoing installPlan buildOutcomes
     where
       keepGoing = buildSettingKeepGoing
       withRepoCtx =
@@ -497,6 +502,62 @@ configuring individual packages.
     invocation.
 -}
 
+{- Note [Running benchmarks]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Benchmarks must not run at the same time as other benchmarks, or while
+something else is being built: they would compete for resources, which skews
+their results (#7557).
+
+Yet 'InstallPlan.execute' builds the units of the plan in parallel. A unit is
+a single component of a package, or a whole package when it cannot be built
+per component (see 'NotPerComponentReason'). So the benchmark suites of a
+project, even those of the same package, are usually separate units. If each
+unit ran its benchmarks in its bench phase, right after it is built, they
+could run at the same time as each other, or while other units are still
+being built. (A whole-package unit runs all of its benchmarks with a single
+@Setup bench@ invocation, which runs them one at a time.)
+
+So, the bench phase of a unit (see 'buildAndRegisterUnpackedPackage') does not
+run its benchmarks, but returns them as a 'DeferredBenchmark', which is
+recorded in the 'BuildResult' of the unit. Once all the units are built,
+'rebuildTargets' runs them one at a time, in plan order, with
+'runDeferredBenchmarks', and records their failures in the 'BuildOutcomes'.
+
+Unless we keep going after failures, no benchmark is run if a unit failed to
+build, and no more benchmarks are run once one of them failed.
+-}
+
+-- | Run the deferred benchmarks of the units that were built successfully,
+-- one at a time, in plan order. See Note [Running benchmarks].
+runDeferredBenchmarks
+  :: Bool
+  -- ^ Keep going after failure
+  -> ElaboratedInstallPlan
+  -> BuildOutcomes
+  -> IO BuildOutcomes
+runDeferredBenchmarks keepGoing installPlan buildOutcomes
+  | not keepGoing && any isLeft buildOutcomes = return buildOutcomes
+  | otherwise = go buildOutcomes (InstallPlan.executionOrder installPlan)
+  where
+    -- Run the benchmarks of the given units, in order, and record their
+    -- failures. Unless we keep going, stop at the first failure.
+    go :: BuildOutcomes -> [ElaboratedReadyPackage] -> IO BuildOutcomes
+    go outcomes [] = return outcomes
+    go outcomes (pkg : pkgs)
+      | Just (Right result) <- Map.lookup uid outcomes
+      , Just bench <- buildResultBenchmark result = do
+          outcome <- try (runDeferredBenchmark bench)
+          case outcome of
+            Right () -> go outcomes pkgs
+            Left failure
+              | keepGoing -> go outcomes' pkgs
+              | otherwise -> return outcomes'
+              where
+                outcomes' = Map.insert uid (Left failure) outcomes
+      | otherwise = go outcomes pkgs
+      where
+        uid = nodeKey pkg
+
 -- | Create a package DB if it does not currently exist.
 createPackageDBIfMissing
   :: Verbosity
@@ -538,7 +599,9 @@ rebuildTarget
   -> BuildTimeSettings
   -> AsyncFetchMap
   -> Lock
+  -- ^ Serialises package registration
   -> Lock
+  -- ^ Serialises access to the setup executable cache
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> TVar InstalledPackageIndex
@@ -572,7 +635,13 @@ rebuildTarget
           BuildStatusDownload ->
             void $ waitAsyncPackageDownload verbosity downloadMap pkg
           _ -> return ()
-        return $ BuildResult DocsNotTried TestsNotTried Nothing
+        return
+          BuildResult
+            { buildResultDocs = DocsNotTried
+            , buildResultTests = TestsNotTried
+            , buildResultLogFile = Nothing
+            , buildResultBenchmark = Nothing
+            }
     | otherwise =
         -- We rely on the 'BuildStatus' to decide which phase to start from:
         case pkgBuildStatus of
