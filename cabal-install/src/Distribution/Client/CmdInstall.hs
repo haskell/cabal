@@ -112,6 +112,7 @@ import Distribution.Package
   ( Package (..)
   , PackageName
   , mkPackageName
+  , packageName
   , unPackageName
   )
 import Distribution.Simple.BuildPaths
@@ -775,13 +776,19 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelector
 
       localPkgs = sdistize <$> localPackages baseCtx
 
-      gatherTargets :: UnitId -> TargetSelector
-      gatherTargets targetId = TargetPackageNamed pkgName targetFilter
-        where
-          targetUnit = Map.findWithDefault (error "cannot find target unit") targetId planMap
-          PackageIdentifier{..} = packageId targetUnit
+      localTargets =
+        ordNub
+          [ gatherTarget pkgName ts
+          | (unitId, components) <- Map.toList targetsMap
+          , let pkgName = packageName (planMap Map.! unitId)
+          , (_, selectors) <- components
+          , ts <- NE.toList selectors
+          ]
 
-      localTargets = map gatherTargets (Map.keys targetsMap)
+      gatherTarget pkgName ts = case ts of
+        TargetComponent{} -> ts
+        TargetComponentUnknown{} -> ts
+        _ -> TargetPackageNamed pkgName targetFilter
 
       hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
       hackagePkgs = [NamedPackage pn [] | pn <- hackageNames]
