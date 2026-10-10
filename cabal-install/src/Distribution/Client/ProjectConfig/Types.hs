@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 -- | Handling project configuration, types.
 module Distribution.Client.ProjectConfig.Types
@@ -500,4 +501,53 @@ data BuildTimeSettings = BuildTimeSettings
   }
   deriving (Generic)
 
-instance NFData BuildTimeSettings
+-- | This instance avoids the deepseq deprecation of @NFData (a -> b)@ triggered
+-- by buildSettingLogFile the alternative @instance NFData BuildTimeSettings@.
+instance NFData BuildTimeSettings where
+  rnf
+    BuildTimeSettings
+      { buildSettingDryRun
+      , buildSettingOnlyDeps
+      , buildSettingOnlyDownload
+      , buildSettingSummaryFile
+      , buildSettingLogFile
+      , buildSettingLogVerbosity
+      , buildSettingBuildReports
+      , buildSettingReportPlanningFailure
+      , buildSettingSymlinkBinDir
+      , buildSettingNumJobs
+      , buildSettingKeepGoing
+      , buildSettingOfflineMode
+      , buildSettingKeepTempFiles
+      , buildSettingRemoteRepos
+      , buildSettingLocalNoIndexRepos
+      , buildSettingCacheDir
+      , buildSettingHttpTransport
+      , buildSettingIgnoreExpiry
+      , buildSettingProgPathExtra
+      , buildSettingHaddockOpen
+      , buildSettingBuildTimings
+      } =
+      rnf
+        [ rnf buildSettingDryRun
+        , rnf buildSettingOnlyDeps
+        , rnf buildSettingOnlyDownload
+        , rnf buildSettingSummaryFile
+        , maybe () (`seq` ()) buildSettingLogFile
+        , rnf buildSettingLogVerbosity
+        , rnf buildSettingBuildReports
+        , rnf buildSettingReportPlanningFailure
+        , rnf buildSettingSymlinkBinDir
+        , rnf buildSettingNumJobs
+        , rnf buildSettingKeepGoing
+        , rnf buildSettingOfflineMode
+        , rnf buildSettingKeepTempFiles
+        , rnf buildSettingRemoteRepos
+        , rnf buildSettingLocalNoIndexRepos
+        , rnf buildSettingCacheDir
+        , rnf buildSettingHttpTransport
+        , rnf buildSettingIgnoreExpiry
+        , rnf buildSettingProgPathExtra
+        , rnf buildSettingHaddockOpen
+        , rnf buildSettingBuildTimings
+        ]
