@@ -83,6 +83,7 @@ warningTests = testGroup "warnings triggered"
     , warningTest PWTSpecVersion       "specversion-a.cabal"
     , warningTest PWTSpecVersion       "specversion-b.cabal"
     , warningTest PWTSpecVersion       "specversion-c.cabal"
+    , warningTest PWTQuotedComponentNames "quoted-component.cabal"
     -- TODO: not implemented yet
     -- , warningTest PWTExtraTestModule   "extratestmodule.cabal"
     ]
