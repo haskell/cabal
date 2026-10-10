@@ -89,6 +89,7 @@ import Control.Monad (msum)
 import Data.Char (isLower)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
+import qualified Data.Text as Text
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -606,7 +607,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
                   (withProfLibDetail lbi)
             , --  ghcOptHiSuffix      = toFlag "p_hi",
               --  ghcOptObjSuffix     = toFlag "p_o",
-              ghcOptExtra = hcProfOptions GHC libBi
+              ghcOptExtra = map Text.unpack $ hcProfOptions GHC libBi
             , ghcOptHPCDir = hpcdir Hpc.Prof
             }
 
@@ -617,7 +618,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
             , ghcOptFPic = toFlag True
             , --  ghcOptHiSuffix    = toFlag "dyn_hi",
               --  ghcOptObjSuffix   = toFlag "dyn_o",
-              ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
+              ghcOptExtra = map Text.unpack $ hcOptions GHC libBi ++ hcSharedOptions GHC libBi
             , ghcOptHPCDir = hpcdir Hpc.Dyn
             }
 
@@ -789,7 +790,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
               , ghcOptDynLinkMode = toFlag GhcDynamicOnly
               , ghcOptInputFiles = toNubListR dynamicObjectFiles
               , ghcOptOutputFile = toFlag sharedLibFilePath
-              , ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
+              , ghcOptExtra = map Text.unpack $ hcOptions GHC libBi ++ hcSharedOptions GHC libBi
               , ghcOptHideAllPackages = toFlag True
               , ghcOptNoAutoLinkPackages = toFlag True
               , ghcOptPackageDBs = withPackageDB lbi
@@ -810,7 +811,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
               , ghcOptPackages =
                   toNubListR $
                     Internal.mkGhcOptPackages mempty clbi
-              , ghcOptLinkLibs = extraLibs libBi
+              , ghcOptLinkLibs = map Text.unpack $ extraLibs libBi
               , ghcOptLinkLibPath = toNubListR $ extraLibDirs libBi
               , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
               , ghcOptLinkFrameworkDirs =
@@ -822,7 +823,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
               { ghcOptStaticLib = toFlag True
               , ghcOptInputFiles = toNubListR staticObjectFiles
               , ghcOptOutputFile = toFlag staticLibFilePath
-              , ghcOptExtra = hcStaticOptions GHC libBi
+              , ghcOptExtra = map Text.unpack $ hcStaticOptions GHC libBi
               , ghcOptHideAllPackages = toFlag True
               , ghcOptNoAutoLinkPackages = toFlag True
               , ghcOptPackageDBs = withPackageDB lbi
@@ -843,7 +844,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
               , ghcOptPackages =
                   toNubListR $
                     Internal.mkGhcOptPackages mempty clbi
-              , ghcOptLinkLibs = extraLibs libBi
+              , ghcOptLinkLibs = map Text.unpack $ extraLibs libBi
               , ghcOptLinkLibPath = toNubListR $ extraLibDirs libBi
               }
 
@@ -1077,7 +1078,7 @@ exeMainModuleName Executable{buildInfo = bnfo} =
   -- Moreover, -main-is when parsed left-to-right can update either
   -- the "Main" module name, or the "main" function name, or both,
   -- see also 'decodeMainIsArg'.
-  msum $ reverse $ map decodeMainIsArg $ findIsMainArgs ghcopts
+  msum $ reverse $ map decodeMainIsArg $ findIsMainArgs $ map Text.unpack ghcopts
   where
     ghcopts = hcOptions GHC bnfo
 
@@ -1321,7 +1322,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                   (withProfExeDetail lbi)
             , ghcOptHiSuffix = toFlag "p_hi"
             , ghcOptObjSuffix = toFlag "p_o"
-            , ghcOptExtra = hcProfOptions GHC bnfo
+            , ghcOptExtra = map Text.unpack $ hcProfOptions GHC bnfo
             , ghcOptHPCDir = hpcdir Hpc.Prof
             }
       dynOpts =
@@ -1332,7 +1333,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
               ghcOptFPic = toFlag True
             , ghcOptHiSuffix = toFlag "dyn_hi"
             , ghcOptObjSuffix = toFlag "dyn_o"
-            , ghcOptExtra = hcOptions GHC bnfo ++ hcSharedOptions GHC bnfo
+            , ghcOptExtra = map Text.unpack $ hcOptions GHC bnfo ++ hcSharedOptions GHC bnfo
             , ghcOptHPCDir = hpcdir Hpc.Dyn
             }
       dynTooOpts =
@@ -1345,8 +1346,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
             }
       linkerOpts =
         mempty
-          { ghcOptLinkOptions = PD.ldOptions bnfo
-          , ghcOptLinkLibs = extraLibs bnfo
+          { ghcOptLinkOptions = map Text.unpack $ PD.ldOptions bnfo
+          , ghcOptLinkLibs = map Text.unpack $ extraLibs bnfo
           , ghcOptLinkLibPath = toNubListR $ extraLibDirs bnfo
           , ghcOptLinkFrameworks =
               toNubListR $
@@ -1725,14 +1726,14 @@ getRPaths _ _ = return mempty
 --   the appropriate RTS on our own.
 popThreadedFlag :: BuildInfo -> (BuildInfo, Bool)
 popThreadedFlag bi =
-  ( bi{options = filterHcOptions (/= "-threaded") (options bi)}
+  ( bi{options = filterHcOptions (/= Text.pack "-threaded") (options bi)}
   , hasThreaded bi
   )
   where
     filterHcOptions
-      :: (String -> Bool)
-      -> PerCompilerFlavor [String]
-      -> PerCompilerFlavor [String]
+      :: (Text.Text -> Bool)
+      -> PerCompilerFlavor [Text.Text]
+      -> PerCompilerFlavor [Text.Text]
     filterHcOptions p (PerCompilerFlavor ghc ghcjs) =
       PerCompilerFlavor (filter p ghc) ghcjs
 
@@ -1764,7 +1765,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "js_dyn_hi"
           , ghcOptObjSuffix = toFlag "js_dyn_o"
-          , ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
+          , ghcOptExtra = map Text.unpack (hcOptions GHC libBi ++ hcSharedOptions GHC libBi)
           }
     profArgs =
       vanillaArgs
@@ -1776,7 +1777,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                 (withProfLibDetail lbi)
           , ghcOptHiSuffix = toFlag "js_p_hi"
           , ghcOptObjSuffix = toFlag "js_p_o"
-          , ghcOptExtra = hcProfOptions GHC libBi
+          , ghcOptExtra = map Text.unpack (hcProfOptions GHC libBi)
           }
     ghcArgs
       | withVanillaLib lbi = vanillaArgs
@@ -1801,7 +1802,7 @@ componentGhcOptions
 componentGhcOptions verbosity lbi bi clbi odir =
   let opts = Internal.componentGhcOptions verbosity lbi bi clbi odir
    in opts
-        { ghcOptExtra = ghcOptExtra opts <> hcOptions GHCJS bi
+        { ghcOptExtra = ghcOptExtra opts <> map Text.unpack (hcOptions GHCJS bi)
         }
 
 -- -----------------------------------------------------------------------------
@@ -1896,9 +1897,9 @@ installLib verbosity lbi targetDir dynlibTargetDir _bytecodeTargetDir _builtDir 
   whenHasCode $ do
     whenVanilla $ do
       sequence_
-        [ installOrdinary builtDir' targetDir (toJSLibName $ mkGenericStaticLibName (l ++ f))
-        | l <- getHSLibraryName (componentUnitId clbi) : extraBundledLibs (libBuildInfo lib)
-        , f <- "" : extraLibFlavours (libBuildInfo lib)
+        [ installOrdinary builtDir' targetDir (toJSLibName $ mkGenericStaticLibName (Text.unpack $ l <> f))
+        | l <- Text.pack (getHSLibraryName (componentUnitId clbi)) : extraBundledLibs (libBuildInfo lib)
+        , f <- mempty : extraLibFlavours (libBuildInfo lib)
         ]
     -- whenGHCi $ installOrdinary builtDir targetDir (toJSLibName ghciLibName)
     whenProf $ do
@@ -1909,9 +1910,9 @@ installLib verbosity lbi targetDir dynlibTargetDir _bytecodeTargetDir _builtDir 
         [ installShared
           builtDir'
           dynlibTargetDir
-          (toJSLibName $ mkGenericSharedLibName platform compiler_id (l ++ f))
-        | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
-        , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+          (toJSLibName $ mkGenericSharedLibName platform compiler_id (Text.unpack $ l <> f))
+        | l <- Text.pack (getHSLibraryName uid) : extraBundledLibs (libBuildInfo lib)
+        , f <- mempty : extraDynLibFlavours (libBuildInfo lib)
         ]
   where
     i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path

@@ -10,6 +10,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import Distribution.Backpack
 import Distribution.Compat.Binary (encode)
 import Distribution.Compat.ResponseFile
@@ -134,9 +135,10 @@ linkOrLoadComponent
                   programOverrideArgs
                   (lookupProgram ldProgram (withPrograms lbi))
           , ghcOptLinkLibs =
-              if withFullyStaticExe lbi
-                then extraLibsStatic bi
-                else extraLibs bi
+              map Text.unpack $
+                if withFullyStaticExe lbi
+                  then extraLibsStatic bi
+                  else extraLibs bi
           , ghcOptLinkLibPath =
               toNubListR $
                 if withFullyStaticExe lbi
@@ -327,7 +329,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
     ghcBaseLinkArgs =
       Internal.linkGhcOptions (verbosityLevel verbosity) lbi libBi clbi
         <> mempty
-          { ghcOptExtra = hcStaticOptions GHC libBi
+          { ghcOptExtra = map Text.unpack $ hcStaticOptions GHC libBi
           , ghcOptNoAutoLinkPackages = toFlag True
           }
 
@@ -342,7 +344,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
         , ghcOptInputFiles = toNubListR $ map coerceSymbolicPath dynObjectFiles
         , ghcOptOutputFile = toFlag sharedLibFilePath
         , ghcOptDylibName = mempty
-        , ghcOptLinkLibs = extraLibs libBi
+        , ghcOptLinkLibs = map Text.unpack $ extraLibs libBi
         , ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
         , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
         , ghcOptLinkFrameworkDirs =
@@ -361,7 +363,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
         , ghcOptInputFiles = toNubListR pdynObjectFiles
         , ghcOptOutputFile = toFlag profSharedLibFilePath
         , ghcOptDylibName = mempty
-        , ghcOptLinkLibs = extraLibs libBi
+        , ghcOptLinkLibs = map Text.unpack $ extraLibs libBi
         , ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
         , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
         , ghcOptLinkFrameworkDirs =
@@ -373,7 +375,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
         { ghcOptStaticLib = toFlag True
         , ghcOptInputFiles = toNubListR $ map coerceSymbolicPath staticObjectFiles
         , ghcOptOutputFile = toFlag staticLibFilePath
-        , ghcOptLinkLibs = extraLibs libBi
+        , ghcOptLinkLibs = map Text.unpack $ extraLibs libBi
         , -- TODO: Shouldn't this use cleanedExtraLibDirsStatic instead?
           ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
         }
@@ -680,7 +682,7 @@ extractRtsInfo lbi =
 -- threaded RTS. This is used to determine which RTS to link against when
 -- building a foreign library with a GHC without support for @-flink-rts@.
 hasThreaded :: BuildInfo -> Bool
-hasThreaded bi = "-threaded" `elem` ghc
+hasThreaded bi = Text.pack "-threaded" `elem` ghc
   where
     PerCompilerFlavor ghc _ = options bi
 

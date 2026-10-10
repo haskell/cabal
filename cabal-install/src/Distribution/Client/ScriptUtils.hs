@@ -199,6 +199,7 @@ import Control.Exception
 import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy ()
 import qualified Data.Set as S
+import qualified Data.Text as T
 import Distribution.Client.Errors
 import Distribution.Utils.Path
   ( unsafeMakeSymbolicPath
@@ -447,9 +448,9 @@ scriptDistDirParams scriptPath ctx compiler platform =
     cid = mkComponentId $ prettyShow fakePackageId <> "-inplace-" <> prettyShow cn
     optimization = (packageConfigOptimization . projectConfigLocalPackages . projectConfig) ctx
 
-setExePath :: FilePath -> [String] -> [String]
+setExePath :: FilePath -> [T.Text] -> [T.Text]
 setExePath exePath options
-  | "-o" `notElem` options = "-o" : exePath : options
+  | T.pack "-o" `notElem` options = T.pack "-o" : T.pack exePath : options
   | otherwise = options
 
 -- | Add the 'SourcePackage' to the context and use it to write a .cabal file.
@@ -601,7 +602,7 @@ movedExePath selectedComponent distDirLayout elabShared elabConfigured = do
   let CompilerId flavor _ = (compilerId . pkgConfigCompiler) elabShared
   opts <- lookup flavor (perCompilerFlavorToList . options $ buildInfo exe)
   let projectRoot = distProjectRootDirectory distDirLayout
-  fmap (projectRoot </>) . lookup "-o" $ reverse (zip opts (drop 1 opts))
+  fmap ((projectRoot </>) . T.unpack) . lookup "-o" $ reverse (zip opts (drop 1 opts))
 
 -- Lenses
 

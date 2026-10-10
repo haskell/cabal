@@ -131,6 +131,7 @@ test-suite custom-setup-tests
     , directory
     , filepath
     , process
+    , text
 
   default-language: GHC2021
 

@@ -68,6 +68,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 
+import qualified Data.Text as T
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath
   ( normalise
@@ -514,7 +515,7 @@ ppHsc2hs bi lbi clbi =
       cflags
         ++ ldflags
         ++ preccldFlags
-        ++ hsc2hsOptions bi
+        ++ map T.unpack (hsc2hsOptions bi)
         ++ postccldFlags
         ++ ["-o", outFile, inFile]
       where
@@ -548,8 +549,8 @@ ppHsc2hs bi lbi clbi =
                         then PD.extraLibDirsStatic bi
                         else PD.extraLibDirs bi
                   ]
-                , ["-l" ++ opt | opt <- PD.extraLibs bi]
-                , PD.ldOptions bi
+                , ["-l" ++ T.unpack opt | opt <- PD.extraLibs bi]
+                , map T.unpack (PD.ldOptions bi)
                 , -- Options from dependent packages
                   [ opt
                   | pkg <- pkgs
@@ -587,7 +588,7 @@ ppHsc2hs bi lbi clbi =
                   -- because there will not be C++ sources.
                   --
                   -- DO NOT add PD.cxxOptions unless this changes!
-                  PD.ccOptions bi ++ PD.cppOptions bi
+                  map T.unpack (PD.ccOptions bi ++ PD.cppOptions bi)
                 ,
                   [ "-I" ++ u (autogenComponentModulesDir lbi clbi)
                   , "-I" ++ u (autogenPackageModulesDir lbi)
@@ -726,9 +727,9 @@ ppC2hsExtras mbWorkDir buildBaseDir = do
 getCppOptions :: BuildInfo -> LocalBuildInfo -> [String]
 getCppOptions bi lbi =
   platformDefines lbi
-    ++ cppOptions bi
+    ++ map T.unpack (cppOptions bi)
     ++ ["-I" ++ getSymbolicPath dir | dir <- PD.includeDirs bi]
-    ++ [opt | opt@('-' : c : _) <- PD.ccOptions bi ++ PD.cxxOptions bi, c `elem` "DIU"]
+    ++ [opt | opt@('-' : c : _) <- map T.unpack (PD.ccOptions bi ++ PD.cxxOptions bi), c `elem` "DIU"]
 
 platformDefines :: LocalBuildInfo -> [String]
 platformDefines lbi =

@@ -84,6 +84,7 @@ import Distribution.Version
 
 import Data.Bool (bool)
 import Data.Either (lefts, rights)
+import qualified Data.Text as T
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (isAbsolute, joinPath, normalise, splitDirectories)
 import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
@@ -725,7 +726,7 @@ mkHaddockArgs verbosity (tmpObjDir, tmpHiDir, tmpStubDir) lbi clbi htmlTemplate 
         , ghcOptFPic = toFlag True
         , ghcOptHiSuffix = toFlag "dyn_hi"
         , ghcOptObjSuffix = toFlag "dyn_o"
-        , ghcOptExtra = hcSharedOptions GHC bi
+        , ghcOptExtra = map T.unpack $ hcSharedOptions GHC bi
         }
   ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
   opts <-

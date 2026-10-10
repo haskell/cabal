@@ -42,7 +42,8 @@ import Language.Haskell.Extension
 import System.FilePath (takeExtension)
 
 import Control.Monad
-
+import Data.Bifunctor
+import qualified Data.Text as T
 import qualified Distribution.Types.BuildInfo.Lens as L
 
 checkLibrary
@@ -359,7 +360,7 @@ checkBuildInfo cet ams ads bi = do
     (checkPVPs (checkDependencyVersionRange hasGTLowerBound) gtlck ds)
 
   -- Custom fields well-formedness (ASCII).
-  mapM_ checkCustomField (customFieldsBI bi)
+  mapM_ (checkCustomField . bimap T.unpack T.unpack) (customFieldsBI bi)
 
   -- Content.
   mapM_ (checkLocalPathExist "extra-lib-dirs" . getSymbolicPath) (extraLibDirs bi)
@@ -469,7 +470,7 @@ checkBuildInfoPathsWellFormedness bi = do
   mapM_
     (checkPath True "extra-lib-dirs-static" PathKindDirectory . getSymbolicPath)
     (extraLibDirsStatic bi)
-  mapM_ checkOptionPath (perCompilerFlavorToList $ options bi)
+  mapM_ (checkOptionPath . fmap (map T.unpack)) (perCompilerFlavorToList $ options bi)
   where
     checkOptionPath
       :: Monad m
@@ -519,14 +520,14 @@ checkBuildInfoFeatures bi sv = do
   -- asm-sources, cmm-sources and friends only w/ spec ≥ 1.10
   checkCVSources (map getSymbolicPath $ asmSources bi)
   checkCVSources (map getSymbolicPath $ cmmSources bi)
-  checkCVSources (extraBundledLibs bi)
-  checkCVSources (extraLibFlavours bi)
+  checkCVSources (map T.unpack $ extraBundledLibs bi)
+  checkCVSources (map T.unpack $ extraLibFlavours bi)
 
   -- extra-dynamic-library-flavours requires ≥ 3.0
   checkSpecVer
     CabalSpecV3_0
     (not . null $ extraDynLibFlavours bi)
-    (PackageDistInexcusable $ CVExtraDynamic [extraDynLibFlavours bi])
+    (PackageDistInexcusable $ CVExtraDynamic [map T.unpack (extraDynLibFlavours bi)])
   -- virtual-modules requires ≥ 2.2
   checkSpecVer CabalSpecV2_2 (not . null $ virtualModules bi) (PackageDistInexcusable CVVirtualModules)
   -- Check use of thinning and renaming.
@@ -792,14 +793,14 @@ cet2bit CETSetup = BITOther
 -- General check on all options (ghc, C, C++, …) for common inaccuracies.
 checkBuildInfoOptions :: Monad m => BITarget -> BuildInfo -> CheckM m ()
 checkBuildInfoOptions t bi = do
-  checkGHCOptions "ghc-options" t (hcOptions GHC bi)
-  checkGHCOptions "ghc-prof-options" t (hcProfOptions GHC bi)
-  checkGHCOptions "ghc-shared-options" t (hcSharedOptions GHC bi)
+  checkGHCOptions "ghc-options" t (map T.unpack (hcOptions GHC bi))
+  checkGHCOptions "ghc-prof-options" t (map T.unpack (hcProfOptions GHC bi))
+  checkGHCOptions "ghc-shared-options" t (map T.unpack (hcSharedOptions GHC bi))
   let ldOpts = ldOptions bi
-  checkCLikeOptions LangC "cc-options" (ccOptions bi) ldOpts
-  checkCLikeOptions LangCPlusPlus "cxx-options" (cxxOptions bi) ldOpts
-  checkCPPOptions (cppOptions bi)
-  checkJSPOptions (jsppOptions bi)
+  checkCLikeOptions LangC "cc-options" (map T.unpack (ccOptions bi)) (map T.unpack ldOpts)
+  checkCLikeOptions LangCPlusPlus "cxx-options" (map T.unpack (cxxOptions bi)) (map T.unpack ldOpts)
+  checkCPPOptions (map T.unpack (cppOptions bi))
+  checkJSPOptions (map T.unpack (jsppOptions bi))
 
 -- | Checks GHC options for commonly misused or non-portable flags.
 checkGHCOptions
