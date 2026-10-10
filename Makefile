@@ -184,11 +184,12 @@ check-tests :
 
 .PHONY: parser-tests
 parser-tests :
-	$(CABALRUN) parser-tests -- --cwd Cabal-tests ${TEST}
+	$(CABALRUN) Cabal-tests:parser-tests -- --cwd Cabal-tests ${TEST}
+	cd cabal-install && $(CABALRUN) cabal-install:parser-tests -- ${TEST}
 
 .PHONY: parser-tests-accept
 parser-tests-accept :
-	$(CABALRUN) parser-tests -- --cwd Cabal-tests --accept ${TEST}
+	$(CABALRUN) Cabal-tests:parser-tests -- --cwd Cabal-tests --accept ${TEST}
 
 .PHONY: custom-setup-tests
 custom-setup-tests :
