@@ -37,6 +37,7 @@ import Distribution.Solver.Types.PkgConfigDb
   ( pkgConfigDbFromList
   )
 import Distribution.Solver.Types.Settings
+import qualified Distribution.Solver.Types.Stage as Stage
 import Distribution.Solver.Types.Variable
 import Distribution.Verbosity
 import Distribution.Version
@@ -628,6 +629,7 @@ instance ArbitraryOrd a => ArbitraryOrd (P.Qualified a)
 instance ArbitraryOrd P.PackagePath
 instance ArbitraryOrd P.Qualifier
 instance ArbitraryOrd P.Namespace
+instance ArbitraryOrd Stage.Stage
 instance ArbitraryOrd OptionalStanza
 instance ArbitraryOrd FlagName
 instance ArbitraryOrd PackageName

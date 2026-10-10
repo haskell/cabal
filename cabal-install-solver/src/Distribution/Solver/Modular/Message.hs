@@ -356,11 +356,12 @@ showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
 -- $setup
 -- >>> import Distribution.Solver.Modular.Package
 -- >>> import Distribution.Solver.Types.PackagePath
+-- >>> import Distribution.Solver.Types.Stage (Stage (..))
 -- >>> import Distribution.Types.PackageName
 -- >>> import Distribution.Types.Version
 -- >>> import Distribution.Types.UnitId
--- >>> let foobarPN = PackagePath DefaultNamespace QualToplevel
--- >>> let bazquxPN = PackagePath (Independent $ mkPackageName "bazqux") QualToplevel
+-- >>> let foobarPN = PackagePath Host DefaultNamespace QualToplevel
+-- >>> let bazquxPN = PackagePath Host (Independent $ mkPackageName "bazqux") QualToplevel
 -- >>> let foobarQPN = Q foobarPN (mkPackageName "foo-bar")
 -- >>> let v0 = POption (I (mkVersion [0]) InRepo) Nothing
 -- >>> let v1 = POption (I (mkVersion [1]) InRepo) Nothing

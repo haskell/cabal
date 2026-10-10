@@ -25,6 +25,7 @@ import Prelude ()
 import Distribution.Client.FileMonitor (MonitorChangedReason (..))
 import Distribution.Client.Types (DocsResult, TestsResult)
 
+import Distribution.Client.ProjectPlanning.Stage (WithStage)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package (PackageId, UnitId)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
@@ -36,7 +37,9 @@ import Distribution.Simple.LocalBuildInfo (ComponentName)
 -- | The 'BuildStatus' of every package in the 'ElaboratedInstallPlan'.
 --
 -- This is used as the result of the dry-run of building an install plan.
-type BuildStatusMap = Map UnitId BuildStatus
+-- | Keyed like the install plan, by unit id /and/ build stage: under
+-- cross-compilation the same unit can be in the plan at both stages.
+type BuildStatusMap = Map (WithStage UnitId) BuildStatus
 
 -- | The build status for an individual package is the state that the
 -- package is in /prior/ to initiating a (re)build.
@@ -135,7 +138,7 @@ data BuildReason
 --
 
 -- | A summary of the outcome for building a whole set of packages.
-type BuildOutcomes = Map UnitId BuildOutcome
+type BuildOutcomes = Map (WithStage UnitId) BuildOutcome
 
 -- | A summary of the outcome for building a single package: either success
 -- or failure.
