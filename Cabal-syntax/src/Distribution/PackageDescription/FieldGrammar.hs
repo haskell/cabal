@@ -85,6 +85,7 @@ import Distribution.Version (Version, VersionRange)
 import Data.Bifunctor
 import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce (coerce)
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
@@ -629,24 +630,29 @@ buildInfoFieldGrammar = do
   -- as otherwise cabal new-build cannot really work.
   --
   -- I.e. we don't want trigger unknown field warning
-  cppOptions <- monoidalFieldAla "cpp-options" (alaList' NoCommaFSep Token') L.cppOptions
+  cppOptions <- map T.pack <$> monoidalFieldAla "cpp-options" (alaList' NoCommaFSep Token') (L.cppOptions . fromTextsLens)
   asmOptions <-
-    monoidalFieldAla "asm-options" (alaList' NoCommaFSep Token') L.asmOptions
-      ^^^ availableSince CabalSpecV3_0 []
+    map T.pack
+      <$> monoidalFieldAla "asm-options" (alaList' NoCommaFSep Token') (L.asmOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_0 []
   cmmOptions <-
-    monoidalFieldAla "cmm-options" (alaList' NoCommaFSep Token') L.cmmOptions
-      ^^^ availableSince CabalSpecV3_0 []
-  ccOptions <- monoidalFieldAla "cc-options" (alaList' NoCommaFSep Token') L.ccOptions
+    map T.pack
+      <$> monoidalFieldAla "cmm-options" (alaList' NoCommaFSep Token') (L.cmmOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_0 []
+  ccOptions <- map T.pack <$> monoidalFieldAla "cc-options" (alaList' NoCommaFSep Token') (L.ccOptions . fromTextsLens)
   cxxOptions <-
-    monoidalFieldAla "cxx-options" (alaList' NoCommaFSep Token') L.cxxOptions
-      ^^^ availableSince CabalSpecV2_2 []
+    map T.pack
+      <$> monoidalFieldAla "cxx-options" (alaList' NoCommaFSep Token') (L.cxxOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV2_2 []
   jsppOptions <-
-    monoidalFieldAla "jspp-options" (alaList' NoCommaFSep Token') L.jsppOptions
-      ^^^ availableSince CabalSpecV3_16 []
-  ldOptions <- monoidalFieldAla "ld-options" (alaList' NoCommaFSep Token') L.ldOptions
+    map T.pack
+      <$> monoidalFieldAla "jspp-options" (alaList' NoCommaFSep Token') (L.jsppOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_16 []
+  ldOptions <- map T.pack <$> monoidalFieldAla "ld-options" (alaList' NoCommaFSep Token') (L.ldOptions . fromTextsLens)
   hsc2hsOptions <-
-    monoidalFieldAla "hsc2hs-options" (alaList' NoCommaFSep Token') L.hsc2hsOptions
-      ^^^ availableSince CabalSpecV3_6 []
+    map T.pack
+      <$> monoidalFieldAla "hsc2hs-options" (alaList' NoCommaFSep Token') (L.hsc2hsOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_6 []
   pkgconfigDepends <- monoidalFieldAla "pkgconfig-depends" (alaList CommaFSep) L.pkgconfigDepends
   frameworks <- monoidalFieldAla "frameworks" (alaList' FSep RelativePathNT) L.frameworks
   extraFrameworkDirs <- monoidalFieldAla "extra-framework-dirs" (alaList' FSep SymbolicPathNT) L.extraFrameworkDirs
@@ -689,16 +695,18 @@ buildInfoFieldGrammar = do
       ^^^ removedIn
         CabalSpecV3_0
         "Please use 'default-extensions' or 'other-extensions' fields."
-  extraLibs <- monoidalFieldAla "extra-libraries" (alaList' VCat Token) L.extraLibs
+  extraLibs <- map T.pack <$> monoidalFieldAla "extra-libraries" (alaList' VCat Token) (L.extraLibs . fromTextsLens)
   extraLibsStatic <-
-    monoidalFieldAla "extra-libraries-static" (alaList' VCat Token) L.extraLibsStatic
-      ^^^ availableSince CabalSpecV3_8 []
-  extraGHCiLibs <- monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token) L.extraGHCiLibs
-  extraBundledLibs <- monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token) L.extraBundledLibs
-  extraLibFlavours <- monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) L.extraLibFlavours
+    map T.pack
+      <$> monoidalFieldAla "extra-libraries-static" (alaList' VCat Token) (L.extraLibsStatic . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_8 []
+  extraGHCiLibs <- map T.pack <$> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token) (L.extraGHCiLibs . fromTextsLens)
+  extraBundledLibs <- map T.pack <$> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token) (L.extraBundledLibs . fromTextsLens)
+  extraLibFlavours <- map T.pack <$> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) (L.extraLibFlavours . fromTextsLens)
   extraDynLibFlavours <-
-    monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
-      ^^^ availableSince CabalSpecV3_0 []
+    map T.pack
+      <$> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) (L.extraDynLibFlavours . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_0 []
   extraLibDirs <- monoidalFieldAla "extra-lib-dirs" (alaList' FSep SymbolicPathNT) L.extraLibDirs
   extraLibDirsStatic <-
     monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep SymbolicPathNT) L.extraLibDirsStatic
@@ -714,7 +722,7 @@ buildInfoFieldGrammar = do
   sharedOptions <- sharedOptionsFieldGrammar
   profSharedOptions <- profSharedOptionsFieldGrammar
   let staticOptions = mempty
-  customFieldsBI <- map (bimap T.unpack T.unpack) <$> prefixedFields "x-" L.customFieldsBIText
+  customFieldsBI <- prefixedFields "x-" L.customFieldsBI
   targetBuildDepends <- monoidalFieldAla "build-depends" formatDependencyList L.targetBuildDepends
   mixins <-
     monoidalFieldAla "mixins" formatMixinList L.mixins
@@ -742,9 +750,9 @@ hsSourceDirsGrammar =
 
 optionsFieldGrammar
   :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  => g BuildInfo (PerCompilerFlavor [Text])
 optionsFieldGrammar =
-  PerCompilerFlavor
+  perCompilerFlavorFromStrings
     <$> monoidalFieldAla "ghc-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-options" (alaList' NoCommaFSep Token') (extract GHCJS)
     -- NOTE: Hugs, NHC and JHC are not supported anymore, but these
@@ -757,42 +765,45 @@ optionsFieldGrammar =
     <* knownField "mhs-options"
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.options . lookupLens flavor
+    extract flavor = L.options . lookupLens flavor . fromTextsLens
 
 profOptionsFieldGrammar
   :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  => g BuildInfo (PerCompilerFlavor [Text])
 profOptionsFieldGrammar =
-  PerCompilerFlavor
+  perCompilerFlavorFromStrings
     <$> monoidalFieldAla "ghc-prof-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-prof-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.profOptions . lookupLens flavor
+    extract flavor = L.profOptions . lookupLens flavor . fromTextsLens
 
 sharedOptionsFieldGrammar
   :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  => g BuildInfo (PerCompilerFlavor [Text])
 sharedOptionsFieldGrammar =
-  PerCompilerFlavor
+  perCompilerFlavorFromStrings
     <$> monoidalFieldAla "ghc-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.sharedOptions . lookupLens flavor
+    extract flavor = L.sharedOptions . lookupLens flavor . fromTextsLens
 
 profSharedOptionsFieldGrammar
   :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  => g BuildInfo (PerCompilerFlavor [Text])
 profSharedOptionsFieldGrammar =
-  PerCompilerFlavor
+  perCompilerFlavorFromStrings
     <$> monoidalFieldAla "ghc-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
       ^^^ availableSince CabalSpecV3_14 []
     <*> monoidalFieldAla "ghcjs-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
       ^^^ availableSince CabalSpecV3_14 []
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.profSharedOptions . lookupLens flavor
+    extract flavor = L.profSharedOptions . lookupLens flavor . fromTextsLens
+
+perCompilerFlavorFromStrings :: [String] -> [String] -> PerCompilerFlavor [Text]
+perCompilerFlavorFromStrings xs ys = PerCompilerFlavor (map T.pack xs) (map T.pack ys)
 
 lookupLens :: (Functor f, Monoid v) => CompilerFlavor -> LensLike' f (PerCompilerFlavor v) v
 lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
@@ -959,3 +970,7 @@ _syntaxExtensions =
           | e <- [minBound .. maxBound]
           , e `notElem` [Safe, Unsafe, Trustworthy]
           ]
+
+fromTextsLens :: Lens' [T.Text] [String]
+fromTextsLens f = fmap (map T.pack) . f . map T.unpack
+{-# INLINE fromTextsLens #-}

@@ -87,6 +87,7 @@ import System.Directory
 import System.FilePath (isAbsolute)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import qualified Data.Text as T
 
 -- -----------------------------------------------------------------------------
 -- Registration
@@ -535,10 +536,10 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.dataDir = datadir installDirs
     , IPI.hsLibraries =
         [getHSLibraryName (componentUnitId clbi) | hasLibrary]
-          ++ extraBundledLibs bi
-    , IPI.extraLibraries = extraLibs bi
-    , IPI.extraLibrariesStatic = extraLibsStatic bi
-    , IPI.extraGHCiLibraries = extraGHCiLibs bi
+          ++ map T.unpack (extraBundledLibs bi)
+    , IPI.extraLibraries = map T.unpack $ extraLibs bi
+    , IPI.extraLibrariesStatic = map T.unpack $ extraLibsStatic bi
+    , IPI.extraGHCiLibraries = map T.unpack $ extraGHCiLibs bi
     , IPI.includeDirs = absinc ++ adjustRelIncDirs relinc
     , IPI.includes = map getSymbolicPath $ includes bi
     , IPI.depends = depends
@@ -547,7 +548,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     -- We don't want cc-options to be propagated
     -- to C compilations in other packages.
     , IPI.cxxOptions = [] -- Also. NOT cxxOptions bi!
-    , IPI.ldOptions = ldOptions bi
+    , IPI.ldOptions = map T.unpack $ ldOptions bi
     , IPI.frameworks = map getSymbolicPath $ frameworks bi
     , IPI.frameworkDirs = map getSymbolicPath $ extraFrameworkDirs bi
     , IPI.haddockInterfaces =

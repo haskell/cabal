@@ -13,6 +13,7 @@ import Distribution.Compat.Prelude
 
 import Data.List (sortOn, (\\))
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import Distribution.CabalSpecVersion
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.PackageDescription as PD
@@ -369,11 +370,12 @@ buildWayHpcWay = \case
 -- | Returns a function to extract the extra haskell compiler options from a
 -- 'BuildInfo' and 'CompilerFlavor'
 buildWayExtraHcOptions :: BuildWay -> CompilerFlavor -> BuildInfo -> [String]
-buildWayExtraHcOptions = \case
-  StaticWay -> hcStaticOptions
-  ProfWay -> hcProfOptions
-  DynWay -> hcSharedOptions
-  ProfDynWay -> hcProfSharedOptions
+buildWayExtraHcOptions =
+  ((map Text.unpack .) .) . \case
+    StaticWay -> hcStaticOptions
+    ProfWay -> hcProfOptions
+    DynWay -> hcSharedOptions
+    ProfDynWay -> hcProfSharedOptions
 
 -- | Returns a pair of the main file and Haskell modules of the component being
 -- built. The main file is not necessarily a Haskell file. It could also be

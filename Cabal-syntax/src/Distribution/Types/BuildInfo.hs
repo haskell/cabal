@@ -14,6 +14,7 @@ module Distribution.Types.BuildInfo
   , hcStaticOptions
   ) where
 
+import Data.Text (Text)
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -50,21 +51,21 @@ data BuildInfo = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , cppOptions :: [String]
+  , cppOptions :: [Text]
   -- ^ options for pre-processing Haskell code
-  , asmOptions :: [String]
+  , asmOptions :: [Text]
   -- ^ options for assembler
-  , cmmOptions :: [String]
+  , cmmOptions :: [Text]
   -- ^ options for C-- compiler
-  , ccOptions :: [String]
+  , ccOptions :: [Text]
   -- ^ options for C compiler
-  , cxxOptions :: [String]
+  , cxxOptions :: [Text]
   -- ^ options for C++ compiler
-  , jsppOptions :: [String]
+  , jsppOptions :: [Text]
   -- ^ options for pre-processing JavaScript code @since 3.16.0.0
-  , ldOptions :: [String]
+  , ldOptions :: [Text]
   -- ^ options for linker
-  , hsc2hsOptions :: [String]
+  , hsc2hsOptions :: [Text]
   -- ^ options for hsc2hs
   , pkgconfigDepends :: [PkgconfigDependency]
   -- ^ pkg-config packages that are used
@@ -99,13 +100,13 @@ data BuildInfo = BuildInfo
   -- ^ other language extensions used within the package
   , oldExtensions :: [Extension]
   -- ^ the old extensions field, treated same as 'defaultExtensions'
-  , extraLibs :: [String]
+  , extraLibs :: [Text]
   -- ^ what libraries to link with when compiling a program that uses your package
-  , extraLibsStatic :: [String]
+  , extraLibsStatic :: [Text]
   -- ^ what libraries to link with when compiling a program fully statically that uses your package
-  , extraGHCiLibs :: [String]
+  , extraGHCiLibs :: [Text]
   -- ^ if present, overrides extraLibs when package is loaded with GHCi.
-  , extraBundledLibs :: [String]
+  , extraBundledLibs :: [Text]
   -- ^ if present, adds libs to hs-libraries, which become part of the package.
   --   Example 1: the Cffi library shipping with the rts, alongside the HSrts-1.0.a,.o,...
   --   Example 2: a library that is being built by a foreign tool (e.g. rust)
@@ -113,12 +114,12 @@ data BuildInfo = BuildInfo
   --              logic on how this library is built will have to be encoded in a
   --              custom Setup for now.  Otherwise cabal would need to learn how to
   --              call arbitrary library builders.
-  , extraLibFlavours :: [String]
+  , extraLibFlavours :: [Text]
   -- ^ Hidden Flag.  This set of strings, will be appended to all libraries when
   --   copying. E.g. [libHS<name>_<flavour> | flavour <- extraLibFlavours]. This
   --   should only be needed in very specific cases, e.g. the `rts` package, where
   --   there are multiple copies of slightly differently built libs.
-  , extraDynLibFlavours :: [String]
+  , extraDynLibFlavours :: [Text]
   -- ^ Hidden Flag. This set of strings will be appended to all /dynamic/
   --   libraries when copying. This is particularly useful with the `rts` package,
   --   where we want different dynamic flavours of the RTS library to be installed.
@@ -132,12 +133,12 @@ data BuildInfo = BuildInfo
   -- ^ The .h files to be generated (e.g. by @autoconf@)
   , installIncludes :: [RelativePath Include File]
   -- ^ .h files to install with the package
-  , options :: PerCompilerFlavor [String]
-  , profOptions :: PerCompilerFlavor [String]
-  , sharedOptions :: PerCompilerFlavor [String]
-  , profSharedOptions :: PerCompilerFlavor [String]
-  , staticOptions :: PerCompilerFlavor [String]
-  , customFieldsBI :: [(String, String)]
+  , options :: PerCompilerFlavor [Text]
+  , profOptions :: PerCompilerFlavor [Text]
+  , sharedOptions :: PerCompilerFlavor [Text]
+  , profSharedOptions :: PerCompilerFlavor [Text]
+  , staticOptions :: PerCompilerFlavor [Text]
+  , customFieldsBI :: [(Text, Text)]
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
@@ -292,26 +293,26 @@ usesTemplateHaskellOrQQ bi = any p (allExtensions bi)
         `elem` [EnableExtension TemplateHaskell, EnableExtension QuasiQuotes]
 
 -- | Select options for a particular Haskell compiler.
-hcOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcOptions :: CompilerFlavor -> BuildInfo -> [Text]
 hcOptions = lookupHcOptions options
 
-hcProfOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcProfOptions :: CompilerFlavor -> BuildInfo -> [Text]
 hcProfOptions = lookupHcOptions profOptions
 
-hcSharedOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcSharedOptions :: CompilerFlavor -> BuildInfo -> [Text]
 hcSharedOptions = lookupHcOptions sharedOptions
 
-hcProfSharedOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcProfSharedOptions :: CompilerFlavor -> BuildInfo -> [Text]
 hcProfSharedOptions = lookupHcOptions profSharedOptions
 
-hcStaticOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcStaticOptions :: CompilerFlavor -> BuildInfo -> [Text]
 hcStaticOptions = lookupHcOptions staticOptions
 
 lookupHcOptions
-  :: (BuildInfo -> PerCompilerFlavor [String])
+  :: (BuildInfo -> PerCompilerFlavor [Text])
   -> CompilerFlavor
   -> BuildInfo
-  -> [String]
+  -> [Text]
 lookupHcOptions f hc bi = case f bi of
   PerCompilerFlavor ghc ghcjs
     | hc == GHC -> ghc

@@ -55,6 +55,7 @@ import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All (..), Any (..), Endo (..))
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import qualified System.Process as Process
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
@@ -98,7 +99,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
             allGhcOptions :: BuildInfo -> [(CompilerFlavor, [String])]
             allGhcOptions =
               foldMap
-                (perCompilerFlavorToList .)
+                ((map (fmap (map Text.unpack)) . perCompilerFlavorToList) .)
                 [options, profOptions, sharedOptions, staticOptions]
 
             filterGhcOptions :: [(CompilerFlavor, [String])] -> [[String]]
