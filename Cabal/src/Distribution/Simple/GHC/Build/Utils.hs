@@ -14,6 +14,7 @@ import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.BuildWay
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors (WhatToFind (..))
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup.Common
@@ -40,7 +41,12 @@ findExecutableMain
   -> IO (SymbolicPath Pkg File)
   -- ^ The path to the main source file.
 findExecutableMain verbosity mbWorkDir buildDir (bnfo, modPath) =
-  findFileCwd verbosity mbWorkDir (coerceSymbolicPath buildDir : hsSourceDirs bnfo) modPath
+  findFileCwd
+    verbosity
+    FindHaskellSourceFile
+    mbWorkDir
+    (coerceSymbolicPath buildDir : hsSourceDirs bnfo)
+    modPath
 
 -- | Does this compiler support the @-dynamic-too@ option
 supportsDynamicToo :: Compiler -> Bool
