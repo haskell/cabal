@@ -182,6 +182,10 @@ import Distribution.PackageDescription
   , buildable
   )
 
+import Distribution.Client.Cmd.UI
+  ( commandParserByName
+  , parseCommandWithOptparseMany
+  )
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import Distribution.PackageDescription.PrettyPrint
@@ -345,7 +349,7 @@ warnIfAssertionsAreEnabled =
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
-    command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
+    command <- commandsParse args
     case command of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
@@ -377,6 +381,36 @@ mainWorker args = do
             warnIfAssertionsAreEnabled
             action globalFlags
   where
+    -- Parse the command line with optparse-applicative for the commands that
+    -- support it, falling back to the command registry for the others.
+    commandsParse :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
+    commandsParse argv =
+      case parseCommandWithOptparseMany globalCmd parsersByName argv of
+        Just parsed -> pure parsed
+        Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
+
+    parsersByName =
+      [ commandParserByName CmdConfigure.configureCommand CmdConfigure.configureAction
+      , commandParserByName CmdUpdate.updateCommand CmdUpdate.updateAction
+      , commandParserByName CmdBuild.buildCommand CmdBuild.buildAction
+      , commandParserByName CmdRepl.replCommand CmdRepl.replAction
+      , commandParserByName CmdFreeze.freezeCommand CmdFreeze.freezeAction
+      , commandParserByName CmdHaddock.haddockCommand CmdHaddock.haddockAction
+      , commandParserByName CmdHaddockProject.haddockProjectCommand CmdHaddockProject.haddockProjectAction
+      , commandParserByName CmdInstall.installCommand CmdInstall.installAction
+      , commandParserByName CmdRun.runCommand CmdRun.runAction
+      , commandParserByName CmdTest.testCommand CmdTest.testAction
+      , commandParserByName CmdBench.benchCommand CmdBench.benchAction
+      , commandParserByName CmdExec.execCommand CmdExec.execAction
+      , commandParserByName CmdClean.cleanCommand CmdClean.cleanAction
+      , commandParserByName CmdSdist.sdistCommand CmdSdist.sdistAction
+      , commandParserByName CmdTarget.targetCommand CmdTarget.targetAction
+      , commandParserByName CmdGenBounds.genBoundsCommand CmdGenBounds.genBoundsAction
+      , commandParserByName CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
+      ]
+
+    globalCmd = globalCommand commands
+
     delegateToExternal
       :: [Command Action]
       -> String
