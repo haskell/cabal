@@ -118,10 +118,6 @@ import Distribution.Simple.Utils
   , withOutputMarker
   , wrapText
   )
-import Distribution.Types.ComponentName
-  ( ComponentName
-  , showComponentName
-  )
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import Distribution.Types.PackageName
   ( PackageName
@@ -401,12 +397,15 @@ reifyTargetSelectors pkgs sels =
     go (TargetAllPackages (Just kind)) = [Left (AllComponentsOnly kind)]
     go (TargetPackageNamed pname _) = [Left (NonlocalPackageNotAllowed pname)]
     go (TargetComponentUnknown pname _ _) = [Left (NonlocalPackageNotAllowed pname)]
-    go (TargetComponent _ cname _) = [Left (ComponentsNotAllowed cname)]
+    -- sdist only packages whole packages, so any target selector referring to a
+    -- component (or a module/file within a component) of a local package selects
+    -- that package. (#11385: a bare package name typed inside the package directory
+    -- resolves to its primary library component, which shadowed the package match.)
+    go (TargetComponent pid _ _) = [getPkg pid]
 
 data TargetProblem
   = AllComponentsOnly ComponentKind
   | NonlocalPackageNotAllowed PackageName
-  | ComponentsNotAllowed ComponentName
 
 renderTargetProblem :: TargetProblem -> String
 renderTargetProblem (AllComponentsOnly kind) =
@@ -414,11 +413,6 @@ renderTargetProblem (AllComponentsOnly kind) =
     ++ renderComponentKind Plural kind
     ++ " from a package "
     ++ "for distribution. Only entire packages may be packaged for distribution."
-renderTargetProblem (ComponentsNotAllowed cname) =
-  "The component "
-    ++ showComponentName cname
-    ++ " cannot be packaged for distribution on its own. "
-    ++ "Only entire packages may be packaged for distribution."
 renderTargetProblem (NonlocalPackageNotAllowed pname) =
   "The package "
     ++ unPackageName pname
