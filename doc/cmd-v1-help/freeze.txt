@@ -16,14 +16,10 @@ Flags for v1-freeze:
                                 verbosity level is 1)
  --dry-run                    # Do not freeze anything, only print what would
                                 be frozen
- --enable-tests               # Enable freezing of the dependencies of any
+ --[enable|disable]-tests     # Toggle freezing of the dependencies of any
                                 tests suites in the package description file.
- --disable-tests              # Disable freezing of the dependencies of any
-                                tests suites in the package description file.
- --enable-benchmarks          # Enable freezing of the dependencies of any
-                                benchmarks suites in the package description
-                                file.
- --disable-benchmarks         # Disable freezing of the dependencies of any
+ --[enable|disable]-benchmarks
+                              # Toggle freezing of the dependencies of any
                                 benchmarks suites in the package description
                                 file.
  --solver=SOLVER              # Select dependency solver to use (default:
