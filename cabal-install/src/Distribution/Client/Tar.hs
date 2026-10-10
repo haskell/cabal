@@ -19,6 +19,7 @@ module Distribution.Client.Tar
   ( -- * @tar.gz@ operations
     TarComp.createTarGzFile
   , TarComp.extractTarGzFile
+  , TarComp.createTarGzFileMulti
 
     -- * Other local utils
   , buildTreeRefTypeCode

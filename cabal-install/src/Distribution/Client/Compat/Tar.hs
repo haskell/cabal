@@ -5,6 +5,7 @@
 module Distribution.Client.Compat.Tar
   ( extractTarGzFile
   , createTarGzFile
+  , createTarGzFileMulti
 #if MIN_VERSION_tar(0,6,0)
   , Tar.Entry
   , Tar.Entries
@@ -82,5 +83,27 @@ createTarGzFile tar base dir =
 #else
   BS.writeFile tar . GZip.compress . Tar.write =<< Tar.pack base [dir]
 #endif
+
+-- | Like 'createTarGzFile', but packs several directories into a single
+-- tarball.
+--
+-- Each directory to archive is given as a pair of a base directory and a
+-- directory path relative to that base; the entries keep their relative
+-- path as their name in the archive. This avoids having to gather all the
+-- directories to archive into a single staging directory first.
+createTarGzFileMulti
+  :: FilePath
+  -- ^ Full tarball path
+  -> [(FilePath, FilePath)]
+  -- ^ Base directory and directory to archive, relative to the base, for
+  -- each directory to include in the tarball
+  -> IO ()
+createTarGzFileMulti tar dirs =
+#if MIN_VERSION_tar(0,7,0)
+  BS.writeFile tar . GZip.compress =<< Tar.write' . concat =<< traverse (\(base, dir) -> Tar.pack' base [dir]) dirs
+#else
+  BS.writeFile tar . GZip.compress . Tar.write . concat =<< traverse (\(base, dir) -> Tar.pack base [dir]) dirs
+#endif
+
 
 {- FOURMOLU_ENABLE -}
