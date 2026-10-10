@@ -1,0 +1,4 @@
+packages: .
+
+package T8900
+  ghc-options: -Werror
