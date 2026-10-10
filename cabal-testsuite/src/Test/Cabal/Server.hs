@@ -270,6 +270,11 @@ initServer s0 = do
     pid <- withProcessHandle (serverProcessHandle s0) $ \case
 #if mingw32_HOST_OS
                   OpenHandle x   -> fmap show (Win32.getProcessId x)
+#elif defined(javascript_HOST_ARCH)
+                  -- PHANDLE has no `Show` instance on the JavaScript backend.
+                  -- The process id is only used for logging, so a
+                  -- placeholder is fine.
+                  OpenHandle _   -> return "<js-process>"
 #else
                   OpenHandle x   -> return (show x)
 #endif
@@ -316,7 +321,13 @@ stopServer s = do
         -- will actually die, and then hClose will fail because
         -- the ":quit" command was buffered up but never got
         -- flushed.
+        --
+        -- NB: `interruptProcessGroupOf` is unsupported by the JavaScript
+        -- backend's RTS (it throws "operation unsupported on this platform");
+        -- there the ":quit" command and `terminateProcess` suffice.
+#if !defined(javascript_HOST_ARCH)
         interruptProcessGroupOf (serverProcessHandle s)
+#endif
 
         log ServerMeta s "Waiting..."
         -- Close input BEFORE waiting, close output AFTER waiting.
