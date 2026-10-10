@@ -542,9 +542,7 @@ configureOptions showOrParseArgs =
        , option
           ""
           ["profiling-detail"]
-          ( "Profiling detail level for executable and library (default, "
-              ++ "none, exported-functions, toplevel-functions,  all-functions, late)."
-          )
+          ("Profiling detail level for executable and library.\n" ++ profDetailLevelsHelp)
           configProfDetail
           (\v flags -> flags{configProfDetail = v})
           ( reqArg'
@@ -555,7 +553,7 @@ configureOptions showOrParseArgs =
        , option
           ""
           ["library-profiling-detail"]
-          "Profiling detail level for libraries only."
+          ("Profiling detail level for libraries only.\n" ++ profDetailLevelsHelp)
           configProfLibDetail
           (\v flags -> flags{configProfLibDetail = v})
           ( reqArg'
@@ -911,6 +909,20 @@ showPackageDb (Just (SpecificPackageDB db)) = getSymbolicPath db
 showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
+
+-- | Help text listing the known profiling detail levels, one per line with
+-- any aliases, so that the option descriptions stay in step with
+-- 'knownProfDetailLevels'.
+profDetailLevelsHelp :: String
+profDetailLevelsHelp =
+  unlines ("Allowed values:" : punctuate [item primary aliases | (primary, aliases, _) <- knownProfDetailLevels])
+  where
+    item primary [] = "- " ++ primary
+    item primary aliases = "- " ++ primary ++ " (or " ++ intercalate ", " aliases ++ ")"
+
+    punctuate [] = []
+    punctuate [x] = [x ++ "."]
+    punctuate (x : xs) = (x ++ ",") : punctuate xs
 
 parsecPromisedComponent :: ParsecParser PromisedComponent
 parsecPromisedComponent = do
