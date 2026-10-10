@@ -48,34 +48,42 @@ Flags for repl:
  --sysconfdir=DIR             # Installation directory for configuration files
  --program-prefix=PREFIX      # Prefix to be applied to installed executables
  --program-suffix=SUFFIX      # Suffix to be applied to installed executables
- --enable-library-vanilla     # Enable Vanilla libraries
- --disable-library-vanilla    # Disable Vanilla libraries
+ --[enable|disable]-library-vanilla
+                              # Toggle Vanilla libraries
  -p, --enable-library-profiling
                               # Enable Library profiling
  --disable-library-profiling  # Disable Library profiling
- --enable-shared              # Enable Shared library
- --disable-shared             # Disable Shared library
- --enable-static              # Enable Static library
- --disable-static             # Disable Static library
- --enable-library-bytecode    # Enable Bytecode library
- --disable-library-bytecode   # Disable Bytecode library
- --enable-executable-dynamic  # Enable Executable dynamic linking
- --disable-executable-dynamic # Disable Executable dynamic linking
- --enable-executable-static   # Enable Executable fully static linking
- --disable-executable-static  # Disable Executable fully static linking
- --enable-profiling           # Enable Executable and library profiling
- --disable-profiling          # Disable Executable and library profiling
- --enable-profiling-shared    # Enable Build profiling shared libraries
- --disable-profiling-shared   # Disable Build profiling shared libraries
- --enable-executable-profiling
-                              # Enable Executable profiling (DEPRECATED)
- --disable-executable-profiling
-                              # Disable Executable profiling (DEPRECATED)
+ --[enable|disable]-shared    # Toggle Shared library
+ --[enable|disable]-static    # Toggle Static library
+ --[enable|disable]-library-bytecode
+                              # Toggle Bytecode library
+ --[enable|disable]-executable-dynamic
+                              # Toggle Executable dynamic linking
+ --[enable|disable]-executable-static
+                              # Toggle Executable fully static linking
+ --[enable|disable]-profiling # Toggle Executable and library profiling
+ --[enable|disable]-profiling-shared
+                              # Toggle Build profiling shared libraries
+ --[enable|disable]-executable-profiling
+                              # Toggle Executable profiling (DEPRECATED)
  --profiling-detail=level     # Profiling detail level for executable and
-                                library (default, none, exported-functions,
-                                toplevel-functions, all-functions, late).
+                                library.
+                                Allowed values:
+                                - default,
+                                - none,
+                                - exported-functions (or exported),
+                                - toplevel-functions (or toplevel, top),
+                                - all-functions (or all),
+                                - late-toplevel (or late).
  --library-profiling-detail=level
                               # Profiling detail level for libraries only.
+                                Allowed values:
+                                - default,
+                                - none,
+                                - exported-functions (or exported),
+                                - toplevel-functions (or toplevel, top),
+                                - all-functions (or all),
+                                - late-toplevel (or late).
  -O[n], --enable-optimization[=n]
                               # Build with optimization (n is 0--2, default is
                                 1)
@@ -86,27 +94,20 @@ Flags for repl:
                                 project building
  --disable-build-info         # Disable build information generation during
                                 project building
- --enable-library-for-ghci    # Enable compile library for use with GHCi
- --disable-library-for-ghci   # Disable compile library for use with GHCi
- --enable-split-sections      # Enable compile library code such that unneeded
+ --[enable|disable]-library-for-ghci
+                              # Toggle compile library for use with GHCi
+ --[enable|disable]-split-sections
+                              # Toggle compile library code such that unneeded
                                 definitions can be dropped from the final
                                 executable (GHC 7.8+)
- --disable-split-sections     # Disable compile library code such that
-                                unneeded definitions can be dropped from the
-                                final executable (GHC 7.8+)
- --enable-split-objs          # Enable split library into smaller objects to
+ --[enable|disable]-split-objs
+                              # Toggle split library into smaller objects to
                                 reduce binary sizes (GHC 6.6+)
- --disable-split-objs         # Disable split library into smaller objects to
-                                reduce binary sizes (GHC 6.6+)
- --enable-executable-stripping
-                              # Enable strip executables upon installation to
+ --[enable|disable]-executable-stripping
+                              # Toggle strip executables upon installation to
                                 reduce binary sizes
- --disable-executable-stripping
-                              # Disable strip executables upon installation to
-                                reduce binary sizes
- --enable-library-stripping   # Enable strip libraries upon installation to
-                                reduce binary sizes
- --disable-library-stripping  # Disable strip libraries upon installation to
+ --[enable|disable]-library-stripping
+                              # Toggle strip libraries upon installation to
                                 reduce binary sizes
  --configure-option=OPT       # Extra option for configure
  --user                       # Enable doing a per-user installation
@@ -127,9 +128,8 @@ Flags for repl:
                                 false.
  --extra-include-dirs=PATH    # A list of directories to search for header
                                 files
- --enable-deterministic       # Enable Try to be as deterministic as possible
-                                (used by the test suite)
- --disable-deterministic      # Disable Try to be as deterministic as possible
+ --[enable|disable]-deterministic
+                              # Toggle Try to be as deterministic as possible
                                 (used by the test suite)
  --ipid=IPID                  # Installed package ID to compile this package
                                 as
@@ -147,30 +147,21 @@ Flags for repl:
                                 locations)
  --instantiate-with=NAME=MOD  # A mapping of signature names to concrete
                                 module instantiations.
- --enable-tests               # Enable dependency checking and compilation for
+ --[enable|disable]-tests     # Toggle dependency checking and compilation for
                                 test suites listed in the package description
                                 file.
- --disable-tests              # Disable dependency checking and compilation
-                                for test suites listed in the package
-                                description file.
- --enable-coverage            # Enable build package with Haskell Program
+ --[enable|disable]-coverage  # Toggle build package with Haskell Program
                                 Coverage. (GHC only)
- --disable-coverage           # Disable build package with Haskell Program
-                                Coverage. (GHC only)
- --enable-library-coverage    # Enable build package with Haskell Program
+ --[enable|disable]-library-coverage
+                              # Toggle build package with Haskell Program
                                 Coverage. (GHC only) (DEPRECATED)
- --disable-library-coverage   # Disable build package with Haskell Program
-                                Coverage. (GHC only) (DEPRECATED)
- --enable-benchmarks          # Enable dependency checking and compilation for
+ --[enable|disable]-benchmarks
+                              # Toggle dependency checking and compilation for
                                 benchmarks listed in the package description
                                 file.
- --disable-benchmarks         # Disable dependency checking and compilation
-                                for benchmarks listed in the package
-                                description file.
- --enable-relocatable         # Enable building a package that is relocatable.
+ --[enable|disable]-relocatable
+                              # Toggle building a package that is relocatable.
                                 (GHC only)
- --disable-relocatable        # Disable building a package that is
-                                relocatable. (GHC only)
  --disable-response-files     # Enable workaround for old versions of programs
                                 like "ar" that do not support @file arguments
  --allow-depending-on-private-libs
@@ -189,13 +180,9 @@ Flags for repl:
                                 use "" to prevent splitting)
  --cabal-lib-version=VERSION  # Select which version of the Cabal lib to use
                                 to build packages (useful for testing).
- --enable-append              # Enable appending the new config to the old
+ --[enable|disable]-append    # Toggle appending the new config to the old
                                 config file
- --disable-append             # Disable appending the new config to the old
-                                config file
- --enable-backup              # Enable the backup of the config file before
-                                any alterations
- --disable-backup             # Disable the backup of the config file before
+ --[enable|disable]-backup    # Toggle the backup of the config file before
                                 any alterations
  -c CONSTRAINT or -cCONSTRAINT, --constraint=CONSTRAINT
                               # Specify constraints on a package (version,
@@ -211,8 +198,8 @@ Flags for repl:
  --write-ghc-environment-files=always|never|ghc8.4.4+
                               # Whether to create a .ghc.environment file
                                 after a successful build (v2-build only)
- --enable-documentation       # Enable building of documentation
- --disable-documentation      # Disable building of documentation
+ --[enable|disable]-documentation
+                              # Toggle building of documentation
  --doc-index-file=TEMPLATE    # A central index of haddock API documentation
                                 (template cannot use $pkgid)
  --dry-run                    # Do not install anything, only print what would
@@ -247,12 +234,12 @@ Flags for repl:
                                 section.
  --prefer-version=oldest|latest|installed-or-latest
                               # Select which version of a package that the
-                                solver should prefer. Oldest is useful to
-                                determine lower bounds in build-depends
-                                section. Latest will prefer the latest
-                                version. Installed-or-latest will prefer
-                                installed versions and the latest version
-                                otherwise.
+                                solver should prefer:
+                                - oldest: useful to determine lower bounds in
+                                  the build-depends section,
+                                - latest: prefer the latest version,
+                                - installed-or-latest: prefer installed
+                                  versions and the latest version otherwise.
  --shadow-installed-packages  # If multiple package instances of the same
                                 version are installed, treat all but one as
                                 shadowed.
@@ -279,23 +266,28 @@ Flags for repl:
                                 build the given packages
  --dependencies-only          # A synonym for --only-dependencies
  --index-state=STATE          # Use source package index state as it existed
-                                at a previous time. Accepts unix-timestamps
-                                (e.g. '@1474732068'), ISO8601 UTC timestamps
-                                (e.g. '2016-09-24T17:47:48Z'), or 'HEAD'
-                                (default: 'HEAD').
+                                at a previous time. Accepts:
+                                - a unix timestamp, e.g. '@1474732068',
+                                - an ISO8601 UTC timestamp, e.g.
+                                  '2016-09-24T17:47:48Z',
+                                - 'HEAD', the default.
  --root-cmd=COMMAND           # (No longer supported, do not use.)
  --build-summary=TEMPLATE     # Save build summaries to file (name template
                                 can use $pkgid, $compiler, $os, $arch)
  --build-log=TEMPLATE         # Log all builds to file (name template can use
                                 $pkgid, $compiler, $os, $arch)
- --remote-build-reporting=LEVEL
+ --remote-build-reporting=none|anonymous|detailed
                               # Generate build reports to send to a remote
-                                server (none, anonymous or detailed).
+                                server:
+                                - none: do not report,
+                                - anonymous: report without identifying
+                                  information,
+                                - detailed: report with full details.
  --report-planning-failure    # Generate build reports when the dependency
                                 solver fails. This is used by the Hackage
                                 build bot.
- --enable-per-component       # Enable Per-component builds when possible
- --disable-per-component      # Disable Per-component builds when possible
+ --[enable|disable]-per-component
+                              # Toggle Per-component builds when possible
  --run-tests                  # Run package test suites during installation.
  --semaphore                  # Use a semaphore so GHC can compile components
                                 in parallel
@@ -338,13 +330,18 @@ Flags for repl:
  --test-machine-log=TEMPLATE  # Produce a machine-readable log file (name
                                 template can use $pkgid, $compiler, $os,
                                 $arch, $result)
- --test-show-details=FILTER   # 'always': always show results of individual
-                                test cases. 'never': never show results of
-                                individual test cases. 'failures': show
-                                results of failing test cases. 'streaming':
-                                show results of test cases in real
-                                time.'direct': send results of test cases in
-                                real time; no log file.
+ --test-show-details=always|never|failures|streaming|direct
+                              # Allowed values:
+                                - always: always show results of individual
+                                  test cases,
+                                - never: never show results of individual test
+                                  cases,
+                                - failures: show results of failing test
+                                  cases,
+                                - streaming: show results of test cases in
+                                  real time,
+                                - direct: send results of test cases in real
+                                  time; no log file.
  --test-keep-tix-files        # Keep .tix files for HPC between test runs
  --test-wrapper=FILE          # Run test through a wrapper.
  --test-fail-when-no-test-suites
@@ -385,8 +382,8 @@ Flags for repl:
                                 presented to GHCi.
  --no-transitive-deps         # Don't automatically include transitive
                                 dependencies of requested packages.
- --enable-multi-repl          # Enable multi-component repl sessions
- --disable-multi-repl         # Disable multi-component repl sessions
+ --[enable|disable]-multi-repl
+                              # Toggle multi-component repl sessions
 
 Examples, open an interactive session:
   cabal repl

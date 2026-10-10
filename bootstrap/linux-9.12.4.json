@@ -120,7 +120,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.19.0.0"
         },
         {
             "cabal_sha256": "b74eed77eb3237c4ab6a39f08bcce4712b4486b091712ee20e92c8864f1e80a0",
@@ -144,7 +144,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.19.0.0"
         },
         {
             "cabal_sha256": null,
@@ -154,7 +154,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18"
+            "version": "3.19"
         },
         {
             "cabal_sha256": "39b25fd929b02b01a3fe59fec7ca8b2da6f0f9e282276b7a84e63a4702c4d725",
@@ -213,6 +213,38 @@
             "source": "hackage",
             "src_sha256": "d2a33bc281327d8f20afee18287c2e3f923f0cd86bac40dcba120ca3d2014f9b",
             "version": "4000.5.0"
+        },
+        {
+            "cabal_sha256": "613dc8d5f6e51babe57398a742ab8d5c2964fa98b773f3bf6e6a72b7e87f1c6e",
+            "component": "lib:colour",
+            "flags": [],
+            "package": "colour",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "1f3b1055675abe4e3362800cc9bf7ab9b92dfdf21a1f6c82b252611270be9680",
+            "version": "2.3.7"
+        },
+        {
+            "cabal_sha256": "1d6061eceaf35a9ed269b81177dd4c8c60403a499526f7f68fdffa4ec7842e7f",
+            "component": "lib:ansi-terminal-types",
+            "flags": [],
+            "package": "ansi-terminal-types",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "9fc9ce2157f1889bd99a4d22c9f1c64589590be0f797c3efe71c8fa17a11a689",
+            "version": "1.1.3"
+        },
+        {
+            "cabal_sha256": "408d9232e5304efead718f96138d6d7eb2da608c6121c5c0dc6a71a833b14320",
+            "component": "lib:ansi-terminal",
+            "flags": [
+                "-example"
+            ],
+            "package": "ansi-terminal",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "9cf083cef2e2ba88a425f132c8a82bfa931eb4b0c38232b2017f8fcea2e23073",
+            "version": "1.1.5"
         },
         {
             "cabal_sha256": "140fc5adad166f7b527567cbd26ff481e8da4a66bdfc84be3ddf28dbeb66f275",
@@ -328,7 +360,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.19.0.0"
         },
         {
             "cabal_sha256": "0e9de2ccce261e7a5b027e842f6f47f50eb0e6059a0de98a5479f75aa8164107",
@@ -436,7 +468,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "0.1"
+            "version": "3.19"
         },
         {
             "cabal_sha256": "0dc8dc33b9bba0e025e444355f6c2d806f62a4656446961c3647165f80f0d278",
@@ -449,6 +481,61 @@
             "source": "hackage",
             "src_sha256": "1066e286615e39ef43f7e7437a4644775246e264c33b4d259b4858cff0985f0b",
             "version": "0.5.1.0"
+        },
+        {
+            "cabal_sha256": "e3a802ea939d465b2e37b9fa09d8e5bb88b5775d6d62dd2ec6ca32b63416656d",
+            "component": "lib:prettyprinter",
+            "flags": [
+                "-buildreadme",
+                "+text"
+            ],
+            "package": "prettyprinter",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "f04eb6fd865512ad8672da1e8bfcea1c384509fc2f662c41b7ac39d7898706ee",
+            "version": "1.7.2"
+        },
+        {
+            "cabal_sha256": "5184ba6002a650de3307547347eaba19bdc9b82eb68e943f406818caa215ce4f",
+            "component": "lib:prettyprinter-ansi-terminal",
+            "flags": [
+                "+text"
+            ],
+            "package": "prettyprinter-ansi-terminal",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "912cd340d5c2583111e2eaeb9aa03b87551ca2e3dd78bbfd346756b9f1e6c9fe",
+            "version": "1.1.4"
+        },
+        {
+            "cabal_sha256": "044fb9955f63ee138fcebedfdcbe54afe741f2d5892a2d0bdf3a8052bd342643",
+            "component": "lib:transformers-compat",
+            "flags": [
+                "-five",
+                "+five-three",
+                "-four",
+                "+generic-deriving",
+                "+mtl",
+                "-three",
+                "-two"
+            ],
+            "package": "transformers-compat",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "b62c7304c9f3cbc9463d0739aa85cb9489f217ea092b9d625d417514fbcc9d6a",
+            "version": "0.7.2"
+        },
+        {
+            "cabal_sha256": "f30973861ac7e7ebff05ff8c7c3d1e4d283a1f3850e1cc14106b0693ec1b6d82",
+            "component": "lib:optparse-applicative",
+            "flags": [
+                "+process"
+            ],
+            "package": "optparse-applicative",
+            "revision": 1,
+            "source": "hackage",
+            "src_sha256": "63811ab4fd26e829b8868364325a88be3acc79819f5bb5005b2dd3b961ecc491",
+            "version": "0.18.1.0"
         },
         {
             "cabal_sha256": "d6c0c6d1136f5046207a331114ff4130e70640452096de7719bf03e3fceb7c7b",
@@ -516,7 +603,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.19.0.0"
         },
         {
             "cabal_sha256": null,
@@ -530,7 +617,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.18.1.0"
+            "version": "3.19.0.0"
         }
     ]
 }

@@ -13,18 +13,13 @@ Flags for fetch:
  --no-dependencies            # Ignore dependencies
  --dry-run                    # Do not install anything, only print what would
                                 be installed.
- --enable-tests               # Enable dependency checking and compilation for
+ --[enable|disable]-tests     # Toggle dependency checking and compilation for
                                 test suites listed in the package description
                                 file.
- --disable-tests              # Disable dependency checking and compilation
-                                for test suites listed in the package
-                                description file.
- --enable-benchmarks          # Enable dependency checking and compilation for
+ --[enable|disable]-benchmarks
+                              # Toggle dependency checking and compilation for
                                 benchmarks listed in the package description
                                 file.
- --disable-benchmarks         # Disable dependency checking and compilation
-                                for benchmarks listed in the package
-                                description file.
  --solver=SOLVER              # Select dependency solver to use (default:
                                 modular). Choices: modular.
  --max-backjumps=NUM          # Maximum number of backjumps allowed while
@@ -55,12 +50,12 @@ Flags for fetch:
                                 section.
  --prefer-version=oldest|latest|installed-or-latest
                               # Select which version of a package that the
-                                solver should prefer. Oldest is useful to
-                                determine lower bounds in build-depends
-                                section. Latest will prefer the latest
-                                version. Installed-or-latest will prefer
-                                installed versions and the latest version
-                                otherwise.
+                                solver should prefer:
+                                - oldest: useful to determine lower bounds in
+                                  the build-depends section,
+                                - latest: prefer the latest version,
+                                - installed-or-latest: prefer installed
+                                  versions and the latest version otherwise.
  --shadow-installed-packages  # If multiple package instances of the same
                                 version are installed, treat all but one as
                                 shadowed.

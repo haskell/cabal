@@ -133,7 +133,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     verbosity
     RejectNoTargets
     Nothing
-    (commandDefaultFlags CmdBuild.buildCommand)
+    buildDefaultFlags
     ["all"]
     globalFlags
     HaddockCommand
@@ -199,7 +199,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
 
       when localStyle $
         CmdBuild.buildAction
-          (commandDefaultFlags CmdBuild.buildCommand)
+          buildDefaultFlags
           ["all"]
           globalFlags
 
@@ -362,6 +362,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
   where
     -- build all packages with appropriate haddock flags
     commonFlags = haddockProjectCommonFlags flags
+    buildDefaultFlags = NixStyleOptions.defaultNixStyleFlags CmdBuild.defaultBuildFlags
 
     verbosity =
       mkVerbosity defaultVerbosityHandles $
@@ -413,7 +414,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
       (commandDefaultFlags CmdHaddock.haddockCommand)
         { NixStyleOptions.haddockFlags = haddockFlags
         , NixStyleOptions.configFlags =
-            (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
+            (NixStyleOptions.configFlags buildDefaultFlags)
               { configCommonFlags = commonFlags
               }
         }
