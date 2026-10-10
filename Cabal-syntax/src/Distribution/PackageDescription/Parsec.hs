@@ -155,12 +155,12 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   for_ utf8WarnPos $ \pos ->
     parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
   let (syntax, fs') = sectionizeFields fs
-  let (fields, sectionFields) = takeFields fs'
+  let (fields0, sectionFields0) = takeFields fs'
 
   -- cabal-version
   specVer <- case scannedVer of
     Just v -> return v
-    Nothing -> case Map.lookup "cabal-version" fields >>= safeLast of
+    Nothing -> case Map.lookup "cabal-version" fields0 >>= safeLast of
       Nothing -> return CabalSpecV1_0
       Just (MkNamelessField pos fls) -> do
         -- version will be parsed twice, therefore we parse without warnings.
@@ -183,7 +183,13 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   let specVer' = mkVersion (cabalSpecToVersionDigits specVer)
   setCabalSpecVersion (Just specVer')
 
-  -- Package description
+  -- Package description; since cabal-version 3.18, top-level conditionals
+  -- are merged into the top-level fields (all branches taken).
+  (extraFields, sectionFields) <-
+    if specVer >= CabalSpecV3_18
+      then processTopLevelConditionals sectionFields0
+      else return (mempty, sectionFields0)
+  let fields = Map.unionWith (++) fields0 extraFields
   pd <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
 
   -- Check that scanned and parsed versions match.
@@ -410,6 +416,83 @@ goSections specVer = traverse_ process
           lift $
             parseWarning pos PWTUnknownSection $
               "Ignoring section: " ++ show name
+
+-- | Process top-level conditional blocks (@if@/@elif@/@else@), see
+-- <https://github.com/haskell/cabal/issues/11315 cabal#11315>.
+--
+-- Fields in top-level conditionals are taken from *all* branches (union
+-- semantics): as the fields of 'PackageDescription' live outside of
+-- 'CondTree', the conditions cannot be evaluated at parse time, so every
+-- branch is merged as if written unconditionally at the top level. This is
+-- supported since @cabal-version: 3.18@; before that, top-level conditionals
+-- are ignored with a warning by 'parseSection'.
+--
+-- Returns the fields to hoist into the top-level 'Fields', and the remaining
+-- sections (order preserved).
+processTopLevelConditionals
+  :: [Field Position]
+  -> ParseResult src (Fields Position, [Field Position])
+processTopLevelConditionals = go
+  where
+    go :: [Field Position] -> ParseResult src (Fields Position, [Field Position])
+    go [] = return (Map.empty, [])
+    go (f : fs) = case f of
+      Section (Name pos name) args secFields
+        | name == "if" -> do
+            -- validate the condition syntax only, the union semantics ignores it
+            _ <- parseConditionConfVar (startOfSection (incPos 2 pos) args) args
+            ifFields <- parseCondBody secFields
+            (groupFields, fs') <- parseElseIfs fs
+            (fields, sections) <- go fs'
+            return (Map.unionWith (++) ifFields (Map.unionWith (++) groupFields fields), sections)
+        | name == "else" ->
+            parseFailure pos "\"else\" without preceding \"if\"" >> go fs
+        | name == "elif" ->
+            parseFailure pos "\"elif\" without preceding \"if\"" >> go fs
+      _ -> do
+            (fields, sections) <- go fs
+            return (fields, f : sections)
+
+    -- consume sibling @elif@ and @else@ sections following an @if@
+    parseElseIfs
+      :: [Field Position] -> ParseResult src (Fields Position, [Field Position])
+    parseElseIfs [] = return (Map.empty, [])
+    parseElseIfs (f : fs) = case f of
+      Section (Name pos name) args secFields
+        | name == "elif" -> do
+            _ <- parseConditionConfVar (startOfSection (incPos 4 pos) args) args
+            elifFields <- parseCondBody secFields
+            (fields, sections) <- parseElseIfs fs
+            return (Map.unionWith (++) elifFields fields, sections)
+        | name == "else" -> do
+            unless (null args) $
+              parseFailure pos $
+                "`else` section has section arguments " ++ show args
+            elseFields <- parseCondBody secFields
+            (fields, sections) <- go fs
+            return (Map.unionWith (++) elseFields fields, sections)
+      _ -> return (Map.empty, f : fs)
+
+    -- parse the body of a conditional branch: only known top-level fields
+    parseCondBody
+      :: [Field Position] -> ParseResult src (Fields Position)
+    parseCondBody fields = do
+      kvs <- traverse checkField fields
+      return (Map.fromListWith (flip (++)) (catMaybes kvs))
+      where
+        knownFields = fieldGrammarKnownFieldList packageDescriptionFieldGrammar
+
+        checkField (Field (Name pos name) fls)
+          | name `elem` knownFields || "x-" `BS.isPrefixOf` name =
+              return (Just (name, [MkNamelessField pos fls]))
+          | otherwise = do
+              parseFailure pos $
+                "The field " ++ show name ++ " is not allowed in a top-level conditional"
+              return Nothing
+        checkField (Section (Name pos name) _ _) = do
+          parseFailure pos $
+            "sections are not allowed inside top-level conditionals (including " ++ show name ++ ")"
+          return Nothing
 
 parseName :: Position -> [SectionArg Position] -> SectionParser src String
 parseName pos args = fromUTF8BS <$> parseNameBS pos args

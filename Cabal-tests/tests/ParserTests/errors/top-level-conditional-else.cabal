@@ -1,0 +1,7 @@
+cabal-version: 3.18
+name: tlc
+version: 0.1
+
+else
+    extra-source-files:
+        changelog
