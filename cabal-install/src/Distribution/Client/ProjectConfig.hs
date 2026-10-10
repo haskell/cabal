@@ -928,7 +928,10 @@ readProjectFileSkeletonCompare verbosity httpTransport distDirLayout key = do
   readProjectFileSkeletonGen verbosity httpTransport distDirLayout key $ \fp -> do
     debug verbosity "Reading project file using the comparative parser"
     (pres, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key fp
-    lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout key fp
+    -- The legacy parse is only compared against, so the warnings it would
+    -- print while parsing, such as those about duplicate or untrimmed
+    -- imports, are left to the parsec parse or they would be printed twice.
+    lres <- parseProjectFileSkeletonLegacy (modifyVerbosityFlags (const silent) verbosity) httpTransport distDirLayout key fp
     let (_, ppres) = runParseResult pres
     case (lres, ppres) of
       -- 1. Both succeed, compare the results

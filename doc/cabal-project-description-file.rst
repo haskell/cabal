@@ -445,7 +445,9 @@ Project options
     * ``fallback`` - the new parser using Parsec, but falling back to the old parser if it fails
     * ``compare`` - the new parser using Parsec, but comparing the results with the old parser
 
-    This option can only be specified from the command line.
+    This option can only be specified from the command line. The parser is
+    chosen before the project file is read, so a ``project-file-parser`` field
+    in a project file is ignored with a warning.
 
 .. option:: -z, --ignore-project
 
@@ -1999,7 +2001,7 @@ Most users generally won't need these.
 
     The command line variant of this field is ``--solver=modular``.
 
-.. cfg-field:: max-backjumps: nat
+.. cfg-field:: max-backjumps: integer
                --max-backjumps=N
     :synopsis: Maximum number of solver backjumps.
 
