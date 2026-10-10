@@ -83,6 +83,7 @@ import Control.Arrow ((***))
 import Control.Monad (forM_)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
+import qualified Data.Text as Text
 import Distribution.CabalSpecVersion
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package
@@ -796,7 +797,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "dyn_hi"
           , ghcOptObjSuffix = toFlag "dyn_o"
-          , ghcOptExtra = hcSharedOptions GHC libBi
+          , ghcOptExtra = map Text.unpack $ hcSharedOptions GHC libBi
           }
     profArgs =
       vanillaArgs
@@ -808,7 +809,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                 (withProfLibDetail lbi)
           , ghcOptHiSuffix = toFlag "p_hi"
           , ghcOptObjSuffix = toFlag "p_o"
-          , ghcOptExtra = hcProfOptions GHC libBi
+          , ghcOptExtra = map Text.unpack $ hcProfOptions GHC libBi
           }
     profDynArgs =
       vanillaArgs
@@ -822,7 +823,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "p_dyn_hi"
           , ghcOptObjSuffix = toFlag "p_dyn_o"
-          , ghcOptExtra = hcProfSharedOptions GHC libBi
+          , ghcOptExtra = map Text.unpack $ hcProfSharedOptions GHC libBi
           }
     ghcArgs =
       let (libWays, _, _) = buildWays lbi
@@ -979,12 +980,11 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
           [ installOrdinary
             builtDir
             targetDir
-            (mkGenericStaticLibName (l ++ f))
+            (mkGenericStaticLibName (Text.unpack $ l <> f))
           | l <-
-              getHSLibraryName
-                (componentUnitId clbi)
+              Text.pack (getHSLibraryName (componentUnitId clbi))
                 : extraBundledLibs (libBuildInfo lib)
-          , f <- "" : extraLibFlavours (libBuildInfo lib)
+          , f <- mempty : extraLibFlavours (libBuildInfo lib)
           ]
         whenGHCi $ installOrdinary builtDir targetDir ghciLibName
       ProfWay -> do
@@ -1004,9 +1004,9 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
                   [ installShared
                     builtDir
                     dynlibTargetDir
-                    (mkGenericSharedLibName platform compiler_id (l ++ f))
-                  | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
-                  , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                    (mkGenericSharedLibName platform compiler_id (Text.unpack $ l <> f))
+                  | l <- Text.pack (getHSLibraryName uid) : extraBundledLibs (libBuildInfo lib)
+                  , f <- mempty : extraDynLibFlavours (libBuildInfo lib)
                   ]
             | otherwise -> do
                 sequence_
@@ -1016,9 +1016,9 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
                     ( mkGenericSharedLibName
                         platform
                         compiler_id
-                        (getHSLibraryName uid ++ f)
+                        (getHSLibraryName uid ++ Text.unpack f)
                     )
-                  | f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                  | f <- mempty : extraDynLibFlavours (libBuildInfo lib)
                   ]
                 sequence_
                   [ do
@@ -1027,7 +1027,7 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
                           mkGenericSharedBundledLibName
                             platform
                             compiler_id
-                            (l ++ f)
+                            (Text.unpack $ l <> f)
                     forM_ files $ \file ->
                       when (l' `isPrefixOf` file) $ do
                         isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
@@ -1037,7 +1037,7 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
                             dynlibTargetDir
                             file
                   | l <- extraBundledLibs (libBuildInfo lib)
-                  , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                  , f <- mempty : extraDynLibFlavours (libBuildInfo lib)
                   ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path

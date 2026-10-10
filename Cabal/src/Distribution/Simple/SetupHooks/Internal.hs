@@ -128,6 +128,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import Data.Monoid (Ap (..))
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 import System.Directory (doesFileExist, getModificationTime)
 import qualified System.FilePath as FilePath
@@ -935,7 +936,7 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
         ]
     extraBundledLibsPaths :: [RelativePath Source File]
     extraBundledLibsPaths =
-      map makeRelativePathEx $
+      map (makeRelativePathEx . Text.unpack) $
         extraBundledLibs compBuildInfo
 
     -- Is this rule directly demanded (e.g. it generates a Haskell module
