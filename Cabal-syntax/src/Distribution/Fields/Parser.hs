@@ -122,25 +122,25 @@ describeToken t = case t of
   LexicalError is -> "character in input " ++ show (B8.head is)
 
 tokSym :: Parser (Name Position)
-tokSym', tokStr, tokOther :: Parser (SectionArg Position)
-tokIndent :: Parser Int
-tokColon, tokCloseBrace :: Parser ()
-tokOpenBrace :: Parser Position
-tokFieldLine :: Parser (FieldLine Position)
 tokSym = getTokenWithPos $ \case L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing
+tokSym', tokStr, tokOther :: Parser (SectionArg Position)
+tokColon, tokCloseBrace :: Parser ()
+
+colon, openBrace, closeBrace :: Parser ()
+tokIndent :: Parser Int
+tokIndent = getToken $ \case Indent x -> Just x; _ -> Nothing
+tokOpenBrace :: Parser Position
+tokOpenBrace = getTokenWithPos $ \case L pos OpenBrace -> Just pos; _ -> Nothing
+tokFieldLine :: Parser (FieldLine Position)
+tokFieldLine = getTokenWithPos $ \case L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 tokSym' = getTokenWithPos $ \case L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
 tokStr = getTokenWithPos $ \case L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing
 tokOther = getTokenWithPos $ \case L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
-tokIndent = getToken $ \case Indent x -> Just x; _ -> Nothing
 tokColon = getToken $ \case Colon -> Just (); _ -> Nothing
-tokOpenBrace = getTokenWithPos $ \case L pos OpenBrace -> Just pos; _ -> Nothing
 tokCloseBrace = getToken $ \case CloseBrace -> Just (); _ -> Nothing
-tokFieldLine = getTokenWithPos $ \case L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
 tokComment :: Parser (Comment Position)
 tokComment = getTokenWithPos $ \case L pos (TokComment c) -> Just (Comment c pos); _ -> Nothing
-
-colon, openBrace, closeBrace :: Parser ()
 sectionArg :: Parser (SectionArg Position)
 sectionArg = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
 
@@ -229,11 +229,11 @@ inLexerMode (LexerMode mode) p =
 -- and the same thing but left factored...
 --
 -- @
--- Elements                   ::= Comments* (Element Comment*)*
+-- Elements                   ::= comment* (Element comment*)*
 -- Element                    ::= '\\n' name ElementInLayoutContext
---                              |      name ElementInNonLayoutContext
--- ElementInLayoutContext     ::= ':'   FieldLayoutOrBraces
---                              | arg*  SectionLayoutOrBraces
+--                              |       name ElementInNonLayoutContext
+-- ElementInLayoutContext     ::= ':'           FieldLayoutOrBraces
+--                              | arg* comment* SectionLayoutOrBraces
 -- FieldLayoutOrBraces        ::= '\\n'? '{' comment* (content comment*)* '}'
 --                              | comment* line? comment* ('\\n' line comment*)*
 -- SectionLayoutOrBraces      ::= '\\n'? '{' Elements '\\n'? '}'
@@ -357,18 +357,19 @@ element ilevel =
 -- In a layout context we can have fields and sections that themselves
 -- either use layout style or that use braces style.
 --
--- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
---                          | arg* sectionLayoutOrBraces
+-- elementInLayoutContext ::= ':'           FieldLayoutOrBraces
+--                          | arg* comment* SectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field (WithComments Position))
 elementInLayoutContext ilevel name =
   (do colon; fieldLayoutOrBraces ilevel name)
     <|> ( do
             args <- many sectionArg
+            commentsAfterSectionArgs <- many tokComment -- Unintuitively, trailing comments are allowed in the same line of a section
             elems <- sectionLayoutOrBraces ilevel
             case elems of
-              -- If there are no elements but comments, we attach them to the name (args can be multiple)
-              Left onlyCmts -> return (Section (WithComments onlyCmts <$> name) (map noComments args) [])
-              Right elems' -> return (Section (noComments name) (map noComments args) elems')
+              -- If there are no elements but comments, we attach them to the name.
+              Left innerCmts -> return (Section (WithComments (commentsAfterSectionArgs <> innerCmts) <$> name) (map noComments args) [])
+              Right elems' -> return (Section (WithComments commentsAfterSectionArgs <$> name) (map noComments args) elems')
         )
 
 -- An element (field or section) that is valid in a non-layout context.
