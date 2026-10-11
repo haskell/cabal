@@ -92,7 +92,11 @@ jobs:
             push)         base="${{ github.event.before }}" ;;
             *)            base="" ;;
           esac
-          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+          # github.event.before (push) is the all-zero commit id when the
+          # branch has no previous commit, e.g. it was newly created or
+          # force-pushed; fall back to the merge base in that case.
+          zero_sha="0000000000000000000000000000000000000000"
+          if [ -z "$base" ] || [ "$base" = "$zero_sha" ]; then
             base="$(git merge-base origin/master HEAD)"
           fi
           head="$(git rev-parse HEAD)"
