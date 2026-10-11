@@ -125,19 +125,18 @@ tokSym :: Parser (Name Position)
 tokSym = getTokenWithPos $ \case L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing
 tokSym', tokStr, tokOther :: Parser (SectionArg Position)
 tokColon, tokCloseBrace :: Parser ()
+tokSym' = getTokenWithPos $ \case L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
+tokStr = getTokenWithPos $ \case L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing
+tokOther = getTokenWithPos $ \case L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
+tokColon = getToken $ \case Colon -> Just (); _ -> Nothing
+tokCloseBrace = getToken $ \case CloseBrace -> Just (); _ -> Nothing
 
-colon, openBrace, closeBrace :: Parser ()
 tokIndent :: Parser Int
 tokIndent = getToken $ \case Indent x -> Just x; _ -> Nothing
 tokOpenBrace :: Parser Position
 tokOpenBrace = getTokenWithPos $ \case L pos OpenBrace -> Just pos; _ -> Nothing
 tokFieldLine :: Parser (FieldLine Position)
 tokFieldLine = getTokenWithPos $ \case L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
-tokSym' = getTokenWithPos $ \case L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
-tokStr = getTokenWithPos $ \case L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing
-tokOther = getTokenWithPos $ \case L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
-tokColon = getToken $ \case Colon -> Just (); _ -> Nothing
-tokCloseBrace = getToken $ \case CloseBrace -> Just (); _ -> Nothing
 
 tokComment :: Parser (Comment Position)
 tokComment = getTokenWithPos $ \case L pos (TokComment c) -> Just (Comment c pos); _ -> Nothing
@@ -147,6 +146,7 @@ sectionArg = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
 fieldSecName :: Parser (Name Position)
 fieldSecName = tokSym <?> "field or section name"
 
+colon, openBrace, closeBrace :: Parser ()
 colon = tokColon <?> "\":\""
 openBrace = do
   pos <- tokOpenBrace <?> "\"{\""
@@ -403,10 +403,12 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
     braces :: Parser (Field (WithComments Position))
     braces = do
       openBrace
-      (preCmts, ls) <- inLexerMode (LexerMode in_field_braces)
+      (preCmts, ls) <-
+        inLexerMode
+          (LexerMode in_field_braces)
           ( (,)
-            <$> many tokComment
-            <*> many (commentsAfter fieldContent)
+              <$> many tokComment
+              <*> many (commentsAfter fieldContent)
           )
       closeBrace
       return $ Field (WithComments preCmts <$> name) ls
@@ -446,11 +448,13 @@ fieldInlineOrBraces :: Name Position -> Parser (Field (WithComments Position))
 fieldInlineOrBraces name =
   ( do
       openBrace
-      (preCmts, ls) <- inLexerMode (LexerMode in_field_braces)
-        ( (,)
-          <$> many tokComment
-          <*> many (commentsAfter fieldContent)
-        )
+      (preCmts, ls) <-
+        inLexerMode
+          (LexerMode in_field_braces)
+          ( (,)
+              <$> many tokComment
+              <*> many (commentsAfter fieldContent)
+          )
       closeBrace
       return (Field (WithComments preCmts <$> name) ls)
   )
