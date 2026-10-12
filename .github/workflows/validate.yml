@@ -99,7 +99,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: 3.12.1.0 # see https://github.com/haskell/cabal/pull/10251
+          cabal-version: 3.18.1.0 # see https://github.com/haskell/cabal/pull/10251
           ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.9.yaml
 
       # runner.os isn't sufficient for binary compatible caches
@@ -331,7 +331,9 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_RELEASE }}
-          cabal-version: latest # latest is mandatory for cabal-testsuite, see https://github.com/haskell/cabal/issues/8133
+          # must satisfy the setup-depends of cabal-testsuite, see PR #10251
+          # (issue #8133 asks for the latest release; this is it as of 2026-09)
+          cabal-version: 3.18.1.0
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
