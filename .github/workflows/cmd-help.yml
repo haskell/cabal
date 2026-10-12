@@ -16,7 +16,9 @@ on:
       - doc/cmd-v2-hidden-help/**
       - doc/setup-help/**
       - cabal-install/src/Distribution/Client/Cmd*.hs
+      - cabal-install-internal/src/Distribution/Client/Cmd*.hs
       - cabal-install/src/Distribution/Client/Main.hs
+      - cabal-install-internal/src/Distribution/Client/Main.hs
       - cabal-install/src/Distribution/Client/Setup.hs
       - Cabal/src/Distribution/Simple.hs
       - Cabal/src/Distribution/Simple/Setup/**

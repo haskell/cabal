@@ -211,7 +211,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       hClose h >> return f
 
     distPref = fromFlag $ setupDistPref common
-    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+    verbosity = commonSetupVerbosity verbHandles common
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
 -- necessarily a path.
