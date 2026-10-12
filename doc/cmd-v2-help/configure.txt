@@ -34,6 +34,7 @@ Flags for configure:
  --keep-temp-files            # Keep temporary files.
  -g, --ghc                    # Compile with GHC
  --uhc                        # Compile with UHC
+ --mhs                        # Compile with MHS
  -w PATH or -wPATH, --with-compiler=PATH
                               # Give the path to a particular compiler
  --with-hc-pkg=PATH           # Give the path to the package tool
