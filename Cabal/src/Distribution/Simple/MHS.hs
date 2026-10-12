@@ -47,6 +47,7 @@ import Distribution.Package hiding (installedUnitId)
 import Distribution.PackageDescription
 import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty
+import Distribution.Simple.Build.Macros (generateCabalMacrosHeader)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo
@@ -63,6 +64,7 @@ import Distribution.Version
 import Language.Haskell.Extension
 
 import qualified Data.ByteString as BS
+import Data.List (stripPrefix)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text
 import System.Directory (doesDirectoryExist, getDirectoryContents, getHomeDirectory, makeAbsolute)
@@ -465,7 +467,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True (interpretSymbolicPathLBI lbi targetDir)
   unless (null (cSources bi)) $
     warn verbosity "MicroHs cannot include C sources in a library; ignoring them."
-  runMhs verbosity lbi bi clbi targetDir $
+  runMhs verbosity pkg_descr lbi bi clbi targetDir $
     ["-P" ++ pkgId, "-o", interpretSymbolicPathCWD pkgFile]
       ++ map prettyShow modules
 
@@ -476,7 +478,7 @@ buildExe
   -> Executable
   -> ComponentLocalBuildInfo
   -> IO ()
-buildExe verbosity _pkg_descr lbi exe clbi = do
+buildExe verbosity pkg_descr lbi exe clbi = do
   let bi = buildInfo exe
       exeName' = prettyShow (exeName exe)
       targetDir = buildDir lbi </> makeRelativePathEx exeName'
@@ -488,7 +490,7 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
   srcMainPath <-
     findFileCwd verbosity (mbWorkDirLBI lbi) (coerceSymbolicPath generatedDir : sourceDirs bi) (modulePath exe)
   createDirectoryIfMissingVerbose verbosity True (interpretSymbolicPathLBI lbi targetDir)
-  runMhs verbosity lbi bi clbi generatedDir $
+  runMhs verbosity pkg_descr lbi bi clbi generatedDir $
     -- Compress the combinator code of the program, as MicroCabal does.
     ["-z"]
       ++ map u (cSources bi)
@@ -498,6 +500,7 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
 -- by the given ones.
 runMhs
   :: Verbosity
+  -> PackageDescription
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
@@ -505,7 +508,7 @@ runMhs
   -- ^ where the preprocessors put the modules they generated
   -> [String]
   -> IO ()
-runMhs verbosity lbi bi clbi generatedDir args = do
+runMhs verbosity pkg_descr lbi bi clbi generatedDir args = do
   let comp = compiler lbi
       mbWorkDir = mbWorkDirLBI lbi
       progdb = withPrograms lbi
@@ -532,10 +535,14 @@ runMhs verbosity lbi bi clbi generatedDir args = do
           ++ ["-p" ++ pkgFile | pkgFile <- pkgFiles]
           ++ languageToFlags comp (defaultLanguage bi)
           ++ extensionsToFlags comp (usedExtensions bi)
+          -- mhs passes only -D and -I options on to cpphs, so the macros of
+          -- cabal_macros.h are defined one by one rather than included. The
+          -- header is found for the modules that include it themselves.
+          ++ cabalMacrosOptions pkg_descr lbi clbi
+          ++ ["-I" ++ u (autogenComponentModulesDir lbi clbi)]
           -- The headers that hsc2hs generates beside the modules, for the C
           -- it generates with them.
           ++ ["-I" ++ u generatedDir]
-          -- mhs passes only -D and -I options on to cpphs.
           ++ [opt | opt <- map Text.unpack (cppOptions bi), any (`isPrefixOf` opt) ["-D", "-I"]]
           ++ ["-I" ++ u dir | dir <- includeDirs bi]
           ++ map Text.unpack (hcOptions MHS bi)
@@ -569,6 +576,32 @@ dependencyPackageFiles verbosity lbi clbi = do
   catMaybes <$> traverse (packageFile verbosity) closure
   where
     deps = map fst (componentPackageDeps clbi)
+
+-- | The macros of @cabal_macros.h@ as @-D@ options of cpphs, to which mhs passes
+-- on only the @-D@ and @-I@ options it is given, so that it cannot be told to
+-- include the header: every @#define@ of the header, with its continuation
+-- lines joined, becomes an option, and the first definition of a macro wins,
+-- as the @#ifndef@ guards of the header make it.
+cabalMacrosOptions :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> [String]
+cabalMacrosOptions pkg_descr lbi clbi =
+  [ "-D" ++ lhs ++ "=" ++ rhs
+  | (_, lhs, rhs) <- ordNubBy (\(name, _, _) -> name) defines
+  ]
+  where
+    header = generateCabalMacrosHeader pkg_descr lbi clbi
+    defines =
+      [ (takeWhile (/= '(') lhs, lhs, dropWhile isSpace rhs)
+      | line <- joinContinuations (lines header)
+      , Just definition <- [stripPrefix "#define " line]
+      , let (lhs, rhs) = break isSpace definition
+      ]
+    joinContinuations (line : rest)
+      | '\\' : reversedLine <- reverse line =
+          case joinContinuations rest of
+            next : rest' -> (reverse reversedLine ++ next) : rest'
+            [] -> [reverse reversedLine]
+      | otherwise = line : joinContinuations rest
+    joinContinuations [] = []
 
 -- | The source directories of a component; the package directory if none are
 -- given.
