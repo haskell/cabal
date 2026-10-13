@@ -5,6 +5,7 @@ module Distribution.Utils.LogProgress
   , infoProgress
   , dieProgress
   , addProgressCtx
+  , transformProgressCtx
   ) where
 
 import Distribution.Compat.Prelude
@@ -99,5 +100,9 @@ formatMsg ctx doc = doc $$ vcat ctx
 
 -- | Add a message to the error/warning context.
 addProgressCtx :: CtxMsg -> LogProgress a -> LogProgress a
-addProgressCtx s (LogProgress m) = LogProgress $ \env ->
-  m env{le_context = s : le_context env}
+addProgressCtx s = transformProgressCtx (s :)
+
+-- | Transform the messages in the error/warning context.
+transformProgressCtx :: ([CtxMsg] -> [CtxMsg]) -> LogProgress a -> LogProgress a
+transformProgressCtx f (LogProgress m) = LogProgress $ \env ->
+  m env{le_context = f $ le_context env}
