@@ -230,19 +230,25 @@ data SetupRunnerArgs (spec :: SetupWrapperSpec) where
   NotInLibrary
     :: SetupRunnerArgs UseGeneralSetup
   InLibraryArgs
-    :: InLibraryArgs flags
+    :: InLibraryArgs InLibraryLBI flags
     -> SetupRunnerArgs (TryInLibrary flags)
 
-data InLibraryArgs (flags :: Type) where
+-- | What the in-library method needs for a phase.
+--
+-- @lbi@ is what post-configure phases carry in the 'LocalBuildInfo' slot.
+-- Callers pass 'InLibraryLBI', since the package may have been configured by
+-- an external Setup; once the in-library method is chosen (see
+-- 'inLibraryMethod') it holds a 'LocalBuildInfo' outright.
+data InLibraryArgs (lbi :: Type) (flags :: Type) where
   InLibraryConfigureArgs
     :: ElaboratedSharedConfig
     -> ElaboratedReadyPackage
     -> TVar InstalledPackageIndex
-    -> InLibraryArgs ConfigFlags
+    -> InLibraryArgs lbi ConfigFlags
   InLibraryPostConfigureArgs
     :: SPostConfigurePhase flags
-    -> InLibraryLBI
-    -> InLibraryArgs flags
+    -> lbi
+    -> InLibraryArgs lbi flags
 
 type family SetupRunnerRes (spec :: SetupWrapperSpec) where
   SetupRunnerRes UseGeneralSetup = ()
@@ -272,24 +278,9 @@ data Setup spec = Setup
 data SetupMethod (spec :: SetupWrapperSpec) where
   -- | Directly use Cabal library functions, bypassing the Setup
   -- mechanism entirely.
-    LibraryMethod :: InLibraryRun flags -> SetupMethod (TryInLibrary flags)
+    LibraryMethod :: InLibraryArgs LocalBuildInfo flags -> SetupMethod (TryInLibrary flags)
   -- | run Cabal commands through a custom \"Setup\" executable
     ExternalMethod :: FilePath -> SetupMethod spec
-
--- | The arguments to the in-library method, once we know it can be used.
---
--- Unlike 'InLibraryArgs', post-configure phases carry a 'LocalBuildInfo':
--- without one, the in-library method is not available.
-data InLibraryRun (flags :: Type) where
-  InLibraryConfigure
-    :: ElaboratedSharedConfig
-    -> ElaboratedReadyPackage
-    -> TVar InstalledPackageIndex
-    -> InLibraryRun ConfigFlags
-  InLibraryPostConfigure
-    :: SPostConfigurePhase flags
-    -> LocalBuildInfo
-    -> InLibraryRun flags
 
 -- | The in-library method for the given arguments, if they permit one.
 --
@@ -297,13 +288,14 @@ data InLibraryRun (flags :: Type) where
 -- configured by an external Setup, so later phases must use one too.
 inLibraryMethod :: SetupRunnerArgs spec -> Maybe (SetupMethod spec)
 inLibraryMethod NotInLibrary = Nothing
-inLibraryMethod (InLibraryArgs libArgs) = case libArgs of
-  InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar ->
-    Just $ LibraryMethod $ InLibraryConfigure elabSharedConfig elabReadyPkg ipiTVar
-  InLibraryPostConfigureArgs sPhase (InLibraryLBI lbi) ->
-    Just $ LibraryMethod $ InLibraryPostConfigure sPhase lbi
-  InLibraryPostConfigureArgs _ NotInLibraryNoLBI ->
-    Nothing
+inLibraryMethod (InLibraryArgs libArgs) =
+  LibraryMethod <$> case libArgs of
+    InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar ->
+      Just (InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar)
+    InLibraryPostConfigureArgs sPhase (InLibraryLBI lbi) ->
+      Just (InLibraryPostConfigureArgs sPhase lbi)
+    InLibraryPostConfigureArgs _ NotInLibraryNoLBI ->
+      Nothing
 
 -- TODO: The 'setupWrapper' and 'SetupScriptOptions' should be split into two
 -- parts: one that has no policy and just does as it's told with all the
@@ -680,7 +672,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                SRegisterPhase -> ()
                STestPhase     -> ()
                SBenchPhase    -> ()
-    LibraryMethod (InLibraryConfigure elabSharedConfig elabReadyPkg ipiTVar) -> do
+    LibraryMethod (InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar) -> do
       -- Start from the pre-configured compiler ProgramDb, augmented
       -- with all builtin programs (restored as unconfigured).
       -- This ensures:
@@ -736,7 +728,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
       -- the previous invocation of 'configure' and pass it to 'build'.
       writePersistBuildConfig mbWorkDir distPref lbi
       return (InLibraryLBI lbi)
-    LibraryMethod (InLibraryPostConfigure sPhase lbi) ->
+    LibraryMethod (InLibraryPostConfigureArgs sPhase lbi) ->
       case sPhase of
         SBuildPhase    -> InLibrary.build    verbHandles flags lbi extraArgs
         SHaddockPhase  -> InLibrary.haddock  verbHandles flags lbi extraArgs
