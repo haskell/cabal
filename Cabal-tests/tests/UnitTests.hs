@@ -15,6 +15,7 @@ import qualified UnitTests.Distribution.Simple.Compiler
 import qualified UnitTests.Distribution.Simple.Glob
 import qualified UnitTests.Distribution.Simple.Program.GHC
 import qualified UnitTests.Distribution.Simple.Program.Internal
+import qualified UnitTests.Distribution.Simple.Setup.Config
 import qualified UnitTests.Distribution.Simple.Utils
 import qualified UnitTests.Distribution.System
 import qualified UnitTests.Distribution.Utils.CharSet
@@ -49,6 +50,7 @@ tests =
     , UnitTests.Distribution.Simple.Program.GHC.tests
     , testGroup "Distribution.Simple.Program.Internal"
         UnitTests.Distribution.Simple.Program.Internal.tests
+    , UnitTests.Distribution.Simple.Setup.Config.tests
     , testGroup "Distribution.Simple.Utils" $
         UnitTests.Distribution.Simple.Utils.tests ghcPath
     , testGroup "Distribution.Utils.Generic"
