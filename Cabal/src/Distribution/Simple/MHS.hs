@@ -29,6 +29,7 @@ module Distribution.Simple.MHS
   , installExe
   , createPackageDB
   , registerPackage
+  , rewritePackageDescription
   ) where
 
 import Distribution.Compat.Prelude
@@ -45,6 +46,7 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package hiding (installedUnitId)
 import Distribution.PackageDescription
+import Distribution.PackageDescription.Configuration (transformAllBuildDepends)
 import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty
 import Distribution.Simple.Build.Macros (generateCabalMacrosHeader)
@@ -62,6 +64,9 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
+
+import Distribution.Compat.Lens (over, view)
+import qualified Distribution.Types.BuildInfo.Lens as L
 
 import qualified Data.ByteString as BS
 import Data.List (stripPrefix)
@@ -108,6 +113,32 @@ version, and the bundled packages as installed packages of their own that
 depend on base and have no package file, so that base.pkg is what gets
 loaded. See 'compatPackages'. The unit id of base stays <name>-<version> as
 mhs knows it, which is also the name of its package file.
+-}
+
+{- Note [MicroHs rewrites of packages]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+MicroCabal rewrites the dependencies of every package it builds with mhs, and
+so does cabal-install, see 'rewritePackageDescription': it rewrites the
+packages it gives to the solver, so that the solver chooses, and cabal-install
+builds, the packages mhs needs, as far as they are on Hackage or installed.
+That is enough since cabal-install calls Cabal in-library (#11703): it
+configures a package with the description of its plan, which is rewritten
+already, rather than having a Setup script read the .cabal file of the
+package again. Only a Custom setup script still would, and mhs cannot compile
+one.
+
+  * ghc-compat holds modules that are part of base in GHC but not in mhs,
+    such as GHC.Stack, GHC.Exts and Language.Haskell.TH.Syntax. Packages
+    written for GHC import them while depending only on base, so ghc-compat
+    becomes a dependency of every component, except in base, ghc-compat and
+    the packages of MicroHs itself; a component that depends on it already
+    keeps its own bounds.
+  * mhs cannot compile some packages from Hackage, and MicroHs has forks of
+    them on Hackage that it can: array-mhs and random-mhs. A dependency on the
+    original becomes one on the fork, of any version, as the bounds on the
+    original are about its own versions, and a re-export that names the
+    original names the fork. The version macros of the fork are defined under
+    the name of the original too, see 'cabalMacrosOptions'.
 -}
 
 -- -----------------------------------------------------------------------------
@@ -166,6 +197,66 @@ mhsLanguageExtensions =
   where
     -- Extensions of MicroHs that GHC does not have.
     mhsSpecific = ["ExtraInstanceBindings", "ImportShadowing", "TypeLits"]
+
+-- -----------------------------------------------------------------------------
+-- Package descriptions
+
+-- | The package description as MicroCabal builds the package with mhs, as
+-- far as the packages it uses instead are available, which the predicate says.
+-- See Note [MicroHs rewrites of packages].
+rewritePackageDescription
+  :: (PackageName -> Bool) -> GenericPackageDescription -> GenericPackageDescription
+rewritePackageDescription available gpd0
+  | packageName gpd0 `elem` withoutGhcCompat || not (available ghcCompat) = gpd
+  | otherwise =
+      gpd
+        { condLibrary = fmap addGhcCompat (condLibrary gpd)
+        , condSubLibraries = map (fmap addGhcCompat) (condSubLibraries gpd)
+        , condForeignLibs = map (fmap addGhcCompat) (condForeignLibs gpd)
+        , condExecutables = map (fmap addGhcCompat) (condExecutables gpd)
+        , condTestSuites = map (fmap addGhcCompat) (condTestSuites gpd)
+        , condBenchmarks = map (fmap addGhcCompat) (condBenchmarks gpd)
+        }
+  where
+    gpd =
+      forked
+        { condLibrary = fmap (fmap useForkReexports) (condLibrary forked)
+        , condSubLibraries = map (fmap (fmap useForkReexports)) (condSubLibraries forked)
+        }
+    forked = transformAllBuildDepends useFork gpd0
+    useFork dep@(Dependency name _ libs) =
+      case lookup name forkedPackages of
+        Just fork | available fork -> Dependency fork anyVersion libs
+        _ -> dep
+    -- A re-export that names the package of a module names the fork too.
+    useForkReexports lib = lib{reexportedModules = map useForkReexport (reexportedModules lib)}
+    useForkReexport reexport@ModuleReexport{moduleReexportOriginalPackage = Just name}
+      | Just fork <- lookup name forkedPackages, available fork = reexport{moduleReexportOriginalPackage = Just fork}
+    useForkReexport reexport = reexport
+    ghcCompatDependency = Dependency ghcCompat anyVersion mainLibSet
+    -- Every component gets the dependency at its root, unless it depends on
+    -- ghc-compat there already, with bounds of its own. A dependency under a
+    -- condition, or in another component, is no reason to leave it out.
+    addGhcCompat :: L.HasBuildInfo a => CondTree v a -> CondTree v a
+    addGhcCompat node@(CondNode component branches)
+      | any ((== ghcCompat) . depPkgName) (view L.targetBuildDepends component) = node
+      | otherwise = CondNode (over L.targetBuildDepends (++ [ghcCompatDependency]) component) branches
+
+ghcCompat :: PackageName
+ghcCompat = mkPackageName "ghc-compat"
+
+-- | The packages that are not built with ghc-compat, as MicroCabal has them:
+-- base and ghc-compat themselves, and those of MicroHs.
+withoutGhcCompat :: [PackageName]
+withoutGhcCompat = map mkPackageName ["base", "ghc-compat", "MicroHs", "MicroCabal", "canvhs"]
+
+-- | The forks of packages from Hackage that mhs can compile, as MicroCabal
+-- uses them.
+forkedPackages :: [(PackageName, PackageName)]
+forkedPackages =
+  [ (mkPackageName "array", mkPackageName "array-mhs")
+  , (mkPackageName "random", mkPackageName "random-mhs")
+  ]
 
 -- -----------------------------------------------------------------------------
 -- Installed packages
@@ -581,14 +672,25 @@ dependencyPackageFiles verbosity lbi clbi = do
 -- on only the @-D@ and @-I@ options it is given, so that it cannot be told to
 -- include the header: every @#define@ of the header, with its continuation
 -- lines joined, becomes an option, and the first definition of a macro wins,
--- as the @#ifndef@ guards of the header make it.
+-- as the @#ifndef@ guards of the header make it. The macros of a fork of
+-- 'forkedPackages' are also defined under the name of the package it forks,
+-- as MicroCabal does: a package that depends on random tests
+-- @MIN_VERSION_random@, which is then the version of random-mhs.
 cabalMacrosOptions :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> [String]
 cabalMacrosOptions pkg_descr lbi clbi =
   [ "-D" ++ lhs ++ "=" ++ rhs
-  | (_, lhs, rhs) <- ordNubBy (\(name, _, _) -> name) defines
+  | (_, lhs, rhs) <- ordNubBy (\(name, _, _) -> name) (defines ++ forkDefines)
   ]
   where
     header = generateCabalMacrosHeader pkg_descr lbi clbi
+    forkDefines =
+      [ (macro ++ mangle original, macro ++ mangle original ++ drop (length name) lhs, rhs)
+      | (original, fork) <- forkedPackages
+      , (name, lhs, rhs) <- defines
+      , macro <- ["VERSION_", "MIN_VERSION_"]
+      , name == macro ++ mangle fork
+      ]
+    mangle = map (\c -> if c == '-' then '_' else c) . unPackageName
     defines =
       [ (takeWhile (/= '(') lhs, lhs, dropWhile isSpace rhs)
       | line <- joinContinuations (lines header)
