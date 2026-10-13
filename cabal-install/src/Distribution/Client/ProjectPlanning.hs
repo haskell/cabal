@@ -136,9 +136,9 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup hiding (cabalVersion, packageName)
 import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
-import Distribution.Client.Targets (userToPackageConstraint)
+import Distribution.Client.Targets (UserConstraint, userToPackageConstraint)
 import Distribution.Client.Types
-import Distribution.Client.Utils (concatMapM, duplicatesBy, incVersion)
+import Distribution.Client.Utils (concatMapM, incVersion)
 
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
 import qualified Distribution.Client.IndexUtils as IndexUtils
@@ -156,10 +156,15 @@ import Distribution.Utils.Path hiding
 
 import qualified Hackage.Security.Client as Sec
 
+import Distribution.Solver.Modular (ModularResolver)
+import Distribution.Solver.Modular.Index
+import Distribution.Solver.Modular.IndexConversion
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.DependencyResolver
 import Distribution.Solver.Types.InstSolverPackage
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
@@ -736,7 +741,7 @@ rebuildInstallPlan
               $ do
                 compilerEtc <- phaseConfigureCompiler projectConfig
                 _ <- phaseConfigurePrograms projectConfig compilerEtc
-                (solverPlan, pkgConfigDB, totalIndexState, activeRepos) <-
+                (solverPlan, pkgConfigDb, totalIndexState, activeRepos) <-
                   phaseRunSolver
                     projectConfig
                     compilerEtc
@@ -748,7 +753,7 @@ rebuildInstallPlan
                   phaseElaboratePlan
                     projectConfig
                     compilerEtc
-                    pkgConfigDB
+                    pkgConfigDb
                     solverPlan
                     localPackages
 
@@ -836,7 +841,7 @@ rebuildInstallPlan
             verbosity
             fileMonitorSolverPlan
             ( solverSettings
-            , localPackages
+            , pinfos
             , localPackagesEnabledStanzas
             , compiler
             , platform
@@ -856,7 +861,7 @@ rebuildInstallPlan
                   withRepoCtx
                   (solverSettingIndexState solverSettings)
                   (solverSettingActiveRepos solverSettings)
-              pkgConfigDB <- getPkgConfigDb verbosity progdb
+              pkgConfigDb <- getPkgConfigDb verbosity progdb
 
               -- TODO: [code cleanup] it'd be better if the Compiler contained the
               -- ConfiguredPrograms that it needs, rather than relying on the progdb
@@ -865,24 +870,50 @@ rebuildInstallPlan
 
               liftIO $ do
                 notice verbosity "Resolving dependencies..."
-                planOrError <-
-                  foldProgress logMsg (pure . Left) (pure . Right) $
-                    planPackages
-                      verbosity
-                      compiler
-                      platform
-                      solverSettings
-                      (installedPackages <> installedPkgIndex)
-                      sourcePkgDb
-                      pkgConfigDB
-                      localPackages
-                      localPackagesEnabledStanzas
-                case planOrError of
-                  Left msg -> do
-                    reportPlanningFailure projectConfig compiler platform localPackages
-                    dieWithException verbosity $ PhaseRunSolverErr msg
-                  Right plan -> return (plan, pkgConfigDB, tis, ar)
+              planOrError <-
+                planPackages
+                  verbosity
+                  logMsg
+                  distProjectCacheFile
+                  compiler
+                  platform
+                  solverSettings
+                  (installedPackages <> installedPkgIndex)
+                  sourcePkgDb
+                  pkgConfigDb
+                  localPackages
+                  localPackagesEnabledStanzas
+              liftIO $ case planOrError of
+                Left msg -> do
+                  reportPlanningFailure projectConfig compiler platform localPackages
+                  dieWithException verbosity $ PhaseRunSolverErr msg
+                Right plan -> return (plan, pkgConfigDb, tis, ar)
           where
+            sourcePackages :: [SourcePackage UnresolvedPkgLoc]
+            sourcePackages = [pkg | SpecificSourcePackage pkg <- localPackages]
+
+            Platform arch os = platform
+
+            pair lpc =
+              let PackageConstraint scope _ = unlabelPackageConstraint lpc
+               in (scopeToPackageName scope, [lpc])
+
+            pinfos :: [PInfo]
+            pinfos =
+              [ pinfo
+              | (_, _, pinfo) <-
+                  map
+                    ( convSP
+                        os
+                        arch
+                        (compilerInfo compiler)
+                        (Map.fromListWith (++) $ map (pair . settingConstraintToLPC) $ solverSettingConstraints solverSettings)
+                        (solverSettingStrongFlags solverSettings)
+                        (SolveExecutables True)
+                    )
+                    sourcePackages
+              ]
+
             corePackageDbs :: PackageDBStackCWD
             corePackageDbs =
               Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigShared)
@@ -934,7 +965,7 @@ rebuildInstallPlan
           , projectConfigBuildOnly
           }
         (compiler, platform, compilerProgDb)
-        pkgConfigDB
+        pkgConfigDb
         solverPlan
         localPackages = do
           liftIO $ debug verbosity "Elaborating the install plan..."
@@ -958,7 +989,7 @@ rebuildInstallPlan
                 platform
                 compiler
                 configuredCompilerProgDb
-                pkgConfigDB
+                pkgConfigDb
                 distDirLayout
                 cabalStoreDirLayout
                 solverPlan
@@ -1352,6 +1383,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 
 planPackages
   :: Verbosity
+  -> (String -> IO (Either String SolverInstallPlan) -> IO (Either String SolverInstallPlan))
+  -> (String -> FilePath)
   -> Compiler
   -> Platform
   -> SolverSettings
@@ -1360,28 +1393,54 @@ planPackages
   -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> Map PackageName (Map OptionalStanza Bool)
-  -> Progress String String SolverInstallPlan
+  -> Rebuild (Either String SolverInstallPlan)
 planPackages
   verbosity
+  logMsg
+  distProjectCacheFile
   comp
   platform
   SolverSettings{..}
   installedPkgIndex
   sourcePkgDb
-  pkgConfigDB
+  pkgConfigDb
   localPackages
   pkgStanzasEnable =
-    resolveDependencies
-      platform
-      (compilerInfo comp)
-      pkgConfigDB
-      resolverParams
+    rerunIfChanged
+      verbosity
+      fileMonitorResolverInputs
+      fileMonitorResolverInputsKey
+      $ do
+        liftIO $
+          foldProgress logMsg (pure . Left) (pure . Right) $
+            resolveDependencies
+              solver
+              depResolverParams
+              rparams
+              inputs
     where
+      fileMonitorResolverInputs = newFileMonitor (distProjectCacheFile "rinputs")
+      fileMonitorResolverInputsKey = (rparams, inputs)
+
+      solver = getSolver depResolverParams
+
+      inputs :: ResolverInputs ModularResolver
+      inputs = convInputs solver rparams
+
+      rparams :: ResolverParams UnresolvedPkgLoc
+      rparams =
+        mkResolverParams
+          platform
+          (compilerInfo comp)
+          installedPkgIndex
+          pkgConfigDb
+          depResolverParams
+
       -- TODO: [nice to have] disable multiple instances restriction in
       -- the solver, but then make sure we can cope with that in the
       -- output.
-      resolverParams :: DepResolverParams
-      resolverParams =
+      depResolverParams :: DepResolverParams
+      depResolverParams =
         setMaxBackjumps solverSettingMaxBackjumps
           . setIndependentGoals solverSettingIndependentGoals
           . setReorderGoals solverSettingReorderGoals
@@ -1423,9 +1482,7 @@ planPackages
             ]
           . addConstraints
             -- version constraints from the config file or command line
-            [ LabeledPackageConstraint (userToPackageConstraint pc) src
-            | (pc, src) <- solverSettingConstraints
-            ]
+            (map settingConstraintToLPC solverSettingConstraints)
           . addPreferences
             -- enable stanza preference unilaterally, regardless if the user asked
             -- accordingly or expressed no preference, to help hint the solver
@@ -1563,6 +1620,10 @@ planPackages
       setupMaxCabalVersionConstraint =
         alterVersion (take 2) $ incVersion 1 $ incVersion 1 cabalVersion
 
+settingConstraintToLPC :: (UserConstraint, ConstraintSource) -> LabeledPackageConstraint
+settingConstraintToLPC (pc, src) =
+  LabeledPackageConstraint (userToPackageConstraint pc) src
+
 ------------------------------------------------------------------------------
 
 -- * Install plan post-processing
@@ -1690,7 +1751,7 @@ elaborateInstallPlan
   platform
   compiler
   compilerProgDb
-  pkgConfigDB
+  pkgConfigDb
   distDirLayout@DistDirLayout{..}
   storeDirLayout@StoreDirLayout{storePackageDBStack}
   solverPlan
@@ -2077,7 +2138,7 @@ elaborateInstallPlan
                             ++ " from "
                             ++ prettyShow (elabPkgSourceId elab0)
                       )
-                      (pkgConfigDB >>= \db -> pkgConfigDbPkgVersion db pn)
+                      (pkgConfigDb >>= \db -> pkgConfigDbPkgVersion db pn)
                   )
                 | PkgconfigDependency pn _ <-
                     PD.pkgconfigDepends

@@ -48,6 +48,7 @@ import Distribution.Client.Targets
 import Distribution.Client.Types
 
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.DependencyResolver
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
@@ -213,15 +214,29 @@ planPackages
     installPlan <-
       foldProgress logMsg (dieWithException verbosity . FreezeException) return $
         resolveDependencies
-          platform
-          (compilerInfo comp)
-          pkgConfigDb
-          resolverParams
+          solver
+          depResolverParams
+          rparams
+          inputs
 
     return $ pruneInstallPlan installPlan pkgSpecifiers
     where
-      resolverParams :: DepResolverParams
-      resolverParams =
+      solver = getSolver depResolverParams
+
+      -- inputs :: ResolverInputs ModularResolver
+      inputs = convInputs solver rparams
+
+      rparams :: ResolverParams UnresolvedPkgLoc
+      rparams =
+        mkResolverParams
+          platform
+          (compilerInfo comp)
+          installedPkgIndex
+          pkgConfigDb
+          depResolverParams
+
+      depResolverParams :: DepResolverParams
+      depResolverParams =
         setMaxBackjumps
           ( if maxBackjumps < 0
               then Nothing

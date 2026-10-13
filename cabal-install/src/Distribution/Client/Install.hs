@@ -128,6 +128,7 @@ import Distribution.Solver.Types.PackageFixedDeps
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.DependencyResolver
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
@@ -581,13 +582,27 @@ planPackages
   pkgConfigDb
   pkgSpecifiers =
     resolveDependencies
-      platform
-      (compilerInfo comp)
-      pkgConfigDb
-      resolverParams
+      solver
+      depResolverParams
+      rparams
+      inputs
       >>= if onlyDeps then pruneInstallPlan pkgSpecifiers else return
     where
-      resolverParams =
+      solver = getSolver depResolverParams
+
+      -- inputs :: ResolverInputs ModularResolver
+      inputs = convInputs solver rparams
+
+      rparams :: ResolverParams UnresolvedPkgLoc
+      rparams =
+        mkResolverParams
+          platform
+          (compilerInfo comp)
+          installedPkgIndex
+          pkgConfigDb
+          depResolverParams
+
+      depResolverParams =
         setMaxBackjumps
           ( if maxBackjumps < 0
               then Nothing
