@@ -998,40 +998,40 @@ updateSetupScript verbosity options cabalLibVersion Hooks = do
   unless useHs $
     die' verbosity "Using 'build-type: Hooks' but there is no SetupHooks.hs file."
   copyFileVerbose verbosity customSetupHooks (i (setupHooks options))
-  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript HooksScript cabalLibVersion)
+  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript HooksSetupScript cabalLibVersion)
   rewriteFileLBS verbosity (i (hooksHs options)) hooksExeScript
   where
     i = interpretSymbolicPath (useWorkingDir options)
 updateSetupScript verbosity _ _ Make =
   die' verbosity "'build-type: Make' is no longer supported."
 updateSetupScript verbosity options cabalLibVersion Simple =
-  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript SimpleScript cabalLibVersion)
+  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript SimpleSetupScript cabalLibVersion)
   where
     i = interpretSymbolicPath (useWorkingDir options)
 updateSetupScript verbosity options cabalLibVersion Configure =
-  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript ConfigureScript cabalLibVersion)
+  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript ConfigureSetupScript cabalLibVersion)
   where
     i = interpretSymbolicPath (useWorkingDir options)
 
 -- | The build types for which we generate the @Setup.hs@ script ourselves.
 data GeneratedSetupScript
-  = SimpleScript
-  | ConfigureScript
+  = SimpleSetupScript
+  | ConfigureSetupScript
   | -- | Requires Cabal >= 3.13.
-    HooksScript
+    HooksSetupScript
 
 -- | The source code for a non-Custom 'Setup' executable.
 buildTypeScript :: GeneratedSetupScript -> Version -> BS.ByteString
 buildTypeScript bt cabalLibVersion = "{-# LANGUAGE NoImplicitPrelude #-}\n" <> case bt of
-  SimpleScript -> "import Distribution.Simple; main = defaultMain\n"
-  ConfigureScript
+  SimpleSetupScript -> "import Distribution.Simple; main = defaultMain\n"
+  ConfigureSetupScript
     | cabalLibVersion >= mkVersion [3, 13, 0]
     -> "import Distribution.Simple; main = defaultMainWithSetupHooks autoconfSetupHooks\n"
     | cabalLibVersion >= mkVersion [1, 3, 10]
     -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
     | otherwise
     -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
-  HooksScript ->
+  HooksSetupScript ->
     "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
 
 -- | The source code for an external hooks executable.
