@@ -20,7 +20,8 @@ module Distribution.Client.Dependency
   , foldProgress
 
     -- * Converting to and from resolver-specific representations of inputs and
-    -- outputs
+
+  -- outputs
   , getSolver
   , getFinalParams
   , getSolverConfig
@@ -123,19 +124,19 @@ import Distribution.Simple.Setup
   ( asBool
   )
 import Distribution.Solver.Modular
-  ( PruneAfterFirstSuccess (..)
+  ( ModularResolver
+  , PruneAfterFirstSuccess (..)
   , SolverConfig (..)
   , modularResolver
-  , ModularResolver
   )
 import Distribution.Solver.Modular.Message
   ( renderSummarizedMessage
   )
-import Distribution.Solver.Types.SummarizedMessage
-  ( SummarizedMessage (..)
-  )
 import Distribution.Solver.Types.PkgConfigDb
   ( PkgConfigDb
+  )
+import Distribution.Solver.Types.SummarizedMessage
+  ( SummarizedMessage (..)
   )
 import Distribution.System
   ( Platform
@@ -844,45 +845,45 @@ getFinalParams comp params =
 
 getSolverConfig :: DepResolverParams -> SolverConfig
 getSolverConfig
-  (DepResolverParams
-    _targets
-    _constraints
-    _prefs
-    _defpref
-    _installedPkgIndex
-    _sourcePkgIndex
-    reordGoals
-    cntConflicts
-    fineGrained
-    minimize
-    indGoals
-    noReinstalls
-    shadowing
-    strFlags
-    _allowBootLibs
-    onlyConstrained_
-    maxBkjumps
-    enableBj
-    solveExes
-    order
-    verbosity) =
-
-  SolverConfig
-    reordGoals
-    cntConflicts
-    fineGrained
-    minimize
-    indGoals
-    noReinstalls
-    shadowing
-    strFlags
-    onlyConstrained_
-    maxBkjumps
-    enableBj
-    solveExes
-    order
-    verbosity
-    (PruneAfterFirstSuccess False)
+  ( DepResolverParams
+      _targets
+      _constraints
+      _prefs
+      _defpref
+      _installedPkgIndex
+      _sourcePkgIndex
+      reordGoals
+      cntConflicts
+      fineGrained
+      minimize
+      indGoals
+      noReinstalls
+      shadowing
+      strFlags
+      _allowBootLibs
+      onlyConstrained_
+      maxBkjumps
+      enableBj
+      solveExes
+      order
+      verbosity
+    ) =
+    SolverConfig
+      reordGoals
+      cntConflicts
+      fineGrained
+      minimize
+      indGoals
+      noReinstalls
+      shadowing
+      strFlags
+      onlyConstrained_
+      maxBkjumps
+      enableBj
+      solveExes
+      order
+      verbosity
+      (PruneAfterFirstSuccess False)
 
 --     solver = getSolver config
 --     rparams = ResolverParams
@@ -895,7 +896,7 @@ getSolverConfig
 --                   constraints
 --                   targets
 --     inputs = convInputs solver rparams
--- 
+--
 --     preferences :: PackageName -> PackagePreferences
 --     preferences = interpretPackagesPreference targets defpref prefs
 
@@ -917,8 +918,10 @@ resolveDependencies solver params rparams inputs = do
     formatProgress $
       convOutput solver rparams <$> runResolver solver inputs
   validateSolverResult
-    (rpPlatform rparams) 
-    (rpCompilerInfo rparams) indGoals pkgs
+    (rpPlatform rparams)
+    (rpCompilerInfo rparams)
+    indGoals
+    pkgs
   where
     DepResolverParams
       _targets
@@ -941,8 +944,8 @@ resolveDependencies solver params rparams inputs = do
       _enableBj
       _solveExes
       _order
-      _verbosity
-      = params
+      _verbosity =
+        params
 
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
     formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
@@ -1281,12 +1284,13 @@ instance Show ResolveNoDepsError where
       ++ " that satisfies "
       ++ prettyShow (simplifyVersionRange ver)
 
-mkResolverParams :: Platform
-                 -> CompilerInfo
-                 -> InstalledPackageIndex
-                 -> Maybe PkgConfigDb
-                 -> DepResolverParams
-                 -> ResolverParams UnresolvedPkgLoc
+mkResolverParams
+  :: Platform
+  -> CompilerInfo
+  -> InstalledPackageIndex
+  -> Maybe PkgConfigDb
+  -> DepResolverParams
+  -> ResolverParams UnresolvedPkgLoc
 mkResolverParams platform comp installedPkgIndex pkgConfigDB depResolverParams =
   ResolverParams
     { rpPlatform = platform
@@ -1299,9 +1303,9 @@ mkResolverParams platform comp installedPkgIndex pkgConfigDB depResolverParams =
     , rpPkgNames = depResolverTargets depResolverParams
     }
   where
-      pkgPrefs :: PackagesPreferenceSource
-      pkgPrefs =
-          ( depResolverTargets depResolverParams
-          , depResolverPreferenceDefault depResolverParams
-          , depResolverPreferences depResolverParams
-          )
+    pkgPrefs :: PackagesPreferenceSource
+    pkgPrefs =
+      ( depResolverTargets depResolverParams
+      , depResolverPreferenceDefault depResolverParams
+      , depResolverPreferences depResolverParams
+      )

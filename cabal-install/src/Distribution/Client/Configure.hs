@@ -479,12 +479,13 @@ planLocalPackage
       inputs = convInputs solver rparams
 
       -- rparams :: ResolverParams UnresolvedPkgLoc
-      rparams = mkResolverParams 
-                  platform
-                  (compilerInfo comp)
-                  installedPkgIndex
-                  pkgConfigDb
-                  depResolverParams
+      rparams =
+        mkResolverParams
+          platform
+          (compilerInfo comp)
+          installedPkgIndex
+          pkgConfigDb
+          depResolverParams
 
     return $
       resolveDependencies

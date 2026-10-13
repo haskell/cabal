@@ -126,9 +126,9 @@ import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Solver.Types.PackageFixedDeps
 
-import Distribution.Solver.Types.DependencyResolver
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.DependencyResolver
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
@@ -594,12 +594,13 @@ planPackages
       inputs = convInputs solver rparams
 
       rparams :: ResolverParams UnresolvedPkgLoc
-      rparams = mkResolverParams 
-                  platform
-                  (compilerInfo comp)
-                  installedPkgIndex
-                  pkgConfigDb
-                  depResolverParams
+      rparams =
+        mkResolverParams
+          platform
+          (compilerInfo comp)
+          installedPkgIndex
+          pkgConfigDb
+          depResolverParams
 
       depResolverParams =
         setMaxBackjumps

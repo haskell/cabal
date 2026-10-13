@@ -1406,18 +1406,18 @@ planPackages
   pkgConfigDb
   localPackages
   pkgStanzasEnable =
-      rerunIfChanged
-        verbosity
-        fileMonitorResolverInputs
-        fileMonitorResolverInputsKey $ do
-          liftIO $
-            foldProgress logMsg (pure . Left) (pure . Right) $
+    rerunIfChanged
+      verbosity
+      fileMonitorResolverInputs
+      fileMonitorResolverInputsKey
+      $ do
+        liftIO $
+          foldProgress logMsg (pure . Left) (pure . Right) $
             resolveDependencies
               solver
               depResolverParams
               rparams
               inputs
-
     where
       fileMonitorResolverInputs = newFileMonitor (distProjectCacheFile "rinputs")
       fileMonitorResolverInputsKey = (rparams, inputs)
@@ -1428,12 +1428,13 @@ planPackages
       inputs = convInputs solver rparams
 
       rparams :: ResolverParams UnresolvedPkgLoc
-      rparams = mkResolverParams 
-                  platform
-                  (compilerInfo comp)
-                  installedPkgIndex
-                  pkgConfigDb
-                  depResolverParams
+      rparams =
+        mkResolverParams
+          platform
+          (compilerInfo comp)
+          installedPkgIndex
+          pkgConfigDb
+          depResolverParams
 
       -- TODO: [nice to have] disable multiple instances restriction in
       -- the solver, but then make sure we can cope with that in the
