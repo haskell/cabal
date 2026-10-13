@@ -72,8 +72,8 @@ import qualified Data.ByteString as BS
 import Data.List (stripPrefix)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text
-import System.Directory (doesDirectoryExist, getDirectoryContents, getHomeDirectory, makeAbsolute)
-import System.FilePath (takeDirectory, takeExtension, takeFileName)
+import System.Directory (doesDirectoryExist, getDirectoryContents, getHomeDirectory, makeAbsolute, removeDirectoryRecursive)
+import System.FilePath (dropExtension, takeDirectory, takeExtension, takeFileName)
 
 {- Note [MicroHs package databases]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -139,6 +139,32 @@ one.
     original are about its own versions, and a re-export that names the
     original names the fork. The version macros of the fork are defined under
     the name of the original too, see 'cabalMacrosOptions'.
+-}
+
+{- Note [MicroHs C files of libraries]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mhs compiles no C when it builds a library: the C sources of a library are
+compiled when a program that loads its package file is linked, along with the
+C that mhs generates for the program. mhs takes them from beside the package
+file <dir>/<name>-<version>.pkg, from <dir>/<name>-<version>/cbits/*.c. That
+is where MicroCabal installs the c-sources of a library, and so does Cabal,
+see 'layOutCSources': into the build directory, beside the package file that
+'buildLib' writes, from where 'installLib' copies them with it. The headers
+beside the C sources go with them, as the sources include them relative to
+themselves, and the copies are what gets compiled.
+
+The headers that the C sources and the foreign imports of a program include
+are found as with GHC: the include-dirs of the libraries a component depends
+on, as their registrations list them, are given to mhs with -I, which it
+passes on to the C compiler. Those of a library built in place are its own
+include-dirs; once it is installed, the directory where its install-includes
+are installed for every compiler. (MicroCabal installs the install-includes
+into <dir>/<name>-<version>/include, which mhs adds to the include path
+itself.) The extra-libraries and ld-options of a library are given to mhs as
+-optl when it builds the library, and the package file keeps them.
+
+As the C sources are compiled with the options of the program, the cc-options
+of the library do not apply to them.
 -}
 
 -- -----------------------------------------------------------------------------
@@ -556,11 +582,41 @@ buildLib verbosity pkg_descr lbi lib clbi = do
     dieWithException verbosity $
       MhsRenamedReexports renamed
   createDirectoryIfMissingVerbose verbosity True (interpretSymbolicPathLBI lbi targetDir)
-  unless (null (cSources bi)) $
-    warn verbosity "MicroHs cannot include C sources in a library; ignoring them."
+  unless (null (cxxSources bi ++ asmSources bi ++ cmmSources bi)) $
+    warn verbosity "MicroHs compiles only the C sources of a library; ignoring its C++, assembler and Cmm sources."
   runMhs verbosity pkg_descr lbi bi clbi targetDir $
     ["-P" ++ pkgId, "-o", interpretSymbolicPathCWD pkgFile]
       ++ map prettyShow modules
+  layOutCSources verbosity lbi bi (interpretSymbolicPathLBI lbi targetDir </> pkgId </> "cbits")
+
+-- | Copy the C sources of a library, and the headers beside them, into the
+-- directory beside its package file where mhs looks for them, which is
+-- emptied first. See Note [MicroHs C files of libraries].
+layOutCSources :: Verbosity -> LocalBuildInfo -> BuildInfo -> FilePath -> IO ()
+layOutCSources verbosity lbi bi dir = do
+  exists <- doesDirectoryExist dir
+  when exists $ removeDirectoryRecursive dir
+  let sources = ordNub (map (interpretSymbolicPathLBI lbi) (cSources bi))
+      sameName a b = takeFileName a == takeFileName b
+      clashing = [source | source <- sources, length (filter (sameName source) sources) > 1]
+  unless (null clashing) $
+    dieWithException verbosity $
+      MhsCSourceNameClash clashing
+  -- The headers beside the C sources, which include them relative to
+  -- themselves, as cbits/foo.c includes "foo.h" for cbits/foo.h, go beside the
+  -- copies. Two headers of the same name have to be the same header.
+  headers <- concat <$> traverse (filesWithExtension ".h") (ordNub (map takeDirectory sources))
+  differing <- flip filterM headers $ \header -> do
+    contents <- BS.readFile header
+    others <- traverse BS.readFile [other | other <- headers, other /= header, sameName other header]
+    return (any (/= contents) others)
+  unless (null differing) $
+    dieWithException verbosity $
+      MhsCSourceNameClash differing
+  unless (null sources) $
+    createDirectoryIfMissingVerbose verbosity True dir
+  for_ (sources ++ headers) $ \file ->
+    installOrdinaryFile verbosity file (dir </> takeFileName file)
 
 buildExe
   :: Verbosity
@@ -585,6 +641,7 @@ buildExe verbosity pkg_descr lbi exe clbi = do
     -- Compress the combinator code of the program, as MicroCabal does.
     ["-z"]
       ++ map u (cSources bi)
+      ++ concat [["-optc", Text.unpack opt] | opt <- ccOptions bi]
       ++ ["-o", u exeFile, u srcMainPath]
 
 -- | Run mhs with the arguments common to libraries and executables, followed
@@ -604,11 +661,16 @@ runMhs verbosity pkg_descr lbi bi clbi generatedDir args = do
       mbWorkDir = mbWorkDirLBI lbi
       progdb = withPrograms lbi
       u = interpretSymbolicPathCWD -- See Note [Symbolic paths] in Distribution.Utils.Path
-  pkgFiles <- dependencyPackageFiles verbosity lbi clbi
+  closure <- dependencyClosure verbosity lbi clbi
+  located <- for closure $ \ipi -> (,) ipi <$> packageFile verbosity ipi
   -- The extra-lib-dirs are made absolute, as the package file of a library
   -- keeps the linker options for the programs linked elsewhere.
   libDirs <- traverse (makeAbsolute . interpretSymbolicPathLBI lbi) (extraLibDirs bi)
-  let commonArgs =
+  let pkgFiles = [pkgFile | (_, Just pkgFile) <- located]
+      -- The dependencies with no package file to load, see 'packageFile',
+      -- keep their linker options in their registration only.
+      unloaded = [ipi | (ipi, Nothing) <- located]
+      commonArgs =
         mhsVerbosityFlags verbosity
           -- The module search path: the source directories of the component
           -- instead of the default, the current directory.
@@ -636,22 +698,35 @@ runMhs verbosity pkg_descr lbi bi clbi generatedDir args = do
           ++ ["-I" ++ u generatedDir]
           ++ [opt | opt <- map Text.unpack (cppOptions bi), any (`isPrefixOf` opt) ["-D", "-I"]]
           ++ ["-I" ++ u dir | dir <- includeDirs bi]
+          -- The headers of the dependencies, for the C that mhs compiles when
+          -- it links a program. See Note [MicroHs C files of libraries].
+          ++ ["-I" ++ dir | dir <- ordNub (concatMap IPI.includeDirs closure)]
+          -- The headers beside the C sources of the dependencies, such as
+          -- those that hsc2hs generated, for the C that mhs generates for
+          -- their foreign imports. See 'layOutCSources'.
+          ++ ["-I" ++ dropExtension pkgFile </> "cbits" | pkgFile <- pkgFiles]
           ++ map Text.unpack (hcOptions MHS bi)
           ++ concat [["-optl", opt] | opt <- linkerOptions]
       linkerOptions =
         ["-L" ++ dir | dir <- libDirs]
           ++ ["-l" ++ Text.unpack lib | lib <- extraLibs bi]
           ++ map Text.unpack (ldOptions bi)
+          ++ concat
+            [ ["-L" ++ dir | dir <- IPI.libraryDirs ipi]
+              ++ ["-l" ++ lib | lib <- IPI.extraLibraries ipi]
+              ++ IPI.ldOptions ipi
+            | ipi <- unloaded
+            ]
   runDbProgramCwd verbosity mbWorkDir mhsProgram progdb (commonArgs ++ args)
 
--- | The package files of the dependencies of a component, closed under the
--- dependencies of the dependencies.
-dependencyPackageFiles :: Verbosity -> LocalBuildInfo -> ComponentLocalBuildInfo -> IO [FilePath]
-dependencyPackageFiles verbosity lbi clbi = do
+-- | The dependencies of a component, closed under the dependencies of the
+-- dependencies.
+dependencyClosure :: Verbosity -> LocalBuildInfo -> ComponentLocalBuildInfo -> IO [InstalledPackageInfo]
+dependencyClosure verbosity lbi clbi =
   -- The index of configure, with the libraries built since threaded in by
   -- build, has the dependencies, unless they were registered since the package
   -- was configured: then the package databases are read again.
-  closure <- case PackageIndex.dependencyClosure (installedPkgs lbi) deps of
+  case PackageIndex.dependencyClosure (installedPkgs lbi) deps of
     Left closure -> return (PackageIndex.allPackages closure)
     Right _ -> do
       index <-
@@ -664,7 +739,6 @@ dependencyPackageFiles verbosity lbi clbi = do
               ordNub $
                 [dep | dep <- deps, isNothing (PackageIndex.lookupUnitId index dep)]
                   ++ concatMap snd broken
-  catMaybes <$> traverse (packageFile verbosity) closure
   where
     deps = map fst (componentPackageDeps clbi)
 
@@ -736,9 +810,16 @@ installLib
   -> ComponentLocalBuildInfo
   -> IO ()
 installLib verbosity _lbi targetDir _dynlibTargetDir builtDir pkg lib _clbi = do
-  let pkgFile = mhsPackageId (packageId pkg) (libName lib) <.> "pkg"
+  let pkgId = mhsPackageId (packageId pkg) (libName lib)
   createDirectoryIfMissingVerbose verbosity True targetDir
-  installOrdinaryFile verbosity (builtDir </> pkgFile) (targetDir </> pkgFile)
+  installOrdinaryFile verbosity (builtDir </> pkgId <.> "pkg") (targetDir </> pkgId <.> "pkg")
+  -- The C files of the library, see Note [MicroHs C files of libraries];
+  -- what an earlier installation of the library left there goes first.
+  stale <- doesDirectoryExist (targetDir </> pkgId)
+  when stale $ removeDirectoryRecursive (targetDir </> pkgId)
+  hasCFiles <- doesDirectoryExist (builtDir </> pkgId)
+  when hasCFiles $
+    installDirectoryContents verbosity (builtDir </> pkgId) (targetDir </> pkgId)
 
 installExe
   :: Verbosity
@@ -804,6 +885,7 @@ data MhsException
   | MhsRegistrationFileParseError FilePath [String]
   | MhsMissingDependencies [UnitId]
   | MhsRenamedReexports [ModuleReexport]
+  | MhsCSourceNameClash [FilePath]
   deriving (Show)
 
 instance Exception (VerboseException MhsException) where
@@ -818,6 +900,7 @@ mhsExceptionCode err = case err of
   MhsRegistrationFileParseError{} -> 3203
   MhsMissingDependencies{} -> 3204
   MhsRenamedReexports{} -> 3205
+  MhsCSourceNameClash{} -> 3206
 
 mhsExceptionMessage :: MhsException -> String
 mhsExceptionMessage err = case err of
@@ -834,3 +917,6 @@ mhsExceptionMessage err = case err of
   MhsRenamedReexports reexports ->
     "MicroHs provides the modules of a package under their own names only, so a library cannot re-export modules under other names: "
       ++ intercalate ", " (map prettyShow reexports)
+  MhsCSourceNameClash files ->
+    "MicroHs compiles the C sources of a library, and the headers beside them, from one directory, so they need distinct file names: "
+      ++ intercalate ", " files
