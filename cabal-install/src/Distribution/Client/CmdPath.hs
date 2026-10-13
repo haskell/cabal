@@ -79,6 +79,7 @@ import Distribution.Simple.Utils
   , withOutputMarker
   , wrapText
   )
+import Distribution.System (Platform)
 import Distribution.Verbosity
   ( normal
   , verbosityFlags
@@ -245,14 +246,14 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
     if not $ fromFlagOrDefault False (pathCompiler pathFlags)
       then pure Nothing
       else do
-        (compiler, _, progDb) <-
+        (compiler, platform, progDb) <-
           runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
             configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
         compilerProg <- requireCompilerProg verbosity compiler
         (configuredCompilerProg, _) <- requireProgram verbosity compilerProg progDb
 
         let compilerInfo' =
-              mkCompilerInfo configuredCompilerProg compiler $
+              mkCompilerInfo configuredCompilerProg compiler platform $
                 cabalStoreDirLayout (cabalDirLayout baseCtx)
 
         pure $ Just compilerInfo'
@@ -331,14 +332,14 @@ data PathCompilerInfo = PathCompilerInfo
   }
   deriving (Show, Eq, Ord)
 
-mkCompilerInfo :: ConfiguredProgram -> Compiler -> StoreDirLayout -> PathCompilerInfo
-mkCompilerInfo compilerProgram compiler storeLayout =
+mkCompilerInfo :: ConfiguredProgram -> Compiler -> Platform -> StoreDirLayout -> PathCompilerInfo
+mkCompilerInfo compilerProgram compiler platform storeLayout =
   PathCompilerInfo
     { pathCompilerInfoFlavour = compilerFlavor compiler
     , pathCompilerInfoId = compilerId compiler
     , pathCompilerInfoAbiTag = showCompilerIdWithAbi compiler
     , pathCompilerInfoPath = programPath compilerProgram
-    , pathCompilerInfoStorePath = storeDirectory storeLayout compiler
+    , pathCompilerInfoStorePath = storeDirectory storeLayout compiler platform
     }
 
 -- ----------------------------------------------------------------------------

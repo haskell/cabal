@@ -1112,6 +1112,58 @@ feature was added.
     The command line variant of this flag is
     ``--with-hc-pkg=ghc-pkg-7.8``.
 
+.. cfg-field:: build-compiler: ghc, ghcjs, jhc, lhc, or uhc
+    :synopsis: Compiler flavour for the build stage (cross-compilation).
+
+    :default: the value of :cfg-field:`compiler`
+
+    When cross-compiling, the flavour of the compiler used for the *build*
+    stage: the compiler that produces the programs which have to run on the
+    machine doing the build (custom ``Setup.hs`` scripts and their
+    dependencies, ``build-tool-depends``). The *host* stage, i.e. everything
+    else, keeps using :cfg-field:`compiler`.
+
+    There is no command line variant of this field.
+
+.. cfg-field:: with-build-compiler: PATH
+               -W PATH or -WPATH, --with-build-compiler=PATH
+    :synopsis: Path to the build-stage compiler executable (cross-compilation).
+
+    Specify the compiler to use for the *build* stage when cross-compiling,
+    in the same way :cfg-field:`with-compiler` specifies the compiler for the
+    *host* stage. Setting this (or :cfg-field:`build-compiler`) to something
+    other than the host compiler is what turns a build into a cross build:
+    custom ``Setup.hs`` scripts, their dependencies and packages reached via
+    ``build-tool-depends`` are then built with the build compiler, while all
+    other packages are built with :cfg-field:`with-compiler`.
+
+    When neither this field nor :cfg-field:`build-compiler` is set, or when
+    they resolve to the same compiler as the host, there is no separate build
+    stage and the build proceeds exactly as a normal (non-cross) build.
+
+    The default value of :cfg-field:`with-build-hc-pkg` is derived from this
+    path with the same heuristic :cfg-field:`with-compiler` uses.
+
+    Like :cfg-field:`with-compiler`, this cannot be set on a per-package
+    basis, and it cannot be set inside a conditional block.
+
+    The command line variant of this flag is
+    ``--with-build-compiler=ghc-9.10.3``; there is also a short version
+    ``-W ghc-9.10.3``.
+
+.. cfg-field:: with-build-hc-pkg: PATH
+               --with-build-hc-pkg=PATH
+    :synopsis: Path to the build-stage package tool (cross-compilation).
+
+    Specify the path to the package tool (e.g. ``ghc-pkg``) that goes with
+    :cfg-field:`with-build-compiler`. If omitted, it is determined from
+    :cfg-field:`with-build-compiler`. Unlike the compiler path, it does *not*
+    fall back to :cfg-field:`with-hc-pkg`, since a package tool belongs to
+    one particular compiler installation.
+
+    The command line variant of this flag is
+    ``--with-build-hc-pkg=ghc-pkg-9.10.3``.
+
 .. cfg-field:: optimization: nat
                -O[n], --enable-optimization[=n]
                --disable-optimization

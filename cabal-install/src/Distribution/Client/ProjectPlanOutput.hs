@@ -18,7 +18,9 @@ module Distribution.Client.ProjectPlanOutput
 import Distribution.Client.DistDirLayout
 import Distribution.Client.HashValue (hashValue, showHashValue)
 import Distribution.Client.ProjectBuilding.Types
+import Distribution.Client.ProjectPlanning.Stage (WithStage (..), withoutStage)
 import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.Toolchain (Stage (..), showStage)
 import Distribution.Client.Types.ConfiguredId (confInstId)
 import Distribution.Client.Types.PackageLocation (PackageLocation (..))
 import Distribution.Client.Types.Repo (RemoteRepo (..), Repo (..))
@@ -125,7 +127,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     planPackageToJ :: ElaboratedPlanPackage -> J.Value
     planPackageToJ pkg =
       case pkg of
-        InstallPlan.PreExisting ipi -> installedPackageInfoToJ ipi
+        InstallPlan.PreExisting (WithStage stage ipi) -> installedPackageInfoToJ stage ipi
         InstallPlan.Configured elab -> elaboratedPackageToJ False elab
         InstallPlan.Installed elab -> elaboratedPackageToJ True elab
     -- Note that the plan.json currently only uses the elaborated plan,
@@ -133,8 +135,14 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     -- that case, but the code supports it in case we want to use this
     -- later in some use case where we want the status of the build.
 
-    installedPackageInfoToJ :: InstalledPackageInfo -> J.Value
-    installedPackageInfoToJ ipi =
+    -- The build stage a plan entry belongs to. Under cross-compilation the
+    -- same unit id can appear once per stage, so the stage is what tells the
+    -- two entries apart; in a non-cross build every entry is on the host stage.
+    stageToJ :: Stage -> (String, J.Value)
+    stageToJ stage = "stage" J..= J.String (showStage stage)
+
+    installedPackageInfoToJ :: Stage -> InstalledPackageInfo -> J.Value
+    installedPackageInfoToJ stage ipi =
       -- Pre-existing packages lack configuration information such as their flag
       -- settings or non-lib components. We only get pre-existing packages for
       -- the global/core packages however, so this isn't generally a problem.
@@ -143,6 +151,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       J.object
         [ "type" J..= J.String "pre-existing"
         , "id" J..= (jdisplay . installedUnitId) ipi
+        , stageToJ stage
         , "pkg-name" J..= (jdisplay . pkgName . packageId) ipi
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) ipi
         , "depends" J..= map jdisplay (installedDepends ipi)
@@ -158,6 +167,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                   else "configured"
               )
         , "id" J..= (jdisplay . installedUnitId) elab
+        , stageToJ (elabStage elab)
         , "pkg-name" J..= (jdisplay . pkgName . packageId) elab
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
         , -- The `x-revision` field is a feature of repos (not cabal itself),
@@ -193,7 +203,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                       [ comp2str c
                         J..= J.object
                           ( [ "depends" J..= map ((jdisplay . confInstId) . fst) ldeps
-                            , "exe-depends" J..= map (jdisplay . confInstId) edeps
+                            , "exe-depends" J..= map (jdisplay . confInstId . withoutStage) edeps
                             ]
                               ++ bin_file c
                           )
@@ -206,7 +216,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                in ["components" J..= components]
             ElabComponent comp ->
               [ "depends" J..= map ((jdisplay . confInstId) . fst) (elabLibDependencies elab)
-              , "exe-depends" J..= map jdisplay (elabExeDependencies elab)
+              , "exe-depends" J..= map (jdisplay . withoutStage) (elabExeDependencies elab)
               , "component-name" J..= J.String (comp2str (compSolverName comp))
               ]
                 ++ bin_file (compSolverName comp)
@@ -455,7 +465,9 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 -- successfully then they're still out of date -- meeting our definition of
 -- invalid.
 
-type PackageIdSet = Set UnitId
+-- | Plan keys: a unit id and the build stage it is built for.
+type PackageIdSet = Set (WithStage UnitId)
+
 type PackagesUpToDate = PackageIdSet
 
 data PostBuildProjectStatus = PostBuildProjectStatus
@@ -508,7 +520,7 @@ data PostBuildProjectStatus = PostBuildProjectStatus
   -- or data file generation failing.
   --
   -- This is a subset of 'packagesInvalidByChangedLibDeps'.
-  , packagesLibDepGraph :: Graph (Node UnitId ElaboratedPlanPackage)
+  , packagesLibDepGraph :: Graph (Node (WithStage UnitId) ElaboratedPlanPackage)
   -- ^ A subset of the plan graph, including only dependency-on-library
   -- edges. That is, dependencies /on/ libraries, not dependencies /of/
   -- libraries. This tells us all the libraries that packages link to.
@@ -577,26 +589,28 @@ postBuildProjectStatus
       -- The previous set of up-to-date packages will contain bogus package ids
       -- when the solver plan or config contributing to the hash changes.
       -- So keep only the ones where the package id (i.e. hash) is the same.
+      planKeys :: PackageIdSet
+      planKeys = Set.fromList (map Graph.nodeKey (InstallPlan.toList plan))
+
       previousPackagesUpToDate' =
         Set.intersection
           previousPackagesUpToDate
-          (InstallPlan.keysSet plan)
+          planKeys
 
       packagesUpToDatePreBuild =
         Set.filter
           (\ipkgid -> not (lookupBuildStatusRequiresBuild True ipkgid))
           -- For packages not in the plan subset we did the dry-run on we don't
           -- know anything about their status, so not known to be /up to date/.
-          (InstallPlan.keysSet plan)
+          planKeys
 
       packagesOutOfDatePreBuild =
-        Set.fromList . map installedUnitId $
+        Set.fromList . map Graph.nodeKey $
           InstallPlan.reverseDependencyClosure
             plan
-            [ ipkgid
+            [ Graph.nodeKey pkg
             | pkg <- InstallPlan.toList plan
-            , let ipkgid = installedUnitId pkg
-            , lookupBuildStatusRequiresBuild False ipkgid
+            , lookupBuildStatusRequiresBuild False (Graph.nodeKey pkg)
             -- For packages not in the plan subset we did the dry-run on we don't
             -- know anything about their status, so not known to be /out of date/.
             ]
@@ -627,20 +641,22 @@ postBuildProjectStatus
                   $ Map.intersectionWith (,) pkgBuildStatus buildOutcomes
               )
 
-      -- The plan graph but only counting dependency-on-library edges
-      packagesLibDepGraph :: Graph (Node UnitId ElaboratedPlanPackage)
+      -- The plan graph but only counting dependency-on-library edges. A
+      -- library dependency is always on the same stage as the package.
+      packagesLibDepGraph :: Graph (Node (WithStage UnitId) ElaboratedPlanPackage)
       packagesLibDepGraph =
         Graph.fromDistinctList
-          [ Graph.N pkg (installedUnitId pkg) libdeps
+          [ Graph.N pkg (Graph.nodeKey pkg) libdeps
           | pkg <- InstallPlan.toList plan
           , let libdeps = case pkg of
-                  InstallPlan.PreExisting ipkg -> installedDepends ipkg
+                  InstallPlan.PreExisting (WithStage stage ipkg) -> map (WithStage stage) (installedDepends ipkg)
                   InstallPlan.Configured srcpkg -> elabLibDeps srcpkg
                   InstallPlan.Installed srcpkg -> elabLibDeps srcpkg
           ]
 
-      elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
-      elabLibDeps = map ((newSimpleUnitId . confInstId) . fst) . elabLibDependencies
+      elabLibDeps :: ElaboratedConfiguredPackage -> [WithStage UnitId]
+      elabLibDeps elab =
+        map (WithStage (elabStage elab) . newSimpleUnitId . confInstId . fst) (elabLibDependencies elab)
 
       -- Was a build was attempted for this package?
       -- If it doesn't have both a build status and outcome then the answer is no.
@@ -657,27 +673,27 @@ postBuildProjectStatus
       buildAttempted _ (Left BuildFailure{}) = True
       buildAttempted _ (Right _) = True
 
-      lookupBuildStatusRequiresBuild :: Bool -> UnitId -> Bool
+      lookupBuildStatusRequiresBuild :: Bool -> WithStage UnitId -> Bool
       lookupBuildStatusRequiresBuild def ipkgid =
         case Map.lookup ipkgid pkgBuildStatus of
           Nothing -> def -- Not in the plan subset we did the dry-run on
           Just buildStatus -> buildStatusRequiresBuild buildStatus
 
-      packagesBuildLocal :: Set UnitId
+      packagesBuildLocal :: PackageIdSet
       packagesBuildLocal =
         selectPlanPackageIdSet $ \case
           InstallPlan.PreExisting _ -> False
           InstallPlan.Installed _ -> False
           InstallPlan.Configured srcpkg -> elabLocalToProject srcpkg
 
-      packagesBuildInplace :: Set UnitId
+      packagesBuildInplace :: PackageIdSet
       packagesBuildInplace =
         selectPlanPackageIdSet $ \case
           InstallPlan.PreExisting _ -> False
           InstallPlan.Installed _ -> False
           InstallPlan.Configured srcpkg -> isInplaceBuildStyle (elabBuildStyle srcpkg)
 
-      packagesAlreadyInStore :: Set UnitId
+      packagesAlreadyInStore :: PackageIdSet
       packagesAlreadyInStore =
         selectPlanPackageIdSet $ \case
           InstallPlan.PreExisting _ -> True
@@ -685,14 +701,13 @@ postBuildProjectStatus
           InstallPlan.Configured _ -> False
 
       selectPlanPackageIdSet
-        :: ( InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage
-             -> Bool
-           )
-        -> Set UnitId
+        :: (ElaboratedPlanPackage -> Bool)
+        -> PackageIdSet
       selectPlanPackageIdSet p =
-        Map.keysSet
-          . Map.filter p
-          $ InstallPlan.toMap plan
+        Set.fromList
+          . map Graph.nodeKey
+          . filter p
+          $ InstallPlan.toList plan
 
 updatePostBuildProjectStatus
   :: Verbosity
@@ -846,10 +861,7 @@ writePlanGhcEnvironment
 writePlanGhcEnvironment
   path
   elaboratedInstallPlan
-  ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigPlatform = platform
-    }
+  sharedConfig
   postBuildStatus
     | compilerFlavor compiler == GHC
     , supportsPkgEnvFiles (getImplInfo compiler) =
@@ -864,6 +876,9 @@ writePlanGhcEnvironment
                 elaboratedInstallPlan
                 postBuildStatus
             )
+    where
+      compiler = pkgConfigCompiler sharedConfig
+      platform = pkgConfigPlatform sharedConfig
 -- TODO: [required eventually] support for writing user-wide package
 -- environments, e.g. like a global project, but we would not put the
 -- env file in the home dir, rather it lives under ~/.ghc/
@@ -966,7 +981,10 @@ selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
   case Graph.closure packagesLibDepGraph (Set.toList packagesBuildLocal) of
     Nothing -> error "renderGhcEnvironmentFile: broken dep closure"
     Just nodes ->
-      [ pkgid | Graph.N pkg pkgid _ <- nodes, hasUpToDateLib pkg
+      -- The environment file is for the host compiler, so only host-stage
+      -- libraries belong in it; a local package used as a build tool also has
+      -- a build-stage copy, whose libraries are for the build compiler.
+      [ pkgid | Graph.N pkg (WithStage Host pkgid) _ <- nodes, hasUpToDateLib pkg
       ]
   where
     hasUpToDateLib planpkg = case planpkg of
@@ -978,7 +996,7 @@ selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
       -- or just locally. Check it's a lib and that it is probably up to date.
       InstallPlan.Configured pkg ->
         elabRequiresRegistration pkg
-          && installedUnitId pkg `Set.member` packagesProbablyUpToDate
+          && Graph.nodeKey pkg `Set.member` packagesProbablyUpToDate
 
 selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStackCWD
 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =

@@ -5,6 +5,7 @@
 --
 module Distribution.Solver.Types.PackageConstraint (
     ConstraintScope(..),
+    ConstraintQualifier(..),
     scopeToplevel,
     scopeToPackageName,
     constraintScopeMatches,
@@ -25,13 +26,25 @@ import Distribution.Version                        (VersionRange, simplifyVersio
 
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.Stage             (Stage (..))
 
 import qualified Text.PrettyPrint as Disp
 
 
--- | Determines to what packages and in what contexts a
--- constraint applies.
-data ConstraintScope
+-- | Determines to what packages and in what contexts a constraint applies.
+--
+-- A scope pairs an optional build 'Stage' with a 'ConstraintQualifier'. When
+-- the stage is 'Nothing' the constraint applies at every stage; when it is
+-- @'Just' s@ it applies only to goals solved for stage @s@. (Top-level goals
+-- are always solved at the 'Host' stage, so 'scopeToplevel' pins the stage to
+-- @'Just' 'Host'@.)
+data ConstraintScope =
+    ConstraintScope (Maybe Stage) ConstraintQualifier
+  deriving (Eq, Show)
+
+-- | The qualifier part of a 'ConstraintScope': which goals a constraint
+-- applies to, independently of the build stage.
+data ConstraintQualifier
      -- | A scope that applies when the given package is used as a build target.
      -- In other words, the scope applies iff a goal has a top-level qualifier
      -- and its namespace matches the given package name. A namespace is
@@ -54,31 +67,45 @@ data ConstraintScope
 
 -- | Constructor for a common use case: the constraint applies to
 -- the package with the specified name when that package is a
--- top-level dependency in the default namespace.
+-- top-level dependency in the default namespace. Top-level goals are always
+-- solved at the 'Host' stage, so the scope is pinned there.
 scopeToplevel :: PackageName -> ConstraintScope
-scopeToplevel = ScopeQualified QualToplevel
+scopeToplevel = ConstraintScope (Just Host) . ScopeQualified QualToplevel
 
 -- | Returns the package name associated with a constraint scope.
 scopeToPackageName :: ConstraintScope -> PackageName
-scopeToPackageName (ScopeTarget pn) = pn
-scopeToPackageName (ScopeQualified _ pn) = pn
-scopeToPackageName (ScopeAnySetupQualifier pn) = pn
-scopeToPackageName (ScopeAnyQualifier pn) = pn
+scopeToPackageName (ConstraintScope _ (ScopeTarget pn)) = pn
+scopeToPackageName (ConstraintScope _ (ScopeQualified _ pn)) = pn
+scopeToPackageName (ConstraintScope _ (ScopeAnySetupQualifier pn)) = pn
+scopeToPackageName (ConstraintScope _ (ScopeAnyQualifier pn)) = pn
 
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
-constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
-  let namespaceMatches DefaultNamespace = True
-      namespaceMatches (Independent namespacePn) = pn == namespacePn
-  in namespaceMatches ns && q == QualToplevel && pn == pn'
-constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath _ q') pn') =
-    q == q' && pn == pn'
-constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
-  let setup (PackagePath _ (QualSetup _)) = True
-      setup _                             = False
-  in setup pp && pn == pn'
-constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
+constraintScopeMatches (ConstraintScope mstage qualifier) (Q (PackagePath stage ns q) pn') =
+    maybe True (== stage) mstage && constraintQualifierMatches qualifier ns q pn'
 
+-- | Whether the qualifier part of a constraint scope matches a goal, given the
+-- goal's namespace, qualifier and package name.
+constraintQualifierMatches :: ConstraintQualifier -> Namespace -> Qualifier -> PackageName -> Bool
+constraintQualifierMatches (ScopeTarget pn) ns q pn' =
+    namespaceMatches ns && q == QualToplevel && pn == pn'
+  where
+    namespaceMatches DefaultNamespace = True
+    namespaceMatches (Independent namespacePn) = pn == namespacePn
+constraintQualifierMatches (ScopeQualified q pn) _ns q' pn' =
+    q == q' && pn == pn'
+constraintQualifierMatches (ScopeAnySetupQualifier pn) _ns q pn' =
+    setup q && pn == pn'
+  where
+    setup (QualSetup _) = True
+    setup _             = False
+constraintQualifierMatches (ScopeAnyQualifier pn) _ns _q pn' = pn == pn'
+
+-- | The stage is not rendered: there is no user syntax for it (yet), and the
+-- only staged scopes are the 'Just' 'Host' ones made by 'scopeToplevel'.
 instance Pretty ConstraintScope where
+  pretty (ConstraintScope _mstage qualifier) = pretty qualifier
+
+instance Pretty ConstraintQualifier where
   pretty (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn
   pretty (ScopeQualified q pn) = dispQualifier q <<>> pretty pn
   pretty (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> pretty pn

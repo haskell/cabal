@@ -91,6 +91,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.Setup as Cabal
+import Distribution.Solver.Types.Stage (Staged, overStage)
 import Distribution.Types.BuildType
 import Distribution.Types.PackageDescription.Lens (componentModules)
 
@@ -174,7 +175,7 @@ buildAndRegisterUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> TVar InstalledPackageIndex
+  -> TVar (Staged InstalledPackageIndex)
   -- ^ Running 'InstalledPackageIndex', updated as @cabal-install@ registers
   -- packages
   -> SymbolicPath CWD (Dir Pkg)
@@ -193,10 +194,7 @@ buildAndRegisterUnpackedPackage
     }
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigCompilerProgs = progdb
-    }
+  pkgshared
   plan
   rpkg@(ReadyPackage pkg)
   ipiTVar
@@ -204,6 +202,9 @@ buildAndRegisterUnpackedPackage
   builddir
   mlogFile
   delegate = do
+    -- The package is registered with the toolchain of its own stage.
+    let compiler = elabCompiler pkgshared pkg
+        progdb = elabProgramDb pkgshared pkg
     -- Configure phase
     mbLBI <-
       timedDelegate $
@@ -525,7 +526,7 @@ buildInplaceUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> TVar InstalledPackageIndex
+  -> TVar (Staged InstalledPackageIndex)
   -> BuildStatusRebuild
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
@@ -541,13 +542,14 @@ buildInplaceUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingHaddockOpen}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
+  pkgshared
   plan
   rpkg@(ReadyPackage pkg)
   ipiTVar
   buildStatus
   srcdir
   builddir = do
+    let Platform _ os = elabPlatform pkgshared pkg
     -- TODO: [code cleanup] there is duplication between the
     --      distdirlayout and the builddir here builddir is not
     --      enough, we also need the per-package cachedir
@@ -621,9 +623,9 @@ buildInplaceUnpackedPackage
                       (elabRegisterPackageDBStack pkg)
                       Cabal.defaultRegisterOptions
                   -- Keep the per-project running InstalledPackageIndex up to date.
-                  -- See (ProjIPI2) from Note [Per-project InstalledPackageIndex]
+                  -- See (ProjIPI2) and (ProjIPI4) from Note [Per-project InstalledPackageIndex]
                   -- in Distribution.Client.ProjectBuilding.
-                  atomically $ modifyTVar ipiTVar (PackageIndex.insert ipkg)
+                  atomically $ modifyTVar ipiTVar (overStage (elabActiveStage pkgshared pkg) (PackageIndex.insert ipkg))
                   return (Just ipkg)
                 else return Nothing
 
@@ -759,7 +761,7 @@ buildAndInstallUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> TVar InstalledPackageIndex
+  -> TVar (Staged InstalledPackageIndex)
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
   -> IO BuildResult
@@ -773,10 +775,7 @@ buildAndInstallUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingLogFile}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigPlatform = platform
-    }
+  pkgshared
   plan
   rpkg@(ReadyPackage pkg)
   ipiTVar
@@ -838,7 +837,7 @@ buildAndInstallUnpackedPackage
                 | otherwise = do
                     assert
                       ( elabRegisterPackageDBStack pkg
-                          == storePackageDBStack compiler (elabPackageDbs pkg)
+                          == storePackageDBStack compiler platform (elabPackageDbs pkg)
                       )
                       (return ())
                     ipkg <-
@@ -857,6 +856,7 @@ buildAndInstallUnpackedPackage
               verbosity
               storeDirLayout
               compiler
+              platform
               uid
               (copyPkgFiles verbosity pkgshared pkg runCopy)
               registerPkg
@@ -873,7 +873,7 @@ buildAndInstallUnpackedPackage
             -- (takes ~100ms).
             mipkg <- readIORef ipkgRef
             ipkg <- maybe getInstalledPackageInfo return mipkg
-            atomically $ modifyTVar ipiTVar (PackageIndex.insert ipkg)
+            atomically $ modifyTVar ipiTVar (overStage (elabActiveStage pkgshared pkg) (PackageIndex.insert ipkg))
 
         -- No tests on install
         PBTestPhase{} -> return ()
@@ -906,6 +906,11 @@ buildAndInstallUnpackedPackage
         }
     where
       uid = installedUnitId rpkg
+      -- The store entry, package db and log file of this package are those of
+      -- the compiler it is built with, i.e. its own stage's.
+      compiler = elabCompiler pkgshared pkg
+      platform = elabPlatform pkgshared pkg
+
       pkgid = packageId rpkg
 
       dispname :: String

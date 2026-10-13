@@ -9,6 +9,7 @@ module Distribution.Client.ProjectPlanning.Types
 
     -- * Elaborated install plan types
   , ElaboratedInstallPlan
+  , ElaboratedInstalledPackageInfo
   , normaliseConfiguredPackage
   , ElaboratedConfiguredPackage (..)
   , showElaboratedInstallPlan
@@ -30,8 +31,24 @@ module Distribution.Client.ProjectPlanning.Types
   , ElaboratedComponent (..)
   , ElaboratedPackage (..)
   , pkgOrderDependencies
+  , pkgStagedOrderDependencies
   , ElaboratedPlanPackage
   , ElaboratedSharedConfig (..)
+  , pkgConfigStageToolchain
+  , pkgConfigToolchain
+  , pkgConfigCompiler
+  , pkgConfigPlatform
+  , pkgConfigCompilerProgs
+  , pkgConfigBuildToolchain
+  , pkgConfigBuildCompiler
+  , pkgConfigBuildPlatform
+  , pkgConfigBuildProgs
+  , setPkgConfigCompilerProgs
+  , elabToolchain
+  , elabActiveStage
+  , elabCompiler
+  , elabPlatform
+  , elabProgramDb
   , ElaboratedReadyPackage
   , BuildStyle (..)
   , MemoryOrDisk (..)
@@ -75,8 +92,20 @@ import Distribution.Client.InstallPlan
   , GenericPlanPackage (..)
   )
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.ProjectPlanning.Stage
+  ( HasStage (..)
+  , WithStage (..)
+  , withoutStage
+  )
 import Distribution.Client.SolverInstallPlan
   ( SolverInstallPlan
+  )
+import Distribution.Client.Toolchain
+  ( Stage (..)
+  , Toolchain (..)
+  , Toolchains
+  , getStage
+  , overStage
   )
 import Distribution.Client.Types
 
@@ -108,6 +137,7 @@ import Distribution.Simple.Utils (cabalVersion, ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.Stage (isCross)
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.LocalBuildConfig as LBC
@@ -132,13 +162,19 @@ import Text.PrettyPrint (hsep, parens, text)
 -- connections).
 type ElaboratedInstallPlan =
   GenericInstallPlan
-    InstalledPackageInfo
+    ElaboratedInstalledPackageInfo
     ElaboratedConfiguredPackage
 
 type ElaboratedPlanPackage =
   GenericPlanPackage
-    InstalledPackageInfo
+    ElaboratedInstalledPackageInfo
     ElaboratedConfiguredPackage
+
+-- | A pre-existing installed package in the elaborated plan, tagged with the
+-- build 'Stage' it belongs to. The stage is part of the plan's node key, so
+-- that the host and build copies of the same installed package (which share a
+-- 'UnitId') are kept as distinct nodes under cross-compilation.
+type ElaboratedInstalledPackageInfo = WithStage InstalledPackageInfo
 
 -- | User-friendly display string for an 'ElaboratedPlanPackage'.
 elabPlanPackageName :: Verbosity -> ElaboratedPlanPackage -> String
@@ -181,13 +217,18 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
 --      even platform and compiler could be different if we're building things
 --      like a server + client with ghc + ghcjs
 data ElaboratedSharedConfig = ElaboratedSharedConfig
-  { pkgConfigPlatform :: Platform
-  , pkgConfigCompiler :: Compiler -- TODO: [code cleanup] replace with CompilerInfo
-  , pkgConfigCompilerProgs :: ProgramDb
-  -- ^ All known programs configured once for the project: the compiler
-  -- (e.g. ghc & ghc-pkg) plus associated tools (hsc2hs, haddock, hpc,
-  -- runghc) and toolchain programs (ar, ld, strip). Once constructed,
-  -- only the 'configuredPrograms' are used.
+  { pkgConfigToolchains :: Toolchains
+  -- ^ The host and build 'Toolchain's (compiler, platform, program database).
+  -- In a non-cross build both stages hold the same toolchain; under cross-
+  -- compilation the build stage carries the build-machine toolchain used for
+  -- build-tools and custom @Setup.hs@ scripts. The per-stage values are read
+  -- with 'getStage'; the host-stage and build-stage components also have the
+  -- named accessors below.
+  --
+  -- The compiler program database gathers all known programs configured once
+  -- for the project: the compiler (e.g. ghc & ghc-pkg) plus associated tools
+  -- (hsc2hs, haddock, hpc, runghc) and toolchain programs (ar, ld, strip).
+  -- Once constructed, only the 'configuredPrograms' are used.
   , pkgConfigReplOptions :: ReplOptions
   }
   deriving (Show, Generic)
@@ -196,6 +237,87 @@ data ElaboratedSharedConfig = ElaboratedSharedConfig
 
 instance Binary ElaboratedSharedConfig
 instance Structured ElaboratedSharedConfig
+
+-- | The toolchain for a given build 'Stage'.
+pkgConfigStageToolchain :: ElaboratedSharedConfig -> Stage -> Toolchain
+pkgConfigStageToolchain = getStage . pkgConfigToolchains
+
+-- | The /host/ toolchain (the machine the built artifacts will run on), the
+-- stage every package not reached through a tool dependency belongs to.
+pkgConfigToolchain :: ElaboratedSharedConfig -> Toolchain
+pkgConfigToolchain = flip pkgConfigStageToolchain Host
+
+-- | The host compiler; see 'pkgConfigToolchain'.
+pkgConfigCompiler :: ElaboratedSharedConfig -> Compiler
+pkgConfigCompiler = toolchainCompiler . pkgConfigToolchain
+
+-- | The host platform; see 'pkgConfigToolchain'.
+pkgConfigPlatform :: ElaboratedSharedConfig -> Platform
+pkgConfigPlatform = toolchainPlatform . pkgConfigToolchain
+
+-- | The host toolchain's program database; see 'pkgConfigToolchain'.
+pkgConfigCompilerProgs :: ElaboratedSharedConfig -> ProgramDb
+pkgConfigCompilerProgs = toolchainProgramDb . pkgConfigToolchain
+
+-- | The /build/ toolchain (the machine running the build), used for
+-- build-tools and custom @Setup.hs@ scripts. Equal to the host toolchain
+-- unless cross-compiling.
+pkgConfigBuildToolchain :: ElaboratedSharedConfig -> Toolchain
+pkgConfigBuildToolchain = flip pkgConfigStageToolchain Build
+
+-- | The build compiler; see 'pkgConfigBuildToolchain'.
+pkgConfigBuildCompiler :: ElaboratedSharedConfig -> Compiler
+pkgConfigBuildCompiler = toolchainCompiler . pkgConfigBuildToolchain
+
+-- | The build platform; see 'pkgConfigBuildToolchain'.
+pkgConfigBuildPlatform :: ElaboratedSharedConfig -> Platform
+pkgConfigBuildPlatform = toolchainPlatform . pkgConfigBuildToolchain
+
+-- | The build toolchain's program database; see 'pkgConfigBuildToolchain'.
+pkgConfigBuildProgs :: ElaboratedSharedConfig -> ProgramDb
+pkgConfigBuildProgs = toolchainProgramDb . pkgConfigBuildToolchain
+
+-- | Replace the /host/ toolchain's program database (e.g. to register a
+-- freshly-configured @haddock@). The build toolchain is left untouched.
+setPkgConfigCompilerProgs :: ProgramDb -> ElaboratedSharedConfig -> ElaboratedSharedConfig
+setPkgConfigCompilerProgs progs shared =
+  shared
+    { pkgConfigToolchains =
+        overStage Host (\tc -> tc{toolchainProgramDb = progs}) (pkgConfigToolchains shared)
+    }
+
+-- | The 'Toolchain' that configures a given elaborated package: the toolchain
+-- of the package's own build 'Stage'. This is the only correct way to obtain
+-- the compiler, platform, or program database an 'ElaboratedConfiguredPackage'
+-- is built against — reaching for the host toolchain directly (e.g.
+-- 'pkgConfigCompiler') silently assumes the 'Host' stage, which is wrong for a
+-- build-stage package under cross-compilation. In a non-cross build every
+-- package is on the host stage, so this selects the host toolchain there.
+elabToolchain :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> Toolchain
+elabToolchain shared elab = pkgConfigStageToolchain shared (elabStage elab)
+
+-- | The compiler a package is built with; see 'elabToolchain'.
+-- | The stage whose per-stage state (package DBs, the running
+-- 'InstalledPackageIndex', the store) a package belongs to: its own stage,
+-- except that in a non-cross build the build stage collapses onto the host
+-- stage, which is the only one with any state. Compare 'getStage', which
+-- collapses the /value/ the same way when reading.
+elabActiveStage :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> Stage
+elabActiveStage shared elab
+  | isCross (pkgConfigToolchains shared) = elabStage elab
+  | otherwise = Host
+
+elabCompiler :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> Compiler
+elabCompiler shared = toolchainCompiler . elabToolchain shared
+
+-- | The platform a package is built for; see 'elabToolchain'.
+elabPlatform :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> Platform
+elabPlatform shared = toolchainPlatform . elabToolchain shared
+
+-- | The program database of the toolchain a package is built with; see
+-- 'elabToolchain'.
+elabProgramDb :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> ProgramDb
+elabProgramDb shared = toolchainProgramDb . elabToolchain shared
 
 data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   { elabUnitId :: UnitId
@@ -212,6 +334,12 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   -- instantiations of it.
   , elabPkgSourceId :: PackageId
   -- ^ The 'PackageId' of the originating package
+  , elabStage :: Stage
+  -- ^ The build 'Stage' this package is elaborated for. Under
+  -- cross-compilation a package may appear on both the host and build
+  -- stages; the stage selects which toolchain (compiler, platform, program
+  -- database) configures it. In a non-cross build every package is on the
+  -- host stage.
   , elabModuleShape :: ModuleShape
   -- ^ Shape of the package/component, for Backpack.
   , elabFlagAssignment :: Cabal.FlagAssignment
@@ -339,10 +467,10 @@ normaliseConfiguredPackage
   :: ElaboratedSharedConfig
   -> ElaboratedConfiguredPackage
   -> ElaboratedConfiguredPackage
-normaliseConfiguredPackage ElaboratedSharedConfig{pkgConfigCompilerProgs} pkg =
+normaliseConfiguredPackage shared pkg =
   pkg{elabProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg)}
   where
-    knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
+    knownProgramDb = addKnownPrograms builtinPrograms (elabProgramDb shared pkg)
 
     pkgDesc :: PackageDescription
     pkgDesc = elabPkgDescription pkg
@@ -488,9 +616,58 @@ instance HasUnitId ElaboratedConfiguredPackage where
   installedUnitId = elabUnitId
 
 instance IsNode ElaboratedConfiguredPackage where
-  type Key ElaboratedConfiguredPackage = UnitId
-  nodeKey = elabUnitId
-  nodeNeighbors = elabOrderDependencies
+  type Key ElaboratedConfiguredPackage = WithStage UnitId
+  nodeKey elab = WithStage (elabStage elab) (elabUnitId elab)
+
+  -- The guiding rule is: a neighbour's stage is whatever the solver assigned
+  -- the dependency, and must be /read/ from the resolved plan node, never
+  -- recomputed. Recomputation is what made build-tool/setup edges wrong before
+  -- (they used @prevStage elabStage@, which invents the 'Build' stage even for
+  -- a non-cross build that has no separate build stage). So build-tool and
+  -- setup edges come from 'elabOrderExeDependencies' and
+  -- 'elabSetupLibDependencies', both of which store the stage of the plan node
+  -- the solver resolved the dependency to.
+  --
+  -- Library edges are the one exception, and use this package's own
+  -- 'elabStage' rather than reading it off each resolved lib node. The more
+  -- principled thing would be to read it, symmetrically with the exe/setup
+  -- edges above, but we deliberately do not, for two reasons:
+  --
+  --   1. It would be redundant. A library edge is stage-/preserving/ by
+  --      definition: the solver only changes stage across build-tool/setup
+  --      boundaries (the single 'prevStage' in the solver's Dependency module),
+  --      never across a library dependency, because a library links into a
+  --      same-stage artifact. So a stage-@s@ node's library dependencies are
+  --      always themselves at stage @s@ == 'elabStage', and reading the node
+  --      would return exactly that.
+  --   2. It is not even cleanly possible for a per-component build. There the
+  --      library order dependencies ('compOrderLibDependencies') come from the
+  --      Backpack mix-in linker output (@lc_includes@, abstract 'OpenUnitId's),
+  --      not from the resolved 'SolverId' plan nodes, so there is no resolved
+  --      node in hand to read a stage from without threading stage through the
+  --      linker. Reading it only on the (easy) package path would leave the two
+  --      paths asymmetric for no behavioural gain.
+  --
+  -- Setup dependencies are the deps of the @Setup.hs@ component, so they are
+  -- excluded from 'libDeps' (which takes only the non-setup component deps)
+  -- and added with their own (solver-assigned) stage instead. They are
+  -- excluded by component, not by subtracting their 'UnitId's from the full
+  -- order list: a library dependency and a setup dependency may share a
+  -- 'UnitId' while sitting at different stages (e.g. @base@ when the build
+  -- and host compilers agree on it), and subtracting by 'UnitId' would drop
+  -- the library edge.
+  nodeNeighbors elab =
+    ordNub $
+      map (WithStage (elabStage elab)) libDeps
+        ++ elabOrderExeDependencies elab
+        ++ map (fmap fromConfiguredId) (elabSetupLibDependencies elab)
+    where
+      libDeps = case elabPkgOrComp elab of
+        ElabPackage pkg -> map (fromConfiguredId . fst) (CD.nonSetupDeps (pkgLibDependencies pkg))
+        ElabComponent comp -> compOrderLibDependencies comp
+
+instance HasStage ElaboratedConfiguredPackage where
+  stageOf = elabStage
 
 instance Binary ElaboratedConfiguredPackage
 instance Structured ElaboratedConfiguredPackage
@@ -534,30 +711,13 @@ elabDistDirParams shared elab =
     , distParamComponentName = case elabPkgOrComp elab of
         ElabComponent comp -> compComponentName comp
         ElabPackage _ -> Nothing
-    , distParamCompilerId = compilerId (pkgConfigCompiler shared)
-    , distParamPlatform = pkgConfigPlatform shared
+    , distParamCompilerId = compilerId (elabCompiler shared elab)
+    , distParamPlatform = elabPlatform shared elab
     , distParamOptimization = LBC.withOptimization $ elabBuildOptions elab
     }
 
--- | The full set of dependencies which dictate what order we
--- need to build things in the install plan: "order dependencies"
--- balls everything together.  This is mostly only useful for
--- ordering; if you are, for example, trying to compute what
--- @--dependency@ flags to pass to a Setup script, you need to
--- use 'elabLibDependencies'.  This method is the same as
--- 'nodeNeighbors'.
---
--- NB: this method DOES include setup deps.
-elabOrderDependencies :: ElaboratedConfiguredPackage -> [UnitId]
-elabOrderDependencies elab =
-  case elabPkgOrComp elab of
-    -- Important not to have duplicates: otherwise InstallPlan gets
-    -- confused.
-    ElabPackage pkg -> ordNub (fold (pkgOrderDependencies pkg))
-    ElabComponent comp -> compOrderDependencies comp
-
--- | Like 'elabOrderDependencies', but only returns dependencies on
--- libraries.
+-- | The library "order dependencies" of a package: the 'UnitId's of the
+-- libraries that must be built before it.  Used purely for build ordering.
 elabOrderLibDependencies :: ElaboratedConfiguredPackage -> [UnitId]
 elabOrderLibDependencies elab =
   case elabPkgOrComp elab of
@@ -576,17 +736,18 @@ elabLibDependencies elab =
     ElabPackage pkg -> ordNub (CD.nonSetupDeps (pkgLibDependencies pkg))
     ElabComponent comp -> compLibDependencies comp
 
--- | Like 'elabOrderDependencies', but only returns dependencies on
--- executables.  (This coincides with 'elabExeDependencies'.)
-elabOrderExeDependencies :: ElaboratedConfiguredPackage -> [UnitId]
+-- | The executable "order dependencies" of a package.  (This coincides with
+-- 'elabExeDependencies'.)  Each result carries the build 'Stage' the solver
+-- assigned it.
+elabOrderExeDependencies :: ElaboratedConfiguredPackage -> [WithStage UnitId]
 elabOrderExeDependencies =
-  map newSimpleUnitId . elabExeDependencies
+  map (fmap newSimpleUnitId) . elabExeDependencies
 
 -- | The executable dependencies (i.e., the executables we depend on);
 -- these are the executables we must add to the PATH before we invoke
--- the setup script.
-elabExeDependencies :: ElaboratedConfiguredPackage -> [ComponentId]
-elabExeDependencies elab = map confInstId $
+-- the setup script.  Each is tagged with the build 'Stage' it was solved for.
+elabExeDependencies :: ElaboratedConfiguredPackage -> [WithStage ComponentId]
+elabExeDependencies elab = map (fmap confInstId) $
   case elabPkgOrComp elab of
     ElabPackage pkg -> CD.nonSetupDeps (pkgExeDependencies pkg)
     ElabComponent comp -> compExeDependencies comp
@@ -611,6 +772,21 @@ elabSetupDependencies elab =
     -- TODO: Custom setups not supported for components yet.  When
     -- they are, need to do this differently
     ElabComponent _ -> []
+
+-- | The library dependencies of the @Setup.hs@ script, each tagged with the
+-- build 'Stage' the solver assigned it (see 'pkgSetupLibDependencies').  Unlike
+-- 'elabSetupDependencies', this is used purely for ordering, so it carries the
+-- stage but not the promised-dependency flag.
+elabSetupLibDependencies :: ElaboratedConfiguredPackage -> [WithStage ConfiguredId]
+elabSetupLibDependencies elab =
+  case elabPkgOrComp elab of
+    ElabPackage pkg -> pkgSetupLibDependencies pkg
+    -- Custom setups are not supported for components.
+    ElabComponent _ -> []
+
+-- | Identify the plan node a 'ConfiguredId' dependency refers to.
+fromConfiguredId :: ConfiguredId -> UnitId
+fromConfiguredId = newSimpleUnitId . confInstId
 
 elabPkgConfigDependencies :: ElaboratedConfiguredPackage -> [(PkgconfigName, Maybe PkgconfigVersion)]
 elabPkgConfigDependencies ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage pkg} =
@@ -678,12 +854,15 @@ data ElaboratedComponent = ElaboratedComponent
   -- instantiation phase. It's more precise than
   -- 'compLibDependencies', and also stores information about internal
   -- dependencies.
-  , compExeDependencies :: [ConfiguredId]
+  , compExeDependencies :: [WithStage ConfiguredId]
   -- ^ The executable dependencies of this component (including
-  -- internal executables).
+  -- internal executables).  Each is tagged with the build 'Stage' it
+  -- was solved for, so build-tool executables run during this
+  -- component's build (the previous stage under cross-compilation) are
+  -- kept distinct from same-named host artifacts.
   , compPkgConfigDependencies :: [(PkgconfigName, Maybe PkgconfigVersion)]
   -- ^ The @pkg-config@ dependencies of the component
-  , compExeDependencyPaths :: [(ConfiguredId, FilePath)]
+  , compExeDependencyPaths :: [(WithStage ConfiguredId, FilePath)]
   -- ^ The paths all our executable dependencies will be installed
   -- to once they are installed.
   , compOrderLibDependencies :: [UnitId]
@@ -699,16 +878,6 @@ data ElaboratedComponent = ElaboratedComponent
 instance Binary ElaboratedComponent
 instance Structured ElaboratedComponent
 
--- | See 'elabOrderDependencies'.
-compOrderDependencies :: ElaboratedComponent -> [UnitId]
-compOrderDependencies comp =
-  compOrderLibDependencies comp
-    ++ compOrderExeDependencies comp
-
--- | See 'elabOrderExeDependencies'.
-compOrderExeDependencies :: ElaboratedComponent -> [UnitId]
-compOrderExeDependencies = map (newSimpleUnitId . confInstId) . compExeDependencies
-
 data ElaboratedPackage = ElaboratedPackage
   { pkgInstalledId :: InstalledPackageId
   , pkgLibDependencies :: ComponentDeps [(ConfiguredId, Bool)]
@@ -720,10 +889,18 @@ data ElaboratedPackage = ElaboratedPackage
   -- defined library.  These are used by 'elabRequiresRegistration',
   -- to determine if a user-requested build is going to need
   -- a library registration
-  , pkgExeDependencies :: ComponentDeps [ConfiguredId]
-  -- ^ Dependencies on executable packages.
-  , pkgExeDependencyPaths :: ComponentDeps [(ConfiguredId, FilePath)]
+  , pkgExeDependencies :: ComponentDeps [WithStage ConfiguredId]
+  -- ^ Dependencies on executable packages, each tagged with the build
+  -- 'Stage' it was solved for.
+  , pkgExeDependencyPaths :: ComponentDeps [(WithStage ConfiguredId, FilePath)]
   -- ^ Paths where executable dependencies live.
+  , pkgSetupLibDependencies :: [WithStage ConfiguredId]
+  -- ^ The library dependencies of the @Setup.hs@ script, each tagged
+  -- with the build 'Stage' the solver assigned it.  Setup scripts run
+  -- during this package's build, so under cross-compilation these live
+  -- on the previous ('Build') stage; we store the solver-assigned stage
+  -- per dependency rather than recomputing it, because a non-cross build
+  -- keeps them on the host stage (there is no separate build stage).
   , pkgPkgConfigDependencies :: [(PkgconfigName, Maybe PkgconfigVersion)]
   -- ^ Dependencies on @pkg-config@ packages.
   -- NB: this is NOT per-component (although it could be)
@@ -779,12 +956,29 @@ whyNotPerComponent = \case
   CuzNoBuildableComponents -> "there are no buildable components"
   CuzDisablePerComponent -> "you passed --disable-per-component"
 
--- | See 'elabOrderDependencies'.  This gives the unflattened version,
--- which can be useful in some circumstances.
+-- | The per-component "order dependencies" (libraries and executables) of a
+-- package, used purely for build ordering.  Unlike 'nodeNeighbors' this keeps
+-- the 'ComponentDeps' structure rather than flattening it.
 pkgOrderDependencies :: ElaboratedPackage -> ComponentDeps [UnitId]
 pkgOrderDependencies pkg =
   fmap (map (newSimpleUnitId . confInstId)) (map fst <$> pkgLibDependencies pkg)
-    <> fmap (map (newSimpleUnitId . confInstId)) (pkgExeDependencies pkg)
+    <> fmap (map (newSimpleUnitId . confInstId . withoutStage)) (pkgExeDependencies pkg)
+
+-- | 'pkgOrderDependencies' with every dependency tagged with the build 'Stage'
+-- of the plan node it refers to, so that the result can be matched against
+-- install plan keys.  Library edges are stage-preserving, so they take the
+-- stage of the package itself; build-tool edges carry the stage the solver
+-- assigned them.  (This is the same rule the 'IsNode' instance for
+-- 'ElaboratedConfiguredPackage' follows, and for the same reasons.)
+--
+-- The @Setup.hs@ component's slot is /not/ meaningful here: setup library
+-- dependencies sit at their own solver-assigned stage, recorded in
+-- 'pkgSetupLibDependencies', which this does not consult.  Callers select
+-- test and benchmark components only.
+pkgStagedOrderDependencies :: Stage -> ElaboratedPackage -> ComponentDeps [WithStage UnitId]
+pkgStagedOrderDependencies stage pkg =
+  fmap (map (WithStage stage . newSimpleUnitId . confInstId)) (map fst <$> pkgLibDependencies pkg)
+    <> fmap (map (fmap (newSimpleUnitId . confInstId))) (pkgExeDependencies pkg)
 
 -- | This is used in the install plan to indicate how the package will be
 -- built.
