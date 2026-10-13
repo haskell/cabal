@@ -149,6 +149,7 @@ import Distribution.Simple.GHC
   , renderGhcEnvironmentFile
   )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
+import qualified Distribution.Simple.MHS as MHS
 import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Simple.Program.Db
   ( defaultProgramDb
@@ -526,16 +527,27 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
     -- Having built everything, do the install.
     unless dryRun $
       if installLibs
-        then
-          installLibraries
-            verbosity
-            buildCtx
-            installedIndex
-            compiler
-            packageDbs
-            envFile
-            nonGlobalEnvEntries'
-            (not usedExistingPkgEnvFile && not usedPackageEnvFlag)
+        then case compilerFlavor of
+          MHS ->
+            MHS.installInPackageDirectory
+              verbosity
+              compiler
+              progDb
+              packageDbs
+              [unitId | GhcEnvFilePackageId unitId <- entriesForLibraryComponents (targetsMap buildCtx)]
+              (flagToMaybe (cinstEnvironmentPath clientInstallFlags))
+          -- This should probably be GHC rather than a catch-all, as
+          -- installLibraries writes GHC environment files.
+          _ ->
+            installLibraries
+              verbosity
+              buildCtx
+              installedIndex
+              compiler
+              packageDbs
+              envFile
+              nonGlobalEnvEntries'
+              (not usedExistingPkgEnvFile && not usedPackageEnvFlag)
         else -- Install any built exe by symlinking or copying it we don't use
         -- BuildOutcomes because we also need the component names
           traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
