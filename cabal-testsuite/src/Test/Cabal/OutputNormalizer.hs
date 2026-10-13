@@ -15,7 +15,7 @@ import Data.Array ((!))
 import Text.Regex.Base
 import Text.Regex.TDFA
 
-import qualified Data.Foldable as F
+import Data.Foldable qualified as F
 
 normalizeOutput :: NormalizerEnv -> String -> String
 normalizeOutput nenv =
@@ -138,6 +138,10 @@ normalizeOutput nenv =
         . resub
           "\"-pgmcxx\",\"[^\"]+\""
           "\"-pgmcxx\",\"<CXXCPATH>\""
+        -- Normalize the assembler compiler path embedded in -pgma.
+        . resub
+          "\"-pgma\",\"[^\"]+\""
+          "\"-pgma\",\"<ASPATH>\""
         -- Remove cabal version output from show-build-info output
         . resub
           ("{\"cabal-lib-version\":\"" ++ posixRegexEscape (display (normalizerCabalVersion nenv)) ++ "\"")
