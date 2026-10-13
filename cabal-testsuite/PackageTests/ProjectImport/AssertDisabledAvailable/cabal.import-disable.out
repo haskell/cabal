@@ -1,0 +1,10 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+Assertion failed
+
+HasCallStack backtrace:
+  throwIO, called at libraries/ghc-internal/src/GHC/Internal/IO/Exception.hs:_:_ in ghc-internal:GHC.Internal.IO.Exception
+  assert, called at src/Distribution/Client/ProjectPlanning.hs:_:_ in cabal-install-3.17.0.0-inplace:Distribution.Client.ProjectPlanning
+
