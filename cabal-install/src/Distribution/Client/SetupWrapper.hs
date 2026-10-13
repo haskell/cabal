@@ -27,7 +27,6 @@ module Distribution.Client.SetupWrapper
   , SPostConfigurePhase(..)
   , InLibraryArgs(..)
   , SetupRunnerRes
-  , InLibraryLBI(..)
   , RightFlagsForPhase
   , setupWrapper
   , SetupScriptOptions (..)
@@ -195,20 +194,6 @@ import qualified System.Win32 as Win32
 
 --------------------------------------------------------------------------------
 
--- | If we end up using the in-library method, we use the v'InLibraryLBI'
--- constructor. If not, we use the 'NotInLibraryNoLBI' constructor.
---
--- NB: we don't know ahead of time whether we can use the in-library method;
--- e.g. for a package with Hooks build-type, it depends on whether the Cabal
--- version used by the package matches with the Cabal version that cabal-install
--- was built against.
---
--- Post-configure phases given 'NotInLibraryNoLBI' always use the external
--- method (see 'inLibraryMethod').
-data InLibraryLBI
-  = InLibraryLBI LocalBuildInfo
-  | NotInLibraryNoLBI
-
 data SPostConfigurePhase (flags :: Type) where
   SBuildPhase    :: SPostConfigurePhase BuildFlags
   SHaddockPhase  :: SPostConfigurePhase HaddockFlags
@@ -230,15 +215,17 @@ data SetupRunnerArgs (spec :: SetupWrapperSpec) where
   NotInLibrary
     :: SetupRunnerArgs UseGeneralSetup
   InLibraryArgs
-    :: InLibraryArgs InLibraryLBI flags
+    :: InLibraryArgs (Maybe LocalBuildInfo) flags
     -> SetupRunnerArgs (TryInLibrary flags)
 
 -- | What the in-library method needs for a phase.
 --
 -- @lbi@ is what post-configure phases carry in the 'LocalBuildInfo' slot.
--- Callers pass 'InLibraryLBI', since the package may have been configured by
--- an external Setup; once the in-library method is chosen (see
--- 'inLibraryMethod') it holds a 'LocalBuildInfo' outright.
+-- Callers pass a @'Maybe' 'LocalBuildInfo'@, since they do not know ahead of
+-- time whether the package was configured in-library (e.g. with the Hooks
+-- build type it depends on whether the Cabal version used by the package
+-- matches the one cabal-install was built against). Once the in-library method
+-- is chosen (see 'inLibraryMethod') it holds a 'LocalBuildInfo' outright.
 data InLibraryArgs (lbi :: Type) (flags :: Type) where
   InLibraryConfigureArgs
     :: ElaboratedSharedConfig
@@ -255,7 +242,7 @@ type family SetupRunnerRes (spec :: SetupWrapperSpec) where
   SetupRunnerRes (TryInLibrary phase) = InLibraryPhaseRes phase
 
 type family InLibraryPhaseRes flags where
-  InLibraryPhaseRes ConfigFlags  = InLibraryLBI
+  InLibraryPhaseRes ConfigFlags  = Maybe LocalBuildInfo
   InLibraryPhaseRes BuildFlags   = [MonitorFilePath]
   InLibraryPhaseRes HaddockFlags = [MonitorFilePath]
   InLibraryPhaseRes ReplFlags    = [MonitorFilePath]
@@ -292,10 +279,8 @@ inLibraryMethod (InLibraryArgs libArgs) =
   LibraryMethod <$> case libArgs of
     InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar ->
       Just (InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar)
-    InLibraryPostConfigureArgs sPhase (InLibraryLBI lbi) ->
-      Just (InLibraryPostConfigureArgs sPhase lbi)
-    InLibraryPostConfigureArgs _ NotInLibraryNoLBI ->
-      Nothing
+    InLibraryPostConfigureArgs sPhase mbLBI ->
+      InLibraryPostConfigureArgs sPhase <$> mbLBI
 
 -- TODO: The 'setupWrapper' and 'SetupScriptOptions' should be split into two
 -- parts: one that has no policy and just does as it's told with all the
@@ -662,7 +647,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
        NotInLibrary -> ()
        InLibraryArgs libArgs ->
          case libArgs of
-           InLibraryConfigureArgs {} -> NotInLibraryNoLBI
+           InLibraryConfigureArgs {} -> Nothing
            InLibraryPostConfigureArgs sPhase _ ->
              case sPhase of
                SBuildPhase    -> []
@@ -727,7 +712,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
       -- skip re-configuring; we retrieve the LocalBuildInfo stored on disk from
       -- the previous invocation of 'configure' and pass it to 'build'.
       writePersistBuildConfig mbWorkDir distPref lbi
-      return (InLibraryLBI lbi)
+      return (Just lbi)
     LibraryMethod (InLibraryPostConfigureArgs sPhase lbi) ->
       case sPhase of
         SBuildPhase    -> InLibrary.build    verbHandles flags lbi extraArgs
