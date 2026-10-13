@@ -27,11 +27,13 @@ module Distribution.Simple.MHS
   , buildExe
   , installLib
   , installExe
+  , installInPackageDirectory
   , createPackageDB
   , registerPackage
   , rewritePackageDescription
   ) where
 
+import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -72,8 +74,8 @@ import qualified Data.ByteString as BS
 import Data.List (stripPrefix)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text
-import System.Directory (doesDirectoryExist, getDirectoryContents, getHomeDirectory, makeAbsolute, removeDirectoryRecursive)
-import System.FilePath (dropExtension, takeDirectory, takeExtension, takeFileName)
+import System.Directory (canonicalizePath, doesDirectoryExist, getDirectoryContents, getHomeDirectory, makeAbsolute, removeDirectoryRecursive)
+import System.FilePath (addTrailingPathSeparator, dropExtension, equalFilePath, normalise, takeDirectory, takeExtension, takeFileName)
 
 {- Note [MicroHs package databases]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -98,11 +100,14 @@ dependents without being registered again.
 
 GlobalPackageDB is the default search path of mhs, as 'mhs -L' reports it; it
 holds the packages that come with mhs, such as base. UserPackageDB is
-~/.mcabal/mhs-<version>, where MicroCabal, the package manager of MicroHs,
-installs packages for the user. The packages of these directories have no
-registration file: they are described by what 'mhs -L<pkgfile>' reports about
-them, with <name>-<version> as their unit id. A directory given as
-SpecificPackageDB may hold such packages too.
+~/.mcabal/mhs-<version>, or $CABALDIR/mhs-<version>, where MicroCabal, the
+package manager of MicroHs, installs packages for the user, and where 'cabal
+install --lib' installs libraries for mhs to find by itself, see
+'installInPackageDirectory'. When mhs is installed with 'make minstall', it is
+the package directory of mhs itself, and so part of GlobalPackageDB too. The
+packages of these directories have no registration file: they are described by
+what 'mhs -L<pkgfile>' reports about them, with <name>-<version> as their unit
+id. A directory given as SpecificPackageDB may hold such packages too.
 
 The base of mhs is versioned like mhs itself (base-0.16.9.0, say), and it
 bundles the modules of packages that are separate on Hackage: bytestring,
@@ -350,11 +355,12 @@ globalPackageDbDirs verbosity progdb = do
     , ":" `isSuffixOf` line
     ]
 
--- | Where MicroCabal installs packages for the user.
+-- | Where MicroCabal installs packages for the user: ~/.mcabal/mhs-<version>,
+-- or $CABALDIR/mhs-<version>.
 userPackageDbDir :: Compiler -> IO FilePath
 userPackageDbDir comp = do
-  home <- getHomeDirectory
-  return (home </> ".mcabal" </> prettyShow (compilerId comp))
+  cabalDir <- maybe ((</> ".mcabal") <$> getHomeDirectory) return =<< lookupEnv "CABALDIR"
+  return (cabalDir </> prettyShow (compilerId comp))
 
 -- | The packages of a package database directory.
 -- See Note [MicroHs package databases].
@@ -731,16 +737,21 @@ dependencyClosure verbosity lbi clbi =
     Right _ -> do
       index <-
         getInstalledPackages verbosity (compiler lbi) (mbWorkDirLBI lbi) (withPackageDB lbi) (withPrograms lbi)
-      case PackageIndex.dependencyClosure index deps of
-        Left closure -> return (PackageIndex.allPackages closure)
-        Right broken ->
-          dieWithException verbosity $
-            MhsMissingDependencies $
-              ordNub $
-                [dep | dep <- deps, isNothing (PackageIndex.lookupUnitId index dep)]
-                  ++ concatMap snd broken
+      closureIn verbosity index deps
   where
     deps = map fst (componentPackageDeps clbi)
+
+-- | Units of a package index, with the units they depend on.
+closureIn :: Verbosity -> InstalledPackageIndex -> [UnitId] -> IO [InstalledPackageInfo]
+closureIn verbosity index unitIds =
+  case PackageIndex.dependencyClosure index unitIds of
+    Left closure -> return (PackageIndex.allPackages closure)
+    Right broken ->
+      dieWithException verbosity $
+        MhsMissingDependencies $
+          ordNub $
+            [unitId | unitId <- unitIds, isNothing (PackageIndex.lookupUnitId index unitId)]
+              ++ concatMap snd broken
 
 -- | The macros of @cabal_macros.h@ as @-D@ options of cpphs, to which mhs passes
 -- on only the @-D@ and @-I@ options it is given, so that it cannot be told to
@@ -841,6 +852,90 @@ installExe verbosity lbi binDir buildPref (progprefix, progsuffix) _pkg exe = do
     verbosity
     (buildPref </> exeName' </> exeName' <.> ext)
     (binDir </> progprefix ++ exeName' ++ progsuffix <.> ext)
+
+-- | Install libraries, with the libraries they depend on, into a package
+-- directory of mhs, as @mhs -Q@ does, so that mhs finds them by itself, as
+-- @cabal install --lib@ makes GHC find libraries through an environment file.
+-- The directory is UserPackageDB, where MicroCabal installs, unless another
+-- one is given. The libraries that mhs finds already, in its default search
+-- path or in the directory, are left alone. The message says whether mhs
+-- searches the directory, or has to be given it with -a. See Note [MicroHs
+-- package databases].
+installInPackageDirectory
+  :: Verbosity
+  -> Compiler
+  -> ProgramDb
+  -> PackageDBStackCWD
+  -- ^ the package databases that hold the libraries, once they are built
+  -> [UnitId]
+  -- ^ the libraries to install
+  -> Maybe FilePath
+  -- ^ the package directory, if not the one where MicroCabal installs
+  -> IO ()
+installInPackageDirectory verbosity comp progdb packageDbs unitIds mbDir = do
+  index <- getInstalledPackages verbosity comp Nothing (coercePackageDBStack packageDbs) progdb
+  dir <- maybe (userPackageDbDir comp) makeAbsolute mbDir
+  -- mhs lists the directories of its search path as it reaches them, such as
+  -- /path/to/bin/../mhs-0.16.9.0, so directories are compared canonicalized.
+  let searchedDirs = traverse canonicalizePath =<< globalPackageDbDirs verbosity progdb
+  searched <- searchedDirs
+  canonicalDir <- canonicalizePath dir
+  closure <- closureIn verbosity index unitIds
+  installed <- fmap catMaybes $ for closure $ \ipi -> do
+    mbPkgFile <- packageFile verbosity ipi
+    case mbPkgFile of
+      Just pkgFile -> do
+        pkgDir <- canonicalizePath (takeDirectory pkgFile)
+        if any (\d -> equalFilePath pkgDir (d </> "packages")) (canonicalDir : searched)
+          then return Nothing
+          else do
+            installPackageFile verbosity progdb ipi pkgFile dir
+            -- Named as mhs knows it, whatever version it is presented at.
+            return (Just (dropExtension (takeFileName pkgFile)))
+      Nothing -> return Nothing
+  -- mhs lists the directories of its search path that hold packages, as the
+  -- directory does now.
+  searchedNow <- searchedDirs
+  notice verbosity $
+    if null installed
+      then "The libraries are where mhs finds them already."
+      else
+        "Installed "
+          ++ intercalate ", " installed
+          ++ " in "
+          ++ dir
+          ++ if any (equalFilePath canonicalDir) searchedNow
+            then ", where mhs finds them."
+            else ", where mhs finds them when given -a" ++ dir ++ "."
+
+-- | Install the package file of a library into a package directory with
+-- @mhs -Q@, and beside it, where mhs looks for them, its C sources and the
+-- headers installed with it. See Note [MicroHs C files of libraries].
+installPackageFile :: Verbosity -> ProgramDb -> InstalledPackageInfo -> FilePath -> FilePath -> IO ()
+installPackageFile verbosity progdb ipi pkgFile dir = do
+  runDbProgram verbosity mhsProgram progdb ["-Q", pkgFile, dir]
+  -- The directory of the C files is named after the package file, as mhs
+  -- looks for it, whatever version the library is presented at.
+  let cDir = dir </> "packages" </> dropExtension (takeFileName pkgFile)
+      cSourcesDir = dropExtension pkgFile </> "cbits"
+      -- The include-dirs within the installation of the library, rather than
+      -- those of the system.
+      ownIncludeDirs =
+        [ includeDir
+        | includeDir <- IPI.includeDirs ipi
+        , libDir <- IPI.libraryDirs ipi
+        , addTrailingPathSeparator (normalise libDir) `isPrefixOf` normalise includeDir
+        ]
+  -- What an earlier installation of the library left there goes first.
+  for_ [cDir </> "cbits", cDir </> "include"] $ \stale -> do
+    exists <- doesDirectoryExist stale
+    when exists $ removeDirectoryRecursive stale
+  hasCSources <- doesDirectoryExist cSourcesDir
+  when hasCSources $
+    installDirectoryContents verbosity cSourcesDir (cDir </> "cbits")
+  includeDirs' <- filterM doesDirectoryExist (ordNub ownIncludeDirs)
+  for_ includeDirs' $ \includeDir ->
+    installDirectoryContents verbosity includeDir (cDir </> "include")
 
 -- -----------------------------------------------------------------------------
 -- Registering
