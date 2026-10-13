@@ -11,5 +11,5 @@ an external-only call, or for a post-configure phase without a
 calls are gone.
 
 `build-type: Make` packages with `cabal-version < 3.18`, and `build-type:
-Hooks` with a Cabal library older than 3.13, now fail with a proper error
+Hooks` with a Cabal library older than 3.14, now fail with a proper error
 message instead of an internal error.

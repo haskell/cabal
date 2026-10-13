@@ -989,9 +989,9 @@ updateSetupScript verbosity options _ Custom = do
     customSetupLhs = workingDir options </> "Setup.lhs"
     i = interpretSymbolicPath (useWorkingDir options)
 updateSetupScript verbosity options cabalLibVersion Hooks = do
-  unless (cabalLibVersion >= mkVersion [3, 13, 0]) $
+  unless (cabalLibVersion >= mkVersion [3, 14]) $
     die' verbosity $
-      "Using 'build-type: Hooks' requires Cabal >= 3.13, but Cabal-"
+      "Using 'build-type: Hooks' requires Cabal >= 3.14, but Cabal-"
         ++ prettyShow cabalLibVersion ++ " was selected."
   let customSetupHooks = workingDir options </> "SetupHooks.hs"
   useHs <- doesFileExist customSetupHooks
@@ -1017,7 +1017,7 @@ updateSetupScript verbosity options cabalLibVersion Configure =
 data GeneratedSetupScript
   = SimpleSetupScript
   | ConfigureSetupScript
-  | -- | Requires Cabal >= 3.13.
+  | -- | Requires Cabal >= 3.14.
     HooksSetupScript
 
 -- | The source code for a non-Custom 'Setup' executable.
@@ -1025,7 +1025,7 @@ buildTypeScript :: GeneratedSetupScript -> Version -> BS.ByteString
 buildTypeScript bt cabalLibVersion = "{-# LANGUAGE NoImplicitPrelude #-}\n" <> case bt of
   SimpleSetupScript -> "import Distribution.Simple; main = defaultMain\n"
   ConfigureSetupScript
-    | cabalLibVersion >= mkVersion [3, 13, 0]
+    | cabalLibVersion >= mkVersion [3, 14]
     -> "import Distribution.Simple; main = defaultMainWithSetupHooks autoconfSetupHooks\n"
     | cabalLibVersion >= mkVersion [1, 3, 10]
     -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
