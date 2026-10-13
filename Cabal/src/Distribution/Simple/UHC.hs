@@ -35,6 +35,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors (WhatToFind (..))
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Program
@@ -244,7 +245,7 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
   systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
   userPkgDir <- getUserPackageDir
   let mbWorkDir = mbWorkDirLBI lbi
-  srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs $ buildInfo exe) (modulePath exe)
+  srcMainPath <- findFileCwd verbosity FindHaskellSourceFile mbWorkDir (hsSourceDirs $ buildInfo exe) (modulePath exe)
   let runUhcProg = runDbProgramCwd verbosity (mbWorkDirLBI lbi) uhcProgram (withPrograms lbi)
       u = interpretSymbolicPathCWD
       uhcArgs =

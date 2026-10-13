@@ -10,5 +10,5 @@ Error: [Cabal-7125]
 Failed to build MainIsBench-0.1-inplace-Bench. The exception was:
   -----BEGIN CABAL OUTPUT-----
 Error: [Cabal-2115]
-MyDummy.hs doesn't exist
+Could not find Haskell source file MyDummy.hs in any of the search dirs: <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/MainIsBench-0.1/b/Bench/build/Bench/Bench-tmp, <ROOT>/.
 CallStack (from HasCallStack): <SNIPPED>
