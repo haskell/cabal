@@ -1,0 +1,4 @@
+#!/bin/sh
+# Minimal configure script that records its arguments.
+# We write all args to configure-args.txt so the test can inspect them.
+echo "$@" > configure-args.txt
