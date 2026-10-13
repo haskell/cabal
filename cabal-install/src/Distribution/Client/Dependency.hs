@@ -79,9 +79,6 @@ module Distribution.Client.Dependency
 
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Client.Dependency.Types
-  ( PackagesPreferenceDefault (..)
-  )
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
@@ -155,7 +152,6 @@ import Distribution.Verbosity
   )
 import Distribution.Version
 
-import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
@@ -271,31 +267,6 @@ showDepResolverParams p =
     showLabeledConstraint :: LabeledPackageConstraint -> String
     showLabeledConstraint (LabeledPackageConstraint pc src) =
       showPackageConstraint pc ++ " (" ++ showConstraintSource src ++ ")"
-
--- | A package selection preference for a particular package.
---
--- Preferences are soft constraints that the dependency resolver should try to
--- respect where possible. It is not specified if preferences on some packages
--- are more important than others.
-data PackagePreference
-  = -- | A suggested constraint on the version number.
-    PackageVersionPreference PackageName VersionRange
-  | -- | If we prefer versions of packages that are already installed.
-    PackageInstalledPreference PackageName InstalledPreference
-  | -- | If we would prefer to enable these optional stanzas
-    -- (i.e. test suites and/or benchmarks)
-    PackageStanzasPreference PackageName [OptionalStanza]
-  deriving (Generic, Binary)
-
--- | Provide a textual representation of a package preference
--- for debugging purposes.
-showPackagePreference :: PackagePreference -> String
-showPackagePreference (PackageVersionPreference pn vr) =
-  prettyShow pn ++ " " ++ prettyShow (simplifyVersionRange vr)
-showPackagePreference (PackageInstalledPreference pn ip) =
-  prettyShow pn ++ " " ++ show ip
-showPackagePreference (PackageStanzasPreference pn st) =
-  prettyShow pn ++ " " ++ show st
 
 basicDepResolverParams
   :: InstalledPackageIndex
@@ -979,63 +950,6 @@ resolveDependencies solver params rparams inputs = do
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
     formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
 
-type PackagesPreferenceSource =
-    (Set PackageName, PackagesPreferenceDefault, [PackagePreference])
-  deriving (Generic, Binary)
-
--- | Give an interpretation to the global 'PackagesPreference' as
---  specific per-package 'PackageVersionPreference'.
-interpretPackagesPreference
-  :: Set PackageName
-  -> PackagesPreferenceDefault
-  -> [PackagePreference]
-  -> (PackageName -> PackagePreferences)
-interpretPackagesPreference selected defaultPref prefs =
-  \pkgname ->
-    PackagePreferences
-      (versionPref pkgname)
-      (installPref pkgname)
-      (stanzasPref pkgname)
-  where
-    versionPref :: PackageName -> [VersionRange]
-    versionPref pkgname =
-      Map.findWithDefault [anyVersion] pkgname versionPrefs
-    versionPrefs =
-      Map.fromListWith
-        (++)
-        [ (pkgname, [pref])
-        | PackageVersionPreference pkgname pref <- prefs
-        ]
-
-    installPref :: PackageName -> InstalledPreference
-    installPref pkgname =
-      Map.findWithDefault (installPrefDefault pkgname) pkgname installPrefs
-    installPrefs =
-      Map.fromList
-        [ (pkgname, pref)
-        | PackageInstalledPreference pkgname pref <- prefs
-        ]
-    installPrefDefault = case defaultPref of
-      PreferAllLatest -> const Preference.PreferLatest
-      PreferAllOldest -> const Preference.PreferOldest
-      PreferAllInstalled -> const Preference.PreferInstalled
-      PreferLatestForSelected -> \pkgname ->
-        -- When you say cabal install foo, what you really mean is, prefer the
-        -- latest version of foo, but the installed version of everything else
-        if pkgname `Set.member` selected
-          then Preference.PreferLatest
-          else Preference.PreferInstalled
-
-    stanzasPref :: PackageName -> [OptionalStanza]
-    stanzasPref pkgname =
-      Map.findWithDefault [] pkgname stanzasPrefs
-    stanzasPrefs =
-      Map.fromListWith
-        (\a b -> ordNub (a ++ b))
-        [ (pkgname, pref)
-        | PackageStanzasPreference pkgname pref <- prefs
-        ]
-
 -- ------------------------------------------------------------
 
 -- * Checking the result of the solver
@@ -1348,7 +1262,7 @@ resolveWithoutDependencies
               ]
 
       packagePreferences :: PackageName -> PackagePreferences
-      packagePreferences = interpretPackagesPreference targets defpref prefs
+      packagePreferences = interpretPackagesPreference (targets, defpref, prefs)
 
 collectEithers :: [Either a b] -> Either [a] [b]
 collectEithers = collect . partitionEithers
@@ -1390,7 +1304,7 @@ mkResolverParams platform comp installedPkgIndex pkgConfigDB depResolverParams =
   where
       pkgPrefs :: PackagesPreferenceSource
       pkgPrefs =
-        PackagesPreferenceSource
-          (depResolverTargets depResolverParams)
-          (depResolverPreferenceDefault depResolverParams)
-          (depResolverPreferences depResolverParams)
+          ( depResolverTargets depResolverParams
+          , depResolverPreferenceDefault depResolverParams
+          , depResolverPreferences depResolverParams
+          )

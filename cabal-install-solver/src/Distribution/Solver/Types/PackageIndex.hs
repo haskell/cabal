@@ -90,6 +90,7 @@ instance Package pkg => Monoid (PackageIndex pkg) where
   mconcat xs = Prelude.foldr1 (<>) xs
 
 instance Binary pkg => Binary (PackageIndex pkg)
+instance Structured pkg => Structured (PackageIndex pkg)
 
 invariant :: Package pkg => PackageIndex pkg -> Bool
 invariant (PackageIndex m) = all (uncurry goodBucket) (Map.toList m)

@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Distribution.Solver.Modular
          ( ModularResolver (..)
@@ -55,7 +56,11 @@ import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), PruneAfterFirstSuccess(..), solve )
 import Distribution.Solver.Types.DependencyResolver
-    ( DependencyResolver (..), ResolverParams (..) )
+    ( DependencyResolver (..)
+    , ResolverParams (..)
+    , PackagesPreferenceSource
+    , interpretPackagesPreference
+    )
 import Distribution.Solver.Types.LabeledPackageConstraint
     ( LabeledPackageConstraint, unlabelPackageConstraint )
 import Distribution.Solver.Types.PackageConstraint
@@ -89,10 +94,11 @@ data ModularResolverInputs =
     { mrCompilerInfo :: CompilerInfo
     , mrIndex :: Index
     , mrPkgConfigDb :: Maybe PkgConfigDb
-    , mrPkgPrefs :: Map PN PackagePreferences
+    , mrPkgPrefs :: PackagesPreferenceSource
     , mrPkgConstraints :: Map PN [LabeledPackageConstraint]
     , mrPkgNames :: Set PN
     }
+  deriving (Generic, Eq, Binary, Structured)
 
 instance DependencyResolver ModularResolver where
   type ResolverInputs ModularResolver = ModularResolverInputs
@@ -103,7 +109,7 @@ instance DependencyResolver ModularResolver where
       (mrCompilerInfo inputs)
       (mrIndex inputs)
       (mrPkgConfigDb inputs)
-      (mrPkgPrefs inputs)
+      (interpretPackagesPreference $ mrPkgPrefs inputs)
       (mrPkgConstraints inputs)
       (mrPkgNames inputs)
   convInputs mr rp =
@@ -198,7 +204,7 @@ solve' :: SolverConfig
        -> CompilerInfo
        -> Index
        -> Maybe PkgConfigDb
-       -> Map PN PackagePreferences
+       -> (PN -> PackagePreferences)
        -> Map PN [LabeledPackageConstraint]
        -> Set PN
        -> Progress SummarizedMessage String (Assignment, RevDepMap)
@@ -209,10 +215,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
               -> RetryLog SummarizedMessage SolverFailure (Assignment, RevDepMap)
     runSolver keepLog sc' =
         displayLogMessages keepLog $
-        solve sc' cinfo idx pkgConfigDB pprefs' gcs pns
-
-    pprefs' :: PN -> PackagePreferences
-    pprefs' pn = fromMaybe (error $ "No prefs found for " ++ show pn) $ M.lookup pn pprefs
+        solve sc' cinfo idx pkgConfigDB pprefs gcs pns
 
     createErrorMsg :: SolverFailure
                    -> RetryLog SummarizedMessage String (Assignment, RevDepMap)
