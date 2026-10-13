@@ -53,6 +53,8 @@ import Distribution.Version
 -- for every way these packages can be fully instantiated.
 data ReadyComponent = ReadyComponent
   { rc_ann_id :: AnnotatedId UnitId
+  , rc_instance_id :: InstanceUnitId
+  -- ^ Uniquely identifies instance (group of components)
   , rc_open_uid :: OpenUnitId
   -- ^ The 'OpenUnitId' for this package.  At the moment, this
   -- is used in only one case, which is to determine if an
@@ -316,6 +318,7 @@ toReadyComponents pid_map subst0 comps =
             Just
               ReadyComponent
                 { rc_ann_id = (lc_ann_id lc){ann_id = uid}
+                , rc_instance_id = lc_instance_id lc
                 , rc_open_uid = DefiniteUnitId (unsafeMkDefUnitId uid)
                 , rc_cid = lc_cid lc
                 , rc_component = lc_component lc
@@ -384,6 +387,7 @@ toReadyComponents pid_map subst0 comps =
             Just
               ReadyComponent
                 { rc_ann_id = (lc_ann_id lc){ann_id = uid}
+                , rc_instance_id = lc_instance_id lc
                 , rc_cid = lc_cid lc
                 , rc_open_uid = lc_uid lc
                 , rc_component = lc_component lc

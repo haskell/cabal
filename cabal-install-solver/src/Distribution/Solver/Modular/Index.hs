@@ -36,6 +36,7 @@ data PInfo = PInfo (FlaggedDeps PN)
                    (Map ExposedComponent ComponentInfo)
                    FlagInfo
                    (Maybe FailReason)
+  deriving Show
 
 -- | Info associated with each library and executable in a package instance.
 data ComponentInfo = ComponentInfo {

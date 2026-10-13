@@ -1090,6 +1090,7 @@ convertToLegacyAllPackageConfig
           , configDeterministic = mempty
           , configIPID = mempty
           , configCID = mempty
+          , configIUID = mempty
           , configConfigurationsFlags = mempty
           , configTests = mempty
           , configCoverage = mempty -- TODO: don't merge
@@ -1167,6 +1168,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configExtraIncludeDirs = fmap makeSymbolicPath packageConfigExtraIncludeDirs
         , configIPID = mempty
         , configCID = mempty
+        , configIUID = mempty
         , configDeterministic = mempty
         , configConfigurationsFlags = packageConfigFlagAssignment
         , configTests = packageConfigTests
