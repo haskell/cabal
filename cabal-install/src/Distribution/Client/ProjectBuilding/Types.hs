@@ -15,6 +15,7 @@ module Distribution.Client.ProjectBuilding.Types
   , BuildOutcomes
   , BuildOutcome
   , BuildResult (..)
+  , DeferredBenchmark (..)
   , BuildFailure (..)
   , BuildFailureReason (..)
   ) where
@@ -146,8 +147,22 @@ data BuildResult = BuildResult
   { buildResultDocs :: DocsResult
   , buildResultTests :: TestsResult
   , buildResultLogFile :: Maybe FilePath
+  , buildResultBenchmark :: Maybe DeferredBenchmark
+  -- ^ The benchmarks of the unit, if any, to be run once all the units of
+  -- the plan are built.
   }
   deriving (Show)
+
+-- | The benchmarks of a unit, to be run once all the units of the plan are
+-- built. See Note [Running benchmarks] in "Distribution.Client.ProjectBuilding".
+newtype DeferredBenchmark = DeferredBenchmark
+  { runDeferredBenchmark :: IO ()
+  -- ^ Run the benchmarks of the unit, as its bench phase would have.
+  -- Throws a 'BuildFailure' if they fail.
+  }
+
+instance Show DeferredBenchmark where
+  show _ = "<deferred benchmark>"
 
 -- | Information arising from the failure to build a single package.
 data BuildFailure = BuildFailure
