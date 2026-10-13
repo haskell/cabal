@@ -12,4 +12,4 @@ calls are gone.
 
 `build-type: Make` packages on the legacy v1 path (still parsed for
 `cabal-version` < 3.18), and `build-type: Hooks` with a Cabal library older
-than 3.13, now fail with a proper error message instead of an internal error.
+than 3.14, now fail with a proper error message instead of an internal error.
