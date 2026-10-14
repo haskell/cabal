@@ -5,7 +5,7 @@ store-dir: a/store/dir/path
 per-component: True
 independent-goals: True
 ignore-project: False
-compiler: ghcjs
+compiler: uhc
 with-compiler: /some/path/to/compiler
 with-hc-pkg: /some/path/to/ghc-pkg
 doc-index-file: /path/to/haddock-index

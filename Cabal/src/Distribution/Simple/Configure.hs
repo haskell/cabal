@@ -131,7 +131,6 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.UHC as UHC
 
 import Control.Exception
@@ -824,8 +823,6 @@ buildOptionsFromConfigFlags verbosity cfg comp = do
             -- been changed to read shared libraries instead of archive
             -- files (see next code block).
             GHC.compilerBuildWay comp `notElem` [DynWay, ProfDynWay]
-          CompilerId GHCJS _ ->
-            not (GHCJS.isDynamic comp)
           _ -> False
 
   let sharedLibsByDefault
@@ -838,8 +835,6 @@ buildOptionsFromConfigFlags verbosity cfg comp = do
               -- if ghc is dynamic, then ghci needs a shared
               -- library, so we build one by default.
               GHC.compilerBuildWay comp == DynWay
-            CompilerId GHCJS _ ->
-              GHCJS.isDynamic comp
             _ -> False
       withSharedLib_ =
         -- build shared libraries if required by GHC or by the
@@ -933,13 +928,11 @@ adjustBuildOptions comp programDb opts =
       | GHC <- compilerFlavor comp
       , compilerVersion comp >= mkVersion [8, 0] =
           True
-      | GHCJS <- compilerFlavor comp = True
       | otherwise = False -- not supported by this compiler
     splitObj
       | not (LBC.splitObjs opts) = False
       | splitSec = False -- mutually exclusive with split-sections
       | GHC <- compilerFlavor comp = True
-      | GHCJS <- compilerFlavor comp = True
       | otherwise = False -- not supported by this compiler
     linkerSupportsRelocations :: Maybe Bool
     linkerSupportsRelocations =
@@ -2269,7 +2262,6 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
   packageDBs' <- filterM packageDBExists packageDBs
   case compilerFlavor comp of
     GHC -> GHC.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
-    GHCJS -> GHCJS.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
     UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     flv ->
       dieWithException verbosity $ HowToFindInstalledPackages flv
@@ -2304,8 +2296,6 @@ getPackageDBContents verbosity comp mbWorkDir packageDB progdb = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
     GHC -> GHC.getPackageDBContents verbosity mbWorkDir packageDB progdb
-    GHCJS -> GHCJS.getPackageDBContents verbosity mbWorkDir packageDB progdb
-    -- For other compilers, try to fall back on 'getInstalledPackages'.
     _ -> getInstalledPackages verbosity comp mbWorkDir [packageDB] progdb
 
 -- | A set of files (or directories) that can be monitored to detect when
@@ -2703,8 +2693,8 @@ configCompilerEx Nothing _ _ _ verbosity = dieWithException verbosity UnknownCom
 configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
   (comp, maybePlatform, programDb) <- case hcFlavor of
     GHC -> GHC.configure verbosity hcPath hcPkg progdb
-    GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
     UHC -> UHC.configure verbosity hcPath progdb
+    GHCJS -> dieWithException verbosity GHCJSNotSupported
     _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
@@ -2723,8 +2713,8 @@ configCompiler mbFlavor hcPath progdb verbosity = do
       Just hcFlavor ->
         case hcFlavor of
           GHC -> GHC.configureCompiler verbosity hcPath progdb
-          GHCJS -> GHCJS.configureCompiler verbosity hcPath progdb
           UHC -> UHC.configure verbosity hcPath progdb
+          GHCJS -> dieWithException verbosity GHCJSNotSupported
           _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
@@ -2741,7 +2731,6 @@ configCompilerProgDb
 configCompilerProgDb verbosity comp hcProgDb hcPkgPath = do
   case compilerFlavor comp of
     GHC -> GHC.compilerProgramDb verbosity comp hcProgDb hcPkgPath
-    GHCJS -> GHCJS.compilerProgramDb verbosity comp hcProgDb hcPkgPath
     _ -> return hcProgDb
 
 -- -----------------------------------------------------------------------------

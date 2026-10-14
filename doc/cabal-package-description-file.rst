@@ -1820,20 +1820,32 @@ system-dependent values for these fields.
     generate the ``.dyn_o`` files).
 
 .. pkg-field:: ghcjs-options: token list
+    :deprecated:
 
-   Like :pkg-field:`ghc-options` but applies to GHCJS
+    Formerly like :pkg-field:`ghc-options` but for GHCJS. Still accepted so
+    that existing packages parse, but ignored since GHCJS support was
+    removed.
 
 .. pkg-field:: ghcjs-prof-options: token list
+    :deprecated:
 
-   Like :pkg-field:`ghc-prof-options` but applies to GHCJS
+    Formerly like :pkg-field:`ghc-prof-options` but for GHCJS. Still accepted
+    so that existing packages parse, but ignored since GHCJS support was
+    removed.
 
 .. pkg-field:: ghcjs-shared-options: token list
+    :deprecated:
 
-   Like :pkg-field:`ghc-shared-options` but applies to GHCJS
+    Formerly like :pkg-field:`ghc-shared-options` but for GHCJS. Still
+    accepted so that existing packages parse, but ignored since GHCJS support
+    was removed.
 
 .. pkg-field:: ghcjs-prof-shared-options: token list
+    :deprecated:
 
-   Like :pkg-field:`ghc-prof-shared-options` but applies to GHCJS
+    Formerly like :pkg-field:`ghc-prof-shared-options` but for GHCJS. Still
+    accepted so that existing packages parse, but ignored since GHCJS support
+    was removed.
 
 .. pkg-field:: includes: filename list
     :since: 1.0
