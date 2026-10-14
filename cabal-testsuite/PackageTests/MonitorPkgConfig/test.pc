@@ -1,0 +1,3 @@
+Name: test
+Version: 0
+Description: a test .pc file
