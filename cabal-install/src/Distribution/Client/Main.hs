@@ -184,7 +184,7 @@ import Distribution.PackageDescription
 
 import Distribution.Client.Cmd.UI
   ( commandParserByName
-  , parseCommandWithOptparseMany
+  , parseCommands
   )
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
@@ -390,7 +390,7 @@ mainWorker args = do
     -- support it, falling back to the command registry for the others.
     commandsParse :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
     commandsParse argv =
-      case parseCommandWithOptparseMany globalCmd commandParsers argv of
+      case parseCommands globalCmd commandParsers argv of
         Just parsed -> pure parsed
         Nothing -> commandsRunWithFallback globalCmd (registeredCommands commandRegistry) delegateToExternal argv
 
