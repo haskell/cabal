@@ -6,6 +6,43 @@
 --
 -- Only parsing is affected: help, the list of options and the command registry
 -- keep using "Distribution.Simple.Command".
+--
+-- The same things go by different names in "Distribution.Simple.Command", in
+-- @optparse-applicative@ and here:
+--
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | "Distribution.Simple.Command"     | @optparse-applicative@                               | this module                                                             |
+-- +===================================+======================================================+=========================================================================+
+-- | 'CommandUI'                       | 'ParserInfo'                                         | 'parserInfo', 'NamedCommandParser'                                      |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | @Command@ in the command registry | subcommand                                           | 'NamedCommandParser', matched by 'commandNames'                         |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | @commandsRun@                     | @execParser@                                         | 'parseCommands'                                                         |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'commandParseArgs'                | 'execParserPure'                                     | 'parseCommand'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'OptionField'                     | a group of parsers                                   | 'fieldParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'OptDescr'                        | 'O.Parser'                                           | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'ReqArg'                          | 'O.option'                                           | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'OptArg'                          | 'O.option', given @""@ by 'supplyDefaults' when bare | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'ChoiceOpt'                       | one @flag'@ per choice                               | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'BoolOpt'                         | two @flag'@, one per spelling                        | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | a setter, @flags -> flags@        | the parser's result                                  | 'Endo', 'CmdItemFlag'                                                   |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | a non-option argument             | 'strArgument'                                        | 'CmdItemTarget', 'parsedTargets'                                        |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | @--list-options@                  | @flag'@                                              | 'CmdItemListOptions', rendered by "Distribution.Simple.Command"         |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | @--help@                          | 'helper'                                             | 'Failure' with 'ExitSuccess', rendered by "Distribution.Simple.Command" |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | an abbreviated long option        | the @disambiguate@ preference                        | 'expandAbbreviations'                                                   |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
 module Distribution.Client.Cmd.UI
   ( -- * Parsing a command with @optparse-applicative@
     NamedCommandParser (..)
@@ -201,7 +238,7 @@ longNames fields =
 -- | Expand each abbreviated long option to its full name, as
 -- "Distribution.GetOpt" does: an exact name wins, otherwise a unique prefix
 -- is accepted, and an ambiguous prefix is an error naming the candidates.
--- @optparse-applicative@'s own 'disambiguate' preference gives no precedence
+-- @optparse-applicative@'s own @disambiguate@ preference gives no precedence
 -- to an exact name, so @--lib@ would be ambiguous with @--libdir@; upstream
 -- considers that correct and will not change it, see
 -- <https://github.com/pcapriotti/optparse-applicative/issues/419>.
