@@ -343,6 +343,11 @@ warnIfAssertionsAreEnabled =
 
 -- | Core worker, similar to 'defaultMainHelper' in Cabal/Distribution.Simple
 --
+-- | Every command, under each of its names, that "Distribution.Simple.Command"
+-- dispatches on. The commands also parsed with optparse-applicative are
+-- registered here too, for their help and for @--list-options@.
+newtype CommandRegistry = CommandRegistry {registeredCommands :: [Command Action]}
+
 -- With an exception-handler @topHandler@, mainWorker calls commandsRun
 -- to parse arguments, then pattern-matches the CommandParse data
 -- into IO actions for execution.
@@ -385,11 +390,14 @@ mainWorker args = do
     -- support it, falling back to the command registry for the others.
     commandsParse :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
     commandsParse argv =
-      case parseCommandWithOptparseMany globalCmd parsersByName argv of
+      case parseCommandWithOptparseMany globalCmd commandParsers argv of
         Just parsed -> pure parsed
-        Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
+        Nothing -> commandsRunWithFallback globalCmd (registeredCommands commandRegistry) delegateToExternal argv
 
-    parsersByName =
+    -- The commands parsed with optparse-applicative, tried before the command
+    -- registry that "Distribution.Simple.Command" dispatches on. A command
+    -- missing from here still parses the old way.
+    commandParsers =
       [ commandParserByName CmdConfigure.configureCommand CmdConfigure.configureAction
       , commandParserByName CmdUpdate.updateCommand CmdUpdate.updateAction
       , commandParserByName CmdBuild.buildCommand CmdBuild.buildAction
@@ -409,7 +417,7 @@ mainWorker args = do
       , commandParserByName CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
       ]
 
-    globalCmd = globalCommand commands
+    globalCmd = globalCommand (registeredCommands commandRegistry)
 
     delegateToExternal
       :: [Command Action]
@@ -489,7 +497,7 @@ mainWorker args = do
           | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
           | otherwise = cabalGitInfo
 
-    commands = map commandFromSpec commandSpecs
+    commandRegistry = CommandRegistry (map commandFromSpec commandSpecs)
     commandSpecs =
       [ regularCmd listCommand listAction
       , regularCmd infoCommand infoAction
