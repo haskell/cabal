@@ -1,19 +1,20 @@
 {-# LANGUAGE LambdaCase #-}
 
--- | Parsing the command line of a command with optparse-applicative, by
--- translating the command's 'OptionField's into optparse-applicative parsers.
+-- | Parsing the command line of a command with
+-- <https://hackage.haskell.org/package/optparse-applicative optparse-applicative>, by
+-- translating the command's 'OptionField's into @optparse-applicative@ parsers.
 --
 -- Only parsing is affected: help, the list of options and the command registry
 -- keep using "Distribution.Simple.Command".
 module Distribution.Client.Cmd.UI
-  ( -- * Parsing a command with optparse-applicative
+  ( -- * Parsing a command with @optparse-applicative@
     NamedCommandParser (..)
   , commandParserByName
   , parseCommandWithOptparseMany
   , parseCommand
   , commandNames
 
-    -- * Converting CommandUI options to optparse-applicative parsers
+    -- * Converting CommandUI options to @optparse-applicative@ parsers
   , CmdItem (..)
   , ParsedCommand (..)
   , parsedCommandParser
@@ -87,13 +88,14 @@ commandParserByName command action =
 parseCommandWithOptparseMany
   :: CommandUI globalFlags
   -> [NamedCommandParser action]
+  -- ^ The commands parsed with @optparse-applicative@.
   -> [String]
   -> Maybe (CommandParse (globalFlags, CommandParse action))
-parseCommandWithOptparseMany globalCommand commands argv =
+parseCommandWithOptparseMany globalCommand parsers argv =
   case commandParseArgs globalCommand True argv of
     CommandReadyToGo (mkGlobalFlags, cmdArgs0) -> do
       cmdName : cmdArgs <- pure cmdArgs0
-      parser <- find ((cmdName `elem`) . namedCommandNames) commands
+      parser <- find ((cmdName `elem`) . namedCommandNames) parsers
       let globalFlags = mkGlobalFlags (commandDefaultFlags globalCommand)
       pure $ CommandReadyToGo (globalFlags, namedCommandParser parser cmdName cmdArgs)
     _ -> Nothing
@@ -137,9 +139,9 @@ renameCommand name command =
     rename = replaceText "v2-" prefix
     prefix = take (length name - length (stripVersionPrefix (commandName command))) name
 
--- | Parse a command's arguments with optparse-applicative. Help and the list
--- of options come from "Distribution.Simple.Command", so they are the same
--- as for commands that are not parsed this way.
+-- | Parse a command's arguments with @optparse-applicative@. Help and the list
+-- of options come from "Distribution.Simple.Command", so they are the same as
+-- for commands that are not parsed this way.
 parseCommand
   :: CommandUI flags
   -> (flags -> [String] -> action)
@@ -199,12 +201,12 @@ optionLongNames fields =
 -- | Expand each abbreviated long option to its full name, as
 -- "Distribution.GetOpt" does: an exact name wins, otherwise a unique prefix
 -- is accepted, and an ambiguous prefix is an error naming the candidates.
--- optparse-applicative's own 'disambiguate' preference gives no precedence
+-- @optparse-applicative@'s own 'disambiguate' preference gives no precedence
 -- to an exact name, so @--lib@ would be ambiguous with @--libdir@; upstream
 -- considers that correct and will not change it, see
 -- <https://github.com/pcapriotti/optparse-applicative/issues/419>.
 -- Everything after @--@ is left alone, as are unknown names, which
--- optparse-applicative reports.
+-- @optparse-applicative@ reports.
 expandAbbreviations :: [String] -> [String] -> Either String [String]
 expandAbbreviations longNames = go
   where
