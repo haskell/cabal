@@ -303,12 +303,18 @@ data CmdItem flags
   | CmdItemTarget String
   | CmdItemListOptions
 
+-- | A command line's items, sorted by kind.
 data ParsedCommand flags = ParsedCommand
   { parsedFlagEdits :: Endo flags
+  -- ^ The edits from every option, combined in command-line order.
   , parsedTargets :: [String]
+  -- ^ The targets, in command-line order.
   , parsedListOptions :: Bool
+  -- ^ Whether @--list-options@ was given.
   }
 
+-- | Parse a whole command line as any number of items, in any order, and
+-- sort them by kind.
 commandParser :: [O.Parser (CmdItem flags)] -> O.Parser (ParsedCommand flags)
 commandParser itemParsers = toParsed <$> many (itemParser itemParsers)
   where
@@ -330,6 +336,8 @@ commandParser itemParsers = toParsed <$> many (itemParser itemParsers)
     isListOptions CmdItemListOptions = True
     isListOptions _ = False
 
+-- | Parse one item: one of the given option parsers, @--list-options@, or
+-- failing those a target.
 itemParser :: [O.Parser (CmdItem flags)] -> O.Parser (CmdItem flags)
 itemParser flags =
   asum
@@ -340,15 +348,20 @@ itemParser flags =
            ]
     )
 
+-- | The parsers of a command's options, as items.
 optionParsers :: [OptionField flags] -> [O.Parser (CmdItem flags)]
 optionParsers fields = (fmap . fmap) CmdItemFlag (flagEditParsers fields)
 
+-- | The parsers of a command's options, each producing an edit of the flags.
 flagEditParsers :: [OptionField flags] -> [O.Parser (Endo flags)]
 flagEditParsers = concatMap fieldParsers
 
+-- | The parsers of one 'OptionField', one or more per 'OptDescr' it holds.
 fieldParsers :: OptionField flags -> [O.Parser (Endo flags)]
 fieldParsers (OptionField _ descrs) = concatMap descrParsers descrs
 
+-- | The parsers of one 'OptDescr': one for a 'ReqArg' or 'OptArg', one per
+-- choice of a 'ChoiceOpt', and one per spelling of a 'BoolOpt'.
 descrParsers :: OptDescr flags -> [O.Parser (Endo flags)]
 descrParsers = \case
   ReqArg desc optFlags placeHolder reader _show ->
