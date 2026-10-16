@@ -97,6 +97,7 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
+import Data.Text (Text)
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 import Distribution.Types.ParStrat
 import Distribution.Verbosity (VerbosityFlags)
@@ -127,11 +128,11 @@ newtype ProjectConfigToParse = ProjectConfigToParse BS.ByteString
 -- features then the gap between configuration as written in the config file
 -- and resolved settings we actually use will become even bigger.
 data ProjectConfig = ProjectConfig
-  { projectPackages :: [String]
+  { projectPackages :: [Text]
   -- ^ Packages in this project, including local dirs, local .cabal files
   -- local and remote tarballs. When these are file globs, they must
   -- match at least one package.
-  , projectPackagesOptional :: [String]
+  , projectPackagesOptional :: [Text]
   -- ^ Like 'projectConfigPackageGlobs' but /optional/ in the sense that
   -- file globs are allowed to match nothing. The primary use case for
   -- this is to be able to say @optional-packages: */@ to automagically
@@ -294,7 +295,7 @@ data PackageConfig = PackageConfig
   , packageConfigProfExe :: Flag Bool --      and consistency
   , packageConfigProfDetail :: Flag ProfDetailLevel
   , packageConfigProfLibDetail :: Flag ProfDetailLevel
-  , packageConfigConfigureArgs :: [String]
+  , packageConfigConfigureArgs :: [Text]
   , packageConfigOptimization :: Flag OptimisationLevel
   , packageConfigProgPrefix :: Flag PathTemplate
   , packageConfigProgSuffix :: Flag PathTemplate
@@ -318,7 +319,7 @@ data PackageConfig = PackageConfig
   -- Haddock options
   , packageConfigHaddockHoogle :: Flag Bool -- TODO: [required eventually] use this
   , packageConfigHaddockHtml :: Flag Bool -- TODO: [required eventually] use this
-  , packageConfigHaddockHtmlLocation :: Flag String -- TODO: [required eventually] use this
+  , packageConfigHaddockHtmlLocation :: Flag Text -- TODO: [required eventually] use this
   , packageConfigHaddockForeignLibs :: Flag Bool -- TODO: [required eventually] use this
   , packageConfigHaddockExecutables :: Flag Bool -- TODO: [required eventually] use this
   , packageConfigHaddockTestSuites :: Flag Bool -- TODO: [required eventually] use this
@@ -330,8 +331,8 @@ data PackageConfig = PackageConfig
   , packageConfigHaddockHscolourCss :: Flag FilePath -- TODO: [required eventually] use this
   , packageConfigHaddockContents :: Flag PathTemplate -- TODO: [required eventually] use this
   , packageConfigHaddockIndex :: Flag PathTemplate -- TODO: [required eventually] use this
-  , packageConfigHaddockBaseUrl :: Flag String -- TODO: [required eventually] use this
-  , packageConfigHaddockResourcesDir :: Flag String -- TODO: [required eventually] use this
+  , packageConfigHaddockBaseUrl :: Flag Text -- TODO: [required eventually] use this
+  , packageConfigHaddockResourcesDir :: Flag Text -- TODO: [required eventually] use this
   , packageConfigHaddockOutputDir :: Flag FilePath -- TODO: [required eventually] use this
   , packageConfigHaddockUseUnicode :: Flag Bool -- TODO: [required eventually] use this
   , packageConfigHaddockForHackage :: Flag HaddockTarget
@@ -492,7 +493,7 @@ data BuildTimeSettings = BuildTimeSettings
   , buildSettingRemoteRepos :: [RemoteRepo]
   , buildSettingLocalNoIndexRepos :: [LocalRepo]
   , buildSettingCacheDir :: FilePath
-  , buildSettingHttpTransport :: Maybe String
+  , buildSettingHttpTransport :: Maybe Text
   , buildSettingIgnoreExpiry :: Bool
   , buildSettingProgPathExtra :: [FilePath]
   , buildSettingHaddockOpen :: Bool
