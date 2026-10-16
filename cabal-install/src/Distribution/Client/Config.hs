@@ -112,6 +112,7 @@ import Distribution.Utils.NubList
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as M
+import qualified Data.Text as T
 import Distribution.Client.Errors
 import Distribution.Client.HttpUtils
   ( isOldHackageURI
@@ -895,7 +896,7 @@ addInfoForKnownRepos repo
               { -- Use hackage-security by default unless you opt-out with
                 -- secure: False
                 remoteRepoSecure = Just True
-              , remoteRepoRootKeys = defaultHackageRemoteRepoKeys
+              , remoteRepoRootKeys = map T.pack defaultHackageRemoteRepoKeys
               , remoteRepoKeyThreshold = defaultHackageRemoteRepoKeyThreshold
               }
     useSecure r = r
@@ -1812,8 +1813,8 @@ remoteRepoFields =
       "root-keys"
       text
       parseTokenQ
-      remoteRepoRootKeys
-      (\x repo -> repo{remoteRepoRootKeys = x})
+      (map T.unpack . remoteRepoRootKeys)
+      (\x repo -> repo{remoteRepoRootKeys = map T.pack x})
   , simpleFieldParsec
       "key-threshold"
       showThreshold

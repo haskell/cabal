@@ -49,6 +49,7 @@ import Control.Concurrent
   , newMVar
   )
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 import Network.URI
   ( URI
   , uriPath
@@ -296,7 +297,7 @@ initSecureRepo verbosity httpLib RemoteRepo{..} cachePath = \callback -> do
       Sec.uncheckClientErrors $
         Sec.bootstrap
           r
-          (map Sec.KeyId remoteRepoRootKeys)
+          (map (Sec.KeyId . Text.unpack) remoteRepoRootKeys)
           (Sec.KeyThreshold (fromIntegral remoteRepoKeyThreshold))
     callback $ SecureRepo r
   where

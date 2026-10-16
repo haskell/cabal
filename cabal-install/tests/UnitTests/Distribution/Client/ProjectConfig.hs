@@ -995,13 +995,14 @@ instance Arbitrary RemoteRepo where
       <*> pure False
     where
       arbitraryRootKey =
-        shortListOf1
-          5
-          ( oneof
-              [ choose ('0', '9')
-              , choose ('a', 'f')
-              ]
-          )
+        Text.pack
+          <$> shortListOf1
+            5
+            ( oneof
+                [ choose ('0', '9')
+                , choose ('a', 'f')
+                ]
+            )
 
 instance Arbitrary LocalRepo where
   arbitrary =
