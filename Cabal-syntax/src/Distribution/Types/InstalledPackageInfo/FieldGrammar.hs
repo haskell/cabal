@@ -9,6 +9,7 @@ module Distribution.Types.InstalledPackageInfo.FieldGrammar
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Text (Text)
 import Distribution.Backpack
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens (Lens', (&), (.~))
@@ -27,6 +28,7 @@ import Distribution.Version
 
 import qualified Data.Char as Char
 import qualified Data.Map as Map
+import qualified Data.Text as T
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Text.PrettyPrint as Disp
@@ -81,7 +83,7 @@ ipiFieldGrammar =
     -- Basic fields
     <@> optionalFieldDef "id" L.installedUnitId (mkUnitId "")
     <@> optionalFieldDefAla "instantiated-with" InstWith L.instantiatedWith []
-    <@> optionalFieldDefAla "key" CompatPackageKey L.compatPackageKey ""
+    <@> (T.pack <$> optionalFieldDefAla "key" CompatPackageKey (L.compatPackageKey . fromTextLens) mempty)
     <@> optionalFieldDefAla "license" SpecLicenseLenient L.license (Left SPDX.NONE)
     <@> freeTextFieldDef "copyright" L.copyright
     <@> freeTextFieldDef "maintainer" L.maintainer
@@ -105,19 +107,19 @@ ipiFieldGrammar =
     <@> monoidalFieldAla "dynamic-library-dirs" (alaList' FSep FilePathNT) L.libraryDynDirs
     <@> monoidalFieldAla "bytecode-library-dirs" (alaList' FSep FilePathNT) L.libraryBytecodeDirs
     <@> optionalFieldDefAla "data-dir" FilePathNT L.dataDir ""
-    <@> monoidalFieldAla "hs-libraries" (alaList' FSep Token) L.hsLibraries
-    <@> monoidalFieldAla "extra-libraries" (alaList' FSep Token) L.extraLibraries
-    <@> monoidalFieldAla "extra-libraries-static" (alaList' FSep Token) L.extraLibrariesStatic
-    <@> monoidalFieldAla "extra-ghci-libraries" (alaList' FSep Token) L.extraGHCiLibraries
+    <@> (map T.pack <$> monoidalFieldAla "hs-libraries" (alaList' FSep Token) (L.hsLibraries . fromTextsLens))
+    <@> (map T.pack <$> monoidalFieldAla "extra-libraries" (alaList' FSep Token) (L.extraLibraries . fromTextsLens))
+    <@> (map T.pack <$> monoidalFieldAla "extra-libraries-static" (alaList' FSep Token) (L.extraLibrariesStatic . fromTextsLens))
+    <@> (map T.pack <$> monoidalFieldAla "extra-ghci-libraries" (alaList' FSep Token) (L.extraGHCiLibraries . fromTextsLens))
     <@> monoidalFieldAla "include-dirs" (alaList' FSep FilePathNT) L.includeDirs
-    <@> monoidalFieldAla "includes" (alaList' FSep FilePathNT) L.includes
+    <@> (map T.pack <$> monoidalFieldAla "includes" (alaList' FSep FilePathNT) (L.includes . fromTextsLens))
     <@> monoidalFieldAla "depends" (alaList FSep) L.depends
     <@> monoidalFieldAla "abi-depends" (alaList FSep) L.abiDepends
-    <@> monoidalFieldAla "cc-options" (alaList' FSep Token) L.ccOptions
-    <@> monoidalFieldAla "cxx-options" (alaList' FSep Token) L.cxxOptions
-    <@> monoidalFieldAla "ld-options" (alaList' FSep Token) L.ldOptions
+    <@> (map T.pack <$> monoidalFieldAla "cc-options" (alaList' FSep Token) (L.ccOptions . fromTextsLens))
+    <@> (map T.pack <$> monoidalFieldAla "cxx-options" (alaList' FSep Token) (L.cxxOptions . fromTextsLens))
+    <@> (map T.pack <$> monoidalFieldAla "ld-options" (alaList' FSep Token) (L.ldOptions . fromTextsLens))
     <@> monoidalFieldAla "framework-dirs" (alaList' FSep FilePathNT) L.frameworkDirs
-    <@> monoidalFieldAla "frameworks" (alaList' FSep Token) L.frameworks
+    <@> (map T.pack <$> monoidalFieldAla "frameworks" (alaList' FSep Token) (L.frameworks . fromTextsLens))
     <@> monoidalFieldAla "haddock-interfaces" (alaList' FSep FilePathNT) L.haddockInterfaces
     <@> monoidalFieldAla "haddock-html" (alaList' FSep FilePathNT) L.haddockHTMLs
     <@> optionalFieldAla "pkgroot" FilePathNT L.pkgRoot
@@ -318,3 +320,11 @@ basicFieldGrammar = do
             else _basicLibVisibility'
       , ..
       }
+
+fromTextLens :: Lens' Text String
+fromTextLens f = fmap T.pack . f . T.unpack
+{-# INLINE fromTextLens #-}
+
+fromTextsLens :: Lens' [Text] [String]
+fromTextsLens f = fmap (map T.pack) . f . map T.unpack
+{-# INLINE fromTextsLens #-}
