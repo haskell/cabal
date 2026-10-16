@@ -22,9 +22,12 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Data.Coerce (Coercible, coerce)
+import Data.Text (Text)
+import qualified Data.Text as T
 import Distribution.Client.Types.Repo
 import Distribution.Client.Types.RepoName
 import Distribution.Client.Utils.Newtypes
+import Distribution.Compat.Lens
 import Distribution.FieldGrammar
 import Distribution.Simple.Flag
 import Distribution.Utils.NubList (NubList (..))
@@ -75,10 +78,14 @@ remoteRepoGrammar :: RepoName -> ParsecFieldGrammar RemoteRepo RemoteRepo
 remoteRepoGrammar remoteRepoName = do
   remoteRepoURI <- uniqueFieldAla "url" URI_NT remoteRepoURILens
   remoteRepoSecure <- optionalField "secure" remoteRepoSecureLens
-  remoteRepoRootKeys <- monoidalFieldAla "root-keys" (alaList' FSep Token) remoteRepoRootKeysLens
+  remoteRepoRootKeys <- map T.pack <$> monoidalFieldAla "root-keys" (alaList' FSep Token) (remoteRepoRootKeysLens . fromTextsLens)
   remoteRepoKeyThreshold <- optionalFieldDefAla "key-threshold" KeyThreshold remoteRepoKeyThresholdLens 0
   pure
     RemoteRepo
       { remoteRepoShouldTryHttps = False -- we don't parse remoteRepoShouldTryHttps
       , ..
       }
+
+fromTextsLens :: Lens' [Text] [String]
+fromTextsLens f = fmap (map T.pack) . f . map T.unpack
+{-# INLINE fromTextsLens #-}
