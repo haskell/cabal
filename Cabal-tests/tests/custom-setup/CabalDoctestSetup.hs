@@ -120,6 +120,7 @@ import Distribution.Verbosity
 
 import qualified Data.Foldable    as F
                  (for_)
+import qualified Data.Text as Text
 import qualified Data.Traversable as T
                  (traverse)
 
@@ -366,15 +367,15 @@ generateBuildModule testSuiteName flags pkg lbi = do
     let testBI = testBuildInfo suite
 
     -- TODO: `words` is not proper parser (no support for quotes)
-    let additionalFlags = maybe [] words
+    let additionalFlags = maybe [] (words . Text.unpack)
           $ lookup "x-doctest-options"
           $ customFieldsBI testBI
 
-    let additionalModules = maybe [] words
+    let additionalModules = maybe [] (words . Text.unpack)
           $ lookup "x-doctest-modules"
           $ customFieldsBI testBI
 
-    let additionalDirs' = maybe [] words
+    let additionalDirs' = maybe [] (words . Text.unpack)
           $ lookup "x-doctest-source-dirs"
           $ customFieldsBI testBI
 
@@ -418,7 +419,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
            -- CPP includes, i.e. include cabal_macros.h
            let cppFlags = map ("-optP"++) $
                    [ "-include", compAutogenDir ++ "/cabal_macros.h" ]
-                   ++ cppOptions compBI
+                   ++ map Text.unpack (cppOptions compBI)
 
            -- Unlike other modules, the main-is module of an executable is not
            -- guaranteed to share a module name with its filepath name. That is,
@@ -476,7 +477,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
 
     -- write enabled components, i.e. x-doctest-components
     -- if none enabled, pick library
-    let enabledComponents = maybe [NameLib Nothing] (mapMaybe parseComponentName . words)
+    let enabledComponents = maybe [NameLib Nothing] (mapMaybe parseComponentName . words . Text.unpack)
            $ lookup "x-doctest-components"
            $ customFieldsBI testBI
 

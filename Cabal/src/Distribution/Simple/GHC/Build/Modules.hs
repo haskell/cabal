@@ -13,6 +13,8 @@ import Distribution.Compat.Prelude
 
 import Data.List (sortOn, (\\))
 import qualified Data.Set as Set
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.CabalSpecVersion
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.PackageDescription as PD
@@ -183,7 +185,7 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
           , ghcOptInputModules = toNubListR inputModules
           , ghcOptInputFiles = toNubListR hsMains
           , ghcOptInputScripts = toNubListR scriptMains
-          , ghcOptExtra = buildWayExtraHcOptions way GHC bi
+          , ghcOptExtra = map Text.unpack $ buildWayExtraHcOptions way GHC bi
           , ghcOptHiSuffix = needsWaySuffixFlag (buildWayInterfaceExtension way) "hi"
           , ghcOptObjSuffix = needsWaySuffixFlag (buildWayObjectExtension "o" way) "o"
           , ghcOptHPCDir = hpcdir (buildWayHpcWay way) -- maybe this should not be passed for vanilla?
@@ -368,7 +370,7 @@ buildWayHpcWay = \case
 
 -- | Returns a function to extract the extra haskell compiler options from a
 -- 'BuildInfo' and 'CompilerFlavor'
-buildWayExtraHcOptions :: BuildWay -> CompilerFlavor -> BuildInfo -> [String]
+buildWayExtraHcOptions :: BuildWay -> CompilerFlavor -> BuildInfo -> [Text]
 buildWayExtraHcOptions = \case
   StaticWay -> hcStaticOptions
   ProfWay -> hcProfOptions
