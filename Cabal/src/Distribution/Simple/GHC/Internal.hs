@@ -53,6 +53,7 @@ import Data.Bool (bool)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import Distribution.Backpack
 import Distribution.Compat.Stack
 import Distribution.Lex
@@ -389,7 +390,7 @@ splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
             ghcOptionsSince
               (mkVersion [8, 10])
               (compiler lbi)
-              (optimizationCFlags lbi ++ ccOptions bi)
+              (optimizationCFlags lbi ++ map Text.unpack (ccOptions bi))
         }
     setCxxOptions xxx =
       xxx
@@ -401,7 +402,7 @@ splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
             ghcOptionsSince
               (mkVersion [8, 10])
               (compiler lbi)
-              (optimizationCFlags lbi ++ cxxOptions bi)
+              (optimizationCFlags lbi ++ map Text.unpack (cxxOptions bi))
         }
     setCcProgram xxx =
       xxx
@@ -540,13 +541,13 @@ linkGhcOptions verbosity lbi bi clbi =
         { -- Respect -v0, but don't crank up verbosity on GHC if
           -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
           ghcOptVerbosity = toFlag (min verbosity Normal)
-        , ghcOptCcOptions = ccOptions bi
-        , ghcOptCxxOptions = cxxOptions bi
-        , ghcOptAsmOptions = asmOptions bi
-        , ghcOptLinkOptions = ldOptions bi
-        , ghcOptCppOptions = cppOptions bi
-        , ghcOptJSppOptions = jsppOptions bi
-        , ghcOptExtra = hcOptions GHC bi <> cmmOptions bi
+        , ghcOptCcOptions = map Text.unpack $ ccOptions bi
+        , ghcOptCxxOptions = map Text.unpack $ cxxOptions bi
+        , ghcOptAsmOptions = map Text.unpack $ asmOptions bi
+        , ghcOptLinkOptions = map Text.unpack $ ldOptions bi
+        , ghcOptCppOptions = map Text.unpack $ cppOptions bi
+        , ghcOptJSppOptions = map Text.unpack $ jsppOptions bi
+        , ghcOptExtra = map Text.unpack $ hcOptions GHC bi <> cmmOptions bi
         , ghcOptCabal = toFlag True
         , ghcOptThisUnitId = case clbi of
             LibComponentLocalBuildInfo{componentCompatPackageKey = pk} ->

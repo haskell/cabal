@@ -47,6 +47,7 @@ import Distribution.Version
 import Language.Haskell.Extension
 
 import qualified Data.Map as Map (empty)
+import qualified Data.Text as Text
 import System.Directory
 import System.FilePath (pathSeparator)
 
@@ -274,7 +275,7 @@ constructUHCCmdLine
   -> [String]
 constructUHCCmdLine user system lbi bi clbi odir verbosity =
   vFlags
-    ++ hcOptions UHC bi
+    ++ map Text.unpack (hcOptions UHC bi)
     -- flags for language extensions
     ++ languageToFlags (compiler lbi) (defaultLanguage bi)
     ++ extensionsToFlags (compiler lbi) (usedExtensions bi)
@@ -289,7 +290,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
     ++ ["-i" ++ u (autogenComponentModulesDir lbi clbi)]
     ++ ["-i" ++ u (autogenPackageModulesDir lbi)]
     -- cpp options
-    ++ ["--optP=" ++ opt | opt <- cppOptions bi]
+    ++ ["--optP=" ++ Text.unpack opt | opt <- cppOptions bi]
     -- output path
     ++ ["--odir=" ++ u odir]
     -- optimization

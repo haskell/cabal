@@ -146,6 +146,7 @@ import Data.List
   )
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Parsec
   ( simpleParsec
@@ -2652,12 +2653,12 @@ ccLdOptionsBuildInfo cflags ldflags ldflags_static =
       extraLibDirsStatic' = filter ("-L" `isPrefixOf`) ldflags_static
    in mempty
         { includeDirs = map (makeSymbolicPath . drop 2) includeDirs'
-        , extraLibs = map (drop 2) extraLibs'
+        , extraLibs = map (Text.pack . drop 2) extraLibs'
         , extraLibDirs = map (makeSymbolicPath . drop 2) extraLibDirs'
-        , extraLibsStatic = map (drop 2) extraLibsStatic'
+        , extraLibsStatic = map (Text.pack . drop 2) extraLibsStatic'
         , extraLibDirsStatic = map (makeSymbolicPath . drop 2) extraLibDirsStatic'
-        , ccOptions = cflags'
-        , ldOptions = ldflags''
+        , ccOptions = map Text.pack cflags'
+        , ldOptions = map Text.pack ldflags''
         }
 
 -- -----------------------------------------------------------------------------
@@ -2745,12 +2746,12 @@ checkForeignDeps :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 checkForeignDeps pkg lbi verbosity =
   ifBuildsWith
     allHeaders
-    (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
+    (commonCcArgs ++ makeLdArgs (map Text.unpack allLibs)) -- I'm feeling lucky
     (return ())
     ( do
         missingLibs <- findMissingLibs
         missingHdr <- findOffendingHdr
-        explainErrors missingHdr missingLibs
+        explainErrors missingHdr (map Text.unpack missingLibs)
     )
   where
     allHeaders = collectField (fmap getSymbolicPath . includes)
@@ -2818,9 +2819,9 @@ checkForeignDeps pkg lbi verbosity =
     findMissingLibs =
       ifBuildsWith
         []
-        (makeLdArgs allLibs)
+        (makeLdArgs $ map Text.unpack allLibs)
         (return [])
-        (filterM (fmap not . libExists) allLibs)
+        (filterM (fmap not . libExists . Text.unpack) allLibs)
 
     libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
@@ -2852,8 +2853,8 @@ checkForeignDeps pkg lbi verbosity =
            , isAbsolute dir
            ]
         ++ ["-I" ++ baseDir]
-        ++ collectField cppOptions
-        ++ collectField ccOptions
+        ++ map Text.unpack (collectField cppOptions)
+        ++ map Text.unpack (collectField ccOptions)
         ++ [ "-I" ++ dir
            | dir <-
               ordNub
@@ -2871,7 +2872,7 @@ checkForeignDeps pkg lbi verbosity =
 
     commonCcArgs =
       commonCppArgs
-        ++ collectField ccOptions
+        ++ map Text.unpack (collectField ccOptions)
         ++ [ opt
            | dep <- deps
            , opt <- IPI.ccOptions dep
@@ -2887,7 +2888,7 @@ checkForeignDeps pkg lbi verbosity =
                   else extraLibDirs
               )
       ]
-        ++ collectField ldOptions
+        ++ map Text.unpack (collectField ldOptions)
         ++ [ "-L" ++ dir
            | dir <-
               ordNub

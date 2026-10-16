@@ -55,6 +55,8 @@ import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All (..), Any (..), Endo (..))
 import qualified Data.Set as Set
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified System.Process as Process
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
@@ -93,15 +95,15 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
         checkComponentFlags getInfo = foldMap (checkComponent . getInfo)
           where
             checkComponent :: BuildInfo -> m
-            checkComponent = foldMap fun . filterGhcOptions . allGhcOptions
+            checkComponent = foldMap (fun . map Text.unpack) . filterGhcOptions . allGhcOptions
 
-            allGhcOptions :: BuildInfo -> [(CompilerFlavor, [String])]
+            allGhcOptions :: BuildInfo -> [(CompilerFlavor, [Text])]
             allGhcOptions =
               foldMap
                 (perCompilerFlavorToList .)
                 [options, profOptions, sharedOptions, staticOptions]
 
-            filterGhcOptions :: [(CompilerFlavor, [String])] -> [[String]]
+            filterGhcOptions :: [(CompilerFlavor, a)] -> [a]
             filterGhcOptions l = [opts | (GHC, opts) <- l]
 
     safeToFilterWarnings :: Bool
