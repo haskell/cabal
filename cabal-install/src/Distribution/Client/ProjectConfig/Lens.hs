@@ -2,6 +2,7 @@
 
 module Distribution.Client.ProjectConfig.Lens where
 
+import Data.Text (Text)
 import Distribution.Client.BuildReports.Types (ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (ClientInstallFlags (..))
 import Distribution.Client.Dependency.Types (PreSolver (..))
@@ -65,11 +66,11 @@ import Distribution.Utils.NubList
   )
 import Distribution.Verbosity
 
-projectPackages :: Lens' ProjectConfig [String]
+projectPackages :: Lens' ProjectConfig [Text]
 projectPackages f s = fmap (\x -> s{T.projectPackages = x}) (f (T.projectPackages s))
 {-# INLINEABLE projectPackages #-}
 
-projectPackagesOptional :: Lens' ProjectConfig [String]
+projectPackagesOptional :: Lens' ProjectConfig [Text]
 projectPackagesOptional f s = fmap (\x -> s{T.projectPackagesOptional = x}) (f (T.projectPackagesOptional s))
 {-# INLINEABLE projectPackagesOptional #-}
 
@@ -392,7 +393,7 @@ packageConfigProfLibDetail :: Lens' PackageConfig (Flag ProfDetailLevel)
 packageConfigProfLibDetail f s = fmap (\x -> s{T.packageConfigProfLibDetail = x}) (f (T.packageConfigProfLibDetail s))
 {-# INLINEABLE packageConfigProfLibDetail #-}
 
-packageConfigConfigureArgs :: Lens' PackageConfig [String]
+packageConfigConfigureArgs :: Lens' PackageConfig [Text]
 packageConfigConfigureArgs f s = fmap (\x -> s{T.packageConfigConfigureArgs = x}) (f (T.packageConfigConfigureArgs s))
 {-# INLINEABLE packageConfigConfigureArgs #-}
 
@@ -484,7 +485,7 @@ packageConfigHaddockHtml :: Lens' PackageConfig (Flag Bool)
 packageConfigHaddockHtml f s = fmap (\x -> s{T.packageConfigHaddockHtml = x}) (f (T.packageConfigHaddockHtml s))
 {-# INLINEABLE packageConfigHaddockHtml #-}
 
-packageConfigHaddockHtmlLocation :: Lens' PackageConfig (Flag String)
+packageConfigHaddockHtmlLocation :: Lens' PackageConfig (Flag Text)
 packageConfigHaddockHtmlLocation f s = fmap (\x -> s{T.packageConfigHaddockHtmlLocation = x}) (f (T.packageConfigHaddockHtmlLocation s))
 {-# INLINEABLE packageConfigHaddockHtmlLocation #-}
 
@@ -532,11 +533,11 @@ packageConfigHaddockIndex :: Lens' PackageConfig (Flag PathTemplate)
 packageConfigHaddockIndex f s = fmap (\x -> s{T.packageConfigHaddockIndex = x}) (f (T.packageConfigHaddockIndex s))
 {-# INLINEABLE packageConfigHaddockIndex #-}
 
-packageConfigHaddockBaseUrl :: Lens' PackageConfig (Flag String)
+packageConfigHaddockBaseUrl :: Lens' PackageConfig (Flag Text)
 packageConfigHaddockBaseUrl f s = fmap (\x -> s{T.packageConfigHaddockBaseUrl = x}) (f (T.packageConfigHaddockBaseUrl s))
 {-# INLINEABLE packageConfigHaddockBaseUrl #-}
 
-packageConfigHaddockResourcesDir :: Lens' PackageConfig (Flag String)
+packageConfigHaddockResourcesDir :: Lens' PackageConfig (Flag Text)
 packageConfigHaddockResourcesDir f s = fmap (\x -> s{T.packageConfigHaddockResourcesDir = x}) (f (T.packageConfigHaddockResourcesDir s))
 {-# INLINEABLE packageConfigHaddockResourcesDir #-}
 

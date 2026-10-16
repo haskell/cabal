@@ -272,7 +272,7 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
     buildSettingRemoteRepos
     buildSettingLocalNoIndexRepos
     buildSettingCacheDir
-    buildSettingHttpTransport
+    (fmap Text.unpack buildSettingHttpTransport)
     (Just buildSettingIgnoreExpiry)
     buildSettingProgPathExtra
 
@@ -438,7 +438,7 @@ resolveBuildTimeSettings
       buildSettingRemoteRepos = fromNubList projectConfigRemoteRepos
       buildSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
       buildSettingCacheDir = fromFlag projectConfigCacheDir
-      buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport
+      buildSettingHttpTransport = Text.pack <$> flagToMaybe projectConfigHttpTransport
       buildSettingIgnoreExpiry = fromFlag projectConfigIgnoreExpiry
       buildSettingReportPlanningFailure =
         fromFlag projectConfigReportPlanningFailure
@@ -775,7 +775,7 @@ defaultImplicitProjectConfig :: ProjectConfig
 defaultImplicitProjectConfig =
   mempty
     { -- We expect a package in the current directory.
-      projectPackages = ["./*.cabal"]
+      projectPackages = [Text.pack "./*.cabal"]
     , projectConfigProvenance = Set.singleton Implicit
     }
 
@@ -1213,8 +1213,8 @@ findProjectPackages
 findProjectPackages
   DistDirLayout{distProjectRootDirectory}
   ProjectConfig{..} = do
-    requiredPkgs <- findPackageLocations True projectPackages
-    optionalPkgs <- findPackageLocations False projectPackagesOptional
+    requiredPkgs <- findPackageLocations True (map Text.unpack projectPackages)
+    optionalPkgs <- findPackageLocations False (map Text.unpack projectPackagesOptional)
     let repoPkgs = map ProjectPackageRemoteRepo projectPackagesRepo
         namedPkgs = map ProjectPackageNamed projectPackagesNamed
 

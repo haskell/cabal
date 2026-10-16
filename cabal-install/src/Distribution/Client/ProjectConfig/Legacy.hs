@@ -196,6 +196,7 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Functor ((<&>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import Network.URI (URI (..), nullURIAuth)
 import System.Directory (makeAbsolute)
 import System.FilePath (splitFileName)
@@ -591,8 +592,8 @@ convertLegacyProjectConfig
     , legacySpecificConfig
     } =
     ProjectConfig
-      { projectPackages = legacyPackages
-      , projectPackagesOptional = legacyPackagesOptional
+      { projectPackages = map Text.pack legacyPackages
+      , projectPackagesOptional = map Text.pack legacyPackagesOptional
       , projectPackagesRepo = legacyPackagesRepo
       , projectPackagesNamed = legacyPackagesNamed
       , projectConfigBuildOnly = configBuildOnly
@@ -759,7 +760,7 @@ convertLegacyPerPackageFlags
         , configProfShared = packageConfigProfShared
         , configProfDetail = packageConfigProfDetail
         , configProfLibDetail = packageConfigProfLibDetail
-        , configConfigureArgs = packageConfigConfigureArgs
+        , configConfigureArgs = (map Text.pack -> packageConfigConfigureArgs)
         , configOptimization = packageConfigOptimization
         , configProgPrefix = packageConfigProgPrefix
         , configProgSuffix = packageConfigProgSuffix
@@ -796,7 +797,7 @@ convertLegacyPerPackageFlags
       HaddockFlags
         { haddockHoogle = packageConfigHaddockHoogle
         , haddockHtml = packageConfigHaddockHtml
-        , haddockHtmlLocation = packageConfigHaddockHtmlLocation
+        , haddockHtmlLocation = (fmap Text.pack -> packageConfigHaddockHtmlLocation)
         , haddockForeignLibs = packageConfigHaddockForeignLibs
         , haddockForHackage = packageConfigHaddockForHackage
         , haddockExecutables = packageConfigHaddockExecutables
@@ -809,8 +810,8 @@ convertLegacyPerPackageFlags
         , haddockHscolourCss = packageConfigHaddockHscolourCss
         , haddockContents = packageConfigHaddockContents
         , haddockIndex = packageConfigHaddockIndex
-        , haddockBaseUrl = packageConfigHaddockBaseUrl
-        , haddockResourcesDir = packageConfigHaddockResourcesDir
+        , haddockBaseUrl = (fmap Text.pack -> packageConfigHaddockBaseUrl)
+        , haddockResourcesDir = (fmap Text.pack -> packageConfigHaddockResourcesDir)
         , haddockOutputDir = packageConfigHaddockOutputDir
         , haddockUseUnicode = packageConfigHaddockUseUnicode
         } = haddockFlags
@@ -897,8 +898,8 @@ convertToLegacyProjectConfig
     , projectConfigSpecificPackage
     } =
     LegacyProjectConfig
-      { legacyPackages = projectPackages
-      , legacyPackagesOptional = projectPackagesOptional
+      { legacyPackages = map Text.unpack projectPackages
+      , legacyPackagesOptional = map Text.unpack projectPackagesOptional
       , legacyPackagesRepo = projectPackagesRepo
       , legacyPackagesNamed = projectPackagesNamed
       , legacySharedConfig = convertToLegacySharedConfig projectConfig
@@ -1145,7 +1146,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configProfShared = packageConfigProfShared
         , configProfDetail = packageConfigProfDetail
         , configProfLibDetail = packageConfigProfLibDetail
-        , configConfigureArgs = packageConfigConfigureArgs
+        , configConfigureArgs = map Text.unpack packageConfigConfigureArgs
         , configOptimization = packageConfigOptimization
         , configProgPrefix = packageConfigProgPrefix
         , configProgSuffix = packageConfigProgSuffix
@@ -1197,7 +1198,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockProgramArgs = mempty
         , haddockHoogle = packageConfigHaddockHoogle
         , haddockHtml = packageConfigHaddockHtml
-        , haddockHtmlLocation = packageConfigHaddockHtmlLocation
+        , haddockHtmlLocation = fmap Text.unpack packageConfigHaddockHtmlLocation
         , haddockForHackage = packageConfigHaddockForHackage
         , haddockForeignLibs = packageConfigHaddockForeignLibs
         , haddockExecutables = packageConfigHaddockExecutables
@@ -1210,8 +1211,8 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockHscolourCss = packageConfigHaddockHscolourCss
         , haddockContents = packageConfigHaddockContents
         , haddockIndex = packageConfigHaddockIndex
-        , haddockBaseUrl = packageConfigHaddockBaseUrl
-        , haddockResourcesDir = packageConfigHaddockResourcesDir
+        , haddockBaseUrl = fmap Text.unpack packageConfigHaddockBaseUrl
+        , haddockResourcesDir = fmap Text.unpack packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
         , haddockUseUnicode = packageConfigHaddockUseUnicode
         }
