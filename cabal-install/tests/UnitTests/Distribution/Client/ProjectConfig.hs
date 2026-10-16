@@ -12,6 +12,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
+import qualified Data.Text as Text
 import Network.URI (URI)
 import System.Directory (canonicalizePath, withCurrentDirectory)
 import System.FilePath
@@ -967,21 +968,21 @@ instance f ~ [] => Arbitrary (SourceRepositoryPackage f) where
   arbitrary =
     SourceRepositoryPackage
       <$> arbitrary
-      <*> (getShortToken <$> arbitrary)
-      <*> (fmap getShortToken <$> arbitrary)
-      <*> (fmap getShortToken <$> arbitrary)
+      <*> (Text.pack . getShortToken <$> arbitrary)
+      <*> (fmap (Text.pack . getShortToken) <$> arbitrary)
+      <*> (fmap (Text.pack . getShortToken) <$> arbitrary)
       <*> (fmap getShortToken <$> shortListOf 3 arbitrary)
-      <*> (fmap getShortToken <$> shortListOf 3 arbitrary)
+      <*> (fmap (Text.pack . getShortToken) <$> shortListOf 3 arbitrary)
 
   shrink SourceRepositoryPackage{..} =
     runShrinker $
       SourceRepositoryPackage
         <$> shrinker srpType
-        <*> shrinkerAla ShortToken srpLocation
-        <*> shrinkerAla (fmap ShortToken) srpTag
-        <*> shrinkerAla (fmap ShortToken) srpBranch
+        <*> (Text.pack <$> shrinkerAla ShortToken (Text.unpack srpLocation))
+        <*> (fmap Text.pack <$> shrinkerAla (fmap ShortToken) (fmap Text.unpack srpTag))
+        <*> (fmap Text.pack <$> shrinkerAla (fmap ShortToken) (fmap Text.unpack srpBranch))
         <*> shrinkerAla (fmap ShortToken) srpSubdir
-        <*> shrinkerAla (fmap ShortToken) srpCommand
+        <*> (map Text.pack <$> shrinkerAla (fmap ShortToken) (fmap Text.unpack srpCommand))
 
 instance Arbitrary RemoteRepo where
   arbitrary =

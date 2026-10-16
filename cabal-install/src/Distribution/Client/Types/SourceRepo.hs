@@ -19,17 +19,19 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Compat.Lens (Lens, Lens')
 import Prelude ()
 
+import Data.Text (Text)
+import qualified Data.Text as T
 import Distribution.FieldGrammar
 import Distribution.Types.SourceRepo (RepoType (..))
 
 -- | @source-repository-package@ definition
 data SourceRepositoryPackage f = SourceRepositoryPackage
   { srpType :: !RepoType
-  , srpLocation :: !String
-  , srpTag :: !(Maybe String)
-  , srpBranch :: !(Maybe String)
+  , srpLocation :: !Text
+  , srpTag :: !(Maybe Text)
+  , srpBranch :: !(Maybe Text)
   , srpSubdir :: !(f FilePath)
-  , srpCommand :: ![String]
+  , srpCommand :: ![Text]
   }
   deriving (Generic)
 
@@ -73,15 +75,15 @@ srpTypeLens :: Lens' (SourceRepositoryPackage f) RepoType
 srpTypeLens f s = fmap (\x -> s{srpType = x}) (f (srpType s))
 {-# INLINE srpTypeLens #-}
 
-srpLocationLens :: Lens' (SourceRepositoryPackage f) String
+srpLocationLens :: Lens' (SourceRepositoryPackage f) Text
 srpLocationLens f s = fmap (\x -> s{srpLocation = x}) (f (srpLocation s))
 {-# INLINE srpLocationLens #-}
 
-srpTagLens :: Lens' (SourceRepositoryPackage f) (Maybe String)
+srpTagLens :: Lens' (SourceRepositoryPackage f) (Maybe Text)
 srpTagLens f s = fmap (\x -> s{srpTag = x}) (f (srpTag s))
 {-# INLINE srpTagLens #-}
 
-srpBranchLens :: Lens' (SourceRepositoryPackage f) (Maybe String)
+srpBranchLens :: Lens' (SourceRepositoryPackage f) (Maybe Text)
 srpBranchLens f s = fmap (\x -> s{srpBranch = x}) (f (srpBranch s))
 {-# INLINE srpBranchLens #-}
 
@@ -89,7 +91,7 @@ srpSubdirLens :: Lens (SourceRepositoryPackage f) (SourceRepositoryPackage g) (f
 srpSubdirLens f s = fmap (\x -> s{srpSubdir = x}) (f (srpSubdir s))
 {-# INLINE srpSubdirLens #-}
 
-srpCommandLensNE :: Lens' (SourceRepositoryPackage f) (Maybe (NonEmpty String))
+srpCommandLensNE :: Lens' (SourceRepositoryPackage f) (Maybe (NonEmpty Text))
 srpCommandLensNE f s = fmap (\x -> s{srpCommand = maybe [] toList x}) (f (nonEmpty (srpCommand s)))
 {-# INLINE srpCommandLensNE #-}
 
@@ -98,7 +100,8 @@ srpCommandLensNE f s = fmap (\x -> s{srpCommand = maybe [] toList x}) (f (nonEmp
 -------------------------------------------------------------------------------
 
 sourceRepositoryPackageGrammar
-  :: ( FieldGrammar c g
+  :: forall c g
+   . ( FieldGrammar c g
      , c (Identity RepoType)
      , c (List NoCommaFSep FilePathNT String)
      , c (NonEmpty' NoCommaFSep Token String)
@@ -106,13 +109,25 @@ sourceRepositoryPackageGrammar
   => g SourceRepoList SourceRepoList
 sourceRepositoryPackageGrammar = do
   srpType <- uniqueField "type" srpTypeLens
-  srpLocation <- uniqueFieldAla "location" Token srpLocationLens
-  srpTag <- optionalFieldAla "tag" Token srpTagLens
-  srpBranch <- optionalFieldAla "branch" Token srpBranchLens
+  srpLocation <- T.pack <$> uniqueFieldAla "location" Token (srpLocationLens . fromTextLens)
+  srpTag <- fmap T.pack <$> optionalFieldAla "tag" Token (srpTagLens . fromMaybeTextLens)
+  srpBranch <- fmap T.pack <$> optionalFieldAla "branch" Token (srpBranchLens . fromMaybeTextLens)
   srpSubdir <- monoidalFieldAla "subdir" (alaList' NoCommaFSep FilePathNT) srpSubdirLens -- note: NoCommaFSep is somewhat important for roundtrip, as "." is there...
   srpCommand <- fmap (maybe [] toList) pcc
   pure SourceRepositoryPackage{..}
   where
-    pcc = optionalFieldAla "post-checkout-command" (alaNonEmpty' NoCommaFSep Token) srpCommandLensNE
+    pcc = fmap (fmap T.pack) <$> optionalFieldAla "post-checkout-command" (alaNonEmpty' NoCommaFSep Token) (srpCommandLensNE . fromNETextsLens)
 {-# SPECIALIZE sourceRepositoryPackageGrammar :: ParsecFieldGrammar' SourceRepoList #-}
 {-# SPECIALIZE sourceRepositoryPackageGrammar :: PrettyFieldGrammar' SourceRepoList #-}
+
+fromTextLens :: Lens' Text String
+fromTextLens f = fmap T.pack . f . T.unpack
+{-# INLINE fromTextLens #-}
+
+fromMaybeTextLens :: Lens' (Maybe Text) (Maybe String)
+fromMaybeTextLens f = fmap (fmap T.pack) . f . (fmap T.unpack)
+{-# INLINE fromMaybeTextLens #-}
+
+fromNETextsLens :: Lens' (Maybe (NonEmpty Text)) (Maybe (NonEmpty String))
+fromNETextsLens f = fmap (fmap (fmap T.pack)) . f . fmap (fmap T.unpack)
+{-# INLINE fromNETextsLens #-}

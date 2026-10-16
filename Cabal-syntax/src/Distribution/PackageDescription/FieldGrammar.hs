@@ -837,10 +837,10 @@ sourceRepoFieldGrammar
   -> g SourceRepo SourceRepo
 sourceRepoFieldGrammar repoKind = do
   repoType <- optionalField "type" L.repoType
-  repoLocation <- fmap T.unpack <$> freeTextField "location" L.repoLocation
-  repoModule <- optionalFieldAla "module" Token L.repoModule
-  repoBranch <- optionalFieldAla "branch" Token L.repoBranch
-  repoTag <- optionalFieldAla "tag" Token L.repoTag
+  repoLocation <- freeTextField "location" L.repoLocation
+  repoModule <- fmap T.pack <$> optionalFieldAla "module" Token (L.repoModule . fromMaybeTextLens)
+  repoBranch <- fmap T.pack <$> optionalFieldAla "branch" Token (L.repoBranch . fromMaybeTextLens)
+  repoTag <- fmap T.pack <$> optionalFieldAla "tag" Token (L.repoTag . fromMaybeTextLens)
   repoSubdir <- optionalFieldAla "subdir" FilePathNT L.repoSubdir
   pure SourceRepo{..}
 {-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' SourceRepo #-}
@@ -970,6 +970,10 @@ _syntaxExtensions =
           | e <- [minBound .. maxBound]
           , e `notElem` [Safe, Unsafe, Trustworthy]
           ]
+
+fromMaybeTextLens :: Lens' (Maybe Text) (Maybe String)
+fromMaybeTextLens f = fmap (fmap T.pack) . f . (fmap T.unpack)
+{-# INLINE fromMaybeTextLens #-}
 
 fromTextsLens :: Lens' [Text] [String]
 fromTextsLens f = fmap (map T.pack) . f . map T.unpack
