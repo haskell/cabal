@@ -18,6 +18,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Data.Map.Strict as M
+import Data.Text (Text)
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -48,23 +49,23 @@ data SourceRepo = SourceRepo
   , repoType :: Maybe RepoType
   -- ^ The type of the source repository system for this repo, eg 'Darcs' or
   -- 'Git'. This field is required.
-  , repoLocation :: Maybe String
+  , repoLocation :: Maybe Text
   -- ^ The location of the repository. For most 'RepoType's this is a URL.
   -- This field is required.
-  , repoModule :: Maybe String
+  , repoModule :: Maybe Text
   -- ^ 'CVS' can put multiple \"modules\" on one server and requires a
   -- module name in addition to the location to identify a particular repo.
   -- Logically this is part of the location but unfortunately has to be
   -- specified separately. This field is required for the 'CVS' 'RepoType' and
   -- should not be given otherwise.
-  , repoBranch :: Maybe String
+  , repoBranch :: Maybe Text
   -- ^ The name or identifier of the branch, if any. Many source control
   -- systems have the notion of multiple branches in a repo that exist in the
   -- same location. For example 'Git' and 'CVS' use this while systems like
   -- 'Darcs' use different locations for different branches. This field is
   -- optional but should be used if necessary to identify the sources,
   -- especially for the 'RepoThis' repo kind.
-  , repoTag :: Maybe String
+  , repoTag :: Maybe Text
   -- ^ The tag identify a particular state of the repository. This should be
   -- given for the 'RepoThis' repo kind and not for 'RepoHead' kind.
   , repoSubdir :: Maybe FilePath

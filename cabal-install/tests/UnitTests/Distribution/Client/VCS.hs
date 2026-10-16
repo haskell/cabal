@@ -18,6 +18,7 @@ import Test.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir)
 import Data.List (mapAccumL)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import Data.Tuple
 
 import Control.Concurrent (threadDelay)
@@ -313,8 +314,8 @@ prop_cloneRepo vcs mkVCSTestDriver repoRecipe =
         repo =
           SourceRepositoryPackage
             { srpType = vcsRepoType vcsVCS
-            , srpLocation = vcsRepoRoot
-            , srpTag = Just tagname
+            , srpLocation = Text.pack vcsRepoRoot
+            , srpTag = Just (Text.pack tagname)
             , srpBranch = Nothing
             , srpSubdir = []
             , srpCommand = []
@@ -449,7 +450,7 @@ unit_syncRepos_git mkLocation expectedSharing tags =
           repoAt tag =
             SourceRepositoryPackage
               { srpType = vcsRepoType vcsVCS
-              , srpLocation = mkLocation vcsRepoRoot
+              , srpLocation = Text.pack $ mkLocation vcsRepoRoot
               , srpTag = Just tag
               , srpBranch = Nothing
               , srpSubdir = Proxy
@@ -458,7 +459,7 @@ unit_syncRepos_git mkLocation expectedSharing tags =
           syncTargets = zip tags destPaths
       _ <-
         execRebuild "root-unused" $
-          syncSourceRepos verbosity vcsVCS [(repoAt tag, dest) | (tag, dest) <- syncTargets]
+          syncSourceRepos verbosity vcsVCS [(repoAt (Text.pack tag), dest) | (tag, dest) <- syncTargets]
       sequence_
         [ checkExpectedWorkingState vcsIgnoreFiles dest (allTags repoState Map.! tag)
         | (tag, dest) <- syncTargets
@@ -514,8 +515,8 @@ pickSyncTargetSets repoType repoState srcRepoPath dstReposPath =
         repo =
           SourceRepositoryPackage
             { srpType = repoType
-            , srpLocation = srcRepoPath
-            , srpTag = Just tag
+            , srpLocation = Text.pack srcRepoPath
+            , srpTag = Just (Text.pack tag)
             , srpBranch = Nothing
             , srpSubdir = Proxy
             , srpCommand = []

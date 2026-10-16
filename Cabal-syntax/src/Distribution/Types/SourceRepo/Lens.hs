@@ -4,7 +4,6 @@ module Distribution.Types.SourceRepo.Lens
   ) where
 
 import Data.Text (Text)
-import qualified Data.Text as T
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -21,18 +20,18 @@ repoType f s = fmap (\x -> s{T.repoType = x}) (f (T.repoType s))
 {-# INLINE repoType #-}
 
 repoLocation :: Lens' SourceRepo (Maybe Text)
-repoLocation f s = fmap (\x -> s{T.repoLocation = fmap T.unpack x}) (f (fmap T.pack (T.repoLocation s)))
+repoLocation f s = fmap (\x -> s{T.repoLocation = x}) (f (T.repoLocation s))
 {-# INLINE repoLocation #-}
 
-repoModule :: Lens' SourceRepo (Maybe String)
+repoModule :: Lens' SourceRepo (Maybe Text)
 repoModule f s = fmap (\x -> s{T.repoModule = x}) (f (T.repoModule s))
 {-# INLINE repoModule #-}
 
-repoBranch :: Lens' SourceRepo (Maybe String)
+repoBranch :: Lens' SourceRepo (Maybe Text)
 repoBranch f s = fmap (\x -> s{T.repoBranch = x}) (f (T.repoBranch s))
 {-# INLINE repoBranch #-}
 
-repoTag :: Lens' SourceRepo (Maybe String)
+repoTag :: Lens' SourceRepo (Maybe Text)
 repoTag f s = fmap (\x -> s{T.repoTag = x}) (f (T.repoTag s))
 {-# INLINE repoTag #-}
 
