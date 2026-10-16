@@ -84,7 +84,10 @@ build system. The following hooks exist:
 
     * Pre-build rules. Used to define code generators or custom preprocessors,
       i.e. rules to generate source files.
-    * Post-build hook. Used before linking to inject data into build artifacts.
+    * Post-build hook. Runs once a component has been built, i.e. after
+      compilation and linking. Used to post-process the build artifacts, e.g.
+      to inject data into a freshly built executable, strip it, sign it, or
+      run it.
 
   * Hooks into the install phase (per component). These are used to copy over
     extra files when installing an executable.
