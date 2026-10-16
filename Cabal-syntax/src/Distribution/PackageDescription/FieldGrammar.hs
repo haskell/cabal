@@ -310,7 +310,7 @@ data TestSuiteStanza = TestSuiteStanza
   , _testStanzaMainIs :: Maybe (RelativePath Source File)
   , _testStanzaTestModule :: Maybe ModuleName
   , _testStanzaBuildInfo :: BuildInfo
-  , _testStanzaCodeGenerators :: [String]
+  , _testStanzaCodeGenerators :: [Text]
   }
 
 instance L.HasBuildInfo TestSuiteStanza where
@@ -332,7 +332,7 @@ testStanzaBuildInfo :: Lens' TestSuiteStanza BuildInfo
 testStanzaBuildInfo f s = fmap (\x -> s{_testStanzaBuildInfo = x}) (f (_testStanzaBuildInfo s))
 {-# INLINE testStanzaBuildInfo #-}
 
-testStanzaCodeGenerators :: Lens' TestSuiteStanza [String]
+testStanzaCodeGenerators :: Lens' TestSuiteStanza [Text]
 testStanzaCodeGenerators f s = fmap (\x -> s{_testStanzaCodeGenerators = x}) (f (_testStanzaCodeGenerators s))
 {-# INLINE testStanzaCodeGenerators #-}
 
@@ -369,7 +369,7 @@ testSuiteFieldGrammar = do
   _testStanzaTestModule <- optionalField "test-module" testStanzaTestModule
   _testStanzaBuildInfo <- blurFieldGrammar testStanzaBuildInfo buildInfoFieldGrammar
   _testStanzaCodeGenerators <-
-    monoidalFieldAla "code-generators" (alaList' CommaFSep Token) testStanzaCodeGenerators
+    fmap T.pack <$> monoidalFieldAla "code-generators" (alaList' CommaFSep Token) (testStanzaCodeGenerators . fromTextsLens)
       ^^^ availableSince CabalSpecV3_8 []
   pure TestSuiteStanza{..}
 
