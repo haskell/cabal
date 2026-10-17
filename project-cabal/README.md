@@ -6,6 +6,7 @@ We have these projects, all in the root:
 $ tree -P '*.project' --prune -L 1
 .
 ├── cabal.bootstrap.project
+├── cabal.hdb.project
 ├── cabal.meta.project
 ├── cabal.project
 ├── cabal.release.project
@@ -77,10 +78,16 @@ package group.
 | Project          | pkgs | cabal | tests | install |
 |------------------|:---: |:---:  |:---:  |:---:    |
 | default          | ✓    |       |       |         |
+| hdb              |      | ✓     | ✓     | ✓       |
 | libonly          |      | ✓     | ✓     |         |
 | release          |      | ✓     | ✓     | ✓       |
 | validate         | ✓    |       |       |         |
 | validate.libonly |      | ✓     | ✓     |         |
+
+The `hdb` project is for use with the Haskell debugger, see
+[CONTRIBUTING.md](../CONTRIBUTING.md#using-the-haskell-debugger). It imports the
+same package groups as the `release` project, leaving out `cabal-testsuite` and
+the benchmarks.
 
 The `meta` project is a one-liner:
 
@@ -96,6 +103,7 @@ Additional configuration is imported:
 | Project          | ghc-options | ghc-latest | constraints |
 |------------------|:---:        |:---:       |:---:        |
 | default          | ✓           | ✓          | ✓           |
+| hdb              | ✓           | ✓          | ✓           |
 | libonly          | ✓           |            |             |
 | release          |             |            |             |
 | validate         | ✓           | ✓          | ✓           |
