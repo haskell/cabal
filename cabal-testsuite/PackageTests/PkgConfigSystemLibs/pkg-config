@@ -1,0 +1,43 @@
+#!/bin/sh
+
+set -eu
+
+here=$(cd "$(dirname "$0")" && pwd)
+
+case "$*" in
+  '--version')
+    echo 2.0.0
+    ;;
+
+  '--variable pc_path pkg-config')
+    echo .
+    ;;
+
+  '--variable=pc_system_libdirs pkg-config')
+    echo "$here/syslib"
+    ;;
+
+  '--list-all')
+    echo 'z 1.0 fake system library'
+    ;;
+
+  '--modversion z')
+    echo 1.0
+    ;;
+
+  '--cflags z')
+    ;;
+
+  '--libs z')
+    echo "-L$here/syslib"
+    ;;
+
+  '--libs --static z')
+    echo "-L$here/syslib"
+    ;;
+
+  *)
+    echo >&2 "pkg-config: unrecognised arguments $*"
+    exit 1
+    ;;
+esac
