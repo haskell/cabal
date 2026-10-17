@@ -75,6 +75,7 @@ warningTests = testGroup "warnings triggered"
     , warningTest PWTInvalidSubsection "subsection.cabal"
     , warningTest PWTUnknownField      "unknownfield.cabal"
     , warningTest PWTUnknownSection    "unknownsection.cabal"
+    , warningTest PWTUnknownSection    "top-level-conditional-legacy.cabal"
     , warningTest PWTTrailingFields    "trailingfield.cabal"
     , warningTest PWTDoubleDash        "doubledash.cabal"
     , warningTest PWTMultipleSingularField "multiplesingular.cabal"
@@ -142,6 +143,7 @@ errorTests = testGroup "errors"
     , errorTest "MiniAgda.cabal"
     , errorTest "big-version.cabal"
     , errorTest "anynone.cabal"
+    , errorTest "top-level-conditional-else.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -167,6 +169,7 @@ errorTest fp = cabalGoldenTest fp correct $ do
 regressionTests :: TestTree
 regressionTests = testGroup "regressions"
     [ regressionTest "encoding-0.8.cabal"
+    , regressionTest "top-level-conditional.cabal"
     , regressionTest "Octree-0.5.cabal"
     , regressionTest "nothing-unicode.cabal"
     , regressionTest "multiple-libs-2.cabal"
