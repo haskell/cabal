@@ -876,6 +876,7 @@ rebuildInstallPlan
                       pkgConfigDB
                       localPackages
                       localPackagesEnabledStanzas
+                      (IndexUtils.activeReposNames ar)
                 case planOrError of
                   Left msg -> do
                     reportPlanningFailure projectConfig compiler platform localPackages
@@ -1359,6 +1360,7 @@ planPackages
   -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> Map PackageName (Map OptionalStanza Bool)
+  -> [RepoName]
   -> Progress String String SolverInstallPlan
 planPackages
   verbosity
@@ -1369,7 +1371,8 @@ planPackages
   sourcePkgDb
   pkgConfigDB
   localPackages
-  pkgStanzasEnable =
+  pkgStanzasEnable
+  activeRepos =
     resolveDependencies
       platform
       (compilerInfo comp)
@@ -1399,6 +1402,7 @@ planPackages
           . setAllowBootLibInstalls solverSettingAllowBootLibInstalls
           . setOnlyConstrained solverSettingOnlyConstrained
           . setSolverVerbosity (verbosityLevel verbosity)
+          . setActiveRepositories activeRepos
           . setPreferenceDefault
             ( case solverSettingPreferVersion of
                 PreferOldest -> PreferAllOldest
