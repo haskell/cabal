@@ -1,0 +1,31 @@
+cabal-version:       2.2
+name:                common
+version:             0
+  -- comment 1
+synopsis:            Common-stanza demo demo
+build-type:          Simple
+
+source-repository head
+  Type:     git
+    -- comment 2
+  Location: https://github.com/hvr/-.git
+
+common windows
+  if os(windows)
+    build-depends: Win32
+
+common deps
+  build-depends:
+    base >=4.10 && <4.11,
+    containers
+
+library
+  import: deps
+
+    -- comment 3
+  default-language: Haskell2010
+  exposed-modules:  ElseIf
+-- comment 4
+
+  build-depends:
+    ghc-prim
