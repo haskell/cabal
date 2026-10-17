@@ -182,6 +182,12 @@ import Distribution.PackageDescription
   , buildable
   )
 
+import Distribution.Client.Cmd.UI
+  ( HelpColor (..)
+  , cmdSpec
+  , commandParserByName
+  , parseCommandWithOptparseMany
+  )
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import Distribution.PackageDescription.PrettyPrint
@@ -271,7 +277,7 @@ import System.Directory
   ( doesFileExist
   , withCurrentDirectory
   )
-import System.Environment (getEnvironment, getExecutablePath, getProgName)
+import System.Environment (getEnvironment, getExecutablePath, getProgName, lookupEnv)
 import System.FilePath
   ( dropExtension
   , splitExtension
@@ -281,6 +287,7 @@ import System.FilePath
   )
 import System.IO
   ( BufferMode (LineBuffering)
+  , hIsTerminalDevice
   , hPutStrLn
   , hSetBuffering
   , stderr
@@ -345,7 +352,7 @@ warnIfAssertionsAreEnabled =
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
-    command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
+    command <- commandsParse args
     case command of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
@@ -377,6 +384,29 @@ mainWorker args = do
             warnIfAssertionsAreEnabled
             action globalFlags
   where
+    -- Tries to parse the command line arguments with optparse-applicative
+    -- first, and if that fails, falls back to the standard command registry.
+    commandsParse :: [String] -> IO (CommandParse (GlobalFlags, CommandParse Action))
+    commandsParse argv = do
+      helpColor <- helpColorMode
+      case parseCommandWithOptparseMany globalCmd (parsersByName helpColor) argv of
+        Just parsed -> pure parsed
+        Nothing -> commandsRunWithFallback globalCmd commands delegateToExternal argv
+
+    parsersByName helpColor =
+      [ commandParserByName helpColor CmdBuild.examples CmdBuild.buildCommand CmdBuild.buildAction
+      , commandParserByName helpColor CmdInstall.examples CmdInstall.installCommand CmdInstall.installAction
+      ]
+
+    -- Colour the command help only when writing to a terminal and the user
+    -- has not opted out with NO_COLOR, so that redirected output such as the
+    -- generated docs stays plain text.
+    helpColorMode :: IO HelpColor
+    helpColorMode = do
+      isTerminal <- hIsTerminalDevice stdout
+      noColor <- lookupEnv "NO_COLOR"
+      pure $ if isTerminal && maybe True null noColor then HelpColor else HelpPlain
+
     delegateToExternal
       :: [Command Action]
       -> String
@@ -455,6 +485,8 @@ mainWorker args = do
           | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
           | otherwise = cabalGitInfo
 
+    globalCmd = globalCommand commands
+
     commands = map commandFromSpec commandSpecs
     commandSpecs =
       [ regularCmd listCommand listAction
@@ -477,14 +509,14 @@ mainWorker args = do
         ++ concat
           [ newCmd CmdConfigure.configureCommand CmdConfigure.configureAction
           , newCmd CmdUpdate.updateCommand CmdUpdate.updateAction
-          , newCmd CmdBuild.buildCommand CmdBuild.buildAction
+          , cmdSpec CmdBuild.buildCommand CmdBuild.buildAction
           , newCmd CmdRepl.replCommand CmdRepl.replAction
           , newCmd CmdFreeze.freezeCommand CmdFreeze.freezeAction
           , newCmd CmdHaddock.haddockCommand CmdHaddock.haddockAction
           , newCmd
               CmdHaddockProject.haddockProjectCommand
               CmdHaddockProject.haddockProjectAction
-          , newCmd CmdInstall.installCommand CmdInstall.installAction
+          , cmdSpec CmdInstall.installCommand CmdInstall.installAction
           , newCmd CmdRun.runCommand CmdRun.runAction
           , newCmd CmdTest.testCommand CmdTest.testAction
           , newCmd CmdBench.benchCommand CmdBench.benchAction
