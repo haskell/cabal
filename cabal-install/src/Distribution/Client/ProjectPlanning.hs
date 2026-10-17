@@ -3544,6 +3544,7 @@ pruneInstallPlanPass1 pkgs
       | elabUnitId ecp `Set.member` all_desired_repl_targets =
           ecp
             { elabReplTarget = maybeToList (ComponentTarget <$> elabComponentName ecp <*> pure WholeComponent)
+            , elabBuildHaddocks = False
             , elabBuildStyle = BuildInplaceOnly InMemory
             }
       | otherwise = ecp
