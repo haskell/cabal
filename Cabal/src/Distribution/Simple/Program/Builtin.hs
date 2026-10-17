@@ -20,6 +20,7 @@ module Distribution.Simple.Program.Builtin
   , runghcProgram
   , jhcProgram
   , uhcProgram
+  , mhsProgram
   , gccProgram
   , gppProgram
   , arProgram
@@ -72,6 +73,7 @@ builtinPrograms =
   , ghcPkgProgram
   , jhcProgram
   , uhcProgram
+  , mhsProgram
   , hpcProgram
   , -- preprocessors
     hscolourProgram
@@ -157,6 +159,12 @@ uhcProgram :: Program
 uhcProgram =
   (simpleProgram "uhc")
     { programFindVersion = findProgramVersion "--version-dotted" id
+    }
+
+mhsProgram :: Program
+mhsProgram =
+  (simpleProgram "mhs")
+    { programFindVersion = findProgramVersion "--numeric-version" id
     }
 
 hpcProgram :: Program
