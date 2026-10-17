@@ -80,8 +80,16 @@ newtype MaxBackjumps = MaxBackjumps {getMaxBackjumps :: Int}
 instance Parsec MaxBackjumps where
   parsec = parseMaxBackjumps
 
+-- | A negative number means unlimited backtracking, the same as the
+-- @--max-backjumps@ option allows.
+--
+-- >>> getMaxBackjumps <$> eitherParsec "4000"
+-- Right 4000
+--
+-- >>> getMaxBackjumps <$> eitherParsec "-1"
+-- Right (-1)
 parseMaxBackjumps :: CabalParsing m => m MaxBackjumps
-parseMaxBackjumps = MaxBackjumps <$> integral
+parseMaxBackjumps = MaxBackjumps <$> signedIntegral
 
 newtype AllowNewerNT = AllowNewerNT {getAllowNewerNT :: Maybe AllowNewer}
 
