@@ -300,12 +300,23 @@ cabal update
 project contains multiple remote package repositories it will update
 the index of all of them (e.g. when using overlays).
 
+Each repository argument has the form ``REPO`` or
+``REPO,INDEX-STATE``. ``REPO`` is a repository identifier, and
+``INDEX-STATE`` uses the same formats as :option:`--index-state`, such as
+an ``@``-prefixed Unix timestamp, an ISO 8601 UTC timestamp, or ``HEAD``.
+When an ``INDEX-STATE`` is supplied, it selects the revision of the global
+package index for that repository; it does not set a project-local
+``index-state``.
+
 Some examples:
 
 ::
 
-    $ cabal update                  # update all remote repos
-    $ cabal update head.hackage     # update only head.hackage
+    $ cabal update                                      # update all remote repos
+    $ cabal update head.hackage                         # update only head.hackage
+    $ cabal update hackage.haskell.org,@1474732068      # use a Unix timestamp
+    $ cabal update hackage.haskell.org,2016-09-24T17:47:48Z
+    $ cabal update hackage.haskell.org,HEAD
 
 cabal list
 ^^^^^^^^^^
