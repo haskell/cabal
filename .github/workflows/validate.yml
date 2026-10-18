@@ -54,7 +54,9 @@ jobs:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
           - { os: ubuntu-latest, shell: bash }
-          - { os: macos-latest, shell: bash }
+          # macos-15 rather than macos-latest until actions/runner-images#14940
+          # is fixed; see #12465.
+          - { os: macos-15, shell: bash }
         ghc:
           [
             # IMPORTANT: If you remove a version from this list, then add it to the old-ghcs job below.
@@ -380,7 +382,9 @@ jobs:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
           - { os: ubuntu-latest, shell: bash }
-          - { os: macos-latest, shell: bash }
+          # macos-15 rather than macos-latest until actions/runner-images#14940
+          # is fixed; see #12465.
+          - { os: macos-15, shell: bash }
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
         # We need to build an array dynamically to inject the appropriate env var in a previous job,
         # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
