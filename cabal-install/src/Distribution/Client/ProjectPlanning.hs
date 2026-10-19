@@ -156,7 +156,6 @@ import Distribution.Client.Toolchain
   , Toolchain (..)
   , Toolchains
   , activeStages
-  , always
   , getStage
   , isCross
   , overStage
@@ -943,7 +942,7 @@ rebuildInstallPlan
         -> Toolchains
         -> [PackageSpecifier UnresolvedSourcePackage]
         -> InstalledPackageIndex
-        -> Rebuild (SolverInstallPlan, Maybe PkgConfigDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
+        -> Rebuild (SolverInstallPlan, Staged (Maybe PkgConfigDb), IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
       phaseRunSolver
         projectConfig@ProjectConfig
           { projectConfigShared
@@ -988,7 +987,13 @@ rebuildInstallPlan
                   withRepoCtx
                   (solverSettingIndexState solverSettings)
                   (solverSettingActiveRepos solverSettings)
-              pkgConfigDB <- getPkgConfigDb verbosity progdb
+              -- Read the pkg-config database once per stage too. Each
+              -- toolchain's own pkg-config answers for the platform that
+              -- toolchain targets, so under cross-compilation a library
+              -- cross-compiled for the host is found through the host
+              -- toolchain and never mistaken for the build machine's copy.
+              pkgConfigDB <-
+                traverse (getPkgConfigDb verbosity . toolchainProgramDb) toolchains
 
               -- TODO: [code cleanup] it'd be better if the Compiler contained the
               -- ConfiguredPrograms that it needs, rather than relying on the progdb
@@ -1016,12 +1021,11 @@ rebuildInstallPlan
                     dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
-            -- Host-stage values, for the pkg-config database and for reporting
-            -- planning failures. Solving itself is per stage.
+            -- Host-stage values, for reporting planning failures. Solving
+            -- itself is per stage.
             Toolchain
               { toolchainCompiler = compiler
               , toolchainPlatform = platform
-              , toolchainProgramDb = progdb
               } = getStage toolchains Host
 
             toolchainSignature :: Toolchain -> (Compiler, Platform, [ConfiguredProgram])
@@ -1069,7 +1073,7 @@ rebuildInstallPlan
         :: HasCallStack
         => ProjectConfig
         -> Toolchains
-        -> Maybe PkgConfigDb
+        -> Staged (Maybe PkgConfigDb)
         -> SolverInstallPlan
         -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
         -> Rebuild
@@ -1523,7 +1527,7 @@ planPackages
   -> SolverSettings
   -> Staged InstalledPackageIndex
   -> SourcePackageDb
-  -> Maybe PkgConfigDb
+  -> Staged (Maybe PkgConfigDb)
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> Map PackageName (Map OptionalStanza Bool)
   -> Progress String String SolverInstallPlan
@@ -1538,7 +1542,7 @@ planPackages
   pkgStanzasEnable =
     resolveDependencies
       (fmap (\tc -> (compilerInfo (toolchainCompiler tc), toolchainPlatform tc)) toolchains)
-      (always pkgConfigDB)
+      pkgConfigDB
       resolverParams
     where
       -- The solver plans for the host stage; the build toolchain is available
@@ -1868,7 +1872,10 @@ elaborateInstallPlan
   -- against the toolchain of its own stage ('elabToolchain'); the 'Host'
   -- stage additionally drives the project-wide decisions (package databases,
   -- install dirs).
-  -> Maybe PkgConfigDb
+  -> Staged (Maybe PkgConfigDb)
+  -- ^ The pkg-config database of each stage, read through that stage's
+  -- toolchain. A package's @pkgconfig-depends@ are resolved against the
+  -- database of its own stage.
   -> DistDirLayout
   -> StoreDirLayout
   -> SolverInstallPlan
@@ -2294,7 +2301,7 @@ elaborateInstallPlan
                             ++ " from "
                             ++ prettyShow (elabPkgSourceId elab0)
                       )
-                      (pkgConfigDB >>= \db -> pkgConfigDbPkgVersion db pn)
+                      (getStage pkgConfigDB (elabStage elab0) >>= \db -> pkgConfigDbPkgVersion db pn)
                   )
                 | PkgconfigDependency pn _ <-
                     PD.pkgconfigDepends
