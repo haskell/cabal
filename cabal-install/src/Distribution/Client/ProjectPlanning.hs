@@ -665,11 +665,19 @@ configureToolchains
           -- See Note [Caching the result of configuring the compiler]
           finalProgDb <-
             liftIO $ do
+              --
+              -- 'configCompilerProgDb' only re-adds the compiler's companion
+              -- tools, and 'userSpecifyPaths' only applies to programs the
+              -- database knows. @pkg-config@ is neither a companion tool nor
+              -- configured by the compiler, yet this database is the one the
+              -- solver reads the pkg-config database through: without re-adding
+              -- it here, @--with-pkg-config@ and @pkg-config-location@ would be
+              -- honoured by Setup configure but silently ignored by the solver.
               progDb <-
                 Cabal.configCompilerProgDb
                   verbosity
                   hc
-                  (clearUnconfiguredPrograms hcProgDb)
+                  (addKnownProgram pkgConfigProgram (clearUnconfiguredPrograms hcProgDb))
                   hcPkg
               -- Re-apply the user-supplied program locations: 'configCompilerProgDb'
               -- drops the unconfigured programs (along with any user-specified
