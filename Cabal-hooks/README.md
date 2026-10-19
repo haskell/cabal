@@ -25,10 +25,10 @@ To use the `Hooks` build type, you will need to
       - declaring `build-type: Hooks`,
       - declaring a `custom-setup` stanza, with a `setup-depends`
         field which includes a dependency on `Cabal-hooks`.
-  
-  * Define a Haskell module `SetupHooks`, which must be placed
-    at the root of your project and must define a value
-    `setupHooks :: SetupHooks`.
+
+  * Define a Haskell module `SetupHooks` in a `SetupHooks.hs` file (or
+    `SetupHooks.lhs` file, if using literate Haskell), which must be placed at
+    the root of your project and define a value `setupHooks :: SetupHooks`.
 
 That is, your `.cabal` file should contain the following
 

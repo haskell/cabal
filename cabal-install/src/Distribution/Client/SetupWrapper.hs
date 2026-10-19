@@ -978,14 +978,18 @@ updateSetupScript verbosity options cabalLibVersion Hooks = do
     die' verbosity $
       "Using 'build-type: Hooks' requires Cabal >= 3.14, but Cabal-"
         ++ prettyShow cabalLibVersion ++ " was selected."
-  let customSetupHooks = workingDir options </> "SetupHooks.hs"
-  useHs <- doesFileExist customSetupHooks
-  unless useHs $
-    die' verbosity "Using 'build-type: Hooks' but there is no SetupHooks.hs file."
-  copyFileVerbose verbosity customSetupHooks (i (setupHooks options))
+  useHs <- doesFileExist setupHooksHs
+  useLhs <- doesFileExist setupHooksLhs
+  unless (useHs || useLhs) $
+    die' verbosity "Using 'build-type: Hooks' but there is no SetupHooks.hs or SetupHooks.lhs file."
+  if useHs
+    then copyFileVerbose verbosity setupHooksHs (i (setupHooks options))
+    else runSimplePreProcessor ppUnlit setupHooksLhs (i (setupHooks options)) verbosity
   rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript HooksSetupScript cabalLibVersion)
   rewriteFileLBS verbosity (i (hooksHs options)) hooksExeScript
   where
+    setupHooksHs = workingDir options </> "SetupHooks.hs"
+    setupHooksLhs = workingDir options </> "SetupHooks.lhs"
     i = interpretSymbolicPath (useWorkingDir options)
 updateSetupScript verbosity _ _ Make =
   die' verbosity "'build-type: Make' is no longer supported."
