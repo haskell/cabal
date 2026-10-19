@@ -609,11 +609,15 @@ configureCompiler
     -- See Note [Caching the result of configuring the compiler]
     finalProgDb <-
       liftIO $ do
+        -- The solver reads the pkg-config database through this program
+        -- database, but 'configCompilerProgDb' does not add @pkg-config@ and
+        -- 'userPaths' ignores programs the database does not know. Add it, or
+        -- @--with-pkg-config@ and @pkg-config-location@ never reach the solver.
         progDb <-
           Cabal.configCompilerProgDb
             verbosity
             hc
-            (clearUnconfiguredPrograms hcProgDb)
+            (addKnownProgram pkgConfigProgram (clearUnconfiguredPrograms hcProgDb))
             hcPkg
         -- Re-apply the user-supplied program locations: 'configCompilerProgDb'
         -- drops the unconfigured programs (along with any user-specified
