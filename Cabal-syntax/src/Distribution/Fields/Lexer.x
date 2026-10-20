@@ -231,7 +231,7 @@ lexToken = do
         let !len_bytes = B.length inp - B.length inp'
         t <- action pos len_bytes inp
 #ifdef CABAL_PARSEC_DEBUG
-        traceShow t $ return tok
+        traceShow t $ return t
 #endif
         return t
 
