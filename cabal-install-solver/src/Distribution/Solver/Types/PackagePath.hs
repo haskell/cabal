@@ -3,6 +3,7 @@ module Distribution.Solver.Types.PackagePath
     , Namespace(..)
     , Qualifier(..)
     , dispQualifier
+    , dispPackagePath
     , Qualified(..)
     , QPN
     , dispQPN
@@ -18,7 +19,10 @@ import qualified Text.PrettyPrint as Disp
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
 data PackagePath = PackagePath Namespace Qualifier
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary PackagePath
+instance Structured PackagePath
 
 -- | Top-level namespace
 --
@@ -30,7 +34,10 @@ data Namespace =
 
     -- | A namespace for a specific build target
   | Independent PackageName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary Namespace
+instance Structured Namespace
 
 -- | Pretty-prints a namespace. The result is either empty or
 -- ends in a period, so it can be prepended onto a qualifier.
@@ -68,7 +75,10 @@ data Qualifier =
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
   | QualExe PackageName PackageName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary Qualifier
+instance Structured Qualifier
 
 -- | Pretty-prints a qualifier. The result is either empty or
 -- ends in a period, so it can be prepended onto a package name.
@@ -85,6 +95,11 @@ dispQualifier (QualExe pn pn2) = pretty pn <<>> Disp.text ":" <<>>
                                  pretty pn2 <<>> Disp.text ":exe."
 dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text "."
 
+-- | Pretty-prints a package path. The result is either empty or ends in a
+-- period, so it can be prepended onto a package name.
+dispPackagePath :: PackagePath -> Disp.Doc
+dispPackagePath (PackagePath ns q) = dispNamespace ns <<>> dispQualifier q
+
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
   deriving (Eq, Ord, Show)
@@ -94,8 +109,7 @@ type QPN = Qualified PackageName
 
 -- | Pretty-prints a qualified package name.
 dispQPN :: QPN -> Disp.Doc
-dispQPN (Q (PackagePath ns qual) pn) =
-  dispNamespace ns <<>> dispQualifier qual <<>> pretty pn
+dispQPN (Q pp pn) = dispPackagePath pp <<>> pretty pn
 
 -- | String representation of a qualified package name.
 showQPN :: QPN -> String

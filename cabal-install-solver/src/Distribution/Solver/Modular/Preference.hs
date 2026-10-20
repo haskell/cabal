@@ -457,16 +457,26 @@ preferReallyEasyGoalChoices = go
 
 -- | Monad used internally in enforceSingleInstanceRestriction
 --
--- For each package instance we record the goal for which we picked a concrete
--- instance. The SIR means that for any package instance there can only be one.
-type EnforceSIR = Reader (Map (PI PN) QPN)
+-- For each qualifier and package instance we record the goal for which we
+-- picked a concrete instance. The SIR means that within a qualifier there can
+-- only be one.
+type EnforceSIR = Reader (Map (Qualifier, PI PN) QPN)
 
--- | Enforce ghc's single instance restriction
+-- | Enforce the single instance restriction
 --
 -- From the solver's perspective, this means that for any package instance
--- (that is, package name + package version) there can be at most one qualified
--- goal resolving to that instance (there may be other goals _linking_ to that
--- instance however).
+-- (that is, package name + package version) there can be at most one goal
+-- per qualifier resolving to that instance (there may be other goals _linking_
+-- to that instance however). Goals with different qualifiers, e.g. a build tool
+-- and a top-level goal, may each resolve to their own instance of the same
+-- version, with different dependencies; the solver still prefers linking them
+-- (see 'preferLinked').
+--
+-- This restriction used to be global, mirroring GHC's own single instance
+-- restriction, which GHC lifted when it started telling instances apart by
+-- unit id. The library dependencies of a goal keep its qualifier, so what gets
+-- linked together in one scope still has a single instance of each package.
+-- Different namespaces (independent goals) still share the restriction.
 enforceSingleInstanceRestriction :: Tree d c -> Tree d c
 enforceSingleInstanceRestriction = (`runReader` M.empty) . go
   where
@@ -486,8 +496,8 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . go
 
     -- The check proper
     goP :: QPN -> POption -> EnforceSIR (Tree d c) -> EnforceSIR (Tree d c)
-    goP qpn@(Q _ pn) (POption i linkedTo) r = do
-      let inst = PI pn i
+    goP qpn@(Q (PackagePath _ q) pn) (POption i linkedTo) r = do
+      let inst = (q, PI pn i)
       env <- ask
       case (linkedTo, M.lookup inst env) of
         (Just _, _) ->

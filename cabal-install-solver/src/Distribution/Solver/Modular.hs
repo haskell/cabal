@@ -16,14 +16,12 @@ import Distribution.Solver.Compat.Prelude
 
 import qualified Data.Map as M
 import Data.Set (isSubsetOf)
-import Distribution.Compat.Graph
-         ( IsNode(..) )
 import Distribution.Compiler
          ( CompilerInfo )
 import Distribution.Solver.Modular.Assignment
          ( Assignment, toCPs )
 import Distribution.Solver.Modular.ConfiguredConversion
-         ( convCP )
+         ( convCPs )
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Dependency
     ( Var(..),
@@ -69,8 +67,6 @@ import Distribution.System
          ( Platform(..) )
 import Distribution.Simple.Setup
          ( BooleanFlag(..) )
-import Distribution.Simple.Utils
-    ( ordNubBy )
 import Distribution.Verbosity
 import Distribution.Solver.Modular.Message ( renderSummarizedMessage )
 
@@ -88,11 +84,10 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
         where
           pair lpc = (pcName $ unlabelPackageConstraint lpc, [lpc])
 
-      -- Results have to be converted into an install plan. 'convCP' removes
-      -- package qualifiers, which means that linked packages become duplicates
-      -- and can be removed.
-      postprocess a rdm = ordNubBy nodeKey $
-                          map (convCP iidx sidx) (toCPs a rdm)
+      -- Results have to be converted into an install plan. 'convCPs' removes
+      -- package qualifiers, so that goals resolving to the same package
+      -- instance (in particular linked goals) become a single package.
+      postprocess a rdm = convCPs iidx sidx (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN

@@ -288,7 +288,7 @@ pruneInstallPlan installPlan pkgSpecifiers =
     SolverInstallPlan.dependencyClosure installPlan pkgIds
   where
     pkgIds =
-      [ PlannedId (packageId pkg)
+      [ PlannedId (packageId pkg) Nothing
       | SpecificSourcePackage pkg <- pkgSpecifiers
       ]
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= packageId thisPkg)

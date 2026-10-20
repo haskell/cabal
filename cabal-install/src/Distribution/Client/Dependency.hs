@@ -1105,7 +1105,7 @@ configuredPackageProblems
 configuredPackageProblems
   platform
   cinfo
-  (SolverPackage pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
+  (SolverPackage pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps' _qualifier) =
     [ DuplicateFlag flag
     | flag <- PD.findDuplicateFlagAssignments specifiedFlags
     ]

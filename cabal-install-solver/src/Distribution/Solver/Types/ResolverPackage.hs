@@ -45,7 +45,7 @@ resolverPackageExeDeps (Configured spkg) = solverPkgExeDeps spkg
 instance IsNode (ResolverPackage loc) where
   type Key (ResolverPackage loc) = SolverId
   nodeKey (PreExisting ipkg) = PreExistingId (packageId ipkg) (installedUnitId ipkg)
-  nodeKey (Configured spkg) = PlannedId (packageId spkg)
+  nodeKey (Configured spkg) = PlannedId (packageId spkg) (solverPkgQualifier spkg)
   -- Use dependencies for ALL components
   nodeNeighbors pkg =
     ordNub $ fold (resolverPackageLibDeps pkg) ++

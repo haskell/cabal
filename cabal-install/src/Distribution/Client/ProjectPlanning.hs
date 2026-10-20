@@ -159,6 +159,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.InstSolverPackage
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackagePath (Qualified (..), dispQPN)
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
@@ -1733,6 +1734,21 @@ elaborateInstallPlan
           case planpkg of
             SolverInstallPlan.PreExisting pkg ->
               return [InstallPlan.PreExisting (instSolverPkgIPI pkg)]
+            SolverInstallPlan.Configured pkg
+              | shouldBuildInplaceOnly pkg
+              , Just qual <- solverPkgQualifier pkg ->
+                  -- An inplace package is identified by its package id alone
+                  -- (its unit id and its build directory), so it cannot have
+                  -- a second instance.
+                  dieProgress $
+                    text "The dependency solver needs a second instance of"
+                      <+> quotes (pretty (packageId pkg))
+                      <+> text "for"
+                      <+> quotes (dispQPN (Q qual (packageName pkg)))
+                      <+> text "(with different dependencies than the first),"
+                      <+> text "but packages of the project, and packages that"
+                      <+> text "depend on them, are built inplace and can only"
+                      <+> text "have one instance."
             SolverInstallPlan.Configured pkg ->
               let inplace_doc
                     | shouldBuildInplaceOnly pkg = text "inplace"
@@ -1751,7 +1767,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0) = do
+      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0 _) = do
         when (bt == PD.Make) $
           dieProgress $
             text "'build-type: Make' is no longer supported."
@@ -2150,6 +2166,7 @@ elaborateInstallPlan
                 _stanzas
                 _deps0
                 _exe_deps0
+                _qualifier
               )
         compGraph
         comps = do
@@ -2255,6 +2272,7 @@ elaborateInstallPlan
                 stanzas
                 deps0
                 _exe_deps0
+                _qualifier
               ) =
           (elaboratedPackage, wayWarnings pkgid >> buildOptionsAdjustmentWarnings)
           where
@@ -2531,16 +2549,22 @@ elaborateInstallPlan
       shouldBuildInplaceOnly :: SolverPackage loc -> Bool
       shouldBuildInplaceOnly pkg =
         Set.member
-          (packageId pkg)
+          (PlannedId (packageId pkg) (solverPkgQualifier pkg))
           pkgsToBuildInplaceOnly
 
-      pkgsToBuildInplaceOnly :: Set PackageId
+      -- Keyed by 'SolverId' rather than 'PackageId': a second instance of a
+      -- package version (see 'solverQualifier') can depend on different
+      -- packages than the first, and so be built inplace or not on its own.
+      pkgsToBuildInplaceOnly :: Set SolverId
       pkgsToBuildInplaceOnly =
         Set.fromList $
-          map packageId $
+          map Graph.nodeKey $
             SolverInstallPlan.reverseDependencyClosure
               solverPlan
-              (map PlannedId (Set.toList pkgsLocalToProject))
+              [ Graph.nodeKey planpkg
+              | planpkg@(SolverInstallPlan.Configured pkg) <- SolverInstallPlan.toList solverPlan
+              , isLocalToProject pkg
+              ]
 
       isLocalToProject :: Package pkg => pkg -> Bool
       isLocalToProject pkg =

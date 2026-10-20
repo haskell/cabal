@@ -146,23 +146,31 @@ tests =
               constraints cs $
                 mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
                   solverSuccess [("A", 1), ("B", 1), ("b-1-false-dep", 1)]
-      , let name = "Solver cannot link deps that have conflicting manual flag constraints"
+      , -- The setup dependency cannot link to the top-level B-1, because the
+        -- flag constraints conflict, so it gets its own instance of B-1.
+        let name = "Solver cannot link deps that have conflicting manual flag constraints"
             cs =
               [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" True
               , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False
               ]
-            failureReason = "(constraint from unknown source requires opposite flag selection)"
             checkFullLog lns =
               all
                 (\msg -> any (msg `isInfixOf`) lns)
-                [ "rejecting: B:-flag " ++ failureReason
-                , "rejecting: A:setup.B:+flag " ++ failureReason
+                [ "rejecting: A:setup.B:+flag (constraint from unknown source requires opposite flag selection)"
+                , "rejecting: A:setup.B:-flag (dependencies not linked: flag \"flag\" incompatible"
                 ]
          in runTest $
               constraints cs $
                 setVerbose $
                   mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
-                    SolverResult checkFullLog (Left $ const True)
+                    SolverResult checkFullLog $
+                      Right
+                        [ ("A", 1)
+                        , ("B", 1)
+                        , ("B", 1)
+                        , ("b-1-false-dep", 1)
+                        , ("b-1-true-dep", 1)
+                        ]
       ]
   , testGroup
       "Stanzas"
@@ -638,6 +646,8 @@ tests =
       , runTest $ chooseExeAfterBuildToolsPackage False "choose exe after choosing its package - failure"
       , runTest $ rejectInstalledBuildToolPackage "reject installed package for build-tool dependency"
       , runTest $ requireConsistentBuildToolVersions "build tool versions must be consistent within one package"
+      , runTest $ buildToolOwnInstance True "build tool instance shared with the top-level goal"
+      , runTest $ buildToolOwnInstance False "build tool gets its own instance of the same version"
       ]
   , -- build-tools dependencies
     testGroup
@@ -1678,6 +1688,7 @@ db15 =
 -- adds 'time' as a setup dependency for 'time'. The solver should detect the
 -- cycle when it attempts to link the setup and non-setup instances of the
 -- package and then choose a different version for the setup dependency.
+-- (An instance of its own of time-2 for the setup script is cyclic too.)
 issue4161 :: String -> SolverTest
 issue4161 name =
   setVerbose $
@@ -1696,7 +1707,7 @@ issue4161 name =
     checkFullLog =
       any $
         isInfixOf $
-          "rejecting: time:setup.time~>time-2 (cyclic dependencies; "
+          "rejecting: time:setup.time; time:setup.time~>time-2, 2 (cyclic dependencies; "
             ++ "conflict set: time:setup.time)"
 
 -- | Packages pkg-A, pkg-B, and pkg-C form a cycle. The solver should backtrack
@@ -2745,3 +2756,34 @@ containsInOrder _ [] = False
 containsInOrder (x : xs) (y : ys)
   | x == y = containsInOrder xs ys
   | otherwise = containsInOrder (x : xs) ys
+
+-- | A build tool can need an instance of a package version that the rest of
+-- the plan also uses, but with different dependencies.
+--
+-- This mirrors a GHC build on Windows: the project builds new versions of
+-- Win32 and process, Win32 has hsc2hs as a build tool, and hsc2hs depends on
+-- process. When the new process depends on the new Win32, the hsc2hs that
+-- builds Win32 cannot use the new process (that would be a cycle), so it is a
+-- second instance of hsc2hs-1, built against the installed process and Win32.
+-- When it does not, the build tool shares the top-level instance.
+buildToolOwnInstance :: Bool -> String -> SolverTest
+buildToolOwnInstance shared name =
+  constraints
+    [ ExVersionConstraint (ScopeQualified P.QualToplevel "Win32") (V.thisVersion (V.mkVersion [2]))
+    , ExVersionConstraint (ScopeQualified P.QualToplevel "process") (V.thisVersion (V.mkVersion [2]))
+    ]
+    $ mkTest db name ["Win32", "process", "hsc2hs"]
+    $ solverSuccess
+    $ if shared
+      then [("Win32", 2), ("hsc2hs", 1), ("process", 2)]
+      else [("Win32", 2), ("hsc2hs", 1), ("hsc2hs", 1), ("process", 2)]
+  where
+    db :: ExampleDb
+    db =
+      [ Left win32Inst
+      , Left $ exInst "process" 1 "process-1" [win32Inst]
+      , Right $ exAv "Win32" 2 [ExBuildToolAny "hsc2hs" "hsc2hs"]
+      , Right $ exAv "hsc2hs" 1 [ExAny "process"] `withExe` exExe "hsc2hs" [ExAny "process"]
+      , Right $ exAv "process" 2 [ExFix "Win32" 2 | not shared]
+      ]
+    win32Inst = exInst "Win32" 1 "Win32-1" []
