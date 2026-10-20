@@ -52,22 +52,21 @@
         [
           FieldLine
             WithComments {
-              justComments =
-              [
+              justComments = [
                 Comment
-                  "                     -- , foo"
-                  (Position 7 1),
+                  "-- , foo"
+                  (Position 7 22),
                 Comment
-                  "                     -- ^ This should be consumed after fieldContent"
-                  (Position 8 1)],
+                  "-- ^ This should be consumed after fieldContent"
+                  (Position 8 22)],
               unComments = Position 6 22}
             "base",
           FieldLine
             WithComments {
               justComments = [
                 Comment
-                  "                     -- , comment"
-                  (Position 10 1)],
+                  "-- , comment"
+                  (Position 10 22)],
               unComments = Position 9 22}
             ", bar",
           FieldLine
