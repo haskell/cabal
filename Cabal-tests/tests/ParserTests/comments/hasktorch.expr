@@ -21,77 +21,77 @@
     "-- ================================================================ --"
     (Position 8 1),
   Comment
-    "        -- containers ==0.5.10 || >0.5.10,"
-    (Position 70 1),
+    "-- containers ==0.5.10 || >0.5.10,"
+    (Position 70 9),
   Comment
-    "        -- deepseq ==1.3.0 || >1.3.0,"
-    (Position 71 1),
+    "-- deepseq ==1.3.0 || >1.3.0,"
+    (Position 71 9),
   Comment
-    "        -- managed (==1.0.0 || >1.0.0) && <1.1,"
-    (Position 73 1),
+    "-- managed (==1.0.0 || >1.0.0) && <1.1,"
+    (Position 73 9),
   Comment
-    "        -- microlens ==0.4.8 || >0.4.8,"
-    (Position 74 1),
+    "-- microlens ==0.4.8 || >0.4.8,"
+    (Position 74 9),
   Comment
-    "        -- numeric-limits ==0.1.0 || >0.1.0,"
-    (Position 75 1),
+    "-- numeric-limits ==0.1.0 || >0.1.0,"
+    (Position 75 9),
   Comment
-    "        -- typelits-witnesses ==0.2.3 || >0.2.3,"
-    (Position 79 1),
+    "-- typelits-witnesses ==0.2.3 || >0.2.3,"
+    (Position 79 9),
   Comment
-    "    -- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
-    (Position 84 1),
+    "-- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
+    (Position 84 5),
   Comment
-    "    -- BEGIN EDITS"
-    (Position 85 1),
+    "-- BEGIN EDITS"
+    (Position 85 5),
   Comment
-    "    -- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
-    (Position 86 1),
+    "-- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
+    (Position 86 5),
   Comment
-    "    -- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
-    (Position 148 1),
+    "-- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
+    (Position 148 5),
   Comment
-    "    -- END EDITS"
-    (Position 149 1),
+    "-- END EDITS"
+    (Position 149 5),
   Comment
-    "    -- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
-    (Position 150 1),
+    "-- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
+    (Position 150 5),
   Comment
-    "        -- containers ==0.5.10 || >0.5.10,"
-    (Position 203 1),
+    "-- containers ==0.5.10 || >0.5.10,"
+    (Position 203 9),
   Comment
-    "        -- deepseq ==1.3.0 || >1.3.0,"
-    (Position 204 1),
+    "-- deepseq ==1.3.0 || >1.3.0,"
+    (Position 204 9),
   Comment
-    "        -- managed (==1.0.0 || >1.0.0) && <1.1,"
-    (Position 208 1),
+    "-- managed (==1.0.0 || >1.0.0) && <1.1,"
+    (Position 208 9),
   Comment
-    "        -- microlens ==0.4.8 || >0.4.8,"
-    (Position 209 1),
+    "-- microlens ==0.4.8 || >0.4.8,"
+    (Position 209 9),
   Comment
-    "        -- numeric-limits ==0.1.0 || >0.1.0,"
-    (Position 210 1),
+    "-- numeric-limits ==0.1.0 || >0.1.0,"
+    (Position 210 9),
   Comment
-    "        -- typelits-witnesses ==0.2.3 || >0.2.3,"
-    (Position 214 1),
+    "-- typelits-witnesses ==0.2.3 || >0.2.3,"
+    (Position 214 9),
   Comment
-    "        -- containers ==0.5.10 || >0.5.10,"
-    (Position 282 1),
+    "-- containers ==0.5.10 || >0.5.10,"
+    (Position 282 9),
   Comment
-    "        -- deepseq ==1.3.0 || >1.3.0,"
-    (Position 283 1),
+    "-- deepseq ==1.3.0 || >1.3.0,"
+    (Position 283 9),
   Comment
-    "        -- managed (==1.0.0 || >1.0.0) && <1.1,"
-    (Position 287 1),
+    "-- managed (==1.0.0 || >1.0.0) && <1.1,"
+    (Position 287 9),
   Comment
-    "        -- microlens ==0.4.8 || >0.4.8,"
-    (Position 288 1),
+    "-- microlens ==0.4.8 || >0.4.8,"
+    (Position 288 9),
   Comment
-    "        -- numeric-limits ==0.1.0 || >0.1.0,"
-    (Position 289 1),
+    "-- numeric-limits ==0.1.0 || >0.1.0,"
+    (Position 289 9),
   Comment
-    "        -- typelits-witnesses ==0.2.3 || >0.2.3,"
-    (Position 293 1),
+    "-- typelits-witnesses ==0.2.3 || >0.2.3,"
+    (Position 293 9),
   Comment
-    "        -- text ==1.2.2 || >1.2.2,"
-    (Position 551 1)]
+    "-- text ==1.2.2 || >1.2.2,"
+    (Position 551 9)]
