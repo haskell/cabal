@@ -288,6 +288,10 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
               { ghcOptMode = toFlag GhcModeMergeObjs
               , ghcOptInputFiles = toNubListR files
               , ghcOptOutputFile = toFlag target
+              , -- The user's --ghc-options are passed here too and may refer
+                -- to packages (-trust base, -package-db ...), so GHC needs the
+                -- same package databases as for the other link steps.
+                ghcOptPackageDBs = withPackageDB lbi
               }
       | otherwise = do
           (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
@@ -604,9 +608,51 @@ getRPaths pbci = do
       let hostPref = case hostOS of
             OSX -> "@loader_path"
             _ -> "$ORIGIN"
-          relPath p = if isRelative p then hostPref </> p else p
+          -- The directory this artifact is installed to: a library goes to
+          -- the libdir, an executable to the bindir (the same split as
+          -- 'depLibraryPaths'). Absolute rpaths are re-expressed relative to
+          -- it below.
+          installDirs =
+            absoluteComponentInstallDirs
+              (localPkgDescr lbi)
+              lbi
+              (componentUnitId clbi)
+              NoCopyDest
+          ownDir = case clbi of
+            ExeComponentLocalBuildInfo{} -> bindir installDirs
+            _ -> libdir installDirs
+          -- Every rpath entry is loader-relative:
+          --
+          --  * a relative path gets the @$ORIGIN@ / @\@loader_path@ prefix, as
+          --    before;
+          --
+          --  * an absolute path is rewritten to a @$ORIGIN/../..@-style
+          --    expression computed against the artifact's own install
+          --    directory, so no build-host absolute path is baked into
+          --    DT_RUNPATH / LC_RPATH. A binary distribution assembled from a
+          --    store under, say, @/builds/ghc/_build/stage2/store/...@ must
+          --    keep working once moved; macOS 15's dyld even aborts on an
+          --    unresolvable absolute rpath instead of trying the next entry.
+          --    This is not gated on 'relocatable': that flag also triggers
+          --    'checkRelocatable', which refuses store layouts where the
+          --    dependencies live in sibling prefixes, and changes how
+          --    @library-dirs@ are registered, neither of which rpath
+          --    generation needs.
+          relPath p
+            | isRelative p = hostPref </> p
+            | otherwise = hostPref </> shortRelativePath ownDir p
           rpaths =
-            toNubListR (map relPath libraryPaths)
+            -- The artifact's own directory comes first, so a library
+            -- installed next to it is found: 'depLibraryPaths' can yield the
+            -- parent directory for a same-directory dependency (relativised
+            -- to @$ORIGIN/..@), which leaves that dependency unfound. glibc
+            -- masks this with the LD_LIBRARY_PATH GHC sets before dlopen,
+            -- but musl reads LD_LIBRARY_PATH only at process start, so there
+            -- the missing self-rpath is fatal: a Backpack signature
+            -- implementation installed next to the instantiated unit fails
+            -- to load (GHC's testsuite T14304 on Alpine).
+            toNubListR [hostPref]
+              <> toNubListR (map relPath libraryPaths)
               <> toNubListR (map getSymbolicPath $ extraLibDirs bi)
       return rpaths
     else return mempty

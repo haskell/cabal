@@ -3,6 +3,7 @@ module Distribution.Solver.Types.GoalScope
     , Namespace(..)
     , Qualifier(..)
     , dispQualifier
+    , dispGoalScope
     , Qualified(..)
     , QPN
     , dispQPN
@@ -43,7 +44,10 @@ import qualified Text.PrettyPrint as Disp
 -- dependency of a non-cross build, where the host toolchain is the only one;
 -- a cross build never constructs it, because there tool scopes sit at 'Build'.
 data GoalScope = GoalScope Machine Namespace Qualifier
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary GoalScope
+instance Structured GoalScope
 
 -- | Top-level namespace
 --
@@ -55,7 +59,10 @@ data Namespace =
 
     -- | A namespace for a specific build target
   | Independent PackageName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary Namespace
+instance Structured Namespace
 
 -- | Pretty-prints a machine. The result is either empty (for the default 'Host'
 -- machine) or ends in a colon, so it can be prepended onto a namespace.
@@ -99,7 +106,10 @@ data Qualifier =
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
   | QualExe PackageName PackageName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary Qualifier
+instance Structured Qualifier
 
 -- | Pretty-prints a qualifier. The result is either empty or
 -- ends in a period, so it can be prepended onto a package name.
@@ -125,8 +135,13 @@ type QPN = Qualified PackageName
 
 -- | Pretty-prints a qualified package name.
 dispQPN :: QPN -> Disp.Doc
-dispQPN (Q (GoalScope machine ns qual) pn) =
-  dispMachine machine <<>> dispNamespace ns <<>> dispQualifier qual <<>> pretty pn
+dispQPN (Q gs pn) = dispGoalScope gs <<>> pretty pn
+
+-- | Pretty-prints a goal scope. The result is either empty or ends in a
+-- period, so it can be prepended onto a package name.
+dispGoalScope :: GoalScope -> Disp.Doc
+dispGoalScope (GoalScope machine ns qual) =
+  dispMachine machine <<>> dispNamespace ns <<>> dispQualifier qual
 
 -- | String representation of a qualified package name.
 showQPN :: QPN -> String

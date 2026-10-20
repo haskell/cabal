@@ -180,6 +180,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.InstSolverPackage
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.GoalScope (Qualified (..), dispQPN)
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
@@ -2051,6 +2052,23 @@ elaborateInstallPlan
           case planpkg of
             SolverInstallPlan.PreExisting pkg ->
               return [InstallPlan.PreExisting (WithMachine (instSolverMachine pkg) (instSolverPkgIPI pkg))]
+            SolverInstallPlan.Configured pkg
+              | Just qual <- solverPkgQualifier pkg
+              , shouldBuildInplaceOnly pkg
+                  || not (Map.member (packageId pkg) sourcePackageHashes) ->
+                  -- A second instance of a package version needs a unit id
+                  -- of its own, i.e. a content hash (see
+                  -- 'nameUnitAfterPackageId'): a package built inplace, or without
+                  -- a source hash to derive one from, would collide with the
+                  -- first instance.
+                  dieProgress $
+                    text "The dependency solver needs a second instance of"
+                      <+> quotes (pretty (packageId pkg))
+                      <+> text "for"
+                      <+> quotes (dispQPN (Q qual (packageName pkg)))
+                      <+> text "(with different dependencies than the first),"
+                      <+> text "but packages of the project, and packages that"
+                      <+> text "depend on them, can only have one instance."
             SolverInstallPlan.Configured pkg ->
               let inplace_doc
                     | shouldBuildInplaceOnly pkg = text "inplace"
@@ -2069,7 +2087,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage solverPkgMachine _ _ _ deps0 exe_deps0) = do
+      elaborateSolverToComponents mapDep spkg@(SolverPackage solverPkgMachine _ _ _ deps0 exe_deps0 _) = do
         when (bt == PD.Make) $
           dieProgress $
             text "'build-type: Make' is no longer supported."
@@ -2502,6 +2520,7 @@ elaborateInstallPlan
                 _stanzas
                 deps0
                 _exe_deps0
+                _qualifier
               )
         compGraph
         comps = do
@@ -2622,6 +2641,7 @@ elaborateInstallPlan
                 stanzas
                 deps0
                 _exe_deps0
+                _qualifier
               ) =
           (elaboratedPackage, libraryWayWarnings toolchains perPkgOption elabMachine pkgid >> buildOptionsAdjustmentWarnings)
           where
@@ -2971,6 +2991,9 @@ elaborateInstallPlan
       nameUnitAfterPackageId pkg =
         not (fromFlagOrDefault True (projectConfigInplaceBuilds sharedPackageConfig))
           && inProjectSourcePackagesClosure pkg
+          -- A second instance of a package version cannot share the name of
+          -- the first. See 'solverQualifier'.
+          && isNothing (solverPkgQualifier pkg)
 
       -- Is this package part of the project's own source closure?
       --
@@ -2978,15 +3001,26 @@ elaborateInstallPlan
       -- built in place is a matter of configuration, but it is part of the
       -- project either way.
       inProjectSourcePackagesClosure :: SolverPackage loc -> Bool
-      inProjectSourcePackagesClosure pkg =
-        Set.member
-          (packageId pkg)
-          projectSourcePackagesClosure
+      inProjectSourcePackagesClosure pkg
+        -- The first instance of a package version stands for the package id
+        -- (and so for both of its machines); a second one, see
+        -- 'solverQualifier', depends on packages of its own and is judged by them.
+        | isJust (solverPkgQualifier pkg) =
+            Set.member
+              (Graph.nodeKey (SolverInstallPlan.Configured pkg))
+              projectSourcePackagesClosure
+        | otherwise =
+            Set.member
+              (packageId pkg)
+              projectSourcePackageIdsClosure
 
-      projectSourcePackagesClosure :: Set PackageId
+      projectSourcePackageIdsClosure :: Set PackageId
+      projectSourcePackageIdsClosure = Set.map packageId projectSourcePackagesClosure
+
+      projectSourcePackagesClosure :: Set SolverId
       projectSourcePackagesClosure =
         Set.fromList $
-          map packageId $
+          map Graph.nodeKey $
             SolverInstallPlan.reverseDependencyClosure
               solverPlan
               -- Take the roots straight from the plan so each 'SolverId' carries
@@ -4645,7 +4679,7 @@ setupHsScriptOptions
       , -- note that the above adds the extra-prog-path directly following the elaborated
         -- dep paths, so that it overrides the normal path, but _not_ the elaborated extensions
         -- for build-tools-depends.
-        useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
+        useExtraEnvOverrides = dataDirsEnvironmentForPackage distdir plan elab
       , useWin32CleanHack = False -- TODO: [required eventually]
       , setupCacheLock = Just cacheLock
       , isInteractive = False

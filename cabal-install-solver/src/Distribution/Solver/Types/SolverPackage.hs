@@ -9,6 +9,7 @@ import Distribution.Package ( Package(..) )
 import Distribution.PackageDescription ( FlagAssignment )
 import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.GoalScope ( GoalScope )
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Machine ( Machine )
@@ -27,7 +28,9 @@ data SolverPackage loc = SolverPackage {
         solverPkgFlags   :: FlagAssignment,
         solverPkgStanzas :: OptionalStanzaSet,
         solverPkgLibDeps :: ComponentDeps [SolverId],
-        solverPkgExeDeps :: ComponentDeps [SolverId]
+        solverPkgExeDeps :: ComponentDeps [SolverId],
+        -- | Which instance of the package this is, see 'solverQualifier'.
+        solverPkgQualifier :: Maybe GoalScope
     }
   deriving (Eq, Show, Generic)
 

@@ -18,6 +18,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 -- local
+import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Configure (findDistPrefOrDefault)
@@ -28,7 +29,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
-import Distribution.System (Platform, buildPlatform)
+import Distribution.System (Arch (..), OS (..), Platform (..), buildPlatform)
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
@@ -85,6 +86,40 @@ runConfigureScript verbHandles cfg flags programDb hp = do
         cxxProgShort <- getShortPathName cxxProg
         return (Just cxxProgShort, Just cxxFlags)
       Nothing -> return (Nothing, Nothing)
+
+  -- The compiler this package is configured with. A configure script that
+  -- asks for it (autoconf's @AC_ARG_WITH([compiler])@ or @AC_ARG_VAR([GHC])@,
+  -- as GHC's own libraries do to run @ghc --print-prim-module@) must get the
+  -- compiler Cabal uses, not whatever @ghc@ happens to be on PATH. The
+  -- ConfigFlags alone do not say: cabal-install passes the compiler as a
+  -- program path override and leaves 'configHcPath' unset, in which case
+  -- 'configureArgs' would only pass the flavour name. Only GHC is handled:
+  -- 'configCompilerEx' accepts nothing else but UHC, which keeps getting
+  -- the flavour name as before.
+  let hcPrograms = case flagToMaybe (configHcFlavor cfg) of
+        Just GHC -> Just (ghcProgram, ghcPkgProgram)
+        _ -> Nothing
+      configuredPath prog = programPath <$> lookupProgram prog programDb
+  mHcPath <- traverse getShortPathName (hcPrograms >>= configuredPath . fst)
+  mHcPkgPath <- traverse getShortPathName (hcPrograms >>= configuredPath . snd)
+  let orConfigured flag mpath = case flag of
+        Flag p -> Flag p
+        NoFlag -> maybe NoFlag Flag mpath
+      cfg' =
+        cfg
+          { configHcPath = configHcPath cfg `orConfigured` mHcPath
+          , configHcPkg = configHcPkg cfg `orConfigured` mHcPkgPath
+          }
+      -- What 'configureArgs' passes as '--with-compiler' and '--with-hc-pkg';
+      -- 'HC=' and the environment must agree with those, also when the flags
+      -- were given explicitly.
+      hcPath = flagToMaybe (configHcPath cfg')
+      hcPkgPath = flagToMaybe (configHcPkg cfg')
+      hcEnv =
+        [ (var, Just path)
+        | Just GHC <- [flagToMaybe (configHcFlavor cfg)]
+        , (var, Just path) <- [("GHC", hcPath), ("GHC_PKG", hcPkgPath)]
+        ]
 
   let configureFile' = toUnix configureFile
   -- autoconf is fussy about filenames, and has a set of forbidden
@@ -178,13 +213,25 @@ runConfigureScript verbHandles cfg flags programDb hp = do
         ("CFLAGS", Just (mkFlagsEnv ccFlags "CFLAGS"))
           : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
           ++ [("PATH", Just pathEnv) | not (null extraPath)]
+          ++ hcEnv
           ++ cabalFlagEnv
-      maybeHostFlag = ["--host=" ++ show (pretty hp) | hp /= buildPlatform]
+      -- Cross-compiling: tell the script which machine it configures for,
+      -- in the GNU spelling it understands (see 'platformGnuTriple').
+      maybeHostFlag =
+        [ flag
+        | hp /= buildPlatform
+        , flag <- ["--build=" ++ platformGnuTriple buildPlatform, "--host=" ++ platformGnuTriple hp]
+        ]
+      backwardsCompatHack = False
+      args = configureArgs backwardsCompatHack cfg'
       args' =
         configureFile'
           : args
           ++ ["CC=" ++ ccProgShort]
           ++ ["CXX=" ++ cxxProgShort | Just cxxProgShort <- [mcxxProgShort]]
+          -- The standard autoconf spelling for the Haskell compiler (#2947);
+          -- '--with-compiler' above is kept for the scripts that use it.
+          ++ ["HC=" ++ p | Just p <- [hcPath]]
           ++ maybeHostFlag
       shProg = simpleProgram "sh"
   progDb <- prependProgramSearchPath verbosity extraPath [] emptyProgramDb
@@ -200,9 +247,6 @@ runConfigureScript verbHandles cfg flags programDb hp = do
           { progInvokeCwd = Just build_in
           }
     Nothing -> dieWithException verbosity NotFoundMsg
-  where
-    args = configureArgs backwardsCompatHack cfg
-    backwardsCompatHack = False
 
 -- | Convert Windows path to Unix ones
 toUnix :: String -> String
@@ -241,3 +285,40 @@ badAutoconfCharacters =
   , ('`', "backtick")
   , ('|', "pipe")
   ]
+
+-- | The GNU configuration name (@cpu-vendor-os@ triple) of a platform, the
+-- spelling autoconf's @config.sub@ understands for @--build@ and @--host@.
+--
+-- Cabal's own rendering of a 'Platform' (@x86_64-linux@, @javascript-ghcjs@,
+-- @wasm32-wasi@) is not a triple: some of it @config.sub@ canonicalises by
+-- luck, the rest it rejects, so a configure script run for a cross target
+-- would die on its own command line.
+platformGnuTriple :: Platform -> String
+platformGnuTriple (Platform arch os) = cpu arch ++ "-" ++ vendorOS os
+  where
+    cpu a = case a of
+      PPC -> "powerpc"
+      PPC64 -> "powerpc64"
+      PPC64LE -> "powerpc64le"
+      OtherArch s -> s
+      _ -> prettyShow a
+    vendorOS o = case o of
+      Linux -> "unknown-linux"
+      Windows -> "unknown-mingw32"
+      OSX -> "apple-darwin"
+      FreeBSD -> "unknown-freebsd"
+      OpenBSD -> "unknown-openbsd"
+      NetBSD -> "unknown-netbsd"
+      DragonFly -> "unknown-dragonfly"
+      Solaris -> "unknown-solaris2"
+      AIX -> "ibm-aix"
+      HPUX -> "hp-hpux"
+      IRIX -> "sgi-irix"
+      HaLVM -> "unknown-halvm"
+      Hurd -> "unknown-gnu"
+      IOS -> "apple-ios"
+      Android -> "unknown-linux-android"
+      Ghcjs -> "unknown-ghcjs"
+      Wasi -> "unknown-wasi"
+      Haiku -> "unknown-haiku"
+      OtherOS s -> "unknown-" ++ s

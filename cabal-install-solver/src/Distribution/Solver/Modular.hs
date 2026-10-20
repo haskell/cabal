@@ -16,14 +16,12 @@ import Distribution.Solver.Compat.Prelude
 
 import qualified Data.Map as M
 import Data.Set (isSubsetOf)
-import Distribution.Compat.Graph
-         ( IsNode(..) )
 import Distribution.Compiler
          ( CompilerInfo )
 import Distribution.Solver.Modular.Assignment
          ( Assignment, toCPs )
 import Distribution.Solver.Modular.ConfiguredConversion
-         ( convCP )
+         ( convCPs )
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Dependency
     ( Var(..),
@@ -69,8 +67,6 @@ import Distribution.Solver.Types.Machine
 import Distribution.Solver.Types.Variable ( Variable(..) )
 import Distribution.Simple.Setup
          ( BooleanFlag(..) )
-import Distribution.Simple.Utils
-    ( ordNubBy )
 import Distribution.Verbosity
 import Distribution.Solver.Modular.Message ( renderSummarizedMessage )
 
@@ -94,12 +90,12 @@ modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
         where
           pair lpc = (pcName $ unlabelPackageConstraint lpc, [lpc])
 
-      -- Results have to be converted into an install plan. 'convCP' removes
-      -- package qualifiers, which means that linked packages become duplicates
-      -- and can be removed. Each pre-existing package is resolved against the
-      -- installed-package index of its own machine (see 'convCP').
-      postprocess a rdm = ordNubBy nodeKey $
-                          map (convCP iidxs sidx) (toCPs a rdm)
+      -- Results have to be converted into an install plan. 'convCPs' removes
+      -- package qualifiers, so that goals resolving to the same package
+      -- instance (in particular linked goals) become a single package. Each
+      -- pre-existing package is resolved against the installed-package index
+      -- of its own machine (see 'convCPs').
+      postprocess a rdm = convCPs iidxs sidx (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN

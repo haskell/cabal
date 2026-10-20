@@ -472,6 +472,7 @@ dependOnWiredIns compiler params =
         (PackageConstraint (ConstraintScope (Just Host) (ScopeAnyQualifier pkgName)) (PackagePropertyInstalledSpecificUnitId unitId))
         ConstraintSourceNonReinstallablePackage
       | (pkgName, unitId) <- wiredInUnitIds
+      , not (rebuiltFromSource pkgName)
       ]
         ++
         -- Old versions of `base` must be excluded from build plans still as they do not depend on any version of a wired-in unit.
@@ -490,6 +491,19 @@ dependOnWiredIns compiler params =
             (PackageConstraint (ConstraintScope (Just Host) (ScopeAnyQualifier $ mkPackageName "base")) (PackagePropertyVersion (orLaterVersion (mkVersion [4, 22]))))
             ConstraintSourceNonReinstallablePackage
         ]
+
+    -- A wired-in unit id pins a package to the copy the compiler was built
+    -- with. That is the right default even with --allow-boot-library-installs:
+    -- reinstalling ghc or ghc-internal under a compiler gives a broken
+    -- toolchain. The one legitimate exception is a project that provides such
+    -- a package itself, as a target: GHC's own source tree building its
+    -- libraries with the stage1 compiler. That package will be built from the
+    -- project's source whatever the pin says, so with
+    -- --allow-boot-library-installs the pin would only make the plan
+    -- unsolvable. Dependencies that are not targets stay pinned.
+    rebuiltFromSource pkgName =
+      asBool (depResolverAllowBootLibInstalls params)
+        && pkgName `Set.member` depResolverTargets params
 
 -- | Some packages are specific to a given compiler version and should never be
 -- reinstalled.
@@ -1127,7 +1141,7 @@ configuredPackageProblems
   -> [PackageProblem]
 configuredPackageProblems
   toolchains
-  (SolverPackage machine pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
+  (SolverPackage machine pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps' _qualifier) =
     [ DuplicateFlag flag
     | flag <- PD.findDuplicateFlagAssignments specifiedFlags
     ]

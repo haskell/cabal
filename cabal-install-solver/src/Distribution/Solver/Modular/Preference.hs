@@ -458,21 +458,29 @@ preferReallyEasyGoalChoices = go
 
 -- | Monad used internally in enforceSingleInstanceRestriction
 --
--- For each package instance we record the goal for which we picked a concrete
--- instance. The SIR means that for any package instance there can only be one
--- per build machine: a Setup/Build-machine instance and a Host-machine instance of
--- the same package+version are built by different toolchains and land in
--- different stores, so they don't collide the way two same-machine instances
--- would.
-type EnforceSIR = Reader (Map (Machine, PI PN) QPN)
+-- For each build machine, qualifier and package instance we record the goal for
+-- which we picked a concrete instance. The SIR means that there can only be
+-- one per machine and qualifier: a Setup/Build-machine instance and a Host-machine
+-- instance of the same package+version are built by different toolchains and
+-- land in different stores, so they don't collide the way two same-machine
+-- instances would.
+type EnforceSIR = Reader (Map (Machine, Qualifier, PI PN) QPN)
 
--- | Enforce ghc's single instance restriction
+-- | Enforce the single instance restriction
 --
 -- From the solver's perspective, this means that for any package instance
--- (that is, package name + package version) there can be at most one qualified
--- goal, within a given build machine, resolving to that instance (there may be
--- other goals _linking_ to that instance however, and there may be another
--- goal at a different machine using the same instance).
+-- (that is, package name + package version) there can be at most one goal per
+-- build machine and qualifier resolving to that instance (there may be other
+-- goals _linking_ to that instance however). Goals with different qualifiers,
+-- e.g. a build tool and a top-level goal, may each resolve to their own
+-- instance of the same version, with different dependencies; the solver still
+-- prefers linking them (see 'preferLinked').
+--
+-- This restriction used to be global, mirroring GHC's own single instance
+-- restriction, which GHC lifted when it started telling instances apart by
+-- unit id. The library dependencies of a goal keep its qualifier, so what gets
+-- linked together in one scope still has a single instance of each package.
+-- Different namespaces (independent goals) still share the restriction.
 enforceSingleInstanceRestriction :: Tree d c -> Tree d c
 enforceSingleInstanceRestriction = (`runReader` M.empty) . go
   where
@@ -492,8 +500,8 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . go
 
     -- The check proper
     goP :: QPN -> POption -> EnforceSIR (Tree d c) -> EnforceSIR (Tree d c)
-    goP qpn@(Q (GoalScope machine _ _) pn) (POption i linkedTo) r = do
-      let inst = (machine, PI pn i)
+    goP qpn@(Q (GoalScope machine _ q) pn) (POption i linkedTo) r = do
+      let inst = (machine, q, PI pn i)
       env <- ask
       case (linkedTo, M.lookup inst env) of
         (Just _, _) ->

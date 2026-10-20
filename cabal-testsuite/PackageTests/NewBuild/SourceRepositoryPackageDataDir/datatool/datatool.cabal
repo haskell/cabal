@@ -1,0 +1,12 @@
+cabal-version: 2.4
+name:          datatool
+version:       1.0
+build-type:    Simple
+data-files:    greeting.txt
+
+executable datatool
+  main-is:          Main.hs
+  other-modules:    Paths_datatool
+  autogen-modules:  Paths_datatool
+  build-depends:    base, app
+  default-language: Haskell2010

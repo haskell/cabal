@@ -31,6 +31,7 @@ test-suite unit-tests
   other-modules:
     Test.Laws
     UnitTests.Distribution.CabalSpecVersion
+    UnitTests.Distribution.Compat.CopyFile
     UnitTests.Distribution.Compat.Graph
     UnitTests.Distribution.Compat.Time
     UnitTests.Distribution.Described
@@ -68,12 +69,16 @@ test-suite unit-tests
     , directory           >=1.2.7
     , filepath
     , pretty
+    , process
     , QuickCheck          >=2.14  && <2.20
     , tasty               >=1.2.3 && <1.6
     , tasty-hunit
     , tasty-quickcheck    <0.12
     , temporary
     , text
+
+  if !os(windows)
+    build-depends: unix
 
   ghc-options:      -Wall
   default-language: GHC2021
