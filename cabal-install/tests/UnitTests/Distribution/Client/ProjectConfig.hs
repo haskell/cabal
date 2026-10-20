@@ -513,7 +513,7 @@ instance Arbitrary ProjectConfigBuildOnly where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
-      <*> (fmap getShortToken <$> arbitrary)
+      <*> (fmap (Text.pack . getShortToken) <$> arbitrary)
       <*> arbitrary
       <*> (fmap getShortToken <$> arbitrary)
       <*> (fmap getShortToken <$> arbitrary)
