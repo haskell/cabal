@@ -1,10 +1,10 @@
 [
   Comment
-    "    -- foo"
-    (Position 13 1),
+    "-- foo"
+    (Position 13 5),
   Comment
-    "    -- bar"
-    (Position 15 1),
+    "-- bar"
+    (Position 15 5),
   Comment
-    "    -- baz"
-    (Position 17 1)]
+    "-- baz"
+    (Position 17 5)]
