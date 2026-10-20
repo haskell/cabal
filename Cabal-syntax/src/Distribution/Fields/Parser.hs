@@ -125,6 +125,8 @@ tokSym :: Parser (Name Position)
 tokSym = getTokenWithPos $ \case L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing
 tokSym', tokStr, tokOther :: Parser (SectionArg Position)
 tokColon, tokCloseBrace :: Parser ()
+
+colon, openBrace, closeBrace :: Parser ()
 tokSym' = getTokenWithPos $ \case L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
 tokStr = getTokenWithPos $ \case L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing
 tokOther = getTokenWithPos $ \case L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
@@ -145,8 +147,6 @@ sectionArg = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
 
 fieldSecName :: Parser (Name Position)
 fieldSecName = tokSym <?> "field or section name"
-
-colon, openBrace, closeBrace :: Parser ()
 colon = tokColon <?> "\":\""
 openBrace = do
   pos <- tokOpenBrace <?> "\"{\""
@@ -214,7 +214,7 @@ inLexerMode (LexerMode mode) p =
 -- @
 -- CabalStyleFile             ::= Elements
 --
--- Elements                   ::= Elements* '\\n'?
+-- Elements                   ::= Element* '\\n'?
 -- Element                    ::= '\\n' ElementInLayoutContext
 --                              | ElementInNonLayoutContext
 -- ElementInLayoutContext     ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
