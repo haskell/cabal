@@ -281,24 +281,28 @@ noComments = fmap (WithComments mempty)
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 prependCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
+prependCommentsFields [] fs = Just fs
 prependCommentsFields cs fs = case fs of
   [] -> Nothing
   (f : fs') -> Just $ prependCommentsField cs f : fs'
 
 -- | We attach the comments to the name (foremost child) of 'Field', this hence cannot fail.
 prependCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
+prependCommentsField [] f = f
 prependCommentsField cs f = case f of
   (Field name fls) -> Field (L.over (traverse . L.justComments) (cs ++) name) fls
   (Section name args fs) -> Section (L.over (traverse . L.justComments) (cs ++) name) args fs
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 appendCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
+appendCommentsFields [] fs = Just fs
 appendCommentsFields cs fs = case fs of
   [] -> Nothing
   [f] -> Just [appendCommentsField cs f]
   (f : fs') -> (f :) <$> appendCommentsFields cs fs'
 
 appendCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
+appendCommentsField [] f = f
 appendCommentsField cs f = case f of
   (Field name fls) -> case appendCommentsFieldLines cs fls of
     Nothing -> Field (L.over (traverse . L.justComments) (++ cs) name) []
@@ -309,6 +313,7 @@ appendCommentsField cs f = case f of
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 appendCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> Maybe [FieldLine (WithComments ann)]
+appendCommentsFieldLines [] fls = Just fls
 appendCommentsFieldLines cs fls = case fls of
   [] -> Nothing
   [fl] -> Just [L.over (traverse . L.justComments) (++ cs) fl]
