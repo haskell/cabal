@@ -150,7 +150,7 @@ projectConfigKeepTempFiles :: Lens' ProjectConfigBuildOnly (Flag Bool)
 projectConfigKeepTempFiles f s = fmap (\x -> s{T.projectConfigKeepTempFiles = x}) (f (T.projectConfigKeepTempFiles s))
 {-# INLINEABLE projectConfigKeepTempFiles #-}
 
-projectConfigHttpTransport :: Lens' ProjectConfigBuildOnly (Flag String)
+projectConfigHttpTransport :: Lens' ProjectConfigBuildOnly (Flag Text)
 projectConfigHttpTransport f s = fmap (\x -> s{T.projectConfigHttpTransport = x}) (f (T.projectConfigHttpTransport s))
 {-# INLINEABLE projectConfigHttpTransport #-}
 

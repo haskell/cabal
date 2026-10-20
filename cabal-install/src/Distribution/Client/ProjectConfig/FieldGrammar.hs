@@ -61,7 +61,7 @@ projectConfigBuildOnlyFieldGrammar = do
   projectConfigKeepGoing <- optionalFieldDef "keep-going" L.projectConfigKeepGoing mempty
   projectConfigOfflineMode <- optionalFieldDef "offline" L.projectConfigOfflineMode mempty
   projectConfigKeepTempFiles <- optionalFieldDef "haddock-keep-temp-files" L.projectConfigKeepTempFiles mempty
-  projectConfigHttpTransport <- optionalFieldDefAla "http-transport" (alaFlag Token) L.projectConfigHttpTransport mempty
+  projectConfigHttpTransport <- fmap Text.pack <$> optionalFieldDefAla "http-transport" (alaFlag Token) (L.projectConfigHttpTransport . fromLastTextLens) mempty
   projectConfigIgnoreExpiry <- optionalFieldDef "ignore-expiry" L.projectConfigIgnoreExpiry mempty
   projectConfigCacheDir <- optionalFieldDefAla "remote-repo-cache" (alaFlag FilePathNT) L.projectConfigCacheDir mempty
   projectConfigLogsDir <- optionalFieldDefAla "logs-dir" (alaFlag FilePathNT) L.projectConfigLogsDir mempty

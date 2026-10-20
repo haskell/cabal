@@ -178,7 +178,7 @@ data ProjectConfigBuildOnly = ProjectConfigBuildOnly
   , projectConfigKeepGoing :: Flag Bool
   , projectConfigOfflineMode :: Flag Bool
   , projectConfigKeepTempFiles :: Flag Bool
-  , projectConfigHttpTransport :: Flag String
+  , projectConfigHttpTransport :: Flag Text
   , projectConfigIgnoreExpiry :: Flag Bool
   , projectConfigCacheDir :: Flag FilePath
   , projectConfigLogsDir :: Flag FilePath

@@ -855,7 +855,7 @@ convertLegacyBuildOnlyFlags
       GlobalFlags
         { globalCacheDir = projectConfigCacheDir
         , globalLogsDir = projectConfigLogsDir
-        , globalHttpTransport = projectConfigHttpTransport
+        , globalHttpTransport = (fmap Text.pack -> projectConfigHttpTransport)
         , globalIgnoreExpiry = projectConfigIgnoreExpiry
         } = globalFlags
 
@@ -949,7 +949,7 @@ convertToLegacySharedConfig
           , globalActiveRepos = projectConfigActiveRepos
           , globalLogsDir = projectConfigLogsDir
           , globalIgnoreExpiry = projectConfigIgnoreExpiry
-          , globalHttpTransport = projectConfigHttpTransport
+          , globalHttpTransport = fmap Text.unpack projectConfigHttpTransport
           , globalStoreDir = projectConfigStoreDir
           , globalProgPathExtra = projectConfigProgPathExtra
           }

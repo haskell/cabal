@@ -300,7 +300,7 @@ projectConfigWithSolverRepoContext
           )
           projectConfigCacheDir
       )
-      (flagToMaybe projectConfigHttpTransport)
+      (Text.unpack <$> flagToMaybe projectConfigHttpTransport)
       (flagToMaybe projectConfigIgnoreExpiry)
       (fromNubList projectConfigProgPathExtra)
 
@@ -438,7 +438,7 @@ resolveBuildTimeSettings
       buildSettingRemoteRepos = fromNubList projectConfigRemoteRepos
       buildSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
       buildSettingCacheDir = fromFlag projectConfigCacheDir
-      buildSettingHttpTransport = Text.pack <$> flagToMaybe projectConfigHttpTransport
+      buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport
       buildSettingIgnoreExpiry = fromFlag projectConfigIgnoreExpiry
       buildSettingReportPlanningFailure =
         fromFlag projectConfigReportPlanningFailure
@@ -1434,7 +1434,7 @@ fetchAndReadSourcePackages
           configureTransport
             verbosity
             progPathExtra
-            preferredHttpTransport
+            (fmap Text.unpack preferredHttpTransport)
       sequenceA
         [ fetchAndReadSourcePackageRemoteTarball
           verbosity
