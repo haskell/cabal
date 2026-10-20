@@ -22,6 +22,7 @@ module Distribution.Fields.Lexer
 import Prelude ()
 import qualified Prelude
 import Distribution.Compat.Prelude
+import Data.Char (isSpace)
 
 import Distribution.Fields.LexerMonad
 import Distribution.Parsec.Position (Position (..), incPos, retPos)
@@ -83,7 +84,14 @@ tokens :-
 <bol_section, bol_field_layout, bol_field_braces> {
   @nbspspacetab* @nl         { \pos len inp -> checkWhitespace pos len inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
-  $spacetab* "--" $comment*  { toki TokComment }
+  $spacetab* "--" $comment*  { \pos len inp -> do
+                                    -- Remove leading space and move the position to the real start of the comment.
+                                    let (sp, cmt) = B.Char8.span isSpace inp
+                                        spByteLen = B.length sp
+                                    spCharLen <- checkLeadingWhitespace pos spByteLen sp
+                                    let pos' = incPos spCharLen pos
+                                    toki TokComment pos' (len - spByteLen) cmt
+  }
   -- TODO: check the lack of @nl works here
   -- including counting line numbers
 }

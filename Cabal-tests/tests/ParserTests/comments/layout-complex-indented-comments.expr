@@ -31,11 +31,11 @@
             WithComments {
               justComments = [
                 Comment
-                  "  -- secure: True"
-                  (Position 8 1),
+                  "-- secure: True"
+                  (Position 8 3),
                 Comment
-                  "  -- root-keys:"
-                  (Position 9 1),
+                  "-- root-keys:"
+                  (Position 9 3),
                 Comment
                   "-- ignore-expiry: False"
                   (Position 11 1),
@@ -136,11 +136,11 @@
       WithComments {
         justComments = [
           Comment
-            "  -- keep-temp-files: False"
-            (Position 29 1),
+            "-- keep-temp-files: False"
+            (Position 29 3),
           Comment
-            "  -- hoogle: False"
-            (Position 30 1)],
+            "-- hoogle: False"
+            (Position 30 3)],
         unComments = Position 28 1}
       "haddock")
     []
@@ -150,11 +150,11 @@
       WithComments {
         justComments = [
           Comment
-            "  -- interactive: False"
-            (Position 33 1),
+            "-- interactive: False"
+            (Position 33 3),
           Comment
-            "  -- quiet: False"
-            (Position 34 1)],
+            "-- quiet: False"
+            (Position 34 3)],
         unComments = Position 32 1}
       "init")
     []
@@ -164,11 +164,11 @@
       WithComments {
         justComments = [
           Comment
-            "  -- alex-location:"
-            (Position 37 1),
+            "-- alex-location:"
+            (Position 37 3),
           Comment
-            "  -- ar-location:"
-            (Position 38 1)],
+            "-- ar-location:"
+            (Position 38 3)],
         unComments = Position 36 1}
       "program-locations")
     []
