@@ -29,7 +29,7 @@ import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
 import Distribution.Solver.Types.Stage (Stage, Staged, getStage)
 import Distribution.Types.LibraryName
@@ -193,7 +193,7 @@ validate = go
 
     -- What to do for package nodes ...
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
-    goP qpn@(Q (PackagePath s _pns _pq) pn) (POption i _) r = do
+    goP qpn@(Q (GoalScope s _pns _pq) pn) (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       extSupported   <- asks (`supportedExt` s)  -- obtain the supported extensions (for this stage)
       langSupported  <- asks (`supportedLang` s) -- obtain the supported languages (for this stage)
@@ -237,7 +237,7 @@ validate = go
 
     -- What to do for flag nodes ...
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goF qfn@(FN qpn@(Q (PackagePath stage _ _) _) _f) b r = do
+    goF qfn@(FN qpn@(Q (GoalScope stage _ _) _) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks (`supportedExt` stage)  -- obtain the supported extensions (for this stage)
       langSupported  <- asks (`supportedLang` stage) -- obtain the supported languages (for this stage)
@@ -267,7 +267,7 @@ validate = go
 
     -- What to do for stanza nodes (similar to flag nodes) ...
     goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goS qsn@(SN qpn@(Q (PackagePath stage _ _) _) _f) b r = do
+    goS qsn@(SN qpn@(Q (GoalScope stage _ _) _) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks (`supportedExt` stage)  -- obtain the supported extensions (for this stage)
       langSupported  <- asks (`supportedLang` stage) -- obtain the supported languages (for this stage)

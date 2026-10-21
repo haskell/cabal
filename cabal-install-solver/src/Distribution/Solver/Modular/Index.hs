@@ -30,7 +30,7 @@ type StageIndex = Map PN (Map I PInfo)
 -- 'Stage'. Each stage is solved against its own set of available packages,
 -- because a different stage means a different compiler and therefore an
 -- entirely different set of pre-installed packages. The goal being solved
--- always carries its stage (in its 'Distribution.Solver.Types.PackagePath.PackagePath'),
+-- always carries its stage (in its 'Distribution.Solver.Types.GoalScope.GoalScope'),
 -- so lookups select the stage's 'StageIndex' first.
 type Index = Map Stage StageIndex
 

@@ -20,7 +20,7 @@ import Distribution.Verbosity
 import Distribution.Compiler (CompilerInfo)
 
 import Distribution.Version
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.Stage (Stage (..), Staged)
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
@@ -270,5 +270,5 @@ _removeGR = trav go
    dummy =
        DependencyGoal $
        DependencyReason
-           (Q (PackagePath Host DefaultNamespace QualToplevel) (mkPackageName "$"))
+           (Q (GoalScope Host DefaultNamespace QualToplevel) (mkPackageName "$"))
            M.empty S.empty

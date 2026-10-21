@@ -30,9 +30,9 @@ import Distribution.Solver.Types.ComponentDeps
   , ComponentDeps
   )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import qualified Distribution.Solver.Types.GoalScope as P
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
-import qualified Distribution.Solver.Types.PackagePath as P
 import Distribution.Solver.Types.PkgConfigDb
   ( pkgConfigDbFromList
   )
@@ -626,7 +626,7 @@ instance Arbitrary OptionalStanza where
 
 instance ArbitraryOrd pn => ArbitraryOrd (Variable pn)
 instance ArbitraryOrd a => ArbitraryOrd (P.Qualified a)
-instance ArbitraryOrd P.PackagePath
+instance ArbitraryOrd P.GoalScope
 instance ArbitraryOrd P.Qualifier
 instance ArbitraryOrd P.Namespace
 instance ArbitraryOrd Stage.Stage
@@ -640,7 +640,7 @@ instance ArbitraryOrd ShortText where
 
 deriving instance Generic (Variable pn)
 deriving instance Generic (P.Qualified a)
-deriving instance Generic P.PackagePath
+deriving instance Generic P.GoalScope
 deriving instance Generic P.Namespace
 deriving instance Generic P.Qualifier
 
