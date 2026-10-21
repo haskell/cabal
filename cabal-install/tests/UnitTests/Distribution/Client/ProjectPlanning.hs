@@ -9,7 +9,7 @@ import Distribution.Client.Toolchain (Staged (..), Toolchain (..))
 import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.Simple.Compiler (AbiTag (..), Compiler (..), CompilerId (..), PackageDBX (..))
 import Distribution.Simple.Program.Db (defaultProgramDb, userSpecifyPath)
-import Distribution.Solver.Types.Stage (Stage (..))
+import Distribution.Solver.Types.Stage (Stage (..), prevStage)
 import Distribution.System (Arch (..), OS (..), Platform (..))
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
@@ -29,32 +29,34 @@ tests =
 --
 -- A package database is only readable by the compiler that wrote it, so the
 -- project's 'package-dbs' must not reach a distinct build toolchain. The
--- subtle case is the other one: setup scripts are built at the stage before
--- the package's own, which for a host-stage package is 'Build', so a
--- non-cross build asks for the Build stage on every build with a custom
--- Setup and must still get the project's databases there.
+-- subtle case is the other one: setup scripts are built at 'prevStage' of
+-- the package's own stage, and a non-cross build has no build stage, so
+-- 'prevStage' must keep them at 'Host' and the project's databases must
+-- still apply there.
 -- ----------------------------------------------------------------------------
 
 projectPackageDbsForTests :: [TestTree]
 projectPackageDbsForTests =
   [ testCase "host stage keeps the project databases" $
-      projectPackageDbsFor cross config Host @?= configured
-  , testCase "a distinct build toolchain gets none of them" $
-      projectPackageDbsFor cross config Build @?= []
-  , testCase "without a build toolchain the build stage keeps them" $
-      -- Not cross: 'Build' resolves to the host stage, and this is what a
-      -- setup script of a host-stage package asks for.
-      projectPackageDbsFor nonCross config Build @?= configured
-  , testCase "host stage is unaffected by there being no build toolchain" $
-      projectPackageDbsFor nonCross config Host @?= configured
+      projectPackageDbsFor config Host @?= configured
+  , testCase "the build stage gets none of them" $
+      projectPackageDbsFor config Build @?= []
+  , testCase "a distinct build toolchain puts setup scripts at the build stage" $
+      prevStage cross Host @?= Build
+  , testCase "the build stage is the earliest and clamps" $
+      prevStage cross Build @?= Build
+  , testCase "without a build toolchain setup scripts stay at the host stage" $
+      -- This is what a setup script of a host-stage package asks for in an
+      -- ordinary build, and it must still see the project's databases.
+      projectPackageDbsFor config (prevStage nonCross Host) @?= configured
   ]
   where
     configured = [Just (SpecificPackageDB "/somewhere/package.db")]
 
     config = (mempty :: ProjectConfigShared){projectConfigPackageDBs = configured}
 
-    -- 'projectPackageDbsFor' only looks at whether there is a build stage;
-    -- which compilers they are does not matter here.
+    -- 'prevStage' only looks at whether there is a build stage; which
+    -- compilers they are does not matter here.
     nonCross = Staged (toolchain ghc912 linuxX86_64) Nothing
     cross = Staged (toolchain ghc912 linuxX86_64) (Just (toolchain ghc910 linuxAArch64))
 
