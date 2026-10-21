@@ -1,5 +1,11 @@
 {-# LANGUAGE LambdaCase #-}
 
+-- | The modular dependency solver.
+--
+-- The solver lazily builds a search tree that contains every solution, prunes
+-- and reorders it with a series of independent traversals, and explores it
+-- depth-first with backjumping ('Distribution.Solver.Modular.Solver.solve').
+-- @doc/internal/solver.md@ in the Cabal repository explains the design.
 module Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..) ) where
 
