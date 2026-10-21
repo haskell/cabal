@@ -50,7 +50,6 @@ import Distribution.Client.Store
 import Distribution.Client.Toolchain
   ( Stage (..)
   , Toolchain (..)
-  , isCross
   , prevStage
   )
 
@@ -458,17 +457,14 @@ rebuildTargets
         ]
         where
           toolchains = pkgConfigToolchains sharedPackageConfig
-          activeStage stage
-            | isCross toolchains = stage
-            | otherwise = Host
           dbsByStage =
             Map.fromListWith
               Set.union
-              [ (activeStage stage, Set.fromList dbs)
+              [ (stage, Set.fromList dbs)
               | InstallPlan.Configured elab <- InstallPlan.toList installPlan
               , (stage, dbs) <-
                   [ (elabStage elab, elabBuildPackageDBStack elab ++ elabRegisterPackageDBStack elab)
-                  , (prevStage (elabStage elab), elabSetupPackageDBStack elab)
+                  , (prevStage toolchains (elabStage elab), elabSetupPackageDBStack elab)
                   ]
               ]
 
