@@ -58,6 +58,8 @@ import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce (coerce)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.Executable.Lens as L
@@ -652,7 +654,7 @@ processImports v fromBuildInfo commonStanzas = go []
   where
     hasCommonStanzas = specHasCommonStanzas v
 
-    getList' :: List CommaFSep Token String -> [String]
+    getList' :: List CommaFSep Token Text -> [Text]
     getList' = coerce
 
     go acc (Field (Name pos name) _ : fields)
@@ -664,9 +666,9 @@ processImports v fromBuildInfo commonStanzas = go []
     go acc (Field (Name pos name) fls : fields) | name == "import" = do
       names <- getList' <$> runFieldParser pos parsec v fls
       names' <- for names $ \commonName ->
-        case Map.lookup commonName commonStanzas of
+        case Map.lookup (Text.unpack commonName) commonStanzas of
           Nothing -> do
-            parseFailure pos $ "Undefined common stanza imported: " ++ commonName
+            parseFailure pos $ "Undefined common stanza imported: " ++ Text.unpack commonName
             pure Nothing
           Just commonTree ->
             pure (Just commonTree)

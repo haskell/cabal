@@ -69,6 +69,8 @@ import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 import Data.Coerce (Coercible, coerce)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 
@@ -137,7 +139,7 @@ newtype List sep b a = List {_getList :: [a]}
 -- alaList VCat :: [a] -> List VCat (Identity a) a
 --
 -- >>> :t alaList' FSep Token
--- alaList' FSep Token :: [String] -> List FSep Token String
+-- alaList' FSep Token :: [Text] -> List FSep Token Text
 alaList :: sep -> [a] -> List sep (Identity a) a
 alaList _ = List
 
@@ -165,7 +167,7 @@ newtype Set' sep b a = Set' {_getSet :: Set a}
 -- alaSet VCat :: Set a -> Set' VCat (Identity a) a
 --
 -- >>> :t alaSet' FSep Token
--- alaSet' FSep Token :: Set String -> Set' FSep Token String
+-- alaSet' FSep Token :: Set Text -> Set' FSep Token Text
 --
 -- @since 3.2.0.0
 alaSet :: sep -> Set a -> Set' sep (Identity a) a
@@ -217,13 +219,13 @@ instance (Coercible a b, Sep sep, Pretty b) => Pretty (NonEmpty' sep b a) where
 -------------------------------------------------------------------------------
 
 -- | Haskell string or @[^ ,]+@
-newtype Token = Token {getToken :: String}
+newtype Token = Token {getToken :: Text}
 
 instance Parsec Token where
-  parsec = Token <$> parsecToken
+  parsec = Token . Text.pack <$> parsecToken
 
 instance Pretty Token where
-  pretty = showToken . getToken
+  pretty = showToken . Text.unpack . getToken
 
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' {getToken' :: String}
