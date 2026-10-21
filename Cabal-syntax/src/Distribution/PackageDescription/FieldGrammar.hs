@@ -188,7 +188,7 @@ libraryFieldGrammar
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => LibraryName
@@ -242,7 +242,7 @@ foreignLibFieldGrammar
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => UnqualComponentName
@@ -283,7 +283,7 @@ executableFieldGrammar
      , c (RelativePathNT Source File)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => UnqualComponentName
@@ -343,7 +343,7 @@ testSuiteFieldGrammar
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
-     , c (List CommaFSep Token String)
+     , c (List CommaFSep Token Text)
      , c (List CommaVCat (Identity Dependency) Dependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
@@ -359,7 +359,7 @@ testSuiteFieldGrammar
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (RelativePathNT Source File)
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => g TestSuiteStanza TestSuiteStanza
@@ -369,7 +369,7 @@ testSuiteFieldGrammar = do
   _testStanzaTestModule <- optionalField "test-module" testStanzaTestModule
   _testStanzaBuildInfo <- blurFieldGrammar testStanzaBuildInfo buildInfoFieldGrammar
   _testStanzaCodeGenerators <-
-    fmap T.pack <$> monoidalFieldAla "code-generators" (alaList' CommaFSep Token) (testStanzaCodeGenerators . fromTextsLens)
+    monoidalFieldAla "code-generators" (alaList' CommaFSep Token) testStanzaCodeGenerators
       ^^^ availableSince CabalSpecV3_8 []
   pure TestSuiteStanza{..}
 
@@ -506,7 +506,7 @@ benchmarkFieldGrammar
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (RelativePathNT Source File)
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => g BenchmarkStanza BenchmarkStanza
@@ -610,7 +610,7 @@ buildInfoFieldGrammar
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => g BuildInfo BuildInfo
@@ -695,18 +695,16 @@ buildInfoFieldGrammar = do
       ^^^ removedIn
         CabalSpecV3_0
         "Please use 'default-extensions' or 'other-extensions' fields."
-  extraLibs <- map T.pack <$> monoidalFieldAla "extra-libraries" (alaList' VCat Token) (L.extraLibs . fromTextsLens)
+  extraLibs <- monoidalFieldAla "extra-libraries" (alaList' VCat Token) L.extraLibs
   extraLibsStatic <-
-    map T.pack
-      <$> monoidalFieldAla "extra-libraries-static" (alaList' VCat Token) (L.extraLibsStatic . fromTextsLens)
-        ^^^ availableSince CabalSpecV3_8 []
-  extraGHCiLibs <- map T.pack <$> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token) (L.extraGHCiLibs . fromTextsLens)
-  extraBundledLibs <- map T.pack <$> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token) (L.extraBundledLibs . fromTextsLens)
-  extraLibFlavours <- map T.pack <$> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) (L.extraLibFlavours . fromTextsLens)
+    monoidalFieldAla "extra-libraries-static" (alaList' VCat Token) L.extraLibsStatic
+      ^^^ availableSince CabalSpecV3_8 []
+  extraGHCiLibs <- monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token) L.extraGHCiLibs
+  extraBundledLibs <- monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token) L.extraBundledLibs
+  extraLibFlavours <- monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) L.extraLibFlavours
   extraDynLibFlavours <-
-    map T.pack
-      <$> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) (L.extraDynLibFlavours . fromTextsLens)
-        ^^^ availableSince CabalSpecV3_0 []
+    monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
+      ^^^ availableSince CabalSpecV3_0 []
   extraLibDirs <- monoidalFieldAla "extra-lib-dirs" (alaList' FSep SymbolicPathNT) L.extraLibDirs
   extraLibDirsStatic <-
     monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep SymbolicPathNT) L.extraLibDirsStatic
@@ -838,9 +836,9 @@ sourceRepoFieldGrammar
 sourceRepoFieldGrammar repoKind = do
   repoType <- optionalField "type" L.repoType
   repoLocation <- freeTextField "location" L.repoLocation
-  repoModule <- fmap T.pack <$> optionalFieldAla "module" Token (L.repoModule . fromMaybeTextLens)
-  repoBranch <- fmap T.pack <$> optionalFieldAla "branch" Token (L.repoBranch . fromMaybeTextLens)
-  repoTag <- fmap T.pack <$> optionalFieldAla "tag" Token (L.repoTag . fromMaybeTextLens)
+  repoModule <- optionalFieldAla "module" Token L.repoModule
+  repoBranch <- optionalFieldAla "branch" Token L.repoBranch
+  repoTag <- optionalFieldAla "tag" Token L.repoTag
   repoSubdir <- optionalFieldAla "subdir" FilePathNT L.repoSubdir
   pure SourceRepo{..}
 {-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' SourceRepo #-}
@@ -970,10 +968,6 @@ _syntaxExtensions =
           | e <- [minBound .. maxBound]
           , e `notElem` [Safe, Unsafe, Trustworthy]
           ]
-
-fromMaybeTextLens :: Lens' (Maybe Text) (Maybe String)
-fromMaybeTextLens f = fmap (fmap T.pack) . f . (fmap T.unpack)
-{-# INLINE fromMaybeTextLens #-}
 
 fromTextsLens :: Lens' [Text] [String]
 fromTextsLens f = fmap (map T.pack) . f . map T.unpack

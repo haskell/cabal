@@ -63,7 +63,7 @@ ipiFieldGrammar
      , c (List FSep (Identity UnitId) UnitId)
      , c (List FSep (MQuoted ModuleName) ModuleName)
      , c (List FSep FilePathNT String)
-     , c (List FSep Token String)
+     , c (List FSep Token Text)
      , c (MQuoted MungedPackageName)
      , c (MQuoted Version)
      , c CompatPackageKey
@@ -107,19 +107,19 @@ ipiFieldGrammar =
     <@> monoidalFieldAla "dynamic-library-dirs" (alaList' FSep FilePathNT) L.libraryDynDirs
     <@> monoidalFieldAla "bytecode-library-dirs" (alaList' FSep FilePathNT) L.libraryBytecodeDirs
     <@> optionalFieldDefAla "data-dir" FilePathNT L.dataDir ""
-    <@> (map T.pack <$> monoidalFieldAla "hs-libraries" (alaList' FSep Token) (L.hsLibraries . fromTextsLens))
-    <@> (map T.pack <$> monoidalFieldAla "extra-libraries" (alaList' FSep Token) (L.extraLibraries . fromTextsLens))
-    <@> (map T.pack <$> monoidalFieldAla "extra-libraries-static" (alaList' FSep Token) (L.extraLibrariesStatic . fromTextsLens))
-    <@> (map T.pack <$> monoidalFieldAla "extra-ghci-libraries" (alaList' FSep Token) (L.extraGHCiLibraries . fromTextsLens))
+    <@> monoidalFieldAla "hs-libraries" (alaList' FSep Token) L.hsLibraries
+    <@> monoidalFieldAla "extra-libraries" (alaList' FSep Token) L.extraLibraries
+    <@> monoidalFieldAla "extra-libraries-static" (alaList' FSep Token) L.extraLibrariesStatic
+    <@> monoidalFieldAla "extra-ghci-libraries" (alaList' FSep Token) L.extraGHCiLibraries
     <@> monoidalFieldAla "include-dirs" (alaList' FSep FilePathNT) L.includeDirs
     <@> (map T.pack <$> monoidalFieldAla "includes" (alaList' FSep FilePathNT) (L.includes . fromTextsLens))
     <@> monoidalFieldAla "depends" (alaList FSep) L.depends
     <@> monoidalFieldAla "abi-depends" (alaList FSep) L.abiDepends
-    <@> (map T.pack <$> monoidalFieldAla "cc-options" (alaList' FSep Token) (L.ccOptions . fromTextsLens))
-    <@> (map T.pack <$> monoidalFieldAla "cxx-options" (alaList' FSep Token) (L.cxxOptions . fromTextsLens))
-    <@> (map T.pack <$> monoidalFieldAla "ld-options" (alaList' FSep Token) (L.ldOptions . fromTextsLens))
+    <@> monoidalFieldAla "cc-options" (alaList' FSep Token) L.ccOptions
+    <@> monoidalFieldAla "cxx-options" (alaList' FSep Token) L.cxxOptions
+    <@> monoidalFieldAla "ld-options" (alaList' FSep Token) L.ldOptions
     <@> monoidalFieldAla "framework-dirs" (alaList' FSep FilePathNT) L.frameworkDirs
-    <@> (map T.pack <$> monoidalFieldAla "frameworks" (alaList' FSep Token) (L.frameworks . fromTextsLens))
+    <@> monoidalFieldAla "frameworks" (alaList' FSep Token) L.frameworks
     <@> monoidalFieldAla "haddock-interfaces" (alaList' FSep FilePathNT) L.haddockInterfaces
     <@> monoidalFieldAla "haddock-html" (alaList' FSep FilePathNT) L.haddockHTMLs
     <@> optionalFieldAla "pkgroot" FilePathNT L.pkgRoot

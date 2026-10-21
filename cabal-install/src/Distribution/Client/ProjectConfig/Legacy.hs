@@ -196,6 +196,7 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Functor ((<&>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.Text (Text)
 import qualified Data.Text as Text
 import Network.URI (URI (..), nullURIAuth)
 import System.Directory (makeAbsolute)
@@ -1759,7 +1760,7 @@ legacyPackageConfigFGSectionDescrs
   :: ( FieldGrammar c g
      , c (Identity RepoType)
      , c (List NoCommaFSep FilePathNT String)
-     , c (NonEmpty' NoCommaFSep Token String)
+     , c (NonEmpty' NoCommaFSep Token Text)
      )
   => [FGSectionDescr g LegacyProjectConfig]
 legacyPackageConfigFGSectionDescrs =
@@ -1790,7 +1791,7 @@ packageRepoSectionDescr
   :: ( FieldGrammar c g
      , c (Identity RepoType)
      , c (List NoCommaFSep FilePathNT String)
-     , c (NonEmpty' NoCommaFSep Token String)
+     , c (NonEmpty' NoCommaFSep Token Text)
      )
   => FGSectionDescr g LegacyProjectConfig
 packageRepoSectionDescr =

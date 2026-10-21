@@ -10,15 +10,11 @@ module Distribution.Client.ProjectConfig.FieldGrammar
 
 import Data.Bool (bool)
 import qualified Data.ByteString.Char8 as BS
-import Data.Monoid (Last)
 import qualified Data.Set as Set
-import Data.Text (Text)
-import qualified Data.Text as Text
 import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGrammar)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
 import Distribution.Client.Utils.Parsec
-import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
 import Distribution.Simple.Flag
@@ -30,8 +26,8 @@ import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..
 
 projectConfigFieldGrammar :: ProjectConfigPath -> [String] -> ParsecFieldGrammar' ProjectConfig
 projectConfigFieldGrammar source knownPrograms = do
-  projectPackages <- map Text.pack <$> monoidalFieldAla "packages" (alaList' FSep Token) (L.projectPackages . fromTextsLens)
-  projectPackagesOptional <- map Text.pack <$> monoidalFieldAla "optional-packages" (alaList' FSep Token) (L.projectPackagesOptional . fromTextsLens)
+  projectPackages <- monoidalFieldAla "packages" (alaList' FSep Token) L.projectPackages
+  projectPackagesOptional <- monoidalFieldAla "optional-packages" (alaList' FSep Token) L.projectPackagesOptional
   let projectPackagesRepo = mempty
   projectPackagesNamed <- monoidalFieldAla "extra-packages" formatPackageVersionConstraints L.projectPackagesNamed
   projectConfigBuildOnly <- blurFieldGrammar L.projectConfigBuildOnly projectConfigBuildOnlyFieldGrammar
@@ -61,7 +57,7 @@ projectConfigBuildOnlyFieldGrammar = do
   projectConfigKeepGoing <- optionalFieldDef "keep-going" L.projectConfigKeepGoing mempty
   projectConfigOfflineMode <- optionalFieldDef "offline" L.projectConfigOfflineMode mempty
   projectConfigKeepTempFiles <- optionalFieldDef "haddock-keep-temp-files" L.projectConfigKeepTempFiles mempty
-  projectConfigHttpTransport <- fmap Text.pack <$> optionalFieldDefAla "http-transport" (alaFlag Token) (L.projectConfigHttpTransport . fromLastTextLens) mempty
+  projectConfigHttpTransport <- optionalFieldDefAla "http-transport" (alaFlag Token) L.projectConfigHttpTransport mempty
   projectConfigIgnoreExpiry <- optionalFieldDef "ignore-expiry" L.projectConfigIgnoreExpiry mempty
   projectConfigCacheDir <- optionalFieldDefAla "remote-repo-cache" (alaFlag FilePathNT) L.projectConfigCacheDir mempty
   projectConfigLogsDir <- optionalFieldDefAla "logs-dir" (alaFlag FilePathNT) L.projectConfigLogsDir mempty
@@ -133,7 +129,7 @@ packageConfigFieldGrammar knownPrograms = do
   packageConfigProfExe <- optionalFieldDef "executable-profiling" L.packageConfigProfExe mempty
   packageConfigProfDetail <- optionalFieldDef "profiling-detail" L.packageConfigProfDetail mempty
   packageConfigProfLibDetail <- optionalFieldDef "library-profiling-detail" L.packageConfigProfLibDetail mempty
-  packageConfigConfigureArgs <- map Text.pack <$> monoidalFieldAla "configure-options" (alaList' NoCommaFSep Token) (L.packageConfigConfigureArgs . fromTextsLens)
+  packageConfigConfigureArgs <- monoidalFieldAla "configure-options" (alaList' NoCommaFSep Token) L.packageConfigConfigureArgs
   packageConfigOptimization <- optionalFieldDef "optimization" L.packageConfigOptimization mempty
   packageConfigProgPrefix <- optionalFieldDef "program-prefix" L.packageConfigProgPrefix mempty
   packageConfigProgSuffix <- optionalFieldDef "program-suffix" L.packageConfigProgSuffix mempty
@@ -156,7 +152,7 @@ packageConfigFieldGrammar knownPrograms = do
   packageConfigDocumentation <- optionalFieldDef "documentation" L.packageConfigDocumentation mempty
   packageConfigHaddockHoogle <- optionalFieldDef "haddock-hoogle" L.packageConfigHaddockHoogle mempty
   packageConfigHaddockHtml <- optionalFieldDef "haddock-html" L.packageConfigHaddockHtml mempty
-  packageConfigHaddockHtmlLocation <- fmap Text.pack <$> optionalFieldDefAla "haddock-html-location" (alaFlag Token) (L.packageConfigHaddockHtmlLocation . fromLastTextLens) mempty
+  packageConfigHaddockHtmlLocation <- optionalFieldDefAla "haddock-html-location" (alaFlag Token) L.packageConfigHaddockHtmlLocation mempty
   packageConfigHaddockForeignLibs' <- optionalFieldDef "haddock-foreign-libraries" L.packageConfigHaddockForeignLibs mempty
   packageConfigHaddockExecutables' <- optionalFieldDef "haddock-executables" L.packageConfigHaddockExecutables mempty
   packageConfigHaddockTestSuites' <- optionalFieldDef "haddock-tests" L.packageConfigHaddockTestSuites mempty
@@ -168,8 +164,8 @@ packageConfigFieldGrammar knownPrograms = do
   packageConfigHaddockHscolourCss <- optionalFieldDefAla "haddock-hscolour-css" (alaFlag FilePathNT) L.packageConfigHaddockHscolourCss mempty
   packageConfigHaddockContents <- optionalFieldDef "haddock-contents-location" L.packageConfigHaddockContents mempty
   packageConfigHaddockIndex <- optionalFieldDef "haddock-index-location" L.packageConfigHaddockIndex mempty
-  packageConfigHaddockBaseUrl <- fmap Text.pack <$> optionalFieldDefAla "haddock-base-url" (alaFlag Token) (L.packageConfigHaddockBaseUrl . fromLastTextLens) mempty
-  packageConfigHaddockResourcesDir <- fmap Text.pack <$> optionalFieldDefAla "haddock-resources-dir" (alaFlag Token) (L.packageConfigHaddockResourcesDir . fromLastTextLens) mempty
+  packageConfigHaddockBaseUrl <- optionalFieldDefAla "haddock-base-url" (alaFlag Token) L.packageConfigHaddockBaseUrl mempty
+  packageConfigHaddockResourcesDir <- optionalFieldDefAla "haddock-resources-dir" (alaFlag Token) L.packageConfigHaddockResourcesDir mempty
   packageConfigHaddockOutputDir <- optionalFieldDefAla "haddock-output-dir" (alaFlag FilePathNT) L.packageConfigHaddockOutputDir mempty
   packageConfigHaddockUseUnicode <- optionalFieldDef "haddock-use-unicode" L.packageConfigHaddockUseUnicode mempty
   packageConfigHaddockForHackage <- optionalFieldDef "haddock-for-hackage" L.packageConfigHaddockForHackage mempty
@@ -208,11 +204,3 @@ packageConfigPreferVersion =
   mappend . fmap (bool PreferInstalledOrLatest PreferOldest)
     <$> optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty
     <*> optionalFieldDef "prefer-version" L.projectConfigPreferVersion mempty
-
-fromTextsLens :: Lens' [Text] [String]
-fromTextsLens f = fmap (map Text.pack) . f . map Text.unpack
-{-# INLINE fromTextsLens #-}
-
-fromLastTextLens :: Lens' (Last Text) (Last String)
-fromLastTextLens f = fmap (fmap Text.pack) . f . fmap Text.unpack
-{-# INLINE fromLastTextLens #-}
