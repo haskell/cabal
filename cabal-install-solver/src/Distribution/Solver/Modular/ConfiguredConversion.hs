@@ -15,7 +15,7 @@ import Distribution.Solver.Modular.Package
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.PackageIndex as CI
-import           Distribution.Solver.Types.PackagePath
+import           Distribution.Solver.Types.GoalScope
 import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
@@ -58,7 +58,7 @@ convCP iidxs sidx (CP qpi fa es ds) =
     -- The stage of this package, taken from its qualified name. Determines
     -- which per-stage installed-package index a pre-existing package is
     -- resolved against.
-    stage = case qpi of PI (Q (PackagePath s _ _) _) _ -> s
+    stage = case qpi of PI (Q (GoalScope s _ _) _) _ -> s
 
     ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
     ds' = fmap (partitionEithers . map convConfId) ds
@@ -68,7 +68,7 @@ convPI (PI _ (I _ (Inst pi))) = Left pi
 convPI pi                     = Right (packageId (either id id (convConfId pi)))
 
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
-convConfId (PI (Q (PackagePath s _ q) pn) (I v loc)) =
+convConfId (PI (Q (GoalScope s _ q) pn) (I v loc)) =
     case loc of
         Inst pi -> Left (PreExistingId s sourceId pi)
         _otherwise

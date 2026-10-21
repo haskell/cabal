@@ -30,7 +30,7 @@ import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.Stage (Stage)
 import Distribution.Solver.Types.Variable
@@ -423,8 +423,8 @@ deferSetupExeChoices = go
     go x                    = x
 
     noSetupOrExe :: Goal QPN -> Bool
-    noSetupOrExe (Goal (P (Q (PackagePath _s _ns (QualSetup _)) _)) _) = False
-    noSetupOrExe (Goal (P (Q (PackagePath _s _ns (QualExe _ _)) _)) _) = False
+    noSetupOrExe (Goal (P (Q (GoalScope _s _ns (QualSetup _)) _)) _) = False
+    noSetupOrExe (Goal (P (Q (GoalScope _s _ns (QualExe _ _)) _)) _) = False
     noSetupOrExe _                                                  = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
@@ -492,7 +492,7 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . go
 
     -- The check proper
     goP :: QPN -> POption -> EnforceSIR (Tree d c) -> EnforceSIR (Tree d c)
-    goP qpn@(Q (PackagePath stage _ _) pn) (POption i linkedTo) r = do
+    goP qpn@(Q (GoalScope stage _ _) pn) (POption i linkedTo) r = do
       let inst = (stage, PI pn i)
       env <- ask
       case (linkedTo, M.lookup inst env) of

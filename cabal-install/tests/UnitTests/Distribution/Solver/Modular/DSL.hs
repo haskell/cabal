@@ -88,11 +88,11 @@ import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
+import qualified Distribution.Solver.Types.GoalScope as P
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as CI.PackageIndex
-import qualified Distribution.Solver.Types.PackagePath as P
 import qualified Distribution.Solver.Types.PkgConfigDb as PC
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverPackage

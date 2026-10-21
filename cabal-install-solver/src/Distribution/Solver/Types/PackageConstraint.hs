@@ -25,7 +25,7 @@ import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..
 import Distribution.Version                        (VersionRange, simplifyVersionRange)
 
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.Stage             (Stage (..))
 
 import qualified Text.PrettyPrint as Disp
@@ -80,7 +80,7 @@ scopeToPackageName (ConstraintScope _ (ScopeAnySetupQualifier pn)) = pn
 scopeToPackageName (ConstraintScope _ (ScopeAnyQualifier pn)) = pn
 
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
-constraintScopeMatches (ConstraintScope mstage qualifier) (Q (PackagePath stage ns q) pn') =
+constraintScopeMatches (ConstraintScope mstage qualifier) (Q (GoalScope stage ns q) pn') =
     maybe True (== stage) mstage && constraintQualifierMatches qualifier ns q pn'
 
 -- | Whether the qualifier part of a constraint scope matches a goal, given the

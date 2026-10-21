@@ -55,7 +55,7 @@ import Distribution.Solver.Types.LabeledPackageConstraint
     ( LabeledPackageConstraint, unlabelPackageConstraint )
 import Distribution.Solver.Types.PackageConstraint
     ( PackageConstraint(..), scopeToPackageName )
-import Distribution.Solver.Types.PackagePath ( QPN )
+import Distribution.Solver.Types.GoalScope ( QPN )
 import Distribution.Solver.Types.PackagePreferences
     ( PackagePreferences )
 import Distribution.Solver.Types.PkgConfigDb

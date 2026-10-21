@@ -25,7 +25,7 @@ import Distribution.Package -- from Cabal
 import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Modular.Version
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.Stage (Stage (..))
 
 -- | A package name.
@@ -89,8 +89,8 @@ instUid _ _ = False
 -- use sites).  In particular this does not include packages pulled in
 -- as setup deps.
 --
-primaryPP :: PackagePath -> Bool
-primaryPP (PackagePath _s _ns q) = go q
+primaryPP :: GoalScope -> Bool
+primaryPP (GoalScope _s _ns q) = go q
   where
     go QualToplevel    = True
     go (QualBase  _)   = True
@@ -101,11 +101,11 @@ primaryPP (PackagePath _s _ns q) = go q
 -- establish whether or not certain constraints should apply to this
 -- dependency (grep 'setupPP' to see the use sites).
 --
-setupPP :: PackagePath -> Bool
-setupPP (PackagePath _s _ns (QualSetup _)) = True
-setupPP (PackagePath _s _ns _)         = False
+setupPP :: GoalScope -> Bool
+setupPP (GoalScope _s _ns (QualSetup _)) = True
+setupPP (GoalScope _s _ns _)         = False
 
 -- | Qualify a target package with its own name so that its dependencies are not
 -- required to be consistent with other targets.
 makeIndependent :: PN -> QPN
-makeIndependent pn = Q (PackagePath Host (Independent pn) QualToplevel) pn
+makeIndependent pn = Q (GoalScope Host (Independent pn) QualToplevel) pn

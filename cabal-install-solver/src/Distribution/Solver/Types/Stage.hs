@@ -20,9 +20,10 @@ import Distribution.Compat.Prelude
 --
 -- Cross-compilation distinguishes packages built to /run/ during the build
 -- (build-tools, custom @Setup.hs@ dependencies) from packages built to run on
--- the target. This is an axis orthogonal to 'Distribution.Solver.Types.PackagePath.Namespace':
--- the stage changes as the solver crosses tool boundaries (see 'prevStage'),
--- whereas a namespace is fixed at the root of a goal and inherited unchanged.
+-- the target. Within a 'Distribution.Solver.Types.GoalScope.GoalScope' the
+-- stage changes only as the solver crosses tool boundaries (see 'prevStage'),
+-- so it follows the qualifier; a namespace, by contrast, is fixed at the root
+-- of a goal and inherited unchanged.
 data Stage
   = -- | The system where the build is running.
     Build
