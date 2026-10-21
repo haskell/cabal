@@ -70,11 +70,10 @@ convPIs toolchains constraints sip strfl solveExes iidxs sidx =
   -- Build stage sees the build compiler's packages and the Host stage the host
   -- compiler's. Source packages are shared, but re-evaluated per stage because
   -- their condition trees depend on the stage's os\/arch\/compiler.
-  mapWithStage (\stage _ -> convStage stage) toolchains
+  mapWithStage convStage toolchains
   where
-    convStage stage =
-      let (comp, Platform arch os) = getStage toolchains stage
-      in mkIndex $
+    convStage stage (comp, Platform arch os) =
+      mkIndex $
            convIPI' sip (getStage iidxs stage)
              ++ convSPI' os arch comp constraints strfl solveExes sidx
 
