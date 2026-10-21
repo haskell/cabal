@@ -1851,10 +1851,10 @@ planPackages
 -- distinct build toolchain therefore inherits none of them: its stack is its
 -- own global database plus its own store.
 --
--- When there is no distinct build toolchain the build stage /is/ the host
--- stage (see 'getStage'), so an ordinary build keeps the settings
--- everywhere, setup scripts included -- those are built at the stage before
--- the package's own, which for a host-stage package is 'Build'.
+-- When there is no distinct build toolchain there is no build stage: setup
+-- scripts and build tools are built at 'prevStage' of the package's own
+-- stage, which is then 'Host' itself, so an ordinary build keeps the
+-- settings everywhere.
 projectPackageDbsFor
   :: Toolchains
   -> ProjectConfigShared
@@ -2446,9 +2446,9 @@ elaborateInstallPlan
               buildComponentDeps (filterExtWs' . compExeDependencyPaths)
 
             -- The library dependencies of the @Setup.hs@ script, each tagged
-            -- with the build 'Stage' the solver actually resolved it to (rather
-            -- than recomputing via 'prevStage', which is wrong for a non-cross
-            -- build).  See 'pkgSetupLibDependencies'.
+            -- with the build 'Stage' the solver actually resolved it to, read
+            -- from the plan node rather than recomputed. See
+            -- 'pkgSetupLibDependencies'.
             pkgSetupLibDependencies =
               [ WithStage (planPkgStage p) (configuredId p)
               | p <- CD.setupDeps deps0 >>= elaborateLibSolverId mapDep
@@ -2632,7 +2632,7 @@ elaborateInstallPlan
               | shouldBuildInplaceOnly pkg = stageInplacePackageDbs setupStage
               | otherwise = stageCorePackageDbs setupStage
 
-            setupStage = prevStage stage
+            setupStage = prevStage toolchains stage
 
             elabPkgDescriptionOverride = descOverride
 
@@ -4408,9 +4408,8 @@ setupHsScriptOptions
       , -- The Setup.hs script runs on the machine that /drives/ this
         -- package's build, i.e. the stage before the package's own stage
         -- ('prevStage' of 'elabStage'): a host-stage package's setup runs on
-        -- the build stage, and 'prevStage' clamps at the build stage. It is
-        -- therefore compiled with that stage's toolchain (equal to the host
-        -- toolchain unless cross-compiling).
+        -- the build stage when there is one, and stays on the host stage
+        -- otherwise. It is therefore compiled with that stage's toolchain.
         useCompiler = Just (toolchainCompiler setupToolchain)
       , usePlatform = Just (toolchainPlatform setupToolchain)
       , usePackageDB = elabSetupPackageDBStack
@@ -4447,7 +4446,7 @@ setupHsScriptOptions
       }
     where
       cliVersion = setupCliVersion elabSetupScriptCliVersion
-      setupToolchain = pkgConfigStageToolchain sharedConfig (prevStage elabStage)
+      setupToolchain = pkgConfigStageToolchain sharedConfig (prevStage (pkgConfigToolchains sharedConfig) elabStage)
 
 -- | To be used for the input for elaborateInstallPlan.
 --
