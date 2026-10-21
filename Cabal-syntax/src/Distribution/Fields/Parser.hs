@@ -234,7 +234,7 @@ inLexerMode (LexerMode mode) p =
 --                              |       name ElementInNonLayoutContext
 -- ElementInLayoutContext     ::= ':'           FieldLayoutOrBraces
 --                              | arg* comment* SectionLayoutOrBraces
--- FieldLayoutOrBraces        ::= '\\n'? '{' comment* (content comment*)* '}'
+-- FieldLayoutOrBraces        ::= comment* '\\n'? '{' comment* (content comment*)* '}'
 --                              | comment* line? comment* ('\\n' line comment*)*
 -- SectionLayoutOrBraces      ::= '\\n'? '{' Elements '\\n'? '}'
 --                              | Elements
@@ -243,6 +243,7 @@ inLexerMode (LexerMode mode) p =
 -- FieldInlineOrBraces        ::= '\\n'? '{' content '}'
 --                              | content
 -- @
+--
 --
 -- Note how we have several productions with the sequence:
 --
@@ -258,6 +259,8 @@ inLexerMode (LexerMode mode) p =
 -- where the first non-space is @{@ lex as just the @{@ token, without
 -- the usual indent token. Then in the parser we can resolve everything
 -- with just one token of lookahead and so without using 'try'.
+--
+-- See [Note: Backtracking in fieldLayoutOrBraces] regarding the try combinator in 'fieldLayoutOrBraces'.
 
 -- Top level of a file using cabal syntax
 --
@@ -401,23 +404,41 @@ elementInNonLayoutContext name =
 
 -- The body of a field, using either layout style or braces style.
 --
--- fieldLayoutOrBraces   ::= '\\n'? '{' comment* (content comment*)* '}'
+-- [Note: Backtracking in fieldLayoutOrBraces]
+-- We can't pick the right branch before seeing the 'openBrace' token,
+-- there is no formal distinction between a comment and a line.
+-- Consider two examples:
+--
+-- In this listing the "--preserve-it" string should be parsed as the 'FieldLine'.
+-- @
+--   x-doctest-options:   --preserve-it
+--     -- The previous thing shouldn't be parsed as a comment because it's a flag.
+--     -- This however, is a comment.
+-- @
+--
+-- In this listing the "--c" string should be parsed as a comment.
+-- @
+-- foo: -- c
+-- {
+--  bar
+-- }
+-- @
+--
+-- We pick the braces branch and backtrack with 'try' if needed.
+--
+-- fieldLayoutOrBraces   ::= comment* '\\n'? '{' comment* (content comment*)* '}'
 --                         | comment* line? comment* ('\\n' line comment*)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field (WithComments Position))
-fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
+fieldLayoutOrBraces ilevel name = try braces <|> fieldLayout
   where
     braces :: Parser (Field (WithComments Position))
     braces = do
+      preCmts <- many tokComment
       openBrace
-      (preCmts, ls) <-
-        inLexerMode
-          (LexerMode in_field_braces)
-          ( (,)
-              <$> many tokComment
-              <*> many (commentsAfter fieldContent)
-          )
+      (preCmts', ls) <-
+        inLexerMode (LexerMode in_field_braces) ((,) <$> many tokComment <*> many (commentsAfter fieldContent))
       closeBrace
-      return $ Field (WithComments preCmts <$> name) ls
+      return $ Field (WithComments (preCmts' <> preCmts) <$> name) ls
 
     -- Here, we run 'fieldContent' twice separately because only the second time it is subject to the indentation constraint.
     fieldLayout :: Parser (Field (WithComments Position))
