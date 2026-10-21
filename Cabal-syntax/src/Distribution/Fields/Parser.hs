@@ -123,15 +123,22 @@ describeToken t = case t of
 
 tokSym :: Parser (Name Position)
 tokSym = getTokenWithPos $ \case L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing
-tokSym', tokStr, tokOther :: Parser (SectionArg Position)
-tokColon, tokCloseBrace :: Parser ()
 
-colon, openBrace, closeBrace :: Parser ()
+tokSym', tokStr, tokOther :: Parser (SectionArg Position)
 tokSym' = getTokenWithPos $ \case L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
 tokStr = getTokenWithPos $ \case L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing
 tokOther = getTokenWithPos $ \case L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
+
+tokColon, tokCloseBrace :: Parser ()
 tokColon = getToken $ \case Colon -> Just (); _ -> Nothing
 tokCloseBrace = getToken $ \case CloseBrace -> Just (); _ -> Nothing
+
+colon, openBrace, closeBrace :: Parser ()
+colon = tokColon <?> "\":\""
+openBrace = do
+  pos <- tokOpenBrace <?> "\"{\""
+  addLexerWarning (LexWarning LexBraces pos)
+closeBrace = tokCloseBrace <?> "\"}\""
 
 tokIndent :: Parser Int
 tokIndent = getToken $ \case Indent x -> Just x; _ -> Nothing
@@ -147,11 +154,6 @@ sectionArg = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
 
 fieldSecName :: Parser (Name Position)
 fieldSecName = tokSym <?> "field or section name"
-colon = tokColon <?> "\":\""
-openBrace = do
-  pos <- tokOpenBrace <?> "\"{\""
-  addLexerWarning (LexWarning LexBraces pos)
-closeBrace = tokCloseBrace <?> "\"}\""
 
 fieldContent :: Parser (FieldLine Position)
 fieldContent = tokFieldLine <?> "field contents"
