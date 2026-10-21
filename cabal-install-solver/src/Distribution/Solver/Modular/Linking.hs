@@ -28,7 +28,7 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 import Distribution.Types.Flag (unFlagName)
 
 {-------------------------------------------------------------------------------
@@ -95,7 +95,7 @@ validateLinking index = (`runReader` initVS) . go
 
     -- Package choices
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
-    goP qpn@(Q (PackagePath s _pns _pq) pn) opt@(POption i _) r = do
+    goP qpn@(Q (GoalScope s _pns _pq) pn) opt@(POption i _) r = do
       vs <- ask
       let PInfo deps _ _ _ = vsIndex vs ! s ! pn ! i
           qdeps            = qualifyDeps (vsQualifyOptions vs) qpn deps
@@ -174,7 +174,7 @@ pickConcrete qpn@(Q pp _) i = do
       Just lg ->
         makeCanonical lg qpn i
 
-pickLink :: QPN -> I -> PackagePath -> FlaggedDeps QPN -> UpdateState ()
+pickLink :: QPN -> I -> GoalScope -> FlaggedDeps QPN -> UpdateState ()
 pickLink qpn@(Q _pp pn) i pp' deps = do
     vs <- get
 
@@ -196,7 +196,7 @@ pickLink qpn@(Q _pp pn) i pp' deps = do
     -- Verify here that the member we add is in fact for the same package and
     -- matches the version of the canonical instance. However, violations of
     -- these checks would indicate a bug in the linker, not a true conflict.
-    let sanityCheck :: Maybe (PI PackagePath) -> Bool
+    let sanityCheck :: Maybe (PI GoalScope) -> Bool
         sanityCheck Nothing              = False
         sanityCheck (Just (PI _ canonI)) = pn == lgPackage lgTarget && i == canonI
     assert (sanityCheck (lgCanon lgTarget)) $ return ()
@@ -344,7 +344,7 @@ verifyLinkGroup lg =
       -- We picked an instance. Verify flags and stanzas
       -- TODO: The enumeration of OptionalStanza names is very brittle;
       -- if a constructor is added to the datatype we won't notice it here
-      Just (PI (PackagePath s _ _) i) -> do
+      Just (PI (GoalScope s _ _) i) -> do
         vs <- get
         let PInfo _deps _exes finfo _ = vsIndex vs ! s ! lgPackage lg ! i
             flags   = M.keys finfo
@@ -423,10 +423,10 @@ data LinkGroup = LinkGroup {
       --
       -- We may not know this yet (if we are constructing link groups
       -- for dependencies)
-    , lgCanon :: Maybe (PI PackagePath)
+    , lgCanon :: Maybe (PI GoalScope)
 
       -- | The members of the link group
-    , lgMembers :: Set PackagePath
+    , lgMembers :: Set GoalScope
 
       -- | The set of variables that should be added to the conflict set if
       -- something goes wrong with this link set (in addition to the members
@@ -456,7 +456,7 @@ showLinkGroup :: LinkGroup -> String
 showLinkGroup lg =
     "{" ++ intercalate "," (map showMember (S.toList (lgMembers lg))) ++ "}"
   where
-    showMember :: PackagePath -> String
+    showMember :: GoalScope -> String
     showMember pp = case lgCanon lg of
                       Just (PI pp' _i) | pp == pp' -> "*"
                       _otherwise                   -> ""
@@ -464,11 +464,11 @@ showLinkGroup lg =
                       Nothing -> showQPN (qpn pp)
                       Just i  -> showPI (PI (qpn pp) i)
 
-    qpn :: PackagePath -> QPN
+    qpn :: GoalScope -> QPN
     qpn pp = Q pp (lgPackage lg)
 
 -- | Creates a link group that contains a single member.
-lgSingleton :: QPN -> Maybe (PI PackagePath) -> LinkGroup
+lgSingleton :: QPN -> Maybe (PI GoalScope) -> LinkGroup
 lgSingleton (Q pp pn) canon = LinkGroup {
       lgPackage = pn
     , lgCanon   = canon

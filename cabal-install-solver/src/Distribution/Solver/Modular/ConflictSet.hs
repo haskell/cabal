@@ -39,7 +39,7 @@ import qualified Data.Set as S
 
 import Distribution.Solver.Modular.Var
 import Distribution.Solver.Modular.Version
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 
 -- | The set of variables involved in a solver conflict, each paired with
 -- details about the conflict.

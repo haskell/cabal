@@ -33,7 +33,7 @@ import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.ComponentDeps
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.Stage (Stage (..))
 import Distribution.Solver.Types.Settings
 
@@ -61,7 +61,7 @@ data BuildState = BS {
 -- other, even when they happen to resolve to the same package instance,
 -- because they are built by different toolchains (the fixed boot compiler
 -- vs. the compiler under construction) and cannot share a build artifact.
-type LinkingState = M.Map (PN, I, Stage) [PackagePath]
+type LinkingState = M.Map (PN, I, Stage) [GoalScope]
 
 -- | Extend the set of open goals with the new goals listed.
 --
@@ -149,7 +149,7 @@ addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
 --
 -- For a package, we look up the instances available in the global info,
 -- and then handle each instance in turn.
-addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q (PackagePath s _ _) pn) gr) }) =
+addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q (GoalScope s _ _) pn) gr) }) =
   case M.lookup s idx >>= M.lookup pn of
     Nothing  -> FailF
                 (varToConflictSet (P qpn) `CS.union` goalReasonToConflictSetWithConflict qpn gr)
@@ -220,7 +220,7 @@ addChildren bs@(BS { next = Instance qpn (PInfo fdeps _ fdefs _) }) =
 -- https://github.com/haskell/cabal/issues/2899
 addLinking :: LinkingState -> TreeF () c a -> TreeF () c (Linker a)
 -- The only nodes of interest are package nodes
-addLinking ls (PChoiceF qpn@(Q pp@(PackagePath s _ _) pn) rdm gr cs) =
+addLinking ls (PChoiceF qpn@(Q pp@(GoalScope s _ _) pn) rdm gr cs) =
   let linkedCs = fmap (`Linker` ls) $
                  W.fromList $ concatMap (linkChoices ls qpn) (W.toList cs)
       unlinkedCs = W.mapWithKey goP cs
@@ -238,10 +238,10 @@ linkChoices :: forall a w . LinkingState
             -> QPN
             -> (w, POption, a)
             -> [(w, POption, a)]
-linkChoices related (Q (PackagePath s _ _) pn) (weight, POption i Nothing, subtree) =
+linkChoices related (Q (GoalScope s _ _) pn) (weight, POption i Nothing, subtree) =
     L.map aux (M.findWithDefault [] (pn, i, s) related)
   where
-    aux :: PackagePath -> (w, POption, a)
+    aux :: GoalScope -> (w, POption, a)
     aux pp = (weight, POption i (Just pp), subtree)
 linkChoices _ _ (_, POption _ (Just _), _) =
     alreadyLinked
@@ -269,7 +269,7 @@ buildTree idx (IndependentGoals ind) igs =
     topLevelGoal qpn = PkgGoal qpn UserGoal
 
     qpns | ind       = L.map makeIndependent igs
-         | otherwise = L.map (Q (PackagePath Host DefaultNamespace QualToplevel)) igs
+         | otherwise = L.map (Q (GoalScope Host DefaultNamespace QualToplevel)) igs
 
 {-------------------------------------------------------------------------------
   Goals

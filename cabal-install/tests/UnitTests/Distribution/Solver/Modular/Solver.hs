@@ -24,9 +24,9 @@ import Language.Haskell.Extension
 
 -- cabal-install
 import Distribution.Solver.Types.Flag
+import qualified Distribution.Solver.Types.GoalScope as P
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
-import qualified Distribution.Solver.Types.PackagePath as P
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 

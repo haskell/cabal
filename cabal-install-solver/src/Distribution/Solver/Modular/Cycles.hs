@@ -14,7 +14,7 @@ import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Types.ComponentDeps (Component)
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 
 -- | Find and reject any nodes with cyclic dependencies
 detectCyclesPhase :: Tree d c -> Tree d c
