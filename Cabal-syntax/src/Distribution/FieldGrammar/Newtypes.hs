@@ -228,13 +228,13 @@ instance Pretty Token where
   pretty = showToken . Text.unpack . getToken
 
 -- | Haskell string or @[^ ]+@
-newtype Token' = Token' {getToken' :: String}
+newtype Token' = Token' {getToken' :: Text}
 
 instance Parsec Token' where
-  parsec = Token' <$> parsecToken'
+  parsec = Token' . Text.pack <$> parsecToken'
 
 instance Pretty Token' where
-  pretty = showToken . getToken'
+  pretty = showToken . Text.unpack . getToken'
 
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted {getMQuoted :: a}
