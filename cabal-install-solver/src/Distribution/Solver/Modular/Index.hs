@@ -82,9 +82,9 @@ defaultQualifyOptions idx = QO {
                               , (LDep _ (Dep (PkgComponent dep _) _ci), _comp) <- flattenFlaggedDeps deps
                               ]
     , qoSetupIndependent = True
-      -- The index's stage set is the single source of truth for whether we
-      -- are cross-compiling: 'convPIs' only populates a 'Build' stage when the
-      -- build toolchain differs from the host one.
+      -- The index has the stage shape of the toolchains it was converted
+      -- from (see 'convPIs'), so this is 'isCross' of those toolchains: a
+      -- build stage exists only when there is a distinct build toolchain.
     , qoStages = () <$ idx
     }
   where

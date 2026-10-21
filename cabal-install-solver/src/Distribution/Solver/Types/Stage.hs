@@ -12,7 +12,6 @@ module Distribution.Solver.Types.Stage
   , traverseWithStage
   , always
   , isCross
-  , activeStages
   ) where
 
 import Distribution.Compat.Prelude
@@ -55,13 +54,15 @@ prevStage tc Host
   | otherwise = Host
 prevStage _ Build = Build
 
--- | A value provided for each build 'Stage'.
+-- | A value for each build 'Stage' that exists.
 --
--- The host stage always has a value. The build stage is optional: an ordinary
--- (non-cross) build has no separate build stage (@onBuild == Nothing@,
--- constructed with 'always'), so it reuses the host value; under cross-
--- compilation the build stage carries its own value (e.g. a build-machine
--- compiler distinct from the host-machine one).
+-- The host stage always exists and always has a value. The build stage
+-- exists only under cross-compilation, when there is a build-machine
+-- toolchain distinct from the host-machine one; an ordinary build has no
+-- build stage at all (@onBuild == Nothing@, constructed with 'always'), not
+-- a build stage that happens to equal the host one. Nothing should ask for
+-- the build value of such a 'Staged': 'prevStage' never yields 'Build' for
+-- it, so no goal, plan node or setup script is ever at 'Build' there.
 --
 -- Making the build stage a 'Maybe' rather than a second mandatory field means
 -- the value itself records whether we are cross-compiling ('isCross'), so no
@@ -76,12 +77,16 @@ instance Binary a => Binary (Staged a)
 instance Structured a => Structured (Staged a)
 instance NFData a => NFData (Staged a)
 
--- | Select the value for a given 'Stage'. The build stage falls back to the
--- host value when there is no separate build stage (a non-cross build), so
--- every stage is always resolvable.
+-- | Select the value for a given 'Stage'.
+--
+-- Asking for the build value of a 'Staged' that has no build stage is a
+-- bug, not a fallback: a 'Build' stage only ever arises from 'prevStage',
+-- which yields it only when 'isCross' holds. The error here is what turns
+-- that invariant into something the code enforces.
 getStage :: Staged a -> Stage -> a
 getStage s Host = onHost s
-getStage s Build = fromMaybe (onHost s) (onBuild s)
+getStage s Build =
+  fromMaybe (error "getStage: no build stage (not cross-compiling)") (onBuild s)
 
 -- | Traverse a 'Staged' with the stage each value belongs to. Only the
 -- stages that carry a distinct value are visited, so the build stage of a
@@ -110,9 +115,3 @@ always x = Staged x Nothing
 -- | Are we cross-compiling, i.e. is there a distinct build stage?
 isCross :: Staged a -> Bool
 isCross = isJust . onBuild
-
--- | The stages that carry a distinct value: always 'Host', plus 'Build' when
--- cross-compiling. This is the set of stages worth solving\/converting
--- separately.
-activeStages :: Staged a -> [Stage]
-activeStages s = Host : [Build | isCross s]
