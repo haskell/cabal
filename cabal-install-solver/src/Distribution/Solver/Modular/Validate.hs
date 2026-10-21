@@ -204,7 +204,7 @@ validate = go
       rComps         <- asks requiredComponents
       qo             <- asks qualifyOptions
       -- obtain dependencies and index-dictated exclusions introduced by the choice
-      let (PInfo deps comps _ mfr) = idx ! s ! pn ! i
+      let (PInfo deps comps _ mfr) = getStage idx s ! pn ! i
       -- qualify the deps in the current scope
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,

@@ -54,7 +54,7 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
 import Distribution.Solver.Types.GoalScope
-import Distribution.Solver.Types.Stage (Stage, prevStage)
+import Distribution.Solver.Types.Stage (Stage, Staged, prevStage)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
@@ -162,12 +162,11 @@ data QualifyOptions = QO {
     -- Should dependencies of the setup script be treated as independent?
   , qoSetupIndependent :: Bool
 
-    -- | Are we cross-compiling, i.e. is a distinct build stage active? When
-    -- true, tool dependencies (build-tool exes, custom @Setup.hs@ deps) are
-    -- solved one stage earlier ('prevStage', Host -> Build); when false they
-    -- stay in the depending package's stage, so a non-cross build behaves
-    -- exactly as before.
-  , qoCross :: Bool
+    -- | The active stages. Tool dependencies (build-tool exes, custom
+    -- @Setup.hs@ deps) are solved at 'prevStage' of the depending package's
+    -- stage, which is Build only when a distinct build stage exists and Host
+    -- otherwise, so a non-cross build behaves exactly as before.
+  , qoStages :: Staged ()
   }
   deriving Show
 
@@ -230,15 +229,12 @@ qualifyDeps QO{..} (Q pp@(GoalScope s ns q) pn) = go
 
     -- The stage a tool dependency (build-tool exe, custom-setup) is solved
     -- for. This is the ONLY place the stage changes as we descend the tree:
-    -- host packages depend on tools built for the build system. When cross-
-    -- compiling we drop to @prevStage s@ (Host -> Build); a non-cross build
-    -- ('qoCross' is False, only the host stage is active) keeps tools at the
-    -- depending package's stage (@s@), so its behaviour is unchanged. The
-    -- namespace (@ns@) is threaded unchanged.
+    -- host packages depend on tools built for the build system. 'prevStage'
+    -- drops to Build only when a distinct build stage exists and stays at
+    -- Host otherwise, so a non-cross build is unchanged. The namespace
+    -- (@ns@) is threaded unchanged.
     toolStage :: Stage
-    toolStage
-      | qoCross   = prevStage s
-      | otherwise = s
+    toolStage = prevStage qoStages s
 
     -- Should we qualify this goal with the 'Base' scope?
     qBase :: PN -> Bool

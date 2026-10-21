@@ -8,6 +8,7 @@ module Distribution.Solver.Types.Stage
   , Staged (..)
   , getStage
   , overStage
+  , mapWithStage
   , traverseWithStage
   , always
   , isCross
@@ -40,13 +41,19 @@ showStage :: Stage -> String
 showStage Build = "build"
 showStage Host = "host"
 
--- | The stage a tool dependency (build-tool or setup) is solved for, relative
--- to the depending package's stage. Host packages depend on Build tools;
--- Build is the earliest stage and clamps.
-prevStage :: Stage -> Stage
-prevStage s
-  | s == minBound = s
-  | otherwise = pred s
+-- | The stage a tool (a @build-tool-depends@ executable or a custom
+-- @Setup.hs@) of a stage-@s@ package is built for. Host packages depend on
+-- Build tools when a distinct build toolchain exists; otherwise there is only
+-- the host toolchain and tools stay at Host. Build is the earliest stage and
+-- clamps.
+--
+-- This is the only way a stage other than 'Host' comes into existence, so a
+-- 'Build' stage is only ever seen when 'isCross' holds for the toolchains.
+prevStage :: Staged a -> Stage -> Stage
+prevStage tc Host
+  | isCross tc = Build
+  | otherwise = Host
+prevStage _ Build = Build
 
 -- | A value provided for each build 'Stage'.
 --
@@ -82,6 +89,11 @@ getStage s Build = fromMaybe (onHost s) (onBuild s)
 traverseWithStage :: Applicative f => (Stage -> a -> f b) -> Staged a -> f (Staged b)
 traverseWithStage f (Staged host build) =
   Staged <$> f Host host <*> traverse (f Build) build
+
+-- | Map over a 'Staged' with the stage each value belongs to. Like
+-- 'traverseWithStage', the build stage of a non-cross build is not visited.
+mapWithStage :: (Stage -> a -> b) -> Staged a -> Staged b
+mapWithStage f (Staged host build) = Staged (f Host host) (f Build <$> build)
 
 -- | Apply a function to the value for a given 'Stage', leaving the other
 -- stage untouched. Editing the build stage of a non-cross build is a no-op
