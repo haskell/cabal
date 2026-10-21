@@ -91,6 +91,8 @@ newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 -- has been added relatively recently. Cycles are only removed directly
 -- before exploration.
 --
+-- See @doc/internal/solver.md@ for a description of each phase.
+--
 solve :: SolverConfig                         -- ^ solver parameters
       -> Staged CompilerInfo                  -- ^ the compiler of each build stage
       -> Index                                -- ^ all available packages as an index

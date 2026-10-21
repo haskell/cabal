@@ -71,7 +71,7 @@ import Distribution.Types.PkgconfigVersionRange
 --       choices we've already made, and the constraints we already have.
 --
 -- It currently seems as if we're implementing the weak variant. However,
--- when used together with 'preferEasyGoalChoices', we will find an
+-- when used together with 'preferReallyEasyGoalChoices', we will find an
 -- inconsistent state in the very next step.
 --
 -- What do we do about flags?
