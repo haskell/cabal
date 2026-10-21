@@ -1,0 +1,9 @@
+cabal-version:      2.4
+name:               gen
+version:            0.1.0.0
+build-type:         Simple
+
+executable gen
+  main-is:          Main.hs
+  build-depends:    base
+  default-language: Haskell2010
