@@ -42,10 +42,6 @@ module Distribution.Client.ProjectPlanning
   , pkgConfigCompiler
   , pkgConfigPlatform
   , pkgConfigCompilerProgs
-  , pkgConfigBuildToolchain
-  , pkgConfigBuildCompiler
-  , pkgConfigBuildPlatform
-  , pkgConfigBuildProgs
   , setPkgConfigCompilerProgs
   , ElaboratedReadyPackage
   , BuildStyle (..)
@@ -155,7 +151,6 @@ import Distribution.Client.Toolchain
   , Staged (..)
   , Toolchain (..)
   , Toolchains
-  , activeStages
   , getStage
   , overStage
   , prevStage
@@ -1200,8 +1195,7 @@ rebuildInstallPlan
         -- the platform it targets; read them all. Unit ids hash both, so a
         -- plain union cannot confuse the stages.
         storePkgIdSet <-
-          fmap Set.unions . for (activeStages toolchains) $ \stage -> do
-            let toolchain = getStage toolchains stage
+          fmap (Set.unions . toList) . for toolchains $ \toolchain ->
             getStoreEntries
               cabalStoreDirLayout
               (toolchainCompiler toolchain)
