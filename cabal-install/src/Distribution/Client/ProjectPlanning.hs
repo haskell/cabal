@@ -157,7 +157,6 @@ import Distribution.Client.Toolchain
   , Toolchains
   , activeStages
   , getStage
-  , isCross
   , overStage
   , prevStage
   , traverseWithStage
@@ -1048,7 +1047,7 @@ rebuildInstallPlan
               Cabal.interpretPackageDbFlags False . projectPackageDbs
 
             projectPackageDbs :: Stage -> [Maybe PackageDBCWD]
-            projectPackageDbs = projectPackageDbsFor toolchains projectConfigShared
+            projectPackageDbs = projectPackageDbsFor projectConfigShared
 
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
@@ -1851,20 +1850,16 @@ planPackages
 -- distinct build toolchain therefore inherits none of them: its stack is its
 -- own global database plus its own store.
 --
--- When there is no distinct build toolchain there is no build stage: setup
--- scripts and build tools are built at 'prevStage' of the package's own
--- stage, which is then 'Host' itself, so an ordinary build keeps the
--- settings everywhere.
+-- A 'Build' stage exists only when there is a distinct build toolchain (see
+-- 'prevStage'), so this needs no cross-compilation check. When there is no
+-- distinct build toolchain, setup scripts and build tools are built at the
+-- host stage and an ordinary build keeps the settings everywhere.
 projectPackageDbsFor
-  :: Toolchains
-  -> ProjectConfigShared
+  :: ProjectConfigShared
   -> Stage
   -> [Maybe PackageDBCWD]
-projectPackageDbsFor toolchains shared stage
-  | Build <- stage
-  , isCross toolchains =
-      []
-  | otherwise = projectConfigPackageDBs shared
+projectPackageDbsFor _ Build = []
+projectPackageDbsFor shared Host = projectConfigPackageDBs shared
 
 elaborateInstallPlan
   :: HasCallStack
@@ -2787,7 +2782,7 @@ elaborateInstallPlan
       -- The project's package databases belong to the host compiler; a
       -- distinct build toolchain gets none of them.
       projectPackageDbs :: Stage -> [Maybe PackageDBCWD]
-      projectPackageDbs = projectPackageDbsFor toolchains projectConfigShared
+      projectPackageDbs = projectPackageDbsFor projectConfigShared
 
       -- The package databases of a build stage: the store database of that
       -- stage's compiler, and for in-place builds that compiler's dist
