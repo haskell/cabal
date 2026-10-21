@@ -238,8 +238,8 @@ inLexerMode (LexerMode mode) p =
 --                              | comment* line? comment* ('\\n' line comment*)*
 -- SectionLayoutOrBraces      ::= '\\n'? '{' Elements '\\n'? '}'
 --                              | Elements
--- ElementInNonLayoutContext  ::= ':' FieldInlineOrBraces
---                              | arg* '\\n'? '{' Elements '\\n'? '}'
+-- ElementInNonLayoutContext  ::= ':'                   FieldInlineOrBraces
+--                              | arg* comment* '\\n'? '{' Elements '\\n'? '}'
 -- FieldInlineOrBraces        ::= '\\n'? '{' content '}'
 --                              | content
 -- @
@@ -381,21 +381,22 @@ elementInLayoutContext ilevel name =
 -- In a non-layout context we can have only have fields and sections that
 -- themselves use braces style, or inline style fields.
 --
--- elementInNonLayoutContext ::= ':' FieldInlineOrBraces
---                             | arg* '\\n'? '{' elements '\\n'? '}'
+-- elementInNonLayoutContext ::= ':'                    FieldInlineOrBraces
+--                             | arg* comments* '\\n'? '{' elements '\\n'? '}'
 elementInNonLayoutContext :: Name Position -> Parser (Field (WithComments Position))
 elementInNonLayoutContext name =
   (do colon; fieldInlineOrBraces name) -- inline field or braces can never have comments
     <|> ( do
             args <- many sectionArg
+            commentsAfterSectionArgs <- many tokComment -- Unintuitively, trailing comments are allowed in the same line of a section
             openBrace
             elems <- elements zeroIndentLevel
             optional tokIndent
             closeBrace
 
             case elems of
-              Left elementCmts -> return (Section (WithComments elementCmts <$> name) (map noComments args) [])
-              Right elems' -> return (Section (noComments name) (map noComments args) elems')
+              Left innerCmts -> return (Section (WithComments (commentsAfterSectionArgs <> innerCmts) <$> name) (map noComments args) [])
+              Right elems' -> return (Section (WithComments commentsAfterSectionArgs <$> name) (map noComments args) elems')
         )
 
 -- The body of a field, using either layout style or braces style.
