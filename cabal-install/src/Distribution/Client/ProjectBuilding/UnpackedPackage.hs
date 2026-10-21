@@ -634,7 +634,7 @@ buildInplaceUnpackedPackage
                     -- Keep the per-project running InstalledPackageIndex up to date.
                     -- See (ProjIPI2) and (ProjIPI4) from Note [Per-project InstalledPackageIndex]
                     -- in Distribution.Client.ProjectBuilding.
-                    atomically $ modifyTVar ipiTVar (overStage (elabActiveStage pkgshared pkg) (PackageIndex.insert ipkg))
+                    atomically $ modifyTVar ipiTVar (overStage (elabStage pkg) (PackageIndex.insert ipkg))
                     return (Just ipkg)
                   else return Nothing
 
@@ -886,7 +886,7 @@ buildAndInstallUnpackedPackage
               -- (takes ~100ms).
               mipkg <- readIORef ipkgRef
               ipkg <- maybe getInstalledPackageInfo return mipkg
-              atomically $ modifyTVar ipiTVar (overStage (elabActiveStage pkgshared pkg) (PackageIndex.insert ipkg))
+              atomically $ modifyTVar ipiTVar (overStage (elabStage pkg) (PackageIndex.insert ipkg))
 
           -- No tests on install
           PBTestPhase{} -> return ()
