@@ -603,9 +603,20 @@ configureToolchains
     } = do
     progsearchpath <- liftIO getSystemSearchPath
 
-    -- User-supplied program locations (the global and the local
-    -- @program-locations@ sections), applied to both stages: the settings are
-    -- project-wide and there is no per-stage variant of them.
+    -- LIMITATION: program locations are not per-stage.
+    --
+    -- The user-supplied program locations (the global and the local
+    -- @program-locations@ sections, @--with-PROG@) and the @extra-prog-path@
+    -- entries are project-wide settings with no per-stage variant, so the
+    -- same values are applied to the host and the build toolchain. The two
+    -- stages therefore resolve every auxiliary program, @pkg-config@ above
+    -- all, to the same executable. Under cross-compilation that is wrong for
+    -- any tool that answers for one platform: the host stage cannot be given
+    -- a prefixed @pkg-config@, or one pointed at a sysroot, without the
+    -- build stage getting it too. The per-stage read of the pkg-config
+    -- database below is correct plumbing, but on its own it reads the same
+    -- tool twice. Per-stage locations need stage-qualified configuration,
+    -- which this branch does not have.
     let userProgramPaths =
           Map.toList
             . getMapLast
