@@ -38,7 +38,7 @@ import           Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Modular.Dependency as D
 import Distribution.Solver.Modular.Flag as F
 import Distribution.Solver.Modular.Index
-import Distribution.Solver.Types.Stage (Staged, getStage, activeStages)
+import Distribution.Solver.Types.Stage (Staged, getStage, mapWithStage)
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
@@ -70,7 +70,7 @@ convPIs toolchains constraints sip strfl solveExes iidxs sidx =
   -- Build stage sees the build compiler's packages and the Host stage the host
   -- compiler's. Source packages are shared, but re-evaluated per stage because
   -- their condition trees depend on the stage's os\/arch\/compiler.
-  M.fromList [ (stage, convStage stage) | stage <- activeStages toolchains ]
+  mapWithStage (\stage _ -> convStage stage) toolchains
   where
     convStage stage =
       let (comp, Platform arch os) = getStage toolchains stage

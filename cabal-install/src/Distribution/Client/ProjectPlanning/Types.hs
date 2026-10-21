@@ -622,7 +622,7 @@ instance IsNode ElaboratedConfiguredPackage where
   -- The guiding rule is: a neighbour's stage is whatever the solver assigned
   -- the dependency, and must be /read/ from the resolved plan node, never
   -- recomputed. Recomputation is what made build-tool/setup edges wrong before
-  -- (they used @prevStage elabStage@, which invents the 'Build' stage even for
+  -- (they used an earlier @prevStage@ that invented the 'Build' stage even for
   -- a non-cross build that has no separate build stage). So build-tool and
   -- setup edges come from 'elabOrderExeDependencies' and
   -- 'elabSetupLibDependencies', both of which store the stage of the plan node

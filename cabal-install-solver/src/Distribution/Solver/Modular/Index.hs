@@ -19,7 +19,7 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
-import Distribution.Solver.Types.Stage (Stage (..))
+import Distribution.Solver.Types.Stage (Staged (..))
 
 -- | The packages available for a single build stage. This is a nested
 -- dictionary. Package names are mapped to instances, which in turn is mapped
@@ -31,8 +31,11 @@ type StageIndex = Map PN (Map I PInfo)
 -- because a different stage means a different compiler and therefore an
 -- entirely different set of pre-installed packages. The goal being solved
 -- always carries its stage (in its 'Distribution.Solver.Types.GoalScope.GoalScope'),
--- so lookups select the stage's 'StageIndex' first.
-type Index = Map Stage StageIndex
+-- so lookups select the stage's 'StageIndex' first with 'getStage'.
+--
+-- The build stage is present exactly when there is a distinct build
+-- toolchain ('isCross'); a non-cross build has only the host index.
+type Index = Staged StageIndex
 
 -- | Info associated with a package instance.
 -- Currently, dependencies, component names, flags and failure reasons.
@@ -72,19 +75,17 @@ defaultQualifyOptions :: Index -> QualifyOptions
 defaultQualifyOptions idx = QO {
       qoBaseShim         = or [ dep == base
                               | -- Look in the host stage's packages ..
-                                Just hostIdx <- [M.lookup Host idx]
-                                -- .. find all versions of base ..
-                              , Just is <- [M.lookup base hostIdx]
+                                Just is <- [M.lookup base (onHost idx)]
                                 -- .. which are installed ..
                               , (I _ver (Inst _), PInfo deps _comps _flagNfo _fr) <- M.toList is
                                 -- .. and flatten all their dependencies ..
                               , (LDep _ (Dep (PkgComponent dep _) _ci), _comp) <- flattenFlaggedDeps deps
                               ]
     , qoSetupIndependent = True
-      -- The index's stage-key set is the single source of truth for whether
-      -- we are cross-compiling: 'convPIs' only populates a 'Build' stage when
-      -- the build toolchain differs from the host one.
-    , qoCross = M.member Build idx
+      -- The index's stage set is the single source of truth for whether we
+      -- are cross-compiling: 'convPIs' only populates a 'Build' stage when the
+      -- build toolchain differs from the host one.
+    , qoStages = () <$ idx
     }
   where
     base = mkPackageName "base"

@@ -34,7 +34,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.ComponentDeps
 import Distribution.Solver.Types.GoalScope
-import Distribution.Solver.Types.Stage (Stage (..))
+import Distribution.Solver.Types.Stage (Stage (..), getStage)
 import Distribution.Solver.Types.Settings
 
 -- | All state needed to build and link the search tree. It has a type variable
@@ -150,7 +150,7 @@ addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
 -- For a package, we look up the instances available in the global info,
 -- and then handle each instance in turn.
 addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q (GoalScope s _ _) pn) gr) }) =
-  case M.lookup s idx >>= M.lookup pn of
+  case M.lookup pn (getStage idx s) of
     Nothing  -> FailF
                 (varToConflictSet (P qpn) `CS.union` goalReasonToConflictSetWithConflict qpn gr)
                 UnknownPackage
