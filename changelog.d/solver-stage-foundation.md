@@ -10,10 +10,12 @@ prs: 12356
   artifacts the user asked for, the `Build` stage produces things consumed
   during the build itself, such as compiled `Setup.hs` scripts and
   `build-tool-depends` dependencies.
-- `PackagePath` carries the stage as a third field,
-  `PackagePath Stage Namespace Qualifier`. Stage is orthogonal to the
-  existing namespace and qualifier axes, so independent goals and the
-  qualifier logic are unaffected.
+- `PackagePath` is renamed `GoalScope` and gains the stage as a first
+  field, `GoalScope Stage Namespace Qualifier`. The old name suggested a
+  route through the dependency tree; the type is a flat label for the scope
+  a goal is solved in. The stage follows the qualifier (it changes only at
+  build-tool and setup boundaries) and leaves the namespace and the
+  qualifier logic unaffected.
 - The solver's installed-package index is keyed by stage first, since
   installed packages are inherently per-stage and every goal knows its own
   stage.

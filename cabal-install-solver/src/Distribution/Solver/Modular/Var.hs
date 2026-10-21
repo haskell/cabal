@@ -7,7 +7,7 @@ module Distribution.Solver.Modular.Var (
 import Prelude hiding (pi)
 
 import Distribution.Solver.Modular.Flag
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 
 {-------------------------------------------------------------------------------
   Variables

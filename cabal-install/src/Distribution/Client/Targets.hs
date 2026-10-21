@@ -53,11 +53,11 @@ import Distribution.Package
   , unPackageName
   )
 
+import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
-import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.SourcePackage
 
 import qualified Codec.Archive.Tar as Tar

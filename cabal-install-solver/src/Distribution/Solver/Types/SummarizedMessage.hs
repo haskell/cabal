@@ -9,7 +9,7 @@ import Distribution.Solver.Compat.Prelude hiding (fail)
 
 import Distribution.Solver.Modular.Tree
     ( FailReason(..), POption(..) )
-import Distribution.Solver.Types.PackagePath ( QPN )
+import Distribution.Solver.Types.GoalScope ( QPN )
 import Distribution.Solver.Modular.Flag ( QSN, QFN )
 import Distribution.Solver.Modular.Dependency
     ( ConflictSet, QGoalReason, GoalReason )

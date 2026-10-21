@@ -31,7 +31,7 @@ import Distribution.Solver.Modular.WeightedPSQ (WeightedPSQ)
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnitId (UnitId)
 import Language.Haskell.Extension (Extension, Language)
@@ -95,7 +95,7 @@ data Tree d c =
 -- dependencies must also be the exact same).
 --
 -- See <http://www.well-typed.com/blog/2015/03/qualified-goals/> for details.
-data POption = POption I (Maybe PackagePath)
+data POption = POption I (Maybe GoalScope)
   deriving (Eq, Show)
 
 data FailReason = UnsupportedExtension Extension
