@@ -1,6 +1,6 @@
 # Change-log
 
-# 3.18.2.0 [Francesco Ariis](mailto:fa-ml@ariis.it) September 2026
+## 3.18.2.0 [Francesco Ariis](mailto:fa-ml@ariis.it) September 2026
 
 * See https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-3.18.2.0.md
 
