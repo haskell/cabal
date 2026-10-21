@@ -39,10 +39,6 @@ module Distribution.Client.ProjectPlanning.Types
   , pkgConfigCompiler
   , pkgConfigPlatform
   , pkgConfigCompilerProgs
-  , pkgConfigBuildToolchain
-  , pkgConfigBuildCompiler
-  , pkgConfigBuildPlatform
-  , pkgConfigBuildProgs
   , setPkgConfigCompilerProgs
   , elabToolchain
   , elabCompiler
@@ -256,24 +252,6 @@ pkgConfigPlatform = toolchainPlatform . pkgConfigToolchain
 -- | The host toolchain's program database; see 'pkgConfigToolchain'.
 pkgConfigCompilerProgs :: ElaboratedSharedConfig -> ProgramDb
 pkgConfigCompilerProgs = toolchainProgramDb . pkgConfigToolchain
-
--- | The /build/ toolchain (the machine running the build), used for
--- @build-tool-depends@ executables and custom @Setup.hs@ scripts. Equal to
--- the host toolchain unless cross-compiling.
-pkgConfigBuildToolchain :: ElaboratedSharedConfig -> Toolchain
-pkgConfigBuildToolchain = flip pkgConfigStageToolchain Build
-
--- | The build compiler; see 'pkgConfigBuildToolchain'.
-pkgConfigBuildCompiler :: ElaboratedSharedConfig -> Compiler
-pkgConfigBuildCompiler = toolchainCompiler . pkgConfigBuildToolchain
-
--- | The build platform; see 'pkgConfigBuildToolchain'.
-pkgConfigBuildPlatform :: ElaboratedSharedConfig -> Platform
-pkgConfigBuildPlatform = toolchainPlatform . pkgConfigBuildToolchain
-
--- | The build toolchain's program database; see 'pkgConfigBuildToolchain'.
-pkgConfigBuildProgs :: ElaboratedSharedConfig -> ProgramDb
-pkgConfigBuildProgs = toolchainProgramDb . pkgConfigBuildToolchain
 
 -- | Replace the /host/ toolchain's program database (e.g. to register a
 -- freshly-configured @haddock@). The build toolchain is left untouched.
