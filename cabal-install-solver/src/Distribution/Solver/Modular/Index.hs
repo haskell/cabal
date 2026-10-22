@@ -11,6 +11,8 @@ module Distribution.Solver.Modular.Index
 
 import Prelude hiding (pi)
 
+import Control.Monad (void)
+
 import Data.Map (Map)
 import qualified Data.List as L
 import qualified Data.Map as M
@@ -85,7 +87,7 @@ defaultQualifyOptions idx = QO {
       -- The index has the stage shape of the toolchains it was converted
       -- from (see 'convPIs'), so this is 'isCross' of those toolchains: a
       -- build stage exists only when there is a distinct build toolchain.
-    , qoStages = () <$ idx
+    , qoStages = void idx
     }
   where
     base = mkPackageName "base"
