@@ -78,6 +78,7 @@ library
     Distribution.Solver.Types.ConstraintSource
     Distribution.Solver.Types.DependencyResolver
     Distribution.Solver.Types.Flag
+    Distribution.Solver.Types.GoalScope
     Distribution.Solver.Types.InstalledPreference
     Distribution.Solver.Types.InstSolverPackage
     Distribution.Solver.Types.LabeledPackageConstraint
@@ -85,7 +86,6 @@ library
     Distribution.Solver.Types.PackageConstraint
     Distribution.Solver.Types.PackageFixedDeps
     Distribution.Solver.Types.PackageIndex
-    Distribution.Solver.Types.PackagePath
     Distribution.Solver.Types.PackagePreferences
     Distribution.Solver.Types.PkgConfigDb
     Distribution.Solver.Types.Progress
@@ -95,6 +95,7 @@ library
     Distribution.Solver.Types.SolverId
     Distribution.Solver.Types.SolverPackage
     Distribution.Solver.Types.SourcePackage
+    Distribution.Solver.Types.Stage
     Distribution.Solver.Types.SummarizedMessage
     Distribution.Solver.Types.Variable
 

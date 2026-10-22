@@ -24,7 +24,8 @@ import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
+import Distribution.Solver.Types.Stage (getStage)
 import Distribution.Solver.Types.Settings
          (CountConflicts(..), EnableBackjumping(..), FineGrainedConflicts(..))
 import Distribution.Types.VersionRange (anyVersion)
@@ -266,8 +267,8 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
     -- Skipping it is an optimization. If false, it returns a new conflict set
     -- to be merged with the previous one.
     couldResolveConflicts :: QPN -> POption -> S.Set CS.Conflict -> Maybe ConflictSet
-    couldResolveConflicts currentQPN@(Q _ pn) (POption i@(I v _) _) conflicts =
-      let (PInfo deps _ _ _) = idx M.! pn M.! i
+    couldResolveConflicts currentQPN@(Q (GoalScope s _ _) pn) (POption i@(I v _) _) conflicts =
+      let (PInfo deps _ _ _) = getStage idx s M.! pn M.! i
           qdeps = qualifyDeps (defaultQualifyOptions idx) currentQPN deps
 
           couldBeResolved :: CS.Conflict -> Maybe ConflictSet

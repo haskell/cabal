@@ -53,7 +53,8 @@ import Distribution.Solver.Modular.Version
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
+import Distribution.Solver.Types.Stage (Stage, Staged, prevStage)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
@@ -160,6 +161,12 @@ data QualifyOptions = QO {
 
     -- Should dependencies of the setup script be treated as independent?
   , qoSetupIndependent :: Bool
+
+    -- | The active stages. Tool dependencies (build-tool exes, custom
+    -- @Setup.hs@ deps) are solved at 'prevStage' of the depending package's
+    -- stage, which is Build only when a distinct build stage exists and Host
+    -- otherwise, so a non-cross build behaves exactly as before.
+  , qoStages :: Staged ()
   }
   deriving Show
 
@@ -174,7 +181,7 @@ data QualifyOptions = QO {
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
 qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps PN -> FlaggedDeps QPN
-qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
+qualifyDeps QO{..} (Q pp@(GoalScope s ns q) pn) = go
   where
     go :: FlaggedDeps PN -> FlaggedDeps QPN
     go = map go1
@@ -200,11 +207,11 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _ =
-        Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) ci
+        Dep (Q (GoalScope toolStage ns (QualExe pn qpn)) <$> dep) ci
     goD (Dep dep@(PkgComponent qpn (ExposedLib _)) ci) comp
-      | qBase qpn   = Dep (Q (PackagePath ns (QualBase  pn)) <$> dep) ci
-      | qSetup comp = Dep (Q (PackagePath ns (QualSetup pn)) <$> dep) ci
-      | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) ci
+      | qBase qpn   = Dep (Q (GoalScope s         ns (QualBase  pn)) <$> dep) ci
+      | qSetup comp = Dep (Q (GoalScope toolStage ns (QualSetup pn)) <$> dep) ci
+      | otherwise   = Dep (Q (GoalScope s         ns inheritedQ    ) <$> dep) ci
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup
@@ -220,11 +227,20 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
                    QualToplevel -> q
                    QualBase _   -> QualToplevel
 
-    -- Should we qualify this goal with the 'Base' package path?
+    -- The stage a tool dependency (build-tool exe, custom-setup) is solved
+    -- for. This is the ONLY place the stage changes as we descend the tree:
+    -- host packages depend on tools built for the build system. 'prevStage'
+    -- drops to Build only when a distinct build stage exists and stays at
+    -- Host otherwise, so a non-cross build is unchanged. The namespace
+    -- (@ns@) is threaded unchanged.
+    toolStage :: Stage
+    toolStage = prevStage qoStages s
+
+    -- Should we qualify this goal with the 'Base' scope?
     qBase :: PN -> Bool
     qBase dep = qoBaseShim && unPackageName dep == "base"
 
-    -- Should we qualify this goal with the 'Setup' package path?
+    -- Should we qualify this goal with the 'Setup' scope?
     qSetup :: Component -> Bool
     qSetup comp = qoSetupIndependent && comp == ComponentSetup
 

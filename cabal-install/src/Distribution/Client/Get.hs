@@ -69,6 +69,7 @@ import Distribution.PackageDescription.PrettyPrint
   ( writeGenericPackageDescription
   )
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Stage (always)
 
 import Control.Monad (mapM_)
 import qualified Data.Map as Map
@@ -143,7 +144,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
     resolverParams :: SourcePackageDb -> [PackageSpecifier UnresolvedSourcePackage] -> DepResolverParams
     resolverParams sourcePkgDb pkgSpecifiers =
       -- TODO: add command-line constraint and preference args for unpack
-      standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
+      standardInstallPolicy (always mempty) sourcePkgDb pkgSpecifiers
 
     onlyPkgDescr = fromFlagOrDefault False (getOnlyPkgDescr getFlags)
 

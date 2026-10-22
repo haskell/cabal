@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# A fake pkg-config that knows one package, fakelib 1.0, which no real
+# pkg-config installation knows. Like PkgConfigParse/pkg-config it implements
+# only the invocations cabal makes and must be updated when cabal invokes
+# pkg-config in new ways.
+
+set -eu
+
+case "$*" in
+  '--version')
+    echo 2.1.0
+    ;;
+
+  '--variable pc_path pkg-config')
+    echo '.'
+    ;;
+
+  '--list-all')
+    printf 'fakelib   fakelib - a fake library\n'
+    ;;
+
+  '--modversion '*)
+    shift
+    for arg; do
+      case "$arg" in
+        fakelib) echo 1.0 ;;
+        *)
+          echo >&2 "Package $arg was not found in the pkg-config search path."
+          exit 1
+          ;;
+      esac
+    done
+    ;;
+
+  '--cflags '*) ;;
+  '--libs '*) ;;
+
+  *)
+    echo >&2 "pkg-config: unrecognised arguments $* (this is an incomplete shim)"
+    exit 1
+    ;;
+esac

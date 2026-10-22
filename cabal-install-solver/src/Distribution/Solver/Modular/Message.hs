@@ -40,7 +40,7 @@ import Distribution.Solver.Modular.Version
 
 import Distribution.Solver.Types.ConstraintSource
     ( ConstraintSource (..), showConstraintSource )
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
     ( QPN, Qualified(Q), showQPN )
 import Distribution.Solver.Types.Progress
     ( Progress(..) )
@@ -355,12 +355,13 @@ showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
 
 -- $setup
 -- >>> import Distribution.Solver.Modular.Package
--- >>> import Distribution.Solver.Types.PackagePath
+-- >>> import Distribution.Solver.Types.GoalScope
+-- >>> import Distribution.Solver.Types.Stage (Stage (..))
 -- >>> import Distribution.Types.PackageName
 -- >>> import Distribution.Types.Version
 -- >>> import Distribution.Types.UnitId
--- >>> let foobarPN = PackagePath DefaultNamespace QualToplevel
--- >>> let bazquxPN = PackagePath (Independent $ mkPackageName "bazqux") QualToplevel
+-- >>> let foobarPN = GoalScope Host DefaultNamespace QualToplevel
+-- >>> let bazquxPN = GoalScope Host (Independent $ mkPackageName "bazqux") QualToplevel
 -- >>> let foobarQPN = Q foobarPN (mkPackageName "foo-bar")
 -- >>> let v0 = POption (I (mkVersion [0]) InRepo) Nothing
 -- >>> let v1 = POption (I (mkVersion [1]) InRepo) Nothing

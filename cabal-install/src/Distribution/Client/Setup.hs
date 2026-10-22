@@ -138,6 +138,7 @@ import Distribution.Client.GlobalFlags
   )
 import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Compiler (CompilerFlavor)
 import Distribution.FieldGrammar.Newtypes (SpecVersion (..))
 import Distribution.PackageDescription
   ( BuildType (..)
@@ -918,6 +919,13 @@ data ConfigExFlags = ConfigExFlags
   , configAllowOlder :: Maybe AllowOlder
   , configWriteGhcEnvironmentFilesPolicy
       :: Flag WriteGhcEnvironmentFilesPolicy
+  , configBuildHcFlavor :: Flag CompilerFlavor
+  -- ^ Compiler flavour for the build stage (cross-compilation). Project-file
+  -- only (@build-compiler@); no command-line option.
+  , configBuildHcPath :: Flag FilePath
+  -- ^ Path to the compiler for the build stage (@--with-build-compiler@).
+  , configBuildHcPkg :: Flag FilePath
+  -- ^ Path to the package tool for the build stage (@--with-build-hc-pkg@).
   }
   deriving (Eq, Show, Generic)
   deriving (Semigroup, Monoid) via Generically ConfigExFlags
@@ -983,6 +991,20 @@ configureExOptions _showOrParseArgs src =
       configBackup
       (\v flags -> flags{configBackup = v})
       (boolOpt [] [])
+  , option
+      "W"
+      ["with-build-compiler", "with-build-hc"]
+      "give the path to the compiler for the build stage (cross-compilation)"
+      configBuildHcPath
+      (\v flags -> flags{configBuildHcPath = v})
+      (reqArgFlag "PATH")
+  , option
+      ""
+      ["with-build-hc-pkg"]
+      "give the path to the package tool for the build stage (cross-compilation)"
+      configBuildHcPkg
+      (\v flags -> flags{configBuildHcPkg = v})
+      (reqArgFlag "PATH")
   , option
       "c"
       ["constraint"]

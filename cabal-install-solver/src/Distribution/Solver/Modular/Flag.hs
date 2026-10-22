@@ -25,7 +25,7 @@ import qualified Distribution.PackageDescription as P -- from Cabal
 
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 
 -- | Flag name. Consists of a package instance and the flag identifier itself.
 data FN qpn = FN qpn Flag

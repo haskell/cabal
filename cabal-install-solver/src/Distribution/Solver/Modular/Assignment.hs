@@ -20,7 +20,7 @@ import Distribution.PackageDescription (FlagAssignment, mkFlagAssignment) -- fro
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps, Component)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 
 import Distribution.Solver.Modular.Configured
 import Distribution.Solver.Modular.Dependency
