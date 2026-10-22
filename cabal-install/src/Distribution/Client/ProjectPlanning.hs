@@ -1750,7 +1750,10 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0) =
+      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0) = do
+        when (bt == PD.Make) $
+          dieProgress $
+            text "'build-type: Make' is no longer supported."
         case mkComponentsGraph (elabEnabledSpec elab0) pd of
           Right g -> do
             let src_comps = componentsGraphToList g
@@ -1803,7 +1806,8 @@ elaborateInstallPlan
                   -- main library in cabal. Other components will need to depend
                   -- on the main library for configured data.
                   PD.Custom -> [CuzBuildType CuzCustomBuildType]
-                  PD.Make -> error "build-type: Make is no longer supported"
+                  -- Rejected above with a proper error.
+                  PD.Make -> []
                   PD.Simple -> []
                   -- TODO: remove the following, once we make Setup a separate
                   -- component (task tracked at #9986).
