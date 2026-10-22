@@ -139,7 +139,7 @@ import Web.Browser (openBrowser)
 -- the phases will be carried out differently. For example, when installing,
 -- the test, benchmark, and repl phase are ignored.
 data PackageBuildingPhase r where
-  PBConfigurePhase :: {runConfigure :: IO InLibraryLBI} -> PackageBuildingPhase InLibraryLBI
+  PBConfigurePhase :: {runConfigure :: IO (Maybe Cabal.LocalBuildInfo)} -> PackageBuildingPhase (Maybe Cabal.LocalBuildInfo)
   PBBuildPhase :: {runBuild :: IO [MonitorFilePath]} -> PackageBuildingPhase ()
   PBHaddockPhase :: {runHaddock :: IO [MonitorFilePath]} -> PackageBuildingPhase ()
   PBReplPhase :: {runRepl :: IO [MonitorFilePath]} -> PackageBuildingPhase ()
@@ -489,7 +489,7 @@ buildAndRegisterUnpackedPackage
           scriptOptions{isInteractive = True}
           (Just (elabPkgDescription pkg))
 
-      generateInstalledPackageInfo :: InLibraryLBI -> IO InstalledPackageInfo
+      generateInstalledPackageInfo :: Maybe Cabal.LocalBuildInfo -> IO InstalledPackageInfo
       generateInstalledPackageInfo mbLBI =
         withTempInstalledPackageInfoFile
           verbosity
@@ -698,7 +698,7 @@ buildInplaceUnpackedPackage
           (monitors ++ monitors' ++ dep_monitors)
           buildResult
 
-      whenReconfigure :: IO InLibraryLBI -> IO InLibraryLBI
+      whenReconfigure :: IO (Maybe Cabal.LocalBuildInfo) -> IO (Maybe Cabal.LocalBuildInfo)
       whenReconfigure configure_action =
         case buildStatus of
           BuildStatusConfigure _ -> configure_action
@@ -724,7 +724,7 @@ buildInplaceUnpackedPackage
                               builtinPrograms
                               (Cabal.withPrograms lbi_wo_programs)
                         }
-                return $ InLibraryLBI lbi
+                return $ Just lbi
 
       whenRebuild, whenReRegister :: IO () -> IO ()
       whenRebuild action
