@@ -34,6 +34,7 @@ module Distribution.Simple.Command
     -- ** Associating actions with commands
   , Command
   , commandAddAction
+  , withGlobalOptionNote
   , noExtraFlags
 
     -- ** Building lists of commands
@@ -627,6 +628,64 @@ commandAddAction command action =
       let flags = mkflags (commandDefaultFlags command)
        in action flags args
 
+-- | Make a command's parser aware of the program's global options: when the
+-- parser rejects an argument that the global command would have accepted as
+-- an option (e.g. @cabal get --config-file=foo@).
+withGlobalOptionNote :: CommandUI globalFlags -> Command action -> Command action
+withGlobalOptionNote globalUI (Command name synopsis parse cmdType) =
+  Command name synopsis parse' cmdType
+  where
+    parse' args = case parse args of
+      CommandErrors errs ->
+        CommandErrors
+          (errs ++ maybeToList (misplacedGlobalOptionNote globalOpts args))
+      parseResult -> parseResult
+
+    globalOpts = commandGetOpts ParseArgs globalUI
+
+-- \| @'Just' note@ if some argument rejected by the command's parser would
+-- have been accepted as an option by the global parser, i.e. a global option
+-- was given after the command name.
+misplacedGlobalOptionNote :: [GetOpt.OptDescr a] -> [String] -> Maybe String
+misplacedGlobalOptionNote globalOpts cmdArgs =
+  case nonEmpty (misplacedGlobalOptions globalOpts cmdArgs) of
+    Nothing -> Nothing
+    Just (opt :| []) -> Just (noteOne opt)
+    Just (opt :| more) -> Just (noteMany (opt : more))
+  where
+    quoted opt = "`" ++ opt ++ "'"
+
+    noteOne opt =
+      "Note: the option "
+        ++ quoted opt
+        ++ " is global and must be specified before the command."
+
+    noteMany opts =
+      "Note: the options "
+        ++ intercalate ", " (map quoted opts)
+        ++ " are global and must be specified before the command."
+
+-- | The arguments rejected by the command's parser that the global command's
+-- parser would have accepted as options: global options given after the
+-- command name.
+misplacedGlobalOptions :: [GetOpt.OptDescr a] -> [String] -> [String]
+misplacedGlobalOptions globalOpts cmdArgs =
+  let (_, nonOptions, unrecognised, _) =
+        GetOpt.getOpt' GetOpt.Permute globalOpts cmdArgs
+   in [ arg
+      | arg <- cmdArgs
+      , isOptionLike arg
+      , arg `notElem` nonOptions
+      , arg `notElem` unrecognised
+      ]
+  where
+    isOptionLike arg = case arg of
+      -- the end-of-options terminator is not an option
+      "--" -> False
+      '-' : '-' : _ -> True
+      '-' : _ : _ -> True
+      _ -> False
+
 -- Print suggested command if edit distance is < 5
 badCommand :: [Command action] -> String -> CommandParse a
 badCommand commands' cname =
@@ -679,9 +738,7 @@ commandsRunWithFallback globalCommand commands defaultCommand args =
       ("help" : cmdArgs) -> handleHelpCommand flags cmdArgs
       (name : cmdArgs) -> case lookupCommand name of
         [Command _ _ action _] ->
-          pure $
-            CommandReadyToGo
-              (flags, improveGlobalOptionError cmdArgs (action cmdArgs))
+          pure $ CommandReadyToGo (flags, action cmdArgs)
         _ -> do
           final_cmd <- defaultCommand commands' name cmdArgs
           return $ CommandReadyToGo (flags, final_cmd)
@@ -697,43 +754,6 @@ commandsRunWithFallback globalCommand commands defaultCommand args =
 
     commands' = commands ++ [commandAddAction helpCommandUI undefined]
     commandNames = [name | (Command name _ _ NormalCommand) <- commands']
-
-    globalOptions = commandGetOpts ParseArgs globalCommand
-
-    -- If a global option is given after the command name (e.g.
-    -- @cabal get --config-file=foo@), the subcommand parser rejects it as an
-    -- unrecognized option. In that case, produce a more helpful error message
-    -- pointing out that global options have to come before the command.
-    improveGlobalOptionError
-      :: [String]
-      -> CommandParse action
-      -> CommandParse action
-    improveGlobalOptionError cmdArgs parse =
-      case parse of
-        CommandErrors errs ->
-          case misplacedGlobalOptions cmdArgs of
-            [] -> CommandErrors errs
-            [_] -> CommandErrors (errs ++ ["Note: this option is global and must be specified before the command."])
-            _ : _ -> CommandErrors (errs ++ ["Note: these options are global and must be specified before the command."])
-        _ -> parse
-
-    misplacedGlobalOptions :: [String] -> [String]
-    misplacedGlobalOptions = go
-      where
-        go [] = []
-        go ("--" : _) = []
-        go (arg : rest)
-          | isGlobalOption arg = arg : go rest
-          | otherwise = go rest
-
-        isGlobalOption ('-' : '-' : rest) =
-          let (name, _) = break (== '=') rest
-           in name `elem` longNames
-        isGlobalOption ('-' : c : _) = c `elem` shortNames
-        isGlobalOption _ = False
-
-        longNames = [l | GetOpt.Option _ ls _ _ <- globalOptions, l <- ls]
-        shortNames = [s | GetOpt.Option ss _ _ _ <- globalOptions, s <- ss]
 
     -- A bit of a hack: support "prog help" as a synonym of "prog --help"
     -- furthermore, support "prog help command" as "prog command --help"

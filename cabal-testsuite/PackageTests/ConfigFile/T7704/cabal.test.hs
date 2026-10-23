@@ -10,5 +10,5 @@ import Test.Cabal.Prelude
 main = cabalTest $ do
   res <- fails $ cabalG' [] "get" ["--config-file=foo"]
   assertOutputContains "unrecognized 'get' option `--config-file=foo'" res
-  assertOutputContains "this option is global" res
-  assertOutputContains "before the command" res
+  assertOutputContains "the option `--config-file=foo' is global" res
+  assertOutputContains "must be specified before" res
