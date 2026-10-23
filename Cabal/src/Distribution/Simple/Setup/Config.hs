@@ -18,12 +18,70 @@
 -- See: @Distribution.Simple.Setup@
 module Distribution.Simple.Setup.Config
   ( ConfigFlags
-      ( ConfigCommonFlags
+      ( ConfigFlags
+      , configCommonFlags
+      , configTargets
+      , configPrograms_
+      , configProgramPaths
+      , configProgramArgs
+      , configProgramPathExtra
+      , configHcFlavor
+      , configHcPath
+      , configHcPkg
+      , configVanillaLib
+      , configProfLib
+      , configSharedLib
+      , configStaticLib
+      , configBytecodeLib
+      , configDynExe
+      , configFullyStaticExe
+      , configProfExe
+      , configProf
+      , configProfShared
+      , configProfDetail
+      , configProfLibDetail
+      , configConfigureArgs
+      , configOptimization
+      , configProgPrefix
+      , configProgSuffix
+      , configInstallDirs
+      , configExtraLibDirs
+      , configExtraLibDirsStatic
+      , configExtraFrameworkDirs
+      , configExtraIncludeDirs
+      , configIPID
+      , configCID
+      , configDeterministic
+      , configUserInstall
+      , configPackageDBs
+      , configGHCiLib
+      , configSplitSections
+      , configSplitObjs
+      , configStripExes
+      , configStripLibs
+      , configConstraints
+      , configDependencies
+      , configPromisedDependencies
+      , configInstantiateWith
+      , configConfigurationsFlags
+      , configTests
+      , configBenchmarks
+      , configCoverage
+      , configLibCoverage
+      , configExactConfiguration
+      , configFlagError
+      , configRelocatable
+      , configDebugInfo
+      , configDumpBuildInfo
+      , configUseResponseFiles
+      , configAllowDependingOnPrivateLibs
+      , configCoverageFor
+      , configIgnoreBuildTools
+      , ConfigCommonFlags
       , configVerbosity
       , configDistPref
       , configCabalFilePath
       , configWorkingDir
-      , ..
       )
   , emptyConfigFlags
   , defaultConfigFlags
@@ -58,6 +116,8 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Utils
 import Distribution.Types.ComponentId
+import Distribution.Types.ConfigFlags (ConfigFlags)
+import qualified Distribution.Types.ConfigFlags as CF
 import Distribution.Types.DumpBuildInfo
 import Distribution.Types.GivenComponent
 import Distribution.Types.Module
@@ -75,167 +135,257 @@ import qualified Text.PrettyPrint as Disp
 
 -- ------------------------------------------------------------
 
--- | Flags to @configure@ command.
+-- | A flat view of all the configure flags, regardless of whether they are
+-- package-level or component-level (see "Distribution.Types.ConfigFlags").
 --
--- IMPORTANT: every time a new flag is added, 'D.C.Setup.filterConfigureFlags'
--- should be updated.
--- IMPORTANT: every time a new flag is added, it should be added to the Eq instance
-data ConfigFlags = ConfigFlags
-  { configCommonFlags :: !CommonSetupFlags
-  , configTargets :: [String]
-  -- ^ The targets of this invocation, given as positional arguments.
-  , -- FIXME: the configPrograms is only here to pass info through to configure
-    -- because the type of configure is constrained by the UserHooks.
-    -- when we change UserHooks next we should pass the initial
-    -- ProgramDb directly and not via ConfigFlags
-    configPrograms_ :: Maybe (Last ProgramDb)
-  -- ^ All programs that
-  --  @cabal@ may run
-  , configProgramPaths :: [(String, FilePath)]
-  -- ^ user specified programs paths
-  , configProgramArgs :: [(String, [String])]
-  -- ^ user specified programs args
-  , configProgramPathExtra :: NubList FilePath
-  -- ^ Extend the $PATH
-  , configHcFlavor :: Flag CompilerFlavor
-  -- ^ The \"flavor\" of the
-  --  compiler, e.g. GHC.
-  , configHcPath :: Flag FilePath
-  -- ^ given compiler location
-  , configHcPkg :: Flag FilePath
-  -- ^ given hc-pkg location
-  , configVanillaLib :: Flag Bool
-  -- ^ Enable vanilla library
-  , configProfLib :: Flag Bool
-  -- ^ Enable profiling in the library
-  , configSharedLib :: Flag Bool
-  -- ^ Build shared library
-  , configStaticLib :: Flag Bool
-  -- ^ Build static library
-  , configBytecodeLib :: Flag Bool
-  -- ^ Build bytecode library
-  , configDynExe :: Flag Bool
-  -- ^ Enable dynamic linking of the
-  --  executables.
-  , configFullyStaticExe :: Flag Bool
-  -- ^ Enable fully static linking of the
-  --  executables.
-  , configProfExe :: Flag Bool
-  -- ^ Enable profiling in the
-  --  executables.
-  , configProf :: Flag Bool
-  -- ^ Enable profiling in the library
-  --  and executables.
-  , configProfShared :: Flag Bool
-  -- ^ Enable shared profiling objects
-  , configProfDetail :: Flag ProfDetailLevel
-  -- ^ Profiling detail level
-  --   in the library and executables.
-  , configProfLibDetail :: Flag ProfDetailLevel
-  -- ^ Profiling  detail level
-  --  in the library
-  , configConfigureArgs :: [String]
-  -- ^ Extra arguments to @configure@
-  , configOptimization :: Flag OptimisationLevel
-  -- ^ Enable optimization.
-  , configProgPrefix :: Flag PathTemplate
-  -- ^ Installed executable prefix.
-  , configProgSuffix :: Flag PathTemplate
-  -- ^ Installed executable suffix.
-  , configInstallDirs :: InstallDirs (Flag PathTemplate)
-  -- ^ Installation
-  --  paths
-  , configScratchDir :: Flag FilePath
-  , configExtraLibDirs :: [SymbolicPath Pkg (Dir Lib)]
-  -- ^ path to search for extra libraries
-  , configExtraLibDirsStatic :: [SymbolicPath Pkg (Dir Lib)]
-  -- ^ path to search for extra
-  --   libraries when linking
-  --   fully static executables
-  , configExtraFrameworkDirs :: [SymbolicPath Pkg (Dir Framework)]
-  -- ^ path to search for extra
-  -- frameworks (OS X only)
-  , configExtraIncludeDirs :: [SymbolicPath Pkg (Dir Include)]
-  -- ^ path to search for header files
-  , configIPID :: Flag String
-  -- ^ explicit IPID to be used
-  , configCID :: Flag ComponentId
-  -- ^ explicit CID to be used
-  , configDeterministic :: Flag Bool
-  -- ^ be as deterministic as possible
-  -- (e.g., invariant over GHC, database,
-  -- etc).  Used by the test suite
-  , configUserInstall :: Flag Bool
-  -- ^ The --user\/--global flag
-  , configPackageDBs :: [Maybe PackageDB]
-  -- ^ Which package DBs to use
-  , configGHCiLib :: Flag Bool
-  -- ^ Enable compiling library for GHCi
-  , configSplitSections :: Flag Bool
-  -- ^ Enable -split-sections with GHC
-  , configSplitObjs :: Flag Bool
-  -- ^ Enable -split-objs with GHC
-  , configStripExes :: Flag Bool
-  -- ^ Enable executable stripping
-  , configStripLibs :: Flag Bool
-  -- ^ Enable library stripping
-  , configConstraints :: [PackageVersionConstraint]
-  -- ^ Additional constraints for
-  --  dependencies.
-  , configDependencies :: [GivenComponent]
-  -- ^ The packages depended on which already exist
-  , configPromisedDependencies :: [PromisedComponent]
-  -- ^ The packages depended on which doesn't yet exist (i.e. promised).
-  --  Promising dependencies enables us to configure components in parallel,
-  --  and avoids expensive builds if they are not necessary.
-  --  For example, in multi-repl mode, we don't want to build dependencies that
-  --  are loaded into the interactive session, since we have to build them again.
-  , configInstantiateWith :: [(ModuleName, Module)]
-  -- ^ The requested Backpack instantiation.  If empty, either this
-  -- package does not use Backpack, or we just want to typecheck
-  -- the indefinite package.
-  , configConfigurationsFlags :: FlagAssignment
-  , configTests :: Flag Bool
-  -- ^ Enable test suite compilation
-  , configBenchmarks :: Flag Bool
-  -- ^ Enable benchmark compilation
-  , configCoverage :: Flag Bool
-  -- ^ Enable program coverage
-  , configLibCoverage :: Flag Bool
-  -- ^ Enable program coverage (deprecated)
-  , configExactConfiguration :: Flag Bool
-  -- ^ All direct dependencies and flags are provided on the command line by
-  --  the user via the '--dependency' and '--flags' options.
-  , configFlagError :: Flag String
-  -- ^ Halt and show an error message indicating an error in flag assignment
-  , configRelocatable :: Flag Bool
-  -- ^ Enable relocatable package built
-  , configDebugInfo :: Flag DebugInfoLevel
-  -- ^ Emit debug info.
-  , configDumpBuildInfo :: Flag DumpBuildInfo
-  -- ^ Should we dump available build information on build?
-  -- Dump build information to disk before attempting to build,
-  -- tooling can parse these files and use them to compile the
-  -- source files themselves.
-  , configUseResponseFiles :: Flag Bool
-  -- ^ Whether to use response files at all. They're used for such tools
-  -- as haddock, or ld.
-  , configAllowDependingOnPrivateLibs :: Flag Bool
-  -- ^ Allow depending on private sublibraries. This is used by external
-  -- tools (like cabal-install) so they can add multiple-public-libraries
-  -- compatibility to older ghcs by checking visibility externally.
-  , configCoverageFor :: Flag [UnitId]
-  -- ^ The list of libraries to be included in the hpc coverage report for
-  -- testsuites run with @--enable-coverage@. Notably, this list must exclude
-  -- indefinite libraries and instantiations because HPC does not support
-  -- backpack (Nov. 2023).
-  , configIgnoreBuildTools :: Flag Bool
-  -- ^ When this flag is set, all tools declared in `build-tool`s and
-  -- `build-tool-depends` will be ignored. This allows a Cabal package with
-  -- build-tool-dependencies to be built even if the tool is not found.
-  }
-  deriving (Generic, Read, Show)
-  deriving (Semigroup, Monoid) via Generically ConfigFlags
+-- Each argument is documented at the corresponding field in
+-- "Distribution.Types.ConfigFlags".
+pattern ConfigFlags
+  :: CommonSetupFlags
+  -- ^ 'Distribution.Types.ConfigFlags.commonFlags'
+  -> [String]
+  -- ^ 'Distribution.Types.ConfigFlags.configTargets'
+  -> Maybe (Last ProgramDb)
+  -- ^ 'Distribution.Types.ConfigFlags.initialPrograms'
+  -> [(String, FilePath)]
+  -- ^ 'Distribution.Types.ConfigFlags.configProgramPaths'
+  -> [(String, [String])]
+  -- ^ 'Distribution.Types.ConfigFlags.configProgramArgs'
+  -> NubList FilePath
+  -- ^ 'Distribution.Types.ConfigFlags.configProgramPathExtra'
+  -> Flag CompilerFlavor
+  -- ^ 'Distribution.Types.ConfigFlags.configHcFlavor'
+  -> Flag FilePath
+  -- ^ 'Distribution.Types.ConfigFlags.configHcPath'
+  -> Flag FilePath
+  -- ^ 'Distribution.Types.ConfigFlags.configHcPkg'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configVanillaLib'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configProfLib'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configSharedLib'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configStaticLib'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configBytecodeLib'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configDynExe'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configFullyStaticExe'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configProfExe'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configProf'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configProfShared'
+  -> Flag ProfDetailLevel
+  -- ^ 'Distribution.Types.ConfigFlags.configProfDetail'
+  -> Flag ProfDetailLevel
+  -- ^ 'Distribution.Types.ConfigFlags.configProfLibDetail'
+  -> [String]
+  -- ^ 'Distribution.Types.ConfigFlags.configConfigureArgs'
+  -> Flag OptimisationLevel
+  -- ^ 'Distribution.Types.ConfigFlags.configOptimization'
+  -> Flag PathTemplate
+  -- ^ 'Distribution.Types.ConfigFlags.configProgPrefix'
+  -> Flag PathTemplate
+  -- ^ 'Distribution.Types.ConfigFlags.configProgSuffix'
+  -> InstallDirs (Flag PathTemplate)
+  -- ^ 'Distribution.Types.ConfigFlags.configInstallDirs'
+  -> [SymbolicPath Pkg (Dir Lib)]
+  -- ^ 'Distribution.Types.ConfigFlags.configExtraLibDirs'
+  -> [SymbolicPath Pkg (Dir Lib)]
+  -- ^ 'Distribution.Types.ConfigFlags.configExtraLibDirsStatic'
+  -> [SymbolicPath Pkg (Dir Framework)]
+  -- ^ 'Distribution.Types.ConfigFlags.configExtraFrameworkDirs'
+  -> [SymbolicPath Pkg (Dir Include)]
+  -- ^ 'Distribution.Types.ConfigFlags.configExtraIncludeDirs'
+  -> Flag String
+  -- ^ 'Distribution.Types.ConfigFlags.configIPID'
+  -> Flag ComponentId
+  -- ^ 'Distribution.Types.ConfigFlags.configCID'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configDeterministic'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configUserInstall'
+  -> [Maybe PackageDB]
+  -- ^ 'Distribution.Types.ConfigFlags.configPackageDBs'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configGHCiLib'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configSplitSections'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configSplitObjs'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configStripExes'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configStripLibs'
+  -> [PackageVersionConstraint]
+  -- ^ 'Distribution.Types.ConfigFlags.configConstraints'
+  -> [GivenComponent]
+  -- ^ 'Distribution.Types.ConfigFlags.configDependencies'
+  -> [PromisedComponent]
+  -- ^ 'Distribution.Types.ConfigFlags.configPromisedDependencies'
+  -> [(ModuleName, Module)]
+  -- ^ 'Distribution.Types.ConfigFlags.configInstantiateWith'
+  -> FlagAssignment
+  -- ^ 'Distribution.Types.ConfigFlags.configConfigurationsFlags'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configTests'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configBenchmarks'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configCoverage'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configLibCoverage'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configExactConfiguration'
+  -> Flag String
+  -- ^ 'Distribution.Types.ConfigFlags.configFlagError'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configRelocatable'
+  -> Flag DebugInfoLevel
+  -- ^ 'Distribution.Types.ConfigFlags.configDebugInfo'
+  -> Flag DumpBuildInfo
+  -- ^ 'Distribution.Types.ConfigFlags.configDumpBuildInfo'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configUseResponseFiles'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configAllowDependingOnPrivateLibs'
+  -> Flag [UnitId]
+  -- ^ 'Distribution.Types.ConfigFlags.configCoverageFor'
+  -> Flag Bool
+  -- ^ 'Distribution.Types.ConfigFlags.configIgnoreBuildTools'
+  -> ConfigFlags
+pattern ConfigFlags
+  { configCommonFlags
+  , configTargets
+  , configPrograms_
+  , configProgramPaths
+  , configProgramArgs
+  , configProgramPathExtra
+  , configHcFlavor
+  , configHcPath
+  , configHcPkg
+  , configVanillaLib
+  , configProfLib
+  , configSharedLib
+  , configStaticLib
+  , configBytecodeLib
+  , configDynExe
+  , configFullyStaticExe
+  , configProfExe
+  , configProf
+  , configProfShared
+  , configProfDetail
+  , configProfLibDetail
+  , configConfigureArgs
+  , configOptimization
+  , configProgPrefix
+  , configProgSuffix
+  , configInstallDirs
+  , configExtraLibDirs
+  , configExtraLibDirsStatic
+  , configExtraFrameworkDirs
+  , configExtraIncludeDirs
+  , configIPID
+  , configCID
+  , configDeterministic
+  , configUserInstall
+  , configPackageDBs
+  , configGHCiLib
+  , configSplitSections
+  , configSplitObjs
+  , configStripExes
+  , configStripLibs
+  , configConstraints
+  , configDependencies
+  , configPromisedDependencies
+  , configInstantiateWith
+  , configConfigurationsFlags
+  , configTests
+  , configBenchmarks
+  , configCoverage
+  , configLibCoverage
+  , configExactConfiguration
+  , configFlagError
+  , configRelocatable
+  , configDebugInfo
+  , configDumpBuildInfo
+  , configUseResponseFiles
+  , configAllowDependingOnPrivateLibs
+  , configCoverageFor
+  , configIgnoreBuildTools
+  } =
+  CF.NewConfigFlags
+    { CF.commonFlags = configCommonFlags
+    , CF.initialPrograms = configPrograms_
+    , CF.packageFlags =
+      CF.PackageConfigFlags
+        { CF.configProgramPaths = configProgramPaths
+        , CF.configProgramArgs = configProgramArgs
+        , CF.configProgramPathExtra = configProgramPathExtra
+        , CF.configHcFlavor = configHcFlavor
+        , CF.configHcPath = configHcPath
+        , CF.configHcPkg = configHcPkg
+        , CF.configVanillaLib = configVanillaLib
+        , CF.configProfLib = configProfLib
+        , CF.configSharedLib = configSharedLib
+        , CF.configStaticLib = configStaticLib
+        , CF.configBytecodeLib = configBytecodeLib
+        , CF.configDynExe = configDynExe
+        , CF.configFullyStaticExe = configFullyStaticExe
+        , CF.configProfExe = configProfExe
+        , CF.configProf = configProf
+        , CF.configProfShared = configProfShared
+        , CF.configProfDetail = configProfDetail
+        , CF.configProfLibDetail = configProfLibDetail
+        , CF.configConfigureArgs = configConfigureArgs
+        , CF.configOptimization = configOptimization
+        , CF.configProgPrefix = configProgPrefix
+        , CF.configProgSuffix = configProgSuffix
+        , CF.configExtraLibDirs = configExtraLibDirs
+        , CF.configExtraLibDirsStatic = configExtraLibDirsStatic
+        , CF.configExtraFrameworkDirs = configExtraFrameworkDirs
+        , CF.configExtraIncludeDirs = configExtraIncludeDirs
+        , CF.configDeterministic = configDeterministic
+        , CF.configUserInstall = configUserInstall
+        , CF.configGHCiLib = configGHCiLib
+        , CF.configSplitSections = configSplitSections
+        , CF.configSplitObjs = configSplitObjs
+        , CF.configStripExes = configStripExes
+        , CF.configStripLibs = configStripLibs
+        , CF.configConfigurationsFlags = configConfigurationsFlags
+        , CF.configCoverage = configCoverage
+        , CF.configLibCoverage = configLibCoverage
+        , CF.configExactConfiguration = configExactConfiguration
+        , CF.configFlagError = configFlagError
+        , CF.configRelocatable = configRelocatable
+        , CF.configDebugInfo = configDebugInfo
+        , CF.configDumpBuildInfo = configDumpBuildInfo
+        , CF.configUseResponseFiles = configUseResponseFiles
+        , CF.configAllowDependingOnPrivateLibs = configAllowDependingOnPrivateLibs
+        , CF.configIgnoreBuildTools = configIgnoreBuildTools
+        }
+    , CF.componentFlags =
+      CF.ComponentConfigFlags
+        { CF.configTargets = configTargets
+        , CF.configTests = configTests
+        , CF.configBenchmarks = configBenchmarks
+        , CF.configInstallDirs = configInstallDirs
+        , CF.configIPID = configIPID
+        , CF.configCID = configCID
+        , CF.configConstraints = configConstraints
+        , CF.configPackageDBs = configPackageDBs
+        , CF.configDependencies = configDependencies
+        , CF.configPromisedDependencies = configPromisedDependencies
+        , CF.configInstantiateWith = configInstantiateWith
+        , CF.configCoverageFor = configCoverageFor
+        }
+    }
+
+{-# COMPLETE ConfigFlags #-}
 
 pattern ConfigCommonFlags
   :: Flag VerbosityFlags
@@ -258,75 +408,11 @@ pattern ConfigCommonFlags
         }
     )
 
-instance Binary ConfigFlags
-instance Structured ConfigFlags
-
 -- | More convenient version of 'configPrograms'. Results in an
 -- 'error' if internal invariant is violated.
 configPrograms :: WithCallStack (ConfigFlags -> ProgramDb)
 configPrograms =
   maybe (error "FIXME: remove configPrograms") getLast . configPrograms_
-
-instance Eq ConfigFlags where
-  (==) a b =
-    -- configPrograms skipped: not user specified, has no Eq instance
-    equal configCommonFlags
-      && equal configTargets
-      && equal configProgramPaths
-      && equal configProgramArgs
-      && equal configProgramPathExtra
-      && equal configHcFlavor
-      && equal configHcPath
-      && equal configHcPkg
-      && equal configVanillaLib
-      && equal configProfLib
-      && equal configSharedLib
-      && equal configStaticLib
-      && equal configBytecodeLib
-      && equal configDynExe
-      && equal configFullyStaticExe
-      && equal configProfExe
-      && equal configProf
-      && equal configProfDetail
-      && equal configProfShared
-      && equal configProfLibDetail
-      && equal configConfigureArgs
-      && equal configOptimization
-      && equal configProgPrefix
-      && equal configProgSuffix
-      && equal configInstallDirs
-      && equal configScratchDir
-      && equal configExtraLibDirs
-      && equal configExtraLibDirsStatic
-      && equal configExtraIncludeDirs
-      && equal configIPID
-      && equal configDeterministic
-      && equal configUserInstall
-      && equal configPackageDBs
-      && equal configGHCiLib
-      && equal configSplitSections
-      && equal configSplitObjs
-      && equal configStripExes
-      && equal configStripLibs
-      && equal configConstraints
-      && equal configDependencies
-      && equal configPromisedDependencies
-      && equal configConfigurationsFlags
-      && equal configTests
-      && equal configBenchmarks
-      && equal configCoverage
-      && equal configLibCoverage
-      && equal configExactConfiguration
-      && equal configFlagError
-      && equal configRelocatable
-      && equal configDebugInfo
-      && equal configDumpBuildInfo
-      && equal configUseResponseFiles
-      && equal configAllowDependingOnPrivateLibs
-      && equal configCoverageFor
-      && equal configIgnoreBuildTools
-    where
-      equal f = on (==) f a b
 
 {- FOURMOLU_DISABLE -}
 defaultConfigFlags :: ProgramDb -> ConfigFlags

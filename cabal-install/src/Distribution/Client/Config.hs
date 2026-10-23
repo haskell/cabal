@@ -508,7 +508,6 @@ instance Semigroup SavedConfig where
           , -- Parametrised by (Flag PathTemplate), so safe to use '(<>)'.
             configInstallDirs =
               configInstallDirs (savedConfigureFlags a) <> configInstallDirs (savedConfigureFlags b)
-          , configScratchDir = combine configScratchDir
           , -- TODO: NubListify
             configExtraLibDirs = lastNonEmpty configExtraLibDirs
           , configExtraLibDirsStatic = lastNonEmpty configExtraLibDirsStatic

@@ -1075,7 +1075,6 @@ convertToLegacyAllPackageConfig
           , configProgPrefix = mempty
           , configProgSuffix = mempty
           , configInstallDirs = projectConfigInstallDirs
-          , configScratchDir = mempty
           , configUserInstall = mempty -- projectConfigUserInstall,
           , configPackageDBs = mempty
           , configGHCiLib = mempty
@@ -1154,7 +1153,6 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configProgPrefix = packageConfigProgPrefix
         , configProgSuffix = packageConfigProgSuffix
         , configInstallDirs = mempty
-        , configScratchDir = mempty
         , configUserInstall = mempty
         , configPackageDBs = mempty
         , configGHCiLib = packageConfigGHCiLib

@@ -172,6 +172,7 @@ library
     Distribution.TestSuite
     Distribution.Types.AnnotatedId
     Distribution.Types.ComponentInclude
+    Distribution.Types.ConfigFlags
     Distribution.Types.DumpBuildInfo
     Distribution.Types.PackageName.Magic
     Distribution.Types.ComponentLocalBuildInfo

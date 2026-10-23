@@ -4248,7 +4248,6 @@ setupHsConfigureFlags
 
       configExactConfiguration = toFlag True
       configFlagError = mempty -- TODO: [research required] appears not to be implemented
-      configScratchDir = mempty -- never use
       configUserInstall = mempty -- don't rely on defaults
       configPrograms_ = mempty -- never use, shouldn't exist
       configUseResponseFiles = mempty
