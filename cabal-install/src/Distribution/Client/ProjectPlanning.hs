@@ -4136,13 +4136,15 @@ setupHsConfigureFlags
   -> ElaboratedReadyPackage
   -> ElaboratedSharedConfig
   -> Cabal.CommonSetupFlags
+  -> [String]
   -> m Cabal.ConfigFlags
 setupHsConfigureFlags
   mkSymbolicPath
   plan
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   sharedConfig@ElaboratedSharedConfig{..}
-  configCommonFlags = do
+  configCommonFlags
+  configTargets = do
     -- explicitly clear, then our package db stack
     -- TODO: [required eventually] have to do this differently for older Cabal versions
     configPackageDBs <- (traverse . traverse . traverse) mkSymbolicPath (Nothing : map Just elabBuildPackageDBStack)
@@ -4288,16 +4290,14 @@ setupHsCommonFlags
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> SymbolicPath Pkg (Dir Dist)
-  -> [String]
   -> Bool
   -> Cabal.CommonSetupFlags
-setupHsCommonFlags verbosity mbWorkDir builddir targets keepTempFiles =
+setupHsCommonFlags verbosity mbWorkDir builddir keepTempFiles =
   Cabal.CommonSetupFlags
     { setupDistPref = toFlag builddir
     , setupVerbosity = toFlag $ verbosityFlags verbosity
     , setupCabalFilePath = mempty
     , setupWorkingDir = maybeToFlag mbWorkDir
-    , setupTargets = targets
     , setupKeepTempFiles = toFlag keepTempFiles
     }
 
@@ -4306,10 +4306,12 @@ setupHsBuildFlags
   -> ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
   -> Cabal.CommonSetupFlags
+  -> [String]
   -> Cabal.BuildFlags
-setupHsBuildFlags par_strat elab _ common =
+setupHsBuildFlags par_strat elab _ common targets =
   Cabal.BuildFlags
     { buildCommonFlags = common
+    , buildTargets = targets
     , buildProgramPaths = mempty -- unused, set at configure time
     , buildProgramArgs = mempty -- unused, set at configure time
     , buildNumJobs = mempty -- TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
@@ -4333,10 +4335,12 @@ setupHsBuildArgs (ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _}) 
 setupHsTestFlags
   :: ElaboratedConfiguredPackage
   -> Cabal.CommonSetupFlags
+  -> [String]
   -> Cabal.TestFlags
-setupHsTestFlags (ElaboratedConfiguredPackage{..}) common =
+setupHsTestFlags (ElaboratedConfiguredPackage{..}) common targets =
   Cabal.TestFlags
     { testCommonFlags = common
+    , testTargets = targets
     , testMachineLog = maybeToFlag elabTestMachineLog
     , testHumanLog = maybeToFlag elabTestHumanLog
     , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
@@ -4355,10 +4359,12 @@ setupHsBenchFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
   -> Cabal.CommonSetupFlags
+  -> [String]
   -> Cabal.BenchmarkFlags
-setupHsBenchFlags (ElaboratedConfiguredPackage{..}) _ common =
+setupHsBenchFlags (ElaboratedConfiguredPackage{..}) _ common targets =
   Cabal.BenchmarkFlags
     { benchmarkCommonFlags = common
+    , benchmarkTargets = targets
     , benchmarkOptions = elabBenchmarkOptions
     }
 
@@ -4370,10 +4376,12 @@ setupHsReplFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
   -> Cabal.CommonSetupFlags
+  -> [String]
   -> Cabal.ReplFlags
-setupHsReplFlags _ sharedConfig common =
+setupHsReplFlags _ sharedConfig common targets =
   Cabal.ReplFlags
     { replCommonFlags = common
+    , replTargets = targets
     , replProgramPaths = mempty -- unused, set at configure time
     , replProgramArgs = mempty -- unused, set at configure time
     , replReload = mempty -- only used as callback from repl
@@ -4388,11 +4396,13 @@ setupHsCopyFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
   -> Cabal.CommonSetupFlags
+  -> [String]
   -> FilePath
   -> Cabal.CopyFlags
-setupHsCopyFlags _ _ common destdir =
+setupHsCopyFlags _ _ common targets destdir =
   Cabal.CopyFlags
     { copyCommonFlags = common
+    , copyTargets = targets
     , copyDest = toFlag (InstallDirs.CopyTo destdir)
     }
 
@@ -4400,15 +4410,18 @@ setupHsRegisterFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
   -> Cabal.CommonSetupFlags
+  -> [String]
   -> FilePath
   -> Cabal.RegisterFlags
 setupHsRegisterFlags
   ElaboratedConfiguredPackage{..}
   _
   common
+  targets
   pkgConfFile =
     Cabal.RegisterFlags
       { registerCommonFlags = common
+      , registerTargets = targets
       , regPackageDB = mempty -- misfeature
       , regGenScript = mempty -- never use
       , regGenPkgConf = toFlag (Just (makeSymbolicPath pkgConfFile))
@@ -4423,14 +4436,17 @@ setupHsHaddockFlags
   -> ElaboratedSharedConfig
   -> BuildTimeSettings
   -> Cabal.CommonSetupFlags
+  -> [String]
   -> Cabal.HaddockFlags
 setupHsHaddockFlags
   (ElaboratedConfiguredPackage{..})
   (ElaboratedSharedConfig{..})
   _buildTimeSettings
-  common =
+  common
+  targets =
     Cabal.HaddockFlags
       { haddockCommonFlags = common
+      , haddockTargets = targets
       , haddockProgramPaths =
           case lookupProgram haddockProgram pkgConfigCompilerProgs of
             Nothing -> mempty

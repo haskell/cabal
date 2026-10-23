@@ -21,7 +21,6 @@ module Distribution.Simple.Setup.Hscolour
       , hscolourDistPref
       , hscolourCabalFilePath
       , hscolourWorkingDir
-      , hscolourTargets
       , ..
       )
   , emptyHscolourFlags
@@ -46,6 +45,8 @@ import Distribution.Verbosity
 
 data HscolourFlags = HscolourFlags
   { hscolourCommonFlags :: !CommonSetupFlags
+  , hscolourTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , hscolourCSS :: Flag FilePath
   , hscolourExecutables :: Flag Bool
   , hscolourTestSuites :: Flag Bool
@@ -60,14 +61,12 @@ pattern HscolourCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> HscolourFlags
 pattern HscolourCommonFlags
   { hscolourVerbosity
   , hscolourDistPref
   , hscolourWorkingDir
   , hscolourCabalFilePath
-  , hscolourTargets
   } <-
   ( hscolourCommonFlags ->
       CommonSetupFlags
@@ -75,7 +74,6 @@ pattern HscolourCommonFlags
         , setupDistPref = hscolourDistPref
         , setupWorkingDir = hscolourWorkingDir
         , setupCabalFilePath = hscolourCabalFilePath
-        , setupTargets = hscolourTargets
         }
     )
 
@@ -89,6 +87,7 @@ defaultHscolourFlags :: HscolourFlags
 defaultHscolourFlags =
   HscolourFlags
     { hscolourCommonFlags = defaultCommonSetupFlags
+    , hscolourTargets = []
     , hscolourCSS = NoFlag
     , hscolourExecutables = Flag False
     , hscolourTestSuites = Flag False

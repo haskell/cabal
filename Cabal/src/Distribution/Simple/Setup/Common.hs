@@ -77,11 +77,6 @@ data CommonSetupFlags = CommonSetupFlags
   -- ^ Build directory
   , setupCabalFilePath :: !(Flag (SymbolicPath Pkg File))
   -- ^ Which Cabal file to use (optional)
-  , setupTargets :: [String]
-  -- ^ Which targets is this Setup invocation relative to?
-  --
-  -- TODO: this one should not be here, it's just that the silly
-  -- UserHooks stop us from passing extra info in other ways
   , setupKeepTempFiles :: Flag Bool
   -- ^ When this flag is set, temporary files will be kept after building.
   --
@@ -103,7 +98,6 @@ defaultCommonSetupFlags =
     , setupWorkingDir = NoFlag
     , setupDistPref = NoFlag
     , setupCabalFilePath = NoFlag
-    , setupTargets = []
     , setupKeepTempFiles = NoFlag
     }
 

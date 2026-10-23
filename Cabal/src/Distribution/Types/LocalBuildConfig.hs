@@ -129,10 +129,7 @@ data LocalBuildDescr = LocalBuildDescr
 -- | 'LocalBuildConfig' contains options that can be controlled
 -- by the user and serve as inputs to the configuration of a package.
 data LocalBuildConfig = LocalBuildConfig
-  { extraConfigArgs :: [String]
-  -- ^ Extra args on the command line for the configuration step.
-  -- Needed to re-run configuration when .cabal is out of date
-  , withPrograms :: ProgramDb
+  { withPrograms :: ProgramDb
   -- ^ Location and args for all programs
   , withBuildOptions :: BuildOptions
   -- ^ Options to control the build, e.g. whether to

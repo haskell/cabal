@@ -9,7 +9,6 @@ module Distribution.Types.LocalBuildInfo
       , configFlags
       , flagAssignment
       , componentEnabledSpec
-      , extraConfigArgs
       , installDirTemplates
       , compiler
       , hostPlatform
@@ -152,7 +151,6 @@ pattern LocalBuildInfo
   :: ConfigFlags
   -> FlagAssignment
   -> ComponentRequestedSpec
-  -> [String]
   -> InstallDirTemplates
   -> Compiler
   -> Platform
@@ -193,7 +191,6 @@ pattern LocalBuildInfo
   { configFlags
   , flagAssignment
   , componentEnabledSpec
-  , extraConfigArgs
   , installDirTemplates
   , compiler
   , hostPlatform
@@ -256,8 +253,7 @@ pattern LocalBuildInfo
         }
     , localBuildConfig =
       LBC.LocalBuildConfig
-        { extraConfigArgs
-        , withPrograms
+        { withPrograms
         , withBuildOptions =
           LBC.BuildOptions
             { withVanillaLib

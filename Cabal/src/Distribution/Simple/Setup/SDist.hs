@@ -21,7 +21,6 @@ module Distribution.Simple.Setup.SDist
       , sDistDistPref
       , sDistCabalFilePath
       , sDistWorkingDir
-      , sDistTargets
       , ..
       )
   , emptySDistFlags
@@ -47,6 +46,8 @@ import Distribution.Verbosity
 -- | Flags to @sdist@: (snapshot, verbosity)
 data SDistFlags = SDistFlags
   { sDistCommonFlags :: !CommonSetupFlags
+  , sDistTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , sDistSnapshot :: Flag Bool
   , sDistDirectory :: Flag FilePath
   , sDistListSources :: Flag FilePath
@@ -59,14 +60,12 @@ pattern SDistCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> SDistFlags
 pattern SDistCommonFlags
   { sDistVerbosity
   , sDistDistPref
   , sDistWorkingDir
   , sDistCabalFilePath
-  , sDistTargets
   } <-
   ( sDistCommonFlags ->
       CommonSetupFlags
@@ -74,7 +73,6 @@ pattern SDistCommonFlags
         , setupDistPref = sDistDistPref
         , setupWorkingDir = sDistWorkingDir
         , setupCabalFilePath = sDistCabalFilePath
-        , setupTargets = sDistTargets
         }
     )
 
@@ -82,6 +80,7 @@ defaultSDistFlags :: SDistFlags
 defaultSDistFlags =
   SDistFlags
     { sDistCommonFlags = defaultCommonSetupFlags
+    , sDistTargets = []
     , sDistSnapshot = Flag False
     , sDistDirectory = mempty
     , sDistListSources = mempty

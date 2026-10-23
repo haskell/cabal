@@ -1662,6 +1662,7 @@ haddockToHscolour :: HaddockFlags -> HscolourFlags
 haddockToHscolour flags =
   HscolourFlags
     { hscolourCommonFlags = haddockCommonFlags flags
+    , hscolourTargets = haddockTargets flags
     , hscolourCSS = haddockHscolourCss flags
     , hscolourExecutables = haddockExecutables flags
     , hscolourTestSuites = haddockTestSuites flags

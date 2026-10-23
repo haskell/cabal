@@ -2476,10 +2476,7 @@ filterHaddockFlags flags cabalLibVersion
     flags_2_3_0 =
       flags_latest
         { -- Cabal < 2.3 doesn't know about per-component haddock
-          haddockCommonFlags =
-            (haddockCommonFlags flags_latest)
-              { setupTargets = []
-              }
+          haddockTargets = []
         }
 
 haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]

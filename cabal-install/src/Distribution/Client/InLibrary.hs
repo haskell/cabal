@@ -79,8 +79,6 @@ libraryConfigureInputsFromElabPackage
   -> ElaboratedSharedConfig
   -> ElaboratedReadyPackage
   -> InstalledPackageIndex
-  -> [String]
-  -- ^ targets
   -> LibraryConfigureInputs
 libraryConfigureInputsFromElabPackage
   verbHandles
@@ -93,8 +91,7 @@ libraryConfigureInputsFromElabPackage
     , pkgConfigCompiler = compil
     }
   (ReadyPackage pkg)
-  ipi
-  userTargets =
+  ipi =
     LibraryConfigureInputs
       { verbosityHandles = verbHandles
       , compiler = compil
@@ -115,8 +112,7 @@ libraryConfigureInputsFromElabPackage
             _ -> Nothing
       , localBuildConfig =
           LBC.LocalBuildConfig
-            { LBC.extraConfigArgs = userTargets
-            , LBC.withPrograms = progDb
+            { LBC.withPrograms = progDb
             , LBC.withBuildOptions = elabBuildOptions pkg
             }
       , packageDBStack = elabBuildPackageDBStack pkg

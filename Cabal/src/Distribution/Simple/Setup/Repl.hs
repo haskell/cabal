@@ -21,7 +21,6 @@ module Distribution.Simple.Setup.Repl
       , replDistPref
       , replCabalFilePath
       , replWorkingDir
-      , replTargets
       , ..
       )
   , defaultReplFlags
@@ -62,14 +61,12 @@ pattern ReplCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> ReplFlags
 pattern ReplCommonFlags
   { replVerbosity
   , replDistPref
   , replWorkingDir
   , replCabalFilePath
-  , replTargets
   } <-
   ( replCommonFlags ->
       CommonSetupFlags
@@ -77,7 +74,6 @@ pattern ReplCommonFlags
         , setupDistPref = replDistPref
         , setupWorkingDir = replWorkingDir
         , setupCabalFilePath = replCabalFilePath
-        , setupTargets = replTargets
         }
     )
 
@@ -89,6 +85,8 @@ instance Monoid ReplOptions where
 
 data ReplFlags = ReplFlags
   { replCommonFlags :: !CommonSetupFlags
+  , replTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , replProgramPaths :: [(String, FilePath)]
   , replProgramArgs :: [(String, [String])]
   , replReload :: Flag Bool
@@ -104,6 +102,7 @@ defaultReplFlags :: ReplFlags
 defaultReplFlags =
   ReplFlags
     { replCommonFlags = defaultCommonSetupFlags
+    , replTargets = []
     , replProgramPaths = mempty
     , replProgramArgs = []
     , replReload = Flag False

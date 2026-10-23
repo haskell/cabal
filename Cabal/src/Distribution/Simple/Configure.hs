@@ -795,11 +795,7 @@ computeLocalBuildConfig verbHandles cfg comp programDb = do
   buildOptions <- adjustBuildOptionsAndWarn verbosity comp programDb rawBuildOptions
   return $
     LBC.LocalBuildConfig
-      { extraConfigArgs = []
-      , -- Currently configure does not
-        -- take extra args, but if it
-        -- did they would go here.
-        withPrograms = programDb
+      { withPrograms = programDb
       , withBuildOptions = buildOptions
       }
 

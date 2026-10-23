@@ -1050,6 +1050,7 @@ convertToLegacyAllPackageConfig
       configFlags =
         ConfigFlags
           { configCommonFlags = commonFlags
+          , configTargets = mempty
           , configPrograms_ = mempty
           , configProgramPaths = mempty
           , configProgramArgs = mempty
@@ -1127,6 +1128,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
     configFlags =
       ConfigFlags
         { configCommonFlags = commonFlags
+        , configTargets = mempty
         , configPrograms_ = configPrograms_ mempty
         , configProgramPaths = Map.toList (getMapLast packageConfigProgramPaths)
         , configProgramArgs = Map.toList (getMapMappend packageConfigProgramArgs)
@@ -1195,6 +1197,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
     haddockFlags =
       HaddockFlags
         { haddockCommonFlags = commonFlags
+        , haddockTargets = mempty
         , haddockProgramPaths = mempty
         , haddockProgramArgs = mempty
         , haddockHoogle = packageConfigHaddockHoogle
@@ -1221,6 +1224,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
     testFlags =
       TestFlags
         { testCommonFlags = commonFlags
+        , testTargets = mempty
         , testHumanLog = packageConfigTestHumanLog
         , testMachineLog = packageConfigTestMachineLog
         , testShowDetails = packageConfigTestShowDetails
@@ -1233,6 +1237,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
     benchmarkFlags =
       BenchmarkFlags
         { benchmarkCommonFlags = commonFlags
+        , benchmarkTargets = mempty
         , benchmarkOptions = packageConfigBenchmarkOptions
         }
 

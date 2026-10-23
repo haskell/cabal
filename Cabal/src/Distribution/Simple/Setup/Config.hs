@@ -23,7 +23,6 @@ module Distribution.Simple.Setup.Config
       , configDistPref
       , configCabalFilePath
       , configWorkingDir
-      , configTargets
       , ..
       )
   , emptyConfigFlags
@@ -83,6 +82,8 @@ import qualified Text.PrettyPrint as Disp
 -- IMPORTANT: every time a new flag is added, it should be added to the Eq instance
 data ConfigFlags = ConfigFlags
   { configCommonFlags :: !CommonSetupFlags
+  , configTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , -- FIXME: the configPrograms is only here to pass info through to configure
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
@@ -241,14 +242,12 @@ pattern ConfigCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> ConfigFlags
 pattern ConfigCommonFlags
   { configVerbosity
   , configDistPref
   , configWorkingDir
   , configCabalFilePath
-  , configTargets
   } <-
   ( configCommonFlags ->
       CommonSetupFlags
@@ -256,7 +255,6 @@ pattern ConfigCommonFlags
         , setupDistPref = configDistPref
         , setupWorkingDir = configWorkingDir
         , setupCabalFilePath = configCabalFilePath
-        , setupTargets = configTargets
         }
     )
 
@@ -273,6 +271,7 @@ instance Eq ConfigFlags where
   (==) a b =
     -- configPrograms skipped: not user specified, has no Eq instance
     equal configCommonFlags
+      && equal configTargets
       && equal configProgramPaths
       && equal configProgramArgs
       && equal configProgramPathExtra

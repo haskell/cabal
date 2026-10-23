@@ -1180,7 +1180,6 @@ printPlan
                 verbosity
                 Nothing -- omit working directory
                 (makeSymbolicPath "$builddir")
-                (setupHsConfigureArgs elab)
                 buildSettingKeepTempFiles
             fullConfigureFlags =
               runIdentity
@@ -1190,6 +1189,7 @@ printPlan
                     (ReadyPackage elab)
                     elaboratedShared
                     commonFlags
+                    (setupHsConfigureArgs elab)
                 )
             -- \| Given a default value @x@ for a flag, nub @Flag x@
             -- into @NoFlag@.  This gives us a tidier command line

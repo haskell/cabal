@@ -778,7 +778,6 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
              elabSharedConfig
              elabReadyPkg
              ipi
-             extraArgs
           )
           flags
       let progs0 = LBI.withPrograms lbi0
