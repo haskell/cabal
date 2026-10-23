@@ -1279,17 +1279,18 @@ testTargetProblemsRun config reportSubCase = do
     [
       ( flip
           CmdRun.matchesMultipleProblem
-          [ AvailableTarget
+          ( AvailableTarget
               "p-0.1"
               (CExeName "p2")
               (TargetBuildable () TargetRequestedByDefault)
               True
-          , AvailableTarget
-              "p-0.1"
-              (CExeName "p1")
-              (TargetBuildable () TargetRequestedByDefault)
-              True
-          ]
+              :| [ AvailableTarget
+                    "p-0.1"
+                    (CExeName "p1")
+                    (TargetBuildable () TargetRequestedByDefault)
+                    True
+                 ]
+          )
       , mkTargetPackage "p-0.1"
       )
     ]

@@ -21,6 +21,7 @@ import Distribution.Types.UnqualComponentName (mkUnqualComponentName)
 import Distribution.Version (mkVersion)
 
 import Data.List (isInfixOf)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -28,8 +29,8 @@ import Test.Tasty.HUnit
 tests :: [TestTree]
 tests =
   [ testCase "hints at each executable when there are multiple" testMultipleExecutablesHint
-  , testCase "hint lists only executables" testHintListsOnlyExecutables
-  , testCase "no hint when there are no executables" testNoHintWithoutExecutables
+  , testCase "hint qualifies test suites and benchmarks" testHintQualifiesNonExeComponents
+  , testCase "hint without executables" testHintWithoutExecutables
   ]
 
 pkgname :: PackageName
@@ -65,43 +66,56 @@ testMultipleExecutablesHint = do
         renderRunProblem $
           TargetProblemMatchesMultiple
             selector
-            [ exe "agent-cli"
-            , exe "agent-telegram"
-            , exe "eval-ghci-vs-bash"
-            ]
+            ( exe "agent-cli"
+                :| [ exe "agent-telegram"
+                   , exe "eval-ghci-vs-bash"
+                   ]
+            )
   assertBool "hint header is present" $
-    "You need to specify which executable cabal should use. Try one of those:"
+    "You need to specify which component cabal should use. Try one of those:"
       `isInfixOf` rendered
   mapM_ (assertSuggestion rendered) ["agent-cli", "agent-telegram", "eval-ghci-vs-bash"]
 
-testHintListsOnlyExecutables :: Assertion
-testHintListsOnlyExecutables = do
+testHintQualifiesNonExeComponents :: Assertion
+testHintQualifiesNonExeComponents = do
   let rendered =
         renderRunProblem $
           TargetProblemMatchesMultiple
             selector
-            [ exe "agent-cli"
-            , exe "agent-telegram"
-            , test "agent-cli-test"
-            , bench "image-preview-latency-bench"
-            ]
-  assertBool "test suite is not suggested" $
-    not ("- cabal run agent-cli:agent-cli-test" `isInfixOf` rendered)
-  assertBool "benchmark is not suggested" $
-    not ("- cabal run agent-cli:image-preview-latency-bench" `isInfixOf` rendered)
+            ( exe "agent-cli"
+                :| [ exe "agent-telegram"
+                   , test "agent-cli-test"
+                   , bench "image-preview-latency-bench"
+                   ]
+            )
   mapM_ (assertSuggestion rendered) ["agent-cli", "agent-telegram"]
+  assertBool "test suite is suggested with a test: qualifier" $
+    "- cabal run agent-cli:test:agent-cli-test" `isInfixOf` rendered
+  assertBool "benchmark is suggested with a bench: qualifier" $
+    "- cabal run agent-cli:bench:image-preview-latency-bench" `isInfixOf` rendered
 
-testNoHintWithoutExecutables :: Assertion
-testNoHintWithoutExecutables = do
+testHintWithoutExecutables :: Assertion
+testHintWithoutExecutables = do
   let rendered =
         renderRunProblem $
           TargetProblemMatchesMultiple
             selector
-            [ test "agent-cli-test"
-            , bench "image-preview-latency-bench"
-            ]
-  assertBool "no hint when there are no executables" $
-    not ("You need to specify which executable" `isInfixOf` rendered)
+            ( test "agent-cli-test"
+                :| [bench "image-preview-latency-bench"]
+            )
+  assertBool "hint header is present" $
+    "You need to specify which component cabal should use. Try one of those:"
+      `isInfixOf` rendered
+  assertBool "test suite is labeled as test-suite" $
+    "- test-suites: agent-cli-test" `isInfixOf` rendered
+  assertBool "benchmark is labeled as benchmark" $
+    "- benchmarks: image-preview-latency-bench" `isInfixOf` rendered
+  assertBool "no executables section" $
+    not ("- executables:" `isInfixOf` rendered)
+  assertBool "test suite is suggested with a test: qualifier" $
+    "- cabal run agent-cli:test:agent-cli-test" `isInfixOf` rendered
+  assertBool "benchmark is suggested with a bench: qualifier" $
+    "- cabal run agent-cli:bench:image-preview-latency-bench" `isInfixOf` rendered
 
 assertSuggestion :: String -> String -> Assertion
 assertSuggestion rendered exeName =

@@ -29,7 +29,7 @@ Error: [Cabal-7070]
 The run command is for running a single executable at once. The target 'bar' refers to the package bar-1.0 which includes 
 - executables: bar-exe and foo-exe
 
-You need to specify which executable cabal should use. Try one of those:
+You need to specify which component cabal should use. Try one of those:
 - cabal run bar:bar-exe
 - cabal run bar:foo-exe
 

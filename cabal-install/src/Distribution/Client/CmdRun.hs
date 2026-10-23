@@ -20,6 +20,7 @@ module Distribution.Client.CmdRun
 import Distribution.Client.Compat.Prelude hiding (toList)
 import Prelude ()
 
+import qualified Data.Foldable as Foldable (toList)
 import qualified Data.Set as Set
 import Distribution.Client.CmdErrorMessages
   ( plural
@@ -487,8 +488,12 @@ selectPackageTargets targetSelector targets
   | [target] <- targetsExeLikesBuildable =
       Right [target]
   -- but fail if there are multiple buildable executables.
-  | not (null targetsExeLikesBuildable) =
-      Left (matchesMultipleProblem targetSelector targetsExeLikesBuildable')
+  | (target0 : target1 : moreTargets) <- targetsExeLikesBuildable' =
+      Left
+        ( matchesMultipleProblem
+            targetSelector
+            (target0 :| target1 : moreTargets)
+        )
   -- If there are executables but none are buildable then we report those
   | not (null targetsExeLikes') =
       Left (TargetProblemNoneEnabled targetSelector targetsExeLikes')
@@ -549,7 +554,7 @@ data RunProblem
   = -- | The 'TargetSelector' matches targets but no executables
     TargetProblemNoExes TargetSelector
   | -- | A single 'TargetSelector' matches multiple targets
-    TargetProblemMatchesMultiple TargetSelector [AvailableTarget ()]
+    TargetProblemMatchesMultiple TargetSelector (NonEmpty (AvailableTarget ()))
   | -- | Multiple 'TargetSelector's match multiple targets
     TargetProblemMultipleTargets TargetsMap
   | -- | The 'TargetSelector' refers to a component that is not an executable
@@ -563,7 +568,7 @@ type RunTargetProblem = TargetProblem RunProblem
 noExesProblem :: TargetSelector -> RunTargetProblem
 noExesProblem = CustomTargetProblem . TargetProblemNoExes
 
-matchesMultipleProblem :: TargetSelector -> [AvailableTarget ()] -> RunTargetProblem
+matchesMultipleProblem :: TargetSelector -> NonEmpty (AvailableTarget ()) -> RunTargetProblem
 matchesMultipleProblem selector targets =
   CustomTargetProblem $
     TargetProblemMatchesMultiple selector targets
@@ -610,15 +615,21 @@ renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
     ++ "' refers to "
     ++ renderTargetSelector targetSelector
     ++ " which includes \n"
-    ++ unlines
-      ( (\(label, xs) -> "- " ++ label ++ ": " ++ renderListPretty xs)
-          <$> zip
-            ["executables", "test-suites", "benchmarks"]
-            ( filter (not . null) . map sortNub $
-                (map (componentNameRaw . availableTargetComponentName) . (`filterTargetsKind` targets) <$> [ExeKind, TestKind, BenchKind])
-            )
-      )
+    ++ unlines componentKindSections
     ++ renderRunProblemMatchesMultipleHint targets
+  where
+    componentKindSections =
+      [ "- " ++ label ++ ": " ++ renderListPretty names
+      | (label, kind) <-
+          zip ["executables", "test-suites", "benchmarks"] [ExeKind, TestKind, BenchKind]
+      , let names =
+              sortNub
+                ( map
+                    (componentNameRaw . availableTargetComponentName)
+                    (filterTargetsKind kind (Foldable.toList targets))
+                )
+      , not (null names)
+      ]
 renderRunProblem (TargetProblemMultipleTargets selectorMap) =
   "The run command is for running a single executable at once. The targets "
     ++ renderListCommaAnd
@@ -654,23 +665,23 @@ renderRunProblem (TargetProblemNoExes targetSelector) =
     ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
     ++ " not contain any executables."
 
--- | Render a hint suggesting how to disambiguate which executable to run when
--- a target matches multiple executable-like components.
-renderRunProblemMatchesMultipleHint :: [AvailableTarget ()] -> String
+-- | Render a hint suggesting how to disambiguate which executable-like
+-- component to run when a target matches multiple of them.
+renderRunProblemMatchesMultipleHint :: NonEmpty (AvailableTarget ()) -> String
 renderRunProblemMatchesMultipleHint targets =
-  case exes of
-    [] -> ""
-    _ ->
-      "\nYou need to specify which executable cabal should use. Try one of those:\n"
-        ++ unlines
-          [ "- cabal run " ++ prettyShow pkgname ++ ":" ++ exe
-          | (pkgname, exe) <- exes
-          ]
+  "\nYou need to specify which component cabal should use. Try one of those:\n"
+    ++ unlines
+      [ "- cabal run " ++ prettyShow pkgname ++ ":" ++ component
+      | (pkgname, component) <-
+          sortNub
+            [ ( packageName (availableTargetPackageId t)
+              , componentTargetSpecifier (availableTargetComponentName t)
+              )
+            | t <- Foldable.toList targets
+            ]
+      ]
   where
-    exes =
-      sortNub
-        [ ( packageName (availableTargetPackageId target)
-          , componentNameRaw (availableTargetComponentName target)
-          )
-        | target <- filterTargetsKind ExeKind targets
-        ]
+    componentTargetSpecifier (CExeName n) = unUnqualComponentName n
+    componentTargetSpecifier (CTestName n) = "test:" ++ unUnqualComponentName n
+    componentTargetSpecifier (CBenchName n) = "bench:" ++ unUnqualComponentName n
+    componentTargetSpecifier cname = prettyShow cname
