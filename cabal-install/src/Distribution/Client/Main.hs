@@ -118,6 +118,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Targets
   ( readUserTargets
   )
+import Distribution.Client.Watch (cabalFilesInDir, watchFiles)
 
 import qualified Distribution.Client.CmdBench as CmdBench
 import qualified Distribution.Client.CmdBuild as CmdBuild
@@ -274,6 +275,7 @@ import System.Directory
 import System.Environment (getEnvironment, getExecutablePath, getProgName)
 import System.FilePath
   ( dropExtension
+  , normalise
   , splitExtension
   , takeExtension
   , (<.>)
@@ -818,6 +820,9 @@ installAction
   -> [String]
   -> Action
 installAction (configFlags, _, installFlags, _, _, _) _ globalFlags
+  | fromFlagOrDefault False (installWatch installFlags) =
+      dieWithException (mkVerbosity defaultVerbosityHandles normal) $
+        WatchUnsupportedCommand "v1-install"
   | fromFlagOrDefault False (installOnly installFlags) = do
       let common = configCommonFlags configFlags
           verb =
@@ -1432,8 +1437,16 @@ checkAction checkFlags extraArgs _globalFlags = do
   unless (null extraArgs) $
     dieWithException verbosity $
       CheckAction extraArgs
-  allOk <- Check.check (mkVerbosity defaultVerbosityHandles $ fromFlag verbosityFlag) (checkIgnore checkFlags)
-  unless allOk exitFailure
+  let core = do
+        allOk <- Check.check (mkVerbosity defaultVerbosityHandles $ fromFlag verbosityFlag) (checkIgnore checkFlags)
+        unless allOk exitFailure
+  if fromFlagOrDefault False (checkWatch checkFlags)
+    then do
+      localCabalFiles <- cabalFilesInDir "."
+      let projectFiles = ["cabal.project", "cabal.project.local", "cabal.project.freeze"]
+      existingProjectFiles <- filterM doesFileExist projectFiles
+      watchFiles verbosity (map normalise (localCabalFiles ++ existingProjectFiles)) core
+    else core
 
 formatAction :: Flag VerbosityFlags -> [String] -> Action
 formatAction verbosityFlag extraArgs _globalFlags = do

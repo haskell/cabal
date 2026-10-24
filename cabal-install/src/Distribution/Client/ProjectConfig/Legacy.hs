@@ -988,6 +988,7 @@ convertToLegacySharedConfig
           , installDest = Flag NoCopyDest
           , installDryRun = projectConfigDryRun
           , installOnlyDownload = projectConfigOnlyDownload
+          , installWatch = Flag False
           , installReinstall = mempty -- projectConfigReinstall,
           , installAvoidReinstalls = mempty -- projectConfigAvoidReinstalls,
           , installOverrideReinstall = mempty -- projectConfigOverrideReinstall,

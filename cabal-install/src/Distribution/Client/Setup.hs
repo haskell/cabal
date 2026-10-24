@@ -1670,6 +1670,7 @@ genBoundsCommand =
 data CheckFlags = CheckFlags
   { checkVerbosity :: Flag VerbosityFlags
   , checkIgnore :: [CheckExplanationIDString]
+  , checkWatch :: Flag Bool
   }
   deriving (Show)
 
@@ -1678,6 +1679,7 @@ defaultCheckFlags =
   CheckFlags
     { checkVerbosity = Flag normal
     , checkIgnore = []
+    , checkWatch = Flag False
     }
 
 checkCommand :: CommandUI CheckFlags
@@ -1711,6 +1713,13 @@ checkOptions' _showOrParseArgs =
       checkIgnore
       (\v c -> c{checkIgnore = v ++ checkIgnore c})
       (reqArg' "WARNING" (: []) (const []))
+  , option
+      []
+      ["watch"]
+      "Watch the relevant files and rerun the command when one of them changes (Linux only)."
+      checkWatch
+      (\v flags -> flags{checkWatch = v})
+      trueArg
   ]
 
 -- ------------------------------------------------------------
@@ -2217,6 +2226,7 @@ data InstallFlags = InstallFlags
   , installDest :: Flag Cabal.CopyDest
   , installDryRun :: Flag Bool
   , installOnlyDownload :: Flag Bool
+  , installWatch :: Flag Bool
   , installMaxBackjumps :: Flag Int
   , installReorderGoals :: Flag ReorderGoals
   , installCountConflicts :: Flag CountConflicts
@@ -2264,6 +2274,7 @@ defaultInstallFlags =
     , installDest = Flag Cabal.NoCopyDest
     , installDryRun = Flag False
     , installOnlyDownload = Flag False
+    , installWatch = Flag False
     , installMaxBackjumps = Flag defaultMaxBackjumps
     , installReorderGoals = Flag (ReorderGoals False)
     , installCountConflicts = Flag (CountConflicts True)
@@ -2603,6 +2614,13 @@ installOptions showOrParseArgs =
       "Do not build anything, only fetch the packages."
       installOnlyDownload
       (\v flags -> flags{installOnlyDownload = v})
+      trueArg
+  , option
+      []
+      ["watch"]
+      "Watch the relevant files and rerun the command when one of them changes (Linux only)."
+      installWatch
+      (\v flags -> flags{installWatch = v})
       trueArg
   , option
       ""

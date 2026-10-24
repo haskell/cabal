@@ -186,6 +186,8 @@ data CabalInstallException
   | CabalFileParseFailure CabalFileParseError
   | ProjectConfigParseFailure ProjectConfigParseError
   | ProjectConfigNoPackages FilePath
+  | WatchUnsupportedOnPlatform
+  | WatchUnsupportedCommand String
   deriving (Show)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -343,6 +345,8 @@ exceptionCodeCabalInstall e = case e of
   CabalFileParseFailure{} -> 7166
   ProjectConfigParseFailure{} -> 7167
   ProjectConfigNoPackages{} -> 7168
+  WatchUnsupportedOnPlatform -> 7169
+  WatchUnsupportedCommand{} -> 7170
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -884,6 +888,12 @@ exceptionMessageCabalInstall e = case e of
       , "' requires at least one of the fields 'packages' "
       , "or 'optional-packages', but neither was specified."
       ]
+  WatchUnsupportedOnPlatform ->
+    "The '--watch' flag is only supported on Linux."
+  WatchUnsupportedCommand cmd ->
+    "The '--watch' flag is not supported by the '"
+      ++ cmd
+      ++ "' command."
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]

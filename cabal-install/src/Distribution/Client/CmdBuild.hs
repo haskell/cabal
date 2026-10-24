@@ -26,12 +26,14 @@ import Distribution.Client.TargetProblem
 
 import qualified Data.Map as Map
 import Distribution.Client.Errors
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
+import Distribution.Client.ProjectPlanning.Types (elabLocalToProject)
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)
@@ -40,14 +42,16 @@ import Distribution.Client.ScriptUtils
   )
 import Distribution.Client.Setup
   ( GlobalFlags
+  , installWatch
   , yesNoOpt
   )
+import Distribution.Client.Watch (planWatchFiles, watchFiles)
 import Distribution.Simple.Command
   ( CommandUI (..)
   , option
   , usageAlternatives
   )
-import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
+import Distribution.Simple.Flag (Flag, fromFlag, fromFlagOrDefault, toFlag)
 import Distribution.Simple.Utils
   ( dieWithException
   , wrapText
@@ -177,10 +181,22 @@ buildAction flags@NixStyleFlags{extraFlags = buildFlags} targetStrings globalFla
 
         return (elaboratedPlan'', targets)
 
-    printPlan verbosity baseCtx buildCtx
-
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+    let watch = fromFlagOrDefault False (installWatch (installFlags flags))
+        localElabs =
+          [ elab
+          | InstallPlan.Configured elab <-
+              InstallPlan.toList (elaboratedPlanToExecute buildCtx)
+          , elabLocalToProject elab
+          ]
+        core = do
+          printPlan verbosity baseCtx buildCtx
+          buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+          runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+    if watch
+      then do
+        files <- planWatchFiles verbosity (distDirLayout baseCtx) localElabs
+        watchFiles verbosity files core
+      else core
   where
     verbosity = cfgVerbosity normal flags
 

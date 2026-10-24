@@ -12,11 +12,13 @@ packages:
 - cabal-install-solver/
 - cabal-install/
 - cabal-testsuite/
-- solver-benchmarks/
+# - solver-benchmarks/
 
 extra-deps:
 # Not included in stackage
 - rere-0.2@rev:1
+- network-wait-0.2.0.0@sha256:c9fd762f125b46a9fef5ff477b766c7ee38def659cdc05a2add8f4c6830db54a,3031
+- nothunks-0.1.3@sha256:33bb3af223163535fa59d1fa83ba95a355106ba3fcffe5452d4abbf13ab4608d,2521
 
 # We require the released version of Cabal and Cabal-syntax for cabal-testsuite
 # but usually we have a development, newer version set in the local package

@@ -18,6 +18,7 @@ import System.Directory (makeAbsolute)
 import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
@@ -32,6 +33,7 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
   ( ElaboratedSharedConfig (..)
   )
+import Distribution.Client.ProjectPlanning.Types (elabLocalToProject)
 import Distribution.Client.Setup
   ( GlobalFlags
   , InstallFlags (..)
@@ -40,6 +42,7 @@ import Distribution.Client.TargetProblem
   ( TargetProblem (..)
   , TargetProblem'
   )
+import Distribution.Client.Watch (planWatchFiles, watchFiles)
 import Distribution.Simple.Command
   ( CommandUI (..)
   , OptionField
@@ -192,27 +195,42 @@ haddockAction relFlags targetStrings globalFlags = do
 
   printPlan verbosity baseCtx buildCtx
 
-  progs <-
-    reconfigurePrograms
-      verbosity
-      (haddockProgramPaths haddockFlags)
-      (haddockProgramArgs haddockFlags)
-      -- we need to insert 'haddockProgram' before we reconfigure it,
-      -- otherwise 'set
-      . addKnownProgram haddockProgram
-      . pkgConfigCompilerProgs
-      . elaboratedShared
-      $ buildCtx
-  let buildCtx' =
-        buildCtx
-          { elaboratedShared =
-              (elaboratedShared buildCtx)
-                { pkgConfigCompilerProgs = progs
+  let core = do
+        progs <-
+          reconfigurePrograms
+            verbosity
+            (haddockProgramPaths haddockFlags)
+            (haddockProgramArgs haddockFlags)
+            -- we need to insert 'haddockProgram' before we reconfigure it,
+            -- otherwise 'set
+            . addKnownProgram haddockProgram
+            . pkgConfigCompilerProgs
+            . elaboratedShared
+            $ buildCtx
+        let buildCtx' =
+              buildCtx
+                { elaboratedShared =
+                    (elaboratedShared buildCtx)
+                      { pkgConfigCompilerProgs = progs
+                      }
                 }
-          }
 
-  buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx'
-  runProjectPostBuildPhase verbosity baseCtx buildCtx' buildOutcomes
+        buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx'
+        runProjectPostBuildPhase verbosity baseCtx buildCtx' buildOutcomes
+
+  -- Note: the watch set is derived from 'buildCtx'; 'core' reconfigures
+  -- programs into 'buildCtx'' but the elaborated plan is shared.
+  if fromFlagOrDefault False (installWatch installFlags)
+    then do
+      let localElabs =
+            [ elab
+            | InstallPlan.Configured elab <-
+                InstallPlan.toList (elaboratedPlanToExecute buildCtx)
+            , elabLocalToProject elab
+            ]
+      files <- planWatchFiles verbosity (distDirLayout baseCtx) localElabs
+      watchFiles verbosity files core
+    else core
 
 -- | This defines what a 'TargetSelector' means for the @haddock@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
