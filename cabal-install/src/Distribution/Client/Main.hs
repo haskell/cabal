@@ -203,6 +203,7 @@ import Distribution.Simple.Command
   , commandsRunWithFallback
   , defaultCommandFallback
   , hiddenCommand
+  , withGlobalOptionNote
   )
 import Distribution.Simple.Compiler (PackageDBStack, interpretPackageDBStack)
 import Distribution.Simple.Configure
@@ -345,7 +346,7 @@ warnIfAssertionsAreEnabled =
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
-    command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
+    command <- commandsRunWithFallback globalUI commands delegateToExternal args
     case command of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
@@ -455,7 +456,9 @@ mainWorker args = do
           | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
           | otherwise = cabalGitInfo
 
-    commands = map commandFromSpec commandSpecs
+    rawCommands = map commandFromSpec commandSpecs
+    globalUI = globalCommand rawCommands
+    commands = map (withGlobalOptionNote globalUI) rawCommands
     commandSpecs =
       [ regularCmd listCommand listAction
       , regularCmd infoCommand infoAction
