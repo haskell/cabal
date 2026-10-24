@@ -14,8 +14,8 @@ import Distribution.Types.TestSuiteInterface
 import Distribution.Types.TestType
 import Distribution.Types.UnqualComponentName
 
+import Data.Text (Text)
 import Distribution.ModuleName
-
 import qualified Distribution.Types.BuildInfo.Lens as L
 
 -- | A \"test-suite\" stanza in a cabal file.
@@ -23,7 +23,7 @@ data TestSuite = TestSuite
   { testName :: UnqualComponentName
   , testInterface :: TestSuiteInterface
   , testBuildInfo :: BuildInfo
-  , testCodeGenerators :: [String]
+  , testCodeGenerators :: [Text]
   }
   deriving (Generic, Show, Read, Eq, Ord, Data)
 

@@ -57,7 +57,8 @@ newtype NubList' sep b a = NubList' {_getNubList :: NubList a}
 --
 -- >>> :t alaNubList' FSep Token
 -- alaNubList' FSep Token
---   :: NubList String -> NubList' FSep Token String
+--   :: NubList Data.Text.Internal.Text
+--      -> NubList' FSep Token Data.Text.Internal.Text
 alaNubList :: sep -> NubList a -> NubList' sep (Identity a) a
 alaNubList _ = NubList'
 
