@@ -348,6 +348,7 @@ test-suite unit-tests
       UnitTests.Distribution.Client.Init.FileCreators
       UnitTests.Distribution.Client.InstallPlan
       UnitTests.Distribution.Client.JobControl
+      UnitTests.Distribution.Client.NixStyleOptions
       UnitTests.Distribution.Client.ProjectConfig
       UnitTests.Distribution.Client.ProjectPlanning
       UnitTests.Distribution.Client.Store
