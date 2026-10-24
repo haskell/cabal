@@ -78,6 +78,7 @@ library
       Distribution.Client.CmdClean
       Distribution.Client.CmdConfigure
       Distribution.Client.CmdErrorMessages
+      Distribution.Client.CmdLegacy
       Distribution.Client.CmdExec
       Distribution.Client.CmdFreeze
       Distribution.Client.CmdGenBounds
@@ -86,7 +87,6 @@ library
       Distribution.Client.CmdInstall
       Distribution.Client.CmdInstall.ClientInstallFlags
       Distribution.Client.CmdInstall.ClientInstallTargetSelector
-      Distribution.Client.CmdLegacy
       Distribution.Client.CmdListBin
       Distribution.Client.CmdOutdated
       Distribution.Client.CmdPath
@@ -142,7 +142,6 @@ library
       Distribution.Client.InstallSymlink
       Distribution.Client.JobControl
       Distribution.Client.List
-      Distribution.Client.Main
       Distribution.Client.Manpage
       Distribution.Client.ManpageFlags
       Distribution.Client.NixStyleOptions

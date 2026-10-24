@@ -1,11 +1,4 @@
 -- | Tier-0 stable API: building project targets.
---
--- Thin wrapper over the internal @Distribution.Client.CmdBuild@ and the
--- orchestration layer (@Distribution.Client.ProjectOrchestration@,
--- @Distribution.Client.ScriptUtils@).
---
--- This is the stable replacement for third-party tools that used to import
--- the orchestration layer and @buildAction@ directly (see cabal-hoogle).
 module Distribution.Client.API.Build
   ( BuildOptions -- Note: cabal-hoogle
   , buildOptBuildDir -- Note: cabal-hoogle
@@ -17,6 +10,7 @@ module Distribution.Client.API.Build
   , buildOptHaddockQuickJump -- Note: cabal-hoogle
   , defaultBuildOptions -- Note: cabal-hoogle
   , runBuild -- Note: cabal-hoogle
+  , runListBin -- Note: cabal-hoogle
   , BuildTarget -- Note: cabal-hoogle
   , buildTargetDistDir -- Note: cabal-hoogle
   , buildTargetsAndDirs -- Note: cabal-hoogle
@@ -24,13 +18,14 @@ module Distribution.Client.API.Build
 
 import qualified Data.Map as Map
 import Distribution.Client.CmdBuild
-  ( BuildFlags
+  ( BuildFlags (..)
   , buildAction
   , defaultBuildFlags
   , selectComponentTarget
   , selectPackageTargets
   )
 import Distribution.Client.CmdErrorMessages (reportTargetProblems)
+import Distribution.Client.CmdListBin (listbinPath)
 import Distribution.Client.DistDirLayout (distBuildDirectory)
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..), defaultNixStyleFlags)
@@ -51,7 +46,7 @@ import Distribution.Client.ScriptUtils
   , updateContextAndWriteProjectFile
   , withContextAndSelectors
   )
-import Distribution.Client.Setup (InstallFlags (..), defaultGlobalFlags)
+import Distribution.Client.Setup (GlobalFlags, InstallFlags (..), defaultGlobalFlags)
 import Distribution.Client.TargetSelector (TargetSelector)
 import Distribution.Simple.Compiler (OptimisationLevel (..))
 import Distribution.Simple.Flag (maybeToFlag, toFlag)
@@ -135,6 +130,17 @@ mkNixStyleFlags opts =
 runBuild :: BuildOptions -> [String] -> IO ()
 runBuild opts targetStrings = buildAction (mkNixStyleFlags opts) targetStrings defaultGlobalFlags
 
+-- | Resolve the single executable-like target to the file path of its
+-- binary, like @cabal list-bin@ does. Fails unless exactly one such
+-- binary matches.
+runListBin :: BuildOptions -> [String] -> IO FilePath
+runListBin opts targetStrings =
+  listbinPath (mkNixStyleFlagsUnit opts) targetStrings defaultGlobalFlags
+
+mkNixStyleFlagsUnit :: BuildOptions -> NixStyleFlags ()
+mkNixStyleFlagsUnit opts =
+  (mkNixStyleFlags opts){extraFlags = ()}
+
 -- | A resolved build target together with its build directory.
 data BuildTarget = BuildTarget
   { buildTargetDistDir :: FilePath
@@ -142,9 +148,6 @@ data BuildTarget = BuildTarget
 
 -- | Resolve the given target strings against the project and return the
 -- build directory of every target package, without building anything.
---
--- This is the read-only part of @cabal build@'s context setup: target
--- selection, solving and plan pruning.
 buildTargetsAndDirs :: Verbosity -> BuildOptions -> [String] -> IO [BuildTarget]
 buildTargetsAndDirs verbosity opts targetStrings = do
   withContextAndSelectors

@@ -3,6 +3,12 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: install
+--
+-- Installing packages into the store and exposing their executables and
+-- libraries.
+--
+-- The implementation behind the @Distribution.Client.API.Command.CmdInstall@
+-- facade.
 module Distribution.Client.CmdInstall
   ( -- * The @install@ CLI and action
     installCommand
@@ -11,43 +17,40 @@ module Distribution.Client.CmdInstall
     -- * Internals exposed for testing
   , selectPackageTargets
   , selectComponentTarget
-
-    -- * Internals exposed for CmdRepl + CmdRun
-  , establishDummyDistDirLayout
-  , establishDummyProjectBaseContext
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
+import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 import Distribution.Client.CmdSdist
-import Distribution.Client.ProjectOrchestration
-import Distribution.Client.TargetProblem
-  ( TargetProblem (..)
-  , TargetProblem'
+  ( OutputFormat (..)
+  , packageToSdist
   )
+import Distribution.Client.Errors
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectPlanning
+  ( storePackageInstallDirs'
+  )
+import Distribution.Client.TargetProblem
 
 import Distribution.Client.CmdInstall.ClientInstallFlags
-import Distribution.Client.CmdInstall.ClientInstallTargetSelector
-
+  ( ClientInstallFlags (..)
+  , clientInstallOptions
+  , defaultClientInstallFlags
+  )
 import Distribution.Client.Config
   ( SavedConfig (..)
   , defaultInstallPath
   , loadConfig
   )
 import Distribution.Client.DistDirLayout
-  ( CabalDirLayout (..)
-  , DistDirLayout (..)
-  , StoreDirLayout (..)
-  , cabalStoreDirLayout
-  , mkCabalDirLayout
-  )
 import Distribution.Client.IndexUtils
   ( getInstalledPackages
   , getSourcePackages
   )
-import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallSymlink
   ( Symlink (..)
   , promptRun
@@ -70,44 +73,36 @@ import Distribution.Client.ProjectConfig
   , withProjectOrGlobalConfig
   )
 import Distribution.Client.ProjectConfig.Types
-  ( MapMappend (..)
-  , PackageConfig (..)
-  , ProjectConfig (..)
-  , ProjectConfigBuildOnly (..)
-  , ProjectConfigShared (..)
-  , getMapLast
-  , getMapMappend
-  , projectConfigBuildOnly
-  , projectConfigConfigFile
-  , projectConfigLogsDir
-  , projectConfigStoreDir
-  )
-import Distribution.Client.ProjectFlags (ProjectFlags (..))
-import Distribution.Client.ProjectPlanning
-  ( storePackageInstallDirs'
+import Distribution.Client.ProjectFlags
+  ( ProjectFlags (..)
   )
 import Distribution.Client.ProjectPlanning.Types
-  ( ElaboratedInstallPlan
-  )
 import Distribution.Client.RebuildMonad
   ( runRebuild
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , GlobalFlags (..)
+  ( GlobalFlags (..)
   , InstallFlags (..)
   )
-import Distribution.Client.Types
-  ( PackageLocation (..)
-  , PackageSpecifier (..)
-  , SourcePackageDb (..)
-  , UnresolvedSourcePackage
-  , mkNamedPackage
-  , pkgSpecifierTarget
+import Distribution.Client.Types.InstallMethod
+  ( InstallMethod (..)
   )
 import Distribution.Client.Types.OverwritePolicy
   ( OverwritePolicy (..)
   )
+import Distribution.Client.Types.PackageLocation
+  ( PackageLocation (..)
+  , UnresolvedSourcePackage
+  )
+import Distribution.Client.Types.PackageSpecifier
+  ( PackageSpecifier (..)
+  , mkNamedPackage
+  , pkgSpecifierTarget
+  )
+import Distribution.Client.Types.SourcePackageDb
+  ( SourcePackageDb (..)
+  )
+
 import Distribution.Package
   ( Package (..)
   , PackageName
@@ -157,7 +152,8 @@ import Distribution.Simple.Program.Db
   , userSpecifyPaths
   )
 import Distribution.Simple.Setup
-  ( Flag
+  ( ConfigFlags (..)
+  , Flag
   , installDirsOptions
   , pattern Flag
   , pattern NoFlag
@@ -223,7 +219,6 @@ import Data.Ord
   ( Down (..)
   )
 import qualified Data.Set as S
-import Distribution.Client.Errors
 import Distribution.Utils.NubList
   ( fromNubList
   )
@@ -245,8 +240,6 @@ import System.FilePath
   , (</>)
   )
 
--- | Check or check then install an exe. The check is to see if the overwrite
--- policy allows installation.
 data InstallCheck
   = -- | Only check if install is permitted.
     InstallCheckOnly
@@ -329,22 +322,6 @@ installCommand =
     notInstallDirOpt x = optionName x `notElem` installDirOptNames
     installDirOptNames = map optionName installDirsOptions
 
--- | The @install@ command actually serves four different needs. It installs:
--- * exes:
---   For example a program from hackage. The behavior is similar to the old
---   install command, except that now conflicts between separate runs of the
---   command are impossible thanks to the store.
---   Exes are installed in the store like a normal dependency, then they are
---   symlinked/copied in the directory specified by --installdir.
---   To do this we need a dummy projectBaseContext containing the targets as
---   extra packages and using a temporary dist directory.
--- * libraries
---   Libraries install through a similar process, but using GHC environment
---   files instead of symlinks. This means that 'v2-install'ing libraries
---   only works on GHC >= 8.0.
---
--- For more details on how this works, see the module
--- "Distribution.Client.ProjectOrchestration"
 installAction :: NixStyleFlags ClientInstallFlags -> [String] -> GlobalFlags -> IO ()
 installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, projectFlags} targetStrings globalFlags = do
   -- Ensure there were no invalid configuration options specified.

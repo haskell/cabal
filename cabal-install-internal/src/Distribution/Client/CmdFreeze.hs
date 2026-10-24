@@ -1,20 +1,31 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 -- | cabal-install CLI command: freeze
+--
+-- The @freeze@ command: solving the project and writing the
+-- @cabal.project.freeze@ file.
+--
+-- The implementation behind the @Distribution.Client.API.Command.CmdFreeze@
+-- facade.
 module Distribution.Client.CmdFreeze
-  ( freezeCommand
+  ( -- * The @freeze@ CLI and action
+    freezeCommand
   , freezeAction
+
+    -- * Computing the freeze configuration
+  , projectFreezeConfig
+  , projectFreezeConstraints
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.DistDirLayout
-  ( DistDirLayout (distProjectFile)
-  , ProjectFileKey (ProjectFileKeyFreeze)
+import Distribution.Client.Errors
+import Distribution.Client.IndexUtils
+  ( ActiveRepos
+  , TotalIndexState
+  , filterSkippedActiveRepos
   )
-import Distribution.Client.IndexUtils (ActiveRepos, TotalIndexState, filterSkippedActiveRepos)
-import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
@@ -22,27 +33,31 @@ import Distribution.Client.NixStyleOptions
   , nixStyleOptions
   )
 import Distribution.Client.ProjectConfig
+  ( writeProjectLocalFreezeConfig
+  )
+import Distribution.Client.ProjectConfig.Types
   ( ProjectConfig (..)
   , ProjectConfigShared (..)
-  , writeProjectLocalFreezeConfig
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
+  ( rebuildInstallPlan
+  )
+import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.Setup
+  ( GlobalFlags
+  )
 import Distribution.Client.Targets
   ( UserConstraint (..)
   , UserConstraintScope (..)
   , UserQualifier (..)
   )
-import Distribution.Solver.Types.ConstraintSource
-  ( ConstraintSource (..)
-  )
-import Distribution.Solver.Types.PackageConstraint
-  ( PackageProperty (..)
-  )
 
-import Distribution.Client.Setup
-  ( GlobalFlags
+import Distribution.Client.DistDirLayout
+  ( DistDirLayout (..)
+  , ProjectFileKey (..)
   )
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
   ( PackageName
   , packageName
@@ -52,11 +67,21 @@ import Distribution.PackageDescription
   ( FlagAssignment
   , nullFlagAssignment
   )
+import Distribution.Simple.Command
+  ( CommandUI (..)
+  , usageAlternatives
+  )
 import Distribution.Simple.Flag (pattern Flag)
 import Distribution.Simple.Utils
   ( dieWithException
   , notice
   , wrapText
+  )
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
+import Distribution.Solver.Types.PackageConstraint
+  ( PackageProperty (..)
   )
 import Distribution.Verbosity
   ( normal
@@ -69,12 +94,6 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
-
-import Distribution.Client.Errors
-import Distribution.Simple.Command
-  ( CommandUI (..)
-  , usageAlternatives
-  )
 
 freezeCommand :: CommandUI (NixStyleFlags ())
 freezeCommand =

@@ -1,7 +1,4 @@
 -- | Tier-0 stable API: reading the local Hackage package index.
---
--- Thin wrapper over the internal @Distribution.Client.IndexUtils@ and
--- @Distribution.Client.Types.SourcePackageDb@.
 module Distribution.Client.API.PackageIndex
   ( PackageIndex -- Note: cabal-matrix
   , withPackageIndex -- Note: cabal-matrix
@@ -12,7 +9,7 @@ import Distribution.Client.API.Config (GlobalConfig (..))
 import Distribution.Client.Config (savedGlobalFlags)
 import Distribution.Client.GlobalFlags (withRepoContext)
 import Distribution.Client.IndexUtils (getSourcePackages)
-import Distribution.Client.Types.SourcePackageDb (SourcePackageDb (..))
+import Distribution.Client.Types (SourcePackageDb)
 import qualified Distribution.Client.Types.SourcePackageDb as SourcePackageDb
 import Distribution.Package (Package (..), PackageId)
 import Distribution.Types.PackageName (PackageName)

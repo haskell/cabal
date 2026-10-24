@@ -1,46 +1,34 @@
 -- | cabal-install CLI command: bench
+--
+-- The @bench@ command: bringing the install plan up to date and running the
+-- benchmark targets.
+--
+-- The implementation behind the @Distribution.Client.API.Command.CmdBench@
+-- facade.
 module Distribution.Client.CmdBench
   ( -- * The @bench@ CLI and action
     benchCommand
   , benchAction
 
     -- * Internals exposed for testing
-  , componentNotBenchmarkProblem
-  , isSubComponentProblem
-  , noBenchmarksProblem
   , selectPackageTargets
   , selectComponentTarget
+  , noBenchmarksProblem
+  , componentNotBenchmarkProblem
+  , isSubComponentProblem
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
-  ( plural
-  , renderTargetProblem
-  , renderTargetProblemNoTargets
-  , renderTargetSelector
-  , showTargetSelector
-  , targetSelectorFilter
-  , targetSelectorPluralPkgs
-  )
+import Distribution.Client.CmdErrorMessages hiding (reportTargetProblems)
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
-  ( NixStyleFlags (..)
-  , cfgVerbosity
-  , defaultNixStyleFlags
-  , nixStyleOptions
-  )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
-  ( GlobalFlags
-  )
 import Distribution.Client.TargetProblem
-  ( TargetProblem (..)
-  )
-import Distribution.Client.Utils
-  ( giveRTSWarning
-  )
+import Distribution.Client.Utils (giveRTSWarning)
+
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
@@ -98,7 +86,7 @@ benchCommand =
     , commandOptions = nixStyleOptions (const [])
     }
 
--- | The @build@ command does a lot. It brings the install plan up to date,
+-- | The @bench@ command does a lot. It brings the install plan up to date,
 -- selects that part of the plan needed by the given or implicit targets and
 -- then executes the plan.
 --

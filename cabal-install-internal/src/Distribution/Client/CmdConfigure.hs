@@ -1,10 +1,20 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: configure
+--
+-- The @configure@ command: checking the project configuration and writing
+-- @cabal.project.local@.
+--
+-- The implementation behind the
+-- @Distribution.Client.API.Command.CmdConfigure@ facade.
 module Distribution.Client.CmdConfigure
-  ( configureCommand
+  ( -- * The @configure@ CLI and action
+    configureCommand
   , configureAction
+
+    -- * Internals
   , configureAction'
+  , shouldNotWriteFile
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -13,48 +23,55 @@ import Prelude ()
 import System.Directory
 import System.FilePath
 
-import Distribution.Client.ProjectConfig
-  ( readProjectLocalExtraConfig
-  , writeProjectLocalExtraConfig
+import Distribution.Client.DistDirLayout
+  ( DistDirLayout (..)
+  , ProjectFileKey (..)
   )
-import Distribution.Client.ProjectFlags
-  ( removeIgnoreProjectOption
+import Distribution.Client.Errors
+import Distribution.Client.HttpUtils
+  ( configureTransport
   )
-import Distribution.Client.ProjectOrchestration
-import Distribution.Simple.Flag
-
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
+import Distribution.Client.ProjectConfig
+  ( readProjectLocalExtraConfig
+  , writeProjectLocalExtraConfig
+  )
+import Distribution.Client.ProjectConfig.Types
+import Distribution.Client.ProjectFlags
+  ( removeIgnoreProjectOption
+  )
+import Distribution.Client.ProjectOrchestration
+import Distribution.Client.RebuildMonad
+  ( runRebuild
+  )
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
   , GlobalFlags
-  )
-import Distribution.Verbosity
-  ( normal
   )
 
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
   )
+import Distribution.Simple.Flag
+  ( flagToMaybe
+  , fromFlagOrDefault
+  )
+import Distribution.Verbosity
+  ( normal
+  )
+
 import Distribution.Simple.Utils
   ( dieWithException
   , notice
   , wrapText
   )
 
-import Distribution.Client.DistDirLayout
-  ( DistDirLayout (..)
-  , ProjectFileKey (ProjectFileKeyLocal)
-  )
-import Distribution.Client.Errors
-import Distribution.Client.HttpUtils
-import Distribution.Client.ProjectConfig.Types
-import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Types.CondTree
   ( CondTree (..)
   )

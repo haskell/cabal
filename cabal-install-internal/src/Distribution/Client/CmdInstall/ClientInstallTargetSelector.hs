@@ -13,7 +13,7 @@ import Network.URI (URI, parseURI)
 
 import Distribution.Client.Errors
 import Distribution.Client.TargetSelector
-import Distribution.Client.Types
+import Distribution.Client.Types.PackageSpecifier
 import Distribution.Compat.CharParsing (char, optional)
 import Distribution.Package
 import Distribution.Simple.LocalBuildInfo (ComponentName (CExeName))

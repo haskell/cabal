@@ -1,16 +1,20 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 
--- |
--- Module      :  Distribution.Client.CmdPath
--- Maintainer  :  cabal-devel@haskell.org
--- Portability :  portable
+-- | cabal-install CLI command: path
 --
--- Implementation of the 'path' command. Query for project configuration
--- information.
+-- Queries for project configuration information. The implementation behind
+-- the @Distribution.Client.API.Command.CmdPath@ facade.
 module Distribution.Client.CmdPath
-  ( pathCommand
+  ( -- * The @path@ CLI and action
+    pathCommand
   , pathAction
+  , PathFlags (..)
+  , defaultPathFlags
+  , pathOptions
+  , PathOutputFormat (..)
+  , ConfigPath (..)
+  , pathName
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -25,9 +29,12 @@ import Distribution.Client.Config
   , defaultStoreDir
   , getConfigFilePath
   )
-import Distribution.Client.DistDirLayout (CabalDirLayout (..), StoreDirLayout (..), distProjectRootDirectory)
+import Distribution.Client.DistDirLayout
+  ( CabalDirLayout (..)
+  , StoreDirLayout (..)
+  , distProjectRootDirectory
+  )
 import Distribution.Client.Errors
-import Distribution.Client.GlobalFlags
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
@@ -41,18 +48,23 @@ import Distribution.Client.ProjectConfig.Types
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
-import Distribution.Client.RebuildMonad (runRebuild)
+  ( configureCompiler
+  )
+import Distribution.Client.RebuildMonad
+  ( runRebuild
+  )
 import Distribution.Client.ScriptUtils
+  ( AcceptNoTargets (..)
+  , withContextAndSelectors
+  )
 import Distribution.Client.Setup
-  ( yesNoOpt
+  ( GlobalFlags
+  , yesNoOpt
   )
-import Distribution.Client.Utils.Json
-  ( (.=)
-  )
+import Distribution.Client.Utils.Json ((.=))
 import qualified Distribution.Client.Utils.Json as Json
-import Distribution.Client.Version
-  ( cabalInstallVersion
-  )
+import Distribution.Client.Version (cabalInstallVersion)
+
 import Distribution.ReadE
   ( ReadE (ReadE)
   )
@@ -83,6 +95,49 @@ import Distribution.Verbosity
   ( normal
   , verbosityFlags
   )
+
+-------------------------------------------------------------------------------
+-- Flags
+-------------------------------------------------------------------------------
+
+data PathOutputFormat
+  = JSON
+  | KeyValue
+  deriving (Eq, Ord, Show, Read, Enum, Bounded)
+
+data PathFlags = PathFlags
+  { pathCompiler :: Flag Bool
+  , pathOutputFormat :: Flag PathOutputFormat
+  , pathDirectories :: Flag [ConfigPath]
+  }
+  deriving (Eq, Show)
+
+defaultPathFlags :: PathFlags
+defaultPathFlags =
+  PathFlags
+    { pathCompiler = mempty
+    , pathOutputFormat = mempty
+    , pathDirectories = mempty
+    }
+
+-- | A path that can be retrieved by the @cabal path@ command.
+data ConfigPath
+  = ConfigPathCacheHome
+  | ConfigPathRemoteRepoCache
+  | ConfigPathLogsDir
+  | ConfigPathStoreDir
+  | ConfigPathConfigFile
+  | ConfigPathInstallDir
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+-- | The configuration name for this path.
+pathName :: ConfigPath -> String
+pathName ConfigPathCacheHome = "cache-home"
+pathName ConfigPathRemoteRepoCache = "remote-repo-cache"
+pathName ConfigPathLogsDir = "logs-dir"
+pathName ConfigPathStoreDir = "store-dir"
+pathName ConfigPathConfigFile = "config-file"
+pathName ConfigPathInstallDir = "installdir"
 
 -------------------------------------------------------------------------------
 -- Command
@@ -123,30 +178,6 @@ pathCommand =
         "Usage: " <> pname <> " path [FLAGS]\n"
     , commandDefaultFlags = defaultNixStyleFlags defaultPathFlags
     , commandOptions = nixStyleOptions pathOptions
-    }
-
--------------------------------------------------------------------------------
--- Flags
--------------------------------------------------------------------------------
-
-data PathOutputFormat
-  = JSON
-  | KeyValue
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
-
-data PathFlags = PathFlags
-  { pathCompiler :: Flag Bool
-  , pathOutputFormat :: Flag PathOutputFormat
-  , pathDirectories :: Flag [ConfigPath]
-  }
-  deriving (Eq, Show)
-
-defaultPathFlags :: PathFlags
-defaultPathFlags =
-  PathFlags
-    { pathCompiler = mempty
-    , pathOutputFormat = mempty
-    , pathDirectories = mempty
     }
 
 pathOutputFormatParser :: ReadE (Flag PathOutputFormat)
@@ -200,25 +231,6 @@ pathOptions showOrParseArgs =
         pathDirectories
         (\v flags -> flags{pathDirectories = Flag $ concat (flagToList (pathDirectories flags) <> flagToList v)})
         (noArg (Flag [s]))
-
--- | A path that can be retrieved by the @cabal path@ command.
-data ConfigPath
-  = ConfigPathCacheHome
-  | ConfigPathRemoteRepoCache
-  | ConfigPathLogsDir
-  | ConfigPathStoreDir
-  | ConfigPathConfigFile
-  | ConfigPathInstallDir
-  deriving (Eq, Ord, Show, Enum, Bounded)
-
--- | The configuration name for this path.
-pathName :: ConfigPath -> String
-pathName ConfigPathCacheHome = "cache-home"
-pathName ConfigPathRemoteRepoCache = "remote-repo-cache"
-pathName ConfigPathLogsDir = "logs-dir"
-pathName ConfigPathStoreDir = "store-dir"
-pathName ConfigPathConfigFile = "config-file"
-pathName ConfigPathInstallDir = "installdir"
 
 -------------------------------------------------------------------------------
 -- Action

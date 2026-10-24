@@ -1,54 +1,88 @@
+-- | cabal-install CLI command: gen-bounds
+--
+-- Generating PVP-compliant upper bounds for the project packages.
+--
+-- The implementation behind the
+-- @Distribution.Client.API.Command.CmdGenBounds@ facade.
 module Distribution.Client.CmdGenBounds
-  ( genBounds
-  , genBoundsCommand
+  ( -- * The @gen-bounds@ CLI and action
+    genBoundsCommand
   , genBoundsAction
   , GenBoundsFlags (..)
   , defaultGenBoundsFlags
+
+    -- * Internals exposed for testing
+  , selectPackageTargets
+  , selectComponentTarget
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import qualified Data.Map as Map
-
 import Control.Monad (mapM_)
 
+import Distribution.Client.CmdErrorMessages
+  ( reportTargetProblems
+  )
 import Distribution.Client.Errors
+import Distribution.Client.GenBounds
+  ( boundsNeededMsg
+  , showBounds
+  )
+import Distribution.Client.NixStyleOptions
+  ( NixStyleFlags (..)
+  , cfgVerbosity
+  , defaultNixStyleFlags
+  , nixStyleOptions
+  )
+import Distribution.Client.ProjectFlags
+  ( removeIgnoreProjectOption
+  )
+import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ScriptUtils
+  ( AcceptNoTargets (..)
+  , TargetContext (..)
+  , withContextAndSelectors
+  )
+import Distribution.Client.Setup
+  ( GlobalFlags
+  )
+import Distribution.Client.TargetProblem
+import Distribution.Client.Types.ConfiguredId
+  ( confInstId
+  )
+import Distribution.Client.Utils
+  ( hasElem
+  )
 
-import Distribution.Client.ProjectPlanning hiding (pruneInstallPlanToTargets)
+import qualified Data.Map as Map
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.ProjectPlanning
+  ( rebuildInstallPlan
+  )
 import Distribution.Client.ProjectPlanning.Types
-import Distribution.Client.Types.ConfiguredId (confInstId)
-import Distribution.Client.Utils hiding (pvpize)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo, installedComponentId)
 import Distribution.Package
 import Distribution.PackageDescription
+import Distribution.Simple.Command
+  ( CommandUI (..)
+  , usageAlternatives
+  )
 import Distribution.Simple.Utils
+import Distribution.Types.Component (componentBuildInfo)
 import Distribution.Version
 
-import Distribution.Client.Setup (GlobalFlags (..))
-
--- Project orchestration imports
-
-import Distribution.Client.CmdErrorMessages
-import Distribution.Client.GenBounds
-import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.NixStyleOptions
-import Distribution.Client.ProjectFlags
-import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ScriptUtils
-import Distribution.Client.TargetProblem
-import Distribution.Simple.Command
-import Distribution.Types.Component
 import Distribution.Verbosity
+  ( normal
+  )
 
--- | The data type for gen-bounds command flags
+-- | The data type for the gen-bounds command flags
 data GenBoundsFlags = GenBoundsFlags {}
 
 -- | Default values for the gen-bounds flags
 defaultGenBoundsFlags :: GenBoundsFlags
 defaultGenBoundsFlags = GenBoundsFlags{}
 
--- | The @gen-bounds@ command definition
 genBoundsCommand :: CommandUI (NixStyleFlags GenBoundsFlags)
 genBoundsCommand =
   CommandUI
@@ -78,7 +112,10 @@ genBoundsCommand =
           . nixStyleOptions (const [])
     }
 
--- | The action for the @gen-bounds@ command when used in a project context.
+-- | The @gen-bounds@ action: for each targeted local package component,
+-- print the dependencies that are missing PVP upper bounds.
+--
+-- The action runs in a project context; scripts are not supported.
 genBoundsAction :: NixStyleFlags GenBoundsFlags -> [String] -> GlobalFlags -> IO ()
 genBoundsAction flags targetStrings globalFlags =
   withContextAndSelectors verbosity RejectNoTargets Nothing flags targetStrings globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do

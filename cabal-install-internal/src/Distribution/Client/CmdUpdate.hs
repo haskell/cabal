@@ -1,30 +1,51 @@
 {-# LANGUAGE RecordWildCards #-}
 
--- | cabal-install CLI command: update
+-- |
+-- Module      :  Distribution.Client.CmdUpdate
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
+--
+-- cabal-install CLI command: update
+--
+-- Downloading the package lists of the known remote repositories.
+--
+-- The implementation behind the @Distribution.Client.API.Command.CmdUpdate@
+-- facade.
 module Distribution.Client.CmdUpdate
-  ( updateCommand
+  ( -- * The @update@ CLI and action
+    updateCommand
   , updateAction
+  , UpdateRequest (..)
   ) where
 
-import Control.Exception
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.Errors
 import Distribution.Client.FetchUtils
   ( downloadIndex
+  )
+import Distribution.Client.GZipUtils
+  ( maybeDecompress
+  )
+import Distribution.Client.GlobalFlags
+  ( RepoContext (..)
   )
 import Distribution.Client.HttpUtils
   ( DownloadResult (..)
   )
 import Distribution.Client.IndexUtils
   ( Index (..)
+  , RepoIndexState (..)
   , currentIndexTimestamp
   , indexBaseName
   , updatePackageIndexCacheFile
   , updateRepoIndexCache
   , writeIndexTimestamp
   )
-import Distribution.Client.IndexUtils.IndexState
+import Distribution.Client.IndexUtils.Timestamp
+  ( Timestamp (NoTimestamp)
+  )
 import Distribution.Client.JobControl
   ( collectJob
   , newParallelJobControl
@@ -37,26 +58,31 @@ import Distribution.Client.NixStyleOptions
   , nixStyleOptions
   )
 import Distribution.Client.ProjectConfig
-  ( ProjectConfig (..)
-  , ProjectConfigShared (projectConfigConfigFile)
-  , projectConfigWithSolverRepoContext
+  ( projectConfigWithSolverRepoContext
   , withGlobalConfig
   , withProjectOrGlobalConfig
   )
+import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectFlags
   ( ProjectFlags (..)
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
   ( GlobalFlags
-  , RepoContext (..)
   )
-import Distribution.Client.Types
+import Distribution.Client.Types.Repo
   ( RemoteRepo (..)
   , Repo (..)
-  , RepoName (..)
   , repoName
+  )
+import Distribution.Client.Types.RepoName
+  ( RepoName (..)
   , unRepoName
+  )
+
+import Distribution.Simple.Command
+  ( CommandUI (..)
+  , usageAlternatives
   )
 import Distribution.Simple.Utils
   ( dieWithException
@@ -75,22 +101,29 @@ import System.Directory
   ( setModificationTime
   )
 
+import qualified Data.ByteString.Lazy as BS
 import qualified Data.Maybe as Unsafe (fromJust)
+import Data.Time (getCurrentTime)
 import qualified Distribution.Compat.CharParsing as P
+import System.FilePath (dropExtension, (<.>))
 import qualified Text.PrettyPrint as Disp
 
-import qualified Data.ByteString.Lazy as BS
-import Data.Time (getCurrentTime)
-import Distribution.Client.GZipUtils (maybeDecompress)
-import Distribution.Simple.Command
-  ( CommandUI (..)
-  , usageAlternatives
-  )
-import System.FilePath (dropExtension, (<.>))
-
-import Distribution.Client.Errors
-import Distribution.Client.IndexUtils.Timestamp (Timestamp (NoTimestamp))
 import qualified Hackage.Security.Client as Sec
+
+data UpdateRequest = UpdateRequest
+  { _updateRequestRepoName :: RepoName
+  , _updateRequestRepoState :: RepoIndexState
+  }
+  deriving (Show)
+
+instance Pretty UpdateRequest where
+  pretty (UpdateRequest n s) = pretty n <<>> Disp.comma <<>> pretty s
+
+instance Parsec UpdateRequest where
+  parsec = do
+    name <- parsec
+    state <- P.char ',' *> parsec <|> pure IndexStateHead
+    return (UpdateRequest name state)
 
 updateCommand :: CommandUI (NixStyleFlags ())
 updateCommand =
@@ -130,21 +163,6 @@ updateCommand =
     , commandOptions = nixStyleOptions $ const []
     , commandDefaultFlags = defaultNixStyleFlags ()
     }
-
-data UpdateRequest = UpdateRequest
-  { _updateRequestRepoName :: RepoName
-  , _updateRequestRepoState :: RepoIndexState
-  }
-  deriving (Show)
-
-instance Pretty UpdateRequest where
-  pretty (UpdateRequest n s) = pretty n <<>> Disp.comma <<>> pretty s
-
-instance Parsec UpdateRequest where
-  parsec = do
-    name <- parsec
-    state <- P.char ',' *> parsec <|> pure IndexStateHead
-    return (UpdateRequest name state)
 
 updateAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
@@ -280,7 +298,7 @@ updateRepo verbosity repoCtxt (repo, indexState) = do
 
       -- TODO: This will print multiple times if there are multiple
       -- repositories: main problem is we don't have a way of updating
-      -- a specific repo.  Once we implement that, update this.
+      -- a specific repo. Once we implement that, update this.
 
       -- In case current_ts is a valid timestamp different from new_ts, let
       -- the user know how to go back to current_ts

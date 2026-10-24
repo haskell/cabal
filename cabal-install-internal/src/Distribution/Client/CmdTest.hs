@@ -2,55 +2,39 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: test
+--
+-- Bringing the install plan up to date and running the test-suite targets.
+-- The implementation behind the @Distribution.Client.API.Command.CmdTest@
+-- facade.
 module Distribution.Client.CmdTest
   ( -- * The @test@ CLI and action
     testCommand
   , testAction
 
     -- * Internals exposed for testing
-  , isSubComponentProblem
-  , notTestProblem
-  , noTestsProblem
   , selectPackageTargets
   , selectComponentTarget
+  , noTestsProblem
+  , notTestProblem
+  , isSubComponentProblem
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
-  ( plural
-  , renderTargetProblem
-  , renderTargetProblemNoTargets
-  , renderTargetSelector
-  , showTargetSelector
-  , targetSelectorFilter
-  , targetSelectorPluralPkgs
-  )
+import Distribution.Client.CmdErrorMessages hiding (reportTargetProblems)
+import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
-  ( NixStyleFlags (..)
-  , cfgVerbosity
-  , defaultNixStyleFlags
-  , nixStyleOptions
-  )
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.Setup
-  ( GlobalFlags (..)
-  )
+import Distribution.Client.Setup hiding (testCommand)
 import Distribution.Client.TargetProblem
-  ( TargetProblem (..)
-  )
-import Distribution.Client.Utils
-  ( giveRTSWarning
-  )
+import Distribution.Client.Utils (giveRTSWarning)
+
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
   )
-import Distribution.Simple.Flag
-  ( Flag
-  , pattern Flag
-  )
+import Distribution.Simple.Flag (Flag, pattern Flag)
 import Distribution.Simple.Setup
   ( TestFlags (..)
   )
@@ -66,7 +50,6 @@ import Distribution.Verbosity
 
 import qualified System.Exit (exitSuccess)
 
-import Distribution.Client.Errors
 import GHC.Environment
   ( getFullArgs
   )

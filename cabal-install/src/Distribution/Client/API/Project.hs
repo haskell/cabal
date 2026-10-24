@@ -1,7 +1,4 @@
 -- | Tier-0 stable API: loading a cabal project.
---
--- Thin wrapper over the internal @Distribution.Client.ProjectConfig@,
--- @Distribution.Client.DistDirLayout@ and @Distribution.Client.RebuildMonad@.
 module Distribution.Client.API.Project
   ( projectLocalCabalFiles -- Note: cabal-add
   ) where
@@ -28,10 +25,6 @@ import System.FilePath (splitFileName, (</>))
 -- Only project-local package locations are returned; tarballs, remote
 -- repositories and other exotic locations are filtered out. The result paths
 -- are absolute.
---
--- This is the stable replacement for third-party tools that used
--- @findProjectRoot@ + @readProjectConfig@ + @findProjectPackages@ directly
--- (see cabal-add).
 projectLocalCabalFiles :: Verbosity -> FilePath -> IO [FilePath]
 projectLocalCabalFiles verbosity projectFile = do
   let (projectDir, projFile) = splitFileName projectFile
