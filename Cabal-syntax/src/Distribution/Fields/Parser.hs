@@ -222,8 +222,8 @@ inLexerMode (LexerMode mode) p =
 -- ElementInLayoutContext     ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
 -- ElementInNonLayoutContext  ::= FieldInline | FieldBraces |                 SectionBraces
 -- FieldLayout                ::= name ':' line? ('\\n' line)*
--- FieldBraces                ::= name ':' '\\n'? '{' content* '}'
--- FieldInline                ::= name ':' content
+-- FieldBraces                ::= name ':' '\\n'? '{' line* '}'
+-- FieldInline                ::= name ':' line
 -- SectionLayout              ::= name arg* Elements
 -- SectionBraces              ::= name arg* '\\n'? '{' Elements '}'
 -- @
@@ -236,14 +236,14 @@ inLexerMode (LexerMode mode) p =
 --                              |       name ElementInNonLayoutContext
 -- ElementInLayoutContext     ::= ':'           FieldLayoutOrBraces
 --                              | arg* comment* SectionLayoutOrBraces
--- FieldLayoutOrBraces        ::= comment* '\\n'? '{' comment* (content comment*)* '}'
+-- FieldLayoutOrBraces        ::= comment* '\\n'? '{' comment* (line comment*)* '}'
 --                              | comment* line? comment* ('\\n' line comment*)*
 -- SectionLayoutOrBraces      ::= '\\n'? '{' Elements '\\n'? '}'
 --                              | Elements
 -- ElementInNonLayoutContext  ::= ':'                   FieldInlineOrBraces
 --                              | arg* comment* '\\n'? '{' Elements '\\n'? '}'
--- FieldInlineOrBraces        ::= '\\n'? '{' content '}'
---                              | content
+-- FieldInlineOrBraces        ::= '\\n'? '{' comment* (line comment*)* '}'
+--                              | line
 -- @
 --
 --
@@ -390,7 +390,7 @@ elementInLayoutContext ilevel name =
 --                             | arg* comments* '\\n'? '{' elements '\\n'? '}'
 elementInNonLayoutContext :: Name Position -> Parser (Field (WithComments Position))
 elementInNonLayoutContext name =
-  (do colon; fieldInlineOrBraces name) -- inline field or braces can never have comments
+  (do colon; fieldInlineOrBraces name)
     <|> ( do
             args <- many sectionArg
             commentsAfterSectionArgs <- many tokComment -- Unintuitively, trailing comments are allowed in the same line of a section
@@ -471,19 +471,14 @@ sectionLayoutOrBraces ilevel =
 
 -- The body of a field, using either inline style or braces.
 --
--- fieldInlineOrBraces   ::= '\\n'? '{' content '}'
+-- fieldInlineOrBraces   ::= '\\n'? '{' comment* (line comment*)* '}'
 --                         | content
 fieldInlineOrBraces :: Name Position -> Parser (Field (WithComments Position))
 fieldInlineOrBraces name =
   ( do
       openBrace
       (preCmts, ls) <-
-        inLexerMode
-          (LexerMode in_field_braces)
-          ( (,)
-              <$> many tokComment
-              <*> many (commentsAfter fieldContent)
-          )
+        inLexerMode (LexerMode in_field_braces) (liftA2 (,) (many tokComment) (many (commentsAfter fieldContent)))
       closeBrace
       return (Field (WithComments preCmts <$> name) ls)
   )
