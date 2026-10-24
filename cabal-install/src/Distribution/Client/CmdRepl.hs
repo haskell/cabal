@@ -55,7 +55,8 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig (..)
   )
 import Distribution.Client.ProjectPlanning.Types
-  ( elabOrderExeDependencies
+  ( elabLocalToProject
+  , elabOrderExeDependencies
   , showElaboratedInstallPlan
   )
 import Distribution.Client.ScriptUtils
@@ -71,6 +72,7 @@ import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup
   ( ConfigFlags (..)
   , GlobalFlags
+  , installWatch
   )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Client.TargetProblem
@@ -84,6 +86,7 @@ import Distribution.Client.Types
   ( PackageSpecifier (..)
   , UnresolvedSourcePackage
   )
+import Distribution.Client.Watch (planWatchFiles, watchFiles)
 import Distribution.Compiler
   ( CompilerFlavor (GHC)
   )
@@ -511,6 +514,18 @@ targetedRepl
 
     -- Multi Repl implementation see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
     -- a high-level overview about how everything fits together.
+    let watchOr core =
+          if fromFlagOrDefault False (installWatch (installFlags flags))
+            then do
+              let localElabs =
+                    [ elab
+                    | InstallPlan.Configured elab <-
+                        InstallPlan.toList (elaboratedPlanToExecute buildCtx)
+                    , elabLocalToProject elab
+                    ]
+              files <- planWatchFiles verbosity (distDirLayout baseCtx) localElabs
+              watchFiles verbosity files core
+            else core
     if Set.size (distinctTargetComponents targets) > 1
       then withTempDirectoryEx tempFileOptions distDir "multi-out" $ \dir' -> do
         -- multi target repl
@@ -522,68 +537,69 @@ targetedRepl
           _ -> usingGhciScript projectRoot replOpts'
 
         let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
-        printPlan verbosity baseCtx'' buildCtx'
+        watchOr $ do
+          printPlan verbosity baseCtx'' buildCtx'
 
-        -- The project build phase will call `./Setup repl` but write the options
-        -- out into a file without starting a repl.
-        buildOutcomes <- runProjectBuildPhase verbosity baseCtx'' buildCtx'
-        runProjectPostBuildPhase verbosity baseCtx'' buildCtx' buildOutcomes
+          -- The project build phase will call `./Setup repl` but write the options
+          -- out into a file without starting a repl.
+          buildOutcomes <- runProjectBuildPhase verbosity baseCtx'' buildCtx'
+          runProjectPostBuildPhase verbosity baseCtx'' buildCtx' buildOutcomes
 
-        -- calculate PATH, we construct a PATH which is the union of all paths from
-        -- the units which have been loaded. This is not quite right but usually works fine.
-        path_files <- listDirectory (dir </> "paths")
+          -- calculate PATH, we construct a PATH which is the union of all paths from
+          -- the units which have been loaded. This is not quite right but usually works fine.
+          path_files <- listDirectory (dir </> "paths")
 
-        -- Note: decode is partial. Should we use Structured here?
-        -- This might blow up with @build-type: Custom@ stuff.
-        ghcProgs <- mapM (\f -> decode @ConfiguredProgram <$> BS.readFile (dir </> "paths" </> f)) path_files
+          -- Note: decode is partial. Should we use Structured here?
+          -- This might blow up with @build-type: Custom@ stuff.
+          ghcProgs <- mapM (\f -> decode @ConfiguredProgram <$> BS.readFile (dir </> "paths" </> f)) path_files
 
-        let all_paths = concatMap programOverrideEnv ghcProgs
-        let sp = intercalate [searchPathSeparator] (map fst (sortBy (comparing @Int snd) $ Map.toList (combine_search_paths all_paths)))
-        -- HACK: Just combine together all env overrides, placing the most common things last
+          let all_paths = concatMap programOverrideEnv ghcProgs
+          let sp = intercalate [searchPathSeparator] (map fst (sortBy (comparing @Int snd) $ Map.toList (combine_search_paths all_paths)))
+          -- HACK: Just combine together all env overrides, placing the most common things last
 
-        -- ghc program with overridden PATH
-        (ghcProg, _) <- requireProgram verbosity ghcProgram (pkgConfigCompilerProgs (elaboratedShared buildCtx'))
-        let ghcProg' = ghcProg{programOverrideEnv = [("PATH", Just sp)]}
+          -- ghc program with overridden PATH
+          (ghcProg, _) <- requireProgram verbosity ghcProgram (pkgConfigCompilerProgs (elaboratedShared buildCtx'))
+          let ghcProg' = ghcProg{programOverrideEnv = [("PATH", Just sp)]}
 
-        -- Find what the unit files are, and start a repl based on all the response
-        -- files which have been created in the directory.
-        -- unit files for components
-        unit_files <- filter (/= "paths") <$> listDirectory dir
+          -- Find what the unit files are, and start a repl based on all the response
+          -- files which have been created in the directory.
+          -- unit files for components
+          unit_files <- filter (/= "paths") <$> listDirectory dir
 
-        -- Order the unit files so that the find target becomes the active unit
-        let active_unit_fp :: Maybe FilePath
-            active_unit_fp = do
-              -- Get the first target selectors from the cli
-              activeTarget <- safeHead targetSelectors
-              -- Lookup the targets :: Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
-              unitId <-
-                Map.toList targets
-                  -- Keep the UnitId matching the desired target selector
-                  & find (\(_, xs) -> any (\(_, selectors) -> activeTarget `elem` selectors) xs)
-                  & fmap fst
-              -- Convert to filename (adapted from 'storePackageDirectory')
-              pure (prettyShow unitId)
-            unit_files_ordered :: [FilePath]
-            unit_files_ordered =
-              let (active_unit_files, other_units) = partition (\fp -> Just fp == active_unit_fp) unit_files
-               in -- GHC considers the last unit passed to be the active one
-                  other_units ++ active_unit_files
+          -- Order the unit files so that the find target becomes the active unit
+          let active_unit_fp :: Maybe FilePath
+              active_unit_fp = do
+                -- Get the first target selectors from the cli
+                activeTarget <- safeHead targetSelectors
+                -- Lookup the targets :: Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
+                unitId <-
+                  Map.toList targets
+                    -- Keep the UnitId matching the desired target selector
+                    & find (\(_, xs) -> any (\(_, selectors) -> activeTarget `elem` selectors) xs)
+                    & fmap fst
+                -- Convert to filename (adapted from 'storePackageDirectory')
+                pure (prettyShow unitId)
+              unit_files_ordered :: [FilePath]
+              unit_files_ordered =
+                let (active_unit_files, other_units) = partition (\fp -> Just fp == active_unit_fp) unit_files
+                 in -- GHC considers the last unit passed to be the active one
+                    other_units ++ active_unit_files
 
-            convertParStrat :: ParStratX Int -> ParStratX String
-            convertParStrat Serial = Serial
-            convertParStrat (UseSem n) = NumJobs (Just n)
-            convertParStrat (NumJobs mn) = NumJobs mn
+              convertParStrat :: ParStratX Int -> ParStratX String
+              convertParStrat Serial = Serial
+              convertParStrat (UseSem n) = NumJobs (Just n)
+              convertParStrat (NumJobs mn) = NumJobs mn
 
-        let ghc_opts =
-              mempty
-                { ghcOptMode = Flag GhcModeInteractive
-                , ghcOptUnitFiles = map (dir </>) unit_files_ordered
-                , ghcOptNumJobs = Flag (convertParStrat (buildSettingNumJobs (buildSettings ctx)))
-                , ghcOptPackageDBs = [GlobalPackageDB]
-                }
+          let ghc_opts =
+                mempty
+                  { ghcOptMode = Flag GhcModeInteractive
+                  , ghcOptUnitFiles = map (dir </>) unit_files_ordered
+                  , ghcOptNumJobs = Flag (convertParStrat (buildSettingNumJobs (buildSettings ctx)))
+                  , ghcOptPackageDBs = [GlobalPackageDB]
+                  }
 
-        -- run ghc --interactive with
-        runReplProgram (flagToMaybe $ replWithRepl replOpts') tempFileOptions verbosity ghcProg' compiler platform Nothing ghc_opts
+          -- run ghc --interactive with
+          runReplProgram (flagToMaybe $ replWithRepl replOpts') tempFileOptions verbosity ghcProg' compiler platform Nothing ghc_opts
       else do
         -- single target repl
         replOpts'' <- case targetCtx of
@@ -591,10 +607,11 @@ targetedRepl
           _ -> usingGhciScript projectRoot replOpts'
 
         let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
-        printPlan verbosity baseCtx'' buildCtx'
+        watchOr $ do
+          printPlan verbosity baseCtx'' buildCtx'
 
-        buildOutcomes <- runProjectBuildPhase verbosity baseCtx'' buildCtx'
-        runProjectPostBuildPhase verbosity baseCtx'' buildCtx' buildOutcomes
+          buildOutcomes <- runProjectBuildPhase verbosity baseCtx'' buildCtx'
+          runProjectPostBuildPhase verbosity baseCtx'' buildCtx' buildOutcomes
     where
       projectRoot = distProjectRootDirectory $ distDirLayout ctx
       distDir = distDirectory $ distDirLayout ctx

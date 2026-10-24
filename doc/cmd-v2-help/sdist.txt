@@ -20,6 +20,8 @@ Flags for sdist:
  -l, --list-only              # Just list the sources, do not make a tarball
  --null-sep                   # Separate the source files with NUL bytes
                                 rather than newlines.
+ --watch                      # Watch the relevant files and rerun the command
+                                when one of them changes (Linux only).
  -o PATH or -oPATH, --output-directory=PATH
                               # Choose the output directory of this command.
                                 '-' sends all output to stdout
