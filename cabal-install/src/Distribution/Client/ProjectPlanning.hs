@@ -2288,7 +2288,6 @@ elaborateInstallPlan
               gdesc of
               Right (desc, _) -> desc
               Left _ -> error "Failed to finalizePD in elaborateSolverToCommon"
-            elabGPkgDescription = gdesc
             elabFlagAssignment = flags
             elabFlagDefaults =
               PD.mkFlagAssignment
