@@ -84,7 +84,6 @@ test-suite parser-tests
   main-is:          ParserTests.hs
   build-depends:
     , base
-    , base-compat       >=0.11.0  && <0.14
     , bytestring
     , Cabal-syntax
     , Cabal-tree-diff
@@ -154,8 +153,6 @@ test-suite hackage-tests
     , time
 
   build-depends:
-    , base-compat           >=0.11.0   && <0.14
-    , base-orphans          >=0.6      && <0.10
     , clock                 >=0.8      && <0.9
     , optparse-applicative  >=0.13.2.0 && <0.19
     , tar                   >=0.5.0.3  && <0.8
