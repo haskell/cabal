@@ -64,11 +64,11 @@ test-suite unit-tests
     , Cabal-syntax
     , Cabal-QuickCheck
     , containers
-    , Diff                >=0.4   && <0.6
+    , Diff                >=0.4   && <2.1
     , directory           >=1.2.7
     , filepath
     , pretty
-    , QuickCheck          >=2.14  && <2.15
+    , QuickCheck          >=2.14  && <2.20
     , tasty               >=1.2.3 && <1.6
     , tasty-hunit
     , tasty-quickcheck    <0.12
@@ -87,13 +87,13 @@ test-suite parser-tests
     , bytestring
     , Cabal-syntax
     , Cabal-tree-diff
-    , Diff              >=0.4     && <0.6
+    , Diff              >=0.4     && <2.1
     , directory
     , filepath
     , tasty             >=1.2.3   && <1.6
     , tasty-golden      >=2.3.1.1 && <2.4
     , tasty-hunit
-    , tree-diff         >=0.1     && <0.4
+    , tree-diff         >=0.1     && <0.5
 
   ghc-options:      -Wall
   default-language: GHC2021
@@ -107,7 +107,7 @@ test-suite check-tests
     , bytestring
     , Cabal
     , Cabal-syntax
-    , Diff          >=0.4     && <0.6
+    , Diff          >=0.4     && <2.1
     , directory
     , filepath
     , tasty         >=1.2.3   && <1.6
@@ -154,9 +154,9 @@ test-suite hackage-tests
 
   build-depends:
     , clock                 >=0.8      && <0.9
-    , optparse-applicative  >=0.13.2.0 && <0.19
+    , optparse-applicative  >=0.13.2.0 && <0.20
     , tar                   >=0.5.0.3  && <0.8
-    , tree-diff             >=0.1      && <0.4
+    , tree-diff             >=0.1      && <0.5
 
   ghc-options:        -Wall -rtsopts -threaded
   default-extensions: CPP
@@ -199,7 +199,7 @@ test-suite no-thunks-test
   -- but it doesn't do anything.
   if impl(ghc >=8.6)
     build-depends:
-      , nothunks >=0.1.1.0 && <0.3
+      , nothunks >=0.1.1.0 && <0.4
 
 executable ghc-supported-extensions
   hs-source-dirs:   exes
