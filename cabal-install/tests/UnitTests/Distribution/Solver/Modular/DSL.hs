@@ -87,6 +87,7 @@ import Data.Foldable (fold)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.DependencyResolver
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
@@ -828,7 +829,7 @@ exResolve
   prefs
   verbosity
   enableAllTests =
-    resolveDependencies C.buildPlatform compiler pkgConfigDb params
+    resolveDependencies solver params rparams inputs
     where
       defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
       compiler =
@@ -856,7 +857,8 @@ exResolve
         | otherwise = []
       targets' = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
       params =
-        addConstraints (fmap toConstraint constraints)
+        getFinalParams compiler
+          $ addConstraints (fmap toConstraint constraints)
           $ addConstraints (fmap toLpc enableTests)
           $ addPreferences (fmap toPref prefs)
           $ setCountConflicts countConflicts
@@ -888,6 +890,18 @@ exResolve
 
       toPref (ExPkgPref n v) = PackageVersionPreference (C.mkPackageName n) v
       toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
+
+      solver = getSolver params
+
+      inputs = convInputs solver rparams
+
+      rparams =
+        mkResolverParams
+          C.buildPlatform
+          compiler
+          instIdx
+          pkgConfigDb
+          params
 
 extractInstallPlan
   :: CI.SolverInstallPlan.SolverInstallPlan
