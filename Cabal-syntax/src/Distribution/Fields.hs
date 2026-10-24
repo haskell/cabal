@@ -1,11 +1,30 @@
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE PatternSynonyms #-}
+
 -- | Utilities to work with @.cabal@ like file structure.
+{- FOURMOLU_DISABLE -}
 module Distribution.Fields
   ( -- * Types
-    Field (..)
+    Field
+  , FieldConcrete
   , Name (..)
   , FieldLine (..)
   , SectionArg (..)
   , FieldName
+
+    -- * Patterns
+#if __GLASGOW_HASKELL__ >= 914
+  , data Field
+  , data Section
+  , data FieldConcrete
+  , data SectionConcrete
+#else
+  , pattern Field
+  , pattern Section
+  , pattern FieldConcrete
+  , pattern SectionConcrete
+#endif
 
     -- * Grammar and parsing
 
@@ -45,6 +64,7 @@ module Distribution.Fields
   , genericFromParsecFields
   , fromParsecFields
   ) where
+{- FOURMOLU_ENABLE -}
 
 import Distribution.Fields.Field
 import Distribution.Fields.ParseResult

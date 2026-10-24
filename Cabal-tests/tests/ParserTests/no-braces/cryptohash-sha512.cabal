@@ -1,0 +1,78 @@
+name:                cryptohash-sha512
+version:             0.11.100.1
+description:
+    A practical incremental and one-pass, pure API to the
+    <https://en.wikipedia.org/wiki/SHA-2 SHA-512 hash algorithm>
+    (including <https://en.wikipedia.org/wiki/HMAC HMAC> support)
+    with performance close to the fastest implementations available in other languages.
+    .
+    The implementation is made in C with a haskell FFI wrapper that hides the C implementation.
+    .
+    NOTE: This package has been forked off @cryptohash-0.11.7@ because the @cryptohash@ package has been
+    deprecated and so this package continues to satisfy the need for a lightweight package
+    providing the SHA512 hash algorithm without any dependencies on packages other than
+    @base@ and @bytestring@.
+    .
+    Consequently, this package can be used as a drop-in replacement for @cryptohash@'s
+    "Crypto.Hash.SHA512" module, though with a clearly smaller footprint.
+
+license:             BSD3
+license-file:        LICENSE
+copyright:           Vincent Hanquez, Herbert Valerio Riedel
+maintainer:          Herbert Valerio Riedel <hvr@gnu.org>
+homepage:            https://github.com/hvr/cryptohash-sha512
+bug-reports:         https://github.com/hvr/cryptohash-sha512/issues
+synopsis:            Fast, pure and practical SHA-512 implementation
+category:            Data, Cryptography
+build-type:          Simple
+cabal-version:       >=1.10
+tested-with:         GHC == 7.4.2
+                   , GHC == 7.6.3
+                   , GHC == 7.8.4
+                   , GHC == 7.10.3
+                   , GHC == 8.0.1
+
+extra-source-files:  cbits/sha512.h
+                     changelog.md
+
+source-repository head
+  type:     git
+  location: https://github.com/hvr/cryptohash-sha512.git
+
+library
+  default-language:  Haskell2010
+  build-depends:     base             >= 4.5   && < 4.10
+                   , bytestring       >= 0.9.2 && < 0.11
+
+  hs-source-dirs:    src
+  exposed-modules:   Crypto.Hash.SHA512
+  ghc-options:       -Wall -fno-cse -O2
+  cc-options:        -Wall -O3
+  c-sources:         cbits/sha512.c
+  include-dirs:      cbits
+
+test-suite test-sha512
+  default-language:  Haskell2010
+  type:              exitcode-stdio-1.0
+  hs-source-dirs:    src-tests
+  main-is:           test-sha512.hs
+  ghc-options:       -Wall -threaded
+  build-depends:     cryptohash-sha512
+                   , base
+                   , bytestring
+
+                   , base16-bytestring >= 0.1.1  && < 0.2
+                   , SHA               >= 1.6.4  && < 1.7
+                   , tasty             == 0.11.*
+                   , tasty-quickcheck  == 0.8.*
+                   , tasty-hunit       == 0.9.*
+
+benchmark bench-sha512
+  default-language:  Haskell2010
+  type:              exitcode-stdio-1.0
+  main-is:           bench-sha512.hs
+  hs-source-dirs:    src-bench
+  build-depends:     cryptohash-sha512
+                   , base
+                   , bytestring
+                   , criterion        == 1.1.*
