@@ -42,7 +42,10 @@ EditOk
     SectionX
       (Name
         WithComments {
-          justComments = [],
+          justComments = [
+            Comment
+              "-- before"
+              (Position 6 3)],
           unComments = Position 5 1}
         "library")
       []

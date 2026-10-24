@@ -29,7 +29,10 @@ EditOk
     SectionX
       (Name
         WithComments {
-          justComments = [],
+          justComments = [
+            Comment
+              "-- before"
+              (Position 6 3)],
           unComments = Position 5 1}
         "library")
       []
@@ -40,11 +43,8 @@ EditOk
             WithComments {
               justComments = [
                 Comment
-                  "  -- before"
-                  (Position 6 1),
-                Comment
-                  "    -- within"
-                  (Position 8 1)],
+                  "-- within"
+                  (Position 8 5)],
               unComments = Position 7 3}
             "build-depends")
           [
@@ -52,8 +52,8 @@ EditOk
               WithComments {
                 justComments = [
                   Comment
-                    "    -- after"
-                    (Position 10 1)],
+                    "-- after"
+                    (Position 10 5)],
                 unComments = Position 9 5}
               "base > 4.8"]],
     SectionX
