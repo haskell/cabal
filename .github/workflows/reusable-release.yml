@@ -14,9 +14,12 @@ on:
       ghc_targets:
         type: string
         default: "install_bin install_lib update_package_db install_extra"
+      # The bootstrap cabal used to build cabal-install and cabal-testsuite.
+      # It must satisfy the setup-depends of cabal-testsuite, so keep it in
+      # sync with the cabal-version used in validate.yml (see PR #10251).
       cabal:
         type: string
-        default: 3.14.2.0
+        default: 3.18.1.0
       test:
         type: boolean
         default: true
@@ -391,6 +394,24 @@ jobs:
                     , DISTRO: "Unknown"
                     , ARTIFACT: "x86_64-linux-unknown"
                     }
+                  , { image: "debian:12"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Debian"
+                    , ARTIFACT: "x86_64-linux-unknown"
+                    }
+                  , { image: "ubuntu:24.04"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools_ncurses6 }}"
+                    , DISTRO: "Ubuntu"
+                    , ARTIFACT: "x86_64-linux-unknown"
+                    }
+                  , { image: "fedora:44"
+                    , installCmd: "dnf install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Fedora"
+                    , ARTIFACT: "x86_64-linux-unknown"
+                    }
                   ]
     container:
       image: ${{ matrix.platform.image }}
@@ -476,6 +497,10 @@ jobs:
                     , DISTRO: "Alpine"
                     , ARTIFACT: "aarch64-linux-unknown"
                     }
+                  , { ARCH: "ARM64"
+                    , DISTRO: "Debian"
+                    , ARTIFACT: "aarch64-linux-unknown"
+                    }
                   ]
     steps:
       - uses: actions/checkout@v7
@@ -487,10 +512,20 @@ jobs:
           name: artifacts-${{ matrix.platform.ARTIFACT }}-${{ matrix.branch }}
           path: ./out
 
-      - uses: docker://arm64v8/alpine:3.21
-        name: Run build (aarch64 linux alpine)
+      - if: matrix.platform.DISTRO == 'Alpine'
+        uses: docker://arm64v8/alpine:3.21
+        name: Run test (aarch64 linux alpine)
         with:
           args: sh -c "apk update && apk add curl bash git groff ${{ needs.tool-output.outputs.apk_tools }} && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/test.bash"
+        env:
+          ARTIFACT: ${{ matrix.platform.ARTIFACT }}
+          DISTRO: ${{ matrix.platform.DISTRO }}
+
+      - if: matrix.platform.DISTRO == 'Debian'
+        uses: docker://arm64v8/debian:12
+        name: Run test (aarch64 linux debian)
+        with:
+          args: sh -c "apt-get update && apt-get install -y curl bash git groff-base ${{ needs.tool-output.outputs.apt_tools }} && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/test.bash"
         env:
           ARTIFACT: ${{ matrix.platform.ARTIFACT }}
           DISTRO: ${{ matrix.platform.DISTRO }}
