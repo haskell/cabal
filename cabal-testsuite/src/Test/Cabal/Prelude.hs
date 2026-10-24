@@ -91,12 +91,12 @@ import Control.Monad.Catch (bracket_)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Reader (asks, runReaderT, withReaderT)
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
-import qualified Crypto.Hash.SHA256 as SHA256
-import qualified Data.Aeson as JSON
-import qualified Data.ByteString.Base16 as Base16
-import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.Char as Char
+import Crypto.Hash.SHA256 qualified as SHA256
+import Data.Aeson qualified as JSON
+import Data.ByteString.Base16 qualified as Base16
+import Data.ByteString.Char8 qualified as C
+import Data.ByteString.Lazy qualified as BSL
+import Data.Char qualified as Char
 import Data.List (isPrefixOf, stripPrefix)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Network.Wait (waitTcpVerbose)
@@ -104,11 +104,11 @@ import System.Directory
 import System.Environment
 import System.Exit (ExitCode (..))
 import System.FilePath
-import qualified System.FilePath.Glob as Glob (compile, globDir1)
-import qualified System.FilePath.Posix as Posix
-import qualified System.FilePath.Windows as Windows
+import System.FilePath.Glob qualified as Glob (compile, globDir1)
+import System.FilePath.Posix qualified as Posix
+import System.FilePath.Windows qualified as Windows
 import System.IO
-import qualified System.OsRelease as OSR
+import System.OsRelease qualified as OSR
 import System.Process
 
 #ifndef mingw32_HOST_OS

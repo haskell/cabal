@@ -17,6 +17,7 @@ import System.FilePath ((</>))
 import System.IO (BufferMode (LineBuffering), hSetBuffering, stderr, stdout)
 import System.Process.Typed (proc, readProcessStdout_)
 
+import ApiLint (apiLint)
 import Cli (Compiler (..), HackageTests (..), Opts (..), parseOpts, whenVerbose)
 import OutputUtil (printHeader, withTiming)
 import ProcessUtil (timed, timedWithCwd)
@@ -49,6 +50,7 @@ runStep opts step = do
   let title = displayStep step
   printHeader title
   let action = case step of
+        ApiLint -> apiLint (cwd opts)
         Build -> build opts
         Doctest -> doctest opts
         LibTests -> libTests opts
