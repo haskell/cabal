@@ -1015,6 +1015,15 @@ the name does not contain an extension, you must reference it as ``./myenv``.
 You can learn more about how to use these environments in `this section of the
 GHC manual <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/packages.html#package-environments>`_.
 
+MicroHs has no package environments: ``mhs`` finds libraries in package
+directories. With ``mhs``, ``cabal install --lib`` installs the libraries, with
+the libraries they depend on, where MicroCabal installs packages,
+``~/.mcabal/mhs-$VERSION`` or ``$CABALDIR/mhs-$VERSION``, which is the package
+directory of ``mhs`` itself when it is installed with ``make minstall``, or
+into the directory given with ``--package-env``. ``cabal`` then says whether
+``mhs`` searches the directory, or has to be given it with ``-a``, as in
+``mhs -a/path/to/dir Main.hs``.
+
 cabal haddock
 ^^^^^^^^^^^^^
 

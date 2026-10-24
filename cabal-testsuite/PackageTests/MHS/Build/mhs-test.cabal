@@ -1,0 +1,19 @@
+cabal-version:   3.0
+name:            mhs-test
+version:         1.0
+build-type:      Simple
+license:         BSD-3-Clause
+synopsis:        A package to build with MicroHs
+
+library
+    exposed-modules:  Greeting
+    other-modules:    Greeting.Internal
+    build-depends:    base >=4.14 && <5, bytestring >=0.11
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+executable mhs-test
+    main-is:          Main.hs
+    build-depends:    base ^>=4.19, mhs-test
+    hs-source-dirs:   app
+    default-language: Haskell2010
