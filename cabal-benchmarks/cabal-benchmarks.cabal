@@ -31,4 +31,4 @@ test-suite cabal-benchmarks
       base
     , bytestring
     , Cabal-syntax
-    , tasty-bench >= 0.3.5 && < 0.4
+    , tasty-bench >= 0.3.5 && < 0.6
