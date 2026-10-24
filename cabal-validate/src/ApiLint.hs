@@ -18,7 +18,7 @@ module ApiLint
 import Control.Monad (forM, forM_)
 import qualified Data.ByteString as BS
 import Data.Char (isSpace)
-import Data.List (isPrefixOf, sort)
+import Data.List (isPrefixOf)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
