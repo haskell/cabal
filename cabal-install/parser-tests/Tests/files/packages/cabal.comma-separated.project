@@ -1,0 +1,5 @@
+-- This example was generated for the property test "round trip packages" and
+-- resulted in this reported difference:
+-- projectPackages = [-"xL{4", -"IE-", -"eK<}fE?e", +"xL{4,IE-,eK<}fE?e"]
+-- projectPackages = [-"7{u", -"{h", -"{=n}}}", +"7{u,{h,{=n}}}"]
+packages: xL{4,IE-,eK<}fE?e
