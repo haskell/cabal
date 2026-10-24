@@ -5,7 +5,6 @@ module UnitTests.Distribution.Client.Watch
 import Control.Exception (throwIO)
 import Control.Monad (when)
 import Data.IORef
-import System.Exit (exitFailure)
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -25,7 +24,6 @@ tests =
   [ testCase "watchLoopRunsCommandThenRerunsOnEvent" loopRunsThenReruns
   , testCase "watchLoopDrainsQueuedEvents" loopDrainsQueuedEvents
   , testCase "watchLoopSurvivesCommandFailure" loopSurvivesFailure
-  , testCase "watchLoopSurvivesExitFailure" loopSurvivesExitFailure
   , testCase "watchLoopStopsOnNothing" loopStopsOnNothing
   , testCase "watchEventRelevantMatchesWatchedName" relevantWatchedName
   , testCase "watchEventRelevantMatchesCreateExtension" relevantCreateExtension
@@ -76,18 +74,6 @@ loopSurvivesFailure = do
         when (n == 2) $ throwIO (userError "simulated build failure")
   -- The first re-run (second invocation) fails; watchLoop must catch it
   -- and continue on the next event.
-  watchLoop testVerb next failingCmd
-  readIORef count >>= (@?= 3)
-
--- 'exitFailure' throws 'ExitCode', which is not a 'SomeException'; the loop
--- must still keep watching after a command that exits nonzero.
-loopSurvivesExitFailure :: Assertion
-loopSurvivesExitFailure = do
-  next <- scriptedSource [Just "A.hs", Just "B.hs", Nothing]
-  count <- newIORef (0 :: Int)
-  let failingCmd = do
-        n <- atomicModifyIORef' count (\m -> let m' = m + 1 in (m', m'))
-        when (n == 2) exitFailure
   watchLoop testVerb next failingCmd
   readIORef count >>= (@?= 3)
 

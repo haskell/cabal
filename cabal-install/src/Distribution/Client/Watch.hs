@@ -12,7 +12,13 @@
 -- while the command runs are coalesced but not bounded; a source directory
 -- with a very high event rate can grow memory until the command finishes.
 -- A watched directory that is deleted and recreated silently stops being
--- watched.
+-- watched.  A re-run repeats the command's post-planning phases with the
+-- plan elaborated at startup: edits to @.cabal@ or @cabal.project@ files
+-- trigger a re-run, but a re-run that only changes the build configuration
+-- (e.g. new modules in @exposed-modules@) is not picked up until the
+-- command is restarted.  For @cabal install --watch@ the watched project
+-- files live in the planning directory, not the user's project root, so
+-- only the per-package sources and @.cabal@ files are effectively watched.
 module Distribution.Client.Watch
   ( watchFiles
   , projectWatchFiles
@@ -56,6 +62,7 @@ import System.FilePath
 
 #if defined(linux_HOST_OS) && defined(HAVE_FSWATCH)
 import Control.Concurrent.STM
+import Data.IORef (newIORef, readIORef, writeIORef)
 import qualified Data.Map.Strict as Map
 import System.Directory (makeAbsolute)
 import System.FSNotify
@@ -134,7 +141,11 @@ monitorToPaths srcdir = \case
   MonitorFile _ _ p -> [srcdir </> p]
   MonitorFileGlob _ _ rglob -> case isTrivialRootedGlob rglob of
     Just p -> [srcdir </> p]
-    Nothing -> [srcdir]
+    -- Fall back to the source directory itself.  'filesToDirWatches' splits
+    -- paths into (parent, basename) pairs, so a bare directory path would
+    -- watch the wrong (parent) directory; the wildcard name never matches a
+    -- real file, leaving the create-extension rule to fire for new modules.
+    Nothing -> [srcdir </> "*"]
 
 -- | Is a file-system event relevant given the file names watched in the
 -- event's directory?  An event is relevant if it touches a watched name, or
@@ -181,15 +192,14 @@ watchLoop verbosity nextEvent cmd = do
         Nothing -> pure ()
         Just path -> do
           notice verbosity ("File " ++ path ++ " changed, re-running...")
-          -- Catch both 'ExitCode' (from 'exitFailure' and friends) and
-          -- synchronous exceptions; rethrow a user interrupt.
-          r <- try (try cmd)
-          case (r :: Either ExitCode (Either SomeException ())) of
-            Right (Right ()) -> pure ()
-            Right (Left se) -> case fromException se of
+          -- Catch synchronous exceptions (including 'ExitCode' from
+          -- 'exitFailure' and friends); rethrow a user interrupt.
+          r <- try cmd
+          case (r :: Either SomeException ()) of
+            Right () -> pure ()
+            Left se -> case fromException se of
               Just UserInterrupt -> throwIO se
               _ -> keepWatching
-            Left _ec -> keepWatching
           loop
     keepWatching =
       notice verbosity "Command failed; keeping watch, re-running on next change."
@@ -203,7 +213,10 @@ watchFiles verbosity files cmd = do
   absFiles <- traverse (fmap normalise . makeAbsolute) files
   -- If the watcher cannot be started (e.g. the inotify watch limit is
   -- exhausted), fail with a proper cabal error instead of an fsnotify
-  -- exception.  A user interrupt propagates.
+  -- exception.  A user interrupt propagates.  Once the watches are
+  -- established, any exception comes from the watched command and is
+  -- rethrown verbatim rather than mislabeled as a watcher-start failure.
+  startedRef <- newIORef False
   r <- try $ withManager $ \mgr -> do
     chan <- newTChanIO
     let dirWatches = groupDirWatches (filesToDirWatches absFiles)
@@ -222,6 +235,7 @@ watchFiles verbosity files cmd = do
                 )
           )
           (\ev -> atomically (writeTChan chan (eventPath ev)))
+    writeIORef startedRef True
     -- Debounce: after the first event, coalesce any further events arriving
     -- within 'watchDebounceDelay' microseconds into one re-run.
     let nextEvent = do
@@ -229,16 +243,20 @@ watchFiles verbosity files cmd = do
           later <- drain first
           pure (Just later)
         drain acc = do
-          m <- timeout watchDebounceDelay (atomically (tryReadTChan chan))
+          m <- timeout watchDebounceDelay (atomically (readTChan chan))
           case m of
-            Just (Just p) -> drain p
-            _ -> pure acc
+            Just p -> drain p
+            Nothing -> pure acc
     watchLoop verbosity nextEvent cmd
   case (r :: Either SomeException ()) of
     Right () -> pure ()
     Left se -> case fromException se of
       Just UserInterrupt -> throwIO se
-      _ -> dieWithException verbosity (WatchStartFailed (show se))
+      _ -> do
+        started <- readIORef startedRef
+        if started
+          then throwIO se
+          else dieWithException verbosity (WatchStartFailed (show se))
 
 watchDebounceDelay :: Int
 watchDebounceDelay = 100000
