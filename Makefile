@@ -333,6 +333,49 @@ bootstrap-jsons-nix-helper:
 users-guide: ## Build the users guide.
 	$(MAKE) -C doc users-guide
 
+# Haddock for one module of a library in this repository, typechecked against
+# the built in-place library instead of re-haddocking the whole package. The
+# library must already be built, with `cabal build $(PKG):lib:$(PKG)`. The
+# language and extensions below must cover every library stanza in the
+# repository; they all use GHC2021.
+#
+# The module may import its package's other-modules, which the registered
+# library hides, so the recipe registers a copy of the package in a temporary
+# package db with every module exposed.
+#
+#   make haddock-module MODULE=Distribution.Client.Cmd.UI
+#   make haddock-module PKG=Cabal-syntax MODULE=Distribution.Types.Version
+#
+HADDOCK_MODULE_OUT ?= dist-newstyle/haddock-module
+HADDOCK_MODULE_GHC = $(shell ghc --numeric-version)
+HADDOCK_MODULE_EXTS := -XGHC2021 -XTypeOperators -XNoImportQualifiedPost
+PKG ?= cabal-install
+
+.PHONY: haddock-module
+haddock-module: ## Haddock one module: MODULE=Distribution.Client.Cmd.UI [PKG=cabal-install]
+	@test -n "$(MODULE)" || { echo "usage: make haddock-module MODULE=Distribution.Client.Cmd.UI [PKG=cabal-install]"; exit 1; }
+	@pkgdb=dist-newstyle/packagedb/ghc-$(HADDOCK_MODULE_GHC) && \
+	conf=$$(ls $$pkgdb/$(PKG)-[0-9]*-inplace.conf) && \
+	deps=$$(awk '/^depends:/{f=1; sub(/^depends:/,"")} f && /^[a-z-]+:/ && !/^depends:/{f=0} f{print}' $$conf \
+		| tr ' ' '\n' | grep . | sed 's/^/--optghc=-package-id=/') && \
+	dbs=$$(for db in $$(cabal path -v0 --store-dir)/ghc-$(HADDOCK_MODULE_GHC)-*/package.db; do echo "--optghc=-package-db=$$db"; done) && \
+	macros=$$(ls dist-newstyle/build/*/ghc-$(HADDOCK_MODULE_GHC)/$(PKG)-[0-9]*/build/autogen/cabal_macros.h) && \
+	src=$$(ls $(PKG)/src*/$(subst .,/,$(MODULE)).hs) && \
+	tmpdb=$$(mktemp -d) && trap 'rm -rf "$$tmpdb"' EXIT && \
+	cp $$pkgdb/*.conf $$tmpdb && \
+	awk 'NR==FNR { if (/^hidden-modules:/) { h=1; sub(/^hidden-modules:/, "") } else if (h && /^[A-Za-z-]+:/) h=0; if (h) for (i=1; i<=NF; i++) hid = hid "    " $$i ",\n"; next } \
+		/^hidden-modules:/ { skip=1; next } skip && /^[A-Za-z-]+:/ { skip=0 } skip { next } \
+		/^exposed-modules:/ { print; printf "%s", hid; next } { print }' $$conf $$conf > $$tmpdb/$$(basename $$conf) && \
+	ghc-pkg recache --package-db=$$tmpdb && \
+	haddock --html -o $(HADDOCK_MODULE_OUT) \
+		$(addprefix --optghc=,$(HADDOCK_MODULE_EXTS)) \
+		--optghc=-optP-include --optghc=-optP$$macros \
+		--optghc=-hide-all-packages $$dbs \
+		--optghc=-package-db=$$tmpdb \
+		$$deps --optghc=-package-id=$$(basename $$conf .conf) \
+		$$src
+	@echo "$(HADDOCK_MODULE_OUT)/$(subst .,-,$(MODULE)).html"
+
 ifeq ($(shell uname), Darwin)
 PROCS := $(shell sysctl -n hw.logicalcpu)
 else
