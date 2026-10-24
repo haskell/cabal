@@ -1,0 +1,8 @@
+packages: .
+
+if impl(ghc >= 9.0)
+  package test
+    flags: +bar
+
+package test
+  flags: -bar
