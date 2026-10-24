@@ -144,6 +144,7 @@ import Distribution.Simple.Utils
   , infoNoWrap
   , installExecutableFile
   , maybeExit
+  , notice
   , rawSystemProc
   , rewriteFileEx
   , rewriteFileLBS
@@ -961,14 +962,18 @@ updateSetupScript :: Verbosity -> SetupScriptOptions -> Version -> BuildType -> 
 updateSetupScript verbosity options _ Custom = do
   useHs <- doesFileExist customSetupHs
   useLhs <- doesFileExist customSetupLhs
-  unless (useHs || useLhs) $
-    dieWithException verbosity UpdateSetupScript
-  let src = if useHs then customSetupHs else customSetupLhs
-  srcNewer <- src `moreRecentFile` i (setupHs options)
-  when srcNewer $
-    if useHs
-      then copyFileVerbose verbosity src (i (setupHs options))
-      else runSimplePreProcessor ppUnlit src (i (setupHs options)) verbosity
+  case (useHs, useLhs) of
+    (False, False) -> dieWithException verbosity UpdateSetupScript
+    (False, True) -> do
+      srcNewer <- customSetupLhs `moreRecentFile` i (setupHs options)
+      when srcNewer $
+        runSimplePreProcessor ppUnlit customSetupLhs (i (setupHs options)) verbosity
+    (True, _) -> do
+      when useLhs $
+        notice verbosity "Setup.hs and Setup.lhs files are both present. Ignoring the latter."
+      srcNewer <- customSetupHs `moreRecentFile` i (setupHs options)
+      when srcNewer $
+        copyFileVerbose verbosity customSetupHs (i (setupHs options))
   where
     customSetupHs = workingDir options </> "Setup.hs"
     customSetupLhs = workingDir options </> "Setup.lhs"
@@ -980,17 +985,24 @@ updateSetupScript verbosity options cabalLibVersion Hooks = do
         ++ prettyShow cabalLibVersion ++ " was selected."
   useHs <- doesFileExist setupHooksHs
   useLhs <- doesFileExist setupHooksLhs
-  unless (useHs || useLhs) $
-    die' verbosity "Using 'build-type: Hooks' but there is no SetupHooks.hs or SetupHooks.lhs file."
-  if useHs
-    then copyFileVerbose verbosity setupHooksHs (i (setupHooks options))
-    else runSimplePreProcessor ppUnlit setupHooksLhs (i (setupHooks options)) verbosity
-  rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript HooksSetupScript cabalLibVersion)
-  rewriteFileLBS verbosity (i (hooksHs options)) hooksExeScript
+  case (useHs, useLhs) of
+    (False, False) ->
+      die' verbosity "Using 'build-type: Hooks' but there is no SetupHooks.hs or SetupHooks.lhs file."
+    (False, True) -> do
+      runSimplePreProcessor ppUnlit setupHooksLhs (i (setupHooks options)) verbosity
+      rewriteFiles
+    (True, _) -> do
+      when useLhs $
+        notice verbosity "Using 'build-type: Hooks' and SetupHooks.hs and SetupHooks.lhs files are both present. Ignoring the latter."
+      copyFileVerbose verbosity setupHooksHs (i (setupHooks options))
+      rewriteFiles
   where
     setupHooksHs = workingDir options </> "SetupHooks.hs"
     setupHooksLhs = workingDir options </> "SetupHooks.lhs"
     i = interpretSymbolicPath (useWorkingDir options)
+    rewriteFiles = do
+      rewriteFileLBS verbosity (i (setupHs options)) (buildTypeScript HooksSetupScript cabalLibVersion)
+      rewriteFileLBS verbosity (i (hooksHs options)) hooksExeScript
 updateSetupScript verbosity _ _ Make =
   die' verbosity "'build-type: Make' is no longer supported."
 updateSetupScript verbosity options cabalLibVersion Simple =
