@@ -71,8 +71,10 @@ import Distribution.Utils.Path hiding
 
 import Distribution.Client.Errors
 import Distribution.Client.SrcDist
-  ( packageDirToSdist
+  ( allPackageSourceFiles
+  , packageDirToSdist
   )
+import Distribution.Client.Watch (cabalFilesInDir, projectWatchFiles, watchFiles)
 import Distribution.Compat.Lens
   ( _1
   , _2
@@ -178,6 +180,7 @@ data SdistFlags = SdistFlags
   , sdistDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
   , sdistListSources :: Flag Bool
   , sdistNulSeparated :: Flag Bool
+  , sdistWatch :: Flag Bool
   , sdistOutputPath :: Flag FilePath
   }
 
@@ -188,6 +191,7 @@ defaultSdistFlags =
     , sdistDistDir = mempty
     , sdistListSources = toFlag False
     , sdistNulSeparated = toFlag False
+    , sdistWatch = toFlag False
     , sdistOutputPath = mempty
     }
 
@@ -213,6 +217,13 @@ sdistOptions showOrParseArgs =
       "Separate the source files with NUL bytes rather than newlines."
       sdistNulSeparated
       (\v flags -> flags{sdistNulSeparated = v})
+      trueArg
+  , option
+      []
+      ["watch"]
+      "Watch the relevant files and rerun the command when one of them changes (Linux only)."
+      sdistWatch
+      (\v flags -> flags{sdistWatch = v})
       trueArg
   , option
       ['o']
@@ -271,22 +282,37 @@ sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
           | listSources -> "-"
           | otherwise -> distSdistFile distDirLayout (packageId pkg)
 
-  case reifyTargetSelectors localPkgs targetSelectors of
-    Left errs -> dieWithException verbosity $ SdistActionException . fmap renderTargetProblem $ errs
-    Right pkgs
-      | length pkgs > 1
-      , not listSources
-      , Just "-" <- mOutputPath' ->
-          dieWithException verbosity Can'tWriteMultipleTarballs
-      | otherwise ->
-          for_ pkgs $ \pkg ->
-            packageToSdist
-              verbosity
-              (distProjectRootDirectory distDirLayout)
-              format
-              (outputPath pkg)
-              pkg
+  let pkgsOrErr = reifyTargetSelectors localPkgs targetSelectors
+  let core = case pkgsOrErr of
+        Left errs -> dieWithException verbosity $ SdistActionException . fmap renderTargetProblem $ errs
+        Right pkgs
+          | length pkgs > 1
+          , not listSources
+          , Just "-" <- mOutputPath' ->
+              dieWithException verbosity Can'tWriteMultipleTarballs
+          | otherwise ->
+              for_ pkgs $ \pkg ->
+                packageToSdist
+                  verbosity
+                  (distProjectRootDirectory distDirLayout)
+                  format
+                  (outputPath pkg)
+                  pkg
+  case (fromFlagOrDefault False sdistWatch, pkgsOrErr) of
+    (True, Right pkgs) -> do
+      perPkg <- traverse sdistPkgWatchFiles pkgs
+      let files = sort . ordNub $ (projectWatchFiles distDirLayout ++ concat perPkg)
+      watchFiles verbosity files core
+    _ -> core
   where
+    sdistPkgWatchFiles pkg = case srcpkgSource pkg of
+      LocalUnpackedPackage dir -> do
+        srcs <- allPackageSourceFiles verbosity dir
+        cabalFiles <- cabalFilesInDir dir
+        pure (srcs ++ cabalFiles)
+      LocalTarballPackage f -> pure [f]
+      _ -> pure []
+
     verbosity =
       mkVerbosity defaultVerbosityHandles $
         fromFlagOrDefault normal sdistVerbosity

@@ -21,6 +21,7 @@ import qualified UnitTests.Distribution.Client.Store
 import qualified UnitTests.Distribution.Client.Tar
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.UserConfig
+import qualified UnitTests.Distribution.Client.Watch
 import qualified UnitTests.Distribution.Solver.Modular.Builder
 import qualified UnitTests.Distribution.Solver.Modular.RetryLog
 import qualified UnitTests.Distribution.Solver.Modular.Solver
@@ -90,6 +91,9 @@ main = do
       , testGroup
           "UnitTests.Distribution.Client.UserConfig"
           UnitTests.Distribution.Client.UserConfig.tests
+      , testGroup
+          "UnitTests.Distribution.Client.Watch"
+          UnitTests.Distribution.Client.Watch.tests
       , testGroup
           "UnitTests.Distribution.Solver.Modular.Builder"
           UnitTests.Distribution.Solver.Modular.Builder.tests

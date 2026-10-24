@@ -414,6 +414,7 @@ instance Semigroup SavedConfig where
           , installHaddockIndex = combine installHaddockIndex
           , installDryRun = combine installDryRun
           , installOnlyDownload = combine installOnlyDownload
+          , installWatch = combine installWatch
           , installDest = combine installDest
           , installMaxBackjumps = combine installMaxBackjumps
           , installReorderGoals = combine installReorderGoals
@@ -1271,7 +1272,7 @@ configFieldDescriptions src =
     ++ toSavedConfig
       liftInstallFlag
       (installOptions ParseArgs)
-      ["dry-run", "only", "only-dependencies", "dependencies-only"]
+      ["dry-run", "watch", "only", "only-dependencies", "dependencies-only"]
       []
     ++ toSavedConfig
       liftClientInstallFlag

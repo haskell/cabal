@@ -86,9 +86,7 @@ import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Client.ProjectPlanning
   ( storePackageInstallDirs'
   )
-import Distribution.Client.ProjectPlanning.Types
-  ( ElaboratedInstallPlan
-  )
+import Distribution.Client.ProjectPlanning.Types (ElaboratedInstallPlan, elabLocalToProject)
 import Distribution.Client.RebuildMonad
   ( runRebuild
   )
@@ -108,6 +106,7 @@ import Distribution.Client.Types
 import Distribution.Client.Types.OverwritePolicy
   ( OverwritePolicy (..)
   )
+import Distribution.Client.Watch (planWatchFiles, watchFiles)
 import Distribution.Package
   ( Package (..)
   , PackageName
@@ -506,39 +505,57 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
 
     buildCtx <- constructProjectBuildContext verbosity (baseCtx{installedPackages = Just installedIndex'}) targetSelectors
 
-    printPlan verbosity baseCtx buildCtx
-    let installCfg = InstallCfg verbosity baseCtx buildCtx platform compiler configFlags clientInstallFlags
+    let core = do
+          printPlan verbosity baseCtx buildCtx
+          let installCfg =
+                InstallCfg
+                  verbosity
+                  baseCtx
+                  buildCtx
+                  platform
+                  compiler
+                  configFlags
+                  clientInstallFlags
+              dryRun =
+                buildSettingDryRun (buildSettings baseCtx)
+                  || buildSettingOnlyDownload (buildSettings baseCtx)
+          -- Before building, check if we could install any built exe by symlinking or
+          -- copying it?
+          unless
+            (dryRun || installLibs)
+            (traverseInstall (installCheckUnitExes InstallCheckOnly) installCfg)
 
-    let
-      dryRun =
-        buildSettingDryRun (buildSettings baseCtx)
-          || buildSettingOnlyDownload (buildSettings baseCtx)
+          buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+          runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
-    -- Before building, check if we could install any built exe by symlinking or
-    -- copying it?
-    unless
-      (dryRun || installLibs)
-      (traverseInstall (installCheckUnitExes InstallCheckOnly) installCfg)
+          -- Having built everything, do the install.
+          unless dryRun $
+            if installLibs
+              then
+                installLibraries
+                  verbosity
+                  buildCtx
+                  installedIndex
+                  compiler
+                  packageDbs
+                  envFile
+                  nonGlobalEnvEntries'
+                  (not usedExistingPkgEnvFile && not usedPackageEnvFlag)
+              else -- Install any built exe by symlinking or copying it we don't use
+              -- BuildOutcomes because we also need the component names
+                traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
 
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
-
-    -- Having built everything, do the install.
-    unless dryRun $
-      if installLibs
-        then
-          installLibraries
-            verbosity
-            buildCtx
-            installedIndex
-            compiler
-            packageDbs
-            envFile
-            nonGlobalEnvEntries'
-            (not usedExistingPkgEnvFile && not usedPackageEnvFlag)
-        else -- Install any built exe by symlinking or copying it we don't use
-        -- BuildOutcomes because we also need the component names
-          traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
+    if fromFlagOrDefault False (installWatch installFlags)
+      then do
+        let localElabs =
+              [ elab
+              | InstallPlan.Configured elab <-
+                  InstallPlan.toList (elaboratedPlanToExecute buildCtx)
+              , elabLocalToProject elab
+              ]
+        files <- planWatchFiles verbosity distDirLayout localElabs
+        watchFiles verbosity files core
+      else core
   where
     configFlags' = disableTestsBenchsByDefault . ignoreProgramAffixes $ configFlags
     verbosity = cfgVerbosity normal flags
