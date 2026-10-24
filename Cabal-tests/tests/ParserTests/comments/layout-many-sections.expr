@@ -1,0 +1,13 @@
+[
+  Comment
+    "-- comment 1"
+    (Position 4 3),
+  Comment
+    "-- comment 2"
+    (Position 10 5),
+  Comment
+    "-- comment 3"
+    (Position 25 5),
+  Comment
+    "-- comment 4"
+    (Position 28 1)]
