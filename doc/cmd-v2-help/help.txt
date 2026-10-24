@@ -35,7 +35,7 @@ Commands:
   clean                  Clean the package store and remove temporary files.
 
  [running and testing]
-  list-bin               List the path to a single executable.
+  list-bin               List binary targets for the given target.
   repl                   Open an interactive session for the given component.
   run                    Run an executable.
   bench                  Run benchmarks.

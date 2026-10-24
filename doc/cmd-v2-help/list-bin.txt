@@ -1,8 +1,16 @@
-List the path to a single executable.
+List binary targets for the given target.
 
 Usage: cabal list-bin [FLAGS] TARGET
 
-List the path to a build product.
+Computes the path to the binary target for the given target. The target may be
+a package, component, or other thing selectable in cabal.
+
+This command does not install or build anything, it just computes the path the
+binary would be placed at, once built.
+
+Example:
+$ cabal list-bin
+./dist/build/cabal/cabal
 
 Flags for list-bin:
  -h, --help                   # Show this help text
