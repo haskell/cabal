@@ -212,6 +212,8 @@ tests config =
       "haddock-project"
       AllFinish
       [ testCase "dependencies" (testHaddockProjectDependencies config)
+      , localOption (QC.QuickCheckTests 5) $
+          QC.testProperty "custom build directory" (propHaddockProjectBuildDir config)
       ]
   ]
 
@@ -2900,3 +2902,37 @@ testHaddockProjectDependencies config = do
     cleanHaddockProject testdir
   where
     testdir = "haddock-project/dependencies"
+
+-- | Check the generated index, including a sublibrary, with an arbitrary custom
+-- build directory and no pre-existing documentation in the default directory.
+propHaddockProjectBuildDir :: ProjectConfig -> QC.Positive Int -> QC.Property
+propHaddockProjectBuildDir config (QC.Positive suffix) = QC.ioProperty $ do
+  (_, _, sharedConfig) <- planProject testdir config
+  let safeMinor = if buildOS == Windows then 10 else 4
+  if compilerVersion (pkgConfigCompiler sharedConfig) <= mkVersion [9, safeMinor]
+    then cleanProject testdir >> return (QC.property True)
+    else do
+      let dir = basedir </> testdir
+          buildDir = "dist-custom-" ++ show suffix
+          clean = cleanHaddockProject testdir >> removePathForcibly (dir </> buildDir)
+      clean
+      flip finally clean $ withCurrentDirectory dir $ do
+        CmdHaddockProject.haddockProjectAction
+          defaultHaddockProjectFlags
+            { haddockProjectCommonFlags =
+                defaultCommonSetupFlags
+                  { setupVerbosity = Flag $ verbosityFlags testVerbosity
+                  , setupDistPref = Flag $ unsafeMakeSymbolicPath buildDir
+                  }
+            }
+          ["all"]
+          defaultGlobalFlags{globalStoreDir = Flag "store"}
+        index <- BS.readFile ("haddocks" </> "index.html")
+        mainInterface <- doesFileExist ("haddocks" </> "index-probe" </> "index-probe.haddock")
+        subInterface <- doesFileExist ("haddocks" </> "index-probe" </> "helper" </> "helper.haddock")
+        defaultDir <- doesDirectoryExist "dist-newstyle"
+        return $
+          (mainInterface, subInterface, "MainModule.html" `BS.isInfixOf` index, "HelperModule.html" `BS.isInfixOf` index, defaultDir)
+            QC.=== (True, True, True, True, False)
+  where
+    testdir = "haddock-project/custom-builddir"

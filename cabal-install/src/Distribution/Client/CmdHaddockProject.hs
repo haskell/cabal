@@ -133,7 +133,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     verbosity
     RejectNoTargets
     Nothing
-    (commandDefaultFlags CmdBuild.buildCommand)
+    buildFlags
     ["all"]
     globalFlags
     HaddockCommand
@@ -199,7 +199,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
 
       when localStyle $
         CmdBuild.buildAction
-          (commandDefaultFlags CmdBuild.buildCommand)
+          buildFlags
           ["all"]
           globalFlags
 
@@ -409,13 +409,20 @@ haddockProjectAction flags _extraArgs globalFlags = do
         -- `dist-newstyle` directory and copy it to the output directory.
         }
 
-    nixFlags =
-      (commandDefaultFlags CmdHaddock.haddockCommand)
-        { NixStyleOptions.haddockFlags = haddockFlags
-        , NixStyleOptions.configFlags =
+    -- Use the same build directory when planning, building, and locating
+    -- documentation as when invoking Haddock.
+    buildFlags =
+      (commandDefaultFlags CmdBuild.buildCommand)
+        { NixStyleOptions.configFlags =
             (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
               { configCommonFlags = commonFlags
               }
+        }
+
+    nixFlags =
+      (commandDefaultFlags CmdHaddock.haddockCommand)
+        { NixStyleOptions.haddockFlags = haddockFlags
+        , NixStyleOptions.configFlags = NixStyleOptions.configFlags buildFlags
         }
 
     -- Build a self contained directory which contains haddocks of all
