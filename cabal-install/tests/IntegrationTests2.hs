@@ -214,6 +214,8 @@ tests config =
       [ testCase "dependencies" (testHaddockProjectDependencies config)
       , localOption (QC.QuickCheckTests 5) $
           QC.testProperty "custom build directory" (propHaddockProjectBuildDir config)
+      , localOption (QC.QuickCheckTests 5) $
+          QC.testProperty "consistent dependency documentation settings" (propHaddockProjectDependencyCache config)
       ]
   ]
 
@@ -2936,3 +2938,38 @@ propHaddockProjectBuildDir config (QC.Positive suffix) = QC.ioProperty $ do
             QC.=== (True, True, True, True, False)
   where
     testdir = "haddock-project/custom-builddir"
+
+-- The tarball dependency must have one store instance across both phases, and
+-- a repeated invocation must reuse the local package's persisted configuration.
+propHaddockProjectDependencyCache :: ProjectConfig -> Bool -> QC.Property
+propHaddockProjectDependencyCache config hoogle = QC.ioProperty $ do
+  ((layout, _, _, _, _), plan, shared) <- planProject testdir config
+  let safeMinor = if buildOS == Windows then 10 else 4
+  if compilerVersion (pkgConfigCompiler shared) <= mkVersion [9, safeMinor]
+    then cleanProject testdir >> return (QC.property True)
+    else do
+      pkg <- case filter ((== mkPackageName "q") . packageName) (filterConfiguredPackages (InstallPlan.toList plan)) of
+        [q] -> return q
+        _ -> fail "Expected one local package q"
+      let dir = basedir </> testdir
+          setupConfig = distBuildDirectory layout (elabDistDirParams shared pkg) </> "setup-config"
+          flags =
+            defaultHaddockProjectFlags
+              { haddockProjectCommonFlags =
+                  defaultCommonSetupFlags{setupVerbosity = Flag $ verbosityFlags testVerbosity}
+              , haddockProjectHoogle = Flag hoogle
+              }
+          run = CmdHaddockProject.haddockProjectAction flags ["all"] defaultGlobalFlags{globalStoreDir = Flag "store"}
+      cleanHaddockProject testdir
+      flip finally (cleanHaddockProject testdir) $ withCurrentDirectory dir $ do
+        run
+        initialConfigTime <- getModificationTime setupConfig
+        entries <- listDirectory (storeDirectory (defaultStoreDirLayout "store") (pkgConfigCompiler shared))
+        dependencyDocs <- doesFileExist ("haddocks" </> "p" </> "p.haddock")
+        run
+        repeatedConfigTime <- getModificationTime setupConfig
+        return $
+          (length (filter ((== "p-0.1-") . take 6) entries), dependencyDocs, initialConfigTime == repeatedConfigTime)
+            QC.=== (1, True, True)
+  where
+    testdir = "regression/program-options"

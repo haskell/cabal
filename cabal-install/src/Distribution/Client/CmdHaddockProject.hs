@@ -52,6 +52,7 @@ import Distribution.Client.Setup
   ( CommonSetupFlags (setupVerbosity)
   , ConfigFlags (..)
   , GlobalFlags (..)
+  , InstallFlags (installDocumentation)
   )
 import Distribution.Client.TargetProblem (TargetProblem (..))
 
@@ -409,21 +410,22 @@ haddockProjectAction flags _extraArgs globalFlags = do
         -- `dist-newstyle` directory and copy it to the output directory.
         }
 
-    -- Use the same build directory when planning, building, and locating
-    -- documentation as when invoking Haddock.
-    buildFlags =
-      (commandDefaultFlags CmdBuild.buildCommand)
-        { NixStyleOptions.configFlags =
-            (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
-              { configCommonFlags = commonFlags
-              }
+    -- Documentation options affect dependency unit IDs in the store. Use
+    -- identical settings for planning, building, collecting, and Haddock so
+    -- those phases do not alternate between different dependency instances.
+    withHaddockConfig :: NixStyleOptions.NixStyleFlags a -> NixStyleOptions.NixStyleFlags a
+    withHaddockConfig flags' =
+      flags'
+        { NixStyleOptions.installFlags =
+            (NixStyleOptions.installFlags flags'){installDocumentation = Flag True}
+        , NixStyleOptions.haddockFlags = haddockFlags
+        , NixStyleOptions.configFlags =
+            (NixStyleOptions.configFlags flags'){configCommonFlags = commonFlags}
         }
 
-    nixFlags =
-      (commandDefaultFlags CmdHaddock.haddockCommand)
-        { NixStyleOptions.haddockFlags = haddockFlags
-        , NixStyleOptions.configFlags = NixStyleOptions.configFlags buildFlags
-        }
+    buildFlags = withHaddockConfig (commandDefaultFlags CmdBuild.buildCommand)
+
+    nixFlags = withHaddockConfig (commandDefaultFlags CmdHaddock.haddockCommand)
 
     -- Build a self contained directory which contains haddocks of all
     -- transitive dependencies; or depend on `--haddocks-html-location` to
