@@ -1,0 +1,10 @@
+[
+  Comment
+    "-- foo"
+    (Position 13 5),
+  Comment
+    "-- bar"
+    (Position 15 5),
+  Comment
+    "-- baz"
+    (Position 17 5)]
