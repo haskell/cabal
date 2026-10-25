@@ -1900,7 +1900,7 @@ withProgramsFields =
 withProgramOptionsFields :: [FieldDescr [(String, [String])]]
 withProgramOptionsFields =
   map viewAsFieldDescr $
-    programDbOptions defaultProgramDb ParseArgs id (++)
+    programDbOptions defaultProgramDb ParseArgs id (\newArgs _ -> newArgs)
 
 parseExtraLines :: Verbosity -> [String] -> IO SavedConfig
 parseExtraLines verbosity extraLines =
