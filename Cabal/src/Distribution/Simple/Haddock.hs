@@ -84,7 +84,7 @@ import Distribution.Version
 import Data.Bool (bool)
 import Data.Either (lefts, rights)
 import qualified Data.Text as T
-import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Directory (copyFileWithMetadata, doesDirectoryExist, doesFileExist)
 import System.FilePath (isAbsolute, joinPath, normalise, splitDirectories)
 import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
 
@@ -1080,7 +1080,10 @@ reusingGHCCompilationArtifacts verbosity tmpFileOpts mbWorkDir lbi bi clbi versi
               -- Don't try to copy artifacts if they don't exist, e.g. if
               -- we have not yet run the 'build' command.
               when ghcDirExists $
-                copyDirectoryRecursive verbosity ghcDir (i tmpDir)
+                -- GHC checks that .hie files are at least as new as .hi files.
+                -- Preserve timestamps so the temporary .hi files do not make
+                -- the original .hie files appear out of date.
+                copyDirectoryRecursiveWith copyFileWithMetadata verbosity ghcDir (i tmpDir)
           copyDir ghcOptObjDir tmpObjDir
           copyDir ghcOptHiDir tmpHiDir
           -- copyDir ghcOptStubDir tmpStubDir -- (see W.1 in Note [Hi Haddock Recompilation Avoidance])

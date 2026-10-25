@@ -9,16 +9,21 @@ import Distribution.System ( buildPlatform )
 import Distribution.Verbosity
 
 import Data.IORef
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import System.Directory ( doesDirectoryExist, doesFileExist
+                        , copyFileWithMetadata, createDirectoryIfMissing
+                        , getModificationTime, setModificationTime
                         , getTemporaryDirectory
                         , removePathForcibly )
-import System.FilePath ( (<.>) )
+import System.FilePath ( (<.>), (</>) )
+import System.IO.Temp (withSystemTempDirectory)
 import System.IO (hClose, localeEncoding, hPutStrLn)
 import System.IO.Error
 import qualified Control.Exception as Exception
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck (NonNegative (..), Property, ioProperty, testProperty, (===))
 
 withTempFileTest :: Assertion
 withTempFileTest = do
@@ -89,6 +94,23 @@ dropExeExtensionTest =
     dropExeExtension ("foo" <.> exeExtension buildPlatform) == "foo"
 
 
+-- | Copying compilation artifacts with metadata preserves their modification times.
+copyDirectoryPreservesModificationTime :: NonNegative Int -> Property
+copyDirectoryPreservesModificationTime (NonNegative seconds) = ioProperty $
+  withSystemTempDirectory "copy-directory-mtime" $ \dir -> do
+    let src = dir </> "src"
+        dest = dir </> "dest"
+        relativeFile = "nested" </> "Module.hi"
+        -- Use an old timestamp, with two-second precision for FAT filesystems.
+        timestamp = posixSecondsToUTCTime (946684800 + fromIntegral (seconds `mod` 86400) * 2)
+    createDirectoryIfMissing True (src </> "nested")
+    writeFile (src </> relativeFile) "interface"
+    setModificationTime (src </> relativeFile) timestamp
+    sourceTime <- getModificationTime (src </> relativeFile)
+    copyDirectoryRecursiveWith copyFileWithMetadata (mkVerbosity defaultVerbosityHandles silent) src dest
+    copiedTime <- getModificationTime (dest </> relativeFile)
+    return (copiedTime === sourceTime)
+
 tests :: FilePath -> [TestTree]
 tests ghcPath =
     [ testCase "withTempFile works as expected" withTempFileTest
@@ -98,4 +120,6 @@ tests ghcPath =
     , testCase "rawSystemStdInOut reports text decoding errors" $
       rawSystemStdInOutTextDecodingTest ghcPath
     , testCase "dropExeExtension drops exe extension" dropExeExtensionTest
+    , testProperty "copyDirectoryRecursiveWith preserves file modification times"
+      copyDirectoryPreservesModificationTime
     ]

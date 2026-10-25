@@ -106,6 +106,7 @@ module Distribution.Simple.Utils
   , installMaybeExecutableFiles
   , installDirectoryContents
   , copyDirectoryRecursive
+  , copyDirectoryRecursiveWith
 
     -- * File permissions
   , doesExecutableExist
@@ -1866,11 +1867,20 @@ installDirectoryContents verbosity srcDir destDir = withFrozenCallStack $ do
 
 -- | Recursively copy the contents of one directory to another path.
 copyDirectoryRecursive :: Verbosity -> FilePath -> FilePath -> IO ()
-copyDirectoryRecursive verbosity srcDir destDir = withFrozenCallStack $ do
+copyDirectoryRecursive = copyDirectoryRecursiveWith copyFile
+
+-- | Like 'copyDirectoryRecursive', using the supplied file copying operation.
+copyDirectoryRecursiveWith
+  :: (FilePath -> FilePath -> IO ())
+  -> Verbosity
+  -> FilePath
+  -> FilePath
+  -> IO ()
+copyDirectoryRecursiveWith doCopy verbosity srcDir destDir = withFrozenCallStack $ do
   info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   srcFiles <- getDirectoryContentsRecursive srcDir
   copyFilesWith
-    (const copyFile)
+    (const doCopy)
     verbosity
     destDir
     [ (srcDir, f)
