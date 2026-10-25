@@ -1,0 +1,78 @@
+-- Project file used by CI (and locally) to validate the repo against GHC's
+-- JavaScript backend (target `javascript-unknown-ghcjs`).
+--
+-- Usage:
+--   export CABAL_DIR=~/.cabal-js (optional but recommended: isolates the store)
+--   cabal build --builddir=dist-newstyle-validate-js --project-file=cabal.validate-js.project
+--     --with-compiler=javascript-unknown-ghcjs-ghc-9.12.2
+--     --with-hc-pkg=javascript-unknown-ghcjs-ghc-pkg-9.12.2 <targets>
+--
+-- See .github/workflows/validate.yml (job `validate-javascript`).
+
+import: project-cabal/ghc-options.config
+import: project-cabal/ghc-latest.config
+import: project-cabal/pkgs.config
+import: project-cabal/constraints.config
+
+tests: True
+write-ghc-environment-files: never
+
+-- Unlike `cabal.validate.project` we do not enable `-Werror` here: the goal is
+-- JavaScript backend compatibility, and warnings specific to the JS target
+-- would otherwise break CI spuriously.
+
+-- Unlike `cabal.validate.project` we do not enable the `git-rev` flags: it
+-- would pull in the `githash` package from Hackage, an unnecessary dependency
+-- for these builds.
+
+-- `network` is needed by cabal-install (via HTTP) and cabal-testsuite (via
+-- network-wait). The released network-3.2.9.0 fails to build for the
+-- JavaScript target because `Network.Socket.Shutdown` uses `GHC.Event`, which
+-- is a stub on the JS RTS (see GHC #24108-ish / base-4.21). The fix (dropping
+-- `GHC.Event` in favour of `forkIO`/`threadDelay`) is in network master but
+-- has not been released yet, so we pin an unreleased commit.
+source-repository-package
+  type: git
+  location: https://github.com/haskell/network.git
+  subdir: .
+  tag: 923f7d5996cb49d9b3e6ba05573b226db57c1f49
+  -- The git checkout does not contain the `configure` script (it is generated
+  -- before uploading to Hackage), so we have to (re)generate it here.
+  -- Requires `autoconf` on the PATH.
+  post-checkout-command: autoreconf -i
+
+-- `splitmix` selects its seed initialisation via `impl(ghcjs)` /
+-- `impl(ghc)`, but GHC's JavaScript backend reports itself as `ghc`, so the
+-- C-based initialiser is chosen; its `ccall splitmix_init` becomes an
+-- unresolvable `h$splitmix_init` on the JavaScript target. We patch the
+-- source to (a) take the JavaScript branch and (b) use a function-expression
+-- inline FFI (the `$r`-style snippet is GHCJS-only and a syntax error on
+-- GHC's JavaScript backend).
+source-repository-package
+  type: git
+  location: https://github.com/haskellari/splitmix.git
+  tag: 66ca2edbe935582cb66fd1fd36d1cd06366d9779
+  -- The command is executed token-wise (no shell), so all expressions below
+  -- are deliberately whitespace-free. It (a) flips `impl(ghcjs)` to
+  -- `arch(javascript)` so the JS branch is taken on GHC's JavaScript backend,
+  -- and (b) rewrites the GHCJS-style inline FFI snippet into an arrow
+  -- function expression, the form GHC's JavaScript backend expects.
+  post-checkout-command: sed -i -e s@impl(ghcjs)@arch(javascript)@ -e s@\([^"]*\)"[^"]*Math.floor(Math.random()\*0x100000000);[^"]*"@\1"()=>Math.floor(Math.random()*0x100000000)"@ src/System/Random/SplitMix/Init.hs
+
+-- The `ghc-options` below force the JavaScript branch of
+-- `System.Random.SplitMix.Init` (normally guarded by `__GHCJS__`, which GHC's
+-- JavaScript backend does not define) and enable the JavaScript FFI.
+package splitmix
+  ghc-options: -XJavaScriptFFI -DSPLITMIX_INIT_GHCJS=1 -D__GHCJS__=1
+
+-- The C FFI routines of `cryptohash-sha256` do not resolve on the JavaScript
+-- target (see Cabal/jsbits/js-backend-polyfills.js for the JS implementation
+-- shim we provide).
+
+-- `resolv` (pulled in by the native-dns flag) fails to build for the
+-- JavaScript target and DNS resolution is not needed for the tests.
+package cabal-install
+  flags: -native-dns
+
+package cabal-install-solver
+  flags: +debug-expensive-assertions
