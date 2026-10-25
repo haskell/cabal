@@ -1,14 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
--- | cabal-install CLI command: target
---
--- Resolving the fully-qualified target forms for the given target selectors.
--- The implementation behind the @Distribution.Client.API.Command.CmdTarget@
--- facade.
 module Distribution.Client.CmdTarget
-  ( -- * The @target@ CLI and action
-    targetCommand
+  ( targetCommand
   , targetAction
   ) where
 
@@ -16,13 +10,10 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import qualified Data.Map as Map
-import Distribution.Client.CmdBuild
-  ( selectComponentTarget
-  , selectPackageTargets
-  )
+import Distribution.Client.CmdBuild (selectComponentTarget, selectPackageTargets)
 import Distribution.Client.CmdErrorMessages
-  ( reportTargetProblems
-  )
+import Distribution.Client.InstallPlan
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , defaultNixStyleFlags
@@ -30,24 +21,19 @@ import Distribution.Client.NixStyleOptions
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
-  ( rebuildInstallPlan
-  )
-import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Setup
-  ( GlobalFlags
+  ( ConfigFlags (..)
+  , GlobalFlags
   )
 import Distribution.Client.TargetProblem
   ( TargetProblem'
   )
-
-import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
   )
 import Distribution.Simple.Flag (fromFlagOrDefault)
-import Distribution.Simple.Setup (configVerbosity)
 import Distribution.Simple.Utils
   ( noticeDoc
   , safeHead
@@ -157,8 +143,10 @@ targetCommand =
               ]
         ]
 
--- | The @target@ action: resolve the given target strings and print their
--- fully-qualified target forms.
+-------------------------------------------------------------------------------
+-- Action
+-------------------------------------------------------------------------------
+
 targetAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 targetAction flags@NixStyleFlags{..} ts globalFlags = do
   ProjectBaseContext
@@ -222,7 +210,7 @@ printTargetForms verbosity targetStrings targets elaboratedPlan =
        in text "Found" <+> int n <+> text t <+> text "matching" <+> text query Pretty.<> char '.'
 
     localPkgs =
-      [x | InstallPlan.Configured x@ElaboratedConfiguredPackage{elabLocalToProject = True} <- InstallPlan.toList elaboratedPlan]
+      [x | Configured x@ElaboratedConfiguredPackage{elabLocalToProject = True} <- InstallPlan.toList elaboratedPlan]
 
     targetForm ct x =
       let pkgId@PackageIdentifier{pkgName = n} = elabPkgSourceId x

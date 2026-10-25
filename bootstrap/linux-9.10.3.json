@@ -525,6 +525,18 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
+            "version": "3.1900.0"
+        },
+        {
+            "cabal_sha256": null,
+            "component": "lib:cabal-install",
+            "flags": [
+                "-git-rev"
+            ],
+            "package": "cabal-install",
+            "revision": null,
+            "source": "local",
+            "src_sha256": null,
             "version": "3.19.0.0"
         },
         {

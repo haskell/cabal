@@ -3,20 +3,17 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: repl
---
--- Opens an interactive session for the given component (or several, with
--- multi-repl). The implementation behind the
--- @Distribution.Client.API.Command.CmdRepl@ facade.
 module Distribution.Client.CmdRepl
   ( -- * The @repl@ CLI and action
     replCommand
   , replAction
+  , ReplFlags (..)
 
     -- * Internals exposed for testing
-  , MultiReplDecision (..)
   , matchesMultipleProblem
   , selectPackageTargets
   , selectComponentTarget
+  , MultiReplDecision (..)
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -27,11 +24,13 @@ import qualified Distribution.Types.Lens as L
 
 import Distribution.Client.CmdErrorMessages
   ( Plural (..)
+  , componentKind
   , renderComponentKind
   , renderListCommaAnd
   , renderListSemiAnd
   , renderTargetProblem
   , renderTargetSelector
+  , showTargetSelector
   , sortGroupOn
   , targetSelectorRefersToPkgs
   )
@@ -50,13 +49,15 @@ import Distribution.Client.ProjectBuilding
   ( improveInstallPlanWithUpToDatePackages
   , rebuildTargetsDryRun
   )
-import Distribution.Client.ProjectConfig.Types
-  ( ProjectConfig (..)
-  , ProjectConfigShared (..)
-  )
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectPlanning
+  ( ElaboratedInstallPlan
+  , ElaboratedSharedConfig (..)
+  )
 import Distribution.Client.ProjectPlanning.Types
-import Distribution.Client.ReplFlags
+  ( elabOrderExeDependencies
+  , showElaboratedInstallPlan
+  )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)
@@ -68,27 +69,30 @@ import Distribution.Client.ScriptUtils
   , withContextAndSelectors
   )
 import Distribution.Client.Setup
-  ( GlobalFlags
-  , installCommand
+  ( ConfigFlags (..)
+  , GlobalFlags
   )
+import qualified Distribution.Client.Setup as Client
 import Distribution.Client.TargetProblem
-import Distribution.Client.TargetSelector
-  ( componentKind
-  , showTargetSelector
+  ( TargetProblem (..)
   )
 import Distribution.Client.Targets
   ( UserConstraint (..)
   , UserConstraintScope (..)
   )
-import Distribution.Client.Types.PackageLocation
-  ( UnresolvedSourcePackage
-  )
-import Distribution.Client.Types.PackageSpecifier
+import Distribution.Client.Types
   ( PackageSpecifier (..)
+  , UnresolvedSourcePackage
   )
-
 import Distribution.Compiler
   ( CompilerFlavor (GHC)
+  )
+import Distribution.Package
+  ( Package (..)
+  , UnitId
+  , installedUnitId
+  , mkPackageName
+  , packageName
   )
 import Distribution.Simple.Command
   ( CommandUI (..)
@@ -101,8 +105,7 @@ import Distribution.Simple.Compiler
   )
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
-  ( ConfigFlags (..)
-  , Flag
+  ( Flag
   , ReplOptions (..)
   , commonSetupTempFileOptions
   )
@@ -141,9 +144,6 @@ import Distribution.Types.Library
   , emptyLibrary
   )
 import Distribution.Types.ParStrat
-import Distribution.Types.UnitId
-  ( UnitId
-  )
 import Distribution.Types.Version
   ( Version
   , mkVersion
@@ -171,13 +171,17 @@ import Data.List
   )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Distribution.Compat.Binary (decode)
-import Distribution.Package
-  ( Package (..)
-  , installedUnitId
-  , mkPackageName
-  , packageName
+import Distribution.Client.ProjectConfig
+  ( ProjectConfig (..)
+  , ProjectConfigShared (..)
   )
+import Distribution.Client.ReplFlags
+  ( EnvFlags (envIncludeTransitive, envPackages)
+  , ReplFlags (..)
+  , defaultReplFlags
+  , topReplOptions
+  )
+import Distribution.Compat.Binary (decode)
 import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
@@ -198,7 +202,7 @@ import Text.PrettyPrint hiding ((<>))
 
 replCommand :: CommandUI (NixStyleFlags ReplFlags)
 replCommand =
-  installCommand
+  Client.installCommand
     { commandName = "v2-repl"
     , commandSynopsis = "Open an interactive session for the given component."
     , commandUsage = usageAlternatives "v2-repl" ["[TARGET] [FLAGS]"]

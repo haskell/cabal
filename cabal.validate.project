@@ -15,6 +15,13 @@ program-options
 package cabal-install
   flags: +git-rev
 
+-- The version/git-info module moved here from cabal-install; without the
+-- flag GIT_REV stays undefined and -Werror=unused-top-binds rejects
+-- cabalInstallCompilerInfo (on master cabal-install gets +git-rev the same
+-- way, which is what keeps that module warning-free under -Werror).
+package cabal-install-internal
+  flags: +git-rev
+
 package Cabal
   flags: +git-rev
 

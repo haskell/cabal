@@ -5,8 +5,8 @@
 module Distribution.Client.API.Flags
   ( GlobalFlags (..) -- Note: cabal-install (API.Command.*), hix
   , defaultGlobalFlags -- Note: cabal-install (API.Command.*), hix
-  , NixStyleFlags (..) -- Note: cabal-install (API.Command.*), hix, cabal-buck2
-  , defaultNixStyleFlags -- Note: cabal-install (API.Command.*), hix, cabal-buck2
+  , NixStyleFlags (..) -- Note: cabal-install (API.Command.*), hix, cabal-buck2, guardian
+  , defaultNixStyleFlags -- Note: cabal-install (API.Command.*), hix, cabal-buck2, guardian
   , ProjectFlags (..) -- Note: cabal-install (API.Command.CmdClean, CmdSdist), hix
   , defaultProjectFlags -- Note: cabal-install (API.Command.CmdClean, CmdSdist)
   , ReplFlags (..) -- Note: cabal-install (API.Command.CmdRepl)

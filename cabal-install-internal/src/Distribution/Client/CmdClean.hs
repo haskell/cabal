@@ -2,21 +2,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
--- | cabal-install CLI command: clean
---
--- The implementation behind the @Distribution.Client.API.Command.CmdClean@
--- facade.
-module Distribution.Client.CmdClean
-  ( -- * The @clean@ CLI and action
-    cleanCommand
-  , cleanAction
-  , CleanFlags (..)
-  , defaultCleanFlags
-
-    -- * Internals
-  , ProjectLayout (..)
-  , findProjectLayout
-  ) where
+module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
@@ -182,13 +168,15 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
     dieWithException verbosity $
       CleanAction notScripts
 
-  projectLayout <- findProjectLayout verbosity mprojectDir mprojectFile mdistDirectory
+  projectRoot <- either throwIO return =<< findProjectRoot verbosity mprojectDir mprojectFile
+
+  let distLayout = defaultDistDirLayout projectRoot mdistDirectory Nothing
 
   -- Do not clean a project if just running a script in it's directory
   when (null extraArgs || isJust mdistDirectory) $ do
     if saveConfig
       then do
-        let buildRoot = layoutBuildRoot projectLayout
+        let buildRoot = distBuildRootDirectory distLayout
 
         buildRootExists <- doesDirectoryExist buildRoot
 
@@ -196,7 +184,7 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
           info verbosity ("Deleting build root (" ++ buildRoot ++ ")")
           removePathForcibly buildRoot
       else do
-        let distRoot = layoutDistRoot projectLayout
+        let distRoot = distDirectory distLayout
 
         info verbosity ("Deleting dist-newstyle (" ++ distRoot ++ ")")
         -- Windows can't delete some git files #10182
@@ -216,7 +204,7 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
                 else throw e
           )
 
-    removeEnvFiles $ layoutProjectRoot projectLayout
+    removeEnvFiles $ distProjectRootDirectory distLayout
 
   -- Clean specified script build caches and orphaned caches.
   -- There is currently no good way to specify to only clean orphaned caches.
@@ -239,37 +227,3 @@ removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
   (traverse_ (removeFileForcibly . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
     =<< listDirectory dir
-
--- | The @dist-newstyle@ directory layout of a resolved project.
-data ProjectLayout = ProjectLayout
-  { layoutProjectRoot :: FilePath
-  -- ^ The project root directory (where @cabal.project@ lives).
-  , layoutDistRoot :: FilePath
-  -- ^ The whole @dist-newstyle@ directory (build artifacts, docs, caches).
-  , layoutBuildRoot :: FilePath
-  -- ^ The per-compiler build root inside 'layoutDistRoot'.
-  }
-
--- | Resolve the project root the same way @cabal@ does and derive the
--- @dist-newstyle@ layout for it.
-findProjectLayout
-  :: Verbosity
-  -> Maybe FilePath
-  -- ^ project directory override
-  -> Maybe FilePath
-  -- ^ @cabal.project@ file override
-  -> Maybe FilePath
-  -- ^ @dist@ directory override
-  -> IO ProjectLayout
-findProjectLayout verbosity mprojectDir mprojectFile mdistDirectory = do
-  badOrRoot <- findProjectRoot verbosity mprojectDir mprojectFile
-  case badOrRoot of
-    Left problem -> throwIO problem
-    Right projectRoot -> do
-      let dirLayout = defaultDistDirLayout projectRoot mdistDirectory Nothing
-      pure
-        ProjectLayout
-          { layoutProjectRoot = distProjectRootDirectory dirLayout
-          , layoutDistRoot = distDirectory dirLayout
-          , layoutBuildRoot = distBuildRootDirectory dirLayout
-          }

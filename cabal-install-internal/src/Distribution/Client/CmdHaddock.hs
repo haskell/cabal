@@ -2,30 +2,25 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: haddock
---
--- Building Haddock documentation for the project packages.
---
--- The implementation behind the @Distribution.Client.API.Command.CmdHaddock@
--- facade.
 module Distribution.Client.CmdHaddock
   ( -- * The @haddock@ CLI and action
     haddockCommand
   , haddockAction
   , ClientHaddockFlags (..)
-  , haddockOptions
 
     -- * Internals exposed for testing
   , selectPackageTargets
   , selectComponentTarget
+
+    -- * Internals used by the public API
+  , haddockOptions
   ) where
 
 import Distribution.Client.Compat.Prelude
+import System.Directory (makeAbsolute)
 import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
-  ( reportTargetProblems
-  )
-import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
@@ -37,7 +32,7 @@ import Distribution.Client.ProjectConfig.Types
   , ProjectConfig (..)
   )
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.ProjectPlanning
   ( ElaboratedSharedConfig (..)
   )
 import Distribution.Client.Setup
@@ -45,8 +40,9 @@ import Distribution.Client.Setup
   , InstallFlags (..)
   )
 import Distribution.Client.TargetProblem
-import Distribution.Client.TargetSelector
-
+  ( TargetProblem (..)
+  , TargetProblem'
+  )
 import Distribution.Simple.Command
   ( CommandUI (..)
   , OptionField
@@ -76,7 +72,7 @@ import Distribution.Verbosity
   ( normal
   )
 
-import System.Directory (makeAbsolute)
+import Distribution.Client.Errors
 import qualified System.Exit (exitSuccess)
 
 newtype ClientHaddockFlags = ClientHaddockFlags {openInBrowser :: Flag Bool}

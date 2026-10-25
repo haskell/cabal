@@ -4,7 +4,7 @@
 -- the exported signatures in a major.
 module Distribution.Client.API.Command.CmdUpdate
   ( updateCommand
-  , updateAction -- Note: hix
+  , updateAction -- Note: hix, guardian
   ) where
 
 import Distribution.Client.CmdUpdate

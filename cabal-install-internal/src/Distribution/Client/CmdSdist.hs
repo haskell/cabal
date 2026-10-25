@@ -4,26 +4,14 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
--- |
--- Module      :  Distribution.Client.CmdSdist
--- Maintainer  :  cabal-devel@haskell.org
--- Portability  :  portable
---
--- The @sdist@ command: creating source distributions of the project
--- packages.
---
--- This is the implementation behind the
--- @Distribution.Client.API.Command.CmdSdist@ facade and the @cabal sdist@
--- CLI command.
 module Distribution.Client.CmdSdist
-  ( -- * The @sdist@ CLI and action
-    sdistCommand
+  ( sdistCommand
   , sdistAction
+  , packageToSdist
+  , OutputFormat (..)
   , SdistFlags (..)
   , defaultSdistFlags
   , sdistOptions
-  , OutputFormat (..)
-  , packageToSdist
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -37,19 +25,18 @@ import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
   , ProjectRoot (..)
   )
-import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , defaultNixStyleFlags
   , updNixStyleCommonSetupFlags
   )
 import Distribution.Client.ProjectConfig
-  ( withGlobalConfig
+  ( ProjectConfig
+  , commandLineFlagsToProjectConfig
+  , projectConfigConfigFile
+  , projectConfigShared
+  , withGlobalConfig
   , withProjectOrGlobalConfig
-  )
-import Distribution.Client.ProjectConfig.Types
-  ( ProjectConfig (..)
-  , ProjectConfigShared (..)
   )
 import Distribution.Client.ProjectFlags
   ( ProjectFlags (..)
@@ -57,23 +44,38 @@ import Distribution.Client.ProjectFlags
   , projectFlagsOptions
   )
 import Distribution.Client.ProjectOrchestration
+  ( CurrentCommand (..)
+  , ProjectBaseContext (..)
+  , establishProjectBaseContext
+  , establishProjectBaseContextWithRoot
+  )
 import Distribution.Client.Setup
-  ( GlobalFlags (..)
+  ( CommonSetupFlags (..)
+  , GlobalFlags (..)
   )
-import Distribution.Client.SrcDist
-  ( packageDirToSdist
+import Distribution.Client.TargetSelector
+  ( ComponentKind
+  , TargetSelector (..)
+  , readTargetSelectors
+  , reportTargetSelectorProblems
   )
-import Distribution.Client.Types.PackageLocation
+import Distribution.Client.Types
   ( PackageLocation (..)
+  , PackageSpecifier (..)
   , UnresolvedSourcePackage
-  )
-import Distribution.Client.Types.PackageSpecifier
-  ( PackageSpecifier (..)
   )
 import Distribution.Solver.Types.SourcePackage
   ( SourcePackage (..)
   )
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
+  )
 
+import Distribution.Client.Errors
+import Distribution.Client.SrcDist
+  ( packageDirToSdist
+  )
 import Distribution.Compat.Lens
   ( _1
   , _2
@@ -99,8 +101,7 @@ import Distribution.Simple.PreProcess
   ( knownSuffixHandlers
   )
 import Distribution.Simple.Setup
-  ( CommonSetupFlags (..)
-  , Flag
+  ( Flag
   , flagToList
   , flagToMaybe
   , fromFlagOrDefault
@@ -121,16 +122,13 @@ import Distribution.Simple.Utils
   , wrapText
   )
 import Distribution.Types.ComponentName
-  ( showComponentName
+  ( ComponentName
+  , showComponentName
   )
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import Distribution.Types.PackageName
   ( PackageName
   , unPackageName
-  )
-import Distribution.Utils.Path hiding
-  ( (<.>)
-  , (</>)
   )
 import Distribution.Verbosity
   ( VerbosityFlags
@@ -152,28 +150,6 @@ import System.FilePath
   , (<.>)
   , (</>)
   )
-
--------------------------------------------------------------------------------
--- Flags
--------------------------------------------------------------------------------
-
-data SdistFlags = SdistFlags
-  { sdistVerbosity :: Flag VerbosityFlags
-  , sdistDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
-  , sdistListSources :: Flag Bool
-  , sdistNulSeparated :: Flag Bool
-  , sdistOutputPath :: Flag FilePath
-  }
-
-defaultSdistFlags :: SdistFlags
-defaultSdistFlags =
-  SdistFlags
-    { sdistVerbosity = toFlag normal
-    , sdistDistDir = mempty
-    , sdistListSources = toFlag False
-    , sdistNulSeparated = toFlag False
-    , sdistOutputPath = mempty
-    }
 
 -------------------------------------------------------------------------------
 -- Command
@@ -199,6 +175,24 @@ sdistCommand =
 -------------------------------------------------------------------------------
 -- Flags
 -------------------------------------------------------------------------------
+
+data SdistFlags = SdistFlags
+  { sdistVerbosity :: Flag VerbosityFlags
+  , sdistDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
+  , sdistListSources :: Flag Bool
+  , sdistNulSeparated :: Flag Bool
+  , sdistOutputPath :: Flag FilePath
+  }
+
+defaultSdistFlags :: SdistFlags
+defaultSdistFlags =
+  SdistFlags
+    { sdistVerbosity = toFlag normal
+    , sdistDistDir = mempty
+    , sdistListSources = toFlag False
+    , sdistNulSeparated = toFlag False
+    , sdistOutputPath = mempty
+    }
 
 sdistOptions :: ShowOrParseArgs -> [OptionField SdistFlags]
 sdistOptions showOrParseArgs =

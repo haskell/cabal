@@ -46,7 +46,7 @@ import Distribution.Client.ScriptUtils
   , updateContextAndWriteProjectFile
   , withContextAndSelectors
   )
-import Distribution.Client.Setup (GlobalFlags, InstallFlags (..), defaultGlobalFlags)
+import Distribution.Client.Setup (InstallFlags (..), defaultGlobalFlags)
 import Distribution.Client.TargetSelector (TargetSelector)
 import Distribution.Simple.Compiler (OptimisationLevel (..))
 import Distribution.Simple.Flag (maybeToFlag, toFlag)

@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | cabal-install CLI command: run
---
--- Running a specified executable-like component, building it first if
--- necessary. The implementation behind the
--- @Distribution.Client.API.Command.CmdRun@ facade.
 module Distribution.Client.CmdRun
   ( -- * The @run@ CLI and action
     runCommand
@@ -22,6 +18,7 @@ module Distribution.Client.CmdRun
 import Distribution.Client.Compat.Prelude hiding (toList)
 import Prelude ()
 
+import qualified Data.Set as Set
 import Distribution.Client.CmdErrorMessages
   ( plural
   , renderListCommaAnd
@@ -29,12 +26,18 @@ import Distribution.Client.CmdErrorMessages
   , renderTargetProblem
   , renderTargetProblemNoTargets
   , renderTargetSelector
+  , showTargetSelector
   , targetSelectorFilter
   , targetSelectorPluralPkgs
   )
 import Distribution.Client.Errors
-import Distribution.Client.InstallPlan (foldPlanPackage)
-import qualified Distribution.Client.InstallPlan as InstallPlan (toList)
+import Distribution.Client.GlobalFlags
+  ( defaultGlobalFlags
+  )
+import Distribution.Client.InstallPlan
+  ( foldPlanPackage
+  , toList
+  )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
@@ -42,15 +45,21 @@ import Distribution.Client.NixStyleOptions
   , nixStyleOptions
   )
 import Distribution.Client.ProjectConfig.Types
-  ( ProjectConfig (..)
-  , ProjectConfigShared (..)
+  ( ProjectConfig (projectConfigShared)
+  , ProjectConfigShared (projectConfigProgPathExtra)
   )
 import Distribution.Client.ProjectOrchestration hiding (targetsMap)
 import qualified Distribution.Client.ProjectOrchestration as Orchestration (targetsMap)
 import Distribution.Client.ProjectPlanning
-  ( binDirectoryFor
+  ( ElaboratedConfiguredPackage (..)
+  , ElaboratedInstallPlan
+  , binDirectoryFor
   )
 import Distribution.Client.ProjectPlanning.Types
+  ( ElaboratedPackageOrComponent (..)
+  , dataDirsEnvironmentForPlan
+  , elabExeDependencyPaths
+  )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)
@@ -60,11 +69,9 @@ import Distribution.Client.ScriptUtils
   )
 import Distribution.Client.Setup
   ( GlobalFlags (..)
-  , defaultGlobalFlags
   )
 import Distribution.Client.TargetProblem
-import Distribution.Client.TargetSelector
-  ( showTargetSelector
+  ( TargetProblem (..)
   )
 import Distribution.Client.Utils
   ( giveRTSWarning
@@ -99,6 +106,8 @@ import Distribution.Simple.Utils
   )
 
 import Distribution.Types.ComponentName
+  ( componentNameRaw
+  )
 import qualified Distribution.Types.Executable as PD
   ( buildInfo
   , exeName
@@ -131,8 +140,6 @@ import System.FilePath
   , isValid
   , (</>)
   )
-
-import qualified Data.Set as Set
 
 runCommand :: CommandUI (NixStyleFlags ())
 runCommand =
@@ -183,6 +190,13 @@ runCommand =
     , commandOptions = nixStyleOptions (const [])
     }
 
+-- | The @run@ command runs a specified executable-like component, building it
+-- first if necessary. The component can be either an executable, a test,
+-- or a benchmark. This is particularly useful for passing arguments to
+-- exes/tests/benchs by simply appending them after a @--@.
+--
+-- For more details on how this works, see the module
+-- "Distribution.Client.ProjectOrchestration"
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 runAction flags targetAndArgs globalFlags = do
   fullArgs <- getFullArgs
@@ -420,7 +434,7 @@ validScript script
 -- argument is a list of arguments to be passed to the script.
 handleShebang :: FilePath -> [String] -> IO ()
 handleShebang script args =
-  runAction (defaultNixStyleFlags ()) (script : args) defaultGlobalFlags
+  runAction (commandDefaultFlags runCommand) (script : args) defaultGlobalFlags
 
 singleExeOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId, UnqualComponentName)
 singleExeOrElse action targetsMap =
@@ -447,7 +461,7 @@ matchingPackagesByUnitId uid =
               else Nothing
         )
     )
-    . InstallPlan.toList
+    . toList
 
 -- | This defines what a 'TargetSelector' means for the @run@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

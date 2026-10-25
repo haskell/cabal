@@ -1,6 +1,6 @@
 cabal-version: 3.6
 name:          cabal-install-internal
-version:       3.19.0.0
+version:       3.1900.0
 synopsis:      The internal implementation of cabal-install
 description:
   The internal implementation modules of the cabal-install command-line

@@ -1,18 +1,16 @@
--- | cabal-install CLI command: list-bin
---
--- The implementation behind the @Distribution.Client.API.Command.CmdListBin@
--- facade. Resolves a single executable-like target to the file path of its
--- binary.
+{-# LANGUAGE OverloadedStrings #-}
+
 module Distribution.Client.CmdListBin
-  ( -- * The @list-bin@ CLI and action
-    listbinCommand
+  ( listbinCommand
   , listbinAction
 
     -- * Internals exposed for testing
   , selectPackageTargets
   , selectComponentTarget
-  , matchesMultipleProblem
   , noComponentsProblem
+  , matchesMultipleProblem
+  , multipleTargetsProblem
+  , componentNotRightKindProblem
 
     -- * Internals used by the public API
   , listbinPath
@@ -21,41 +19,51 @@ module Distribution.Client.CmdListBin
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages hiding (reportTargetProblems)
-import Distribution.Client.Errors
+import Distribution.Client.CmdErrorMessages
+  ( plural
+  , renderListCommaAnd
+  , renderTargetProblem
+  , renderTargetProblemNoTargets
+  , renderTargetSelector
+  , showTargetSelector
+  , targetSelectorFilter
+  , targetSelectorPluralPkgs
+  )
+import Distribution.Client.DistDirLayout (DistDirLayout (..))
 import Distribution.Client.NixStyleOptions
-import Distribution.Client.ProjectOrchestration
+  ( NixStyleFlags (..)
+  , cfgVerbosity
+  , defaultNixStyleFlags
+  , nixStyleOptions
+  )
+import Distribution.Client.ProjectOrchestration hiding (distDirLayout, targetsMap)
+import qualified Distribution.Client.ProjectOrchestration as Orchestration (distDirLayout, targetsMap)
+import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ScriptUtils
-import Distribution.Client.Setup
-import Distribution.Client.TargetProblem
+  ( AcceptNoTargets (..)
+  , TargetContext (..)
+  , movedExePath
+  , updateContextAndWriteProjectFile
+  , withContextAndSelectors
+  )
+import Distribution.Client.Setup (GlobalFlags (..))
+import Distribution.Client.TargetProblem (TargetProblem (..))
+import Distribution.Simple.BuildPaths (dllExtension, exeExtension)
+import Distribution.Simple.Command (CommandUI (..))
+import Distribution.Simple.Utils (dieWithException, withOutputMarker, wrapText)
+import Distribution.System (Platform)
+import Distribution.Types.ComponentName (showComponentName)
+import Distribution.Types.UnitId (UnitId)
+import Distribution.Types.UnqualComponentName (UnqualComponentName)
+import Distribution.Verbosity (silent, verboseStderr, verbosityFlags)
+import System.FilePath ((<.>), (</>))
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Distribution.Client.DistDirLayout
+import Distribution.Client.Errors
 import qualified Distribution.Client.InstallPlan as IP
-import Distribution.Client.ProjectPlanning hiding (pruneInstallPlanToTargets)
-import Distribution.Client.ProjectPlanning.Types
-import Distribution.Simple.BuildPaths (dllExtension, exeExtension)
-import Distribution.Simple.Command
-  ( CommandUI (..)
-  )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Simple.Utils
-  ( dieWithException
-  , withOutputMarker
-  , wrapText
-  )
-import Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.System (Platform)
-import Distribution.Types.ComponentName
-import Distribution.Types.UnitId (UnitId)
-import Distribution.Types.UnqualComponentName
-import Distribution.Verbosity
-  ( silent
-  , verboseStderr
-  , verbosityFlags
-  )
-import System.FilePath ((<.>), (</>))
+import qualified Distribution.Solver.Types.ComponentDeps as CD
 
 -------------------------------------------------------------------------------
 -- Command
@@ -65,36 +73,21 @@ listbinCommand :: CommandUI (NixStyleFlags ())
 listbinCommand =
   CommandUI
     { commandName = "list-bin"
-    , commandSynopsis = "List binary targets for the given target."
+    , commandSynopsis = "List the path to a single executable."
     , commandUsage = \pname ->
-        "Usage: " <> pname <> " list-bin [FLAGS] TARGET\n"
+        "Usage: " ++ pname ++ " list-bin [FLAGS] TARGET\n"
     , commandDescription = Just $ \_ ->
-        wrapText $
-          "Computes the path to the binary target for the given target. "
-            <> "The target may be a package, component, or other thing selectable in cabal.\n\n"
-            <> "This command does not install or build anything, it just computes the path the binary "
-            <> "would be placed at, once built.\n\n"
-            <> "Example:\n"
-            <> "  $ cabal list-bin\n"
-            <> "  ./dist/build/cabal/cabal\n"
+        wrapText
+          "List the path to a build product."
     , commandNotes = Nothing
     , commandDefaultFlags = defaultNixStyleFlags ()
     , commandOptions = nixStyleOptions (const [])
     }
 
--- | The @list-bin@ action: resolve the single executable-like target and
--- print the file path of its binary, like @cabal list-bin@ does.
-listbinAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-listbinAction flags args globalFlags = do
-  exe <- listbinPath flags args globalFlags
-  putStr $ withOutputMarker (verbosityFlags verbosity) $ exe ++ "\n"
-  where
-    defaultVerbosity = verboseStderr silent
-    verbosity = cfgVerbosity defaultVerbosity flags
+-------------------------------------------------------------------------------
+-- Action
+-------------------------------------------------------------------------------
 
--- | Resolve the single executable-like target to the file path of its
--- binary, without printing anything. This is the core behind 'listbinAction'
--- and "Distribution.Client.API.Build".'Distribution.Client.API.Build.runListBin'.
 listbinPath :: NixStyleFlags () -> [String] -> GlobalFlags -> IO FilePath
 listbinPath flags args globalFlags = do
   -- fail early if multiple target selectors specified
@@ -150,7 +143,7 @@ listbinPath flags args globalFlags = do
       singleComponentOrElse
         ( dieWithException verbosity ThisIsABug
         )
-        $ targetsMap buildCtx
+        $ Orchestration.targetsMap buildCtx
 
     printPlan verbosity baseCtx buildCtx
 
@@ -160,7 +153,7 @@ listbinPath flags args globalFlags = do
         return $
           IP.foldPlanPackage
             (const []) -- IPI don't have executables
-            (elaboratedPackage (distDirLayout baseCtx) (elaboratedShared buildCtx) selectedComponent)
+            (elaboratedPackage (Orchestration.distDirLayout baseCtx) (elaboratedShared buildCtx) selectedComponent)
             gpp
 
     case binfiles of
@@ -219,6 +212,27 @@ listbinPath flags args globalFlags = do
             else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
 
         moved_bin_file s = fromMaybe (bin_file' s) (movedExePath selectedComponent distDirLayout elaboratedSharedConfig elab)
+
+-- | The @list-bin@ action: resolve the single executable-like target and
+-- print the file path of its binary.
+listbinAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+listbinAction flags args globalFlags = do
+  exe <- listbinPath flags args globalFlags
+  -- Andreas, 2023-01-13, issue #8400:
+  -- Regular output of `list-bin` should go to stdout unconditionally,
+  -- but for the sake of the testsuite, we want to mark it so it goes
+  -- into the golden value for the test.
+  -- Note: 'withOutputMarker' only checks 'isVerboseMarkOutput',
+  -- thus, we can reuse @verbosity@ here, even if other components
+  -- of @verbosity@ may be wrong (like 'VStderr', verbosity level etc.).
+  -- Andreas, 2023-01-20:
+  -- Appending the newline character here rather than using 'putStrLn'
+  -- because an active 'withOutputMarker' produces text that ends
+  -- in newline characters.
+  putStr $ withOutputMarker (verbosityFlags verbosity) $ exe ++ "\n"
+  where
+    defaultVerbosity = verboseStderr silent
+    verbosity = cfgVerbosity defaultVerbosity flags
 
 -------------------------------------------------------------------------------
 -- Target Problem: the very similar to CmdRun

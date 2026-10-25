@@ -1,7 +1,4 @@
 -- | cabal-install CLI command: build
---
--- The implementation behind "Distribution.Client.API.Build" and the
--- @Distribution.Client.API.Command.CmdBuild@ facade.
 module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI and action
     buildCommand
@@ -18,9 +15,16 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
-  ( renderCannotPruneDependencies
-  , reportTargetProblems
+import Distribution.Client.ProjectFlags
+  ( removeIgnoreProjectOption
   )
+import Distribution.Client.ProjectOrchestration
+import Distribution.Client.TargetProblem
+  ( TargetProblem (..)
+  , TargetProblem'
+  )
+
+import qualified Data.Map as Map
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -28,10 +32,6 @@ import Distribution.Client.NixStyleOptions
   , defaultNixStyleFlags
   , nixStyleOptions
   )
-import Distribution.Client.ProjectFlags
-  ( removeIgnoreProjectOption
-  )
-import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)
@@ -42,12 +42,6 @@ import Distribution.Client.Setup
   ( GlobalFlags
   , yesNoOpt
   )
-import Distribution.Client.TargetProblem
-  ( TargetProblem (..)
-  , TargetProblem'
-  )
-
-import qualified Data.Map as Map
 import Distribution.Simple.Command
   ( CommandUI (..)
   , option
@@ -61,16 +55,6 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
   ( normal
   )
-
-data BuildFlags = BuildFlags
-  { buildOnlyConfigure :: Flag Bool
-  }
-
-defaultBuildFlags :: BuildFlags
-defaultBuildFlags =
-  BuildFlags
-    { buildOnlyConfigure = toFlag False
-    }
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand =
@@ -128,6 +112,16 @@ buildCommand =
                     (yesNoOpt showOrParseArgs)
                 ]
             )
+    }
+
+data BuildFlags = BuildFlags
+  { buildOnlyConfigure :: Flag Bool
+  }
+
+defaultBuildFlags :: BuildFlags
+defaultBuildFlags =
+  BuildFlags
+    { buildOnlyConfigure = toFlag False
     }
 
 -- | The @build@ command does a lot. It brings the install plan up to date,

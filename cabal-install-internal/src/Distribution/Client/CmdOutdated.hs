@@ -2,101 +2,52 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RecordWildCards #-}
 
--- | cabal-install CLI command: outdated
+-- |
+-- Module      :  Distribution.Client.CmdOutdated
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
 --
--- Checks for outdated dependencies in the package description file or freeze
--- file. The implementation behind the
--- @Distribution.Client.API.Command.CmdOutdated@ facade.
+-- Implementation of the 'outdated' command. Checks for outdated
+-- dependencies in the package description file or freeze file.
 module Distribution.Client.CmdOutdated
-  ( -- * The @outdated@ CLI and action
-    outdatedCommand
+  ( outdatedCommand
   , outdatedAction
+  , ListOutdatedSettings (..)
+  , listOutdated
+  , IgnoreMajorVersionBumps (..)
+  , showResult
   , OutdatedFlags (..)
   , defaultOutdatedFlags
   , outdatedOptions
-  , IgnoreMajorVersionBumps (..)
-
-    -- * Internals exposed for testing
-  , ListOutdatedSettings (..)
-  , listOutdated
-  , showResult
-  ) where
+  )
+where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.CmdErrorMessages
-  ( reportTargetProblems
-  )
+import qualified Data.Set as Set
 import Distribution.Client.Config
-  ( SavedConfig (..)
+  ( SavedConfig
+      ( savedConfigureExFlags
+      )
   )
-import Distribution.Client.Errors
 import qualified Distribution.Client.IndexUtils as IndexUtils
-import Distribution.Client.NixStyleOptions
-  ( NixStyleFlags (..)
-  , defaultNixStyleFlags
-  , nixStyleOptions
-  )
 import Distribution.Client.ProjectConfig
-  ( projectConfigWithSolverRepoContext
-  )
-import Distribution.Client.ProjectConfig.Types
-  ( ProjectConfig (..)
-  , ProjectConfigProvenance (..)
-  , ProjectConfigShared (..)
-  )
-import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectPlanning
-  ( showComponentTarget
-  )
 import Distribution.Client.Sandbox.PackageEnvironment
   ( loadUserConfig
   )
-import Distribution.Client.ScriptUtils
-  ( AcceptNoTargets (..)
-  , withContextAndSelectors
-  )
 import Distribution.Client.Setup
-  ( ConfigExFlags (..)
-  , GlobalFlags
-  )
-import Distribution.Client.TargetProblem
-  ( TargetProblem (..)
-  , TargetProblem'
-  )
 import Distribution.Client.Targets
   ( UserConstraint
   , userToPackageConstraint
   )
-import Distribution.Client.Types.PackageSpecifier
-  ( PackageSpecifier (..)
-  )
-import Distribution.Client.Types.SourcePackageDb
-  ( SourcePackageDb (..)
-  , lookupDependency
-  , lookupPackageName
-  )
-
+import Distribution.Client.Types.SourcePackageDb as SourcePackageDb
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
-  ( flattenPackageDescription
-  )
-import Distribution.ReadE
-import Distribution.Simple.Command
-import Distribution.Simple.Flag
-import Distribution.Simple.Setup hiding (GlobalFlags (..))
-import Distribution.Simple.Utils
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
   ( packageConstraintToDependency
   )
-import Distribution.Solver.Types.SourcePackage
-import Distribution.Types.Component
-import Distribution.Types.PackageVersionConstraint
-import Distribution.Verbosity
 import Distribution.Version
   ( LowerBound (..)
   , UpperBound (..)
@@ -107,15 +58,60 @@ import Distribution.Version
   , majorBoundVersion
   )
 
-import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
-import qualified Data.Set as Set
+import Distribution.Client.NixStyleOptions
 import System.Directory
   ( getCurrentDirectory
   )
-import qualified Text.PrettyPrint as PP
+
+import Distribution.Client.ProjectOrchestration
 
 import Control.Monad
+import Distribution.Client.ScriptUtils
+import Distribution.Package
+import Distribution.ReadE
+import Distribution.Simple.Command
+import Distribution.Simple.Flag
+import Distribution.Simple.Setup hiding (GlobalFlags (..))
+import Distribution.Simple.Utils
+import Distribution.Types.PackageVersionConstraint
+import Distribution.Verbosity
+
+import qualified Data.Map.Strict as Map
+import Distribution.Client.CmdErrorMessages
+import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.TargetProblem
+import Distribution.Client.Types.PackageSpecifier
+import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.SourcePackage
+import Distribution.Types.Component
+import qualified Text.PrettyPrint as PP
+
+import Distribution.Client.Errors
+
+-------------------------------------------------------------------------------
+-- Command
+-------------------------------------------------------------------------------
+
+outdatedCommand :: CommandUI (NixStyleFlags OutdatedFlags)
+outdatedCommand =
+  CommandUI
+    { commandName = "v2-outdated"
+    , commandSynopsis = "Check for outdated dependencies."
+    , commandDescription = Just $ \_ ->
+        wrapText $
+          "Checks for outdated dependencies in the package description file "
+            ++ "or freeze file"
+    , commandNotes = Nothing
+    , commandUsage = usageAlternatives "v2-outdated" ["[FLAGS] [PACKAGES]"]
+    , commandDefaultFlags = defaultNixStyleFlags defaultOutdatedFlags
+    , commandOptions = nixStyleOptions $ \showOrParseArgs ->
+        outdatedOptions showOrParseArgs
+    }
+
+-------------------------------------------------------------------------------
+-- Flags
+-------------------------------------------------------------------------------
 
 data IgnoreMajorVersionBumps
   = IgnoreMajorVersionBumpsNone
@@ -154,30 +150,6 @@ defaultOutdatedFlags =
     , outdatedIgnore = mempty
     , outdatedMinor = mempty
     }
-
--------------------------------------------------------------------------------
--- Command
--------------------------------------------------------------------------------
-
-outdatedCommand :: CommandUI (NixStyleFlags OutdatedFlags)
-outdatedCommand =
-  CommandUI
-    { commandName = "v2-outdated"
-    , commandSynopsis = "Check for outdated dependencies."
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Checks for outdated dependencies in the package description file "
-            ++ "or freeze file"
-    , commandNotes = Nothing
-    , commandUsage = usageAlternatives "v2-outdated" ["[FLAGS] [PACKAGES]"]
-    , commandDefaultFlags = defaultNixStyleFlags defaultOutdatedFlags
-    , commandOptions = nixStyleOptions $ \showOrParseArgs ->
-        outdatedOptions showOrParseArgs
-    }
-
--------------------------------------------------------------------------------
--- Flags
--------------------------------------------------------------------------------
 
 outdatedOptions :: ShowOrParseArgs -> [OptionField OutdatedFlags]
 outdatedOptions _showOrParseArgs =
@@ -394,8 +366,6 @@ data OutdatedDependencyX v = OutdatedDependency
   , _outdatedSource :: OutdatedDependencySource
   }
 
-data OutdatedDependencySource = ConfigSource ConstraintSource | ComponentSource PackageId ComponentTarget
-
 instance Pretty (OutdatedDependencyX Version) where
   pretty (OutdatedDependency dep ver src) =
     pretty dep
@@ -409,6 +379,8 @@ instance Pretty (OutdatedDependencyX Version) where
 instance Pretty (OutdatedDependencyX ()) where
   pretty (OutdatedDependency dep _ src) =
     pretty dep <+> PP.text "(from:" <+> (PP.text (prettyOutdatedDependencySource src) <> PP.text ")")
+
+data OutdatedDependencySource = ConfigSource ConstraintSource | ComponentSource PackageId ComponentTarget
 
 -- | Pretty print an 'OutdatedDependencySource'.
 prettyOutdatedDependencySource :: OutdatedDependencySource -> String
@@ -488,7 +460,7 @@ listOutdated deps sourceDb (ListOutdatedSettings ignorePred minorPred) =
     isOutdated (OutdatedDependency dep () src)
       | ignorePred pname = Nothing
       | otherwise =
-          let this = map packageVersion $ lookupDependency sourceDb pname vr
+          let this = map packageVersion $ SourcePackageDb.lookupDependency sourceDb pname vr
               latest = lookupLatest dep
            in (\v -> OutdatedDependency dep v src) `fmap` isOutdated' this latest
       where
@@ -505,9 +477,9 @@ listOutdated deps sourceDb (ListOutdatedSettings ignorePred minorPred) =
     lookupLatest :: PackageVersionConstraint -> [Version]
     lookupLatest (PackageVersionConstraint pname vr)
       | minorPred pname =
-          map packageVersion $ lookupDependency sourceDb pname (relaxMinor vr)
+          map packageVersion $ SourcePackageDb.lookupDependency sourceDb pname (relaxMinor vr)
       | otherwise =
-          map packageVersion $ lookupPackageName sourceDb pname
+          map packageVersion $ SourcePackageDb.lookupPackageName sourceDb pname
 
     relaxMinor :: VersionRange -> VersionRange
     relaxMinor vr =

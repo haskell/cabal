@@ -22,7 +22,7 @@ import Test.Cabal.TestCode
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Exception
-import Control.Exception qualified as E
+import qualified Control.Exception as E
 import Control.Monad
 import Data.IORef
 import Data.List (intercalate, isPrefixOf)
@@ -35,7 +35,7 @@ import System.Process
 import Text.Read (readMaybe)
 import Prelude hiding (log)
 
-import GHC.IO.Exception qualified as GHC
+import qualified GHC.IO.Exception as GHC
 
 import Distribution.Verbosity
 

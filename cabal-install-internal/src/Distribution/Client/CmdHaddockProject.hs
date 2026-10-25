@@ -1,46 +1,47 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 
--- | cabal-install CLI command: haddock-project
---
--- Building a self-contained directory with the haddocks of the project and
--- its dependencies.
---
--- The implementation behind the
--- @Distribution.Client.API.Command.CmdHaddockProject@ facade.
 module Distribution.Client.CmdHaddockProject
-  ( -- * The @haddock-project@ CLI and action
-    haddockProjectCommand
+  ( haddockProjectCommand
   , haddockProjectAction
   ) where
 
 import Control.Monad (mapM)
-import Distribution.Client.Compat.Prelude
+import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
-import Distribution.Client.CmdBuild
-  ( buildAction
-  , defaultBuildFlags
-  )
-import Distribution.Client.CmdHaddock
-  ( ClientHaddockFlags (..)
-  , haddockAction
-  )
+import qualified Distribution.Client.CmdBuild as CmdBuild
+import qualified Distribution.Client.CmdHaddock as CmdHaddock
 
 import Distribution.Client.DistDirLayout
   ( CabalDirLayout (..)
   , StoreDirLayout (..)
   , distBuildDirectory
   )
-import Distribution.Client.Errors
 import Distribution.Client.InstallPlan (foldPlanPackage)
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.NixStyleOptions
-  ( defaultNixStyleFlags
-  )
 import qualified Distribution.Client.NixStyleOptions as NixStyleOptions
 import Distribution.Client.ProjectOrchestration
+  ( AvailableTarget (..)
+  , AvailableTargetStatus (..)
+  , CurrentCommand (..)
+  , ProjectBaseContext (..)
+  , ProjectBuildContext (..)
+  , TargetSelector (..)
+  , pruneInstallPlanToTargets
+  , resolveTargetsFromSolver
+  , runProjectPreBuildPhase
+  , selectComponentTargetBasic
+  )
+import Distribution.Client.ProjectPlanning
+  ( ElaboratedConfiguredPackage (..)
+  , ElaboratedInstallPlan
+  , ElaboratedSharedConfig (..)
+  , TargetAction (..)
+  )
 import Distribution.Client.ProjectPlanning.Types
+  ( elabDistDirParams
+  )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)
@@ -48,9 +49,11 @@ import Distribution.Client.ScriptUtils
   , withContextAndSelectors
   )
 import Distribution.Client.Setup
-  ( GlobalFlags (..)
+  ( CommonSetupFlags (setupVerbosity)
+  , ConfigFlags (..)
+  , GlobalFlags (..)
   )
-import Distribution.Client.TargetProblem
+import Distribution.Client.TargetProblem (TargetProblem (..))
 
 import Distribution.Simple.BuildPaths
   ( haddockBenchmarkDirPath
@@ -59,6 +62,9 @@ import Distribution.Simple.BuildPaths
   , haddockLibraryPath
   , haddockPath
   , haddockTestDirPath
+  )
+import Distribution.Simple.Command
+  ( CommandUI (..)
   )
 import Distribution.Simple.Flag
   ( fromFlag
@@ -79,9 +85,7 @@ import Distribution.Simple.Program.Db
   , requireProgramVersion
   )
 import Distribution.Simple.Setup
-  ( CommonSetupFlags (setupVerbosity)
-  , ConfigFlags (..)
-  , HaddockFlags (..)
+  ( HaddockFlags (..)
   , HaddockProjectFlags (..)
   , HaddockTarget (..)
   , Visibility (..)
@@ -108,6 +112,7 @@ import Distribution.Verbosity as Verbosity
   , normal
   )
 
+import Distribution.Client.Errors
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (normalise, takeDirectory, (</>))
 
@@ -128,7 +133,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     verbosity
     RejectNoTargets
     Nothing
-    (defaultNixStyleFlags defaultBuildFlags)
+    (commandDefaultFlags CmdBuild.buildCommand)
     ["all"]
     globalFlags
     HaddockCommand
@@ -193,8 +198,8 @@ haddockProjectAction flags _extraArgs globalFlags = do
       --
 
       when localStyle $
-        buildAction
-          (defaultNixStyleFlags defaultBuildFlags)
+        CmdBuild.buildAction
+          (commandDefaultFlags CmdBuild.buildCommand)
           ["all"]
           globalFlags
 
@@ -202,7 +207,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
       -- Build haddocks of each components
       --
 
-      haddockAction
+      CmdHaddock.haddockAction
         nixFlags
         ["all"]
         globalFlags
@@ -405,10 +410,10 @@ haddockProjectAction flags _extraArgs globalFlags = do
         }
 
     nixFlags =
-      (defaultNixStyleFlags (ClientHaddockFlags (Flag False)))
+      (commandDefaultFlags CmdHaddock.haddockCommand)
         { NixStyleOptions.haddockFlags = haddockFlags
         , NixStyleOptions.configFlags =
-            (NixStyleOptions.configFlags (defaultNixStyleFlags defaultBuildFlags))
+            (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
               { configCommonFlags = commonFlags
               }
         }

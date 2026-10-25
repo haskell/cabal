@@ -3,30 +3,20 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
--- Module      :  Distribution.Client.CmdExec
+-- Module      :  Distribution.Client.Exec
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- cabal-install CLI command: exec
---
--- The @exec@ command: running an arbitrary executable in an environment
--- suited to the part of the store built for a project.
---
--- The implementation behind the @Distribution.Client.API.Command.CmdExec@
--- facade.
+-- Implementation of the 'v2-exec' command for running an arbitrary executable
+-- in an environment suited to the part of the store built for a project.
 module Distribution.Client.CmdExec
-  ( -- * The @exec@ CLI and action
-    execCommand
-  , execAction
+  ( execAction
+  , execCommand
   ) where
-
-import Distribution.Client.Compat.Prelude
-import Prelude ()
 
 import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
   )
-import Distribution.Client.Errors
 import Distribution.Client.InstallPlan
   ( GenericPlanPackage (..)
   , toGraph
@@ -38,27 +28,39 @@ import Distribution.Client.NixStyleOptions
   , nixStyleOptions
   )
 import Distribution.Client.ProjectConfig.Types
-  ( ProjectConfig (..)
-  , ProjectConfigShared (..)
+  ( ProjectConfig (projectConfigShared)
+  , ProjectConfigShared (projectConfigProgPathExtra)
   )
 import Distribution.Client.ProjectFlags
   ( removeIgnoreProjectOption
   )
 import Distribution.Client.ProjectOrchestration
+  ( BuildTimeSettings (..)
+  , CurrentCommand (..)
+  , ProjectBaseContext (..)
+  , ProjectBuildContext (..)
+  , commandLineFlagsToProjectConfig
+  , distDirLayout
+  , establishProjectBaseContext
+  , runProjectPreBuildPhase
+  )
 import Distribution.Client.ProjectPlanOutput
   ( PostBuildProjectStatus
   , argsEquivalentOfGhcEnvironmentFile
   , createPackageEnvironmentAndArgs
   , updatePostBuildProjectStatus
   )
-import qualified Distribution.Client.ProjectPlanning as Planning
-  ( binDirectories
+import Distribution.Client.ProjectPlanning
+  ( ElaboratedInstallPlan
+  , ElaboratedSharedConfig (..)
   )
+import qualified Distribution.Client.ProjectPlanning as Planning
 import Distribution.Client.ProjectPlanning.Types
+  ( dataDirsEnvironmentForPlan
+  )
 import Distribution.Client.Setup
   ( GlobalFlags
   )
-
 import Distribution.Simple.Command
   ( CommandUI (..)
   )
@@ -96,8 +98,12 @@ import Distribution.Verbosity
   ( normal
   )
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import qualified Data.Map as M
 import qualified Data.Set as S
+import Distribution.Client.Errors
 
 execCommand :: CommandUI (NixStyleFlags ())
 execCommand =
