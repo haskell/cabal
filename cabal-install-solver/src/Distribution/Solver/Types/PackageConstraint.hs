@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously
 -- it is possible to construct conflicting constraints (eg impossible version
@@ -50,7 +53,7 @@ data ConstraintScope
      -- | The package with the specified name regardless of
      -- qualifier.
    | ScopeAnyQualifier PackageName
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, Binary, Structured)
 
 -- | Constructor for a common use case: the constraint applies to
 -- the package with the specified name when that package is a
@@ -110,7 +113,7 @@ instance Pretty PackageProperty where
 -- | A package constraint consists of a scope plus a property
 -- that must hold for all packages within that scope.
 data PackageConstraint = PackageConstraint ConstraintScope PackageProperty
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, Binary, Structured)
 
 instance Pretty PackageConstraint where
   pretty (PackageConstraint scope prop) =

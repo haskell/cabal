@@ -57,6 +57,7 @@ import Distribution.Client.Types as Source
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.DependencyResolver
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageIndex
@@ -423,10 +424,11 @@ planLocalPackage
       benchmarksEnabled =
         fromFlagOrDefault False $ configBenchmarks configFlags
 
-      resolverParams :: DepResolverParams
-      resolverParams =
-        removeLowerBounds
-          (fromMaybe (AllowOlder mempty) $ configAllowOlder configExFlags)
+      depResolverParams :: DepResolverParams
+      depResolverParams =
+        getFinalParams (compilerInfo comp)
+          $ removeLowerBounds
+            (fromMaybe (AllowOlder mempty) $ configAllowOlder configExFlags)
           . removeUpperBounds
             (fromMaybe (AllowNewer mempty) $ configAllowNewer configExFlags)
           . addPreferences
@@ -472,7 +474,26 @@ planLocalPackage
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-    return (resolveDependencies platform (compilerInfo comp) pkgConfigDb resolverParams)
+      solver = getSolver depResolverParams
+
+      -- inputs :: ResolverInputs ModularResolver
+      inputs = convInputs solver rparams
+
+      -- rparams :: ResolverParams UnresolvedPkgLoc
+      rparams =
+        mkResolverParams
+          platform
+          (compilerInfo comp)
+          installedPkgIndex
+          pkgConfigDb
+          depResolverParams
+
+    return $
+      resolveDependencies
+        solver
+        depResolverParams
+        rparams
+        inputs
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ReadyPackage'. In particular the

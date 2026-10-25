@@ -14,10 +14,18 @@
 -- Top level interface to dependency resolution.
 module Distribution.Client.Dependency
   ( -- * The main package dependency resolver
-    DepResolverParams
+    DepResolverParams (..)
   , resolveDependencies
   , Progress (..)
   , foldProgress
+
+    -- * Converting to and from resolver-specific representations of inputs and
+
+  -- outputs
+  , getSolver
+  , getFinalParams
+  , getSolverConfig
+  , mkResolverParams
 
     -- * Alternate, simple resolver that does not do dependencies recursively
   , resolveWithoutDependencies
@@ -28,6 +36,7 @@ module Distribution.Client.Dependency
   , scopeToplevel
   , PackagesPreferenceDefault (..)
   , PackagePreference (..)
+  , interpretPackagesPreference
 
     -- ** Standard policy
   , basicInstallPolicy
@@ -68,9 +77,6 @@ module Distribution.Client.Dependency
 
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Client.Dependency.Types
-  ( PackagesPreferenceDefault (..)
-  )
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
@@ -118,12 +124,16 @@ import Distribution.Simple.Setup
   ( asBool
   )
 import Distribution.Solver.Modular
-  ( PruneAfterFirstSuccess (..)
+  ( ModularResolver
+  , PruneAfterFirstSuccess (..)
   , SolverConfig (..)
   , modularResolver
   )
 import Distribution.Solver.Modular.Message
   ( renderSummarizedMessage
+  )
+import Distribution.Solver.Types.PkgConfigDb
+  ( PkgConfigDb
   )
 import Distribution.Solver.Types.SummarizedMessage
   ( SummarizedMessage (..)
@@ -140,7 +150,6 @@ import Distribution.Verbosity
   )
 import Distribution.Version
 
-import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
@@ -152,7 +161,6 @@ import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
-import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.Progress
 import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.Settings
@@ -257,30 +265,6 @@ showDepResolverParams p =
     showLabeledConstraint :: LabeledPackageConstraint -> String
     showLabeledConstraint (LabeledPackageConstraint pc src) =
       showPackageConstraint pc ++ " (" ++ showConstraintSource src ++ ")"
-
--- | A package selection preference for a particular package.
---
--- Preferences are soft constraints that the dependency resolver should try to
--- respect where possible. It is not specified if preferences on some packages
--- are more important than others.
-data PackagePreference
-  = -- | A suggested constraint on the version number.
-    PackageVersionPreference PackageName VersionRange
-  | -- | If we prefer versions of packages that are already installed.
-    PackageInstalledPreference PackageName InstalledPreference
-  | -- | If we would prefer to enable these optional stanzas
-    -- (i.e. test suites and/or benchmarks)
-    PackageStanzasPreference PackageName [OptionalStanza]
-
--- | Provide a textual representation of a package preference
--- for debugging purposes.
-showPackagePreference :: PackagePreference -> String
-showPackagePreference (PackageVersionPreference pn vr) =
-  prettyShow pn ++ " " ++ prettyShow (simplifyVersionRange vr)
-showPackagePreference (PackageInstalledPreference pn ip) =
-  prettyShow pn ++ " " ++ show ip
-showPackagePreference (PackageStanzasPreference pn st) =
-  prettyShow pn ++ " " ++ show st
 
 basicDepResolverParams
   :: InstalledPackageIndex
@@ -850,8 +834,71 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
 
 -- ------------------------------------------------------------
 
-runSolver :: SolverConfig -> DependencyResolver UnresolvedPkgLoc
-runSolver = modularResolver
+getSolver :: DepResolverParams -> ModularResolver
+getSolver = modularResolver . getSolverConfig
+
+getFinalParams :: CompilerInfo -> DepResolverParams -> DepResolverParams
+getFinalParams comp params =
+  if isJust (compilerInfoWiredInUnitIds comp) || asBool (depResolverAllowBootLibInstalls params)
+    then dependOnWiredIns comp params
+    else dontInstallNonReinstallablePackages params
+
+getSolverConfig :: DepResolverParams -> SolverConfig
+getSolverConfig
+  ( DepResolverParams
+      _targets
+      _constraints
+      _prefs
+      _defpref
+      _installedPkgIndex
+      _sourcePkgIndex
+      reordGoals
+      cntConflicts
+      fineGrained
+      minimize
+      indGoals
+      noReinstalls
+      shadowing
+      strFlags
+      _allowBootLibs
+      onlyConstrained_
+      maxBkjumps
+      enableBj
+      solveExes
+      order
+      verbosity
+    ) =
+    SolverConfig
+      reordGoals
+      cntConflicts
+      fineGrained
+      minimize
+      indGoals
+      noReinstalls
+      shadowing
+      strFlags
+      onlyConstrained_
+      maxBkjumps
+      enableBj
+      solveExes
+      order
+      verbosity
+      (PruneAfterFirstSuccess False)
+
+--     solver = getSolver config
+--     rparams = ResolverParams
+--                   platform
+--                   comp
+--                   installedPkgIndex
+--                   sourcePkgIndex
+--                   pkgConfigDB
+--                   preferences
+--                   constraints
+--                   targets
+--     inputs = convInputs solver rparams
+--
+--     preferences :: PackageName -> PackagePreferences
+--     preferences = interpretPackagesPreference targets defpref prefs
 
 -- | Run the dependency solver.
 --
@@ -859,128 +906,49 @@ runSolver = modularResolver
 -- a 'Progress' structure that can be unfolded to provide progress information,
 -- logging messages and the final result or an error.
 resolveDependencies
-  :: Platform
-  -> CompilerInfo
-  -> Maybe PkgConfigDb
+  :: DependencyResolver s
+  => s
   -> DepResolverParams
+  -> ResolverParams UnresolvedPkgLoc
+  -> ResolverInputs s
   -> Progress String String SolverInstallPlan
-resolveDependencies platform comp pkgConfigDB params = do
-  step (showDepResolverParams finalparams)
-  pkgs <-
+resolveDependencies solver params rparams inputs = do
+  step (showDepResolverParams params)
+  pkgs <- do
     formatProgress $
-      runSolver
-        ( SolverConfig
-            reordGoals
-            cntConflicts
-            fineGrained
-            minimize
-            indGoals
-            noReinstalls
-            shadowing
-            strFlags
-            onlyConstrained_
-            maxBkjumps
-            enableBj
-            solveExes
-            order
-            verbosity
-            (PruneAfterFirstSuccess False)
-        )
-        platform
-        comp
-        installedPkgIndex
-        sourcePkgIndex
-        pkgConfigDB
-        preferences
-        constraints
-        targets
-  validateSolverResult platform comp indGoals pkgs
+      convOutput solver rparams <$> runResolver solver inputs
+  validateSolverResult
+    (rpPlatform rparams)
+    (rpCompilerInfo rparams)
+    indGoals
+    pkgs
   where
-    finalparams@( DepResolverParams
-                    targets
-                    constraints
-                    prefs
-                    defpref
-                    installedPkgIndex
-                    sourcePkgIndex
-                    reordGoals
-                    cntConflicts
-                    fineGrained
-                    minimize
-                    indGoals
-                    noReinstalls
-                    shadowing
-                    strFlags
-                    _allowBootLibs
-                    onlyConstrained_
-                    maxBkjumps
-                    enableBj
-                    solveExes
-                    order
-                    verbosity
-                  ) =
-        if isJust (compilerInfoWiredInUnitIds comp) || asBool (depResolverAllowBootLibInstalls params)
-          then dependOnWiredIns comp params
-          else dontInstallNonReinstallablePackages params
+    DepResolverParams
+      _targets
+      _constraints
+      _prefs
+      _defpref
+      _installedPkgIndex
+      _sourcePkgIndex
+      _reordGoals
+      _cntConflicts
+      _fineGrained
+      _minimize
+      indGoals
+      _noReinstalls
+      _shadowing
+      _strFlags
+      _allowBootLibs
+      _onlyConstrained_
+      _maxBkjumps
+      _enableBj
+      _solveExes
+      _order
+      _verbosity =
+        params
 
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
     formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
-
-    preferences :: PackageName -> PackagePreferences
-    preferences = interpretPackagesPreference targets defpref prefs
-
--- | Give an interpretation to the global 'PackagesPreference' as
---  specific per-package 'PackageVersionPreference'.
-interpretPackagesPreference
-  :: Set PackageName
-  -> PackagesPreferenceDefault
-  -> [PackagePreference]
-  -> (PackageName -> PackagePreferences)
-interpretPackagesPreference selected defaultPref prefs =
-  \pkgname ->
-    PackagePreferences
-      (versionPref pkgname)
-      (installPref pkgname)
-      (stanzasPref pkgname)
-  where
-    versionPref :: PackageName -> [VersionRange]
-    versionPref pkgname =
-      Map.findWithDefault [anyVersion] pkgname versionPrefs
-    versionPrefs =
-      Map.fromListWith
-        (++)
-        [ (pkgname, [pref])
-        | PackageVersionPreference pkgname pref <- prefs
-        ]
-
-    installPref :: PackageName -> InstalledPreference
-    installPref pkgname =
-      Map.findWithDefault (installPrefDefault pkgname) pkgname installPrefs
-    installPrefs =
-      Map.fromList
-        [ (pkgname, pref)
-        | PackageInstalledPreference pkgname pref <- prefs
-        ]
-    installPrefDefault = case defaultPref of
-      PreferAllLatest -> const Preference.PreferLatest
-      PreferAllOldest -> const Preference.PreferOldest
-      PreferAllInstalled -> const Preference.PreferInstalled
-      PreferLatestForSelected -> \pkgname ->
-        -- When you say cabal install foo, what you really mean is, prefer the
-        -- latest version of foo, but the installed version of everything else
-        if pkgname `Set.member` selected
-          then Preference.PreferLatest
-          else Preference.PreferInstalled
-
-    stanzasPref :: PackageName -> [OptionalStanza]
-    stanzasPref pkgname =
-      Map.findWithDefault [] pkgname stanzasPrefs
-    stanzasPrefs =
-      Map.fromListWith
-        (\a b -> ordNub (a ++ b))
-        [ (pkgname, pref)
-        | PackageStanzasPreference pkgname pref <- prefs
-        ]
 
 -- ------------------------------------------------------------
 
@@ -1294,7 +1262,7 @@ resolveWithoutDependencies
               ]
 
       packagePreferences :: PackageName -> PackagePreferences
-      packagePreferences = interpretPackagesPreference targets defpref prefs
+      packagePreferences = interpretPackagesPreference (targets, defpref, prefs)
 
 collectEithers :: [Either a b] -> Either [a] [b]
 collectEithers = collect . partitionEithers
@@ -1315,3 +1283,29 @@ instance Show ResolveNoDepsError where
       ++ prettyShow name
       ++ " that satisfies "
       ++ prettyShow (simplifyVersionRange ver)
+
+mkResolverParams
+  :: Platform
+  -> CompilerInfo
+  -> InstalledPackageIndex
+  -> Maybe PkgConfigDb
+  -> DepResolverParams
+  -> ResolverParams UnresolvedPkgLoc
+mkResolverParams platform comp installedPkgIndex pkgConfigDB depResolverParams =
+  ResolverParams
+    { rpPlatform = platform
+    , rpCompilerInfo = comp
+    , rpInstalledPackages = installedPkgIndex
+    , rpSourcePackages = depResolverSourcePkgIndex depResolverParams
+    , rpPkgConfigDb = pkgConfigDB
+    , rpPkgPrefs = pkgPrefs
+    , rpPkgConstraints = depResolverConstraints depResolverParams
+    , rpPkgNames = depResolverTargets depResolverParams
+    }
+  where
+    pkgPrefs :: PackagesPreferenceSource
+    pkgPrefs =
+      ( depResolverTargets depResolverParams
+      , depResolverPreferenceDefault depResolverParams
+      , depResolverPreferences depResolverParams
+      )
