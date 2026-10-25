@@ -2332,11 +2332,21 @@ elaborateInstallPlan
             elabBuildHaddocks =
               perPkgOptionFlag False pkgid packageConfigDocumentation
 
-            -- `documentation: true` should imply `-haddock` for GHC
+            -- Include documentation and, when requested, extended interfaces
+            -- in the normal build so Haddock can reuse the compiled modules.
             addHaddockIfDocumentationEnabled :: ConfiguredProgram -> ConfiguredProgram
             addHaddockIfDocumentationEnabled cp@ConfiguredProgram{..} =
               if programId == "ghc" && elabBuildHaddocks
-                then cp{programOverrideArgs = "-haddock" : programOverrideArgs}
+                then
+                  cp
+                    { programOverrideArgs =
+                        ["-haddock"]
+                          ++ [ "-fwrite-ide-info"
+                             | elabHaddockLinkedSource
+                             , compilerVersion compiler >= mkVersion [8, 8]
+                             ]
+                          ++ programOverrideArgs
+                    }
                 else cp
 
             elabPkgSourceLocation = srcloc
@@ -2481,7 +2491,7 @@ elaborateInstallPlan
             elabHaddockBenchmarks = perPkgOptionFlag False pkgid packageConfigHaddockBenchmarks
             elabHaddockInternal = perPkgOptionFlag False pkgid packageConfigHaddockInternal
             elabHaddockCss = perPkgOptionMaybe pkgid packageConfigHaddockCss
-            elabHaddockLinkedSource = perPkgOptionFlag False pkgid packageConfigHaddockLinkedSource
+            elabHaddockLinkedSource = perPkgOptionFlag elabBuildHaddocks pkgid packageConfigHaddockLinkedSource
             elabHaddockQuickJump = perPkgOptionFlag False pkgid packageConfigHaddockQuickJump
             elabHaddockHscolourCss = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
             elabHaddockContents = perPkgOptionMaybe pkgid packageConfigHaddockContents

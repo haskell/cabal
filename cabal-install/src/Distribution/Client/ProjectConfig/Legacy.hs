@@ -531,7 +531,8 @@ convertLegacyGlobalConfig
       configExFlags' = defaultConfigExFlags <> configExFlags
       installFlags' = defaultInstallFlags <> installFlags
       clientInstallFlags' = defaultClientInstallFlags <> clientInstallFlags
-      haddockFlags' = defaultHaddockFlags <> haddockFlags
+      -- Resolve the linked-source default after per-package documentation settings.
+      haddockFlags' = defaultHaddockFlags{haddockLinkedSource = NoFlag} <> haddockFlags
       testFlags' = defaultTestFlags <> testFlags
       benchmarkFlags' = defaultBenchmarkFlags <> benchmarkFlags
       projectFlags' = defaultProjectFlags <> projectFlags

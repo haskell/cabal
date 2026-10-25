@@ -86,6 +86,7 @@ import Test.Tasty.ExpectedFailure
 import Test.Tasty.HUnit hiding (testCase)
 import qualified Test.Tasty.HUnit as T (testCase)
 import Test.Tasty.Options
+import qualified Test.Tasty.QuickCheck as QC
 import Test.Tasty.Runners
 
 import System.IO.Silently
@@ -197,7 +198,8 @@ tests config =
   , dependentTestGroup
       "Flag tests"
       AllFinish
-      [ testCase "Test Config options for commented options" testConfigOptionComments
+      [ QC.testProperty "documentation source settings" (propHaddockDocumentation config)
+      , testCase "Test Config options for commented options" testConfigOptionComments
       , testCase "Test Ignore Project Flag" testIgnoreProjectFlag
       ]
   , dependentTestGroup
@@ -2110,6 +2112,35 @@ testProgramOptionsSpecific config0 = do
     configArgs =
       mempty
         { packageConfigProgramArgs = programArgs
+        }
+
+-- | Check the elaborated plan, including explicit overrides of the source default.
+propHaddockDocumentation :: ProjectConfig -> Bool -> Maybe Bool -> QC.Property
+propHaddockDocumentation config0 documentation linkedSource =
+  QC.label (show (documentation, linkedSource)) $ QC.ioProperty $ do
+    (_, elaboratedPlan, shared) <- planProject testdir config
+    let packages = filterConfiguredPackages (InstallPlan.toList elaboratedPlan)
+        settings pkg =
+          let args = Map.findWithDefault [] "ghc" (elabProgramArgs pkg)
+           in ( elabHaddockLinkedSource pkg
+              , "-haddock" `elem` args
+              , "-fwrite-ide-info" `elem` args
+              )
+        supportsHie = compilerVersion (pkgConfigCompiler shared) >= mkVersion [8, 8]
+    cleanProject testdir
+    return $
+      map settings packages
+        QC.=== [(expectedLinkedSource, documentation, documentation && expectedLinkedSource && supportsHie)]
+  where
+    testdir = "targets/lib-only"
+    expectedLinkedSource = fromMaybe documentation linkedSource
+    config =
+      config0
+        { projectConfigLocalPackages =
+            (projectConfigLocalPackages config0)
+              { packageConfigDocumentation = Flag documentation
+              , packageConfigHaddockLinkedSource = maybe Flag.NoFlag Flag linkedSource
+              }
         }
 
 filterConfiguredPackages :: [ElaboratedPlanPackage] -> [ElaboratedConfiguredPackage]
