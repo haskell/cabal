@@ -693,6 +693,11 @@ thus copy them to a temporary directory to pass them on to haddock. However,
 stub files are much less problematic since ABI-incompatibility isn't at play
 here, that is, there doesn't seem to be a GHC flag that could accidentally make
 a stub file incompatible with the one produced by GHC from the same module.
+
+Both the copied artifacts and the original directories passed to Haddock must
+come from the component build directory. In particular, sublibraries build in
+a subdirectory of buildDir, so using buildDir would copy their interfaces into
+the wrong place and change the -stubdir and -hiedir options.
 -}
 
 mkHaddockArgs
@@ -710,7 +715,7 @@ mkHaddockArgs
 mkHaddockArgs verbosity (tmpObjDir, tmpHiDir, tmpStubDir) lbi clbi htmlTemplate inFiles bi = do
   let
     vanillaOpts' =
-      componentGhcOptions Normal lbi bi clbi (buildDir lbi)
+      componentGhcOptions Normal lbi bi clbi (componentBuildDir lbi clbi)
     vanillaOpts =
       vanillaOpts'
         { -- See Note [Hi Haddock Recompilation Avoidance]
@@ -1072,7 +1077,7 @@ reusingGHCCompilationArtifacts verbosity tmpFileOpts mbWorkDir lbi bi clbi versi
           -- Re-use ghc's interface and obj files, but first copy them to
           -- somewhere where it is safe if haddock overwrites them
           let
-            vanillaOpts = componentGhcOptions Normal lbi bi clbi (buildDir lbi)
+            vanillaOpts = componentGhcOptions Normal lbi bi clbi (componentBuildDir lbi clbi)
             i = interpretSymbolicPath mbWorkDir
             copyDir getGhcDir tmpDir = do
               let ghcDir = i $ fromFlag $ getGhcDir vanillaOpts
