@@ -11,6 +11,9 @@ module Distribution.Client.CmdHaddock
     -- * Internals exposed for testing
   , selectPackageTargets
   , selectComponentTarget
+
+    -- * Internals used by the public API
+  , haddockOptions
   ) where
 
 import Distribution.Client.Compat.Prelude

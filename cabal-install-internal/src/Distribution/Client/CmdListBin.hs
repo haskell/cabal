@@ -11,6 +11,9 @@ module Distribution.Client.CmdListBin
   , matchesMultipleProblem
   , multipleTargetsProblem
   , componentNotRightKindProblem
+
+    -- * Internals used by the public API
+  , listbinPath
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -85,8 +88,8 @@ listbinCommand =
 -- Action
 -------------------------------------------------------------------------------
 
-listbinAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-listbinAction flags args globalFlags = do
+listbinPath :: NixStyleFlags () -> [String] -> GlobalFlags -> IO FilePath
+listbinPath flags args globalFlags = do
   -- fail early if multiple target selectors specified
   target <- case args of
     [] -> dieWithException verbosity NoTargetProvided
@@ -155,18 +158,7 @@ listbinAction flags args globalFlags = do
 
     case binfiles of
       [] -> dieWithException verbosity NoTargetFound
-      [exe] -> putStr $ withOutputMarker (verbosityFlags verbosity) $ exe ++ "\n"
-      -- Andreas, 2023-01-13, issue #8400:
-      -- Regular output of `list-bin` should go to stdout unconditionally,
-      -- but for the sake of the testsuite, we want to mark it so it goes
-      -- into the golden value for the test.
-      -- Note: 'withOutputMarker' only checks 'isVerboseMarkOutput',
-      -- thus, we can reuse @verbosity@ here, even if other components
-      -- of @verbosity@ may be wrong (like 'VStderr', verbosity level etc.).
-      -- Andreas, 2023-01-20:
-      -- Appending the newline character here rather than using 'putStrLn'
-      -- because an active 'withOutputMarker' produces text that ends
-      -- in newline characters.
+      [exe] -> return exe
       _ -> dieWithException verbosity MultipleTargetsFound
   where
     defaultVerbosity = verboseStderr silent
@@ -220,6 +212,27 @@ listbinAction flags args globalFlags = do
             else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
 
         moved_bin_file s = fromMaybe (bin_file' s) (movedExePath selectedComponent distDirLayout elaboratedSharedConfig elab)
+
+-- | The @list-bin@ action: resolve the single executable-like target and
+-- print the file path of its binary.
+listbinAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+listbinAction flags args globalFlags = do
+  exe <- listbinPath flags args globalFlags
+  -- Andreas, 2023-01-13, issue #8400:
+  -- Regular output of `list-bin` should go to stdout unconditionally,
+  -- but for the sake of the testsuite, we want to mark it so it goes
+  -- into the golden value for the test.
+  -- Note: 'withOutputMarker' only checks 'isVerboseMarkOutput',
+  -- thus, we can reuse @verbosity@ here, even if other components
+  -- of @verbosity@ may be wrong (like 'VStderr', verbosity level etc.).
+  -- Andreas, 2023-01-20:
+  -- Appending the newline character here rather than using 'putStrLn'
+  -- because an active 'withOutputMarker' produces text that ends
+  -- in newline characters.
+  putStr $ withOutputMarker (verbosityFlags verbosity) $ exe ++ "\n"
+  where
+    defaultVerbosity = verboseStderr silent
+    verbosity = cfgVerbosity defaultVerbosity flags
 
 -------------------------------------------------------------------------------
 -- Target Problem: the very similar to CmdRun

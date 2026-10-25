@@ -194,7 +194,7 @@ resolveOpts opts = do
           then rawSteps opts
           else
             concat
-              [ [Build]
+              [ [ApiLint, Build]
               , optional (rawDoctest opts) Doctest
               , optional (rawRunLibTests opts) LibTests
               , optional (rawRunLibSuite opts) LibSuite

@@ -11,6 +11,12 @@
 module Distribution.Client.CmdPath
   ( pathCommand
   , pathAction
+  , PathFlags (..)
+  , defaultPathFlags
+  , pathOptions
+  , ConfigPath (..)
+  , pathName
+  , PathOutputFormat (..)
   ) where
 
 import Distribution.Client.Compat.Prelude

@@ -11,7 +11,8 @@ import qualified Data.Map.Strict as Map
 
 -- | A step to be run by @cabal-validate@.
 data Step
-  = Build
+  = ApiLint
+  | Build
   | Doctest
   | LibTests
   | LibSuite
@@ -32,6 +33,7 @@ data Step
 displayStep :: Step -> String
 displayStep step =
   case step of
+    ApiLint -> "api-lint"
     Build -> "build"
     Doctest -> "doctest"
     LibTests -> "lib-tests"

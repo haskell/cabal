@@ -9,6 +9,9 @@ module Distribution.Client.CmdSdist
   , sdistAction
   , packageToSdist
   , OutputFormat (..)
+  , SdistFlags (..)
+  , defaultSdistFlags
+  , sdistOptions
   ) where
 
 import Distribution.Client.Compat.Prelude

@@ -50,7 +50,7 @@ import qualified Distribution.Client.CmdRepl as CmdRepl
 import qualified Distribution.Client.CmdRun as CmdRun
 import qualified Distribution.Client.CmdTest as CmdTest
 
-import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
+import qualified Distribution.Client.API.Command.CmdHaddockProject as CmdHaddockProject
 import Distribution.Client.Config (createDefaultConfigFile)
 import Distribution.Client.GlobalFlags (defaultGlobalFlags)
 import Distribution.Client.Setup (globalStoreDir)

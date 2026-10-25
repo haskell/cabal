@@ -15,7 +15,7 @@ import qualified Distribution.Compat.SysInfo as SIC
 import Distribution.Version
 import qualified System.Info as SI
 
-import qualified Paths_cabal_install as PackageInfo
+import qualified Paths_cabal_install_internal as PackageInfo
 
 #ifdef GIT_REV
 import Data.Either (isLeft)

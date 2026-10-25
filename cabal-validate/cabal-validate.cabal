@@ -30,6 +30,7 @@ executable cabal-validate
 
     other-modules:
         , ANSI
+        , ApiLint
         , Cli
         , ClockUtil
         , OutputUtil

@@ -16,6 +16,9 @@ module Distribution.Client.CmdOutdated
   , listOutdated
   , IgnoreMajorVersionBumps (..)
   , showResult
+  , OutdatedFlags (..)
+  , defaultOutdatedFlags
+  , outdatedOptions
   )
 where
 
