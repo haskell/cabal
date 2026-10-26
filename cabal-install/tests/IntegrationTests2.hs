@@ -12,6 +12,7 @@ import Distribution.Client.DistDirLayout
 import qualified Distribution.Client.FileMonitor as FileMonitor
 import Distribution.Client.HttpUtils
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import qualified Distribution.Client.NixStyleOptions as NixStyleOptions
 import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectBuilding.PackageFileMonitor
 import Distribution.Client.ProjectConfig
@@ -214,8 +215,8 @@ tests config =
       [ testCase "dependencies" (testHaddockProjectDependencies config)
       , localOption (QC.QuickCheckTests 5) $
           QC.testProperty "custom build directory" (propHaddockProjectBuildDir config)
-      , localOption (QC.QuickCheckTests 5) $
-          QC.testProperty "consistent dependency documentation settings" (propHaddockProjectDependencyCache config)
+      , localOption (QC.QuickCheckTests 10) $
+          QC.testProperty "dependency documentation settings are preserved" (propHaddockProjectDependencyCache config)
       ]
   ]
 
@@ -2948,37 +2949,86 @@ propHaddockProjectBuildDir config (QC.Positive suffix) = QC.ioProperty $ do
   where
     testdir = "haddock-project/custom-builddir"
 
--- The tarball dependency must have one store instance across both phases, and
--- a repeated invocation must reuse the local package's persisted configuration.
-propHaddockProjectDependencyCache :: ProjectConfig -> Bool -> QC.Property
-propHaddockProjectDependencyCache config hoogle = QC.ioProperty $ do
-  ((layout, _, _, _, _), plan, shared) <- planProject testdir config
-  let safeMinor = if buildOS == Windows then 10 else 4
-  if compilerVersion (pkgConfigCompiler shared) <= mkVersion [9, safeMinor]
-    then cleanProject testdir >> return (QC.property True)
-    else do
-      pkg <- case filter ((== mkPackageName "q") . packageName) (filterConfiguredPackages (InstallPlan.toList plan)) of
-        [q] -> return q
-        _ -> fail "Expected one local package q"
-      let dir = basedir </> testdir
-          setupConfig = distBuildDirectory layout (elabDistDirParams shared pkg) </> "setup-config"
-          flags =
-            defaultHaddockProjectFlags
-              { haddockProjectCommonFlags =
-                  defaultCommonSetupFlags{setupVerbosity = Flag $ verbosityFlags testVerbosity}
-              , haddockProjectHoogle = Flag hoogle
-              }
-          run = CmdHaddockProject.haddockProjectAction flags ["all"] defaultGlobalFlags{globalStoreDir = Flag "store"}
-      cleanHaddockProject testdir
-      flip finally (cleanHaddockProject testdir) $ withCurrentDirectory dir $ do
-        run
-        initialConfigTime <- getModificationTime setupConfig
-        entries <- listDirectory (storeDirectory (defaultStoreDirLayout "store") (pkgConfigCompiler shared))
-        dependencyDocs <- doesFileExist ("haddocks" </> "p" </> "p.haddock")
-        run
-        repeatedConfigTime <- getModificationTime setupConfig
-        return $
-          (length (filter ((== "p-0.1-") . take 6) entries), dependencyDocs, initialConfigTime == repeatedConfigTime)
-            QC.=== (1, True, True)
+-- | Independently generated documentation options for a dependency.
+data DependencyHaddockSettings = DependencyHaddockSettings
+  { dependencyDocumentation :: Bool
+  , dependencyHoogle :: Bool
+  , dependencyHtml :: Bool
+  , dependencyLinkedSource :: Bool
+  , dependencyQuickJump :: Bool
+  }
+  deriving (Show)
+
+instance QC.Arbitrary DependencyHaddockSettings where
+  arbitrary =
+    DependencyHaddockSettings <$> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary
+  shrink (DependencyHaddockSettings documentation hoogle html linkedSource quickJump) =
+    [ DependencyHaddockSettings documentation' hoogle' html' linkedSource' quickJump'
+    | (documentation', hoogle', html', linkedSource', quickJump') <-
+        QC.shrink (documentation, hoogle, html, linkedSource, quickJump)
+    ]
+
+-- | A normal build and haddock-project must use the same dependency instances,
+-- including when dependencies have documentation disabled or different formats.
+propHaddockProjectDependencyCache :: ProjectConfig -> DependencyHaddockSettings -> QC.Property
+propHaddockProjectDependencyCache config settings@(DependencyHaddockSettings documentation hoogle html linkedSource quickJump) =
+  QC.label (if documentation then "dependency docs enabled" else "dependency docs disabled") $ QC.ioProperty $ do
+    let dir = basedir </> testdir
+        localConfig = dir </> "cabal.project.local"
+        clean = cleanHaddockProject testdir >> removeFileForcibly localConfig
+    clean
+    flip finally clean $ do
+      writeFile localConfig $
+        unlines
+          [ "documentation: True"
+          , "haddock-hyperlink-source: True"
+          , "package *"
+          , "  documentation: " ++ show documentation
+          , "  haddock-hoogle: " ++ show hoogle
+          , "  haddock-html: " ++ show html
+          , "  haddock-hyperlink-source: " ++ show linkedSource
+          , "  haddock-quickjump: " ++ show quickJump
+          ]
+      ((layout, _, _, _, _), plan, shared) <- planProject testdir config
+      let safeMinor = if buildOS == Windows then 10 else 4
+      if compilerVersion (pkgConfigCompiler shared) <= mkVersion [9, safeMinor]
+        then return (QC.property True)
+        else do
+          pkg <- case filter ((== mkPackageName "q") . packageName) (filterConfiguredPackages (InstallPlan.toList plan)) of
+            [q] -> return q
+            _ -> fail "Expected one local package q"
+          let setupConfig = distBuildDirectory layout (elabDistDirParams shared pkg) </> "setup-config"
+              commonFlags = defaultCommonSetupFlags{setupVerbosity = Flag $ verbosityFlags testVerbosity}
+              globals = defaultGlobalFlags{globalStoreDir = Flag "store"}
+              buildFlags =
+                NixStyleOptions.updNixStyleCommonSetupFlags (const commonFlags) (commandDefaultFlags CmdBuild.buildCommand)
+              flags =
+                defaultHaddockProjectFlags
+                  { haddockProjectCommonFlags = commonFlags
+                  , haddockProjectHoogle = Flag (not hoogle)
+                  }
+              run = CmdHaddockProject.haddockProjectAction flags ["all"] globals
+              dependencyInstances =
+                sort . filter ((== "p-0.1-") . take 6)
+                  <$> listDirectory (storeDirectory (defaultStoreDirLayout "store") (pkgConfigCompiler shared))
+          withCurrentDirectory dir $ do
+            CmdBuild.buildAction buildFlags ["all"] globals
+            initialInstances <- dependencyInstances
+            initialConfigTime <- getModificationTime setupConfig
+            run
+            firstConfigTime <- getModificationTime setupConfig
+            firstInstances <- dependencyInstances
+            dependencyDocs <- doesFileExist ("haddocks" </> "p" </> "p.haddock")
+            run
+            repeatedConfigTime <- getModificationTime setupConfig
+            repeatedInstances <- dependencyInstances
+            return $
+              QC.counterexample (show (settings, initialInstances, firstInstances, repeatedInstances)) $
+                ( length initialInstances
+                , firstInstances == initialInstances && repeatedInstances == initialInstances
+                , dependencyDocs
+                , initialConfigTime == firstConfigTime && firstConfigTime == repeatedConfigTime
+                )
+                  QC.=== (1, True, documentation, True)
   where
     testdir = "regression/program-options"
