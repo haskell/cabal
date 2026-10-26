@@ -55,13 +55,7 @@ data BuildState = BS {
 }
 
 -- | Map of available linking targets.
---
--- Keyed by 'Stage' in addition to package name and instance: a Setup/Build-
--- stage goal and a Host-stage goal are never valid link targets for each
--- other, even when they happen to resolve to the same package instance,
--- because they are built by different toolchains (the fixed boot compiler
--- vs. the compiler under construction) and cannot share a build artifact.
-type LinkingState = M.Map (PN, I, Stage) [GoalScope]
+type LinkingState = M.Map (PN, I) [GoalScope]
 
 -- | Extend the set of open goals with the new goals listed.
 --
@@ -220,7 +214,7 @@ addChildren bs@(BS { next = Instance qpn (PInfo fdeps _ fdefs _) }) =
 -- https://github.com/haskell/cabal/issues/2899
 addLinking :: LinkingState -> TreeF () c a -> TreeF () c (Linker a)
 -- The only nodes of interest are package nodes
-addLinking ls (PChoiceF qpn@(Q pp@(GoalScope s _ _) pn) rdm gr cs) =
+addLinking ls (PChoiceF qpn@(Q pp pn) rdm gr cs) =
   let linkedCs = fmap (`Linker` ls) $
                  W.fromList $ concatMap (linkChoices ls qpn) (W.toList cs)
       unlinkedCs = W.mapWithKey goP cs
@@ -229,7 +223,7 @@ addLinking ls (PChoiceF qpn@(Q pp@(GoalScope s _ _) pn) rdm gr cs) =
       -- Recurse underneath package choices. Here we just need to make sure
       -- that we record the package choice so that it is available below
       goP :: POption -> a -> Linker a
-      goP (POption i Nothing) bs = Linker bs $ M.insertWith (++) (pn, i, s) [pp] ls
+      goP (POption i Nothing) bs = Linker bs $ M.insertWith (++) (pn, i) [pp] ls
       goP _                   _  = alreadyLinked
   in PChoiceF qpn rdm gr allCs
 addLinking ls t = fmap (`Linker` ls) t
@@ -238,8 +232,12 @@ linkChoices :: forall a w . LinkingState
             -> QPN
             -> (w, POption, a)
             -> [(w, POption, a)]
+-- A goal can only link to a goal of the same 'Stage': a Build-stage goal and a
+-- Host-stage goal are never valid link targets for each other, even when they
+-- resolve to the same package instance, because they are built by different
+-- toolchains and cannot share a build artifact.
 linkChoices related (Q (GoalScope s _ _) pn) (weight, POption i Nothing, subtree) =
-    L.map aux (M.findWithDefault [] (pn, i, s) related)
+    [ aux pp | pp@(GoalScope s' _ _) <- M.findWithDefault [] (pn, i) related, s' == s ]
   where
     aux :: GoalScope -> (w, POption, a)
     aux pp = (weight, POption i (Just pp), subtree)
