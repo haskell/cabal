@@ -3,9 +3,6 @@ module Main
     ( main
     ) where
 
-import Prelude ()
-import Prelude.Compat
-
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
