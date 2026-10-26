@@ -39,6 +39,7 @@ module Distribution.Client.Setup
   , benchmarkOptions
   , filterBenchmarkFlags
   , configureExOptions
+  , buildProgramOptions
   , reconfigureCommand
   , installCommand
   , InstallFlags (..)
@@ -184,7 +185,7 @@ import Distribution.Simple.InstallDirs
   , fromPathTemplate
   , toPathTemplate
   )
-import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
+import Distribution.Simple.Program (ProgramDb, defaultProgramDb, knownPrograms, programName)
 import Distribution.Simple.Setup
   ( BenchmarkFlags (benchmarkCommonFlags)
   , BooleanFlag (..)
@@ -203,6 +204,7 @@ import Distribution.Simple.Setup
   , optionVerbosity
   , readPackageDbList
   , showPackageDbList
+  , splitArgs
   , testCommonFlags
   , trueArg
   )
@@ -926,6 +928,13 @@ data ConfigExFlags = ConfigExFlags
   -- ^ Path to the compiler for the build stage (@--with-build-compiler@).
   , configBuildHcPkg :: Flag FilePath
   -- ^ Path to the package tool for the build stage (@--with-build-hc-pkg@).
+  , configBuildProgramPaths :: [(String, FilePath)]
+  -- ^ Program locations for the build stage (@--with-build-PROG@). The
+  -- counterpart of 'configProgramPaths', which applies to the host stage only.
+  , configBuildProgramArgs :: [(String, [String])]
+  -- ^ Extra program arguments for the build stage (@--build-PROG-option(s)@).
+  -- The counterpart of 'configProgramArgs', which applies to the host stage
+  -- only.
   }
   deriving (Eq, Show, Generic)
   deriving (Semigroup, Monoid) via Generically ConfigExFlags
@@ -1069,6 +1078,74 @@ configureExOptions _showOrParseArgs src =
           writeGhcEnvironmentFilesPolicyPrinter
       )
   ]
+
+-- | The build-stage counterparts of Cabal's @--with-PROG@, @--PROG-option@
+-- and @--PROG-options@: @--with-build-PROG@, @--build-PROG-option@ and
+-- @--build-PROG-options@.
+--
+-- Under cross-compilation the plain flags configure the programs used for the
+-- host stage (like @--with-compiler@), and these configure the programs used
+-- for the build stage (like @--with-build-compiler@). Neither stage inherits
+-- the other's settings: @--with-ar@ is the @ar@ for host binaries and has no
+-- business producing build-machine binaries. Without cross-compilation there
+-- is no build stage and these flags have no effect.
+--
+-- They are not part of 'configureExOptions' for the same reason the plain
+-- flags are not part of 'configureOptions': the config file gives program
+-- locations and options in sections, not as top-level fields.
+buildProgramOptions :: ShowOrParseArgs -> [OptionField ConfigExFlags]
+buildProgramOptions showOrParseArgs =
+  map withBuildProgramPath progs
+    ++ map buildProgramOption progs
+    ++ map buildProgramOptions' progs
+  where
+    -- we don't want a verbose help text list so we just show a generic one
+    progs = case showOrParseArgs of
+      ShowArgs -> ["PROG"]
+      ParseArgs -> map (programName . fst) (knownPrograms defaultProgramDb)
+
+    withBuildProgramPath prog =
+      option
+        ""
+        ["with-build-" ++ prog]
+        ("give the path to " ++ prog ++ " for the build stage (cross-compilation)")
+        configBuildProgramPaths
+        (\v flags -> flags{configBuildProgramPaths = v})
+        ( reqArg'
+            "PATH"
+            (\path -> [(prog, path)])
+            (\progPaths -> [path | (prog', path) <- progPaths, prog == prog'])
+        )
+
+    buildProgramOption prog =
+      option
+        ""
+        ["build-" ++ prog ++ "-option"]
+        ( "give an extra option to "
+            ++ prog
+            ++ " for the build stage (passed directly to "
+            ++ prog
+            ++ " as a single argument)"
+        )
+        configBuildProgramArgs
+        (\v flags -> flags{configBuildProgramArgs = v})
+        ( reqArg'
+            "OPT"
+            (\arg -> [(prog, [arg])])
+            (\progArgs -> concat [args | (prog', args) <- progArgs, prog == prog'])
+        )
+
+    buildProgramOptions' prog =
+      option
+        ""
+        ["build-" ++ prog ++ "-options"]
+        ( "give extra options to "
+            ++ prog
+            ++ " for the build stage (split on spaces, use \"\" to prevent splitting)"
+        )
+        configBuildProgramArgs
+        (\v flags -> flags{configBuildProgramArgs = v})
+        (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
 
 writeGhcEnvironmentFilesPolicyParser :: ReadE (Flag WriteGhcEnvironmentFilesPolicy)
 writeGhcEnvironmentFilesPolicyParser = ReadE $ \case

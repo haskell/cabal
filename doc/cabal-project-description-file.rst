@@ -1164,6 +1164,9 @@ feature was added.
     The command line variant of this flag is
     ``--with-build-hc-pkg=ghc-pkg-9.10.3``.
 
+    The other programs of the build stage are configured separately from the
+    host stage's: see :ref:`build-stage-programs`.
+
 .. cfg-field:: optimization: nat
                -O[n], --enable-optimization[=n]
                --disable-optimization
@@ -1969,6 +1972,52 @@ built. On the other hand, the following snippet:
         ghc-options: -Werror
 
 will apply ``-Werror`` to all packages, local and remote.
+
+.. _build-stage-programs:
+
+Build-stage programs
+^^^^^^^^^^^^^^^^^^^^
+
+.. cfg-section:: build-program-options
+
+When cross-compiling (see :cfg-field:`with-build-compiler`) the program
+locations and options given with ``--with-PROG``, ``--PROG-options``,
+``program-locations`` and ``program-options`` apply to the *host* stage only,
+just as :cfg-field:`with-compiler` does. The programs used for the *build*
+stage are configured with their own settings:
+
+- on the command line, ``--with-build-PROG=PATH``,
+  ``--build-PROG-option=OPT`` and ``--build-PROG-options=OPTS``;
+- at the top level of the project file, the ``build-program-locations`` and
+  ``build-program-options`` stanzas, which take the same fields as
+  ``program-locations`` and ``program-options``;
+- in a ``package`` stanza, the ``build-PROG-location`` and
+  ``build-PROG-options`` fields.
+
+For example:
+
+::
+
+    program-locations
+        ar-location: /opt/cross/bin/aarch64-linux-gnu-ar
+
+    build-program-locations
+        ar-location: /usr/bin/ar
+
+    build-program-options
+        ghc-options: -O0
+
+Neither stage inherits the other's settings: ``ar-location`` above is the
+``ar`` used for host binaries and is never used to produce build-machine
+binaries. A build-stage program that is not given a location is found as
+usual, from the build compiler's own configuration and the program search
+path.
+
+Without cross-compilation there is no build stage, so these settings have no
+effect and ``cabal`` warns that they are ignored.
+
+The :cfg-field:`extra-prog-path` entries are not per stage: both stages search
+the same extra directories.
 
 Advanced global options
 -----------------------
