@@ -54,7 +54,8 @@ stanza to declare the dependencies of your ``SetupHooks``:
         base        >= 4.18 && < 5,
         Cabal-hooks >= 3.16 && < 3.18
 
-Then, define a Haskell module called ``SetupHooks.hs`` next to your ``.cabal``
+Then, define a Haskell module called ``SetupHooks`` in a ``SetupHooks.hs`` file
+(or ``SetupHooks.lhs`` file, if using literate Haskell) next to your ``.cabal``
 file. For example:
 
 .. code-block:: haskell
@@ -68,7 +69,7 @@ file. For example:
        { configureHooks = myConfigureHooks
        , buildHooks = myBuildHooks }
 
-This ``SetupHooks.hs`` module is where you define all of the hooks into the
+This ``SetupHooks`` module is where you define all of the hooks into the
 build system. The following hooks exist:
 
   * Hooks into the configure phase:
