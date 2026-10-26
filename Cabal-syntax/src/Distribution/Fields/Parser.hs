@@ -520,9 +520,11 @@ readFields = (fmap . map . fmap) unComments . readFieldsWithComments
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
 readFields' = (fmap . Bi.first . map . fmap) unComments . readFieldsWithComments'
 
+-- | @since 3.18.2
 readFieldsWithComments :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
 readFieldsWithComments = fmap fst . readFieldsWithComments'
 
+-- | @since 3.18.2
 readFieldsWithComments' :: B8.ByteString -> Either ParseError ([Field (WithComments Position)], [LexWarning])
 readFieldsWithComments' s = do
   parse parser "the input" lexSt
