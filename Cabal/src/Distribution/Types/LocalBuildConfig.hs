@@ -35,6 +35,7 @@ import Distribution.Simple.PackageIndex
 import Distribution.Simple.Program.Db (ProgramDb)
 import Distribution.Simple.Setup.Config
 import Distribution.System
+import Distribution.Types.ConfigFlags (ComponentConfigFlags, PackageConfigFlags)
 import Distribution.Utils.Path
 
 import Distribution.Compat.Graph (Graph)
@@ -43,9 +44,10 @@ import Distribution.Compat.Graph (Graph)
 -- performing package-wide configuration of a package, before doing any
 -- per-component configuration.
 data PackageBuildDescr = PackageBuildDescr
-  { configFlags :: ConfigFlags
-  -- ^ Options passed to the configuration step.
-  -- Needed to re-run configuration when .cabal is out of date
+  { packageConfigFlags :: PackageConfigFlags
+  -- ^ The package-level options passed to the configuration step.
+  , componentConfigFlags :: ComponentConfigFlags
+  -- ^ The component-level options passed to the configuration step.
   , flagAssignment :: FlagAssignment
   -- ^ The final set of flags which were picked for this package
   , componentEnabledSpec :: ComponentRequestedSpec

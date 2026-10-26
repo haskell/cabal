@@ -37,9 +37,6 @@ import Distribution.Simple.Program.Run
   , runProgramInvocation
   )
 import Distribution.Simple.Setup.Common
-import Distribution.Simple.Setup.Config
-  ( configUseResponseFiles
-  )
 import Distribution.Simple.Utils
   ( defaultTempFileOptions
   , dieWithLocation'
@@ -49,6 +46,9 @@ import Distribution.System
   ( Arch (..)
   , OS (..)
   , Platform (..)
+  )
+import qualified Distribution.Types.ConfigFlags as CF
+  ( configUseResponseFiles
   )
 import Distribution.Utils.Path
 import Distribution.Verbosity
@@ -130,7 +130,7 @@ createArLibArchive verbosity lbi targetPath files = do
         final = ar (finalArgs ++ extraArgs)
 
         oldVersionManualOverride =
-          fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
+          fromFlagOrDefault False $ CF.configUseResponseFiles $ packageConfigFlags lbi
         responseArgumentsNotSupported =
           not (arResponseFilesSupported (compiler lbi))
         dashLSupported =

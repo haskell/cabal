@@ -10,6 +10,7 @@ module Distribution.Types.ConfigFlags
   ( ConfigFlags (..)
   , PackageConfigFlags (..)
   , ComponentConfigFlags (..)
+  , mkConfigFlags
   ) where
 
 import Distribution.Compat.Prelude
@@ -63,6 +64,16 @@ instance Eq ConfigFlags where
     on (==) commonFlags a b
       && on (==) packageFlags a b
       && on (==) componentFlags a b
+
+-- | Configure flags with no initial programs.
+mkConfigFlags :: CommonSetupFlags -> PackageConfigFlags -> ComponentConfigFlags -> ConfigFlags
+mkConfigFlags common pkgFlags compFlags =
+  NewConfigFlags
+    { commonFlags = common
+    , initialPrograms = Nothing
+    , packageFlags = pkgFlags
+    , componentFlags = compFlags
+    }
 
 -- | Configure flags which describe the package as a whole, and are therefore
 -- the same for every component of the package.

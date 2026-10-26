@@ -40,7 +40,6 @@ module Distribution.Simple.Configure
   , mkPromisedDepsSet
   , combinedConstraints
   , writePersistBuildConfig
-  , getConfigStateFile
   , getPersistBuildConfig
   , checkPersistBuildConfigOutdated
   , tryGetPersistBuildConfig
@@ -67,7 +66,6 @@ module Distribution.Simple.Configure
   , checkForeignDeps
   , interpretPackageDbFlags
   , ConfigStateFileError (..)
-  , tryGetConfigStateFile
   , platformDefines
   ) where
 
@@ -118,6 +116,7 @@ import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
+import qualified Distribution.Types.ConfigFlags as CF
 import Distribution.Types.DependencySatisfaction (DependencySatisfaction (..))
 import Distribution.Types.GivenComponent
 import qualified Distribution.Types.LocalBuildConfig as LBC
@@ -250,15 +249,17 @@ instance Show ConfigStateFileError where
 
 instance Exception ConfigStateFileError
 
--- | Read the 'localBuildInfoFile'.  Throw an exception if the file is
+-- | Read the 'localBuildInfoFile'. Throw an exception if the file is
 -- missing, if the file cannot be read, or if the file was created by an older
 -- version of Cabal.
-getConfigStateFile
+getPersistBuildConfig
   :: Maybe (SymbolicPath CWD (Dir Pkg))
-  -> SymbolicPath Pkg File
-  -- ^ The file path of the @setup-config@ file.
+  -- ^ Working directory.
+  -> SymbolicPath Pkg (Dir Dist)
+  -- ^ The @dist@ directory path.
   -> IO LocalBuildInfo
-getConfigStateFile mbWorkDir setupConfigFile = do
+getPersistBuildConfig mbWorkDir distPref = do
+  let setupConfigFile = localBuildInfoFile distPref
   let filename = interpretSymbolicPath mbWorkDir setupConfigFile
   exists <- doesFileExist filename
   unless exists $ throwIO $ ConfigStateFileMissing mbWorkDir setupConfigFile
@@ -273,7 +274,12 @@ getConfigStateFile mbWorkDir setupConfigFile = do
         result <- structuredDecodeOrFailIO (BLC8.tail body)
         case result of
           Left _ -> throwIO ConfigStateFileNoParse
-          Right x -> return x
+          Right pbi ->
+            return
+              NewLocalBuildInfo
+                { localBuildLocation = BuildLocation{locationWorkingDir = mbWorkDir, locationDistPref = distPref}
+                , persistedBuildInfo = pbi
+                }
       deferErrorIfBadVersion act
         | cabalId /= currentCabalId = do
             eResult <- try act
@@ -283,16 +289,6 @@ getConfigStateFile mbWorkDir setupConfigFile = do
   where
     _ = callStack -- TODO: attach call stack to exception
 
--- | Read the 'localBuildInfoFile', returning either an error or the local build
--- info.
-tryGetConfigStateFile
-  :: Maybe (SymbolicPath CWD (Dir Pkg))
-  -- ^ Working directory.
-  -> SymbolicPath Pkg File
-  -- ^ The file path of the @setup-config@ file.
-  -> IO (Either ConfigStateFileError LocalBuildInfo)
-tryGetConfigStateFile mbWorkDir = try . getConfigStateFile mbWorkDir
-
 -- | Try to read the 'localBuildInfoFile'.
 tryGetPersistBuildConfig
   :: Maybe (SymbolicPath CWD (Dir Pkg))
@@ -301,18 +297,6 @@ tryGetPersistBuildConfig
   -- ^ The @dist@ directory path.
   -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetPersistBuildConfig mbWorkDir = try . getPersistBuildConfig mbWorkDir
-
--- | Read the 'localBuildInfoFile'. Throw an exception if the file is
--- missing, if the file cannot be read, or if the file was created by an older
--- version of Cabal.
-getPersistBuildConfig
-  :: Maybe (SymbolicPath CWD (Dir Pkg))
-  -- ^ Working directory.
-  -> SymbolicPath Pkg (Dir Dist)
-  -- ^ The @dist@ directory path.
-  -> IO LocalBuildInfo
-getPersistBuildConfig mbWorkDir distPref =
-  getConfigStateFile mbWorkDir $ localBuildInfoFile distPref
 
 -- | Try to read the 'localBuildInfoFile'.
 maybeGetPersistBuildConfig
@@ -325,20 +309,17 @@ maybeGetPersistBuildConfig mbWorkDir =
   fmap (either (const Nothing) Just) . tryGetPersistBuildConfig mbWorkDir
 
 -- | After running configure, output the 'LocalBuildInfo' to the
--- 'localBuildInfoFile'.
+-- 'localBuildInfoFile' of its dist directory.
 writePersistBuildConfig
-  :: Maybe (SymbolicPath CWD (Dir Pkg))
-  -- ^ Working directory
-  -> SymbolicPath Pkg (Dir Dist)
-  -- ^ The @dist@ directory path.
-  -> LocalBuildInfo
+  :: LocalBuildInfo
   -- ^ The 'LocalBuildInfo' to write.
   -> IO ()
-writePersistBuildConfig mbWorkDir distPref lbi = do
+writePersistBuildConfig lbi = do
   createDirectoryIfMissing False (i distPref)
   writeFileAtomic (i $ localBuildInfoFile distPref) $
-    BLC8.unlines [showHeader pkgId, structuredEncode lbi]
+    BLC8.unlines [showHeader pkgId, structuredEncode (persistedBuildInfo lbi)]
   where
+    BuildLocation{locationWorkingDir = mbWorkDir, locationDistPref = distPref} = localBuildLocation lbi
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     pkgId = localPackage lbi
 
@@ -466,9 +447,7 @@ configure p cfg = do
   -- NB: the shared 'configure_setupHooks'/'configureFinal' functions deliberately
   -- don't include this logic, as it is the responsibility of each top-level
   -- configure entry point.
-  let distPref = fromFlag $ configDistPref cfg
-      mbWorkDir = flagToMaybe $ configWorkingDir cfg
-  writePersistBuildConfig mbWorkDir distPref lbi
+  writePersistBuildConfig lbi
   return lbi
 
 -- | Run the @Cabal@ library configure phase.
@@ -568,19 +547,19 @@ configureFinal
         configurePackage verbHandles cfg lbc1 pkgDescr0 flags enabledComps comp platform packageDbs
 
       -- Package-wide post-configure hook
-      for_ postConfPackageHook $ runPostConfPackageHook lbc2 pbd2
+      for_ postConfPackageHook $ runPostConfPackageHook (configCommonFlags cfg) lbc2 pbd2
 
       -- Per-component pre-configure hooks
       pkgDescr <- do
         let pkgDescr2 = LBC.localPkgDescr pbd2
         applyComponentDiffs
           verbosity
-          (for preConfComponentHook . runPreConfComponentHook lbc2 pbd2)
+          (for preConfComponentHook . runPreConfComponentHook lbc2 pbd2 (configCommonFlags cfg))
           pkgDescr2
       let pbd3 = pbd2{LBC.localPkgDescr = pkgDescr}
 
       -- Cabal per-component configure
-      finalCheckPackage verbHandles gpkgDescr pbd3 hookedBuildInfo
+      finalCheckPackage verbHandles (configCommonFlags cfg) gpkgDescr pbd3 hookedBuildInfo
 
       let
         use_external_internal_deps =
@@ -615,7 +594,7 @@ configureFinal
           pkgInfo
           pkgDescr
           enabledComps
-      configureComponents verbHandles lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
+      configureComponents verbHandles cfg lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
 
 runPreConfPackageHook
   :: ConfigFlags
@@ -656,14 +635,16 @@ runPreConfPackageHook cfg comp platform lbc0 pre_conf = do
       }
 
 runPostConfPackageHook
-  :: LBC.LocalBuildConfig
+  :: CommonSetupFlags
+  -> LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
   -> (SetupHooks.PostConfPackageInputs -> IO ())
   -> IO ()
-runPostConfPackageHook lbc2 pbd2 postConfPkg =
+runPostConfPackageHook common lbc2 pbd2 postConfPkg =
   let input =
         SetupHooks.PostConfPackageInputs
-          { SetupHooks.localBuildConfig = lbc2
+          { SetupHooks.commonFlags = common
+          , SetupHooks.localBuildConfig = lbc2
           , SetupHooks.packageBuildDescr = pbd2
           }
    in postConfPkg input
@@ -671,14 +652,16 @@ runPostConfPackageHook lbc2 pbd2 postConfPkg =
 runPreConfComponentHook
   :: LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
+  -> CommonSetupFlags
   -> Component
   -> (SetupHooks.PreConfComponentInputs -> IO SetupHooks.PreConfComponentOutputs)
   -> IO SetupHooks.ComponentDiff
-runPreConfComponentHook lbc pbd c hook = do
+runPreConfComponentHook lbc pbd common c hook = do
   let input =
         SetupHooks.PreConfComponentInputs
           { SetupHooks.localBuildConfig = lbc
           , SetupHooks.packageBuildDescr = pbd
+          , SetupHooks.commonFlags = common
           , SetupHooks.component = c
           }
   SetupHooks.PreConfComponentOutputs
@@ -1145,7 +1128,8 @@ configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform pa
     lbc = lbc0{LBC.withPrograms = programDb2}
     pbd =
       LBC.PackageBuildDescr
-        { configFlags = cfg
+        { packageConfigFlags = CF.packageFlags cfg
+        , componentConfigFlags = CF.componentFlags cfg
         , flagAssignment = flags
         , componentEnabledSpec = enabled
         , compiler = comp
@@ -1357,16 +1341,17 @@ addExtraIncludeLibDirsFromConfigFlags pkg_descr cfg =
 
 finalCheckPackage
   :: VerbosityHandles
+  -> CommonSetupFlags
   -> GenericPackageDescription
   -> LBC.PackageBuildDescr
   -> HookedBuildInfo
   -> IO ()
 finalCheckPackage
   verbHandles
+  common
   g_pkg_descr
   ( LBC.PackageBuildDescr
-      { configFlags = cfg
-      , localPkgDescr = pkg_descr
+      { localPkgDescr = pkg_descr
       , compiler = comp
       , hostPlatform = compPlatform
       , componentEnabledSpec = enabled
@@ -1374,8 +1359,7 @@ finalCheckPackage
     )
   hookedBuildInfo =
     do
-      let common = configCommonFlags cfg
-          verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+      let verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
           cabalFileDir = packageRoot common
 
       checkCompilerProblems verbosity comp pkg_descr enabled
@@ -1417,6 +1401,7 @@ finalCheckPackage
 
 configureComponents
   :: VerbosityHandles
+  -> ConfigFlags
   -> LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
   -> InstalledPackageIndex
@@ -1425,10 +1410,10 @@ configureComponents
   -> IO LocalBuildInfo
 configureComponents
   verbHandles
+  cfg
   lbc@(LBC.LocalBuildConfig{withPrograms = programDb})
   pbd0@( LBC.PackageBuildDescr
-          { configFlags = cfg
-          , localPkgDescr = pkg_descr
+          { localPkgDescr = pkg_descr
           , compiler = comp
           , componentEnabledSpec = enabled
           }
@@ -1513,8 +1498,12 @@ configureComponents
 
           lbi =
             NewLocalBuildInfo
-              { localBuildDescr = lbd
-              , localBuildConfig = lbc
+              { localBuildLocation = commonFlagsBuildLocation (configCommonFlags cfg)
+              , persistedBuildInfo =
+                  PersistedBuildInfo
+                    { localBuildDescr = lbd
+                    , localBuildConfig = lbc
+                    }
               }
 
       when (LBC.relocatable $ LBC.withBuildOptions lbc) $
@@ -2821,8 +2810,7 @@ checkForeignDeps pkg lbi verbosity =
 
     libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
-    common = configCommonFlags $ configFlags lbi
-    baseDir = packageRoot common
+    baseDir = packageRootLBI lbi
 
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPathLBI lbi

@@ -29,6 +29,8 @@ module Distribution.Client.SetupWrapper
   , SetupRunnerRes
   , RightFlagsForPhase
   , setupWrapper
+  , readPersistedLocalBuildInfo
+  , userCommonFlags
   , SetupScriptOptions (..)
   , SetupDependencies (..)
   , setupDependencies
@@ -640,24 +642,26 @@ runSetupCommand
   -> Setup UseGeneralSetup
   -> CommandUI flags
   -- ^ command definition
-  -> (flags -> CommonSetupFlags)
   -> flags
   -- ^ command flags
   -> [String]
   -- ^ extra command-line arguments
   -> SetupRunnerArgs UseGeneralSetup
   -> IO (SetupRunnerRes UseGeneralSetup)
-runSetupCommand verbosity setup cmd getCommonFlags flags extraArgs setupArgs =
-  -- The 'setupWorkingDir' flag corresponds to a global argument which needs to
-  -- be passed before the individual command (e.g. 'configure' or 'build').
-  let common = getCommonFlags flags
+runSetupCommand verbosity setup cmd flags extraArgs setupArgs = do
+  let workDir = useWorkingDir $ setupScriptOptions setup
       workDirMethod = setupWorkingDirMethod (setupBuildType setup) (setupVersion setup)
-      globalFlags = case workDirMethod of
-        WorkingDirFlag -> mempty { globalWorkingDir = setupWorkingDir common }
-        WorkingDirCwd -> mempty
-      args = commandShowOptions (globalCommand []) globalFlags
+  -- The --working-dir flag is a global argument, which needs to be passed
+  -- before the individual command (e.g. 'configure' or 'build').
+  let globalArgs = case workDirMethod of
+        WorkingDirFlag ->
+          commandShowOptions (globalCommand [])
+            mempty { globalWorkingDir = maybeToFlag workDir }
+        WorkingDirCwd -> []
+      args =
+        globalArgs
           ++ (commandName cmd : commandShowOptions cmd flags ++ extraArgs)
-  in runSetup verbosity setup workDirMethod args setupArgs
+  runSetup verbosity setup workDirMethod args setupArgs
 
 -- | Run a @Setup repl@ that writes multi-repl options files into a temporary
 -- directory, then move these files into the given output directory, prefixed
@@ -697,16 +701,26 @@ setupWrapper
   -> SetupScriptOptions
   -> Maybe PackageDescription
   -> CommandUI flags
-  -> (flags -> CommonSetupFlags)
-  -> (Version -> IO flags)
-  -- ^ produce command flags given the Cabal library version
+  -> (Version -> CommonSetupFlags -> IO flags)
+  -- ^ produce command flags given the Cabal library version and the common
+  -- flags of the command
+  --
+  -- The common flags given here are the only source of the location of the
+  -- package (its working directory and dist directory), which is that of
+  -- the 'SetupScriptOptions'.
   -> (Version -> [String])
   -> SetupRunnerArgs setupSpec
   -> IO (SetupRunnerRes setupSpec)
-setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wrapperArgs = do
+setupWrapper verbosity options mpkg cmd getFlags getExtraArgs wrapperArgs = do
   setup <- getSetup verbosity options mpkg (inLibraryMethod wrapperArgs)
   let version = setupVersion setup
-  flags <- getFlags version
+      commonFlags =
+        defaultCommonSetupFlags
+          { setupVerbosity = toFlag $ verbosityFlags verbosity
+          , setupWorkingDir = maybeToFlag $ useWorkingDir options
+          , setupDistPref = toFlag $ useDistPref options
+          }
+  flags <- getFlags version commonFlags
   let
     verbHandles = verbosityHandles verbosity
     extraArgs = getExtraArgs version
@@ -714,7 +728,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
     ExternalMethod path -> do
       let runExternal flags' =
             runSetupCommand verbosity setup{setupMethod = ExternalMethod path}
-              cmd getCommonFlags flags' extraArgs NotInLibrary
+              cmd flags' extraArgs NotInLibrary
       case wrapperArgs of
         InLibraryArgs (InLibraryPostConfigureArgs SReplPhase _)
           | WorkingDirCwd <- setupWorkingDirMethod (setupBuildType setup) version
@@ -788,12 +802,10 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
             lbi0
               { LBI.withPrograms = progs1
               }
-          mbWorkDir = useWorkingDir options
-          distPref = useDistPref options
       -- Write the LocalBuildInfo to disk. This is needed, for instance, if we
       -- skip re-configuring; we retrieve the LocalBuildInfo stored on disk from
       -- the previous invocation of 'configure' and pass it to 'build'.
-      writePersistBuildConfig mbWorkDir distPref lbi
+      writePersistBuildConfig lbi
       return (Just lbi)
     LibraryMethod (InLibraryPostConfigureArgs sPhase lbi) ->
       case sPhase of
@@ -804,6 +816,36 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
         STestPhase     -> InLibrary.test     verbHandles flags lbi extraArgs
         SBenchPhase    -> InLibrary.bench    verbHandles flags lbi extraArgs
         SRegisterPhase -> InLibrary.register             flags lbi extraArgs
+
+-- | The common flags of a command whose flags were given by the user on the
+-- command line: the common flags given by 'setupWrapper', with the user's
+-- options that do not concern the location of the package.
+userCommonFlags
+  :: CommonSetupFlags
+  -- ^ the common flags given by the user
+  -> CommonSetupFlags
+  -- ^ the common flags given by 'setupWrapper'
+  -> CommonSetupFlags
+userCommonFlags user common =
+  common
+    { setupVerbosity = setupVerbosity common <> setupVerbosity user
+    , setupCabalFilePath = setupCabalFilePath user
+    , setupKeepTempFiles = setupKeepTempFiles user
+    }
+
+-- | Read the 'LocalBuildInfo' saved by a previous in-library configure.
+readPersistedLocalBuildInfo
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ the working directory of the package
+  -> SymbolicPath Pkg (Dir Dist)
+  -- ^ the dist directory of the package
+  -> IO (Either ConfigStateFileError LocalBuildInfo)
+readPersistedLocalBuildInfo mbWorkDir distPref =
+  fmap restorePrograms <$> tryGetPersistBuildConfig mbWorkDir distPref
+  where
+    -- Unconfigured programs are not serialised; restore the builtin ones.
+    restorePrograms lbi =
+      lbi{LBI.withPrograms = restoreProgramDb builtinPrograms (LBI.withPrograms lbi)}
 
 {- Note [Constructing the ProgramDb]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

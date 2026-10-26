@@ -72,7 +72,6 @@ module Distribution.Client.ProjectPlanning
 
     -- * Setup.hs CLI flags for building
   , setupHsScriptOptions
-  , setupHsCommonFlags
   , setupHsConfigureFlags
   , setupHsConfigureArgs
   , setupHsBuildFlags
@@ -4284,21 +4283,6 @@ setupHsConfigureArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabCompo
       fromMaybe
         (error "setupHsConfigureArgs: trying to configure setup")
         (compComponentName comp)
-
-setupHsCommonFlags
-  :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> SymbolicPath Pkg (Dir Dist)
-  -> Bool
-  -> Cabal.CommonSetupFlags
-setupHsCommonFlags verbosity mbWorkDir builddir keepTempFiles =
-  Cabal.CommonSetupFlags
-    { setupDistPref = toFlag builddir
-    , setupVerbosity = toFlag $ verbosityFlags verbosity
-    , setupCabalFilePath = mempty
-    , setupWorkingDir = maybeToFlag mbWorkDir
-    , setupKeepTempFiles = toFlag keepTempFiles
-    }
 
 setupHsBuildFlags
   :: Flag String

@@ -17,6 +17,7 @@ import Distribution.Client.SetupWrapper
   , SetupScriptOptions (..)
   , defaultSetupScriptOptions
   , setupWrapper
+  , userCommonFlags
   )
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Setup as Setup
@@ -44,16 +45,18 @@ wrapperCmd
   :: Monoid flags
   => CommandUI flags
   -> (flags -> Setup.CommonSetupFlags)
+  -> (Setup.CommonSetupFlags -> flags -> flags)
   -> CommandSpec (Client.GlobalFlags -> IO ())
-wrapperCmd ui getCommonFlags =
-  CommandSpec ui (`wrapperAction` getCommonFlags) NormalCommand
+wrapperCmd ui getCommonFlags setCommonFlags =
+  CommandSpec ui (\cmd -> wrapperAction cmd getCommonFlags setCommonFlags) NormalCommand
 
 wrapperAction
   :: Monoid flags
   => CommandUI flags
   -> (flags -> Setup.CommonSetupFlags)
+  -> (Setup.CommonSetupFlags -> flags -> flags)
   -> Command (Client.GlobalFlags -> IO ())
-wrapperAction command getCommonFlags =
+wrapperAction command getCommonFlags setCommonFlags =
   commandAddAction
     command
       { commandDefaultFlags = mempty
@@ -81,8 +84,7 @@ wrapperAction command getCommonFlags =
         setupScriptOptions
         Nothing
         command'
-        getCommonFlags
-        (const (return flags))
+        (\_ common' -> return $ setCommonFlags (userCommonFlags common common') flags)
         (const extraArgs)
         NotInLibrary
 
@@ -163,8 +165,10 @@ legacyWrapperCmd
   :: Monoid flags
   => CommandUI flags
   -> (flags -> Setup.CommonSetupFlags)
+  -> (Setup.CommonSetupFlags -> flags -> flags)
   -> [CommandSpec (Client.GlobalFlags -> IO ())]
-legacyWrapperCmd ui commonFlags = toLegacyCmd (wrapperCmd ui commonFlags)
+legacyWrapperCmd ui getCommonFlags setCommonFlags =
+  toLegacyCmd (wrapperCmd ui getCommonFlags setCommonFlags)
 
 newCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
 newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]

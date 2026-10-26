@@ -25,6 +25,8 @@ module Distribution.Simple.LocalBuildInfo
     -- * Convenience accessors
   , buildDir
   , packageRoot
+  , packageRootLBI
+  , configFlags
   , progPrefix
   , progSuffix
   , interpretSymbolicPathLBI
@@ -90,7 +92,6 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs hiding
   ( absoluteInstallDirs
   , prefixRelativeInstallDirs
@@ -98,8 +99,6 @@ import Distribution.Simple.InstallDirs hiding
   )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.PackageIndex
-import Distribution.Simple.Setup.Common
-import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
 import Distribution.Utils.Path
 
@@ -152,8 +151,7 @@ interpretSymbolicPathLBI lbi =
 
 -- | Retrieve an optional working directory from 'LocalBuildInfo'.
 mbWorkDirLBI :: LocalBuildInfo -> Maybe (SymbolicPath CWD (Dir Pkg))
-mbWorkDirLBI =
-  flagToMaybe . setupWorkingDir . configCommonFlags . configFlags
+mbWorkDirLBI = locationWorkingDir . localBuildLocation
 
 -- | Absolute path to the current working directory.
 absoluteWorkingDirLBI :: LocalBuildInfo -> IO (AbsolutePath (Dir Pkg))

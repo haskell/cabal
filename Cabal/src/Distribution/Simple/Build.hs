@@ -100,7 +100,6 @@ import Distribution.Simple.Program.Types
 import Distribution.Simple.Register
 import Distribution.Simple.Setup.Build
 import Distribution.Simple.Setup.Common
-import Distribution.Simple.Setup.Config
 import Distribution.Simple.Setup.Haddock (HaddockTarget (ForDevelopment))
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.SetupHooks.Internal
@@ -112,6 +111,7 @@ import qualified Distribution.Simple.SetupHooks.Rule as SetupHooks
 import Distribution.Simple.ShowBuildInfo
 import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
+import qualified Distribution.Types.ConfigFlags as CF
 import Distribution.Utils.Json
 import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
 
@@ -194,7 +194,7 @@ build_setupHooks
     -- Before the actual building, dump out build-information.
     -- This way, if the actual compilation failed, the options have still been
     -- dumped.
-    dumpBuildInfo verbosity distPref (configDumpBuildInfo (configFlags lbi)) pkg_descr lbi flags
+    dumpBuildInfo verbosity distPref (CF.configDumpBuildInfo (packageConfigFlags lbi)) pkg_descr lbi flags
 
     curDir <- absoluteWorkingDirLBI lbi
 

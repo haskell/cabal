@@ -95,11 +95,13 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup
   ( BuildingWhat (..)
+  , buildingWhatCommonFlags
   , buildingWhatDistPref
   , buildingWhatVerbosity
   , buildingWhatWorkingDir
   )
 import Distribution.Simple.Setup.Build (BuildFlags (..))
+import Distribution.Simple.Setup.Common (CommonSetupFlags)
 import Distribution.Simple.Setup.Config (ConfigFlags (..))
 import Distribution.Simple.Setup.Copy (CopyFlags (..))
 import Distribution.Simple.SetupHooks.Errors
@@ -109,12 +111,14 @@ import Distribution.Simple.Utils
 import Distribution.System (Platform (..))
 import Distribution.Utils.Path
 import Distribution.Utils.Structured
-  ( structuredDecodeOrFailIO
+  ( Structured (..)
+  , structuredDecodeOrFailIO
   , structuredEncodeFile
   )
 
 import qualified Distribution.Types.BuildInfo.Lens as BI (buildInfo)
 import Distribution.Types.LocalBuildConfig as LBC
+import Distribution.Types.LocalBuildInfo (PersistedBuildInfo, commonFlagsBuildLocation)
 import Distribution.Types.TargetInfo
 import Distribution.Verbosity
 
@@ -241,7 +245,9 @@ type PostConfPackageHook = PostConfPackageInputs -> IO ()
 
 -- | Inputs to the package-wide post-configure step.
 data PostConfPackageInputs = PostConfPackageInputs
-  { localBuildConfig :: LocalBuildConfig
+  { commonFlags :: CommonSetupFlags
+  -- ^ The common flags of the package-wide configuration step.
+  , localBuildConfig :: LocalBuildConfig
   , packageBuildDescr :: PackageBuildDescr
   }
   deriving (Generic, Show)
@@ -257,6 +263,8 @@ type PreConfComponentHook = PreConfComponentInputs -> IO PreConfComponentOutputs
 data PreConfComponentInputs = PreConfComponentInputs
   { localBuildConfig :: LocalBuildConfig
   , packageBuildDescr :: PackageBuildDescr
+  , commonFlags :: CommonSetupFlags
+  -- ^ The common flags of the configuration step.
   , component :: Component
   }
   deriving (Generic, Show)
@@ -1279,13 +1287,55 @@ instance Structured PreConfComponentInputs
 instance Binary PreConfComponentOutputs
 instance Structured PreConfComponentOutputs
 
-instance Binary PreBuildComponentInputs
-instance Structured PreBuildComponentInputs
+-- | Add back the 'BuildLocation' from 'CommonSetupFlags' to a
+-- 'PersistedBuildInfo' to get a 'LocalBuildInfo'.
+withBuildLocation :: CommonSetupFlags -> PersistedBuildInfo -> LocalBuildInfo
+withBuildLocation common pbi =
+  NewLocalBuildInfo
+    { localBuildLocation = commonFlagsBuildLocation common
+    , persistedBuildInfo = pbi
+    }
 
-instance Binary PostBuildComponentInputs
-instance Structured PostBuildComponentInputs
+instance Binary PreBuildComponentInputs where
+  put (PreBuildComponentInputs{buildingWhat = what, localBuildInfo = lbi, targetInfo = tgt}) =
+    put (what, persistedBuildInfo lbi, tgt)
+  get = do
+    (what, pbi, tgt) <- get
+    return $
+      PreBuildComponentInputs
+        { buildingWhat = what
+        , localBuildInfo = withBuildLocation (buildingWhatCommonFlags what) pbi
+        , targetInfo = tgt
+        }
+instance Structured PreBuildComponentInputs where
+  structure _ = structure (Proxy :: Proxy (BuildingWhat, PersistedBuildInfo, TargetInfo))
 
-instance Binary InstallComponentInputs
-instance Structured InstallComponentInputs
+instance Binary PostBuildComponentInputs where
+  put (PostBuildComponentInputs{buildFlags = flags, localBuildInfo = lbi, targetInfo = tgt}) =
+    put (flags, persistedBuildInfo lbi, tgt)
+  get = do
+    (flags, pbi, tgt) <- get
+    return $
+      PostBuildComponentInputs
+        { buildFlags = flags
+        , localBuildInfo = withBuildLocation (buildCommonFlags flags) pbi
+        , targetInfo = tgt
+        }
+instance Structured PostBuildComponentInputs where
+  structure _ = structure (Proxy :: Proxy (BuildFlags, PersistedBuildInfo, TargetInfo))
+
+instance Binary InstallComponentInputs where
+  put (InstallComponentInputs{copyFlags = flags, localBuildInfo = lbi, targetInfo = tgt}) =
+    put (flags, persistedBuildInfo lbi, tgt)
+  get = do
+    (flags, pbi, tgt) <- get
+    return $
+      InstallComponentInputs
+        { copyFlags = flags
+        , localBuildInfo = withBuildLocation (copyCommonFlags flags) pbi
+        , targetInfo = tgt
+        }
+instance Structured InstallComponentInputs where
+  structure _ = structure (Proxy :: Proxy (CopyFlags, PersistedBuildInfo, TargetInfo))
 
 --------------------------------------------------------------------------------

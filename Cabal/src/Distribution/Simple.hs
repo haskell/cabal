@@ -120,6 +120,7 @@ import Distribution.Simple.SetupHooks.Internal
   )
 import Distribution.Simple.Test
 import Distribution.Simple.Utils
+import qualified Distribution.Types.ConfigFlags as CF
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Utils.Path
 import Distribution.Verbosity
@@ -128,6 +129,7 @@ import Language.Haskell.Extension
 
 -- Base
 import Data.List (unionBy, (\\))
+import Data.Semigroup (Last (..))
 import System.Directory (removePathForcibly)
 import System.Environment (getArgs, getProgName)
 import System.IO (hPutStr, hPutStrLn)
@@ -359,7 +361,7 @@ defaultMainHelperWithHandles verbHandles hooks args =
     cabalGitInfo'
       | null cabalGitInfo = []
       | otherwise = ' ' : cabalGitInfo
-    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
+    progs = initialProgramDb hooks
     addAction
       :: CommandUI flags
       -> (VerbosityHandles -> GlobalFlags -> UserHooks -> flags -> [String] -> IO res)
@@ -436,7 +438,7 @@ configureAction verbHandles globalFlags hooks flags args = do
         lbi1
           { pkgDescrFile = mb_pd_file
           }
-  writePersistBuildConfig mbWorkDir distPref localbuildinfo
+  writePersistBuildConfig localbuildinfo
 
   let pkg_descr = localPkgDescr localbuildinfo
   postConf hooks args flags' pkg_descr localbuildinfo
@@ -470,16 +472,12 @@ getCommonFlags verbHandles globalFlags hooks commonFlags = do
   distPref <- findDistPrefOrDefault (setupDistPref commonFlags)
   let verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonFlags)
   lbi <- getBuildConfig globalFlags hooks verbosity distPref
-  let common' = configCommonFlags $ configFlags lbi
   return
     ( lbi
     , commonFlags
         { setupDistPref = toFlag distPref
-        , setupCabalFilePath = setupCabalFilePath common' <> setupCabalFilePath commonFlags
-        , setupWorkingDir =
-            globalWorkingDir globalFlags
-              <> setupWorkingDir common'
-              <> setupWorkingDir commonFlags
+        , setupCabalFilePath = maybeToFlag (pkgDescrFile lbi) <> setupCabalFilePath commonFlags
+        , setupWorkingDir = maybeToFlag (mbWorkDirLBI lbi) <> setupWorkingDir commonFlags
         }
     )
 
@@ -591,14 +589,13 @@ cleanAction verbHandles globalFlags hooks flags args = do
                 globalWorkingDir globalFlags
                   <> setupWorkingDir common
               Right lbi ->
-                globalWorkingDir globalFlags
-                  <> setupWorkingDir (configCommonFlags $ configFlags lbi)
+                maybeToFlag (mbWorkDirLBI lbi)
                   <> setupWorkingDir common
           , setupCabalFilePath = case elbi of
               Left _ -> setupCabalFilePath common
               Right lbi ->
                 setupCabalFilePath common
-                  <> setupCabalFilePath (configCommonFlags $ configFlags lbi)
+                  <> maybeToFlag (pkgDescrFile lbi)
           }
       flags' =
         flags{cleanCommonFlags = common', cleanTargets = args}
@@ -823,6 +820,11 @@ sanityCheckHookedBuildInfo verbosity pkg_descr (_, hookExes)
     nonExistent = hookExeNames \\ pkgExeNames
 sanityCheckHookedBuildInfo _ _ _ = return ()
 
+-- | The programs known at the start of a @configure@ run, none of them
+-- configured.
+initialProgramDb :: UserHooks -> ProgramDb
+initialProgramDb hooks = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
+
 -- | Try to read the 'localBuildInfoFile'
 tryGetBuildConfig
   :: GlobalFlags
@@ -866,25 +868,19 @@ getBuildConfig globalFlags hooks verbosity distPref = do
           ++ " has been changed. "
           ++ "Re-configuring with most recently used options. "
           ++ "If this fails, please run configure manually.\n"
-      let cFlags = configFlags lbi
-      let cFlags' =
-            cFlags
-              { -- Since the list of unconfigured programs is not serialized,
-                -- restore it to the same value as normally used at the beginning
-                -- of a configure run:
-                configPrograms_ =
-                  fmap
-                    ( restoreProgramDb
-                        (builtinPrograms ++ hookedPrograms hooks)
-                    )
-                    `fmap` configPrograms_ cFlags
-              , configCommonFlags =
-                  (configCommonFlags cFlags)
-                    { -- Use the current, not saved verbosity level:
-                      setupVerbosity = Flag $ verbosityFlags verbosity
-                    }
+      let common =
+            defaultCommonSetupFlags
+              { -- Use the current, not saved verbosity level:
+                setupVerbosity = Flag $ verbosityFlags verbosity
+              , setupWorkingDir = maybeToFlag $ mbWorkDirLBI lbi
+              , setupDistPref = Flag distPref
+              , setupCabalFilePath = maybeToFlag $ pkgDescrFile lbi
               }
-      configureAction (verbosityHandles verbosity) globalFlags hooks cFlags' (configTargets cFlags)
+          cFlags' =
+            (CF.mkConfigFlags common (packageConfigFlags lbi) (componentConfigFlags lbi))
+              { CF.initialPrograms = Just $ Last $ initialProgramDb hooks
+              }
+      configureAction (verbosityHandles verbosity) globalFlags hooks cFlags' (configTargets cFlags')
 
 -- --------------------------------------------------------------------------
 -- Cleaning
@@ -913,7 +909,7 @@ clean verbHandles pkg_descr flags = do
   traverse_ (removePathForcibly . i) (extraTmpFiles pkg_descr)
 
   -- If the user wanted to save the config, write it back
-  traverse_ (writePersistBuildConfig mbWorkDir distPref) maybeConfig
+  traverse_ writePersistBuildConfig maybeConfig
 
 -- --------------------------------------------------------------------------
 -- Default hooks
@@ -1058,16 +1054,27 @@ autoconfSetupHooks =
       -> IO ()
     post_conf_pkg
       ( SetupHooks.PostConfPackageInputs
-          { SetupHooks.localBuildConfig =
+          { SetupHooks.commonFlags = common
+          , SetupHooks.localBuildConfig =
             LBC.LocalBuildConfig{LBC.withPrograms = progs}
           , SetupHooks.packageBuildDescr =
             LBC.PackageBuildDescr
-              { LBC.configFlags = cfg
+              { LBC.packageConfigFlags = pkgFlags
+              , LBC.componentConfigFlags = compFlags
               , LBC.flagAssignment = flags
               , LBC.hostPlatform = plat
               }
           }
-        ) = runConfigureScript defaultVerbosityHandles cfg flags progs plat
+        ) =
+        runConfigureScript defaultVerbosityHandles cfg flags progs plat
+        where
+          cfg =
+            CF.NewConfigFlags
+              { CF.commonFlags = common
+              , CF.initialPrograms = Nothing
+              , CF.packageFlags = pkgFlags
+              , CF.componentFlags = compFlags
+              }
 
     pre_conf_comp
       :: SetupHooks.PreConfComponentInputs
@@ -1076,16 +1083,15 @@ autoconfSetupHooks =
       ( SetupHooks.PreConfComponentInputs
           { SetupHooks.packageBuildDescr =
             LBC.PackageBuildDescr
-              { LBC.configFlags = cfg
-              , localPkgDescr = pkg_descr
+              { localPkgDescr = pkg_descr
               }
+          , SetupHooks.commonFlags = common
           , SetupHooks.component = component
           }
         ) = do
-        let verbosity = mkVerbosity defaultVerbosityHandles (fromFlag $ configVerbosity cfg)
-            mbWorkDir = flagToMaybe $ configWorkingDir cfg
-            distPref = configDistPref cfg
-        dist_dir <- findDistPrefOrDefault distPref
+        let verbosity = mkVerbosity defaultVerbosityHandles (fromFlag $ setupVerbosity common)
+            mbWorkDir = flagToMaybe $ setupWorkingDir common
+        dist_dir <- findDistPrefOrDefault (setupDistPref common)
         -- Read the ".buildinfo" file and use that to update
         -- the components (main library + executables only).
         hbi <- getHookedBuildInfo verbosity mbWorkDir (dist_dir </> makeRelativePathEx "build")

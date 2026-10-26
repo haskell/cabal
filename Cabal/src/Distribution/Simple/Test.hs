@@ -43,7 +43,7 @@ import Distribution.Simple.Configure (getInstalledPackagesById)
 import Distribution.Simple.Errors
 import Distribution.Simple.Register (internalPackageDBPath)
 import Distribution.Simple.Setup.Common
-import Distribution.Simple.Setup.Config
+import qualified Distribution.Types.ConfigFlags as CF
 import Distribution.Types.ExposedModule
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (libraryDirs), exposedModules)
 import Distribution.Types.LocalBuildInfo (LocalBuildInfo (..))
@@ -154,7 +154,7 @@ test args verbHandles pkg_descr lbi0 flags = do
   -- library by querying the package database keyed by unit-id:
   let coverageFor =
         ordNub $
-          fromFlagOrDefault [] (configCoverageFor (configFlags lbi))
+          fromFlagOrDefault [] (CF.configCoverageFor (componentConfigFlags lbi))
             <> extraCoverageFor lbi
   ipkginfos <- getInstalledPackagesById verbosity lbi MissingCoveredInstalledLibrary coverageFor
   let ( concat -> pathsToLibsArtifacts

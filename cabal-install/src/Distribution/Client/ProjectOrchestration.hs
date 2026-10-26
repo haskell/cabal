@@ -1176,11 +1176,11 @@ printPlan
       showConfigureFlags :: ElaboratedConfiguredPackage -> String
       showConfigureFlags elab =
         let commonFlags =
-              setupHsCommonFlags
-                verbosity
-                Nothing -- omit working directory
-                (makeSymbolicPath "$builddir")
-                buildSettingKeepTempFiles
+              Setup.defaultCommonSetupFlags
+                { Setup.setupVerbosity = Setup.toFlag $ verbosityFlags verbosity
+                , Setup.setupDistPref = Setup.toFlag $ makeSymbolicPath "$builddir"
+                , Setup.setupKeepTempFiles = Setup.toFlag buildSettingKeepTempFiles
+                }
             fullConfigureFlags =
               runIdentity
                 ( setupHsConfigureFlags
