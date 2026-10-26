@@ -33,6 +33,9 @@ module Distribution.Fields.Parser
   ) where
 {- FOURMOLU_ENABLE -}
 
+#if !MIN_VERSION_base(4,18,0)
+import Control.Applicative (liftA2)
+#endif
 import qualified Data.ByteString.Char8 as B8
 import Data.Functor.Identity
 import qualified Distribution.Compat.Lens as L
