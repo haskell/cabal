@@ -2867,8 +2867,9 @@ To use this build type in your package, you need to:
   * Declare ``build-type: Hooks`` in your ``.cabal`` file.
   * Include a ``custom-setup`` stanza in your ``.cabal`` file, which declares
     the version of the Hooks API your package is using.
-  * Define a ``SetupHooks.hs`` module next to your ``.cabal`` file. It must
-    export a value ``setupHooks :: SetupHooks``.
+  * Define a ``SetupHooks`` module in a ``SetupHooks.hs`` file (or
+    ``SetupHooks.lhs`` file, if using literate Haskell) next to your ``.cabal``
+    file. It must export a value ``setupHooks :: SetupHooks``.
 
 More specifically, your ``.cabal`` file should resemble the following:
 
