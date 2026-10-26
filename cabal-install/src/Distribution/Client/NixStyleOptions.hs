@@ -39,6 +39,7 @@ import Distribution.Client.Setup
   , ConfigFlags (..)
   , InstallFlags (..)
   , benchmarkOptions
+  , buildProgramOptions
   , configureExOptions
   , configureOptions
   , haddockOptions
@@ -77,6 +78,7 @@ nixStyleOptions commandOptions showOrParseArgs =
       ( configureExOptions
           showOrParseArgs
           ConstraintSourceCommandlineFlag
+          ++ buildProgramOptions showOrParseArgs
       )
     ++ liftOptions
       installFlags

@@ -336,6 +336,8 @@ testProjectConfigLocalPackages = do
     expected = PackageConfig{..}
     packageConfigProgramPaths = MapLast $ Map.fromList [("ghc", "/tmp/bin/ghc"), ("gcc", "/tmp/bin/gcc")]
     packageConfigProgramArgs = MapMappend $ Map.fromList [("ghc", ["-fno-state-hack", "-foo"]), ("gcc", ["-baz", "-quux"])]
+    packageConfigBuildProgramPaths = MapLast $ Map.fromList [("ghc", "/tmp/build/bin/ghc"), ("ar", "/tmp/build/bin/ar")]
+    packageConfigBuildProgramArgs = MapMappend $ Map.fromList [("ghc", ["-fno-state-hack", "-bar"]), ("ld", ["-qux"])]
     packageConfigProgramPathExtra = toNubList ["/tmp/bin/extra", "/usr/local/bin"]
     packageConfigFlagAssignment = mkFlagAssignment [("foo", True), ("bar", False)]
     packageConfigVanillaLib = Flag False
@@ -431,6 +433,9 @@ testProjectConfigSpecificPackages = do
         { packageConfigProfDetail = Flag ProfDetailTopLate
         , packageConfigProfLibDetail = Flag ProfDetailNone
         , packageConfigProgPrefix = Flag $ toPathTemplate "prefix/path"
+        , packageConfigProgramArgs = MapMappend $ Map.fromList [("ghc", ["-O2"])]
+        , packageConfigBuildProgramArgs = MapMappend $ Map.fromList [("ghc", ["-O0"])]
+        , packageConfigBuildProgramPaths = MapLast $ Map.fromList [("gcc", "/tmp/build/bin/gcc")]
         }
     expectedBaz :: PackageConfig
     expectedBaz =

@@ -118,6 +118,8 @@ packageConfigFieldGrammar knownPrograms = do
       ^^^ hiddenField
   let packageConfigProgramPaths = mempty
       packageConfigProgramArgs = mempty
+      packageConfigBuildProgramPaths = mempty
+      packageConfigBuildProgramArgs = mempty
   packageConfigProgramPathExtra <- monoidalFieldAla "extra-prog-path" (alaNubList' FSep FilePathNT) L.packageConfigProgramPathExtra
   packageConfigFlagAssignment <- monoidalField "flags" L.packageConfigFlagAssignment
   packageConfigVanillaLib <- optionalFieldDef "library-vanilla" L.packageConfigVanillaLib mempty
@@ -184,6 +186,9 @@ packageConfigFieldGrammar knownPrograms = do
   -- When declared at top level (packageConfigLocalPackages), the PackageConfig must contain a program-options stanza/program-locations for these fields.
   traverse_ (knownField . BS.pack . (<> "-options")) knownPrograms
   traverse_ (knownField . BS.pack . (<> "-location")) knownPrograms
+  -- Likewise build-<prog>-options and build-<prog>-location, for the build stage.
+  traverse_ (knownField . BS.pack . ("build-" <>) . (<> "-options")) knownPrograms
+  traverse_ (knownField . BS.pack . ("build-" <>) . (<> "-location")) knownPrograms
   pure
     PackageConfig
       { -- The haddock-all field provides a default value, but explicit declarations can override it

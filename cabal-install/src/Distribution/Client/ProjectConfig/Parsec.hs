@@ -235,13 +235,23 @@ parseSection programDb (MkSection (Name pos name) args secFields)
   | name == "program-options" = do
       verifyNullSubsections
       verifyNullSectionArgs
-      opts' <- lift $ parseProgramArgs programDb True fields
+      opts' <- lift $ parseProgramArgs "" programDb True fields
       stateConfig . L.projectConfigLocalPackages . L.packageConfigProgramArgs %= (opts' <>)
   | name == "program-locations" = do
       verifyNullSubsections
       verifyNullSectionArgs
-      paths' <- lift $ parseProgramPaths programDb True fields
+      paths' <- lift $ parseProgramPaths "" programDb True fields
       stateConfig . L.projectConfigLocalPackages . L.packageConfigProgramPaths %= (paths' <>)
+  | name == "build-program-options" = do
+      verifyNullSubsections
+      verifyNullSectionArgs
+      opts' <- lift $ parseProgramArgs "" programDb True fields
+      stateConfig . L.projectConfigLocalPackages . L.packageConfigBuildProgramArgs %= (opts' <>)
+  | name == "build-program-locations" = do
+      verifyNullSubsections
+      verifyNullSectionArgs
+      paths' <- lift $ parseProgramPaths "" programDb True fields
+      stateConfig . L.projectConfigLocalPackages . L.packageConfigBuildProgramPaths %= (paths' <>)
   | name == "repository" = do
       verifyNullSubsections
       mRepoName <- lift $ parseRepoName pos args
@@ -276,12 +286,29 @@ parseSection programDb (MkSection (Name pos name) args secFields)
     verifyNullSectionArgs = unless (null args) (lift $ parseFailure pos $ "The section '" <> show name <> "' takes no arguments")
     parsePackageConfig = do
       packageCfg <- lift $ parseFieldGrammar cabalSpec fields (packageConfigFieldGrammar programNames)
-      args' <- lift $ parseProgramArgs programDb False fields
-      paths <- lift $ parseProgramPaths programDb False fields
-      return packageCfg{packageConfigProgramPaths = paths, packageConfigProgramArgs = args'}
+      args' <- lift $ parseProgramArgs "" programDb False fields
+      paths <- lift $ parseProgramPaths "" programDb False fields
+      buildArgs <- lift $ parseProgramArgs "build-" programDb False fields
+      buildPaths <- lift $ parseProgramPaths "build-" programDb False fields
+      return
+        packageCfg
+          { packageConfigProgramPaths = paths
+          , packageConfigProgramArgs = args'
+          , packageConfigBuildProgramPaths = buildPaths
+          , packageConfigBuildProgramArgs = buildArgs
+          }
 
 stanzas :: Set BS.ByteString
-stanzas = Set.fromList ["source-repository-package", "program-options", "program-locations", "repository", "package"]
+stanzas =
+  Set.fromList
+    [ "source-repository-package"
+    , "program-options"
+    , "program-locations"
+    , "build-program-options"
+    , "build-program-locations"
+    , "repository"
+    , "package"
+    ]
 
 -- | Currently a duplicate of 'Distribution.Client.Config.postProcessRepo' but migrated to Parsec ParseResult.
 postProcessRemoteRepo :: Position -> RemoteRepo -> ParseResult src (Either LocalRepo RemoteRepo)
@@ -342,26 +369,28 @@ parsePackageName pos args = case args of
     parser =
       P.choice [P.try (P.char '*' >> return AllPackages), SpecificPackage <$> parsec]
 
--- | Parse fields of a program-options stanza.
-parseProgramArgs :: ProgramDb -> Bool -> Fields Position -> ParseResult src (MapMappend String [String])
-parseProgramArgs programDb warnUnknown fields = foldM parseField mempty (filter hasOptionsSuffix $ Map.toList fields)
+-- | Parse fields of a program-options stanza, or the @<prefix><prog>-options@
+-- fields of a package stanza.
+parseProgramArgs :: FieldPrefix -> ProgramDb -> Bool -> Fields Position -> ParseResult src (MapMappend String [String])
+parseProgramArgs prefix programDb warnUnknown fields = foldM parseField mempty (filter hasOptionsSuffix $ Map.toList fields)
   where
     parseField programArgs (fieldName, fieldLines) = do
-      case readProgramName "-options" programDb fieldName of
+      case readProgramName prefix "-options" programDb fieldName of
         Nothing -> do
           when warnUnknown $ warnUnknownFields fieldName fieldLines
           return programArgs
         Just program -> do
           args <- parseProgramArgsField $ reverse fieldLines
           return $ programArgs <> MapMappend (Map.singleton program args)
-    hasOptionsSuffix (fieldName, _) = BS.isSuffixOf "-options" fieldName
+    hasOptionsSuffix (fieldName, _) = BS.isPrefixOf (toUTF8BS prefix) fieldName && BS.isSuffixOf "-options" fieldName
 
--- | Parse fields of a program-locations stanza.
-parseProgramPaths :: ProgramDb -> Bool -> Fields Position -> ParseResult src (MapLast String FilePath)
-parseProgramPaths programDb warnUnknown fields = foldM parseField mempty (filter hasLocationSuffix $ Map.toList fields)
+-- | Parse fields of a program-locations stanza, or the
+-- @<prefix><prog>-location@ fields of a package stanza.
+parseProgramPaths :: FieldPrefix -> ProgramDb -> Bool -> Fields Position -> ParseResult src (MapLast String FilePath)
+parseProgramPaths prefix programDb warnUnknown fields = foldM parseField mempty (filter hasLocationSuffix $ Map.toList fields)
   where
     parseField paths (fieldName, fieldLines) = do
-      case readProgramName "-location" programDb fieldName of
+      case readProgramName prefix "-location" programDb fieldName of
         Nothing -> do
           when warnUnknown $ warnUnknownFields fieldName fieldLines
           return paths
@@ -371,7 +400,7 @@ parseProgramPaths programDb warnUnknown fields = foldM parseField mempty (filter
               fp <- runFieldParser pos parsecFilePath cabalSpec lines'
               return $ paths <> MapLast (Map.singleton program fp)
             [] -> return mempty
-    hasLocationSuffix (fieldName, _) = BS.isSuffixOf "-location" fieldName
+    hasLocationSuffix (fieldName, _) = BS.isPrefixOf (toUTF8BS prefix) fieldName && BS.isSuffixOf "-location" fieldName
 
 -- | Parse all arguments to a single program in program-options stanza.
 -- By processing '[NamelessField Position]', we support multiple occurrences of the field, concatenating the arguments.
@@ -385,19 +414,20 @@ parseProgramArgsFieldLines lines' = return $ splitArgs strLines
   where
     strLines = fieldLinesToString lines'
 
+type FieldPrefix = String
 type FieldSuffix = String
 
--- | Extract the program name of a <progname> field, allow it to have a suffix such as '-options' and check whether the 'ProgramDB' contains it.
-readProgramName :: FieldSuffix -> ProgramDb -> FieldName -> Maybe String
-readProgramName suffix programDb fieldName =
-  (parseProgramName suffix fieldName >>= (`lookupKnownProgram` programDb)) <&> programName
+-- | Extract the program name of a <progname> field, allow it to have a prefix such as 'build-' and a suffix such as '-options' and check whether the 'ProgramDB' contains it.
+readProgramName :: FieldPrefix -> FieldSuffix -> ProgramDb -> FieldName -> Maybe String
+readProgramName prefix suffix programDb fieldName =
+  (parseProgramName prefix suffix fieldName >>= (`lookupKnownProgram` programDb)) <&> programName
 
-parseProgramName :: FieldSuffix -> FieldName -> Maybe String
-parseProgramName suffix fieldName = case runParsecParser parser "<parseProgramName>" fieldNameStream of
+parseProgramName :: FieldPrefix -> FieldSuffix -> FieldName -> Maybe String
+parseProgramName prefix suffix fieldName = case runParsecParser parser "<parseProgramName>" fieldNameStream of
   Left _ -> Nothing
   Right str -> Just str
   where
-    parser = P.manyTill P.anyChar (P.try (P.string suffix) <* P.eof)
+    parser = P.string prefix *> P.manyTill P.anyChar (P.try (P.string suffix) <* P.eof)
     fieldNameStream = fieldLineStreamFromBS fieldName
 
 -- | Issue a 'PWTUnknownField' warning at all occurrences of a field.
