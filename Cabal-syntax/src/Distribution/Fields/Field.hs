@@ -47,6 +47,8 @@ data Comment ann = Comment !ByteString !ann
   deriving (Show, Generic, Eq, Ord, Functor)
 
 -- | Hold a list of comments along side some annotation.
+--
+--   @since 3.18.2
 data WithComments ann = WithComments
   { justComments :: ![Comment ann]
   -- ^ Extract the comments.
