@@ -348,6 +348,14 @@ packageConfigProgramArgs :: Lens' PackageConfig (MapMappend String [String])
 packageConfigProgramArgs f s = fmap (\x -> s{T.packageConfigProgramArgs = x}) (f (T.packageConfigProgramArgs s))
 {-# INLINEABLE packageConfigProgramArgs #-}
 
+packageConfigBuildProgramPaths :: Lens' PackageConfig (MapLast String FilePath)
+packageConfigBuildProgramPaths f s = fmap (\x -> s{T.packageConfigBuildProgramPaths = x}) (f (T.packageConfigBuildProgramPaths s))
+{-# INLINEABLE packageConfigBuildProgramPaths #-}
+
+packageConfigBuildProgramArgs :: Lens' PackageConfig (MapMappend String [String])
+packageConfigBuildProgramArgs f s = fmap (\x -> s{T.packageConfigBuildProgramArgs = x}) (f (T.packageConfigBuildProgramArgs s))
+{-# INLINEABLE packageConfigBuildProgramArgs #-}
+
 packageConfigProgramPathExtra :: Lens' PackageConfig (NubList FilePath)
 packageConfigProgramPathExtra f s = fmap (\x -> s{T.packageConfigProgramPathExtra = x}) (f (T.packageConfigProgramPathExtra s))
 {-# INLINEABLE packageConfigProgramPathExtra #-}

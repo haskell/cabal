@@ -404,6 +404,11 @@ data LegacyPackageConfig = LegacyPackageConfig
   , legacyHaddockFlags :: HaddockFlags
   , legacyTestFlags :: TestFlags
   , legacyBenchmarkFlags :: BenchmarkFlags
+  , legacyBuildProgramPaths :: [(String, FilePath)]
+  -- ^ Program locations for the build stage. 'ConfigFlags' has no place for
+  -- them: a Setup script is only ever configured for a single stage.
+  , legacyBuildProgramArgs :: [(String, [String])]
+  -- ^ Extra program arguments for the build stage.
   }
   deriving (Show, Generic)
   deriving (Semigroup, Monoid) via Generically LegacyPackageConfig
@@ -462,6 +467,8 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags{..} clientInstallFlags
       splitConfig
         ( convertLegacyPerPackageFlags
             configFlags
+            (configBuildProgramPaths configExFlags)
+            (configBuildProgramArgs configExFlags)
             installFlags
             haddockFlags
             testFlags
@@ -489,6 +496,7 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags{..} clientInstallFlags
       ( pc
       , mempty
           { packageConfigProgramPaths = packageConfigProgramPaths pc
+          , packageConfigBuildProgramPaths = packageConfigBuildProgramPaths pc
           , packageConfigProgramPathExtra = packageConfigProgramPathExtra pc
           , -- Some flags to haddock should be passed to dependencies
             packageConfigDocumentation = packageConfigDocumentation pc
@@ -545,6 +553,8 @@ convertLegacyGlobalConfig
       configAllPackages =
         convertLegacyPerPackageFlags
           configFlags
+          (configBuildProgramPaths configExFlags')
+          (configBuildProgramArgs configExFlags')
           installFlags'
           haddockFlags'
           testFlags'
@@ -594,6 +604,8 @@ convertLegacyProjectConfig
         haddockFlags
         testFlags
         benchmarkFlags
+        buildProgramPaths
+        buildProgramArgs
     , legacySpecificConfig
     } =
     ProjectConfig
@@ -609,12 +621,14 @@ convertLegacyProjectConfig
       , projectConfigSpecificPackage = fmap perPackage legacySpecificConfig
       }
     where
-      configAllPackages = convertLegacyPerPackageFlags g i h t b
+      configAllPackages = convertLegacyPerPackageFlags g bpp bpa i h t b
         where
-          LegacyPackageConfig g i h t b = legacyAllConfig
+          LegacyPackageConfig g i h t b bpp bpa = legacyAllConfig
       configLocalPackages =
         convertLegacyPerPackageFlags
           configFlags
+          buildProgramPaths
+          buildProgramArgs
           installPerPkgFlags
           haddockFlags
           testFlags
@@ -644,9 +658,13 @@ convertLegacyProjectConfig
             perPkgHaddockFlags
             perPkgTestFlags
             perPkgBenchmarkFlags
+            perPkgBuildProgramPaths
+            perPkgBuildProgramArgs
           ) =
           convertLegacyPerPackageFlags
             perPkgConfigFlags
+            perPkgBuildProgramPaths
+            perPkgBuildProgramArgs
             perPkgInstallFlags
             perPkgHaddockFlags
             perPkgTestFlags
@@ -739,6 +757,10 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
 -- 'PackageConfig' subset of the 'ProjectConfig'.
 convertLegacyPerPackageFlags
   :: ConfigFlags
+  -> [(String, FilePath)]
+  -- ^ Program locations for the build stage
+  -> [(String, [String])]
+  -- ^ Extra program arguments for the build stage
   -> InstallFlags
   -> HaddockFlags
   -> TestFlags
@@ -746,6 +768,8 @@ convertLegacyPerPackageFlags
   -> PackageConfig
 convertLegacyPerPackageFlags
   configFlags
+  buildProgramPaths
+  buildProgramArgs
   installFlags
   haddockFlags
   testFlags
@@ -793,6 +817,8 @@ convertLegacyPerPackageFlags
       packageConfigExtraIncludeDirs = getSymbolicPath <$> configExtraIncludeDirs configFlags
       packageConfigProgramPaths = MapLast (Map.fromList configProgramPaths)
       packageConfigProgramArgs = MapMappend (Map.fromListWith (++) configProgramArgs)
+      packageConfigBuildProgramPaths = MapLast (Map.fromList buildProgramPaths)
+      packageConfigBuildProgramArgs = MapMappend (Map.fromListWith (++) buildProgramArgs)
 
       packageConfigCoverage = coverage <> libcoverage
       -- TODO: defer this merging to the resolve phase
@@ -991,6 +1017,10 @@ convertToLegacySharedConfig
           , configBuildHcFlavor = projectConfigBuildHcFlavor
           , configBuildHcPath = projectConfigBuildHcPath
           , configBuildHcPkg = projectConfigBuildHcPkg
+          , -- the build-stage program settings are per-package; see
+            -- 'convertToLegacyPerPackageConfig'
+            configBuildProgramPaths = mempty
+          , configBuildProgramArgs = mempty
           }
 
       installFlags =
@@ -1052,6 +1082,8 @@ convertToLegacyAllPackageConfig
       , legacyHaddockFlags = haddockFlags
       , legacyTestFlags = mempty
       , legacyBenchmarkFlags = mempty
+      , legacyBuildProgramPaths = mempty
+      , legacyBuildProgramArgs = mempty
       }
     where
       commonFlags =
@@ -1130,6 +1162,8 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
     , legacyHaddockFlags = haddockFlags
     , legacyTestFlags = testFlags
     , legacyBenchmarkFlags = benchmarkFlags
+    , legacyBuildProgramPaths = Map.toList (getMapLast packageConfigBuildProgramPaths)
+    , legacyBuildProgramArgs = Map.toList (getMapMappend packageConfigBuildProgramArgs)
     }
   where
     commonFlags =
@@ -1797,6 +1831,14 @@ legacyPackageConfigSectionDescrs =
       (\flags conf -> conf{legacyLocalConfig = flags})
       programLocationsSectionDescr
   , liftSection
+      legacyLocalConfig
+      (\flags conf -> conf{legacyLocalConfig = flags})
+      buildProgramOptionsSectionDescr
+  , liftSection
+      legacyLocalConfig
+      (\flags conf -> conf{legacyLocalConfig = flags})
+      buildProgramLocationsSectionDescr
+  , liftSection
       legacySharedConfig
       (\flags conf -> conf{legacySharedConfig = flags})
       $ liftSection
@@ -1833,6 +1875,7 @@ packageSpecificOptionsFieldDescrs :: [FieldDescr LegacyPackageConfig]
 packageSpecificOptionsFieldDescrs =
   legacyPackageConfigFieldDescrs
     ++ programOptionsFieldDescrs
+      (++ "-options")
       (configProgramArgs . legacyConfigureFlags)
       ( \args pkgconf ->
           pkgconf
@@ -1850,6 +1893,11 @@ packageSpecificOptionsFieldDescrs =
             }
       )
       programLocationsFieldDescrs
+    ++ programOptionsFieldDescrs
+      (\prog -> "build-" ++ prog ++ "-options")
+      legacyBuildProgramArgs
+      (\args pkgconf -> pkgconf{legacyBuildProgramArgs = args})
+    ++ buildProgramLocationsFieldDescrs (\prog -> "build-" ++ prog ++ "-location")
 
 -- | The definition of the @package pkgfoo@ sections of the @cabal.project@-format
 -- files. This section is per-package name. The special package @*@ applies to all
@@ -1897,12 +1945,14 @@ packageSpecificOptionsSectionDescr =
     }
 
 programOptionsFieldDescrs
-  :: (a -> [(String, [String])])
+  :: (String -> String)
+  -> (a -> [(String, [String])])
   -> ([(String, [String])] -> a -> a)
   -> [FieldDescr a]
-programOptionsFieldDescrs get' set =
+programOptionsFieldDescrs mkName get' set =
   commandOptionsToFields $
     programDbOptions
+      mkName
       defaultProgramDb
       ParseArgs
       get'
@@ -1914,6 +1964,7 @@ programOptionsSectionDescr =
     { sectionName = "program-options"
     , sectionFields =
         programOptionsFieldDescrs
+          (++ "-options")
           configProgramArgs
           (\args conf -> conf{configProgramArgs = args})
     , sectionSubsections = []
@@ -1961,15 +2012,66 @@ programLocationsSectionDescr =
     , sectionEmpty = mempty
     }
 
+-- | The @PROG-location@ fields for the build stage, named by the given
+-- function.
+buildProgramLocationsFieldDescrs :: (String -> String) -> [FieldDescr LegacyPackageConfig]
+buildProgramLocationsFieldDescrs mkName =
+  commandOptionsToFields $
+    programDbPaths'
+      mkName
+      defaultProgramDb
+      ParseArgs
+      legacyBuildProgramPaths
+      (\paths conf -> conf{legacyBuildProgramPaths = paths})
+
+-- | The @build-program-options@ section: like @program-options@, for the
+-- build stage of a cross-compiling plan.
+buildProgramOptionsSectionDescr :: SectionDescr LegacyPackageConfig
+buildProgramOptionsSectionDescr =
+  SectionDescr
+    { sectionName = "build-program-options"
+    , sectionFields =
+        programOptionsFieldDescrs
+          (++ "-options")
+          legacyBuildProgramArgs
+          (\args conf -> conf{legacyBuildProgramArgs = args})
+    , sectionSubsections = []
+    , sectionGet = \x -> [("", x)]
+    , sectionSet =
+        \lineno unused pkgconf' pkgconf -> do
+          unless (null unused) $
+            syntaxError lineno "the section 'build-program-options' takes no arguments"
+          return (pkgconf <> pkgconf')
+    , sectionEmpty = mempty
+    }
+
+-- | The @build-program-locations@ section: like @program-locations@, for the
+-- build stage of a cross-compiling plan.
+buildProgramLocationsSectionDescr :: SectionDescr LegacyPackageConfig
+buildProgramLocationsSectionDescr =
+  SectionDescr
+    { sectionName = "build-program-locations"
+    , sectionFields = buildProgramLocationsFieldDescrs (++ "-location")
+    , sectionSubsections = []
+    , sectionGet = \x -> [("", x)]
+    , sectionSet =
+        \lineno unused pkgconf' pkgconf -> do
+          unless (null unused) $
+            syntaxError lineno "the section 'build-program-locations' takes no arguments"
+          return (pkgconf <> pkgconf')
+    , sectionEmpty = mempty
+    }
+
 -- | For each known program @PROG@ in 'progDb', produce a @PROG-options@
--- 'OptionField'.
+-- 'OptionField', named by the given function.
 programDbOptions
-  :: ProgramDb
+  :: (String -> String)
+  -> ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programDbOptions progDb showOrParseArgs get' set =
+programDbOptions mkName progDb showOrParseArgs get' set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs -> [programOptions "PROG"]
@@ -1981,7 +2083,7 @@ programDbOptions progDb showOrParseArgs get' set =
     programOptions prog =
       option
         ""
-        [prog ++ "-options"]
+        [mkName prog]
         ("Give extra options to " ++ prog)
         get'
         set

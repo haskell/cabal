@@ -705,6 +705,22 @@ instance Arbitrary PackageConfig where
                     <*> listOf arbitraryShortToken
                 )
           )
+      <*> ( MapLast . Map.fromList
+              <$> shortListOf
+                10
+                ( (,)
+                    <$> arbitraryProgramName
+                    <*> arbitraryShortToken
+                )
+          )
+      <*> ( MapMappend . Map.fromList
+              <$> shortListOf
+                10
+                ( (,)
+                    <$> arbitraryProgramName
+                    <*> listOf arbitraryShortToken
+                )
+          )
       <*> (toNubList <$> listOf arbitraryShortToken)
       <*> arbitrary
       <*> arbitrary
@@ -779,6 +795,8 @@ instance Arbitrary PackageConfig where
     PackageConfig
       { packageConfigProgramPaths = x00
       , packageConfigProgramArgs = x01
+      , packageConfigBuildProgramPaths = x60
+      , packageConfigBuildProgramArgs = x61
       , packageConfigProgramPathExtra = x02
       , packageConfigFlagAssignment = x03
       , packageConfigVanillaLib = x04
@@ -845,6 +863,8 @@ instance Arbitrary PackageConfig where
       [ PackageConfig
         { packageConfigProgramPaths = postShrink_Paths x00'
         , packageConfigProgramArgs = postShrink_Args x01'
+        , packageConfigBuildProgramPaths = postShrink_Paths x60'
+        , packageConfigBuildProgramArgs = postShrink_Args x61'
         , packageConfigProgramPathExtra = x02'
         , packageConfigFlagAssignment = x03'
         , packageConfigVanillaLib = x04'
@@ -908,7 +928,7 @@ instance Arbitrary PackageConfig where
         , packageConfigTestTestOptions = x51'
         , packageConfigBenchmarkOptions = x52'
         }
-      | ( ( (x00', x01', x02', x03', x04')
+      | ( ( (x00', x01', x60', x61', x02', x03', x04')
             , (x05', x42', x43', x06', x50', x07', x08', x08_1', x09')
             , (x10', x11', x12', x13', x14')
             , (x15', x16', x53', x17', x18', x19')
@@ -926,7 +946,7 @@ instance Arbitrary PackageConfig where
           ) <-
           shrink
             (
-              ( (preShrink_Paths x00, preShrink_Args x01, x02, x03, x04)
+              ( (preShrink_Paths x00, preShrink_Args x01, preShrink_Paths x60, preShrink_Args x61, x02, x03, x04)
               , (x05, x42, x43, x06, x50, x07, x08, x08_1, x09)
               , (x10, x11, map NonEmpty x12, x13, x14)
               ,

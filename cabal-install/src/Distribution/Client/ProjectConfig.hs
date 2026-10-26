@@ -1918,18 +1918,21 @@ renderBadPerPackageCompilerPaths _ = error "renderBadPerPackageCompilerPaths"
 -- packages.
 --
 -- We cannot check this until we know which programs the compiler uses, which
--- in principle is not until we've configured the compiler.
+-- in principle is not until we've configured the compiler. Each stage has its
+-- own compiler and its own program locations, so the check is made once per
+-- stage, selecting that stage's locations from each 'PackageConfig'.
 --
 -- Throws 'BadPerPackageCompilerPaths'
 checkBadPerPackageCompilerPaths
-  :: [ConfiguredProgram]
+  :: (PackageConfig -> MapLast String FilePath)
+  -> [ConfiguredProgram]
   -> Map PackageName PackageConfig
   -> IO ()
-checkBadPerPackageCompilerPaths compilerPrograms packagesConfig =
+checkBadPerPackageCompilerPaths programPaths compilerPrograms packagesConfig =
   case [ (pkgname, progname)
        | let compProgNames = Set.fromList (map programId compilerPrograms)
        , (pkgname, pkgconf) <- Map.toList packagesConfig
-       , progname <- Map.keys (getMapLast (packageConfigProgramPaths pkgconf))
+       , progname <- Map.keys (getMapLast (programPaths pkgconf))
        , progname `Set.member` compProgNames
        ] of
     [] -> return ()

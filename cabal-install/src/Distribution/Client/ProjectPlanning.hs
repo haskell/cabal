@@ -152,6 +152,8 @@ import Distribution.Client.Toolchain
   , Toolchain (..)
   , Toolchains
   , getStage
+  , isCross
+  , mapWithStage
   , overStage
   , prevStage
   , traverseWithStage
@@ -560,7 +562,12 @@ configureCompiler verbosity distDirLayout projectConfig =
 -- compiler (which is stored in a cache) and __unconfigured__ related programs
 -- (cannot be cached, as unconfigured). A stage is re-configured when its
 -- compiler or @hc-pkg@ change, and when the program search path or
--- @extra-prog-path@ or @program-locations@ change.
+-- @extra-prog-path@ or its program locations change.
+--
+-- The program locations are per stage: @--with-PROG@ and @program-locations@
+-- configure the host stage, @--with-build-PROG@ and @build-program-locations@
+-- the build stage. Neither stage inherits the other's: @--with-ar@ is the
+-- @ar@ for host binaries and must not produce build-machine binaries.
 --
 -- In the case of @GHC@, we configure @ghc@ and @ghc-pkg@, and provide
 -- unconfigured attendant programs such as @hsc2hs@, @haddock@ and toolchain
@@ -589,40 +596,31 @@ configureToolchains
     , projectConfigAllPackages =
       PackageConfig
         { packageConfigProgramPaths = packageConfigProgramPathsGlobal
+        , packageConfigBuildProgramPaths = packageConfigBuildProgramPathsGlobal
         }
     , projectConfigLocalPackages =
       PackageConfig
         { packageConfigProgramPaths = packageConfigProgramPathsLocal
+        , packageConfigBuildProgramPaths = packageConfigBuildProgramPathsLocal
         , packageConfigProgramPathExtra
         }
     } = do
     progsearchpath <- liftIO getSystemSearchPath
 
-    -- LIMITATION: program locations are not per-stage.
-    --
-    -- The user-supplied program locations (the global and the local
-    -- @program-locations@ sections, @--with-PROG@) and the @extra-prog-path@
-    -- entries are project-wide settings with no per-stage variant, so the
-    -- same values are applied to the host and the build toolchain. The two
-    -- stages therefore resolve every auxiliary program, @pkg-config@ above
-    -- all, to the same executable. Under cross-compilation that is wrong for
-    -- any tool that answers for one platform: the host stage cannot be given
-    -- a prefixed @pkg-config@, or one pointed at a sysroot, without the
-    -- build stage getting it too. The per-stage read of the pkg-config
-    -- database below is correct plumbing, but on its own it reads the same
-    -- tool twice. Per-stage locations need stage-qualified configuration,
-    -- which this branch does not have.
-    let userProgramPaths =
-          Map.toList
-            . getMapLast
-            $ packageConfigProgramPathsGlobal <> packageConfigProgramPathsLocal
-        userPaths :: ProgramDb -> ProgramDb
-        userPaths = userSpecifyPaths userProgramPaths
+    -- NB: the @extra-prog-path@ entries are still project-wide settings with
+    -- no per-stage variant, so both stages search the same extra directories.
 
     -- Configure the compiler for a single stage, caching the result under the
-    -- given project-cache file. Shared program-path settings apply to both
-    -- stages; only the compiler flavour/path/hc-pkg differ.
-    let configureStage cacheName hcFlavor hcPath hcPkg = do
+    -- given project-cache file. The stage's own user-supplied program
+    -- locations (the global and the local ones, in that order) are applied
+    -- to its program database.
+    let configureStage cacheName hcFlavor hcPath hcPkg programPathsGlobal programPathsLocal = do
+          let userPaths :: ProgramDb -> ProgramDb
+              userPaths =
+                userSpecifyPaths
+                  . Map.toList
+                  . getMapLast
+                  $ programPathsGlobal <> programPathsLocal
           let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile cacheName
           (hc, plat, hcProgDb) <-
             rerunIfChanged
@@ -632,8 +630,8 @@ configureToolchains
               , hcPath
               , hcPkg
               , progsearchpath
-              , packageConfigProgramPathsGlobal
-              , packageConfigProgramPathsLocal
+              , programPathsGlobal
+              , programPathsLocal
               , packageConfigProgramPathExtra
               )
               $ do
@@ -705,6 +703,8 @@ configureToolchains
         (flagToMaybe projectConfigHcFlavor)
         (flagToMaybe projectConfigHcPath)
         (flagToMaybe projectConfigHcPkg)
+        packageConfigProgramPathsGlobal
+        packageConfigProgramPathsLocal
 
     -- A distinct build toolchain exists only when a build-stage compiler is
     -- requested AND it turns out to be a different compiler from the host's.
@@ -739,6 +739,8 @@ configureToolchains
               (buildHcFlavor <|> flagToMaybe projectConfigHcFlavor)
               (buildHcPath <|> flagToMaybe projectConfigHcPath)
               buildHcPkg
+              packageConfigBuildProgramPathsGlobal
+              packageConfigBuildProgramPathsLocal
           return $
             if sameCompiler hostToolchain candidate
               then Nothing
@@ -746,6 +748,37 @@ configureToolchains
         else pure Nothing
 
     return Staged{onHost = hostToolchain, onBuild = buildToolchain}
+
+-- | Does the project configuration give any build-stage program location or
+-- argument, for any package?
+hasBuildProgramSettings :: ProjectConfig -> Bool
+hasBuildProgramSettings ProjectConfig{..} =
+  any
+    hasSettings
+    ( projectConfigAllPackages
+        : projectConfigLocalPackages
+        : Map.elems (getMapMappend projectConfigSpecificPackage)
+    )
+  where
+    hasSettings pkgconf =
+      not (Map.null (getMapLast (packageConfigBuildProgramPaths pkgconf)))
+        || not (Map.null (getMapMappend (packageConfigBuildProgramArgs pkgconf)))
+
+-- | The user-supplied program locations for packages of a given 'Stage':
+-- @--with-PROG@ and @program-locations@ for the host stage,
+-- @--with-build-PROG@ and @build-program-locations@ for the build stage.
+-- Neither stage inherits the other's.
+stageProgramPaths :: Stage -> PackageConfig -> MapLast String FilePath
+stageProgramPaths Host = packageConfigProgramPaths
+stageProgramPaths Build = packageConfigBuildProgramPaths
+
+-- | The user-supplied program arguments for packages of a given 'Stage':
+-- @--PROG-options@ and @program-options@ for the host stage,
+-- @--build-PROG-options@ and @build-program-options@ for the build stage.
+-- Neither stage inherits the other's.
+stageProgramArgs :: Stage -> PackageConfig -> MapMappend String [String]
+stageProgramArgs Host = packageConfigProgramArgs
+stageProgramArgs Build = packageConfigBuildProgramArgs
 
 -- | Do two toolchains build the same thing the same way?
 --
@@ -931,15 +964,33 @@ rebuildInstallPlan
         -> Toolchains
         -> Rebuild ()
       phaseConfigurePrograms projectConfig toolchains = do
-        let compilerProgDb = toolchainProgramDb (getStage toolchains Host)
         -- Users are allowed to specify program locations independently for
         -- each package (e.g. to use a particular version of a pre-processor
         -- for some packages). However they cannot do this for the compiler
-        -- itself as that's just not going to work. So we check for this.
+        -- itself as that's just not going to work. So we check for this, for
+        -- each stage against that stage's compiler.
         liftIO $
-          checkBadPerPackageCompilerPaths
-            (configuredPrograms compilerProgDb)
-            (getMapMappend (projectConfigSpecificPackage projectConfig))
+          sequence_ $
+            mapWithStage
+              ( \stage toolchain ->
+                  checkBadPerPackageCompilerPaths
+                    (stageProgramPaths stage)
+                    (configuredPrograms (toolchainProgramDb toolchain))
+                    (getMapMappend (projectConfigSpecificPackage projectConfig))
+              )
+              toolchains
+
+        -- Without cross-compilation there is no build stage, so nothing
+        -- uses the build-stage program settings. They do not fall back to
+        -- the host stage either: say so rather than ignoring them silently.
+        unless (isCross toolchains || not (hasBuildProgramSettings projectConfig)) $
+          liftIO $
+            warn verbosity $
+              "The build-stage program settings (--with-build-PROG, "
+                ++ "--build-PROG-options, build-program-locations, "
+                ++ "build-program-options) are ignored: there is no build "
+                ++ "stage because the build is not cross-compiling. Use "
+                ++ "--with-PROG and --PROG-options instead."
 
       -- TODO: [required eventually] find/configure other programs that the
       -- user specifies.
@@ -2696,8 +2747,10 @@ elaborateInstallPlan
             -- the locations we discovered while configuring the compiler: this
             -- is what makes @--with-gcc@ and the @program-locations@ section in
             -- the config file win over the C compiler that GHC was built with.
+            -- The user-supplied settings are this package's stage's own (see
+            -- 'stageProgramPaths').
             elabProgramPaths =
-              getMapLast (perPkgOption pkgid packageConfigProgramPaths)
+              getMapLast (perPkgOption pkgid (stageProgramPaths elabStage))
                 <> Map.fromList
                   [ (programId prog, programPath prog)
                   | prog <- configuredPrograms stageProgDb
@@ -2727,7 +2780,7 @@ elaborateInstallPlan
                       , not (null args)
                       ]
                   )
-                  (getMapMappend $ perPkgOption pkgid packageConfigProgramArgs)
+                  (getMapMappend $ perPkgOption pkgid (stageProgramArgs elabStage))
 
             elabProgramPathExtra = fromNubList $ perPkgOption pkgid packageConfigProgramPathExtra
             elabConfiguredPrograms = configuredPrograms stageProgDb

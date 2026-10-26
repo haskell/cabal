@@ -286,6 +286,13 @@ data ProjectConfigProvenance
 data PackageConfig = PackageConfig
   { packageConfigProgramPaths :: MapLast String FilePath
   , packageConfigProgramArgs :: MapMappend String [String]
+  , packageConfigBuildProgramPaths :: MapLast String FilePath
+  -- ^ Like 'packageConfigProgramPaths', for packages built for the build
+  -- stage of a cross-compiling plan. 'packageConfigProgramPaths' then applies
+  -- to the host stage only; neither stage inherits the other's.
+  , packageConfigBuildProgramArgs :: MapMappend String [String]
+  -- ^ Like 'packageConfigProgramArgs', for the build stage. See
+  -- 'packageConfigBuildProgramPaths'.
   , packageConfigProgramPathExtra :: NubList FilePath
   , packageConfigFlagAssignment :: FlagAssignment
   , packageConfigVanillaLib :: Flag Bool
