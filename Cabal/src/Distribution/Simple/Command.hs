@@ -643,7 +643,7 @@ withGlobalOptionNote globalUI (Command name synopsis parse cmdType) =
 
     globalOpts = commandGetOpts ParseArgs globalUI
 
--- \| @'Just' note@ if some argument rejected by the command's parser would
+-- | @'Just' note@ if some argument rejected by the command's parser would
 -- have been accepted as an option by the global parser, i.e. a global option
 -- was given after the command name.
 misplacedGlobalOptionNote :: [GetOpt.OptDescr a] -> [String] -> Maybe String
