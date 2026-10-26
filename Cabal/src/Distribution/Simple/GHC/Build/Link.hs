@@ -288,6 +288,10 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
               { ghcOptMode = toFlag GhcModeMergeObjs
               , ghcOptInputFiles = toNubListR files
               , ghcOptOutputFile = toFlag target
+              , -- The user's --ghc-options are passed here too and may refer
+                -- to packages (-trust base, -package-db ...), so GHC needs the
+                -- same package databases as for the other link steps.
+                ghcOptPackageDBs = withPackageDB lbi
               }
       | otherwise = do
           (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
