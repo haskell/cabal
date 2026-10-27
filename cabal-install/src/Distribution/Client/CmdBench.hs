@@ -25,6 +25,7 @@ import Distribution.Client.CmdErrorMessages
   , targetSelectorPluralPkgs
   )
 import Distribution.Client.Errors
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
@@ -32,8 +33,10 @@ import Distribution.Client.NixStyleOptions
   , nixStyleOptions
   )
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectPlanning.Types (elabLocalToProject)
 import Distribution.Client.Setup
   ( GlobalFlags
+  , installWatch
   )
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -41,10 +44,12 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.Utils
   ( giveRTSWarning
   )
+import Distribution.Client.Watch (planWatchFiles, watchFiles)
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
   )
+import Distribution.Simple.Flag (fromFlagOrDefault)
 import Distribution.Simple.Utils
   ( dieWithException
   , warn
@@ -140,10 +145,22 @@ benchAction flags targetStrings globalFlags = do
               elaboratedPlan
       return (elaboratedPlan', targets)
 
-  printPlan verbosity baseCtx buildCtx
-
-  buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-  runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+  let watch = fromFlagOrDefault False (installWatch (installFlags flags))
+      localElabs =
+        [ elab
+        | InstallPlan.Configured elab <-
+            InstallPlan.toList (elaboratedPlanToExecute buildCtx)
+        , elabLocalToProject elab
+        ]
+      core = do
+        printPlan verbosity baseCtx buildCtx
+        buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+        runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+  if watch
+    then do
+      files <- planWatchFiles verbosity (distDirLayout baseCtx) localElabs
+      watchFiles verbosity files core
+    else core
   where
     verbosity = cfgVerbosity normal flags
     cliConfig =

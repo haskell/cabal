@@ -924,6 +924,15 @@ In addition ``cabal build`` accepts these flags:
     When given we will forego performing a full build and abort after running
     the configure phase of each target package.
 
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After the initial build, watch the project files (including all
+    ``.cabal`` files) and the source files of the build targets and re-run
+    the build whenever one of them changes, until interrupted with Ctrl-C.
+    Only supported on Linux.
+
 cabal install
 ^^^^^^^^^^^^^
 
@@ -1015,6 +1024,15 @@ the name does not contain an extension, you must reference it as ``./myenv``.
 You can learn more about how to use these environments in `this section of the
 GHC manual <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/packages.html#package-environments>`_.
 
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After the initial install, watch the project files (including all
+    ``.cabal`` files) and the source files of the install targets and re-run
+    the build and install whenever one of them changes, until interrupted
+    with Ctrl-C. Only supported on Linux.
+
 cabal haddock
 ^^^^^^^^^^^^^
 
@@ -1024,6 +1042,15 @@ the specified packages within the project.
 If a target is not a library :cfg-field:`haddock-benchmarks`,
 :cfg-field:`haddock-executables`, :cfg-field:`haddock-internal`,
 :cfg-field:`haddock-tests` will be implied as necessary.
+
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After the initial haddock build, watch the project files (including all
+    ``.cabal`` files) and the source files of the haddock targets and
+    re-generate the documentation whenever one of them changes, until
+    interrupted with Ctrl-C. Only supported on Linux.
 
 cabal haddock-project
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1236,6 +1263,16 @@ See ``cabal run`` for more information on scripts.
     in version 3.10 and earlier where only a single component can be loaded at
     once.
 
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After starting the REPL, watch the project files (including all
+    ``.cabal`` files) and the source files of the REPL targets and restart
+    the REPL whenever one of them changes, until interrupted with Ctrl-C
+    (exiting the interpreter itself does not stop watching). Only supported
+    on Linux.
+
 .. _cabal run:
 
 cabal run
@@ -1338,6 +1375,16 @@ or the interpreter line
 
 For more information see :cfg-field:`verbose`
 
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After the initial run, watch the project files (including all ``.cabal``
+    files) and the source files of the run target and rebuild and re-run the
+    executable whenever one of them changes, until interrupted with Ctrl-C
+    (exiting the program itself does not stop watching). Only supported on
+    Linux.
+
 cabal bench
 ^^^^^^^^^^^
 
@@ -1353,6 +1400,15 @@ they are up to date.
 compete for resources with each other or with the build, which would skew
 their results. Without ``--keep-going``, no benchmark is run if the build
 fails.
+
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After the initial run, watch the project files (including all ``.cabal``
+    files) and the source files of the benchmark targets and re-run the
+    benchmarks whenever one of them changes, until interrupted with Ctrl-C.
+    Only supported on Linux.
 
 cabal test
 ^^^^^^^^^^
@@ -1411,6 +1467,15 @@ after ensuring they are up to date and building them, if necessary.
 not have one; e.g. ``--show-details`` becomes ``--test-show-details`` but
 ``--test-wrapper`` remains the same.
 
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After the initial run, watch the project files (including all ``.cabal``
+    files) and the source files of the test targets and re-run the tests
+    whenever one of them changes, until interrupted with Ctrl-C. Only
+    supported on Linux.
+
 cabal exec
 ^^^^^^^^^^
 
@@ -1422,6 +1487,15 @@ invocations and bringing the project's executables into scope.
 
 Sanity checks and shipping
 --------------------------
+
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After setting up the environment, watch the project files (including all
+    ``.cabal`` files) and the source files of all packages in the project and
+    re-run the environment setup and the executable whenever one of them
+    changes, until interrupted with Ctrl-C. Only supported on Linux.
 
 cabal check
 ^^^^^^^^^^^
@@ -1626,6 +1700,16 @@ A list of all warnings with their constructor:
         ``base-4.20.0`` are not excluded by the bound.  The correct bound is ``<
         4.20``.
 
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After the initial check, watch the ``.cabal`` file in the current
+    directory and the project files (``cabal.project``, ``cabal.project.local``
+    and ``cabal.project.freeze``, if they exist) and re-run the check whenever
+    one of them changes, until interrupted with Ctrl-C. Only supported on
+    Linux.
+
 .. _cabal-sdist:
 
 cabal sdist
@@ -1661,6 +1745,15 @@ not due to implementation but due to fundamental core invariants
 that must be satisfied for it to function correctly in the larger build ecosystem.
 ``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
 the custom publishing of Haddock documentation to Hackage.
+
+.. option:: --watch
+
+    :since: 3.20.0.0
+
+    After generating the sdist tarball(s), watch the project files (including
+    all ``.cabal`` files) and the source files of the selected packages and
+    re-generate whenever one of them changes, until interrupted with Ctrl-C.
+    Only supported on Linux.
 
 cabal upload
 ^^^^^^^^^^^^

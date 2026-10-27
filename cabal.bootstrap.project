@@ -13,3 +13,9 @@ tests: False
 benchmarks: False
 
 index-state: hackage.haskell.org 2026-07-02T14:25:01Z
+
+package zlib
+  flags: +pkg-config
+
+package cabal-install
+  flags: -fswatch

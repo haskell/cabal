@@ -218,6 +218,8 @@ Flags for repl:
                                 be installed.
  --only-download              # Do not build anything, only fetch the
                                 packages.
+ --watch                      # Watch the relevant files and rerun the command
+                                when one of them changes (Linux only).
  --max-backjumps=NUM          # Maximum number of backjumps allowed while
                                 solving (default: 4000). Use a negative number
                                 to enable unlimited backtracking. Use 0 to

@@ -412,7 +412,7 @@
             "version": "0.7.1.0"
         },
         {
-            "cabal_sha256": "cf2f8f91b10b635bdaa2c3010f40a5562a06ede24b92d819758e7f1b7d04f9f2",
+            "cabal_sha256": "56d8bb3f9656059ff24b705d59cc65f6f37e3ea92b6b5f5bb202bd607738bb6f",
             "component": "lib:zlib",
             "flags": [
                 "-bundled-c-zlib",
@@ -420,7 +420,7 @@
                 "+pkg-config"
             ],
             "package": "zlib",
-            "revision": 0,
+            "revision": 1,
             "source": "hackage",
             "src_sha256": "bf95ab01ed924be800addea195fba5ca97ec69f378368f6ff466bdc29666c1c1",
             "version": "0.7.1.1"
@@ -517,6 +517,7 @@
             "cabal_sha256": null,
             "component": "lib:cabal-install",
             "flags": [
+                "-fswatch",
                 "-git-rev",
                 "-legacy-comparison",
                 "+native-dns"
@@ -531,6 +532,7 @@
             "cabal_sha256": null,
             "component": "exe:cabal",
             "flags": [
+                "-fswatch",
                 "-git-rev",
                 "-legacy-comparison",
                 "+native-dns"

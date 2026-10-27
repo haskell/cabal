@@ -21,6 +21,7 @@ import Distribution.Client.InstallPlan
   ( GenericPlanPackage (..)
   , toGraph
   )
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
@@ -57,13 +58,17 @@ import Distribution.Client.ProjectPlanning
 import qualified Distribution.Client.ProjectPlanning as Planning
 import Distribution.Client.ProjectPlanning.Types
   ( dataDirsEnvironmentForPlan
+  , elabLocalToProject
   )
 import Distribution.Client.Setup
   ( GlobalFlags
+  , installWatch
   )
+import Distribution.Client.Watch (planWatchFiles, watchFiles)
 import Distribution.Simple.Command
   ( CommandUI (..)
   )
+import Distribution.Simple.Flag (fromFlagOrDefault)
 import Distribution.Simple.GHC
   ( GhcImplInfo (supportsPkgEnvFiles)
   , getImplInfo
@@ -183,7 +188,19 @@ execAction flags extraArgs globalFlags = do
   -- we pass the same info as arguments
   let compiler = pkgConfigCompiler $ elaboratedShared buildCtx
       envFilesSupported = supportsPkgEnvFiles (getImplInfo compiler)
-  case extraArgs of
+  let watchOr core =
+        if fromFlagOrDefault False (installWatch (installFlags flags))
+          then do
+            let localElabs =
+                  [ elab
+                  | InstallPlan.Configured elab <-
+                      InstallPlan.toList (elaboratedPlanToExecute buildCtx)
+                  , elabLocalToProject elab
+                  ]
+            files <- planWatchFiles verbosity (distDirLayout baseCtx) localElabs
+            watchFiles verbosity files core
+          else core
+  watchOr $ case extraArgs of
     [] -> dieWithException verbosity SpecifyAnExecutable
     exe : args -> do
       (program, _) <- requireProgram verbosity (simpleProgram exe) programDb

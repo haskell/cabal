@@ -38,6 +38,7 @@ import Distribution.Client.InstallPlan
   ( foldPlanPackage
   , toList
   )
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
@@ -69,6 +70,7 @@ import Distribution.Client.ScriptUtils
   )
 import Distribution.Client.Setup
   ( GlobalFlags (..)
+  , installWatch
   )
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -77,6 +79,7 @@ import Distribution.Client.Utils
   ( giveRTSWarning
   , occursOnlyOrBefore
   )
+import Distribution.Client.Watch (planWatchFiles, watchFiles)
 
 import Distribution.Simple.BuildToolDepends
   ( getAllInternalToolDependencies
@@ -85,6 +88,7 @@ import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
   )
+import Distribution.Simple.Flag (fromFlagOrDefault)
 import Distribution.Simple.Program.Find
   ( ProgramSearchPathEntry (ProgramSearchPathDir)
   , defaultProgramSearchPath
@@ -254,105 +258,115 @@ runAction flags targetAndArgs globalFlags = do
     (selectedUnitId, selectedComponent) <-
       -- Slight duplication with 'runProjectPreBuildPhase'.
       singleExeOrElse
-        ( dieWithException verbosity RunPhaseReached
-        )
+        (dieWithException verbosity RunPhaseReached)
         $ Orchestration.targetsMap buildCtx
 
     printPlan verbosity baseCtx buildCtx
 
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+    let core = do
+          buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+          runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
-    let elaboratedPlan = elaboratedPlanToExecute buildCtx
-        matchingElaboratedConfiguredPackages =
-          matchingPackagesByUnitId
-            selectedUnitId
-            elaboratedPlan
+          let elaboratedPlan = elaboratedPlanToExecute buildCtx
+              matchingElaboratedConfiguredPackages =
+                matchingPackagesByUnitId
+                  selectedUnitId
+                  elaboratedPlan
 
-    let exeName = unUnqualComponentName selectedComponent
+              exeName = unUnqualComponentName selectedComponent
+          -- In the common case, we expect @matchingElaboratedConfiguredPackages@
+          -- to consist of a single element that provides a single way of building
+          -- an appropriately-named executable. In that case we take that
+          -- package and continue.
+          --
+          -- However, multiple packages/components could provide that
+          -- executable, or it's possible we don't find the executable anywhere
+          -- in the build plan. I suppose in principle it's also possible that
+          -- a single package provides an executable in two different ways,
+          -- though that's probably a bug if. Anyway it's a good lint to report
+          -- an error in all of these cases, even if some seem like they
+          -- shouldn't happen.
+          pkg <- case matchingElaboratedConfiguredPackages of
+            [] -> dieWithException verbosity $ UnknownExecutable exeName selectedUnitId
+            [elabPkg] -> do
+              info verbosity $
+                "Selecting "
+                  ++ prettyShow selectedUnitId
+                  ++ " to supply "
+                  ++ exeName
+              return elabPkg
+            elabPkgs ->
+              dieWithException verbosity $
+                MultipleMatchingExecutables exeName (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
 
-    -- In the common case, we expect @matchingElaboratedConfiguredPackages@
-    -- to consist of a single element that provides a single way of building
-    -- an appropriately-named executable. In that case we take that
-    -- package and continue.
-    --
-    -- However, multiple packages/components could provide that
-    -- executable, or it's possible we don't find the executable anywhere
-    -- in the build plan. I suppose in principle it's also possible that
-    -- a single package provides an executable in two different ways,
-    -- though that's probably a bug if. Anyway it's a good lint to report
-    -- an error in all of these cases, even if some seem like they
-    -- shouldn't happen.
-    pkg <- case matchingElaboratedConfiguredPackages of
-      [] -> dieWithException verbosity $ UnknownExecutable exeName selectedUnitId
-      [elabPkg] -> do
-        info verbosity $
-          "Selecting "
-            ++ prettyShow selectedUnitId
-            ++ " to supply "
-            ++ exeName
-        return elabPkg
-      elabPkgs ->
-        dieWithException verbosity $
-          MultipleMatchingExecutables exeName (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
+          let defaultExePath =
+                binDirectoryFor
+                  (distDirLayout baseCtx)
+                  (elaboratedShared buildCtx)
+                  pkg
+                  exeName
+                  </> exeName
+              exePath = fromMaybe defaultExePath (movedExePath selectedComponent (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg)
 
-    let defaultExePath =
-          binDirectoryFor
-            (distDirLayout baseCtx)
-            (elaboratedShared buildCtx)
-            pkg
-            exeName
-            </> exeName
-        exePath = fromMaybe defaultExePath (movedExePath selectedComponent (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg)
+              dryRun =
+                buildSettingDryRun (buildSettings baseCtx)
+                  || buildSettingOnlyDownload (buildSettings baseCtx)
 
-    let dryRun =
-          buildSettingDryRun (buildSettings baseCtx)
-            || buildSettingOnlyDownload (buildSettings baseCtx)
+              -- HACK alert: when doing a per-package build (e.g. with a Custom setup),
+              -- 'elabExeDependencyPaths' will not contain any internal executables
+              -- (they are deliberately filtered out; and even if they weren't, they have the wrong paths).
+              -- We add them back in here to ensure that any "build-tool-depends" of
+              -- the current executable is available in PATH at runtime.
+              internalToolDepsOfThisExe
+                | ElabPackage{} <- elabPkgOrComp pkg
+                , let pkg_descr = elabPkgDescription pkg
+                , thisExe : _ <- filter ((== exeName) . unUnqualComponentName . PD.exeName) $ PD.executables pkg_descr
+                , let thisExeBI = PD.buildInfo thisExe =
+                    [ binDirectoryFor (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg depExeNm
+                    | depExe <- getAllInternalToolDependencies pkg_descr thisExeBI
+                    , let depExeNm = unUnqualComponentName depExe
+                    ]
+                | otherwise =
+                    []
+              extraPath =
+                elabExeDependencyPaths pkg
+                  ++ ( fromNubList
+                        . projectConfigProgPathExtra
+                        . projectConfigShared
+                        . projectConfig
+                        $ baseCtx
+                     )
+                  ++ internalToolDepsOfThisExe
 
-    let
-      -- HACK alert: when doing a per-package build (e.g. with a Custom setup),
-      -- 'elabExeDependencyPaths' will not contain any internal executables
-      -- (they are deliberately filtered out; and even if they weren't, they have the wrong paths).
-      -- We add them back in here to ensure that any "build-tool-depends" of
-      -- the current executable is available in PATH at runtime.
-      internalToolDepsOfThisExe
-        | ElabPackage{} <- elabPkgOrComp pkg
-        , let pkg_descr = elabPkgDescription pkg
-        , thisExe : _ <- filter ((== exeName) . unUnqualComponentName . PD.exeName) $ PD.executables pkg_descr
-        , let thisExeBI = PD.buildInfo thisExe =
-            [ binDirectoryFor (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg depExeNm
-            | depExe <- getAllInternalToolDependencies pkg_descr thisExeBI
-            , let depExeNm = unUnqualComponentName depExe
-            ]
-        | otherwise =
-            []
-      extraPath =
-        elabExeDependencyPaths pkg
-          ++ ( fromNubList
-                . projectConfigProgPathExtra
-                . projectConfigShared
-                . projectConfig
-                $ baseCtx
-             )
-          ++ internalToolDepsOfThisExe
+          logExtraProgramSearchPath verbosity extraPath
+          progPath <- programSearchPathAsPATHVar (map ProgramSearchPathDir extraPath ++ defaultProgramSearchPath)
 
-    logExtraProgramSearchPath verbosity extraPath
-    progPath <- programSearchPathAsPATHVar (map ProgramSearchPathDir extraPath ++ defaultProgramSearchPath)
+          if dryRun
+            then notice verbosity "Running of executable suppressed by flag(s)"
+            else
+              runProgramInvocation
+                verbosity
+                emptyProgramInvocation
+                  { progInvokePath = exePath
+                  , progInvokeArgs = args
+                  , progInvokeEnv =
+                      ("PATH", Just progPath)
+                        : dataDirsEnvironmentForPlan
+                          (distDirLayout baseCtx)
+                          elaboratedPlan
+                  }
 
-    if dryRun
-      then notice verbosity "Running of executable suppressed by flag(s)"
-      else
-        runProgramInvocation
-          verbosity
-          emptyProgramInvocation
-            { progInvokePath = exePath
-            , progInvokeArgs = args
-            , progInvokeEnv =
-                ("PATH", Just progPath)
-                  : dataDirsEnvironmentForPlan
-                    (distDirLayout baseCtx)
-                    elaboratedPlan
-            }
+    if fromFlagOrDefault False (installWatch (installFlags flags))
+      then do
+        let localElabs =
+              [ elab
+              | InstallPlan.Configured elab <-
+                  InstallPlan.toList (elaboratedPlanToExecute buildCtx)
+              , elabLocalToProject elab
+              ]
+        files <- planWatchFiles verbosity (distDirLayout baseCtx) localElabs
+        watchFiles verbosity files core
+      else core
 
 -- | Split @cabal run@ arguments (@exe cmd@ arguments in the examples) into
 -- target selectors and target executable arguments.

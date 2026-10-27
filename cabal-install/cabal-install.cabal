@@ -39,6 +39,11 @@ flag git-rev
   default: False
   manual: True
 
+flag fswatch
+  description: Enable the --watch flag (adds the fsnotify dependency, Linux only)
+  default: True
+  manual: True
+
 flag legacy-comparison
   description: Enable comparison between the new and legacy cabal.project parser
   default: False
@@ -237,6 +242,7 @@ library
         Distribution.Client.Utils.Parsec
         Distribution.Client.VCS
         Distribution.Client.Version
+        Distribution.Client.Watch
         Distribution.Client.Win32SelfUpgrade
 
     build-depends:
@@ -283,7 +289,12 @@ library
       build-depends:
         , Win32 >= 2.8 && < 3
         , directory >=1.3.1.0
-    else
+
+    if os(linux) && flag(fswatch)
+      build-depends: fsnotify >= 0.4.1 && < 0.5
+      cpp-options: -DHAVE_FSWATCH
+
+    if !os(windows)
       build-depends:
         , unix >= 2.5 && < 2.8 || >= 2.8.6.0 && < 2.9
 
@@ -355,6 +366,7 @@ test-suite unit-tests
       UnitTests.Distribution.Client.Targets
       UnitTests.Distribution.Client.TreeDiffInstances
       UnitTests.Distribution.Client.UserConfig
+      UnitTests.Distribution.Client.Watch
       UnitTests.Distribution.Solver.Modular.Builder
       UnitTests.Distribution.Solver.Modular.RetryLog
       UnitTests.Distribution.Solver.Modular.Solver
