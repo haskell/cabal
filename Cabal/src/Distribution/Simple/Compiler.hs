@@ -535,9 +535,12 @@ extensionToFlag' comp ext = lookup ext (compilerExtensions comp)
 parmakeSupported :: Compiler -> Bool
 parmakeSupported = ghcSupported "Support parallel --make"
 
--- | Does this compiler support reexported-modules?
+-- | Does this compiler support reexported-modules? GHC says so in its
+-- @--info@, from which its 'compilerProperties' come; other compilers can say
+-- so in their 'compilerProperties' too.
 reexportedModulesSupported :: Compiler -> Bool
-reexportedModulesSupported = ghcSupported "Support reexported-modules"
+reexportedModulesSupported comp =
+  Map.lookup "Support reexported-modules" (compilerProperties comp) == Just "YES"
 
 -- | Does this compiler support thinning/renaming on package flags?
 renamingPackageFlagsSupported :: Compiler -> Bool

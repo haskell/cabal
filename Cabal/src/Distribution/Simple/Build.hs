@@ -70,6 +70,7 @@ import Distribution.Backpack
 import Distribution.Backpack.DescribeUnitId
 import Distribution.Package
 import qualified Distribution.Simple.GHC as GHC
+import qualified Distribution.Simple.MHS as MHS
 import qualified Distribution.Simple.PackageIndex as Index
 import qualified Distribution.Simple.UHC as UHC
 
@@ -312,6 +313,7 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
     flavorToProgram GHC = Just ghcProgram
     flavorToProgram UHC = Just uhcProgram
     flavorToProgram JHC = Just jhcProgram
+    flavorToProgram MHS = Just mhsProgram
     flavorToProgram _ = Nothing
 
 repl
@@ -981,6 +983,7 @@ buildLib verbHandles flags numJobs pkg_descr lbi lib clbi =
    in case compilerFlavor (compiler lbi) of
         GHC -> GHC.buildLib verbHandles flags numJobs pkg_descr lbi lib clbi
         UHC -> UHC.buildLib verbosity pkg_descr lbi lib clbi
+        MHS -> MHS.buildLib verbosity pkg_descr lbi lib clbi
         _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 -- | Build a foreign library
@@ -1012,6 +1015,7 @@ buildExe verbosity numJobs pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
     GHC -> GHC.buildExe verbosity numJobs pkg_descr lbi exe clbi
     UHC -> UHC.buildExe verbosity pkg_descr lbi exe clbi
+    MHS -> MHS.buildExe verbosity pkg_descr lbi exe clbi
     _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 replLib
