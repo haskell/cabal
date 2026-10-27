@@ -160,7 +160,7 @@ commonArgParser = do
   argBuildCompilerPath <- optional
       ( option
           str
-          ( help "Path to the build compiler (cross-compile build stage). If omitted, tests requiring a separate build compiler are skipped."
+          ( help "Path to the build compiler (cross-compile build machine). If omitted, tests requiring a separate build compiler are skipped."
               <> long "with-build-compiler"
               <> metavar "PATH"
           )

@@ -29,7 +29,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.GoalScope
-import Distribution.Solver.Types.Stage (getStage)
+import Distribution.Solver.Types.Machine (onMachine)
 import Distribution.Types.Flag (unFlagName)
 
 {-------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ validateLinking index = (`runReader` initVS) . go
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
     goP qpn@(Q (GoalScope s _pns _pq) pn) opt@(POption i _) r = do
       vs <- ask
-      let PInfo deps _ _ _ = getStage (vsIndex vs) s ! pn ! i
+      let PInfo deps _ _ _ = onMachine (vsIndex vs) s ! pn ! i
           qdeps            = qualifyDeps (vsQualifyOptions vs) qpn deps
           newSaved         = M.insert qpn qdeps (vsSaved vs)
       case execUpdateState (pickPOption qpn opt qdeps) vs of
@@ -347,7 +347,7 @@ verifyLinkGroup lg =
       -- if a constructor is added to the datatype we won't notice it here
       Just (PI (GoalScope s _ _) i) -> do
         vs <- get
-        let PInfo _deps _exes finfo _ = getStage (vsIndex vs) s ! lgPackage lg ! i
+        let PInfo _deps _exes finfo _ = onMachine (vsIndex vs) s ! lgPackage lg ! i
             flags   = M.keys finfo
             stanzas = [TestStanzas, BenchStanzas]
         forM_ flags $ \fn -> do

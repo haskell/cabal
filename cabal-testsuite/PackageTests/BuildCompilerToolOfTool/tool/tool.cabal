@@ -10,9 +10,9 @@ custom-setup
 
 executable tool
   main-is:            Main.hs
-  -- 'tool' is a build tool of 'app', so it is built at the build stage. Its
+  -- 'tool' is a build tool of 'app', so it is built at the build machine. Its
   -- own build tool 'gen' and its custom Setup.hs are then also at the build
-  -- stage: there is no earlier stage to drop to.
+  -- machine: there is no earlier machine to drop to.
   build-depends:      base
   build-tool-depends: gen:gen
   default-language:   Haskell2010

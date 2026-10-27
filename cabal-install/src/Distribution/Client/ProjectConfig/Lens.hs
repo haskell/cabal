@@ -46,6 +46,7 @@ import Distribution.Simple.Setup
   , pattern NoFlag
   )
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource)
+import Distribution.Solver.Types.Machine (Machine)
 import Distribution.Solver.Types.Settings
   ( AllowBootLibInstalls (..)
   , CountConflicts (..)
@@ -57,7 +58,6 @@ import Distribution.Solver.Types.Settings
   , ReorderGoals (..)
   , StrongFlags (..)
   )
-import Distribution.Solver.Types.Stage (Stage)
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint
   )
@@ -107,9 +107,9 @@ projectConfigSpecificPackage :: Lens' ProjectConfig (MapMappend PackageName Pack
 projectConfigSpecificPackage f s = fmap (\x -> s{T.projectConfigSpecificPackage = x}) (f (T.projectConfigSpecificPackage s))
 {-# INLINEABLE projectConfigSpecificPackage #-}
 
-projectConfigStagePackages :: Lens' ProjectConfig (MapMappend Stage PackageConfig)
-projectConfigStagePackages f s = fmap (\x -> s{T.projectConfigStagePackages = x}) (f (T.projectConfigStagePackages s))
-{-# INLINEABLE projectConfigStagePackages #-}
+projectConfigMachinePackages :: Lens' ProjectConfig (MapMappend Machine PackageConfig)
+projectConfigMachinePackages f s = fmap (\x -> s{T.projectConfigMachinePackages = x}) (f (T.projectConfigMachinePackages s))
+{-# INLINEABLE projectConfigMachinePackages #-}
 
 projectConfigVerbosity :: Lens' ProjectConfigBuildOnly (Flag VerbosityFlags)
 projectConfigVerbosity f s = fmap (\x -> s{T.projectConfigVerbosity = x}) (f (T.projectConfigVerbosity s))

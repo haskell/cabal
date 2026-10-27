@@ -58,6 +58,7 @@ import Distribution.Client.Types as Source
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.Machine (always)
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageIndex
   ( PackageIndex
@@ -69,7 +70,6 @@ import Distribution.Solver.Types.PkgConfigDb
   )
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage
-import Distribution.Solver.Types.Stage (always)
 
 import Distribution.Client.SavedFlags (readCommandFlags, writeCommandFlags)
 import Distribution.Package

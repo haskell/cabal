@@ -36,6 +36,7 @@ import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs (InstallDirs (..), toPathTemplate)
 import Distribution.Simple.Setup (DumpBuildInfo (..), HaddockTarget (..), TestShowDetails (..))
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
+import Distribution.Solver.Types.Machine (Machine (..))
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath (..))
 import Distribution.Solver.Types.Settings
   ( AllowBootLibInstalls (..)
@@ -48,7 +49,6 @@ import Distribution.Solver.Types.Settings
   , ReorderGoals (..)
   , StrongFlags (..)
   )
-import Distribution.Solver.Types.Stage (Stage (..))
 import Distribution.System (OS (..), buildOS)
 import Distribution.Types.CondTree (CondTree (..))
 import Distribution.Types.Flag (mkFlagAssignment)
@@ -86,7 +86,7 @@ parserTests =
     , testCase "read project-config-local-packages" testProjectConfigLocalPackages
     , testCase "read project-config-all-packages" testProjectConfigAllPackages
     , testCase "read project-config-specific-packages" testProjectConfigSpecificPackages
-    , testCase "read project-config-stage-packages" testProjectConfigStagePackages
+    , testCase "read project-config-machine-packages" testProjectConfigMachinePackages
     , testCase "test projectConfigAllPackages concatenation" testAllPackagesConcat
     , testCase "test projectConfigSpecificPackages concatenation" testSpecificPackagesConcat
     , testCase "test program-locations concatenation" testProgramLocationsConcat
@@ -445,15 +445,15 @@ testProjectConfigSpecificPackages = do
         { packageConfigSharedLib = Flag True
         }
 
-testProjectConfigStagePackages :: Assertion
-testProjectConfigStagePackages = do
-  -- The legacy parser has no stage-qualified package stanzas (it rejects the
+testProjectConfigMachinePackages :: Assertion
+testProjectConfigMachinePackages = do
+  -- The legacy parser has no machine-qualified package stanzas (it rejects the
   -- 'build:*' argument), so read with the parsec parser only.
-  config <- readConfigParsec "project-config-stage-packages"
+  config <- readConfigParsec "project-config-machine-packages"
   assertEqual
     "Parsed Config does not match expected"
     expected
-    (projectConfigStagePackages (snd (condTreeData config)))
+    (projectConfigMachinePackages (snd (condTreeData config)))
   where
     expected = MapMappend $ Map.fromList [(Build, expectedBuild), (Host, expectedHost)]
     expectedBuild :: PackageConfig
@@ -597,7 +597,7 @@ readConfigDefault :: FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleto
 readConfigDefault testSubDir = readConfig testSubDir "cabal.project"
 
 -- | Read a project config with the parsec parser only, for syntax the legacy
--- parser does not know (stage-qualified package stanzas).
+-- parser does not know (machine-qualified package stanzas).
 readConfigParsec :: FilePath -> IO ProjectConfigSkeleton
 readConfigParsec testSubDir = do
   (TestDir testRootFp projectConfigFp distDirLayout) <- testDirInfo testSubDir "cabal.project"

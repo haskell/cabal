@@ -26,7 +26,7 @@ import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.GoalScope
-import Distribution.Solver.Types.Stage (Stage (..))
+import Distribution.Solver.Types.Machine (Machine (..))
 
 -- | A package name.
 type PN = PackageName

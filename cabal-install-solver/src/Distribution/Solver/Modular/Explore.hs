@@ -25,7 +25,7 @@ import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.GoalScope
-import Distribution.Solver.Types.Stage (getStage)
+import Distribution.Solver.Types.Machine (onMachine)
 import Distribution.Solver.Types.Settings
          (CountConflicts(..), EnableBackjumping(..), FineGrainedConflicts(..))
 import Distribution.Types.VersionRange (anyVersion)
@@ -268,7 +268,7 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
     -- to be merged with the previous one.
     couldResolveConflicts :: QPN -> POption -> S.Set CS.Conflict -> Maybe ConflictSet
     couldResolveConflicts currentQPN@(Q (GoalScope s _ _) pn) (POption i@(I v _) _) conflicts =
-      let (PInfo deps _ _ _) = getStage idx s M.! pn M.! i
+      let (PInfo deps _ _ _) = onMachine idx s M.! pn M.! i
           qdeps = qualifyDeps (defaultQualifyOptions idx) currentQPN deps
 
           couldBeResolved :: CS.Conflict -> Maybe ConflictSet

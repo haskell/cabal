@@ -22,7 +22,7 @@ import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package ( PackageName )
 import Distribution.Compiler ( CompilerInfo )
 import Distribution.System ( Platform )
-import Distribution.Solver.Types.Stage ( Staged )
+import Distribution.Solver.Types.Machine ( PerMachine )
 
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to
@@ -33,14 +33,14 @@ import Distribution.Solver.Types.Stage ( Staged )
 -- in alternatives.
 --
 -- The compiler+platform, the pkg-config database and the installed-package
--- index are provided per build 'Distribution.Solver.Types.Stage.Stage' (as
--- 'Staged'), so the solver can target a different toolchain for the build
+-- index are provided per build 'Distribution.Solver.Types.Machine.Machine' (as
+-- 'PerMachine'), so the solver can target a different toolchain for the build
 -- machine and the host machine when cross-compiling. In an ordinary build both
--- stages hold the same value. The source package index is shared across stages.
+-- machines hold the same value. The source package index is shared across machines.
 --
-type DependencyResolver loc = Staged (CompilerInfo, Platform)
-                           -> Staged (Maybe PkgConfigDb)
-                           -> Staged InstalledPackageIndex
+type DependencyResolver loc = PerMachine (CompilerInfo, Platform)
+                           -> PerMachine (Maybe PkgConfigDb)
+                           -> PerMachine InstalledPackageIndex
                            -> PackageIndex (SourcePackage loc)
                            -> (PackageName -> PackagePreferences)
                            -> [LabeledPackageConstraint]

@@ -90,6 +90,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import qualified Distribution.Solver.Types.GoalScope as P
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.Machine (always)
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as CI.PackageIndex
@@ -97,7 +98,6 @@ import qualified Distribution.Solver.Types.PkgConfigDb as PC
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
-import Distribution.Solver.Types.Stage (always)
 import Distribution.Solver.Types.Variable
 import Distribution.Types.UnitId (UnitId)
 
@@ -246,8 +246,8 @@ exFlagged
 exFlagged n t e = ExFlagged n (dependencies t) (dependencies e)
 
 -- | Example constraints carry a bare 'ConstraintQualifier'; they are turned
--- into stage-agnostic ('Nothing') 'ConstraintScope's in 'toConstraint'. The
--- solver test suite is entirely non-cross, so a stage need never be specified.
+-- into machine-agnostic ('Nothing') 'ConstraintScope's in 'toConstraint'. The
+-- solver test suite is entirely non-cross, so a machine need never be specified.
 data ExConstraint
   = ExVersionConstraint ConstraintQualifier ExampleVersionRange
   | ExFlagConstraint ConstraintQualifier ExampleFlagName Bool
