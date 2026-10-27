@@ -161,7 +161,7 @@ instance Described UserConstraint where
     where
       describeConstraintScope :: GrammarRegex void
       describeConstraintScope =
-        -- An optional build-stage prefix (the 'Host' stage is the invisible
+        -- An optional build-machine prefix (the 'Host' machine is the invisible
         -- default and never rendered).
         REOpt "build:"
           <> REUnion

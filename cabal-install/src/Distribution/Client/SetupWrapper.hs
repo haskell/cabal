@@ -127,7 +127,7 @@ import Distribution.Simple.Command
   , commandShowOptions
   )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.Solver.Types.Stage (Staged, getStage)
+import Distribution.Solver.Types.Machine (PerMachine, onMachine)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program.GHC
   ( GhcMode (..)
@@ -232,7 +232,7 @@ data InLibraryArgs (lbi :: Type) (flags :: Type) where
   InLibraryConfigureArgs
     :: ElaboratedSharedConfig
     -> ElaboratedReadyPackage
-    -> TVar (Staged InstalledPackageIndex)
+    -> TVar (PerMachine InstalledPackageIndex)
     -> InLibraryArgs lbi ConfigFlags
   InLibraryPostConfigureArgs
     :: SPostConfigurePhase flags
@@ -661,7 +661,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                SBenchPhase    -> ()
     LibraryMethod (InLibraryConfigureArgs elabSharedConfig elabReadyPkg@(ReadyPackage elabPkg) ipiTVar) -> do
       -- Start from the pre-configured compiler ProgramDb of the
-      -- package's own stage, augmented with all builtin programs
+      -- package's own machine, augmented with all builtin programs
       -- (restored as unconfigured).
       -- This ensures:
       --   (a) configureAllKnownPrograms inside configureFinal skips
@@ -685,11 +685,11 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
           (useExtraPathEnv options)
           (useExtraEnvOverrides options)
           baseProgDb
-      -- Read the project InstalledPackageIndex of the package's stage to
+      -- Read the project InstalledPackageIndex of the package's machine to
       -- avoid needing to query @ghc-pkg@ to obtain it. See (ProjIPI3) and
       -- (ProjIPI4) in Note [Per-project InstalledPackageIndex]
       -- in Distribution.Client.ProjectBuilding.
-      ipi <- (`getStage` elabStage elabPkg) <$> readTVarIO ipiTVar
+      ipi <- (`onMachine` elabMachine elabPkg) <$> readTVarIO ipiTVar
       lbi0 <-
         InLibrary.configure
           (InLibrary.libraryConfigureInputsFromElabPackage

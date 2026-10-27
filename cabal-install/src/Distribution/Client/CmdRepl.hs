@@ -178,14 +178,14 @@ import Distribution.Client.ProjectConfig
   ( ProjectConfig (..)
   , ProjectConfigShared (..)
   )
-import Distribution.Client.ProjectPlanning.Stage (WithStage (..), withoutStage)
+import Distribution.Client.ProjectPlanning.Machine (WithMachine (..), withoutMachine)
 import Distribution.Client.ReplFlags
   ( EnvFlags (envIncludeTransitive, envPackages)
   , ReplFlags (..)
   , defaultReplFlags
   , topReplOptions
   )
-import Distribution.Client.Toolchain (Stage (..))
+import Distribution.Client.Toolchain (Machine (..))
 import Distribution.Compat.Binary (decode)
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
@@ -450,10 +450,10 @@ targetedRepl
 
           let
             (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
-            -- The plan is keyed by 'WithStage UnitId'; a repl target is a
-            -- host-stage unit, so look its node up at the host stage (under
-            -- cross-compilation a build-stage copy may share the UnitId).
-            targetPkg = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ InstallPlan.lookup elaboratedPlan (WithStage Host unitId)
+            -- The plan is keyed by 'WithMachine UnitId'; a repl target is a
+            -- host-machine unit, so look its node up on the host machine (under
+            -- cross-compilation a build-machine copy may share the UnitId).
+            targetPkg = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ InstallPlan.lookup elaboratedPlan (WithMachine Host unitId)
             originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan (Graph.nodeKey targetPkg)
             oci = OriginalComponentInfo unitId originalDeps
             pkgId = packageId targetPkg
@@ -746,20 +746,20 @@ addDepsToProjectTarget deps pkgId ctx =
 generateReplFlags :: Bool -> ElaboratedInstallPlan -> OriginalComponentInfo -> [String]
 generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = flags
   where
-    -- The plan is keyed by 'WithStage UnitId'. The repl's own component and
-    -- everything it links against are host-stage units, so a bare unit id
-    -- means the host-stage node (under cross-compilation a build-stage copy
+    -- The plan is keyed by 'WithMachine UnitId'. The repl's own component and
+    -- everything it links against are host-machine units, so a bare unit id
+    -- means the host-machine node (under cross-compilation a build-machine copy
     -- may share the UnitId).
-    planKey :: UnitId -> WithStage UnitId
+    planKey :: UnitId -> WithMachine UnitId
     planKey uid =
-      case InstallPlan.lookup elaboratedPlan (WithStage Host uid) of
+      case InstallPlan.lookup elaboratedPlan (WithMachine Host uid) of
         Just pkg -> Graph.nodeKey pkg
         Nothing -> error $ "generateReplFlags: cannot find " ++ prettyShow uid
 
     exeDeps :: [UnitId]
     exeDeps =
       foldMap
-        (InstallPlan.foldPlanPackage (const []) (map withoutStage . elabOrderExeDependencies))
+        (InstallPlan.foldPlanPackage (const []) (map withoutMachine . elabOrderExeDependencies))
         (InstallPlan.dependencyClosure elaboratedPlan [planKey ociUnitId])
 
     deps, deps', trans, trans' :: [UnitId]

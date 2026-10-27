@@ -54,7 +54,7 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
 import Distribution.Solver.Types.GoalScope
-import Distribution.Solver.Types.Stage (Stage, Staged, prevStage)
+import Distribution.Solver.Types.Machine (Machine, PerMachine, toolMachine)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
@@ -162,11 +162,11 @@ data QualifyOptions = QO {
     -- Should dependencies of the setup script be treated as independent?
   , qoSetupIndependent :: Bool
 
-    -- | The active stages. Tool dependencies (build-tool exes, custom
-    -- @Setup.hs@ deps) are solved at 'prevStage' of the depending package's
-    -- stage, which is Build only when a distinct build stage exists and Host
+    -- | The active machines. Tool dependencies (build-tool exes, custom
+    -- @Setup.hs@ deps) are solved at 'toolMachine' of the depending package's
+    -- machine, which is Build only when a distinct build machine exists and Host
     -- otherwise, so a non-cross build behaves exactly as before.
-  , qoStages :: Staged ()
+  , qoMachines :: PerMachine ()
   }
   deriving Show
 
@@ -207,10 +207,10 @@ qualifyDeps QO{..} (Q pp@(GoalScope s ns q) pn) = go
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _ =
-        Dep (Q (GoalScope toolStage ns (QualExe pn qpn)) <$> dep) ci
+        Dep (Q (GoalScope toolDepMachine ns (QualExe pn qpn)) <$> dep) ci
     goD (Dep dep@(PkgComponent qpn (ExposedLib _)) ci) comp
       | qBase qpn   = Dep (Q (GoalScope s         ns (QualBase  pn)) <$> dep) ci
-      | qSetup comp = Dep (Q (GoalScope toolStage ns (QualSetup pn)) <$> dep) ci
+      | qSetup comp = Dep (Q (GoalScope toolDepMachine ns (QualSetup pn)) <$> dep) ci
       | otherwise   = Dep (Q (GoalScope s         ns inheritedQ    ) <$> dep) ci
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
@@ -227,14 +227,14 @@ qualifyDeps QO{..} (Q pp@(GoalScope s ns q) pn) = go
                    QualToplevel -> q
                    QualBase _   -> QualToplevel
 
-    -- The stage a tool dependency (build-tool exe, custom-setup) is solved
-    -- for. This is the ONLY place the stage changes as we descend the tree:
-    -- host packages depend on tools built for the build system. 'prevStage'
-    -- drops to Build only when a distinct build stage exists and stays at
+    -- The machine a tool dependency (build-tool exe, custom-setup) is solved
+    -- for. This is the ONLY place the machine changes as we descend the tree:
+    -- host packages depend on tools built for the build system. 'toolMachine'
+    -- drops to Build only when a distinct build machine exists and stays at
     -- Host otherwise, so a non-cross build is unchanged. The namespace
     -- (@ns@) is threaded unchanged.
-    toolStage :: Stage
-    toolStage = prevStage qoStages s
+    toolDepMachine :: Machine
+    toolDepMachine = toolMachine qoMachines s
 
     -- Should we qualify this goal with the 'Base' scope?
     qBase :: PN -> Bool

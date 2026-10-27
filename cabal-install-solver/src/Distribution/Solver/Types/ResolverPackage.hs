@@ -36,11 +36,11 @@ instance Package (ResolverPackage loc) where
   packageId (Configured  spkg)     = packageId spkg
 
 -- | The 'SolverId' (graph key) of a resolved package, carrying its build
--- 'Stage' so that host and build copies of the same package remain distinct
+-- 'Machine' so that host and build copies of the same package remain distinct
 -- nodes.
 solverId :: ResolverPackage loc -> SolverId
-solverId (PreExisting ipkg) = PreExistingId (instSolverStage ipkg) (packageId ipkg) (installedUnitId ipkg)
-solverId (Configured spkg)  = PlannedId (solverPkgStage spkg) (packageId spkg)
+solverId (PreExisting ipkg) = PreExistingId (instSolverMachine ipkg) (packageId ipkg) (installedUnitId ipkg)
+solverId (Configured spkg)  = PlannedId (solverPkgMachine spkg) (packageId spkg)
 
 resolverPackageLibDeps :: ResolverPackage loc -> CD.ComponentDeps [SolverId]
 resolverPackageLibDeps (PreExisting ipkg) = instSolverPkgLibDeps ipkg

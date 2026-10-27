@@ -34,7 +34,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.ComponentDeps
 import Distribution.Solver.Types.GoalScope
-import Distribution.Solver.Types.Stage (Stage (..), getStage)
+import Distribution.Solver.Types.Machine (Machine (..), onMachine)
 import Distribution.Solver.Types.Settings
 
 -- | All state needed to build and link the search tree. It has a type variable
@@ -144,7 +144,7 @@ addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
 -- For a package, we look up the instances available in the global info,
 -- and then handle each instance in turn.
 addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q (GoalScope s _ _) pn) gr) }) =
-  case M.lookup pn (getStage idx s) of
+  case M.lookup pn (onMachine idx s) of
     Nothing  -> FailF
                 (varToConflictSet (P qpn) `CS.union` goalReasonToConflictSetWithConflict qpn gr)
                 UnknownPackage
@@ -232,8 +232,8 @@ linkChoices :: forall a w . LinkingState
             -> QPN
             -> (w, POption, a)
             -> [(w, POption, a)]
--- A goal can only link to a goal of the same 'Stage': a Build-stage goal and a
--- Host-stage goal are never valid link targets for each other, even when they
+-- A goal can only link to a goal of the same 'Machine': a Build-machine goal and a
+-- Host-machine goal are never valid link targets for each other, even when they
 -- resolve to the same package instance, because they are built by different
 -- toolchains and cannot share a build artifact.
 linkChoices related (Q (GoalScope s _ _) pn) (weight, POption i Nothing, subtree) =

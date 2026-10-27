@@ -1918,9 +1918,9 @@ renderBadPerPackageCompilerPaths _ = error "renderBadPerPackageCompilerPaths"
 -- packages.
 --
 -- We cannot check this until we know which programs the compiler uses, which
--- in principle is not until we've configured the compiler. Each stage has its
+-- in principle is not until we've configured the compiler. Each machine has its
 -- own compiler and its own program locations, so the check is made once per
--- stage, selecting that stage's locations from each 'PackageConfig'.
+-- machine, selecting that machine's locations from each 'PackageConfig'.
 --
 -- Throws 'BadPerPackageCompilerPaths'
 checkBadPerPackageCompilerPaths

@@ -148,6 +148,12 @@ import Distribution.Solver.Types.DependencyResolver
 import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.InstalledPreference as Preference
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.Machine
+  ( Machine (..)
+  , PerMachine
+  , onMachine
+  , overMachine
+  )
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
@@ -161,12 +167,6 @@ import Distribution.Solver.Types.SolverPackage
   ( SolverPackage (SolverPackage)
   )
 import Distribution.Solver.Types.SourcePackage
-import Distribution.Solver.Types.Stage
-  ( Stage (..)
-  , Staged
-  , getStage
-  , overStage
-  )
 import Distribution.Solver.Types.Variable
 
 import Control.Exception
@@ -193,11 +193,11 @@ data DepResolverParams = DepResolverParams
   , depResolverConstraints :: [LabeledPackageConstraint]
   , depResolverPreferences :: [PackagePreference]
   , depResolverPreferenceDefault :: PackagesPreferenceDefault
-  , depResolverInstalledPkgIndex :: Staged InstalledPackageIndex
+  , depResolverInstalledPkgIndex :: PerMachine InstalledPackageIndex
   -- ^ The installed-package index the solver works against, per build
-  -- 'Distribution.Solver.Types.Stage.Stage'. Policies that hide installed
+  -- 'Distribution.Solver.Types.Machine.Machine'. Policies that hide installed
   -- packages so they get rebuilt (see 'hideInstalledPackagesAllVersions',
-  -- 'reinstallTargets') edit the host stage only; the build stage keeps its
+  -- 'reinstallTargets') edit the host machine only; the build machine keeps its
   -- installed packages (they are reused from the build compiler, not rebuilt).
   , depResolverSourcePkgIndex :: PackageIndex.PackageIndex UnresolvedSourcePackage
   , depResolverReorderGoals :: ReorderGoals
@@ -294,7 +294,7 @@ showPackagePreference (PackageStanzasPreference pn st) =
   prettyShow pn ++ " " ++ show st
 
 basicDepResolverParams
-  :: Staged InstalledPackageIndex
+  :: PerMachine InstalledPackageIndex
   -> PackageIndex.PackageIndex UnresolvedSourcePackage
   -> DepResolverParams
 basicDepResolverParams installedPkgIndex sourcePkgIndex =
@@ -464,7 +464,7 @@ dependOnWiredIns compiler params =
     -- A wired-in package ("ghc", "ghc-internal") is supplied pre-built by
     -- the compiler, so we pin it to the exact unit id the compiler already
     -- has installed. The unit ids come from the /host/ compiler, so the pins
-    -- are scoped to the Host stage: a Build-stage goal is resolved against
+    -- are scoped to the Host machine: a Build-machine goal is resolved against
     -- the build compiler's own wired-in units, and pinning it to the host's
     -- would be unsatisfiable.
     extraConstraints wiredInUnitIds =
@@ -478,11 +478,11 @@ dependOnWiredIns compiler params =
         -- If we do not do this then we will get confusing error messages about old versions of `base` being unbuildable.
         -- Newer versions of `base` will be handled gracefully as they were designed to be reinstallable.
         --
-        -- Scoped to the Host stage only: a Build-stage/Setup component is
+        -- Scoped to the Host machine only: a Build-machine/Setup component is
         -- compiled and run by the fixed boot toolchain (e.g. an older
         -- external GHC via --with-build-compiler), which supplies its own,
         -- older `base` and was never going to satisfy this bound anyway.
-        -- Applying it there too (as a stage-blind constraint previously did)
+        -- Applying it there too (as a machine-blind constraint previously did)
         -- forces Setup dependencies onto the new, reinstallable `base`
         -- source package -- which then requires `ghc-internal`, which the
         -- old boot toolchain can never have installed.
@@ -552,7 +552,7 @@ hideInstalledPackagesSpecificBySourcePackageId pkgids params =
   -- TODO: this should work using exclude constraints instead
   params
     { depResolverInstalledPkgIndex =
-        overStage
+        overMachine
           Host
           (\idx -> foldl' (flip InstalledPackageIndex.deleteSourcePackageId) idx pkgids)
           (depResolverInstalledPkgIndex params)
@@ -566,7 +566,7 @@ hideInstalledPackagesAllVersions pkgnames params =
   -- TODO: this should work using exclude constraints instead
   params
     { depResolverInstalledPkgIndex =
-        overStage
+        overMachine
           Host
           (\idx -> foldl' (flip InstalledPackageIndex.deletePackageName) idx pkgnames)
           (depResolverInstalledPkgIndex params)
@@ -803,7 +803,7 @@ reinstallTargets params =
 
 -- | A basic solver policy on which all others are built.
 basicInstallPolicy
-  :: Staged InstalledPackageIndex
+  :: PerMachine InstalledPackageIndex
   -> SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
@@ -832,7 +832,7 @@ basicInstallPolicy
 --
 -- It extends the 'basicInstallPolicy' with a policy on setup deps.
 standardInstallPolicy
-  :: Staged InstalledPackageIndex
+  :: PerMachine InstalledPackageIndex
   -> SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
@@ -885,8 +885,8 @@ runSolver = modularResolver
 -- a 'Progress' structure that can be unfolded to provide progress information,
 -- logging messages and the final result or an error.
 resolveDependencies
-  :: Staged (CompilerInfo, Platform)
-  -> Staged (Maybe PkgConfigDb)
+  :: PerMachine (CompilerInfo, Platform)
+  -> PerMachine (Maybe PkgConfigDb)
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
 resolveDependencies toolchains pkgConfigDbs params = do
@@ -921,7 +921,7 @@ resolveDependencies toolchains pkgConfigDbs params = do
   validateSolverResult toolchains indGoals pkgs
   where
     -- The wired-in units come from the host compiler.
-    comp = fst (getStage toolchains Host)
+    comp = fst (onMachine toolchains Host)
     finalparams@( DepResolverParams
                     targets
                     constraints
@@ -1017,7 +1017,7 @@ interpretPackagesPreference selected defaultPref prefs =
 -- | Make an install plan from the output of the dep resolver.
 -- It checks that the plan is valid, or it's an error in the dep resolver.
 validateSolverResult
-  :: Staged (CompilerInfo, Platform)
+  :: PerMachine (CompilerInfo, Platform)
   -> IndependentGoals
   -> [ResolverPackage UnresolvedPkgLoc]
   -> Progress String String SolverInstallPlan
@@ -1067,7 +1067,7 @@ showPlanPackageProblem (DuplicatePackageSolverId pid dups) =
     ++ " duplicate instances."
 
 planPackagesProblems
-  :: Staged (CompilerInfo, Platform)
+  :: PerMachine (CompilerInfo, Platform)
   -> [ResolverPackage UnresolvedPkgLoc]
   -> [PlanPackageProblem]
 planPackagesProblems toolchains pkgs =
@@ -1122,12 +1122,12 @@ showPackageProblem (InvalidDep dep pkgid) =
 -- in the configuration given by the flag assignment, all the package
 -- dependencies are satisfied by the specified packages.
 configuredPackageProblems
-  :: Staged (CompilerInfo, Platform)
+  :: PerMachine (CompilerInfo, Platform)
   -> SolverPackage UnresolvedPkgLoc
   -> [PackageProblem]
 configuredPackageProblems
   toolchains
-  (SolverPackage stage pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
+  (SolverPackage machine pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
     [ DuplicateFlag flag
     | flag <- PD.findDuplicateFlagAssignments specifiedFlags
     ]
@@ -1152,9 +1152,9 @@ configuredPackageProblems
       thisPkgName = packageName (srcpkgDescription pkg)
 
       specifiedDeps1 :: ComponentDeps [PackageId]
-      -- Finalise the package against the compiler and platform of the stage
+      -- Finalise the package against the compiler and platform of the machine
       -- it was solved for.
-      (cinfo, platform) = getStage toolchains stage
+      (cinfo, platform) = onMachine toolchains machine
 
       specifiedDeps1 = fmap (map solverSrcId) specifiedDeps0
 
@@ -1239,7 +1239,7 @@ configuredPackageProblems
 --
 -- Note: if no installed package index is available, it is OK to build the
 -- params with an empty one (e.g. @'always' 'mempty'@). It simply means
--- preferences for installed packages will be ignored. Only the host stage of
+-- preferences for installed packages will be ignored. Only the host machine of
 -- the params' installed index is consulted here.
 resolveWithoutDependencies
   :: DepResolverParams
@@ -1300,7 +1300,7 @@ resolveWithoutDependencies
               not
                 . null
                 . InstalledPackageIndex.lookupSourcePackageId
-                  (getStage installedPkgIndex Host)
+                  (onMachine installedPkgIndex Host)
                 . packageId
           versionPref :: Package a => a -> Int
           versionPref pkg =

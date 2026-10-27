@@ -14,9 +14,9 @@ import Distribution.Version (anyVersion, mkVersion, thisVersion)
 
 import Distribution.Parsec (explicitEitherParsec, parsec, parsecCommaList)
 
+import Distribution.Solver.Types.Machine (Machine (..))
 import Distribution.Solver.Types.OptionalStanza (OptionalStanza (..))
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
-import Distribution.Solver.Types.Stage (Stage (..))
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -83,13 +83,13 @@ exampleConstraints =
     )
   ,
     ( "build:any.rts installed"
-    , UserConstraintStaged
+    , UserConstraintOnMachine
         Build
         (UserAnyQualifier (pn "rts"))
         PackagePropertyInstalled
     )
   , -- A package literally named "build" keeps its pre-existing meaning: this
-    -- is the setup dependency of package "build", not a build-stage constraint.
+    -- is the setup dependency of package "build", not a build-machine constraint.
 
     ( "build:setup.foo installed"
     , UserConstraint

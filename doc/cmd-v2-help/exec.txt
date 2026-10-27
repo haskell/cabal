@@ -197,9 +197,9 @@ Flags for exec:
                                 any alterations
  -W PATH or -WPATH, --with-build-compiler=PATH
                               # give the path to the compiler for the build
-                                stage (cross-compilation)
+                                machine (cross-compilation)
  --with-build-hc-pkg=PATH     # give the path to the package tool for the
-                                build stage (cross-compilation)
+                                build machine (cross-compilation)
  -c CONSTRAINT or -cCONSTRAINT, --constraint=CONSTRAINT
                               # Specify constraints on a package (version,
                                 installed/source, flags)
@@ -214,6 +214,14 @@ Flags for exec:
  --write-ghc-environment-files=always|never|ghc8.4.4+
                               # Whether to create a .ghc.environment file
                                 after a successful build (v2-build only)
+ --with-build-PROG=PATH       # give the path to PROG for the build machine
+                                (cross-compilation)
+ --build-PROG-option=OPT      # give an extra option to PROG for the build
+                                machine (passed directly to PROG as a single
+                                argument)
+ --build-PROG-options=OPTS    # give extra options to PROG for the build
+                                machine (split on spaces, use "" to prevent
+                                splitting)
  --enable-documentation       # Enable building of documentation
  --disable-documentation      # Disable building of documentation
  --doc-index-file=TEMPLATE    # A central index of haddock API documentation

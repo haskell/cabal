@@ -13,7 +13,7 @@ import Distribution.Solver.Compat.Prelude
 import Prelude ()
 import Distribution.Package (PackageName)
 import Distribution.Pretty (pretty, flatStyle)
-import Distribution.Solver.Types.Stage (Stage (..), showStage)
+import Distribution.Solver.Types.Machine (Machine (..), showMachine)
 import qualified Text.PrettyPrint as Disp
 
 -- | The scope a solver goal is solved in. Two goals for the same package name
@@ -24,9 +24,9 @@ import qualified Text.PrettyPrint as Disp
 --
 -- The three fields answer three different questions:
 --
--- * The 'Stage' says which toolchain the goal is solved against. It is set
+-- * The 'Machine' says which toolchain the goal is solved against. It is set
 --   only where the solver crosses a tool boundary (a @build-tool-depends@ or
---   @custom-setup@ dependency), dropping to the previous stage when a distinct
+--   @custom-setup@ dependency), switching to the build machine when a distinct
 --   build toolchain exists and staying put when it does not. It is therefore
 --   determined by the qualifier chain, not independent of it; it is stored
 --   because the qualifier is flattened ('QualBase' overwrites the qualifier
@@ -42,7 +42,7 @@ import qualified Text.PrettyPrint as Disp
 -- closure of @p@ solved against the host toolchain. That is every setup
 -- dependency of a non-cross build, where the host toolchain is the only one;
 -- a cross build never constructs it, because there tool scopes sit at 'Build'.
-data GoalScope = GoalScope Stage Namespace Qualifier
+data GoalScope = GoalScope Machine Namespace Qualifier
   deriving (Eq, Ord, Show)
 
 -- | Top-level namespace
@@ -57,11 +57,11 @@ data Namespace =
   | Independent PackageName
   deriving (Eq, Ord, Show)
 
--- | Pretty-prints a stage. The result is either empty (for the default 'Host'
--- stage) or ends in a colon, so it can be prepended onto a namespace.
-dispStage :: Stage -> Disp.Doc
-dispStage Host = Disp.empty
-dispStage Build = Disp.text (showStage Build) <<>> Disp.text ":"
+-- | Pretty-prints a machine. The result is either empty (for the default 'Host'
+-- machine) or ends in a colon, so it can be prepended onto a namespace.
+dispMachine :: Machine -> Disp.Doc
+dispMachine Host = Disp.empty
+dispMachine Build = Disp.text (showMachine Build) <<>> Disp.text ":"
 
 -- | Pretty-prints a namespace. The result is either empty or
 -- ends in a period, so it can be prepended onto a qualifier.
@@ -125,8 +125,8 @@ type QPN = Qualified PackageName
 
 -- | Pretty-prints a qualified package name.
 dispQPN :: QPN -> Disp.Doc
-dispQPN (Q (GoalScope stage ns qual) pn) =
-  dispStage stage <<>> dispNamespace ns <<>> dispQualifier qual <<>> pretty pn
+dispQPN (Q (GoalScope machine ns qual) pn) =
+  dispMachine machine <<>> dispNamespace ns <<>> dispQualifier qual <<>> pretty pn
 
 -- | String representation of a qualified package name.
 showQPN :: QPN -> String

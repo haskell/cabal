@@ -191,9 +191,9 @@ Flags for v1-configure:
                                 any alterations
  -W PATH or -WPATH, --with-build-compiler=PATH
                               # give the path to the compiler for the build
-                                stage (cross-compilation)
+                                machine (cross-compilation)
  --with-build-hc-pkg=PATH     # give the path to the package tool for the
-                                build stage (cross-compilation)
+                                build machine (cross-compilation)
  -c CONSTRAINT or -cCONSTRAINT, --constraint=CONSTRAINT
                               # Specify constraints on a package (version,
                                 installed/source, flags)

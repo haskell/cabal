@@ -26,24 +26,24 @@ import Distribution.Version                        (VersionRange, simplifyVersio
 
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.GoalScope
-import Distribution.Solver.Types.Stage             (Stage (..), showStage)
+import Distribution.Solver.Types.Machine             (Machine (..), showMachine)
 
 import qualified Text.PrettyPrint as Disp
 
 
 -- | Determines to what packages and in what contexts a constraint applies.
 --
--- A scope pairs an optional build 'Stage' with a 'ConstraintQualifier'. When
--- the stage is 'Nothing' the constraint applies at every stage; when it is
--- @'Just' s@ it applies only to goals solved for stage @s@. (Top-level goals
--- are always solved at the 'Host' stage, so 'scopeToplevel' pins the stage to
+-- A scope pairs an optional 'Machine' with a 'ConstraintQualifier'. When
+-- the machine is 'Nothing' the constraint applies on every machine; when it is
+-- @'Just' s@ it applies only to goals solved for machine @s@. (Top-level goals
+-- are always solved at the 'Host' machine, so 'scopeToplevel' pins the machine to
 -- @'Just' 'Host'@.)
 data ConstraintScope =
-    ConstraintScope (Maybe Stage) ConstraintQualifier
+    ConstraintScope (Maybe Machine) ConstraintQualifier
   deriving (Eq, Show)
 
 -- | The qualifier part of a 'ConstraintScope': which goals a constraint
--- applies to, independently of the build stage.
+-- applies to, independently of the build machine.
 data ConstraintQualifier
      -- | A scope that applies when the given package is used as a build target.
      -- In other words, the scope applies iff a goal has a top-level qualifier
@@ -71,7 +71,7 @@ data ConstraintQualifier
 -- | Constructor for a common use case: the constraint applies to
 -- the package with the specified name when that package is a
 -- top-level dependency in the default namespace. Top-level goals are always
--- solved at the 'Host' stage, so the scope is pinned there.
+-- solved at the 'Host' machine, so the scope is pinned there.
 scopeToplevel :: PackageName -> ConstraintScope
 scopeToplevel = ConstraintScope (Just Host) . ScopeQualified QualToplevel
 
@@ -84,8 +84,8 @@ scopeToPackageName (ConstraintScope _ (ScopeAnyExeQualifier pn)) = pn
 scopeToPackageName (ConstraintScope _ (ScopeAnyQualifier pn)) = pn
 
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
-constraintScopeMatches (ConstraintScope mstage qualifier) (Q (GoalScope stage ns q) pn') =
-    maybe True (== stage) mstage && constraintQualifierMatches qualifier ns q pn'
+constraintScopeMatches (ConstraintScope mmachine qualifier) (Q (GoalScope machine ns q) pn') =
+    maybe True (== machine) mmachine && constraintQualifierMatches qualifier ns q pn'
 
 -- | Whether the qualifier part of a constraint scope matches a goal, given the
 -- goal's namespace, qualifier and package name.
@@ -110,11 +110,11 @@ constraintQualifierMatches (ScopeAnyExeQualifier pn) _ns q pn' =
 constraintQualifierMatches (ScopeAnyQualifier pn) _ns _q pn' = pn == pn'
 
 instance Pretty ConstraintScope where
-  pretty (ConstraintScope mstage qualifier) = dispStagePrefix mstage <<>> pretty qualifier
+  pretty (ConstraintScope mmachine qualifier) = dispMachinePrefix mmachine <<>> pretty qualifier
     where
-      -- The 'Host' stage is the invisible default, so only 'Build' is rendered.
-      dispStagePrefix (Just Build) = Disp.text (showStage Build) <<>> Disp.text ":"
-      dispStagePrefix _            = Disp.empty
+      -- The 'Host' machine is the invisible default, so only 'Build' is rendered.
+      dispMachinePrefix (Just Build) = Disp.text (showMachine Build) <<>> Disp.text ":"
+      dispMachinePrefix _            = Disp.empty
 
 instance Pretty ConstraintQualifier where
   pretty (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn

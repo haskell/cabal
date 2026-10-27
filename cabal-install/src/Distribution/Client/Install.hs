@@ -124,8 +124,8 @@ import Distribution.Client.Types as Source
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy (..))
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.InstalledPackageInfo as Installed
+import Distribution.Solver.Types.Machine (always)
 import Distribution.Solver.Types.PackageFixedDeps
-import Distribution.Solver.Types.Stage (always)
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource

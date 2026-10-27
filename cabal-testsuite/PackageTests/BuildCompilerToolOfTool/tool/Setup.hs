@@ -17,7 +17,7 @@ myConfHook
 myConfHook pkg flags = do
   lbi <- confHook simpleUserHooks pkg flags
   -- __GLASGOW_HASKELL__ is the version of GHC compiling this Setup.hs. For a
-  -- build-stage package that is the build compiler as well.
+  -- build-machine package that is the build compiler as well.
   let define = "-DSETUP_GHC_VERSION=" ++ show (__GLASGOW_HASKELL__ :: Int)
       addDefine bi = bi{cppOptions = define : cppOptions bi}
       pd = localPkgDescr lbi

@@ -346,7 +346,7 @@ cabal list
 
 .. option:: -W PATH or -WPATH, --with-build-compiler=PATH
 
-    Path to the compiler for the build stage when cross-compiling, i.e. the
+    Path to the compiler for the build machine when cross-compiling, i.e. the
     compiler used for custom ``Setup.hs`` scripts and ``build-tool-depends``.
     See :cfg-field:`with-build-compiler`.
 

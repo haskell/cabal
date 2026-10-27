@@ -272,7 +272,7 @@ projectFreezeConstraints plan =
         localPackages
 
     isVersionConstraint (UserConstraint _ (PackagePropertyVersion _)) = True
-    isVersionConstraint (UserConstraintStaged _ _ (PackagePropertyVersion _)) = True
+    isVersionConstraint (UserConstraintOnMachine _ _ (PackagePropertyVersion _)) = True
     isVersionConstraint _ = False
 
     localPackages :: Map PackageName ()

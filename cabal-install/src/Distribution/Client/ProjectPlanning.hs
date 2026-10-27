@@ -133,13 +133,13 @@ import Distribution.Client.ProjectConfig.Import (docProjectConfigFiles)
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.ProjectConfig.Types (defaultProjectFileParser)
 import Distribution.Client.ProjectPlanOutput
+import Distribution.Client.ProjectPlanning.Machine (HasMachine (..), WithMachine (..), withoutMachine)
 import Distribution.Client.ProjectPlanning.SetupPolicy
   ( NonSetupLibDepSolverPlanPackage (..)
   , mkDefaultSetupDeps
   , packageSetupScriptSpecVersion
   , packageSetupScriptStyle
   )
-import Distribution.Client.ProjectPlanning.Stage (HasStage (..), WithStage (..), withoutStage)
 import Distribution.Client.ProjectPlanning.Types as Ty
 import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup hiding (cabalVersion, packageName)
@@ -147,16 +147,16 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
 import Distribution.Client.Targets (userToPackageConstraint)
 import Distribution.Client.Toolchain
-  ( Stage (..)
-  , Staged (..)
+  ( Machine (..)
+  , PerMachine (..)
   , Toolchain (..)
   , Toolchains
-  , getStage
   , isCross
-  , mapWithStage
-  , overStage
-  , prevStage
-  , traverseWithStage
+  , mapWithMachine
+  , onMachine
+  , overMachine
+  , toolMachine
+  , traverseWithMachine
   )
 import Distribution.Client.Types
 import Distribution.Client.Utils (concatMapM, duplicatesBy, incVersion)
@@ -204,7 +204,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
 
--- 'buildPlatform' (the compile-time host platform) is hidden: the build-stage
+-- 'buildPlatform' (the compile-time host platform) is hidden: the build-machine
 -- platform now comes from the configured build toolchain, not this constant.
 import Distribution.System hiding (buildPlatform)
 
@@ -540,33 +540,33 @@ rebuildProjectConfig
 
 -- | Backwards-compatible view of 'configureToolchains' that returns just the
 -- host toolchain as a bare @(Compiler, Platform, ProgramDb)@ triple. Existing
--- callers that don't (yet) care about the build stage use this.
+-- callers that don't (yet) care about the build machine use this.
 configureCompiler
   :: Verbosity
   -> DistDirLayout
   -> ProjectConfig
   -> Rebuild (Compiler, Platform, ProgramDb)
 configureCompiler verbosity distDirLayout projectConfig =
-  toTriple . flip getStage Host <$> configureToolchains verbosity distDirLayout projectConfig
+  toTriple . flip onMachine Host <$> configureToolchains verbosity distDirLayout projectConfig
   where
     toTriple Toolchain{toolchainCompiler, toolchainPlatform, toolchainProgramDb} =
       (toolchainCompiler, toolchainPlatform, toolchainProgramDb)
 
 -- | Configure the toolchain(s) the plan is built against, one per build
--- 'Stage': the host toolchain (from @--with-compiler@ etc.) and, under
+-- 'Machine': the host toolchain (from @--with-compiler@ etc.) and, under
 -- cross-compilation, the build toolchain (from @--with-build-compiler@ etc.).
--- When no build compiler is requested the build stage /is/ the host stage and
+-- When no build compiler is requested the build machine /is/ the host machine and
 -- the host toolchain is reused directly.
 --
--- Each stage results in a program database that contains the __configured__
+-- Each machine results in a program database that contains the __configured__
 -- compiler (which is stored in a cache) and __unconfigured__ related programs
--- (cannot be cached, as unconfigured). A stage is re-configured when its
+-- (cannot be cached, as unconfigured). A machine is re-configured when its
 -- compiler or @hc-pkg@ change, and when the program search path or
 -- @extra-prog-path@ or its program locations change.
 --
--- The program locations are per stage: @--with-PROG@ and @program-locations@
--- configure the host stage, @--with-build-PROG@ and @build-program-locations@
--- the build stage. Neither stage inherits the other's: @--with-ar@ is the
+-- The program locations are per machine: @--with-PROG@ and @program-locations@
+-- configure the host machine, @--with-build-PROG@ and @build-program-locations@
+-- the build machine. Neither machine inherits the other's: @--with-ar@ is the
 -- @ar@ for host binaries and must not produce build-machine binaries.
 --
 -- In the case of @GHC@, we configure @ghc@ and @ghc-pkg@, and provide
@@ -598,44 +598,44 @@ configureToolchains
       projectConfigLocalPackages@PackageConfig
         { packageConfigProgramPathExtra = packageConfigProgramPathExtraLocal
         }
-    , projectConfigStagePackages
+    , projectConfigMachinePackages
     } = do
     progsearchpath <- liftIO getSystemSearchPath
 
-    -- User-supplied program locations, per stage: the stage's own settings
+    -- User-supplied program locations, per machine: the machine's own settings
     -- from the global and the local configuration (@--with-PROG@ and
-    -- @program-locations@ for the host stage, @--with-build-PROG@ and
-    -- @build-program-locations@ for the build stage), then the stage's own
+    -- @program-locations@ for the host machine, @--with-build-PROG@ and
+    -- @build-program-locations@ for the build machine), then the machine's own
     -- @package host:*@ or @package build:*@ stanza, which overrides them.
-    -- Neither stage inherits the other's: @--with-ar@ is the @ar@ for host
+    -- Neither machine inherits the other's: @--with-ar@ is the @ar@ for host
     -- binaries and must not produce build-machine binaries. This is how a
     -- cross-compilation names the tools that answer for the host (a
     -- target-prefixed @pkg-config@, say) without handing them to the build
-    -- stage.
+    -- machine.
     --
-    -- NB: the global and local @extra-prog-path@ entries have no per-stage
-    -- variant, so both stages search those extra directories; only a stage
-    -- stanza's @extra-prog-path@ is the stage's own.
-    let stagePackageConfig :: Stage -> PackageConfig
-        stagePackageConfig stage =
-          stageStanzaConfig stage $
-            Map.findWithDefault mempty stage (getMapMappend projectConfigStagePackages)
-        userProgramPaths :: Stage -> [(String, FilePath)]
-        userProgramPaths stage =
+    -- NB: the global and local @extra-prog-path@ entries have no per-machine
+    -- variant, so both machines search those extra directories; only a machine
+    -- stanza's @extra-prog-path@ is the machine's own.
+    let machinePackageConfig :: Machine -> PackageConfig
+        machinePackageConfig machine =
+          machineStanzaConfig machine $
+            Map.findWithDefault mempty machine (getMapMappend projectConfigMachinePackages)
+        userProgramPaths :: Machine -> [(String, FilePath)]
+        userProgramPaths machine =
           Map.toList
             . getMapLast
             $ foldMap
-              (stageProgramPaths stage)
-              [projectConfigAllPackages, projectConfigLocalPackages, stagePackageConfig stage]
-        userPaths :: Stage -> ProgramDb -> ProgramDb
-        userPaths stage = userSpecifyPaths (userProgramPaths stage)
-        stageProgramPathExtra :: Stage -> NubList FilePath
-        stageProgramPathExtra stage = packageConfigProgramPathExtra (stagePackageConfig stage)
+              (machineProgramPaths machine)
+              [projectConfigAllPackages, projectConfigLocalPackages, machinePackageConfig machine]
+        userPaths :: Machine -> ProgramDb -> ProgramDb
+        userPaths machine = userSpecifyPaths (userProgramPaths machine)
+        machineProgramPathExtra :: Machine -> NubList FilePath
+        machineProgramPathExtra machine = packageConfigProgramPathExtra (machinePackageConfig machine)
 
-    -- Configure the compiler for a single stage, caching the result under the
+    -- Configure the compiler for a single machine, caching the result under the
     -- given project-cache file. The compiler flavour/path/hc-pkg and the
-    -- program settings are the stage's own.
-    let configureStage stage cacheName hcFlavor hcPath hcPkg = do
+    -- program settings are the machine's own.
+    let configureMachine machine cacheName hcFlavor hcPath hcPkg = do
           let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile cacheName
           (hc, plat, hcProgDb) <-
             rerunIfChanged
@@ -645,19 +645,19 @@ configureToolchains
               , hcPath
               , hcPkg
               , progsearchpath
-              , userProgramPaths stage
-              , (packageConfigProgramPathExtraLocal, stageProgramPathExtra stage)
+              , userProgramPaths machine
+              , (packageConfigProgramPathExtraLocal, machineProgramPathExtra machine)
               )
               $ do
                 liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
                 progdb <- liftIO $ do
                   -- Add paths in the global config, then paths in the local
-                  -- config, then the paths of this stage's stanza.
+                  -- config, then the paths of this machine's stanza.
                   let addPaths pathList = prependProgramSearchPath verbosity (fromNubList pathList) []
                   let globalPaths :: IO ProgramDb = addPaths projectConfigProgPathExtra defaultProgramDb
                   let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtraLocal
-                  let stagePaths :: ProgramDb -> IO ProgramDb = addPaths (stageProgramPathExtra stage)
-                  (globalPaths >>= localPaths >>= stagePaths) <&> userPaths stage
+                  let machinePaths :: ProgramDb -> IO ProgramDb = addPaths (machineProgramPathExtra machine)
+                  (globalPaths >>= localPaths >>= machinePaths) <&> userPaths machine
                 result@(_, _, progdb') <-
                   liftIO $
                     Cabal.configCompiler
@@ -703,7 +703,7 @@ configureToolchains
               -- locations) and re-adds the toolchain programs (gcc, ar, ld, ...)
               -- without them. Without this, @--with-gcc@ and the @program-locations@
               -- section would have no effect (see #11881).
-              return $ userPaths stage progDb
+              return $ userPaths machine progDb
           return
             Toolchain
               { toolchainCompiler = hc
@@ -711,20 +711,20 @@ configureToolchains
               , toolchainProgramDb = finalProgDb
               }
 
-    -- The host stage keeps the cache file name the single compiler always
+    -- The host machine keeps the cache file name the single compiler always
     -- had, so an existing dist-newstyle is not reconfigured on upgrade.
     hostToolchain <-
-      configureStage
+      configureMachine
         Host
         "compiler"
         (flagToMaybe projectConfigHcFlavor)
         (flagToMaybe projectConfigHcPath)
         (flagToMaybe projectConfigHcPkg)
 
-    -- A distinct build toolchain exists only when a build-stage compiler is
+    -- A distinct build toolchain exists only when a build-machine compiler is
     -- requested AND it turns out to be a different compiler from the host's.
-    -- Otherwise there is no separate build stage ('onBuild' is 'Nothing'): it
-    -- falls back to the host stage. This 'Nothing'\/'Just' is the single source
+    -- Otherwise there is no separate build machine ('onBuild' is 'Nothing'): it
+    -- falls back to the host machine. This 'Nothing'\/'Just' is the single source
     -- of truth for whether the build is cross-compiling.
     --
     -- When a build compiler is requested, the flavour and path fall back to the
@@ -749,7 +749,7 @@ configureToolchains
       if isJust buildHcFlavor || isJust buildHcPath || isJust buildHcPkg
         then do
           candidate <-
-            configureStage
+            configureMachine
               Build
               "build-compiler"
               (buildHcFlavor <|> flagToMaybe projectConfigHcFlavor)
@@ -761,9 +761,9 @@ configureToolchains
               else Just candidate
         else pure Nothing
 
-    return Staged{onHost = hostToolchain, onBuild = buildToolchain}
+    return PerMachine{onHost = hostToolchain, onBuild = buildToolchain}
 
--- | Does the project configuration give any build-stage program location or
+-- | Does the project configuration give any build-machine program location or
 -- argument, for any package?
 hasBuildProgramSettings :: ProjectConfig -> Bool
 hasBuildProgramSettings ProjectConfig{..} =
@@ -778,31 +778,31 @@ hasBuildProgramSettings ProjectConfig{..} =
       not (Map.null (getMapLast (packageConfigBuildProgramPaths pkgconf)))
         || not (Map.null (getMapMappend (packageConfigBuildProgramArgs pkgconf)))
 
--- | The user-supplied program locations for packages of a given 'Stage':
--- @--with-PROG@ and @program-locations@ for the host stage,
--- @--with-build-PROG@ and @build-program-locations@ for the build stage.
--- Neither stage inherits the other's.
-stageProgramPaths :: Stage -> PackageConfig -> MapLast String FilePath
-stageProgramPaths Host = packageConfigProgramPaths
-stageProgramPaths Build = packageConfigBuildProgramPaths
+-- | The user-supplied program locations for packages of a given 'Machine':
+-- @--with-PROG@ and @program-locations@ for the host machine,
+-- @--with-build-PROG@ and @build-program-locations@ for the build machine.
+-- Neither machine inherits the other's.
+machineProgramPaths :: Machine -> PackageConfig -> MapLast String FilePath
+machineProgramPaths Host = packageConfigProgramPaths
+machineProgramPaths Build = packageConfigBuildProgramPaths
 
--- | The user-supplied program arguments for packages of a given 'Stage':
--- @--PROG-options@ and @program-options@ for the host stage,
--- @--build-PROG-options@ and @build-program-options@ for the build stage.
--- Neither stage inherits the other's.
-stageProgramArgs :: Stage -> PackageConfig -> MapMappend String [String]
-stageProgramArgs Host = packageConfigProgramArgs
-stageProgramArgs Build = packageConfigBuildProgramArgs
+-- | The user-supplied program arguments for packages of a given 'Machine':
+-- @--PROG-options@ and @program-options@ for the host machine,
+-- @--build-PROG-options@ and @build-program-options@ for the build machine.
+-- Neither machine inherits the other's.
+machineProgramArgs :: Machine -> PackageConfig -> MapMappend String [String]
+machineProgramArgs Host = packageConfigProgramArgs
+machineProgramArgs Build = packageConfigBuildProgramArgs
 
 -- | The configuration of a @package host:*@ or @package build:*@ stanza, as
--- it applies to its stage. The stanza already names its stage, so in a
+-- it applies to its machine. The stanza already names its machine, so in a
 -- @package build:*@ stanza the plain program fields (@gcc-location@,
--- @ghc-options@, ...) are build-stage settings: they are moved to the
--- build-stage fields, which is where the build stage reads them from (see
--- 'stageProgramPaths' and 'stageProgramArgs').
-stageStanzaConfig :: Stage -> PackageConfig -> PackageConfig
-stageStanzaConfig Host pkgconf = pkgconf
-stageStanzaConfig Build pkgconf =
+-- @ghc-options@, ...) are build-machine settings: they are moved to the
+-- build-machine fields, which is where the build machine reads them from (see
+-- 'machineProgramPaths' and 'machineProgramArgs').
+machineStanzaConfig :: Machine -> PackageConfig -> PackageConfig
+machineStanzaConfig Host pkgconf = pkgconf
+machineStanzaConfig Build pkgconf =
   pkgconf
     { packageConfigProgramPaths = mempty
     , packageConfigProgramArgs = mempty
@@ -816,7 +816,7 @@ stageStanzaConfig Build pkgconf =
 --
 -- This compares exactly the toolchain properties that go into a 'UnitId': the
 -- compiler's id and ABI tag, and the platform it targets. Two toolchains this
--- identifies would produce identical unit ids, so treating them as two stages
+-- identifies would produce identical unit ids, so treating them as two machines
 -- would solve, elaborate and build every shared dependency twice under
 -- indistinguishable keys. It deliberately ignores the 'ProgramDb', so the same
 -- compiler named two ways (@ghc@ and its absolute path) compares equal.
@@ -1000,28 +1000,28 @@ rebuildInstallPlan
         -- each package (e.g. to use a particular version of a pre-processor
         -- for some packages). However they cannot do this for the compiler
         -- itself as that's just not going to work. So we check for this, for
-        -- each stage against that stage's compiler.
+        -- each machine against that machine's compiler.
         liftIO $
           sequence_ $
-            mapWithStage
-              ( \stage toolchain ->
+            mapWithMachine
+              ( \machine toolchain ->
                   checkBadPerPackageCompilerPaths
-                    (stageProgramPaths stage)
+                    (machineProgramPaths machine)
                     (configuredPrograms (toolchainProgramDb toolchain))
                     (getMapMappend (projectConfigSpecificPackage projectConfig))
               )
               toolchains
 
-        -- Without cross-compilation there is no build stage, so nothing
-        -- uses the build-stage program settings. They do not fall back to
-        -- the host stage either: say so rather than ignoring them silently.
+        -- Without cross-compilation there is no build machine, so nothing
+        -- uses the build-machine program settings. They do not fall back to
+        -- the host machine either: say so rather than ignoring them silently.
         unless (isCross toolchains || not (hasBuildProgramSettings projectConfig)) $
           liftIO $
             warn verbosity $
-              "The build-stage program settings (--with-build-PROG, "
+              "The build-machine program settings (--with-build-PROG, "
                 ++ "--build-PROG-options, build-program-locations, "
                 ++ "build-program-options) are ignored: there is no build "
-                ++ "stage because the build is not cross-compiling. Use "
+                ++ "machine because the build is not cross-compiling. Use "
                 ++ "--with-PROG and --PROG-options instead."
 
       -- TODO: [required eventually] find/configure other programs that the
@@ -1038,7 +1038,7 @@ rebuildInstallPlan
         -> Toolchains
         -> [PackageSpecifier UnresolvedSourcePackage]
         -> InstalledPackageIndex
-        -> Rebuild (SolverInstallPlan, Staged (Maybe PkgConfigDb), IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
+        -> Rebuild (SolverInstallPlan, PerMachine (Maybe PkgConfigDb), IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
       phaseRunSolver
         projectConfig@ProjectConfig
           { projectConfigShared
@@ -1046,7 +1046,7 @@ rebuildInstallPlan
           , projectConfigAllPackages
           , projectConfigLocalPackages
           , projectConfigSpecificPackage
-          , projectConfigStagePackages
+          , projectConfigMachinePackages
           }
         toolchains
         localPackages
@@ -1057,25 +1057,25 @@ rebuildInstallPlan
             ( solverSettings
             , localPackages
             , localPackagesEnabledStanzas
-            , -- Every stage's toolchain is part of the key: the build stage's
+            , -- Every machine's toolchain is part of the key: the build machine's
               -- installed index is read inside this block, so changing only
               -- --with-build-compiler must invalidate the cached plan too.
               fmap toolchainSignature toolchains
             )
             $ do
-              -- Read the installed-package index once per stage: the host
+              -- Read the installed-package index once per machine: the host
               -- toolchain's index and, when cross-compiling, the build
-              -- toolchain's index too. In a non-cross build the staged
-              -- toolchain has no build stage, so this reads a single index.
+              -- toolchain's index too. In a non-cross build the per-machine
+              -- toolchain has no build machine, so this reads a single index.
               installedPkgIndex <-
-                traverseWithStage
-                  ( \stage tc ->
+                traverseWithMachine
+                  ( \machine tc ->
                       getInstalledPackages
                         verbosity
                         (toolchainCompiler tc)
                         (toolchainProgramDb tc)
                         (toolchainPlatform tc)
-                        (corePackageDbs stage)
+                        (corePackageDbs machine)
                   )
                   toolchains
               (sourcePkgDb, tis, ar) <-
@@ -1084,7 +1084,7 @@ rebuildInstallPlan
                   withRepoCtx
                   (solverSettingIndexState solverSettings)
                   (solverSettingActiveRepos solverSettings)
-              -- Read the pkg-config database once per stage too. Each
+              -- Read the pkg-config database once per machine too. Each
               -- toolchain's own pkg-config answers for the platform that
               -- toolchain targets, so under cross-compilation a library
               -- cross-compiled for the host is found through the host
@@ -1106,8 +1106,8 @@ rebuildInstallPlan
                       toolchains
                       solverSettings
                       -- Pre-supplied installed packages (e.g. from a GHC
-                      -- environment file) belong to the host stage only.
-                      (overStage Host (installedPackages <>) installedPkgIndex)
+                      -- environment file) belong to the host machine only.
+                      (overMachine Host (installedPackages <>) installedPkgIndex)
                       sourcePkgDb
                       pkgConfigDB
                       localPackages
@@ -1118,12 +1118,12 @@ rebuildInstallPlan
                     dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
-            -- Host-stage values, for reporting planning failures. Solving
-            -- itself is per stage.
+            -- Host-machine values, for reporting planning failures. Solving
+            -- itself is per machine.
             Toolchain
               { toolchainCompiler = compiler
               , toolchainPlatform = platform
-              } = getStage toolchains Host
+              } = onMachine toolchains Host
 
             toolchainSignature :: Toolchain -> (Compiler, Platform, [ConfiguredProgram])
             toolchainSignature tc =
@@ -1132,11 +1132,11 @@ rebuildInstallPlan
               , programDbSignature (toolchainProgramDb tc)
               )
 
-            corePackageDbs :: Stage -> PackageDBStackCWD
+            corePackageDbs :: Machine -> PackageDBStackCWD
             corePackageDbs =
               Cabal.interpretPackageDbFlags False . projectPackageDbs
 
-            projectPackageDbs :: Stage -> [Maybe PackageDBCWD]
+            projectPackageDbs :: Machine -> [Maybe PackageDBCWD]
             projectPackageDbs = projectPackageDbsFor projectConfigShared
 
             withRepoCtx :: (RepoContext -> IO a) -> IO a
@@ -1148,7 +1148,7 @@ rebuildInstallPlan
 
             solverSettings = resolveSolverSettings projectConfig
             logMsg message rest = debugNoWrap verbosity message >> rest
-            perPkgOption = lookupPerPkgOption (const True) projectConfigAllPackages projectConfigLocalPackages (getMapMappend projectConfigStagePackages) (getMapMappend projectConfigSpecificPackage) Host
+            perPkgOption = lookupPerPkgOption (const True) projectConfigAllPackages projectConfigLocalPackages (getMapMappend projectConfigMachinePackages) (getMapMappend projectConfigSpecificPackage) Host
 
             -- TODO: "local" misnomer: we should separate
             -- builtin/global/inplace/local packages and packages explicitly
@@ -1170,7 +1170,7 @@ rebuildInstallPlan
         :: HasCallStack
         => ProjectConfig
         -> Toolchains
-        -> Staged (Maybe PkgConfigDb)
+        -> PerMachine (Maybe PkgConfigDb)
         -> SolverInstallPlan
         -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
         -> Rebuild
@@ -1183,7 +1183,7 @@ rebuildInstallPlan
           , projectConfigAllPackages
           , projectConfigLocalPackages
           , projectConfigSpecificPackage
-          , projectConfigStagePackages
+          , projectConfigMachinePackages
           , projectConfigBuildOnly
           }
         toolchains
@@ -1203,7 +1203,7 @@ rebuildInstallPlan
           let installDirs = fmap Cabal.fromFlag $ fmap Flag defaultInstallDirs <> projectConfigInstallDirs projectConfigShared
           -- Configure the ProgramDb of every toolchain now (once for the entire
           -- project), to avoid repeatedly doing this once per package. The
-          -- build stage is 'Nothing' in a non-cross build, so this configures
+          -- build machine is 'Nothing' in a non-cross build, so this configures
           -- exactly one program database there.
           toolchains' <-
             liftIO $
@@ -1226,7 +1226,7 @@ rebuildInstallPlan
                 projectConfigAllPackages
                 projectConfigLocalPackages
                 (getMapMappend projectConfigSpecificPackage)
-                (getMapMappend projectConfigStagePackages)
+                (getMapMappend projectConfigMachinePackages)
           let instantiatedPlan =
                 instantiateInstallPlan
                   cabalStoreDirLayout
@@ -1236,8 +1236,8 @@ rebuildInstallPlan
           liftIO $ debugNoWrap verbosity (showElaboratedInstallPlan instantiatedPlan)
           return (instantiatedPlan, elaboratedShared)
           where
-            -- Host-stage compiler, used to compute the install dirs.
-            compiler = toolchainCompiler (getStage toolchains Host)
+            -- Host-machine compiler, used to compute the install dirs.
+            compiler = toolchainCompiler (onMachine toolchains Host)
 
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
@@ -1277,8 +1277,8 @@ rebuildInstallPlan
         -> Rebuild ElaboratedInstallPlan
       phaseImprovePlan elaboratedPlan elaboratedShared = do
         liftIO $ debug verbosity "Improving the install plan..."
-        -- Each stage's compiler has its own store; read them all. Unit ids
-        -- hash the compiler, so a plain union cannot confuse the stages.
+        -- Each machine's compiler has its own store; read them all. Unit ids
+        -- hash the compiler, so a plain union cannot confuse the machines.
         storePkgIdSet <-
           fmap (Set.unions . toList) . for toolchains $ \toolchain ->
             getStoreEntries cabalStoreDirLayout (toolchainCompiler toolchain)
@@ -1619,9 +1619,9 @@ planPackages
   :: Verbosity
   -> Toolchains
   -> SolverSettings
-  -> Staged InstalledPackageIndex
+  -> PerMachine InstalledPackageIndex
   -> SourcePackageDb
-  -> Staged (Maybe PkgConfigDb)
+  -> PerMachine (Maybe PkgConfigDb)
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> Map PackageName (Map OptionalStanza Bool)
   -> Progress String String SolverInstallPlan
@@ -1639,12 +1639,12 @@ planPackages
       pkgConfigDB
       resolverParams
     where
-      -- The solver plans for the host stage; the build toolchain is available
-      -- via @toolchains@ for later stage-aware planning (e.g. setup deps).
+      -- The solver plans for the host machine; the build toolchain is available
+      -- via @toolchains@ for later machine-aware planning (e.g. setup deps).
       Toolchain
         { toolchainCompiler = comp
         , toolchainPlatform = platform
-        } = getStage toolchains Host
+        } = onMachine toolchains Host
 
       -- TODO: [nice to have] disable multiple instances restriction in
       -- the solver, but then make sure we can cope with that in the
@@ -1935,20 +1935,20 @@ planPackages
 --
 -- In theory should be able to make an elaborated install plan with a policy
 -- matching that of the classic @cabal install --user@ or @--global@
--- | The project's package-db settings for a build 'Stage'.
+-- | The project's package-db settings for a 'Machine'.
 --
 -- @package-dbs:@ and @--package-db@ name databases of the host compiler, and
 -- a package database is only readable by the compiler that wrote it. A
 -- distinct build toolchain therefore inherits none of them: its stack is its
 -- own global database plus its own store.
 --
--- A 'Build' stage exists only when there is a distinct build toolchain (see
--- 'prevStage'), so this needs no cross-compilation check. When there is no
+-- A 'Build' machine exists only when there is a distinct build toolchain (see
+-- 'toolMachine'), so this needs no cross-compilation check. When there is no
 -- distinct build toolchain, setup scripts and build tools are built at the
--- host stage and an ordinary build keeps the settings everywhere.
+-- host machine and an ordinary build keeps the settings everywhere.
 projectPackageDbsFor
   :: ProjectConfigShared
-  -> Stage
+  -> Machine
   -> [Maybe PackageDBCWD]
 projectPackageDbsFor _ Build = []
 projectPackageDbsFor shared Host = projectConfigPackageDBs shared
@@ -1957,15 +1957,15 @@ elaborateInstallPlan
   :: HasCallStack
   => Verbosity
   -> Toolchains
-  -- ^ The per-stage toolchains, each with a __configured__ compiler program
+  -- ^ The per-machine toolchains, each with a __configured__ compiler program
   -- database (ghc, ghc-pkg, haddock, ld, etc). Every package is configured
-  -- against the toolchain of its own stage ('elabToolchain'); the 'Host'
-  -- stage additionally drives the project-wide decisions (package databases,
+  -- against the toolchain of its own machine ('elabToolchain'); the 'Host'
+  -- machine additionally drives the project-wide decisions (package databases,
   -- install dirs).
-  -> Staged (Maybe PkgConfigDb)
-  -- ^ The pkg-config database of each stage, read through that stage's
+  -> PerMachine (Maybe PkgConfigDb)
+  -- ^ The pkg-config database of each machine, read through that machine's
   -- toolchain. A package's @pkgconfig-depends@ are resolved against the
-  -- database of its own stage.
+  -- database of its own machine.
   -> DistDirLayout
   -> StoreDirLayout
   -> SolverInstallPlan
@@ -1976,7 +1976,7 @@ elaborateInstallPlan
   -> PackageConfig
   -> PackageConfig
   -> Map PackageName PackageConfig
-  -> Map Stage PackageConfig
+  -> Map Machine PackageConfig
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan
   verbosity
@@ -1992,14 +1992,14 @@ elaborateInstallPlan
   allPackagesConfig
   localPackagesConfig
   perPackageConfig
-  stagePackagesConfig = do
+  machinePackagesConfig = do
     x <- elaboratedInstallPlan
     return (x, elaboratedSharedConfig)
     where
       -- The full 'Toolchains' (host + build) are carried in
-      -- 'ElaboratedSharedConfig'. Each package's own stage toolchain is
+      -- 'ElaboratedSharedConfig'. Each package's own machine toolchain is
       -- selected per-package in 'elaborateSolverToCommon'; the project-wide
-      -- computations below select the stage they need explicitly.
+      -- computations below select the machine they need explicitly.
       elaboratedSharedConfig =
         ElaboratedSharedConfig
           { pkgConfigToolchains = toolchains
@@ -2026,7 +2026,7 @@ elaborateInstallPlan
         flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
           case planpkg of
             SolverInstallPlan.PreExisting pkg ->
-              return [InstallPlan.PreExisting (WithStage (instSolverStage pkg) (instSolverPkgIPI pkg))]
+              return [InstallPlan.PreExisting (WithMachine (instSolverMachine pkg) (instSolverPkgIPI pkg))]
             SolverInstallPlan.Configured pkg ->
               let inplace_doc
                     | shouldBuildInplaceOnly pkg = text "inplace"
@@ -2045,7 +2045,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage solverPkgStage _ _ _ deps0 exe_deps0) = do
+      elaborateSolverToComponents mapDep spkg@(SolverPackage solverPkgMachine _ _ _ deps0 exe_deps0) = do
         when (bt == PD.Make) $
           dieProgress $
             text "'build-type: Make' is no longer supported."
@@ -2232,22 +2232,22 @@ elaborateInstallPlan
                             (cc_includes cc0)
                         )
                     -- Each executable dependency is tagged with the build
-                    -- 'Stage' it was solved for.  We keep exactly the set of
+                    -- 'Machine' it was solved for.  We keep exactly the set of
                     -- executable dependencies the mix-in linking produced (so
-                    -- PATH wiring is unchanged) and only attach the stage: an
-                    -- external build-tool takes the stage of the plan node the
-                    -- solver resolved it to (the 'Build' stage under cross-
+                    -- PATH wiring is unchanged) and only attach the machine: an
+                    -- external build-tool takes the machine of the plan node the
+                    -- solver resolved it to (the 'Build' machine under cross-
                     -- compilation), looked up by its 'ComponentId'; an internal
-                    -- executable shares this package's own stage.
-                    exeDepStage cid =
-                      Map.findWithDefault solverPkgStage (confInstId cid) externalExeDepStages
+                    -- executable shares this package's own machine.
+                    exeDepMachine cid =
+                      Map.findWithDefault solverPkgMachine (confInstId cid) externalExeDepMachines
                     compExeDependencies =
-                      [ WithStage (exeDepStage confId) confId
+                      [ WithMachine (exeDepMachine confId) confId
                       | aid <- cc_exe_deps cc0
                       , let confId = annotatedIdToConfiguredId aid
                       ]
                     compExeDependencyPaths =
-                      [ (WithStage (exeDepStage confId) confId, path)
+                      [ (WithMachine (exeDepMachine confId) confId, path)
                       | aid <- cc_exe_deps cc0
                       , let confId = annotatedIdToConfiguredId aid
                       , Just paths <- [Map.lookup (ann_id aid) exe_map1]
@@ -2368,12 +2368,12 @@ elaborateInstallPlan
                   ]
               exe_map1 = Map.union external_exe_map $ fmap (\x -> [x]) exe_map
 
-              -- The build 'Stage' the solver resolved each external executable
+              -- The 'Machine' the solver resolved each external executable
               -- dependency to, keyed by 'ComponentId'.  Used to tag the
-              -- component's executable dependencies with their actual stage.
-              externalExeDepStages =
+              -- component's executable dependencies with their actual machine.
+              externalExeDepMachines =
                 Map.fromList
-                  [ (getComponentId pkg, planPkgStage pkg)
+                  [ (getComponentId pkg, planPkgMachine pkg)
                   | pkg <- external_exe_dep_pkgs
                   ]
 
@@ -2397,7 +2397,7 @@ elaborateInstallPlan
                             ++ " from "
                             ++ prettyShow (elabPkgSourceId elab0)
                       )
-                      (getStage pkgConfigDB (elabStage elab0) >>= \db -> pkgConfigDbPkgVersion db pn)
+                      (onMachine pkgConfigDB (elabMachine elab0) >>= \db -> pkgConfigDbPkgVersion db pn)
                   )
                 | PkgconfigDependency pn _ <-
                     PD.pkgconfigDepends
@@ -2463,7 +2463,7 @@ elaborateInstallPlan
         mapDep
         pkgWhyNotPerComponent
         pkg@( SolverPackage
-                _stage
+                _machine
                 (SourcePackage pkgid _gpd _srcloc _descOverride)
                 _flags
                 _stanzas
@@ -2523,9 +2523,9 @@ elaborateInstallPlan
             filterExt' :: [(ConfiguredId, a)] -> [(ConfiguredId, a)]
             filterExt' = filter (isExt . fst)
 
-            -- Variants for the stage-tagged executable dependencies.
-            filterExtWs = filter (isExt . withoutStage)
-            filterExtWs' = filter (isExt . withoutStage . fst)
+            -- Variants for the machine-tagged executable dependencies.
+            filterExtWs = filter (isExt . withoutMachine)
+            filterExtWs' = filter (isExt . withoutMachine . fst)
 
             pkgLibDependencies =
               buildComponentDeps (filterExt' . compLibDependencies)
@@ -2535,11 +2535,11 @@ elaborateInstallPlan
               buildComponentDeps (filterExtWs' . compExeDependencyPaths)
 
             -- The library dependencies of the @Setup.hs@ script, each tagged
-            -- with the build 'Stage' the solver actually resolved it to, read
+            -- with the 'Machine' the solver actually resolved it to, read
             -- from the plan node rather than recomputed. See
             -- 'pkgSetupLibDependencies'.
             pkgSetupLibDependencies =
-              [ WithStage (planPkgStage p) (configuredId p)
+              [ WithMachine (planPkgMachine p) (configuredId p)
               | p <- CD.setupDeps deps0 >>= elaborateLibSolverId mapDep
               ]
 
@@ -2580,30 +2580,30 @@ elaborateInstallPlan
         -> (ElaboratedConfiguredPackage, LogProgress ())
       elaborateSolverToCommon
         pkg@( SolverPackage
-                stage
+                machine
                 (SourcePackage pkgid gdesc srcloc descOverride)
                 flags
                 stanzas
                 deps0
                 _exe_deps0
               ) =
-          (elaboratedPackage, libraryWayWarnings toolchains perPkgOption elabStage pkgid >> buildOptionsAdjustmentWarnings)
+          (elaboratedPackage, libraryWayWarnings toolchains perPkgOption elabMachine pkgid >> buildOptionsAdjustmentWarnings)
           where
             elaboratedPackage = ElaboratedConfiguredPackage{..}
 
-            -- The stage this package is elaborated for, and the toolchain that
+            -- The machine this package is elaborated for, and the toolchain that
             -- goes with it. Everything this package is configured against
             -- (finalisation, build options, configured programs) uses its own
-            -- stage's toolchain rather than the host one. In a non-cross build
-            -- the build stage falls back to the host toolchain, so this
+            -- machine's toolchain rather than the host one. In a non-cross build
+            -- the build machine falls back to the host toolchain, so this
             -- selects the same toolchain there.
-            elabStage = stage
+            elabMachine = machine
             -- The per-package option lookups, specialised to this package's
-            -- stage so that stage-qualified configuration ('package build:*',
+            -- machine so that machine-qualified configuration ('package build:*',
             -- 'package host:*') applies. The names are the ones the many uses
-            -- below expect; 'perPkgOptionStaged' is the stage-taking original.
+            -- below expect; 'perPkgOptionOnMachine' is the machine-taking original.
             perPkgOption :: (Package pkg, Monoid m) => pkg -> (PackageConfig -> m) -> m
-            perPkgOption = perPkgOptionStaged elabStage
+            perPkgOption = perPkgOptionOnMachine elabMachine
             perPkgOptionFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> a
             perPkgOptionFlag def = fmap (fromFlagOrDefault def) . perPkgOption
             perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
@@ -2614,16 +2614,16 @@ elaborateInstallPlan
             perPkgOptionLibExeFlag (fromFlagOrDefault -> f) pkgid' (perPkgOption pkgid' -> both) (perPkgOption pkgid' -> lib) =
               (f both, f (both <> lib))
             Toolchain
-              { toolchainCompiler = stageCompiler
-              , toolchainPlatform = stagePlatform
-              , toolchainProgramDb = stageProgDb
-              } = getStage toolchains elabStage
+              { toolchainCompiler = machineCompiler
+              , toolchainPlatform = machinePlatform
+              , toolchainProgramDb = machineProgDb
+              } = onMachine toolchains elabMachine
 
             buildOptionsAdjustmentWarnings :: LogProgress ()
             buildOptionsAdjustmentWarnings =
               mapM_ (warnProgress . text) $
                 Cabal.buildOptionsAdjustmentWarnings
-                  stageCompiler
+                  machineCompiler
                   elabBuildOptionsRaw
                   elabBuildOptions
 
@@ -2642,8 +2642,8 @@ elaborateInstallPlan
               flags
               elabEnabledSpec
               (const Satisfied)
-              stagePlatform
-              (compilerInfo stageCompiler)
+              machinePlatform
+              (compilerInfo machineCompiler)
               []
               gdesc of
               Right (desc, _) -> desc
@@ -2706,7 +2706,7 @@ elaborateInstallPlan
               if shouldBuildInplaceOnly pkg
                 then BuildInplaceOnly OnDisk
                 else BuildAndInstall
-            elabPackageDbs = projectPackageDbs elabStage
+            elabPackageDbs = projectPackageDbs elabMachine
             elabBuildPackageDBStack = buildAndRegisterDbs
             elabRegisterPackageDBStack = buildAndRegisterDbs
 
@@ -2719,24 +2719,24 @@ elaborateInstallPlan
                 deps0
             elabSetupPackageDBStack = buildSetupDbs
 
-            elabInplaceBuildPackageDBStack = stageInplacePackageDbs stage
-            elabInplaceRegisterPackageDBStack = stageInplacePackageDbs stage
-            elabInplaceSetupPackageDBStack = stageInplacePackageDbs setupStage
+            elabInplaceBuildPackageDBStack = machineInplacePackageDbs machine
+            elabInplaceRegisterPackageDBStack = machineInplacePackageDbs machine
+            elabInplaceSetupPackageDBStack = machineInplacePackageDbs setupMachine
 
             -- A package is built against, and registered into, the databases
-            -- of its own stage.
+            -- of its own machine.
             buildAndRegisterDbs
-              | shouldBuildInplaceOnly pkg = stageInplacePackageDbs stage
-              | otherwise = stageCorePackageDbs stage
+              | shouldBuildInplaceOnly pkg = machineInplacePackageDbs machine
+              | otherwise = machineCorePackageDbs machine
 
             -- The Setup.hs script runs on the /build/ machine, so its
-            -- dependencies come from the previous stage's databases (the same
+            -- dependencies come from the build machine's databases (the same
             -- as the package's own unless cross-compiling).
             buildSetupDbs
-              | shouldBuildInplaceOnly pkg = stageInplacePackageDbs setupStage
-              | otherwise = stageCorePackageDbs setupStage
+              | shouldBuildInplaceOnly pkg = machineInplacePackageDbs setupMachine
+              | otherwise = machineCorePackageDbs setupMachine
 
-            setupStage = prevStage toolchains stage
+            setupMachine = toolMachine toolchains machine
 
             elabPkgDescriptionOverride = descOverride
 
@@ -2750,7 +2750,7 @@ elaborateInstallPlan
             elabBuildOptionsRaw =
               LBC.BuildOptions
                 { withVanillaLib = perPkgOptionFlag True pkgid packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
-                , withSharedLib = (elabStage, pkgid) `Set.member` pkgsUseSharedLibrary libWays
+                , withSharedLib = (elabMachine, pkgid) `Set.member` pkgsUseSharedLibrary libWays
                 , withStaticLib = perPkgOptionFlag False pkgid packageConfigStaticLib
                 , withDynExe =
                     perPkgOptionFlag False pkgid packageConfigDynExe
@@ -2761,8 +2761,8 @@ elaborateInstallPlan
                 , withFullyStaticExe = perPkgOptionFlag False pkgid packageConfigFullyStaticExe
                 , withGHCiLib = perPkgOptionFlag False pkgid packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
                 , withProfExe = profExe
-                , withProfLib = (elabStage, pkgid) `Set.member` pkgsUseProfilingLibrary libWays
-                , withProfLibShared = (elabStage, pkgid) `Set.member` pkgsUseProfilingLibraryShared libWays
+                , withProfLib = (elabMachine, pkgid) `Set.member` pkgsUseProfilingLibrary libWays
+                , withProfLibShared = (elabMachine, pkgid) `Set.member` pkgsUseProfilingLibraryShared libWays
                 , withBytecodeLib = perPkgOptionFlag False pkgid packageConfigBytecodeLib
                 , exeCoverage = perPkgOptionFlag False pkgid packageConfigCoverage
                 , libCoverage = perPkgOptionFlag False pkgid packageConfigCoverage
@@ -2778,10 +2778,10 @@ elaborateInstallPlan
                 , programPrefix = elabProgPrefix
                 , programSuffix = elabProgSuffix
                 }
-            okProfDyn = profilingDynamicSupportedOrUnknown stageCompiler
+            okProfDyn = profilingDynamicSupportedOrUnknown machineCompiler
             profExe = perPkgOptionFlag False pkgid packageConfigProf
 
-            elabBuildOptions = Cabal.adjustBuildOptions stageCompiler stageProgDb elabBuildOptionsRaw
+            elabBuildOptions = Cabal.adjustBuildOptions machineCompiler machineProgDb elabBuildOptionsRaw
 
             ( elabProfExeDetail
               , elabProfLibDetail
@@ -2799,13 +2799,13 @@ elaborateInstallPlan
             -- the locations we discovered while configuring the compiler: this
             -- is what makes @--with-gcc@ and the @program-locations@ section in
             -- the config file win over the C compiler that GHC was built with.
-            -- The user-supplied settings are this package's stage's own (see
-            -- 'stageProgramPaths').
+            -- The user-supplied settings are this package's machine's own (see
+            -- 'machineProgramPaths').
             elabProgramPaths =
-              getMapLast (perPkgOption pkgid (stageProgramPaths elabStage))
+              getMapLast (perPkgOption pkgid (machineProgramPaths elabMachine))
                 <> Map.fromList
                   [ (programId prog, programPath prog)
-                  | prog <- configuredPrograms stageProgDb
+                  | prog <- configuredPrograms machineProgDb
                   ]
 
             elabProgramArgs =
@@ -2827,15 +2827,15 @@ elaborateInstallPlan
                   (++)
                   ( Map.fromList
                       [ (programId prog, args)
-                      | prog <- configuredPrograms stageProgDb
+                      | prog <- configuredPrograms machineProgDb
                       , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
                       , not (null args)
                       ]
                   )
-                  (getMapMappend $ perPkgOption pkgid (stageProgramArgs elabStage))
+                  (getMapMappend $ perPkgOption pkgid (machineProgramArgs elabMachine))
 
             elabProgramPathExtra = fromNubList $ perPkgOption pkgid packageConfigProgramPathExtra
-            elabConfiguredPrograms = configuredPrograms stageProgDb
+            elabConfiguredPrograms = configuredPrograms machineProgDb
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
             elabExtraLibDirsStatic = perPkgOptionList pkgid packageConfigExtraLibDirsStatic
@@ -2874,34 +2874,34 @@ elaborateInstallPlan
 
             elabBenchmarkOptions = perPkgOptionList pkgid packageConfigBenchmarkOptions
 
-      -- The per-package option lookup for a package built for a given stage.
-      -- 'elaborateSolverToCommon' fixes the stage to the package's own.
-      perPkgOptionStaged :: (Package pkg, Monoid m) => Stage -> pkg -> (PackageConfig -> m) -> m
-      perPkgOptionStaged = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig stagePackagesConfig perPackageConfig
+      -- The per-package option lookup for a package built for a given machine.
+      -- 'elaborateSolverToCommon' fixes the machine to the package's own.
+      perPkgOptionOnMachine :: (Package pkg, Monoid m) => Machine -> pkg -> (PackageConfig -> m) -> m
+      perPkgOptionOnMachine = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig machinePackagesConfig perPackageConfig
 
       -- The project's package databases belong to the host compiler; a
       -- distinct build toolchain gets none of them.
-      projectPackageDbs :: Stage -> [Maybe PackageDBCWD]
+      projectPackageDbs :: Machine -> [Maybe PackageDBCWD]
       projectPackageDbs = projectPackageDbsFor projectConfigShared
 
-      -- The package databases of a build stage: the store database of that
-      -- stage's compiler, and for in-place builds that compiler's dist
+      -- The package databases of a build machine: the store database of that
+      -- machine's compiler, and for in-place builds that compiler's dist
       -- database too, on top of whichever project databases apply to the
-      -- stage. Equal for both stages unless cross-compiling.
-      stageCorePackageDbs :: Stage -> PackageDBStackCWD
-      stageCorePackageDbs s =
-        storePackageDBStack (stageCompilerOf s) (projectPackageDbs s)
+      -- machine. Equal for both machines unless cross-compiling.
+      machineCorePackageDbs :: Machine -> PackageDBStackCWD
+      machineCorePackageDbs s =
+        storePackageDBStack (machineCompilerOf s) (projectPackageDbs s)
 
-      stageInplacePackageDbs :: Stage -> PackageDBStackCWD
-      stageInplacePackageDbs s =
-        stageCorePackageDbs s
-          ++ [distPackageDB (stagePlatformOf s) (compilerId (stageCompilerOf s))]
+      machineInplacePackageDbs :: Machine -> PackageDBStackCWD
+      machineInplacePackageDbs s =
+        machineCorePackageDbs s
+          ++ [distPackageDB (machinePlatformOf s) (compilerId (machineCompilerOf s))]
 
-      stageCompilerOf :: Stage -> Compiler
-      stageCompilerOf s = toolchainCompiler (getStage toolchains s)
+      machineCompilerOf :: Machine -> Compiler
+      machineCompilerOf s = toolchainCompiler (onMachine toolchains s)
 
-      stagePlatformOf :: Stage -> Platform
-      stagePlatformOf s = toolchainPlatform (getStage toolchains s)
+      machinePlatformOf :: Machine -> Platform
+      machinePlatformOf s = toolchainPlatform (onMachine toolchains s)
 
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be
@@ -2920,7 +2920,7 @@ elaborateInstallPlan
             SolverInstallPlan.reverseDependencyClosure
               solverPlan
               -- Take the roots straight from the plan so each 'SolverId' carries
-              -- the stage it was solved for; a local package used as a build
+              -- the machine it was solved for; a local package used as a build
               -- tool then contributes both its host and build copies.
               [ Graph.nodeKey pkg
               | pkg <- SolverInstallPlan.toList solverPlan
@@ -2940,7 +2940,7 @@ elaborateInstallPlan
       -- here is where we decide which ones will be local!
 
       libWays :: LibraryWays
-      libWays = elaborateLibraryWays toolchains libDepGraph perPkgOptionStaged
+      libWays = elaborateLibraryWays toolchains libDepGraph perPkgOptionOnMachine
 
       libDepGraph =
         Graph.fromDistinctList $
@@ -2956,19 +2956,19 @@ elaborateInstallPlan
 
 -- TODO: Drop matchPlanPkg/matchElabPkg in favor of mkCCMapping
 
--- | The set of build ways that each @(stage, package)@ should have its library
+-- | The set of build ways that each @(machine, package)@ should have its library
 -- built in (shared, profiling, profiling+shared).
 --
 -- Way selection is downward-closed over /library/ dependencies: if a package is
 -- built a given way, the libraries it links against must be available that way
 -- too. Capability and default-way decisions are made against each package's own
--- /stage/ compiler, and the sets are keyed by @(Stage, PackageId)@ so that,
+-- /machine/ compiler, and the sets are keyed by @(Machine, PackageId)@ so that,
 -- when cross-compiling, a host package's way need does not leak onto the
--- build-stage copy of the same package (or vice versa).
+-- build-machine copy of the same package (or vice versa).
 data LibraryWays = LibraryWays
-  { pkgsUseSharedLibrary :: Set (Stage, PackageId)
-  , pkgsUseProfilingLibrary :: Set (Stage, PackageId)
-  , pkgsUseProfilingLibraryShared :: Set (Stage, PackageId)
+  { pkgsUseSharedLibrary :: Set (Machine, PackageId)
+  , pkgsUseProfilingLibrary :: Set (Machine, PackageId)
+  , pkgsUseProfilingLibraryShared :: Set (Machine, PackageId)
   }
 
 -- | A per-package project-config lookup, specialised to the @Flag Bool@ fields
@@ -2983,7 +2983,7 @@ perPkgConfigMaybe lookupFlag pkgid f = flagToMaybe (lookupFlag pkgid f)
 -- The capability and default-way helpers below are pure functions of a single
 -- 'Compiler'; they do not look at dependencies. They used to close over the
 -- host compiler inside 'elaborateInstallPlan'; pulling them out lets each
--- package consult its own stage compiler instead.
+-- package consult its own machine compiler instead.
 
 -- | Returns 'False' only if we definitely cannot build libraries the given way;
 -- if the compiler does not say for certain we optimistically assume we can
@@ -3097,23 +3097,23 @@ needsProfilingLibShared lookupFlag compiler pkgid =
     pkgDynExe = perPkgConfigMaybe lookupFlag pkgid packageConfigDynExe
     pkgProf = perPkgConfigMaybe lookupFlag pkgid packageConfigProf
 
--- | The build 'Stage' of a solver-plan node, read from its stage-carrying
+-- | The 'Machine' of a solver-plan node, read from its machine-carrying
 -- 'SolverId' graph key.
-solverNodeStage :: (Graph.IsNode a, Graph.Key a ~ SolverId) => a -> Stage
-solverNodeStage = solverStage . Graph.nodeKey
+solverNodeMachine :: (Graph.IsNode a, Graph.Key a ~ SolverId) => a -> Machine
+solverNodeMachine = solverMachine . Graph.nodeKey
 
--- | Decide, for every @(stage, package)@ in the plan, which library ways it
+-- | Decide, for every @(machine, package)@ in the plan, which library ways it
 -- should be built in. See 'LibraryWays'.
 --
 -- The graph passed in only follows /library/ dependencies (setup and exe deps,
--- the two stage-crossing dep kinds, are excluded), keyed by stage-carrying
--- 'SolverId'. Edges therefore never cross a stage boundary, so a single closure
--- over the whole plan partitions cleanly by stage.
+-- the two machine-crossing dep kinds, are excluded), keyed by machine-carrying
+-- 'SolverId'. Edges therefore never cross a machine boundary, so a single closure
+-- over the whole plan partitions cleanly by machine.
 elaborateLibraryWays
   :: Toolchains
   -> Graph.Graph NonSetupLibDepSolverPlanPackage
-  -> (Stage -> PerPkgConfigFlag)
-  -- ^ the per-package option lookup for a package of a given stage
+  -> (Machine -> PerPkgConfigFlag)
+  -- ^ the per-package option lookup for a package of a given machine
   -> LibraryWays
 elaborateLibraryWays toolchains libDepGraph lookupFlag =
   LibraryWays
@@ -3125,36 +3125,36 @@ elaborateLibraryWays toolchains libDepGraph lookupFlag =
         downwardClosedProperty compilerCanBuildProfilingSharedLibs needsProfilingLibShared
     }
   where
-    compilerFor :: Stage -> Compiler
-    compilerFor s = toolchainCompiler (getStage toolchains s)
+    compilerFor :: Machine -> Compiler
+    compilerFor s = toolchainCompiler (onMachine toolchains s)
 
-    -- Seed the closure with every node whose own stage compiler makes it want
+    -- Seed the closure with every node whose own machine compiler makes it want
     -- the way, take the downward (library-dependency) closure, key the result
-    -- by (stage, package), and keep only stages whose compiler can build it.
+    -- by (machine, package), and keep only machines whose compiler can build it.
     downwardClosedProperty
       :: (Compiler -> Bool)
       -> (PerPkgConfigFlag -> Compiler -> PackageId -> Bool)
-      -> Set (Stage, PackageId)
+      -> Set (Machine, PackageId)
     downwardClosedProperty capable needs =
       Set.fromList
         . filter (\(s, _) -> capable (compilerFor s))
-        . maybe [] (map (\pkg -> (solverNodeStage pkg, packageId pkg)))
+        . maybe [] (map (\pkg -> (solverNodeMachine pkg, packageId pkg)))
         $ Graph.closure
           libDepGraph
           [ Graph.nodeKey pkg
           | pkg <- Graph.toList libDepGraph
-          , needs (lookupFlag (solverNodeStage pkg)) (compilerFor (solverNodeStage pkg)) (packageId pkg)
+          , needs (lookupFlag (solverNodeMachine pkg)) (compilerFor (solverNodeMachine pkg)) (packageId pkg)
           -- TODO: [nice to have] this does not check config consistency, e.g. a
           -- package explicitly turning off profiling but something depending on
           -- it that needs profiling. That needs a separate config
           -- validation/resolution pass.
           ]
 
--- | Warn when a package requests a library way its stage compiler cannot build.
+-- | Warn when a package requests a library way its machine compiler cannot build.
 -- Uses the flat per-package predicates (not the downward closure) — we only
 -- warn about packages that themselves request the way.
-libraryWayWarnings :: Toolchains -> PerPkgConfigFlag -> Stage -> PackageId -> LogProgress ()
-libraryWayWarnings toolchains lookupFlag stage pkgid = do
+libraryWayWarnings :: Toolchains -> PerPkgConfigFlag -> Machine -> PackageId -> LogProgress ()
+libraryWayWarnings toolchains lookupFlag machine pkgid = do
   when
     (needsProfilingLib lookupFlag compiler pkgid && not (compilerCanBuildProfilingLibs compiler))
     (warnProgress (text "Compiler does not support building p libraries, profiling is disabled"))
@@ -3165,7 +3165,7 @@ libraryWayWarnings toolchains lookupFlag stage pkgid = do
     (needsProfilingLibShared lookupFlag compiler pkgid && not (compilerCanBuildProfilingSharedLibs compiler))
     (warnProgress (text "Compiler does not support building p_dyn libraries, profiling dynamic libraries are disabled."))
   where
-    compiler = toolchainCompiler (getStage toolchains stage)
+    compiler = toolchainCompiler (onMachine toolchains machine)
 
 shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
 shouldBeLocal NamedPackage{} = Nothing
@@ -3175,7 +3175,7 @@ shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of
 
 -- | Given a 'ElaboratedPlanPackage', report if it matches a 'ComponentName'.
 matchPlanPkg :: (ComponentName -> Bool) -> ElaboratedPlanPackage -> Bool
-matchPlanPkg p = InstallPlan.foldPlanPackage (p . ipiComponentName . withoutStage) (matchElabPkg p)
+matchPlanPkg p = InstallPlan.foldPlanPackage (p . ipiComponentName . withoutMachine) (matchElabPkg p)
 
 -- | Get the appropriate 'ComponentName' which identifies an installed
 -- component.
@@ -3209,7 +3209,7 @@ mkCCMapping
   -> (PackageName, Map ComponentName (AnnotatedId ComponentId))
 mkCCMapping =
   InstallPlan.foldPlanPackage
-    ( \(WithStage _ ipkg) ->
+    ( \(WithMachine _ ipkg) ->
         ( packageName ipkg
         , Map.singleton
             (ipiComponentName ipkg)
@@ -3253,7 +3253,7 @@ mkShapeMapping dpkg =
     (dcid, shape) =
       InstallPlan.foldPlanPackage
         -- Uses Monad (->)
-        (liftM2 (,) IPI.installedComponentId shapeInstalledPackage . withoutStage)
+        (liftM2 (,) IPI.installedComponentId shapeInstalledPackage . withoutMachine)
         (liftM2 (,) elabComponentId elabModuleShape)
         dpkg
     indef_uid =
@@ -3296,23 +3296,23 @@ binDirectories layout config package = case elabBuildStyle package of
       distBuildDirectory layout (elabDistDirParams config package)
         </> "build"
 
--- | The instantiation state is keyed by 'WithStage UnitId': under
+-- | The instantiation state is keyed by 'WithMachine UnitId': under
 -- cross-compilation the host and build copies of a component share a
--- 'UnitId', so the stage keeps them distinct.
-type InstS = Map (WithStage UnitId) ElaboratedPlanPackage
+-- 'UnitId', so the machine keeps them distinct.
+type InstS = Map (WithMachine UnitId) ElaboratedPlanPackage
 
 type InstM a = State InstS a
 
--- | The build 'Stage' of an elaborated plan package.
-planPkgStage :: ElaboratedPlanPackage -> Stage
-planPkgStage (InstallPlan.PreExisting ipkg) = stageOf ipkg
-planPkgStage (InstallPlan.Configured elab) = elabStage elab
-planPkgStage (InstallPlan.Installed elab) = elabStage elab
+-- | The 'Machine' of an elaborated plan package.
+planPkgMachine :: ElaboratedPlanPackage -> Machine
+planPkgMachine (InstallPlan.PreExisting ipkg) = machineOf ipkg
+planPkgMachine (InstallPlan.Configured elab) = elabMachine elab
+planPkgMachine (InstallPlan.Installed elab) = elabMachine elab
 
 getComponentId
   :: ElaboratedPlanPackage
   -> ComponentId
-getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId (withoutStage dipkg)
+getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId (withoutMachine dipkg)
 getComponentId (InstallPlan.Configured elab) = elabComponentId elab
 getComponentId (InstallPlan.Installed elab) = elabComponentId elab
 
@@ -3374,24 +3374,24 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
   where
     pkgs = InstallPlan.toList plan
 
-    cmap = Map.fromList [(WithStage (planPkgStage pkg) (getComponentId pkg), pkg) | pkg <- pkgs]
+    cmap = Map.fromList [(WithMachine (planPkgMachine pkg) (getComponentId pkg), pkg) | pkg <- pkgs]
 
     instantiateUnitId
-      :: Stage
+      :: Machine
       -> ComponentId
       -> Map ModuleName (Module, BuildStyle)
       -> InstM (DefUnitId, BuildStyle)
-    instantiateUnitId stage cid insts = state $ \s ->
-      case Map.lookup (WithStage stage uid) s of
+    instantiateUnitId machine cid insts = state $ \s ->
+      case Map.lookup (WithMachine machine uid) s of
         Nothing ->
           -- Knot tied
           -- TODO: I don't think the knot tying actually does
           -- anything useful
           let (r, s') =
                 runState
-                  (instantiateComponent uid stage cid insts)
-                  (Map.insert (WithStage stage uid) r s)
-           in ((def_uid, extractElabBuildStyle r), Map.insert (WithStage stage uid) r s')
+                  (instantiateComponent uid machine cid insts)
+                  (Map.insert (WithMachine machine uid) r s)
+           in ((def_uid, extractElabBuildStyle r), Map.insert (WithMachine machine uid) r s')
         Just r -> ((def_uid, extractElabBuildStyle r), s)
       where
         def_uid = mkDefUnitId cid (fmap fst insts)
@@ -3401,19 +3401,19 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     -- the ElaboratedPlanPackage, so that will implicitly pass it on
     instantiateComponent
       :: UnitId
-      -> Stage
+      -> Machine
       -> ComponentId
       -> Map ModuleName (Module, BuildStyle)
       -> InstM ElaboratedPlanPackage
-    instantiateComponent uid stage cid insts
-      | Just planpkg <- Map.lookup (WithStage stage cid) cmap =
+    instantiateComponent uid machine cid insts
+      | Just planpkg <- Map.lookup (WithMachine machine cid) cmap =
           case planpkg of
             InstallPlan.Configured
               elab0@ElaboratedConfiguredPackage
                 { elabPkgOrComp = ElabComponent comp
                 } -> do
                 deps <-
-                  traverse (fmap fst . substUnitId stage insts) (compLinkedLibDependencies comp)
+                  traverse (fmap fst . substUnitId machine insts) (compLinkedLibDependencies comp)
                 let build_style = fold (fmap snd insts)
                 let getDep (Module dep_uid _) = [dep_uid]
                     elab1 =
@@ -3448,43 +3448,43 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
             _ -> return planpkg
       | otherwise = error ("instantiateComponent: " ++ prettyShow cid)
 
-    substUnitId :: Stage -> Map ModuleName (Module, BuildStyle) -> OpenUnitId -> InstM (DefUnitId, BuildStyle)
+    substUnitId :: Machine -> Map ModuleName (Module, BuildStyle) -> OpenUnitId -> InstM (DefUnitId, BuildStyle)
     substUnitId _ _ (DefiniteUnitId uid) =
       -- This COULD actually, secretly, be an inplace package, but in
       -- that case it doesn't matter as it's already been recorded
       -- in the package that depends on this
       return (uid, BuildAndInstall)
-    substUnitId stage subst (IndefFullUnitId cid insts) = do
-      insts' <- substSubst stage subst insts
-      instantiateUnitId stage cid insts'
+    substUnitId machine subst (IndefFullUnitId cid insts) = do
+      insts' <- substSubst machine subst insts
+      instantiateUnitId machine cid insts'
 
     -- NB: NOT composition
     substSubst
-      :: Stage
+      :: Machine
       -> Map ModuleName (Module, BuildStyle)
       -> Map ModuleName OpenModule
       -> InstM (Map ModuleName (Module, BuildStyle))
-    substSubst stage subst insts = traverse (substModule stage subst) insts
+    substSubst machine subst insts = traverse (substModule machine subst) insts
 
-    substModule :: Stage -> Map ModuleName (Module, BuildStyle) -> OpenModule -> InstM (Module, BuildStyle)
-    substModule _stage subst (OpenModuleVar mod_name)
+    substModule :: Machine -> Map ModuleName (Module, BuildStyle) -> OpenModule -> InstM (Module, BuildStyle)
+    substModule _machine subst (OpenModuleVar mod_name)
       | Just m <- Map.lookup mod_name subst = return m
       | otherwise = error "substModule: non-closing substitution"
-    substModule stage subst (OpenModule uid mod_name) = do
-      (uid', build_style) <- substUnitId stage subst uid
+    substModule machine subst (OpenModule uid mod_name) = do
+      (uid', build_style) <- substUnitId machine subst uid
       return (Module uid' mod_name, build_style)
 
-    indefiniteUnitId :: Stage -> ComponentId -> InstM UnitId
-    indefiniteUnitId stage cid = do
+    indefiniteUnitId :: Machine -> ComponentId -> InstM UnitId
+    indefiniteUnitId machine cid = do
       let uid = newSimpleUnitId cid
-      r <- indefiniteComponent stage uid cid
-      state $ \s -> (uid, Map.insert (WithStage stage uid) r s)
+      r <- indefiniteComponent machine uid cid
+      state $ \s -> (uid, Map.insert (WithMachine machine uid) r s)
 
-    indefiniteComponent :: Stage -> UnitId -> ComponentId -> InstM ElaboratedPlanPackage
-    indefiniteComponent stage _uid cid
+    indefiniteComponent :: Machine -> UnitId -> ComponentId -> InstM ElaboratedPlanPackage
+    indefiniteComponent machine _uid cid
       -- Only need Configured; this phase happens before improvement, so
       -- there shouldn't be any Installed packages here.
-      | Just (InstallPlan.Configured epkg) <- Map.lookup (WithStage stage cid) cmap
+      | Just (InstallPlan.Configured epkg) <- Map.lookup (WithMachine machine cid) cmap
       , ElabComponent elab_comp <- elabPkgOrComp epkg =
           do
             -- We need to do a little more processing of the includes: some
@@ -3504,7 +3504,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
             -- DefiniteUnitId (that's what substUnitId does!)
             new_deps <- for (compLinkedLibDependencies elab_comp) $ \uid ->
               if Set.null (openUnitIdFreeHoles uid)
-                then fmap (DefiniteUnitId . fst) (substUnitId stage Map.empty uid)
+                then fmap (DefiniteUnitId . fst) (substUnitId machine Map.empty uid)
                 else return uid
             -- NB: no fixupBuildStyle needed here, as if the indefinite
             -- component depends on any inplace packages, it itself must
@@ -3526,7 +3526,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                                 ++ [unDefUnitId d | DefiniteUnitId d <- new_deps]
                         }
                 }
-      | Just planpkg <- Map.lookup (WithStage stage cid) cmap =
+      | Just planpkg <- Map.lookup (WithMachine machine cid) cmap =
           return planpkg
       | otherwise = error ("indefiniteComponent: " ++ prettyShow cid)
 
@@ -3545,8 +3545,8 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     work = for_ pkgs $ \case
       InstallPlan.Configured elab
         | not (Map.null (elabLinkedInstantiatedWith elab)) ->
-            void $ indefiniteUnitId (elabStage elab) (elabComponentId elab)
-      pkg -> void $ instantiateUnitId (planPkgStage pkg) (getComponentId pkg) Map.empty
+            void $ indefiniteUnitId (elabMachine elab) (elabComponentId elab)
+      pkg -> void $ instantiateUnitId (planPkgMachine pkg) (getComponentId pkg) Map.empty
 
 ---------------------------
 -- Build targets
@@ -3644,7 +3644,7 @@ availableTargets installPlan =
         [ (pkgid, cname, fake, target)
         | pkg <- InstallPlan.toList installPlan
         , (pkgid, cname, fake, target) <- case pkg of
-            InstallPlan.PreExisting ipkg -> availableInstalledTargets (withoutStage ipkg)
+            InstallPlan.PreExisting ipkg -> availableInstalledTargets (withoutMachine ipkg)
             InstallPlan.Installed elab -> availableSourceTargets elab
             InstallPlan.Configured elab -> availableSourceTargets elab
         ]
@@ -3913,7 +3913,7 @@ pruneInstallPlanToTargets targetActionType perPkgTargetsMap elaboratedPlan =
 --
 -- For 'ElaboratedComponent', this the cached unit IDs always
 -- coincide with the real thing.
-data PrunedPackage = PrunedPackage ElaboratedConfiguredPackage [WithStage UnitId]
+data PrunedPackage = PrunedPackage ElaboratedConfiguredPackage [WithMachine UnitId]
 
 instance Package PrunedPackage where
   packageId (PrunedPackage elab _) = packageId elab
@@ -3922,7 +3922,7 @@ instance HasUnitId PrunedPackage where
   installedUnitId (PrunedPackage elab _) = installedUnitId elab
 
 instance Graph.IsNode PrunedPackage where
-  type Key PrunedPackage = WithStage UnitId
+  type Key PrunedPackage = WithMachine UnitId
   nodeKey (PrunedPackage elab _) = Graph.nodeKey elab
   nodeNeighbors (PrunedPackage _ deps) = deps
 
@@ -4006,7 +4006,7 @@ pruneInstallPlanPass1 pkgs
 
     graph = Graph.fromDistinctList pkgs'
 
-    roots :: [WithStage UnitId]
+    roots :: [WithMachine UnitId]
     roots = mapMaybe find_root pkgs'
 
     -- Make a closed graph by calculating the closure from the roots
@@ -4046,7 +4046,7 @@ pruneInstallPlanPass1 pkgs
       | anyMultiReplTarget = map (mapConfiguredPackage add_repl_target) (Graph.toList closed_graph)
       | otherwise = Graph.toList closed_graph
 
-    is_root :: PrunedPackage -> Maybe (WithStage UnitId)
+    is_root :: PrunedPackage -> Maybe (WithMachine UnitId)
     is_root (PrunedPackage elab _) =
       if not $
         and
@@ -4114,13 +4114,13 @@ pruneInstallPlanPass1 pkgs
     -- the optional stanzas and we'll make further tweaks to the optional
     -- stanzas in the next pass.
     --
-    pruneOptionalDependencies :: ElaboratedConfiguredPackage -> [WithStage UnitId]
+    pruneOptionalDependencies :: ElaboratedConfiguredPackage -> [WithMachine UnitId]
     pruneOptionalDependencies elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _} =
       InstallPlan.depends elab -- no pruning
     pruneOptionalDependencies elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage pkg} =
-      -- Keep the (already stage-tagged) plan neighbours whose unit is still
+      -- Keep the (already machine-tagged) plan neighbours whose unit is still
       -- needed after dropping optional-stanza-only dependencies.
-      filter ((`Set.member` keptUnitIds) . withoutStage) (InstallPlan.depends elab)
+      filter ((`Set.member` keptUnitIds) . withoutMachine) (InstallPlan.depends elab)
       where
         keptUnitIds = Set.fromList $ (fold . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
         keepNeeded (CD.ComponentTest _) _ = TestStanzas `optStanzaSetMember` stanzas
@@ -4147,9 +4147,9 @@ pruneInstallPlanPass1 pkgs
         ]
 
     -- Keyed by plan key, not bare 'UnitId': the installed packages of the
-    -- build and host stages come from different package databases and must
+    -- build and host machines come from different package databases and must
     -- not be confused with one another.
-    availablePkgs :: Set (WithStage UnitId)
+    availablePkgs :: Set (WithMachine UnitId)
     availablePkgs =
       Set.fromList
         [ Graph.nodeKey pkg
@@ -4188,7 +4188,7 @@ into the repl to uphold the closure property.
 -- all of the deps needed for the test suite, we go ahead and
 -- enable it always.
 optionalStanzasWithDepsAvailable
-  :: Set (WithStage UnitId)
+  :: Set (WithMachine UnitId)
   -> ElaboratedConfiguredPackage
   -> ElaboratedPackage
   -> OptionalStanzaSet
@@ -4196,13 +4196,13 @@ optionalStanzasWithDepsAvailable availablePkgs elab pkg =
   optStanzaSetFromList
     [ stanza
     | stanza <- optStanzaSetToList (elabStanzasAvailable elab)
-    , let deps :: [WithStage UnitId]
+    , let deps :: [WithMachine UnitId]
           deps =
             CD.select
               (optionalStanzaDeps stanza)
               -- TODO: probably need to select other
               -- dep types too eventually
-              (pkgStagedOrderDependencies (elabStage elab) pkg)
+              (pkgOrderDependenciesOnMachine (elabMachine elab) pkg)
     , all (`Set.member` availablePkgs) deps
     ]
   where
@@ -4316,7 +4316,7 @@ pruneInstallPlanPass2 pkgs =
           | Graph.nodeKey elab `Set.member` exeDeps
           ]
 
-    availablePkgs :: Set (WithStage UnitId)
+    availablePkgs :: Set (WithMachine UnitId)
     availablePkgs = Set.fromList (map Graph.nodeKey pkgs)
 
     inMemoryTargets :: Set ConfiguredId
@@ -4336,7 +4336,7 @@ pruneInstallPlanPass2 pkgs =
     -- must also produce real on-disk artifacts so the exe can link against it.
     -- The repl phase still runs for these packages, so GHCi loads them from
     -- source under the same package-id, preserving type identity.
-    mustBuildOnDisk :: Set (WithStage UnitId)
+    mustBuildOnDisk :: Set (WithMachine UnitId)
     mustBuildOnDisk = go exeDeps Set.empty
       where
         go frontier visited
@@ -4361,33 +4361,33 @@ pruneInstallPlanPass2 pkgs =
     -- They are keyed by plan key rather than bare 'UnitId' because the build
     -- and host copies of a local package share an in-place unit id (in-place
     -- unit ids do not mention the compiler). Projecting onto 'UnitId' would
-    -- merge the two nodes: 'planLibDepMap' would keep only one stage's
+    -- merge the two nodes: 'planLibDepMap' would keep only one machine's
     -- dependencies, and a package could be marked as needing an on-disk build,
-    -- or not, because of its twin at the other stage.
-    perPkgDeps :: [(WithStage UnitId, [WithStage UnitId], [WithStage UnitId])]
+    -- or not, because of its twin at the other machine.
+    perPkgDeps :: [(WithMachine UnitId, [WithMachine UnitId], [WithMachine UnitId])]
     perPkgDeps =
       [ ( Graph.nodeKey pkg
-        , -- Library edges are stage-preserving, so a package's library
-          -- dependencies sit at its own stage; build-tool edges carry the
-          -- stage the solver assigned them.
-          map (WithStage (elabStage pkg)) (elabOrderLibDependencies pkg)
+        , -- Library edges are machine-preserving, so a package's library
+          -- dependencies sit on its own machine; build-tool edges carry the
+          -- machine the solver assigned them.
+          map (WithMachine (elabMachine pkg)) (elabOrderLibDependencies pkg)
         , elabOrderExeDependencies pkg
         )
       | InstallPlan.Configured pkg <- pkgs
       ]
 
     -- Library-dependency adjacency for in-plan packages only.
-    planLibDepMap :: Map (WithStage UnitId) [WithStage UnitId]
+    planLibDepMap :: Map (WithMachine UnitId) [WithMachine UnitId]
     planLibDepMap =
       Map.fromList [(uid, ls) | (uid, ls, _) <- perPkgDeps]
 
     -- All packages that appear as a library dep of any in-plan package.
-    libDeps :: Set (WithStage UnitId)
+    libDeps :: Set (WithMachine UnitId)
     libDeps =
       Set.fromList [d | (_, ls, _) <- perPkgDeps, d <- ls]
 
     -- All packages that appear as an exe dep of any in-plan package.
-    exeDeps :: Set (WithStage UnitId)
+    exeDeps :: Set (WithMachine UnitId)
     exeDeps =
       Set.fromList [d | (_, _, es) <- perPkgDeps, d <- es]
 
@@ -4502,10 +4502,10 @@ setupHsScriptOptions
             then Nothing
             else Just cliVersion
       , -- The Setup.hs script runs on the machine that /drives/ this
-        -- package's build, i.e. the stage before the package's own stage
-        -- ('prevStage' of 'elabStage'): a host-stage package's setup runs on
-        -- the build stage when there is one, and stays on the host stage
-        -- otherwise. It is therefore compiled with that stage's toolchain.
+        -- package's build, i.e. the machine before the package's own machine
+        -- ('toolMachine' of 'elabMachine'): a host-machine package's setup runs on
+        -- the build machine when there is one, and stays on the host machine
+        -- otherwise. It is therefore compiled with that machine's toolchain.
         useCompiler = Just (toolchainCompiler setupToolchain)
       , usePlatform = Just (toolchainPlatform setupToolchain)
       , usePackageDB = elabSetupPackageDBStack
@@ -4542,7 +4542,7 @@ setupHsScriptOptions
       }
     where
       cliVersion = setupCliVersion elabSetupScriptCliVersion
-      setupToolchain = pkgConfigStageToolchain sharedConfig (prevStage (pkgConfigToolchains sharedConfig) elabStage)
+      setupToolchain = pkgConfigMachineToolchain sharedConfig (toolMachine (pkgConfigToolchains sharedConfig) elabMachine)
 
 -- | To be used for the input for elaborateInstallPlan.
 --
@@ -5046,13 +5046,13 @@ packageHashInputs
                 [ confInstId dep
                 | (dep, _) <- CD.select relevantDeps pkgLibDependencies
                 ]
-                  ++ [ confInstId (withoutStage dep)
+                  ++ [ confInstId (withoutMachine dep)
                      | dep <- CD.select relevantDeps pkgExeDependencies
                      ]
             ElabComponent comp ->
               Set.fromList
                 ( map (confInstId . fst) (compLibDependencies comp)
-                    ++ map (confInstId . withoutStage) (compExeDependencies comp)
+                    ++ map (confInstId . withoutMachine) (compExeDependencies comp)
                 )
       , pkgHashOtherConfig = packageHashConfigInputs pkgshared elab
       }
@@ -5228,7 +5228,7 @@ determineCoverageFor configuredPkg plan =
     isIndefiniteOrInstantiation = not . Set.null . modShapeRequires
 
 -- | Look up and merge the options from the project config that apply to all
--- packages, all project local packages, all packages of the package's stage
+-- packages, all project local packages, all packages of the package's machine
 -- (@package build:*@, @package host:*@) and to specific named packages, in
 -- that order: later, more specific, layers override earlier ones.
 lookupPerPkgOption
@@ -5236,18 +5236,18 @@ lookupPerPkgOption
   => (pkg -> Bool)
   -> PackageConfig
   -> PackageConfig
-  -> Map Stage PackageConfig
+  -> Map Machine PackageConfig
   -> Map PackageName PackageConfig
-  -> Stage
+  -> Machine
   -> pkg
   -> (PackageConfig -> m)
   -> m
-lookupPerPkgOption isLocalPkg allPackagesConfig localPackagesConfig stagePackagesConfig perPackageConfig stage pkg f =
-  global `mappend` local `mappend` perstage `mappend` perpkg
+lookupPerPkgOption isLocalPkg allPackagesConfig localPackagesConfig machinePackagesConfig perPackageConfig machine pkg f =
+  global `mappend` local `mappend` permachine `mappend` perpkg
   where
     global = f allPackagesConfig
     local
       | isLocalPkg pkg = f localPackagesConfig
       | otherwise = mempty
-    perstage = maybe mempty (f . stageStanzaConfig stage) (Map.lookup stage stagePackagesConfig)
+    permachine = maybe mempty (f . machineStanzaConfig machine) (Map.lookup machine machinePackagesConfig)
     perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)

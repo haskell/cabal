@@ -1,6 +1,6 @@
 module Distribution.Solver.Modular.Index
     ( Index
-    , StageIndex
+    , MachineIndex
     , PInfo(..)
     , ComponentInfo(..)
     , IsVisible(..)
@@ -21,23 +21,23 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
-import Distribution.Solver.Types.Stage (Staged (..))
+import Distribution.Solver.Types.Machine (PerMachine (..))
 
--- | The packages available for a single build stage. This is a nested
+-- | The packages available for a single build machine. This is a nested
 -- dictionary. Package names are mapped to instances, which in turn is mapped
 -- to info.
-type StageIndex = Map PN (Map I PInfo)
+type MachineIndex = Map PN (Map I PInfo)
 
 -- | An index contains information about package instances, partitioned by build
--- 'Stage'. Each stage is solved against its own set of available packages,
--- because a different stage means a different compiler and therefore an
+-- 'Machine'. Each machine is solved against its own set of available packages,
+-- because a different machine means a different compiler and therefore an
 -- entirely different set of pre-installed packages. The goal being solved
--- always carries its stage (in its 'Distribution.Solver.Types.GoalScope.GoalScope'),
--- so lookups select the stage's 'StageIndex' first with 'getStage'.
+-- always carries its machine (in its 'Distribution.Solver.Types.GoalScope.GoalScope'),
+-- so lookups select the machine's 'MachineIndex' first with 'onMachine'.
 --
--- The build stage is present exactly when there is a distinct build
+-- The build machine is present exactly when there is a distinct build
 -- toolchain ('isCross'); a non-cross build has only the host index.
-type Index = Staged StageIndex
+type Index = PerMachine MachineIndex
 
 -- | Info associated with a package instance.
 -- Currently, dependencies, component names, flags and failure reasons.
@@ -67,7 +67,7 @@ newtype IsVisible = IsVisible Bool
 newtype IsBuildable = IsBuildable Bool
   deriving (Eq, Show)
 
-mkIndex :: [(PN, I, PInfo)] -> StageIndex
+mkIndex :: [(PN, I, PInfo)] -> MachineIndex
 mkIndex xs = M.map M.fromList (groupMap (L.map (\ (pn, i, pi) -> (pn, (i, pi))) xs))
 
 groupMap :: Ord a => [(a, b)] -> Map a [b]
@@ -76,7 +76,7 @@ groupMap xs = M.fromListWith (flip (++)) (L.map (\ (x, y) -> (x, [y])) xs)
 defaultQualifyOptions :: Index -> QualifyOptions
 defaultQualifyOptions idx = QO {
       qoBaseShim         = or [ dep == base
-                              | -- Look in the host stage's packages ..
+                              | -- Look in the host machine's packages ..
                                 Just is <- [M.lookup base (onHost idx)]
                                 -- .. which are installed ..
                               , (I _ver (Inst _), PInfo deps _comps _flagNfo _fr) <- M.toList is
@@ -84,10 +84,10 @@ defaultQualifyOptions idx = QO {
                               , (LDep _ (Dep (PkgComponent dep _) _ci), _comp) <- flattenFlaggedDeps deps
                               ]
     , qoSetupIndependent = True
-      -- The index has the stage shape of the toolchains it was converted
+      -- The index has the machine shape of the toolchains it was converted
       -- from (see 'convPIs'), so this is 'isCross' of those toolchains: a
-      -- build stage exists only when there is a distinct build toolchain.
-    , qoStages = void idx
+      -- build machine exists only when there is a distinct build toolchain.
+    , qoMachines = void idx
     }
   where
     base = mkPackageName "base"

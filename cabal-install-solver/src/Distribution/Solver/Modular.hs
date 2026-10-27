@@ -70,8 +70,8 @@ import Distribution.Solver.Types.Progress
     ( Progress(..), foldProgress )
 import Distribution.Solver.Types.SummarizedMessage
     ( SummarizedMessage(StringMsg) )
-import Distribution.Solver.Types.Stage
-         ( Staged )
+import Distribution.Solver.Types.Machine
+         ( PerMachine )
 import Distribution.Solver.Types.Variable ( Variable(..) )
 import Distribution.Simple.Setup
          ( BooleanFlag(..) )
@@ -88,12 +88,12 @@ modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
   solve' sc cinfo idx pkgConfigDB pprefs gcs pns
     where
       -- Flag/dependency choices are validated against the compiler and
-      -- pkg-config database of the stage each goal is solved for.
+      -- pkg-config database of the machine each goal is solved for.
       cinfo = fmap fst toolchains
       pkgConfigDB = pkgConfigDbs
       -- Indices have to be converted into solver-specific uniform index. Which
-      -- stages are solved separately is intrinsic to the staged toolchains (a
-      -- non-cross build has no build stage), so 'convPIs' derives it directly.
+      -- machines are solved separately is intrinsic to the per-machine toolchains (a
+      -- non-cross build has no build machine), so 'convPIs' derives it directly.
       idx    = convPIs toolchains gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidxs sidx
       -- Constraints have to be converted into a finite map indexed by PN.
       gcs    = M.fromListWith (++) (map pair pcs)
@@ -103,7 +103,7 @@ modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
       -- Results have to be converted into an install plan. 'convCP' removes
       -- package qualifiers, which means that linked packages become duplicates
       -- and can be removed. Each pre-existing package is resolved against the
-      -- installed-package index of its own stage (see 'convCP').
+      -- installed-package index of its own machine (see 'convCP').
       postprocess a rdm = ordNubBy nodeKey $
                           map (convCP iidxs sidx) (toCPs a rdm)
 
@@ -145,9 +145,9 @@ modularResolver sc toolchains pkgConfigDbs iidxs sidx pprefs pcs pns =
 -- complete, i.e., it shows the whole chain of dependencies from the user
 -- targets to the conflicting packages.
 solve' :: SolverConfig
-       -> Staged CompilerInfo
+       -> PerMachine CompilerInfo
        -> Index
-       -> Staged (Maybe PkgConfigDb)
+       -> PerMachine (Maybe PkgConfigDb)
        -> (PN -> PackagePreferences)
        -> Map PN [LabeledPackageConstraint]
        -> Set PN

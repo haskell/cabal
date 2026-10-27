@@ -18,7 +18,7 @@ import Distribution.Client.ProjectOrchestration
   , resolveTargetsFromSolver
   )
 import Distribution.Client.ProjectPlanning
-import Distribution.Client.ProjectPlanning.Stage (withoutStage)
+import Distribution.Client.ProjectPlanning.Machine (withoutMachine)
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -2352,7 +2352,7 @@ expectPackagePreExisting plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
   case (planpkg, Map.lookup (nodeKey planpkg) buildOutcomes) of
     (InstallPlan.PreExisting pkg, Nothing) ->
-      return (withoutStage pkg)
+      return (withoutMachine pkg)
     (_, buildResult) -> unexpectedBuildResult "PreExisting" planpkg buildResult
 
 expectPackageConfigured

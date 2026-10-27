@@ -55,8 +55,8 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
   )
 
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.Machine (Machine)
 import Distribution.Solver.Types.Settings
-import Distribution.Solver.Types.Stage (Stage)
 
 import Distribution.Package
   ( PackageId
@@ -154,12 +154,12 @@ data ProjectConfig = ProjectConfig
   -- ^ Configuration to be applied to *local* packages; i.e.,
   -- any packages which are explicitly named in `cabal.project`.
   , projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
-  , projectConfigStagePackages :: MapMappend Stage PackageConfig
+  , projectConfigMachinePackages :: MapMappend Machine PackageConfig
   -- ^ Configuration to be applied to every package built for a given
-  -- stage: @package build:*@ or @package host:*@. Under cross-compilation
-  -- the same package can be built for both stages, which plain @package *@
+  -- machine: @package build:*@ or @package host:*@. Under cross-compilation
+  -- the same package can be built for both machines, which plain @package *@
   -- cannot tell apart. It sits between the local-package and the named
-  -- layer: @package *@ < local packages < @package <stage>:*@ < @package name@.
+  -- layer: @package *@ < local packages < @package <machine>:*@ < @package name@.
   }
   deriving (Eq, Show, Generic)
   deriving (Semigroup, Monoid) via Generically ProjectConfig
@@ -207,11 +207,11 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigHcPath :: Flag FilePath
   , projectConfigHcPkg :: Flag FilePath
   , projectConfigBuildHcFlavor :: Flag CompilerFlavor
-  -- ^ Compiler flavour for the build stage (cross-compilation).
+  -- ^ Compiler flavour for the build machine (cross-compilation).
   , projectConfigBuildHcPath :: Flag FilePath
-  -- ^ Path to the compiler for the build stage (cross-compilation).
+  -- ^ Path to the compiler for the build machine (cross-compilation).
   , projectConfigBuildHcPkg :: Flag FilePath
-  -- ^ Path to the package tool for the build stage (cross-compilation).
+  -- ^ Path to the package tool for the build machine (cross-compilation).
   , projectConfigHaddockIndex :: Flag PathTemplate
   , -- Only makes sense for manual mode, not --local mode
     -- too much control!
@@ -295,10 +295,10 @@ data PackageConfig = PackageConfig
   , packageConfigProgramArgs :: MapMappend String [String]
   , packageConfigBuildProgramPaths :: MapLast String FilePath
   -- ^ Like 'packageConfigProgramPaths', for packages built for the build
-  -- stage of a cross-compiling plan. 'packageConfigProgramPaths' then applies
-  -- to the host stage only; neither stage inherits the other's.
+  -- machine of a cross-compiling plan. 'packageConfigProgramPaths' then applies
+  -- to the host machine only; neither machine inherits the other's.
   , packageConfigBuildProgramArgs :: MapMappend String [String]
-  -- ^ Like 'packageConfigProgramArgs', for the build stage. See
+  -- ^ Like 'packageConfigProgramArgs', for the build machine. See
   -- 'packageConfigBuildProgramPaths'.
   , packageConfigProgramPathExtra :: NubList FilePath
   , packageConfigFlagAssignment :: FlagAssignment

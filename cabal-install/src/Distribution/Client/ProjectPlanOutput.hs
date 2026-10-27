@@ -18,9 +18,9 @@ module Distribution.Client.ProjectPlanOutput
 import Distribution.Client.DistDirLayout
 import Distribution.Client.HashValue (hashValue, showHashValue)
 import Distribution.Client.ProjectBuilding.Types
-import Distribution.Client.ProjectPlanning.Stage (WithStage (..), withoutStage)
+import Distribution.Client.ProjectPlanning.Machine (WithMachine (..), withoutMachine)
 import Distribution.Client.ProjectPlanning.Types
-import Distribution.Client.Toolchain (Stage (..), showStage)
+import Distribution.Client.Toolchain (Machine (..), showMachine)
 import Distribution.Client.Types.ConfiguredId (confInstId)
 import Distribution.Client.Types.PackageLocation (PackageLocation (..))
 import Distribution.Client.Types.Repo (RemoteRepo (..), Repo (..))
@@ -127,7 +127,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     planPackageToJ :: ElaboratedPlanPackage -> J.Value
     planPackageToJ pkg =
       case pkg of
-        InstallPlan.PreExisting (WithStage stage ipi) -> installedPackageInfoToJ stage ipi
+        InstallPlan.PreExisting (WithMachine machine ipi) -> installedPackageInfoToJ machine ipi
         InstallPlan.Configured elab -> elaboratedPackageToJ False elab
         InstallPlan.Installed elab -> elaboratedPackageToJ True elab
     -- Note that the plan.json currently only uses the elaborated plan,
@@ -135,14 +135,14 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     -- that case, but the code supports it in case we want to use this
     -- later in some use case where we want the status of the build.
 
-    -- The build stage a plan entry belongs to. Under cross-compilation the
-    -- same unit id can appear once per stage, so the stage is what tells the
-    -- two entries apart; in a non-cross build every entry is on the host stage.
-    stageToJ :: Stage -> (String, J.Value)
-    stageToJ stage = "stage" J..= J.String (showStage stage)
+    -- The build machine a plan entry belongs to. Under cross-compilation the
+    -- same unit id can appear once per machine, so the machine is what tells the
+    -- two entries apart; in a non-cross build every entry is on the host machine.
+    machineToJ :: Machine -> (String, J.Value)
+    machineToJ machine = "machine" J..= J.String (showMachine machine)
 
-    installedPackageInfoToJ :: Stage -> InstalledPackageInfo -> J.Value
-    installedPackageInfoToJ stage ipi =
+    installedPackageInfoToJ :: Machine -> InstalledPackageInfo -> J.Value
+    installedPackageInfoToJ machine ipi =
       -- Pre-existing packages lack configuration information such as their flag
       -- settings or non-lib components. We only get pre-existing packages for
       -- the global/core packages however, so this isn't generally a problem.
@@ -151,7 +151,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       J.object
         [ "type" J..= J.String "pre-existing"
         , "id" J..= (jdisplay . installedUnitId) ipi
-        , stageToJ stage
+        , machineToJ machine
         , "pkg-name" J..= (jdisplay . pkgName . packageId) ipi
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) ipi
         , "depends" J..= map jdisplay (installedDepends ipi)
@@ -167,7 +167,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                   else "configured"
               )
         , "id" J..= (jdisplay . installedUnitId) elab
-        , stageToJ (elabStage elab)
+        , machineToJ (elabMachine elab)
         , "pkg-name" J..= (jdisplay . pkgName . packageId) elab
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
         , -- The `x-revision` field is a feature of repos (not cabal itself),
@@ -203,7 +203,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                       [ comp2str c
                         J..= J.object
                           ( [ "depends" J..= map ((jdisplay . confInstId) . fst) ldeps
-                            , "exe-depends" J..= map (jdisplay . confInstId . withoutStage) edeps
+                            , "exe-depends" J..= map (jdisplay . confInstId . withoutMachine) edeps
                             ]
                               ++ bin_file c
                           )
@@ -216,7 +216,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                in ["components" J..= components]
             ElabComponent comp ->
               [ "depends" J..= map ((jdisplay . confInstId) . fst) (elabLibDependencies elab)
-              , "exe-depends" J..= map (jdisplay . withoutStage) (elabExeDependencies elab)
+              , "exe-depends" J..= map (jdisplay . withoutMachine) (elabExeDependencies elab)
               , "component-name" J..= J.String (comp2str (compSolverName comp))
               ]
                 ++ bin_file (compSolverName comp)
@@ -465,8 +465,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 -- successfully then they're still out of date -- meeting our definition of
 -- invalid.
 
--- | Plan keys: a unit id and the build stage it is built for.
-type PackageIdSet = Set (WithStage UnitId)
+-- | Plan keys: a unit id and the build machine it is built for.
+type PackageIdSet = Set (WithMachine UnitId)
 
 type PackagesUpToDate = PackageIdSet
 
@@ -520,7 +520,7 @@ data PostBuildProjectStatus = PostBuildProjectStatus
   -- or data file generation failing.
   --
   -- This is a subset of 'packagesInvalidByChangedLibDeps'.
-  , packagesLibDepGraph :: Graph (Node (WithStage UnitId) ElaboratedPlanPackage)
+  , packagesLibDepGraph :: Graph (Node (WithMachine UnitId) ElaboratedPlanPackage)
   -- ^ A subset of the plan graph, including only dependency-on-library
   -- edges. That is, dependencies /on/ libraries, not dependencies /of/
   -- libraries. This tells us all the libraries that packages link to.
@@ -642,21 +642,21 @@ postBuildProjectStatus
               )
 
       -- The plan graph but only counting dependency-on-library edges. A
-      -- library dependency is always on the same stage as the package.
-      packagesLibDepGraph :: Graph (Node (WithStage UnitId) ElaboratedPlanPackage)
+      -- library dependency is always on the same machine as the package.
+      packagesLibDepGraph :: Graph (Node (WithMachine UnitId) ElaboratedPlanPackage)
       packagesLibDepGraph =
         Graph.fromDistinctList
           [ Graph.N pkg (Graph.nodeKey pkg) libdeps
           | pkg <- InstallPlan.toList plan
           , let libdeps = case pkg of
-                  InstallPlan.PreExisting (WithStage stage ipkg) -> map (WithStage stage) (installedDepends ipkg)
+                  InstallPlan.PreExisting (WithMachine machine ipkg) -> map (WithMachine machine) (installedDepends ipkg)
                   InstallPlan.Configured srcpkg -> elabLibDeps srcpkg
                   InstallPlan.Installed srcpkg -> elabLibDeps srcpkg
           ]
 
-      elabLibDeps :: ElaboratedConfiguredPackage -> [WithStage UnitId]
+      elabLibDeps :: ElaboratedConfiguredPackage -> [WithMachine UnitId]
       elabLibDeps elab =
-        map (WithStage (elabStage elab) . newSimpleUnitId . confInstId . fst) (elabLibDependencies elab)
+        map (WithMachine (elabMachine elab) . newSimpleUnitId . confInstId . fst) (elabLibDependencies elab)
 
       -- Was a build was attempted for this package?
       -- If it doesn't have both a build status and outcome then the answer is no.
@@ -673,7 +673,7 @@ postBuildProjectStatus
       buildAttempted _ (Left BuildFailure{}) = True
       buildAttempted _ (Right _) = True
 
-      lookupBuildStatusRequiresBuild :: Bool -> WithStage UnitId -> Bool
+      lookupBuildStatusRequiresBuild :: Bool -> WithMachine UnitId -> Bool
       lookupBuildStatusRequiresBuild def ipkgid =
         case Map.lookup ipkgid pkgBuildStatus of
           Nothing -> def -- Not in the plan subset we did the dry-run on
@@ -979,10 +979,10 @@ selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
   case Graph.closure packagesLibDepGraph (Set.toList packagesBuildLocal) of
     Nothing -> error "renderGhcEnvironmentFile: broken dep closure"
     Just nodes ->
-      -- The environment file is for the host compiler, so only host-stage
+      -- The environment file is for the host compiler, so only host-machine
       -- libraries belong in it; a local package used as a build tool also has
-      -- a build-stage copy, whose libraries are for the build compiler.
-      [ pkgid | Graph.N pkg (WithStage Host pkgid) _ <- nodes, hasUpToDateLib pkg
+      -- a build-machine copy, whose libraries are for the build compiler.
+      [ pkgid | Graph.N pkg (WithMachine Host pkgid) _ <- nodes, hasUpToDateLib pkg
       ]
   where
     hasUpToDateLib planpkg = case planpkg of

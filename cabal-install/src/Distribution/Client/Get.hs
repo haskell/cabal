@@ -68,8 +68,8 @@ import Distribution.Client.VCS
 import Distribution.PackageDescription.PrettyPrint
   ( writeGenericPackageDescription
   )
+import Distribution.Solver.Types.Machine (always)
 import Distribution.Solver.Types.SourcePackage
-import Distribution.Solver.Types.Stage (always)
 
 import Control.Monad (mapM_)
 import qualified Data.Map as Map

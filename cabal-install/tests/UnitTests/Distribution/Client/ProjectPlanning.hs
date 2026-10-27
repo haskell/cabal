@@ -5,11 +5,11 @@ module UnitTests.Distribution.Client.ProjectPlanning (tests) where
 import Data.List.NonEmpty
 import Distribution.Client.ProjectConfig.Types (ProjectConfigShared (..))
 import Distribution.Client.ProjectPlanning (ComponentTarget (..), SubComponentTarget (..), nubComponentTargets, projectPackageDbsFor, sameCompiler)
-import Distribution.Client.Toolchain (Staged (..), Toolchain (..))
+import Distribution.Client.Toolchain (PerMachine (..), Toolchain (..))
 import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.Simple.Compiler (AbiTag (..), Compiler (..), CompilerId (..), PackageDBX (..))
 import Distribution.Simple.Program.Db (defaultProgramDb, userSpecifyPath)
-import Distribution.Solver.Types.Stage (Stage (..), prevStage)
+import Distribution.Solver.Types.Machine (Machine (..), toolMachine)
 import Distribution.System (Arch (..), OS (..), Platform (..))
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
@@ -29,45 +29,45 @@ tests =
 --
 -- A package database is only readable by the compiler that wrote it, so the
 -- project's 'package-dbs' must not reach a distinct build toolchain. The
--- subtle case is the other one: setup scripts are built at 'prevStage' of
--- the package's own stage, and a non-cross build has no build stage, so
--- 'prevStage' must keep them at 'Host' and the project's databases must
+-- subtle case is the other one: setup scripts are built at 'toolMachine' of
+-- the package's own machine, and a non-cross build has no build machine, so
+-- 'toolMachine' must keep them at 'Host' and the project's databases must
 -- still apply there.
 -- ----------------------------------------------------------------------------
 
 projectPackageDbsForTests :: [TestTree]
 projectPackageDbsForTests =
-  [ testCase "host stage keeps the project databases" $
+  [ testCase "host machine keeps the project databases" $
       projectPackageDbsFor config Host @?= configured
-  , testCase "the build stage gets none of them" $
+  , testCase "the build machine gets none of them" $
       projectPackageDbsFor config Build @?= []
-  , testCase "a distinct build toolchain puts setup scripts at the build stage" $
-      prevStage cross Host @?= Build
-  , testCase "the build stage is the earliest and clamps" $
-      prevStage cross Build @?= Build
-  , testCase "without a build toolchain setup scripts stay at the host stage" $
-      -- This is what a setup script of a host-stage package asks for in an
+  , testCase "a distinct build toolchain puts setup scripts on the build machine" $
+      toolMachine cross Host @?= Build
+  , testCase "tools of build-machine packages stay on the build machine" $
+      toolMachine cross Build @?= Build
+  , testCase "without a build toolchain setup scripts stay on the host machine" $
+      -- This is what a setup script of a host-machine package asks for in an
       -- ordinary build, and it must still see the project's databases.
-      projectPackageDbsFor config (prevStage nonCross Host) @?= configured
+      projectPackageDbsFor config (toolMachine nonCross Host) @?= configured
   ]
   where
     configured = [Just (SpecificPackageDB "/somewhere/package.db")]
 
     config = (mempty :: ProjectConfigShared){projectConfigPackageDBs = configured}
 
-    -- 'prevStage' only looks at whether there is a build stage; which
+    -- 'toolMachine' only looks at whether there is a build machine; which
     -- compilers they are does not matter here.
-    nonCross = Staged (toolchain ghc912 linuxX86_64) Nothing
-    cross = Staged (toolchain ghc912 linuxX86_64) (Just (toolchain ghc910 linuxAArch64))
+    nonCross = PerMachine (toolchain ghc912 linuxX86_64) Nothing
+    cross = PerMachine (toolchain ghc912 linuxX86_64) (Just (toolchain ghc910 linuxAArch64))
 
 -- ----------------------------------------------------------------------------
 -- sameCompiler
 --
 -- 'configureToolchains' uses 'sameCompiler' to decide whether a requested
--- build compiler is really a second stage. Getting this wrong is expensive in
+-- build compiler is really a second machine. Getting this wrong is expensive in
 -- both directions: a false negative solves and builds every shared dependency
 -- twice under indistinguishable unit ids, and a false positive silently drops
--- a genuine cross-compilation setup back to a single stage.
+-- a genuine cross-compilation setup back to a single machine.
 -- ----------------------------------------------------------------------------
 
 sameCompilerTests :: [TestTree]

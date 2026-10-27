@@ -31,13 +31,13 @@ import Distribution.Solver.Types.ComponentDeps
   )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import qualified Distribution.Solver.Types.GoalScope as P
+import qualified Distribution.Solver.Types.Machine as Machine
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PkgConfigDb
   ( pkgConfigDbFromList
   )
 import Distribution.Solver.Types.Settings
-import qualified Distribution.Solver.Types.Stage as Stage
 import Distribution.Solver.Types.Variable
 import Distribution.Verbosity
 import Distribution.Version
@@ -629,7 +629,7 @@ instance ArbitraryOrd a => ArbitraryOrd (P.Qualified a)
 instance ArbitraryOrd P.GoalScope
 instance ArbitraryOrd P.Qualifier
 instance ArbitraryOrd P.Namespace
-instance ArbitraryOrd Stage.Stage
+instance ArbitraryOrd Machine.Machine
 instance ArbitraryOrd OptionalStanza
 instance ArbitraryOrd FlagName
 instance ArbitraryOrd PackageName

@@ -31,7 +31,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
-import Distribution.Solver.Types.Stage (Stage, Staged, getStage)
+import Distribution.Solver.Types.Machine (Machine, PerMachine, onMachine)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 
@@ -88,11 +88,11 @@ import Distribution.Types.PkgconfigVersionRange
 -- | The state needed during validation.
 data ValidateState = VS {
   -- The supported extensions and languages and the present pkg-config
-  -- packages are per build 'Stage': a goal is validated against the
-  -- compiler and pkg-config database of the stage it is solved for.
-  supportedExt        :: Stage -> Extension -> Bool,
-  supportedLang       :: Stage -> Language  -> Bool,
-  presentPkgs         :: Stage -> Maybe (PkgconfigName -> PkgconfigVersionRange  -> Bool),
+  -- packages are per 'Machine': a goal is validated against the
+  -- compiler and pkg-config database of the machine it is solved for.
+  supportedExt        :: Machine -> Extension -> Bool,
+  supportedLang       :: Machine -> Language  -> Bool,
+  presentPkgs         :: Machine -> Maybe (PkgconfigName -> PkgconfigVersionRange  -> Bool),
   index               :: Index,
 
   -- Saved, scoped, dependencies. Every time 'validate' makes a package choice,
@@ -195,16 +195,16 @@ validate = go
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
     goP qpn@(Q (GoalScope s _pns _pq) pn) (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
-      extSupported   <- asks (`supportedExt` s)  -- obtain the supported extensions (for this stage)
-      langSupported  <- asks (`supportedLang` s) -- obtain the supported languages (for this stage)
-      pkgPresent     <- asks (`presentPkgs` s)   -- obtain the present pkg-config pkgs (for this stage)
+      extSupported   <- asks (`supportedExt` s)  -- obtain the supported extensions (for this machine)
+      langSupported  <- asks (`supportedLang` s) -- obtain the supported languages (for this machine)
+      pkgPresent     <- asks (`presentPkgs` s)   -- obtain the present pkg-config pkgs (for this machine)
       idx            <- asks index -- obtain the index
       svd            <- asks saved -- obtain saved dependencies
       aComps         <- asks availableComponents
       rComps         <- asks requiredComponents
       qo             <- asks qualifyOptions
       -- obtain dependencies and index-dictated exclusions introduced by the choice
-      let (PInfo deps comps _ mfr) = getStage idx s ! pn ! i
+      let (PInfo deps comps _ mfr) = onMachine idx s ! pn ! i
       -- qualify the deps in the current scope
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
@@ -237,11 +237,11 @@ validate = go
 
     -- What to do for flag nodes ...
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goF qfn@(FN qpn@(Q (GoalScope stage _ _) _) _f) b r = do
+    goF qfn@(FN qpn@(Q (GoalScope machine _ _) _) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
-      extSupported   <- asks (`supportedExt` stage)  -- obtain the supported extensions (for this stage)
-      langSupported  <- asks (`supportedLang` stage) -- obtain the supported languages (for this stage)
-      pkgPresent     <- asks (`presentPkgs` stage)   -- obtain the present pkg-config pkgs (for this stage)
+      extSupported   <- asks (`supportedExt` machine)  -- obtain the supported extensions (for this machine)
+      langSupported  <- asks (`supportedLang` machine) -- obtain the supported languages (for this machine)
+      pkgPresent     <- asks (`presentPkgs` machine)   -- obtain the present pkg-config pkgs (for this machine)
       svd            <- asks saved         -- obtain saved dependencies
       aComps         <- asks availableComponents
       rComps         <- asks requiredComponents
@@ -267,11 +267,11 @@ validate = go
 
     -- What to do for stanza nodes (similar to flag nodes) ...
     goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goS qsn@(SN qpn@(Q (GoalScope stage _ _) _) _f) b r = do
+    goS qsn@(SN qpn@(Q (GoalScope machine _ _) _) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
-      extSupported   <- asks (`supportedExt` stage)  -- obtain the supported extensions (for this stage)
-      langSupported  <- asks (`supportedLang` stage) -- obtain the supported languages (for this stage)
-      pkgPresent     <- asks (`presentPkgs` stage)   -- obtain the present pkg-config pkgs (for this stage)
+      extSupported   <- asks (`supportedExt` machine)  -- obtain the supported extensions (for this machine)
+      langSupported  <- asks (`supportedLang` machine) -- obtain the supported languages (for this machine)
+      pkgPresent     <- asks (`presentPkgs` machine)   -- obtain the present pkg-config pkgs (for this machine)
       svd            <- asks saved         -- obtain saved dependencies
       aComps         <- asks availableComponents
       rComps         <- asks requiredComponents
@@ -565,11 +565,11 @@ extendRequiredComponents eqpn available = foldM extendSingle
 
 
 -- | Interface.
-validateTree :: Staged CompilerInfo -> Index -> Staged (Maybe PkgConfigDb) -> Tree d c -> Tree d c
+validateTree :: PerMachine CompilerInfo -> Index -> PerMachine (Maybe PkgConfigDb) -> Tree d c -> Tree d c
 validateTree cinfos idx pkgConfigDbs t = runValidate (validate t) VS {
-    supportedExt        = getStage $ fmap supportedExtOf cinfos
-  , supportedLang       = getStage $ fmap supportedLangOf cinfos
-  , presentPkgs         = getStage $ fmap (fmap pkgConfigPkgIsPresent) pkgConfigDbs
+    supportedExt        = onMachine $ fmap supportedExtOf cinfos
+  , supportedLang       = onMachine $ fmap supportedLangOf cinfos
+  , presentPkgs         = onMachine $ fmap (fmap pkgConfigPkgIsPresent) pkgConfigDbs
   , index               = idx
   , saved               = M.empty
   , pa                  = PA M.empty M.empty M.empty

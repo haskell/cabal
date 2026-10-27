@@ -13,8 +13,8 @@ import Test.Cabal.Plan (ConfiguredInplace (..), InstallItem (..), Plan (..))
 -- 'mylib', which is both a library dependency of @app@ and a dependency of
 -- @tool@, which @app@ uses as a build tool. 'configureToolchains' compares the
 -- configured build compiler against the host's, so when they coincide (as
--- here) there is no separate build stage at all: 'mylib' and 'tool' are
--- ordinary, unstaged dependencies and appear in the plan exactly once.
+-- here) there is no separate build machine at all: 'mylib' and 'tool' are
+-- ordinary same-machine dependencies and appear in the plan exactly once.
 main :: IO ()
 main = cabalTest . recordMode DoNotRecord $ do
   env <- getTestEnv
@@ -28,7 +28,7 @@ main = cabalTest . recordMode DoNotRecord $ do
             | AConfiguredInplace ConfiguredInplace{configuredInplacePackageName = pkg} <- planInstallPlan plan
             , pkg == mkPackageName name
             ]
-    assertEqual "mylib is planned exactly once (no separate build stage)" 1 (copiesOf "mylib")
-    assertEqual "tool is planned exactly once (no separate build stage)" 1 (copiesOf "tool")
+    assertEqual "mylib is planned exactly once (no separate build machine)" 1 (copiesOf "mylib")
+    assertEqual "tool is planned exactly once (no separate build machine)" 1 (copiesOf "tool")
     app <- runPlanExe' "app" "app" []
     assertOutputContains "app: 42" app

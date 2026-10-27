@@ -356,7 +356,7 @@ showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
 -- $setup
 -- >>> import Distribution.Solver.Modular.Package
 -- >>> import Distribution.Solver.Types.GoalScope
--- >>> import Distribution.Solver.Types.Stage (Stage (..))
+-- >>> import Distribution.Solver.Types.Machine (Machine (..))
 -- >>> import Distribution.Types.PackageName
 -- >>> import Distribution.Types.Version
 -- >>> import Distribution.Types.UnitId

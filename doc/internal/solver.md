@@ -38,11 +38,11 @@ note, and trust the code over both.
 `cabal-install` gives the solver:
 
 - the **targets** (package names to solve for);
-- the **installed packages** of each build stage, and the **source packages**
+- the **installed packages** of each build machine, and the **source packages**
   available from repositories and the project;
 - **constraints** (from the user, the project and `cabal-install` itself) and
   **preferences** (preferred versions, prefer installed/latest/oldest);
-- the **compiler** and **pkg-config database** of each build stage.
+- the **compiler** and **pkg-config database** of each build machine.
 
 It must choose:
 
@@ -135,7 +135,7 @@ package goal is a `QPN = Qualified PackageName`, which pairs the name with a
 `GoalScope` (`Distribution/Solver/Types/GoalScope.hs`):
 
 ```haskell
-data GoalScope = GoalScope Stage Namespace Qualifier
+data GoalScope = GoalScope Machine Namespace Qualifier
 ```
 
 Two goals with the same package name but different scopes are different
@@ -156,11 +156,12 @@ variables, so they can resolve to different instances.
 - **`Namespace`** is `DefaultNamespace` unless `--independent-goals` is on. In
   that case each target `t` gets `Independent t`, so separate targets are
   solved without having to agree with each other.
-- **`Stage`** is `Host` or `Build`. It says which toolchain the goal is solved
-  for. In a cross build, tool dependencies (setup and `build-tool-depends`)
-  are solved one stage earlier: `prevStage` turns `Host` into `Build`. In a
-  native build there is only the `Host` stage, and `prevStage` keeps tools at
-  `Host`.
+- **`Machine`** is `Host` or `Build`. It says which toolchain the goal is solved
+  for; the names are autoconf's build and host machines, not phases of the
+  build. In a cross build, tool dependencies (setup and `build-tool-depends`)
+  have to run where the build runs, so `toolMachine` turns `Host` into `Build`.
+  In a native build there is only the `Host` machine, and `toolMachine` keeps
+  tools at `Host`.
 
 `qualifyDeps` in `Modular/Dependency.hs` is the only place that decides these
 scopes. When the solver chooses an instance, its dependencies are qualified
@@ -172,7 +173,7 @@ relative to the scope of the goal that chose it:
   dependency of a setup dependency is therefore still in `p`'s setup scope. A
   `QualBase` parent is the exception: its dependencies go back to
   `QualToplevel`;
-- the namespace is always inherited, and the stage only changes at tool
+- the namespace is always inherited, and the machine only changes at tool
   boundaries.
 
 Qualifiers do not nest. A setup dependency of a setup dependency gets a new
@@ -182,11 +183,11 @@ tree infinite (see the comment on `QualSetup`).
 Qualification is **static**: it does not depend on flag choices, only on the
 global `QualifyOptions`. Link validation relies on this (see `linkDeps`).
 
-Scopes are printed in solver logs. The stage comes first, then the namespace,
+Scopes are printed in solver logs. The machine comes first, then the namespace,
 then the qualifier. For example, `foo:setup.Cabal` is the `Cabal` goal of
 `foo`'s setup script, `foo:happy:exe.array` is a dependency of the `happy`
 executable that `foo` needs, and in a cross build `build:` appears in front of
-build-stage goals.
+build-machine goals.
 
 ### Linking and the single instance restriction
 
@@ -196,7 +197,7 @@ the number of instances down.
 
 **Linking.** When the solver makes a package choice for `foo:setup.mtl`, it can
 choose a version, or it can **link** to a goal for the same package, version
-and stage that has already been solved (for example, the top-level `mtl`). This
+and machine that has already been solved (for example, the top-level `mtl`). This
 is the `Maybe GoalScope` in `POption`. Linking means using the very same
 instance, so it is only valid if the two goals also agree on flags, stanzas and
 all dependencies, which must be linked too. The pass that checks this is
@@ -206,9 +207,9 @@ been chosen yet. `preferLinked` puts link options before fresh choices.
 
 **The single instance restriction (SIR).** GHC's package database can only hold
 one instance of a given package version, so two unlinked goals in the same
-stage must not pick the same version. `enforceSingleInstanceRestriction` in
+machine must not pick the same version. `enforceSingleInstanceRestriction` in
 `Modular/Preference.hs` turns such choices into a `MultipleInstances` failure.
-Goals in different stages may pick the same version, because each stage has
+Goals in different machines may pick the same version, because each machine has
 its own store and toolchain.
 
 User constraints use their own scope type, `ConstraintScope` in
@@ -223,8 +224,8 @@ and source package indices into the solver's own `Index`
 (`Modular/Index.hs`):
 
 ```haskell
-type Index      = Staged StageIndex
-type StageIndex = Map PackageName (Map I PInfo)
+type Index      = PerMachine MachineIndex
+type MachineIndex = Map PackageName (Map I PInfo)
 
 data PInfo = PInfo (FlaggedDeps PackageName)
                    (Map ExposedComponent ComponentInfo)
@@ -232,13 +233,13 @@ data PInfo = PInfo (FlaggedDeps PackageName)
                    (Maybe FailReason)
 ```
 
-There is one `StageIndex` per active stage, and each one is converted against
-that stage's compiler, platform and installed packages. `Staged`
-(`Distribution/Solver/Types/Stage.hs`) always has a host value, and has a build
+There is one `MachineIndex` per active machine, and each one is converted against
+that machine's compiler, platform and installed packages. `PerMachine`
+(`Distribution/Solver/Types/Machine.hs`) always has a host value, and has a build
 value only when the build toolchain differs from the host one (`isCross`). A
-native build therefore has only the `Host` index. The stages of the index are
+native build therefore has only the `Host` index. The machines of the index are
 also how the solver decides that it is cross-compiling: `defaultQualifyOptions`
-copies them into `qoStages`, which `prevStage` consults.
+copies them into `qoMachines`, which `toolMachine` consults.
 
 For each instance, `PInfo` records:
 
@@ -249,7 +250,7 @@ For each instance, `PInfo` records:
   dependency can be on a library or executable of a package (with a version
   range or, for installed packages, a fixed instance), on a language
   extension, on a language, or on a pkg-config package. Conditionals on OS,
-  architecture and compiler are already decided here, per stage. Only flags
+  architecture and compiler are already decided here, per machine. Only flags
   and stanzas are left for the solver.
 - the **components** the instance provides, and whether each is visible and
   buildable;
@@ -311,7 +312,7 @@ list of **open goals**. The builder alternates two kinds of steps:
   goal (`splits`). With no open goals left, it makes a `Done` node.
 - For the chosen goal, it makes the node for that kind of goal:
   - a **package goal** becomes a `PChoice` with one child per instance in the
-    stage's index, or a `Fail UnknownPackage` if there is none. Choosing an
+    machine's index, or a `Fail UnknownPackage` if there is none. Choosing an
     instance adds new open goals for that instance's flags, its stanzas and
     its unconditional dependencies (`scopedExtendOpen`). This is where
     `qualifyDeps` runs;
@@ -324,7 +325,7 @@ only add reverse-dependency edges. The builder does not check versions,
 extensions or anything else. That is why the tree contains non-solutions.
 
 At the same time, `addLinking` adds a linked option next to each fresh package
-option, for every related goal (same package, instance and stage) that was
+option, for every related goal (same package, instance and machine) that was
 chosen without linking higher up in the tree.
 
 ## Phase 2: pruning and validation
@@ -339,7 +340,7 @@ of application:
 | `onlyConstrained` (only with `--reject-unconstrained-dependencies=all`) | `Preference` | every package must be a target or have a version constraint | `NotExplicit` |
 | `validateTree` | `Validate` | dependencies, extensions, languages, pkg-config packages and required components are consistent with the choices made | `ConflictingConstraints`, `UnsupportedExtension`, `MissingPkgconfigPackage`, … |
 | `validateLinking` | `Linking` | linked goals agree on flags, stanzas and dependencies | `DependenciesNotLinked` |
-| `enforceSingleInstanceRestriction` | `Preference` | at most one unlinked goal per package instance and stage | `MultipleInstances` |
+| `enforceSingleInstanceRestriction` | `Preference` | at most one unlinked goal per package instance and machine | `MultipleInstances` |
 | `enforceManualFlags` | `Preference` | manual flags keep their default value unless a constraint sets them | `ManualFlag` |
 | `enforcePackageConstraints` | `Preference` | user and project constraints on versions, installed/source, flags and stanzas | `GlobalConstraintVersion`, … |
 | `detectCyclesPhase` | `Cycles` | the chosen packages do not depend on each other in a cycle | `CyclicDependencies` |
@@ -455,8 +456,8 @@ error messages.
    dependencies.
 2. `convCP` (`Modular/ConfiguredConversion.hs`) turns each one into a
    `ResolverPackage`: `PreExisting` for installed instances (looked up in the
-   installed index of their stage) or `Configured` for source packages. It
-   **drops the qualifiers**, but keeps the stage in the `SolverId`. So linked
+   installed index of their machine) or `Configured` for source packages. It
+   **drops the qualifiers**, but keeps the machine in the `SolverId`. So linked
    goals become identical packages, and `ordNubBy nodeKey` removes the
    duplicates.
 3. Back in `cabal-install`, `validateSolverResult` checks the plan again,
@@ -493,10 +494,10 @@ These are the main differences from the 2011 talk and the 2015 posts:
 - **Qualified goals.** The "scoped goals" for private dependencies planned in
   the talk were first used for setup dependencies (2015). They are now also
   used for executable dependencies, base shims, independent goals and build
-  stages, through `GoalScope`. The solver has no general private dependencies.
-- **Stages.** The index, the compiler and the pkg-config database are kept per
-  `Stage`, and goals carry their stage. The single instance restriction and
-  linking apply within a stage.
+  machines, through `GoalScope`. The solver has no general private dependencies.
+- **Machines.** The index, the compiler and the pkg-config database are kept per
+  `Machine`, and goals carry their machine. The single instance restriction and
+  linking apply within a machine.
 - **Goal choices are no longer cut to the first goal** (`firstGoal`) by
   default. That workaround for a space leak is no longer needed, and
   exploration enters only one goal anyway. `--count-conflicts` decides which

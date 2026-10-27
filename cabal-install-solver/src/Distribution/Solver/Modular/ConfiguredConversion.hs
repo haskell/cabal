@@ -21,31 +21,31 @@ import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.InstSolverPackage
 import           Distribution.Solver.Types.SourcePackage
-import           Distribution.Solver.Types.Stage (Staged, getStage)
+import           Distribution.Solver.Types.Machine (PerMachine, onMachine)
 
 -- | Converts from the solver specific result @CP QPN@ into
 -- a 'ResolverPackage', which can then be converted into
 -- the install plan.
 --
 -- Installed (pre-existing) packages are looked up in the installed-package
--- index for /their own stage/: a build-stage dependency resolves against the
--- build toolchain's index, a host-stage dependency against the host index. In
--- a non-cross build both stages share the same index.
-convCP :: Staged SI.InstalledPackageIndex ->
+-- index for /their own machine/: a build-machine dependency resolves against the
+-- build toolchain's index, a host-machine dependency against the host index. In
+-- a non-cross build both machines share the same index.
+convCP :: PerMachine SI.InstalledPackageIndex ->
           CI.PackageIndex (SourcePackage loc) ->
           CP QPN -> ResolverPackage loc
 convCP iidxs sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting $
                   InstSolverPackage {
-                    instSolverStage = stage,
-                    instSolverPkgIPI = fromJust $ SI.lookupUnitId (getStage iidxs stage) pi,
+                    instSolverMachine = machine,
+                    instSolverPkgIPI = fromJust $ SI.lookupUnitId (onMachine iidxs machine) pi,
                     instSolverPkgLibDeps = fmap fst ds',
                     instSolverPkgExeDeps = fmap snd ds'
                   }
     Right pi -> Configured $
                   SolverPackage {
-                      solverPkgStage = stage,
+                      solverPkgMachine = machine,
                       solverPkgSource = srcpkg,
                       solverPkgFlags = fa,
                       solverPkgStanzas = es,
@@ -55,10 +55,10 @@ convCP iidxs sidx (CP qpi fa es ds) =
       where
         srcpkg = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi
   where
-    -- The stage of this package, taken from its qualified name. Determines
-    -- which per-stage installed-package index a pre-existing package is
+    -- The machine of this package, taken from its qualified name. Determines
+    -- which per-machine installed-package index a pre-existing package is
     -- resolved against.
-    stage = case qpi of PI (Q (GoalScope s _ _) _) _ -> s
+    machine = case qpi of PI (Q (GoalScope s _ _) _) _ -> s
 
     ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
     ds' = fmap (partitionEithers . map convConfId) ds

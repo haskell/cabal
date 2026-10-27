@@ -405,10 +405,10 @@ data LegacyPackageConfig = LegacyPackageConfig
   , legacyTestFlags :: TestFlags
   , legacyBenchmarkFlags :: BenchmarkFlags
   , legacyBuildProgramPaths :: [(String, FilePath)]
-  -- ^ Program locations for the build stage. 'ConfigFlags' has no place for
-  -- them: a Setup script is only ever configured for a single stage.
+  -- ^ Program locations for the build machine. 'ConfigFlags' has no place for
+  -- them: a Setup script is only ever configured for a single machine.
   , legacyBuildProgramArgs :: [(String, [String])]
-  -- ^ Extra program arguments for the build stage.
+  -- ^ Extra program arguments for the build machine.
   }
   deriving (Show, Generic)
   deriving (Semigroup, Monoid) via Generically LegacyPackageConfig
@@ -619,8 +619,8 @@ convertLegacyProjectConfig
       , projectConfigAllPackages = configAllPackages
       , projectConfigLocalPackages = configLocalPackages
       , projectConfigSpecificPackage = fmap perPackage legacySpecificConfig
-      , -- The legacy format has no stage-qualified package stanzas.
-        projectConfigStagePackages = mempty
+      , -- The legacy format has no machine-qualified package stanzas.
+        projectConfigMachinePackages = mempty
       }
     where
       configAllPackages = convertLegacyPerPackageFlags g bpp bpa i h t b
@@ -760,9 +760,9 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
 convertLegacyPerPackageFlags
   :: ConfigFlags
   -> [(String, FilePath)]
-  -- ^ Program locations for the build stage
+  -- ^ Program locations for the build machine
   -> [(String, [String])]
-  -- ^ Extra program arguments for the build stage
+  -- ^ Extra program arguments for the build machine
   -> InstallFlags
   -> HaddockFlags
   -> TestFlags
@@ -1019,7 +1019,7 @@ convertToLegacySharedConfig
           , configBuildHcFlavor = projectConfigBuildHcFlavor
           , configBuildHcPath = projectConfigBuildHcPath
           , configBuildHcPkg = projectConfigBuildHcPkg
-          , -- the build-stage program settings are per-package; see
+          , -- the build-machine program settings are per-package; see
             -- 'convertToLegacyPerPackageConfig'
             configBuildProgramPaths = mempty
           , configBuildProgramArgs = mempty
@@ -2014,7 +2014,7 @@ programLocationsSectionDescr =
     , sectionEmpty = mempty
     }
 
--- | The @PROG-location@ fields for the build stage, named by the given
+-- | The @PROG-location@ fields for the build machine, named by the given
 -- function.
 buildProgramLocationsFieldDescrs :: (String -> String) -> [FieldDescr LegacyPackageConfig]
 buildProgramLocationsFieldDescrs mkName =
@@ -2027,7 +2027,7 @@ buildProgramLocationsFieldDescrs mkName =
       (\paths conf -> conf{legacyBuildProgramPaths = paths})
 
 -- | The @build-program-options@ section: like @program-options@, for the
--- build stage of a cross-compiling plan.
+-- build machine of a cross-compiling plan.
 buildProgramOptionsSectionDescr :: SectionDescr LegacyPackageConfig
 buildProgramOptionsSectionDescr =
   SectionDescr
@@ -2048,7 +2048,7 @@ buildProgramOptionsSectionDescr =
     }
 
 -- | The @build-program-locations@ section: like @program-locations@, for the
--- build stage of a cross-compiling plan.
+-- build machine of a cross-compiling plan.
 buildProgramLocationsSectionDescr :: SectionDescr LegacyPackageConfig
 buildProgramLocationsSectionDescr =
   SectionDescr

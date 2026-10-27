@@ -91,7 +91,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.Setup as Cabal
-import Distribution.Solver.Types.Stage (Staged, overStage)
+import Distribution.Solver.Types.Machine (PerMachine, overMachine)
 import Distribution.Types.BuildType
 import Distribution.Types.PackageDescription.Lens (componentModules)
 
@@ -177,7 +177,7 @@ buildAndRegisterUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> TVar (Staged InstalledPackageIndex)
+  -> TVar (PerMachine InstalledPackageIndex)
   -- ^ Running 'InstalledPackageIndex', updated as @cabal-install@ registers
   -- packages
   -> SymbolicPath CWD (Dir Pkg)
@@ -205,7 +205,7 @@ buildAndRegisterUnpackedPackage
   builddir
   mlogFile
   delegate = do
-    -- The package is registered with the toolchain of its own stage.
+    -- The package is registered with the toolchain of its own machine.
     let compiler = elabCompiler pkgshared pkg
         progdb = elabProgramDb pkgshared pkg
     -- Configure phase
@@ -534,7 +534,7 @@ buildInplaceUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> TVar (Staged InstalledPackageIndex)
+  -> TVar (PerMachine InstalledPackageIndex)
   -> BuildStatusRebuild
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
@@ -634,7 +634,7 @@ buildInplaceUnpackedPackage
                     -- Keep the per-project running InstalledPackageIndex up to date.
                     -- See (ProjIPI2) and (ProjIPI4) from Note [Per-project InstalledPackageIndex]
                     -- in Distribution.Client.ProjectBuilding.
-                    atomically $ modifyTVar ipiTVar (overStage (elabStage pkg) (PackageIndex.insert ipkg))
+                    atomically $ modifyTVar ipiTVar (overMachine (elabMachine pkg) (PackageIndex.insert ipkg))
                     return (Just ipkg)
                   else return Nothing
 
@@ -773,7 +773,7 @@ buildAndInstallUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> TVar (Staged InstalledPackageIndex)
+  -> TVar (PerMachine InstalledPackageIndex)
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
   -> IO BuildResult
@@ -885,7 +885,7 @@ buildAndInstallUnpackedPackage
               -- (takes ~100ms).
               mipkg <- readIORef ipkgRef
               ipkg <- maybe getInstalledPackageInfo return mipkg
-              atomically $ modifyTVar ipiTVar (overStage (elabStage pkg) (PackageIndex.insert ipkg))
+              atomically $ modifyTVar ipiTVar (overMachine (elabMachine pkg) (PackageIndex.insert ipkg))
 
           -- No tests on install
           PBTestPhase{} -> return ()
@@ -920,7 +920,7 @@ buildAndInstallUnpackedPackage
     where
       uid = installedUnitId rpkg
       -- The store entry, package db and log file of this package are those of
-      -- the compiler it is built with, i.e. its own stage's.
+      -- the compiler it is built with, i.e. its own machine's.
       compiler = elabCompiler pkgshared pkg
       platform = elabPlatform pkgshared pkg
 

@@ -117,7 +117,7 @@ import Distribution.Client.ProjectPlanning hiding
 import qualified Distribution.Client.ProjectPlanning as ProjectPlanning
   ( pruneInstallPlanToTargets
   )
-import Distribution.Client.ProjectPlanning.Stage (WithStage (..))
+import Distribution.Client.ProjectPlanning.Machine (WithMachine (..))
 import Distribution.Client.ProjectPlanning.Types
 
 import Distribution.Client.DistDirLayout
@@ -1349,7 +1349,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
           , (pkg, failureClassification) <- failuresClassification
           ]
   where
-    failures :: [(WithStage UnitId, BuildFailure)]
+    failures :: [(WithMachine UnitId, BuildFailure)]
     failures =
       [ (pkgid, failure)
       | (pkgid, Left failure) <- Map.toList buildOutcomes
@@ -1433,14 +1433,14 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       ]
 
     ultimateDeps
-      :: WithStage UnitId
+      :: WithMachine UnitId
       -> [ElaboratedPlanPackage]
     ultimateDeps pkgid =
       filter
         (\pkg -> hasNoDependents (Graph.nodeKey pkg) && Graph.nodeKey pkg /= pkgid)
         (InstallPlan.reverseDependencyClosure plan [pkgid])
 
-    hasNoDependents :: WithStage UnitId -> Bool
+    hasNoDependents :: WithMachine UnitId -> Bool
     hasNoDependents = null . InstallPlan.revDirectDeps plan
 
     renderFailureDetail :: Bool -> ElaboratedConfiguredPackage -> BuildFailureReason -> String
@@ -1484,7 +1484,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     renderFailureExtraDetail _ =
       ""
 
-    renderDependencyOf :: WithStage UnitId -> String
+    renderDependencyOf :: WithMachine UnitId -> String
     renderDependencyOf pkgid =
       case ultimateDeps pkgid of
         [] -> ""

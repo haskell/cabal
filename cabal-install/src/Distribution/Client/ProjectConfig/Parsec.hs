@@ -38,8 +38,8 @@ import Distribution.Simple.Program.Db (ProgramDb, defaultProgramDb, knownProgram
 import Distribution.Simple.Program.Types (programName)
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils (debug, noticeDoc)
+import Distribution.Solver.Types.Machine (Machine (..))
 import Distribution.Solver.Types.ProjectConfigPath
-import Distribution.Solver.Types.Stage (Stage (..))
 import Distribution.System (buildOS)
 import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
 import Distribution.Types.ConfVar (ConfVar (..))
@@ -274,9 +274,9 @@ parseSection programDb (MkSection (Name pos name) args secFields)
         Just (SpecificPackage packageName) -> do
           packageCfg <- parsePackageConfig
           stateConfig . L.projectConfigSpecificPackage %= (<> MapMappend (Map.singleton packageName packageCfg))
-        Just (AllStagePackages stage) -> do
+        Just (AllMachinePackages machine) -> do
           packageCfg <- parsePackageConfig
-          stateConfig . L.projectConfigStagePackages %= (<> MapMappend (Map.singleton stage packageCfg))
+          stateConfig . L.projectConfigMachinePackages %= (<> MapMappend (Map.singleton machine packageCfg))
         Nothing -> do
           lift $ parseWarning pos PWTUnknownSection "target package name, '*', 'build:*' or 'host:*' required"
           return ()
@@ -357,8 +357,8 @@ parseRepoName pos args = case args of
 
 data PackageConfigTarget
   = AllPackages
-  | -- | @package build:*@ / @package host:*@: every package built for that stage.
-    AllStagePackages !Stage
+  | -- | @package build:*@ / @package host:*@: every package built for that machine.
+    AllMachinePackages !Machine
   | SpecificPackage !PackageName
 
 parsePackageName :: Position -> [SectionArg Position] -> ParseResult src (Maybe PackageConfigTarget)
@@ -377,11 +377,11 @@ parsePackageName pos args = case args of
     parser =
       P.choice
         [ P.try (P.char '*' >> return AllPackages)
-        , -- The stage names are spelled out rather than parsed as a 'Stage':
-          -- the stage is only ever written by the user here and in
+        , -- The machine names are spelled out rather than parsed as a 'Machine':
+          -- the machine is only ever written by the user here and in
           -- constraints, and it is not otherwise a parsable value.
-          P.try (AllStagePackages Build <$ P.string "build:*")
-        , P.try (AllStagePackages Host <$ P.string "host:*")
+          P.try (AllMachinePackages Build <$ P.string "build:*")
+        , P.try (AllMachinePackages Host <$ P.string "host:*")
         , SpecificPackage <$> parsec
         ]
 

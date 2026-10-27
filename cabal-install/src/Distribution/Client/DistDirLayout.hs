@@ -134,7 +134,7 @@ data DistDirLayout = DistDirLayout
   -- ^ The database the packages built inplace are registered in, keyed by the
   -- platform the compiler targets and the compiler, in that order, as
   -- 'distBuildDirectory' is. Inplace unit ids do not mention the compiler, so
-  -- without the platform the build-stage and host-stage copies of a local
+  -- without the platform the build-machine and host-machine copies of a local
   -- package would be registered over one another whenever the two compilers
   -- agree on 'compilerId'.
   , distHaddockOutputDir :: Maybe FilePath
