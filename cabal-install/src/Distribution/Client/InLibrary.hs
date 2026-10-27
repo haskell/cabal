@@ -94,7 +94,7 @@ libraryConfigureInputsFromElabPackage
   userTargets =
     LibraryConfigureInputs
       { verbosityHandles = verbHandles
-      , -- The package is configured with the toolchain of its own stage.
+      , -- The package is configured with the toolchain of its own machine.
         compiler = elabCompiler sharedConfig pkg
       , platform = elabPlatform sharedConfig pkg
       , buildType =

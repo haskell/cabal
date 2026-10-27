@@ -49,12 +49,12 @@ import Distribution.Client.Types
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.Machine (always)
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.ResolverPackage (solverId)
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage (SolverPackage (..))
-import Distribution.Solver.Types.Stage (always)
 
 import Distribution.Client.Errors
 import Distribution.Package
@@ -293,7 +293,7 @@ pruneInstallPlan installPlan pkgSpecifiers =
     srcpkgs :: [UnresolvedSourcePackage]
     srcpkgs = [pkg | SpecificSourcePackage pkg <- pkgSpecifiers]
     -- The 'SolverId's of those packages, taken from the plan so that each
-    -- carries the build stage it was actually solved for.
+    -- carries the build machine it was actually solved for.
     pkgIds :: [SolverId]
     pkgIds =
       [ solverId (SolverInstallPlan.Configured pkg)

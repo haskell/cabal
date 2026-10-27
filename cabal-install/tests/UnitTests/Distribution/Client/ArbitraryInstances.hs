@@ -40,9 +40,9 @@ import Distribution.Client.Targets
 import Distribution.Client.Types (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 import Distribution.Client.Types.AllowNewer
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)
+import Distribution.Solver.Types.Machine (Machine (..))
 import Distribution.Solver.Types.OptionalStanza (OptionalStanza (..), OptionalStanzaMap, OptionalStanzaSet, optStanzaSetFromList, optStanzaTabulate)
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
-import Distribution.Solver.Types.Stage (Stage (..))
 
 import Data.Coerce (Coercible, coerce)
 import Network.URI (URI (..), URIAuth (..), isUnreserved)
@@ -283,13 +283,13 @@ instance Arbitrary RelaxedDep where
 
 instance Arbitrary UserConstraintScope where
   -- Only 'Nothing' and 'Just Build' round-trip through the constraint
-  -- pretty-printer/parser: the 'Host' stage is the invisible default and
+  -- pretty-printer/parser: the 'Host' machine is the invisible default and
   -- renders empty, so it would come back as 'Nothing'. Never generate it.
   --
   -- 'Just Build' is not paired with the any-setup qualifier either: it would
   -- print as @build:setup.foo@, which the parser (deliberately) reads as the
   -- setup dependency of a package named @build@. A setup dependency is on
-  -- the build stage whenever there is one, so @setup.foo@ says the same.
+  -- the build machine whenever there is one, so @setup.foo@ says the same.
   arbitrary = do
     q <- arbitrary
     s <- case q of

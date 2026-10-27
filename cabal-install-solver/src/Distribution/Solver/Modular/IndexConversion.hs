@@ -38,7 +38,7 @@ import           Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Modular.Dependency as D
 import Distribution.Solver.Modular.Flag as F
 import Distribution.Solver.Modular.Index
-import Distribution.Solver.Types.Stage (Staged, getStage, mapWithStage)
+import Distribution.Solver.Types.Machine (PerMachine, onMachine, mapWithMachine)
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
@@ -57,24 +57,24 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: Staged (CompilerInfo, Platform)
+convPIs :: PerMachine (CompilerInfo, Platform)
         -> Map PN [LabeledPackageConstraint]
         -> ShadowPkgs -> StrongFlags -> SolveExecutables
-        -> Staged SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
+        -> PerMachine SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
         -> Index
 convPIs toolchains constraints sip strfl solveExes iidxs sidx =
-  -- Build one 'StageIndex' per active stage. A non-cross build has only the
-  -- host stage, reproducing the old single-stage index exactly. A cross build
-  -- also has a build stage, and each stage is converted against its own
+  -- Build one 'MachineIndex' per active machine. A non-cross build has only the
+  -- host machine, reproducing the old single-machine index exactly. A cross build
+  -- also has a build machine, and each machine is converted against its own
   -- toolchain (compiler + platform) and its own installed-package index, so the
-  -- Build stage sees the build compiler's packages and the Host stage the host
-  -- compiler's. Source packages are shared, but re-evaluated per stage because
-  -- their condition trees depend on the stage's os\/arch\/compiler.
-  mapWithStage convStage toolchains
+  -- Build machine sees the build compiler's packages and the Host machine the host
+  -- compiler's. Source packages are shared, but re-evaluated per machine because
+  -- their condition trees depend on the machine's os\/arch\/compiler.
+  mapWithMachine convMachine toolchains
   where
-    convStage stage (comp, Platform arch os) =
+    convMachine machine (comp, Platform arch os) =
       mkIndex $
-           convIPI' sip (getStage iidxs stage)
+           convIPI' sip (onMachine iidxs machine)
              ++ convSPI' os arch comp constraints strfl solveExes sidx
 
 -- | Convert a Cabal installed package index to the simpler,

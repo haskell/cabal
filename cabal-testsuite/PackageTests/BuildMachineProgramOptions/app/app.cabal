@@ -8,8 +8,8 @@ executable app
   -- 'mylib' is a library dependency of this executable, while 'tool' is a
   -- build-tool dependency that itself depends on 'mylib'. Under
   -- cross-compilation, 'tool' and its copy of 'mylib' are built for the build
-  -- stage, with the build-stage program options, and this executable and its
-  -- copy of 'mylib' for the host stage, with the host-stage ones.
+  -- machine, with the build-machine program options, and this executable and its
+  -- copy of 'mylib' for the host machine, with the host-machine ones.
   build-depends:      base, mylib
   build-tool-depends: tool:tool
   default-language:   Haskell2010

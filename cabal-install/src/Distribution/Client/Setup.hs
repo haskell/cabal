@@ -922,18 +922,18 @@ data ConfigExFlags = ConfigExFlags
   , configWriteGhcEnvironmentFilesPolicy
       :: Flag WriteGhcEnvironmentFilesPolicy
   , configBuildHcFlavor :: Flag CompilerFlavor
-  -- ^ Compiler flavour for the build stage (cross-compilation). Project-file
+  -- ^ Compiler flavour for the build machine (cross-compilation). Project-file
   -- only (@build-compiler@); no command-line option.
   , configBuildHcPath :: Flag FilePath
-  -- ^ Path to the compiler for the build stage (@--with-build-compiler@).
+  -- ^ Path to the compiler for the build machine (@--with-build-compiler@).
   , configBuildHcPkg :: Flag FilePath
-  -- ^ Path to the package tool for the build stage (@--with-build-hc-pkg@).
+  -- ^ Path to the package tool for the build machine (@--with-build-hc-pkg@).
   , configBuildProgramPaths :: [(String, FilePath)]
-  -- ^ Program locations for the build stage (@--with-build-PROG@). The
-  -- counterpart of 'configProgramPaths', which applies to the host stage only.
+  -- ^ Program locations for the build machine (@--with-build-PROG@). The
+  -- counterpart of 'configProgramPaths', which applies to the host machine only.
   , configBuildProgramArgs :: [(String, [String])]
-  -- ^ Extra program arguments for the build stage (@--build-PROG-option(s)@).
-  -- The counterpart of 'configProgramArgs', which applies to the host stage
+  -- ^ Extra program arguments for the build machine (@--build-PROG-option(s)@).
+  -- The counterpart of 'configProgramArgs', which applies to the host machine
   -- only.
   }
   deriving (Eq, Show, Generic)
@@ -1003,14 +1003,14 @@ configureExOptions _showOrParseArgs src =
   , option
       "W"
       ["with-build-compiler", "with-build-hc"]
-      "give the path to the compiler for the build stage (cross-compilation)"
+      "give the path to the compiler for the build machine (cross-compilation)"
       configBuildHcPath
       (\v flags -> flags{configBuildHcPath = v})
       (reqArgFlag "PATH")
   , option
       ""
       ["with-build-hc-pkg"]
-      "give the path to the package tool for the build stage (cross-compilation)"
+      "give the path to the package tool for the build machine (cross-compilation)"
       configBuildHcPkg
       (\v flags -> flags{configBuildHcPkg = v})
       (reqArgFlag "PATH")
@@ -1079,16 +1079,16 @@ configureExOptions _showOrParseArgs src =
       )
   ]
 
--- | The build-stage counterparts of Cabal's @--with-PROG@, @--PROG-option@
+-- | The build-machine counterparts of Cabal's @--with-PROG@, @--PROG-option@
 -- and @--PROG-options@: @--with-build-PROG@, @--build-PROG-option@ and
 -- @--build-PROG-options@.
 --
 -- Under cross-compilation the plain flags configure the programs used for the
--- host stage (like @--with-compiler@), and these configure the programs used
--- for the build stage (like @--with-build-compiler@). Neither stage inherits
+-- host machine (like @--with-compiler@), and these configure the programs used
+-- for the build machine (like @--with-build-compiler@). Neither machine inherits
 -- the other's settings: @--with-ar@ is the @ar@ for host binaries and has no
 -- business producing build-machine binaries. Without cross-compilation there
--- is no build stage and these flags have no effect.
+-- is no build machine and these flags have no effect.
 --
 -- They are not part of 'configureExOptions' for the same reason the plain
 -- flags are not part of 'configureOptions': the config file gives program
@@ -1108,7 +1108,7 @@ buildProgramOptions showOrParseArgs =
       option
         ""
         ["with-build-" ++ prog]
-        ("give the path to " ++ prog ++ " for the build stage (cross-compilation)")
+        ("give the path to " ++ prog ++ " for the build machine (cross-compilation)")
         configBuildProgramPaths
         (\v flags -> flags{configBuildProgramPaths = v})
         ( reqArg'
@@ -1123,7 +1123,7 @@ buildProgramOptions showOrParseArgs =
         ["build-" ++ prog ++ "-option"]
         ( "give an extra option to "
             ++ prog
-            ++ " for the build stage (passed directly to "
+            ++ " for the build machine (passed directly to "
             ++ prog
             ++ " as a single argument)"
         )
@@ -1141,7 +1141,7 @@ buildProgramOptions showOrParseArgs =
         ["build-" ++ prog ++ "-options"]
         ( "give extra options to "
             ++ prog
-            ++ " for the build stage (split on spaces, use \"\" to prevent splitting)"
+            ++ " for the build machine (split on spaces, use \"\" to prevent splitting)"
         )
         configBuildProgramArgs
         (\v flags -> flags{configBuildProgramArgs = v})

@@ -8,7 +8,7 @@ module Test.Cabal.Plan
   , InstallItem (..)
   , ConfiguredInplace (..)
   , ConfiguredGlobal (..)
-  , Stage (..)
+  , Machine (..)
   , Revision (..)
   , planDistDir
   , buildInfoFile
@@ -43,7 +43,7 @@ data ConfiguredInplace = ConfiguredInplace
   , configuredInplaceVersion :: Version
   , configuredInplaceRevision :: Revision
   , configuredInplaceComponentName :: Maybe ComponentName
-  , configuredInplaceStage :: Stage
+  , configuredInplaceMachine :: Machine
   }
   deriving (Show)
 
@@ -53,25 +53,25 @@ data ConfiguredGlobal = ConfiguredGlobal
   , configuredGlobalVersion :: Version
   , configuredGlobalRevision :: Revision
   , configuredGlobalComponentName :: Maybe ComponentName
-  , configuredGlobalStage :: Stage
+  , configuredGlobalMachine :: Machine
   }
   deriving (Show)
 
--- | The build stage of a plan entry, as recorded in the @stage@ field of
+-- | The build machine of a plan entry, as recorded in the @machine@ field of
 -- plan.json. Under cross-compilation the same package can appear at both
--- stages; in an ordinary build everything is on the host stage.
-data Stage = Build | Host
+-- machines; in an ordinary build everything is on the host machine.
+data Machine = Build | Host
   deriving (Eq, Show)
 
-instance FromJSON Stage where
-  parseJSON = withText "Stage" $ \t -> case Text.unpack t of
+instance FromJSON Machine where
+  parseJSON = withText "Machine" $ \t -> case Text.unpack t of
     "build" -> return Build
     "host" -> return Host
-    s -> fail ("unrecognized value of 'stage' field: " ++ s)
+    s -> fail ("unrecognized value of 'machine' field: " ++ s)
 
--- | Older plan.json files have no @stage@ field; everything was host then.
-parseStage :: Object -> Parser Stage
-parseStage v = fromMaybe Host <$> v .:? "stage"
+-- | Older plan.json files have no @machine@ field; everything was host then.
+parseMachine :: Object -> Parser Machine
+parseMachine v = fromMaybe Host <$> v .:? "machine"
 
 newtype Revision = Revision Int
   deriving (Show, Eq, FromJSON)
@@ -103,8 +103,8 @@ instance FromJSON ConfiguredInplace where
     pkg_version <- v .: "pkg-version"
     pkg_revision <- v .: "pkg-revision"
     component_name <- v .:? "component-name"
-    stage <- parseStage v
-    return (ConfiguredInplace dist_dir build_info pkg_name pkg_version pkg_revision component_name stage)
+    machine <- parseMachine v
+    return (ConfiguredInplace dist_dir build_info pkg_name pkg_version pkg_revision component_name machine)
   parseJSON invalid = typeMismatch "ConfiguredInplace" invalid
 
 instance FromJSON ConfiguredGlobal where
@@ -114,8 +114,8 @@ instance FromJSON ConfiguredGlobal where
     pkg_version <- v .: "pkg-version"
     pkg_revision <- v .: "pkg-revision"
     component_name <- v .:? "component-name"
-    stage <- parseStage v
-    return (ConfiguredGlobal bin_file pkg_name pkg_version pkg_revision component_name stage)
+    machine <- parseMachine v
+    return (ConfiguredGlobal bin_file pkg_name pkg_version pkg_revision component_name machine)
   parseJSON invalid = typeMismatch "ConfiguredGlobal" invalid
 
 instance FromJSON PackageName where
@@ -138,8 +138,8 @@ data DistDirOrBinFile = DistDir FilePath | BinFile FilePath
 
 planDistDir :: Plan -> PackageName -> ComponentName -> DistDirOrBinFile
 planDistDir plan pkg_name cname =
-  -- Under cross-compilation a component can be in the plan at both stages;
-  -- the host-stage copy is the one a test normally means (it is what the
+  -- Under cross-compilation a component can be in the plan on both machines;
+  -- the host-machine copy is the one a test normally means (it is what the
   -- user targeted), so prefer it when that resolves the ambiguity.
   case preferHost (concatMap p (planInstallPlan plan)) of
     [x] -> x
@@ -170,13 +170,13 @@ planDistDir plan pkg_name cname =
         Just cname' -> cname == cname'
       case configuredGlobalBinFile conf of
         Nothing -> []
-        Just bin_file -> return (configuredGlobalStage conf, BinFile bin_file)
+        Just bin_file -> return (configuredGlobalMachine conf, BinFile bin_file)
     p (AConfiguredInplace conf) = do
       guard (configuredInplacePackageName conf == pkg_name)
       guard $ case configuredInplaceComponentName conf of
         Nothing -> True
         Just cname' -> cname == cname'
-      return (configuredInplaceStage conf, DistDir (configuredInplaceDistDir conf))
+      return (configuredInplaceMachine conf, DistDir (configuredInplaceDistDir conf))
 
 buildInfoFile :: Plan -> PackageName -> ComponentName -> FilePath
 buildInfoFile plan pkg_name cname =

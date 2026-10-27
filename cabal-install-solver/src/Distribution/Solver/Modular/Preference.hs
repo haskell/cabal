@@ -32,7 +32,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.PackagePreferences
-import Distribution.Solver.Types.Stage (Stage)
+import Distribution.Solver.Types.Machine (Machine)
 import Distribution.Solver.Types.Variable
 
 import Distribution.Solver.Modular.Dependency
@@ -460,19 +460,19 @@ preferReallyEasyGoalChoices = go
 --
 -- For each package instance we record the goal for which we picked a concrete
 -- instance. The SIR means that for any package instance there can only be one
--- per build stage: a Setup/Build-stage instance and a Host-stage instance of
+-- per build machine: a Setup/Build-machine instance and a Host-machine instance of
 -- the same package+version are built by different toolchains and land in
--- different stores, so they don't collide the way two same-stage instances
+-- different stores, so they don't collide the way two same-machine instances
 -- would.
-type EnforceSIR = Reader (Map (Stage, PI PN) QPN)
+type EnforceSIR = Reader (Map (Machine, PI PN) QPN)
 
 -- | Enforce ghc's single instance restriction
 --
 -- From the solver's perspective, this means that for any package instance
 -- (that is, package name + package version) there can be at most one qualified
--- goal, within a given build stage, resolving to that instance (there may be
+-- goal, within a given build machine, resolving to that instance (there may be
 -- other goals _linking_ to that instance however, and there may be another
--- goal at a different stage using the same instance).
+-- goal at a different machine using the same instance).
 enforceSingleInstanceRestriction :: Tree d c -> Tree d c
 enforceSingleInstanceRestriction = (`runReader` M.empty) . go
   where
@@ -492,8 +492,8 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . go
 
     -- The check proper
     goP :: QPN -> POption -> EnforceSIR (Tree d c) -> EnforceSIR (Tree d c)
-    goP qpn@(Q (GoalScope stage _ _) pn) (POption i linkedTo) r = do
-      let inst = (stage, PI pn i)
+    goP qpn@(Q (GoalScope machine _ _) pn) (POption i linkedTo) r = do
+      let inst = (machine, PI pn i)
       env <- ask
       case (linkedTo, M.lookup inst env) of
         (Just _, _) ->

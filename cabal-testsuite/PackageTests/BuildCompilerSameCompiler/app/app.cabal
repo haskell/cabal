@@ -7,7 +7,7 @@ executable app
   main-is:            Main.hs
   -- 'mylib' is a library dependency of this executable, while 'tool' is a
   -- build-tool dependency that itself depends on 'mylib'. When the build and
-  -- host compilers differ, this puts 'mylib' in the plan at both stages; see
+  -- host compilers differ, this puts 'mylib' in the plan at both machines; see
   -- cabal.test.hs for what happens when they coincide.
   build-depends:      base, mylib
   build-tool-depends: tool:tool

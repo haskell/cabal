@@ -35,7 +35,7 @@ projectConfigFieldGrammar source knownPrograms = do
   let projectConfigProvenance = Set.singleton (Explicit source)
       projectConfigAllPackages = mempty
       projectConfigSpecificPackage = mempty
-      projectConfigStagePackages = mempty
+      projectConfigMachinePackages = mempty
   projectConfigLocalPackages <- blurFieldGrammar L.projectConfigLocalPackages (packageConfigFieldGrammar knownPrograms)
   pure ProjectConfig{..}
 
@@ -187,7 +187,7 @@ packageConfigFieldGrammar knownPrograms = do
   -- When declared at top level (packageConfigLocalPackages), the PackageConfig must contain a program-options stanza/program-locations for these fields.
   traverse_ (knownField . BS.pack . (<> "-options")) knownPrograms
   traverse_ (knownField . BS.pack . (<> "-location")) knownPrograms
-  -- Likewise build-<prog>-options and build-<prog>-location, for the build stage.
+  -- Likewise build-<prog>-options and build-<prog>-location, for the build machine.
   traverse_ (knownField . BS.pack . ("build-" <>) . (<> "-options")) knownPrograms
   traverse_ (knownField . BS.pack . ("build-" <>) . (<> "-location")) knownPrograms
   pure

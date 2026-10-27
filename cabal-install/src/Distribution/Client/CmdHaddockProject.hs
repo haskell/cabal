@@ -43,7 +43,7 @@ import Distribution.Client.ProjectPlanning
   , pkgConfigPlatform
   , setPkgConfigCompilerProgs
   )
-import Distribution.Client.ProjectPlanning.Stage (withoutStage)
+import Distribution.Client.ProjectPlanning.Machine (withoutMachine)
 import Distribution.Client.ProjectPlanning.Types
   ( elabDistDirParams
   )
@@ -455,5 +455,5 @@ haddockProjectAction flags _extraArgs globalFlags = do
       :: ElaboratedInstallPlan
       -> [Either InstalledPackageInfo ElaboratedConfiguredPackage]
     matchingPackages =
-      fmap (foldPlanPackage (Left . withoutStage) Right)
+      fmap (foldPlanPackage (Left . withoutMachine) Right)
         . InstallPlan.toList
