@@ -96,6 +96,55 @@ architecture and version information from, which will force some
 commands (update, sdist) to require ghc present where otherwise it
 would not be necessitated.
 
+.. _conditionals-cross-compilation:
+
+Conditionals when cross-compiling
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The conditions in a project file are resolved once, before the build and
+host machines are told apart, against the *host* compiler
+(:cfg-field:`with-compiler`) and the platform it targets. When
+cross-compiling (see :cfg-field:`with-build-compiler`), ``impl``, ``os`` and
+``arch`` therefore always describe the host machine, and there is no condition
+that tests the build compiler. A constraint that should depend on the build
+compiler, such as
+
+::
+
+    -- Not supported: there is no way to test the build compiler.
+    if impl(build-ghc >= 9.2)
+      constraints: build:exe.alex < 3.6
+
+cannot be written. Some ways to get the same effect:
+
+- Leave the constraint unconditional. A constraint with the ``build:`` prefix
+  only applies to packages solved for the build machine (see
+  :cfg-field:`constraints`), and a build without a separate build compiler has
+  none, so the constraint only takes effect when cross-compiling:
+
+  ::
+
+      constraints: build:exe.alex < 3.6
+
+- Keep the settings for each build compiler in their own file and select it
+  together with the compiler, either by importing it from the project file
+  that sets :cfg-field:`with-build-compiler`, or by passing
+  ``--project-file`` on the command line:
+
+  ::
+
+      -- cabal.project.cross-ghc-9.10
+      import: cabal.project
+      with-build-compiler: ghc-9.10.3
+      constraints: build:exe.alex < 3.6
+
+- Put the settings in ``cabal.project.local`` or pass them on the command
+  line, next to the ``--with-build-compiler`` that selects the build compiler:
+
+  ::
+
+      $ cabal build --with-build-compiler=ghc-9.10.3 --constraint="build:exe.alex < 3.6"
+
 One use case for imports is to specify a `Stackage <https://www.stackage.org/>`
 snapshot, so that your cabal project can use the same set of packages as
 that snapshot. To use the ``lts-21.25`` resolver, you can write
@@ -1178,7 +1227,9 @@ feature was added.
     path with the same heuristic :cfg-field:`with-compiler` uses.
 
     Like :cfg-field:`with-compiler`, this cannot be set on a per-package
-    basis, and it cannot be set inside a conditional block.
+    basis, and it cannot be set inside a conditional block. Conditional blocks
+    cannot test the build compiler either; see
+    :ref:`conditionals-cross-compilation`.
 
     The command line variant of this flag is
     ``--with-build-compiler=ghc-9.10.3``; there is also a short version
