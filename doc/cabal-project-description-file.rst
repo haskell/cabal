@@ -2097,6 +2097,16 @@ binaries. A build-machine program that is not given a location is found as
 usual, from the build compiler's own configuration and the program search
 path.
 
+The settings that apply are those of the machine the *package being built*
+belongs to, not those of the machine the program runs on. Tools such as
+``alex``, ``happy`` or ``hsc2hs`` always run on the build machine, but a host
+package that calls them takes them from the host settings: ``--with-alex``
+names the ``alex`` used when building host packages, and
+``--with-build-alex`` the one used when building build-machine packages (a
+build tool whose own build needs ``alex``, say). ``--with-PROG`` and
+``--with-build-PROG`` choose the programs for the packages of each machine;
+they say nothing about where those programs run.
+
 Without cross-compilation there is no build machine, so these settings have no
 effect and ``cabal`` warns that they are ignored.
 
