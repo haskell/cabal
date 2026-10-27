@@ -595,6 +595,12 @@ Environment options
     The command line variant of this flag is ``--package-db=DB`` which can be
     specified multiple times.
 
+    When cross-compiling (see :cfg-field:`with-build-compiler`), this setting
+    applies to the host machine only. A package database can only be read by
+    the compiler that wrote it, so the build machine always uses its own
+    compiler's global database and its own store. There is currently no way to
+    add package databases for the build machine.
+
 Solver options
 --------------
 
@@ -1117,6 +1123,9 @@ feature was added.
 
         package host:*
           pkg-config-location: aarch64-linux-gnu-pkg-config
+
+    The legacy project file parser (``--project-file-parser=legacy``) does not
+    accept ``package build:*`` or ``package host:*``.
 
 .. cfg-section:: None
 

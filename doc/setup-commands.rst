@@ -1043,8 +1043,9 @@ Miscellaneous options
     to packages built with the build compiler, by prefixing it with
     ``build:``. Without the prefix a constraint applies on every machine.
     Since only setup and build-tool dependencies are solved for the build
-    machine, the prefix is only meaningful together with the ``any`` or
-    ``setup`` qualifiers:
+    machine, the prefix is only meaningful together with the ``any``,
+    ``setup`` or ``exe`` qualifiers. Without cross-compilation there is no
+    build machine, so a ``build:`` constraint matches nothing:
 
     ::
 
