@@ -217,6 +217,8 @@ tests config =
           QC.testProperty "custom build directory" (propHaddockProjectBuildDir config)
       , localOption (QC.QuickCheckTests 10) $
           QC.testProperty "dependency documentation settings are preserved" (propHaddockProjectDependencyCache config)
+      , localOption (QC.QuickCheckTests 4) $
+          QC.testProperty "configured compiler arguments and plugins are preserved" (propHaddockCompilerArguments config)
       ]
   ]
 
@@ -3032,3 +3034,74 @@ propHaddockProjectDependencyCache config settings@(DependencyHaddockSettings doc
                   QC.=== (1, True, documentation, True)
   where
     testdir = "regression/program-options"
+
+-- | Haddock must use the build's configured compiler arguments, including
+-- plugins, and preserve component options in vanilla and shared-only builds.
+propHaddockCompilerArguments :: ProjectConfig -> QC.Positive Int -> Bool -> QC.Property
+propHaddockCompilerArguments config (QC.Positive value) requestSharedOnly = QC.ioProperty $ do
+  let dir = basedir </> testdir
+      localConfig = dir </> "cabal.project.local"
+      clean = cleanHaddockProject testdir >> removeFileForcibly localConfig
+      compilerArgs =
+        [ "-UPROGRAM_OPTION_VALUE"
+        , "-DPROGRAM_OPTION_VALUE=" ++ show (1 + value `mod` 1000)
+        , "-plugin-package=haddock-probe-plugin"
+        , "-fplugin=HaddockProbePlugin"
+        ]
+  clean
+  flip finally clean $ do
+    (_, _, shared) <- planProject testdir config
+    let compiler = pkgConfigCompiler shared
+        safeMinor = if buildOS == Windows then 10 else 4
+        supportsShared = dynamicSupported compiler /= Just False
+        sharedOnly = requestSharedOnly && supportsShared
+        clientConfig =
+          mempty
+            { packageConfigProgramArgs = MapMappend (Map.singleton "ghc" compilerArgs)
+            , packageConfigVanillaLib = Flag (not sharedOnly)
+            , packageConfigSharedLib = Flag supportsShared
+            }
+    if compilerVersion compiler <= mkVersion [9, safeMinor]
+      then return (QC.property True)
+      else do
+        writeProjectConfigFile localConfig $
+          mempty
+            { projectConfigLocalPackages = mempty{packageConfigDocumentation = Flag True}
+            , projectConfigSpecificPackage = MapMappend (Map.singleton (mkPackageName "plugin-client") clientConfig)
+            }
+        let commonFlags = defaultCommonSetupFlags{setupVerbosity = Flag normal}
+            globals = defaultGlobalFlags{globalStoreDir = Flag "store"}
+            buildFlags =
+              NixStyleOptions.updNixStyleCommonSetupFlags (const commonFlags) (commandDefaultFlags CmdBuild.buildCommand)
+            haddockFlags =
+              defaultHaddockProjectFlags
+                { haddockProjectCommonFlags = commonFlags{setupVerbosity = Flag deafening}
+                }
+        withCurrentDirectory dir $ do
+          _ <- hCapture [stdout, stderr] $ CmdBuild.buildAction buildFlags ["all"] globals
+          (output, ()) <-
+            hCapture [stdout, stderr] $
+              CmdHaddockProject.haddockProjectAction haddockFlags ["all"] globals
+          interface <- doesFileExist ("haddocks" </> "plugin-client" </> "plugin-client.haddock")
+          let supportsReuse = compilerVersion compiler >= mkVersion [9, 6]
+              -- Read the actual response-file arguments, independently of
+              -- whether GHC initializes plugins when reusing interfaces.
+              haddockCompilerArgs =
+                [ arg
+                | line <- lines output
+                , [arg] <- [words line]
+                , "--optghc=" `isPrefixOf` arg
+                ]
+              expectedArgs = map ("--optghc=" ++) compilerArgs
+              recompiled =
+                any (\line -> "[" `isPrefixOf` line && "] Compiling " `isInfixOf` line) (lines output)
+          return $
+            QC.label (if sharedOnly then "shared only" else "vanilla") $
+              QC.counterexample (unlines haddockCompilerArgs) $
+                ( interface
+                , expectedArgs `isInfixOf` haddockCompilerArgs
+                , supportsReuse && recompiled
+                )
+                  QC.=== (True, True, False)
+  where
+    testdir = "haddock-project/compiler-arguments"

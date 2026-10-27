@@ -136,6 +136,8 @@ data HaddockArgs = HaddockArgs
   -- ^ Prologue text, required for 'haddock', ignored by 'haddocks'.
   , argPrologueFile :: Flag FilePath
   -- ^ Prologue file name, ignored by 'haddock', optional for 'haddocks'.
+  , argGhcProgram :: Flag ConfiguredProgram
+  -- ^ Configured compiler whose arguments surround the component options.
   , argGhcOptions :: GhcOptions
   -- ^ Additional flags to pass to GHC.
   , argGhcLibDir :: Flag FilePath
@@ -605,11 +607,9 @@ fromFlags env flags =
           [] -> [Html]
           os -> os
     , argOutputDir = maybe mempty (Dir . getSymbolicPath) . flagToMaybe $ setupDistPref commonFlags
-    , argGhcOptions = mempty{ghcOptExtra = ghcArgs}
     , argUseUnicode = haddockUseUnicode flags
     }
   where
-    ghcArgs = fromMaybe [] . lookup "ghc" . haddockProgramArgs $ flags
     commonFlags = haddockCommonFlags flags
 
 fromHaddockProjectFlags :: HaddockProjectFlags -> HaddockArgs
@@ -713,6 +713,7 @@ mkHaddockArgs
   -> BuildInfo
   -> IO HaddockArgs
 mkHaddockArgs verbosity (tmpObjDir, tmpHiDir, tmpStubDir) lbi clbi htmlTemplate inFiles bi = do
+  (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let
     vanillaOpts' =
       componentGhcOptions Normal lbi bi clbi (componentBuildDir lbi clbi)
@@ -729,12 +730,12 @@ mkHaddockArgs verbosity (tmpObjDir, tmpHiDir, tmpStubDir) lbi clbi htmlTemplate 
         , ghcOptFPic = toFlag True
         , ghcOptHiSuffix = toFlag "dyn_hi"
         , ghcOptObjSuffix = toFlag "dyn_o"
-        , ghcOptExtra = map T.unpack $ hcSharedOptions GHC bi
+        , ghcOptExtra = ghcOptExtra vanillaOpts ++ map T.unpack (hcSharedOptions GHC bi)
         }
   ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
   opts <-
     if withVanillaLib lbi
-      then return vanillaOpts
+      then return vanillaOpts{ghcOptExtra = ghcOptExtra vanillaOpts ++ map T.unpack (hcStaticOptions GHC bi)}
       else
         if withSharedLib lbi
           then return sharedOpts
@@ -742,7 +743,8 @@ mkHaddockArgs verbosity (tmpObjDir, tmpHiDir, tmpStubDir) lbi clbi htmlTemplate 
 
   return
     ifaceArgs
-      { argGhcOptions = opts
+      { argGhcProgram = Flag ghcProg
+      , argGhcOptions = opts
       , argTargets = map getSymbolicPath inFiles
       , argReexports = getReexports clbi
       }
@@ -1277,8 +1279,7 @@ renderPureArgs version comp platform args =
         . flagToMaybe
         . argTitle
         $ args
-    , [ "--optghc=" ++ opt | let opts = argGhcOptions args, opt <- renderGhcOptions comp platform opts
-      ]
+    , ["--optghc=" ++ opt | opt <- ghcArgs]
     , maybe [] (\l -> ["-B" ++ l]) $
         flagToMaybe (argGhcLibDir args) -- error if Nothing?
     , -- https://github.com/haskell/haddock/pull/547
@@ -1324,6 +1325,17 @@ renderPureArgs version comp platform args =
               , [i]
               ]
           )
+
+    -- Use the same default/component/override ordering as a normal GHC build.
+    -- GHC options supplied to Setup are already in the configured program.
+    -- Strip any RTS args (+RTS … -RTS) before forwarding: Haddock passes
+    -- these to its embedded GHC flag parser which does not understand them.
+    ghcArgs =
+      let opts = renderGhcOptions comp platform (argGhcOptions args)
+          allArgs = case argGhcProgram args of
+            NoFlag -> opts -- Index generation does not configure a compiler.
+            Flag ghcProg -> progInvokeArgs (programInvocation ghcProg opts)
+       in snd (splitRTSArgs allArgs)
 
     isVersion major minor = version >= mkVersion [major, minor]
     verbosityFlag
