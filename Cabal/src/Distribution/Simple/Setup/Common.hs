@@ -15,6 +15,7 @@
 -- See: @Distribution.Simple.Setup@
 module Distribution.Simple.Setup.Common
   ( CommonSetupFlags (..)
+  , commonSetupVerbosity
   , defaultCommonSetupFlags
   , withCommonSetupOptions
   , commonSetupTempFileOptions
@@ -106,6 +107,10 @@ defaultCommonSetupFlags =
     , setupTargets = []
     , setupKeepTempFiles = NoFlag
     }
+
+-- | The verbosity from the setup verbosity flag.
+commonSetupVerbosity :: VerbosityHandles -> CommonSetupFlags -> Verbosity
+commonSetupVerbosity verbHandles = mkVerbosity verbHandles . fromFlag . setupVerbosity
 
 -- | Get `TempFileOptions` that respect the `setupKeepTempFiles` flag.
 commonSetupTempFileOptions :: CommonSetupFlags -> TempFileOptions
