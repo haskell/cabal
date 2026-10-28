@@ -19,3 +19,6 @@ package semaphore-compat
 if os(windows)
   package zlib
     flags: -pkg-config +bundled-c-zlib
+
+package cabal-testsuite
+  ghc-options: -Wno-unused-packages
