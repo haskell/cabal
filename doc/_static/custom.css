@@ -1,6 +1,9 @@
 /* The theme stops text in table cells from wrapping, except within inline
- * literals. Instead, wrap the text and keep each literal on one line. */
-.wy-table-responsive table td {
+ * literals. The effect is to keep every table cell on one line and scroll the
+ * table sideways. Instead, wrap the text and keep each literal on one line. */
+.wy-table-responsive table td,
+.wy-table-responsive table.wrap-cells td,
+.wy-table-responsive table.wrap-cells th {
     white-space: normal;
 }
 
