@@ -23,17 +23,11 @@ SPHINX_FLAGS:=-n -W --keep-going -E
 SPHINX_HTML_OUTDIR:=../dist-newstyle/doc/users-guide
 USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
 
-# Users guide
-##############################################################################
-
-users-guide: $(USERGUIDE_STAMP)
+users-guide: $(USERGUIDE_STAMP) ## Build the users guide with Sphinx.
 $(USERGUIDE_STAMP) : *.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR) \
 	&& uv sync \
 	&& uv run sphinx-build $(SPHINX_FLAGS) . $(SPHINX_HTML_OUTDIR)
-
-# Requirements
-##############################################################################
 
 requirements.txt:
 	uv export --frozen --format requirements.txt > requirements.txt
@@ -42,7 +36,7 @@ requirements.txt:
 # configured in pyproject.toml.
 # See: https://pythonawesome.com/security-audit-python-project-dependencies-against-security-advisory-databases/
 .PHONY: check-requirements
-check-requirements:
+check-requirements: ## Audit requirements.txt for vulnerabilities with skjold.
 	@if [ -z "$${SKJOLD_GITHUB_API_TOKEN}" ] \
 	; then \
 	  echo "WARNING: Neither SKJOLD_GITHUB_API_TOKEN nor GITHUB_TOKEN is set." \
@@ -51,8 +45,7 @@ check-requirements:
 	uvx skjold -c pyproject.toml config \
 	&& uv pip list --format freeze | uvx skjold -c pyproject.toml audit
 
-# Debug print environment variables
-debug:
+debug: ## Print the GitHub token environment variables.
 	@echo "GITHUB_TOKEN = ${GITHUB_TOKEN}"
 	@echo "SKJOLD_GITHUB_API_TOKEN = $${SKJOLD_GITHUB_API_TOKEN}"
 	@echo "Is SKJOLD_GITHUB_API_TOKEN set? $${SKJOLD_GITHUB_API_TOKEN:+yes}"
@@ -133,7 +126,7 @@ SETUP_COMMANDS := \
 # logs of freshly built dependencies (process, resolv, network, ...) into
 # the captured stdout and pollute the generated .txt files.
 .PHONY: cmd-help-build
-cmd-help-build:
+cmd-help-build: ## Build the cabal executable before dumping help output.
 	@cabal build -v0 cabal-install:exe:cabal > /dev/null 2>&1
 
 cmd-v1-help/%.txt: | cmd-help-build
@@ -166,18 +159,21 @@ setup-help/help.txt: | cmd-help-build
 	@cabal run -v0 cabal-install:exe:cabal -- act-as-setup -- --help > $@ 2>/dev/null
 
 .PHONY: cmd-v1-help
-cmd-v1-help: $(addsuffix .txt,$(addprefix cmd-v1-help/,$(CABAL_V1_COMMANDS)))
+cmd-v1-help: $(addsuffix .txt,$(addprefix cmd-v1-help/,$(CABAL_V1_COMMANDS))) ## Dump v1 commands' help.
 
 .PHONY: cmd-v2-help
-cmd-v2-help: cmd-v2-help/help.txt $(addsuffix .txt,$(addprefix cmd-v2-help/,$(CABAL_COMMANDS)))
+cmd-v2-help: cmd-v2-help/help.txt $(addsuffix .txt,$(addprefix cmd-v2-help/,$(CABAL_COMMANDS))) ## Dump v2 commands' help.
 
 .PHONY: cmd-v2-hidden-help
-cmd-v2-hidden-help: $(addsuffix .txt,$(addprefix cmd-v2-hidden-help/,$(CABAL_HIDDEN_COMMANDS)))
+cmd-v2-hidden-help: $(addsuffix .txt,$(addprefix cmd-v2-hidden-help/,$(CABAL_HIDDEN_COMMANDS))) ## Dump hidden commands' help.
 
 .PHONY: setup-help
-setup-help: setup-help/help.txt $(addsuffix .txt,$(addprefix setup-help/,$(SETUP_COMMANDS)))
+setup-help: setup-help/help.txt $(addsuffix .txt,$(addprefix setup-help/,$(SETUP_COMMANDS))) ## Dump Setup commands' help.
 
 .PHONY: cmd-help
-cmd-help: cmd-v2-help cmd-v1-help cmd-v2-hidden-help setup-help
+cmd-help: cmd-v2-help cmd-v1-help cmd-v2-hidden-help setup-help ## Dump all commands' help.
 
-# EOF
+.PHONY: help
+help: ## Show the commented targets.
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
