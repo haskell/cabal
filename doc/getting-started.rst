@@ -1,12 +1,12 @@
 Getting Started
 ===============
 
-Installing Cabal
-----------------
+Installing :term:`cabal`
+------------------------
 
-The easiest and recommended way to install the ``cabal`` command-line tool
+The easiest and recommended way to install the :term:`cabal` command-line tool
 on Linux, macOS, FreeBSD or Windows is through `ghcup <https://www.haskell.org/ghcup/>`__.
-It installs the “Haskell toolchain”, which includes Cabal,
+It installs the “Haskell :term:`toolchain`”, which includes :term:`cabal`,
 the Haskell compiler `GHC <https://www.haskell.org/ghc/>`__
 and optionally other useful Haskell tools.
 
@@ -14,7 +14,7 @@ Creating a new application
 --------------------------
 
 We create a minimal Haskell application to get a quick overview
-of the ``cabal`` command-line tool:
+of the :term:`cabal` command-line tool:
 
 1. How to initialize a Haskell package.
 2. How files are organized inside a package.
@@ -42,7 +42,7 @@ in a terminal. This generates the following files in a new ``myapp`` directory:
         ├── CHANGELOG.md
         └── myapp.cabal
 
-The ``myapp.cabal`` file is a package description file, commonly referred to as a “Cabal file”:
+The ``myapp.cabal`` file is a :term:`package description` file, commonly referred to as a “Cabal file”:
 
 .. code-block:: cabal
 
@@ -60,7 +60,7 @@ The ``myapp.cabal`` file is a package description file, commonly referred to as 
 
 .. warning::
 
-    The version bounds on base, a boot library distributed with GHC
+    The :term:`version bounds <version bound>` on base, a :term:`boot library <boot package>` distributed with :term:`GHC`
     [#boot-packages]_, are tied to the GHC version visible when ``cabal init``
     is run. If run with a later version of GHC you might see a difference in the
     version bounds.
@@ -71,7 +71,7 @@ The ``myapp.cabal`` file is a package description file, commonly referred to as 
         + build-depends:    base ^>=4.20.0.0
 
 It contains metadata (package name and version, author name, license, etc.) and sections
-to define package components. Components can be used to split large codebases into smaller,
+to define package :term:`components <component>`. Components can be used to split large codebases into smaller,
 more manageable building blocks.
 A component can be of one of several types (executable, library, etc.) and describes,
 among other things, the location of source files and its dependencies.
@@ -125,7 +125,7 @@ In our application, we'll use a package called `haskell-say
 terminal with some embellishment.
 
 .. TIP::
-   If you installed ``cabal`` a while ago but haven't used it recently you may
+   If you installed :term:`cabal` a while ago but haven't used it recently you may
    need to update the package index, you can do this by running ``cabal
    update``.
 
@@ -258,7 +258,7 @@ See more in the documentation for :ref:`cabal run`.
 What Next?
 ----------
 
-Now that you know how to set up a simple Haskell package using Cabal, check out
+Now that you know how to set up a simple Haskell package using :term:`cabal`, check out
 some of the resources on the Haskell website's `documentation page
 <https://www.haskell.org/documentation/>`__ or read more about packages and
 Cabal on the :doc:`What Cabal does <cabal-context>` page.
