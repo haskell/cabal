@@ -1,7 +1,7 @@
 ---
 synopsis: Constraints can be qualified by build machine and by build-tool dependency
 packages: [cabal-install, cabal-install-solver]
-prs:
+prs: 12356
 ---
 
 Package constraints gain two new qualifiers.

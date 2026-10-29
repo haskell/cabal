@@ -2069,7 +2069,7 @@ will apply ``-Werror`` to all packages, local and remote.
 .. _build-machine-programs:
 
 Build-machine programs
-^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. cfg-section:: build-program-options
 
