@@ -59,7 +59,6 @@ import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup
   ( CommonSetupFlags (setupVerbosity)
   , GlobalFlags (..)
-  , InstallFlags (installDocumentation)
   )
 
 import Distribution.Simple.BuildPaths
@@ -134,14 +133,15 @@ haddockProjectAction flags _extraArgs globalFlags = do
   -- Resolve CLI paths before Setup changes the working directory.
   absoluteCss <- traverse makeAbsolute (haddockCss haddockFlags)
   let projectHaddockFlags = haddockFlags{haddockCss = absoluteCss}
+      -- TODO: haddock output flags (html, linked-source, quick-jump, contents,
+      -- index, base-url) injected here still change the solver-plan hash for
+      -- projects that don't already have them set in cabal.project.
       localOverrides =
         projectConfigLocalPackages $
           commandLineFlagsToProjectConfig
             globalFlags
             ( buildFlags
-                { NixStyleOptions.installFlags =
-                    (NixStyleOptions.installFlags buildFlags){installDocumentation = Flag True}
-                , NixStyleOptions.haddockFlags = projectHaddockFlags
+                { NixStyleOptions.haddockFlags = projectHaddockFlags
                 }
             )
             mempty
@@ -165,6 +165,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
         GlobalContext -> return ctx
         ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
       let config = projectConfig initialCtx
+          -- Inject documentation: True only when not already set, so that
+          -- projects with documentation: True in cabal.project don't see a
+          -- solver-plan change when switching between build and haddock-project.
+          docOverride
+            | fromFlagOrDefault False (packageConfigDocumentation (projectConfigLocalPackages config)) = mempty
+            | otherwise = mempty{packageConfigDocumentation = Flag True}
           -- Apply project output options locally, keeping all dependency and
           -- package-specific settings from the original project configuration.
           baseCtx =
@@ -172,7 +178,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
               { projectConfig =
                   config
                     { projectConfigLocalPackages =
-                        projectConfigLocalPackages config <> localOverrides <> cliProgramConfig
+                        projectConfigLocalPackages config <> localOverrides <> cliProgramConfig <> docOverride
                     }
               }
           distLayout = distDirLayout baseCtx
