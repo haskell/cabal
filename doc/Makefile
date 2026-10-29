@@ -23,17 +23,11 @@ SPHINX_FLAGS:=-n -W --keep-going -E
 SPHINX_HTML_OUTDIR:=../dist-newstyle/doc/users-guide
 USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
 
-# Users guide
-##############################################################################
-
 users-guide: $(USERGUIDE_STAMP) ## Build the users guide with Sphinx.
 $(USERGUIDE_STAMP) : *.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR) \
 	&& uv sync \
 	&& uv run sphinx-build $(SPHINX_FLAGS) . $(SPHINX_HTML_OUTDIR)
-
-# Requirements
-##############################################################################
 
 requirements.txt:
 	uv export --frozen --format requirements.txt > requirements.txt
@@ -183,5 +177,3 @@ cmd-help: cmd-v2-help cmd-v1-help cmd-v2-hidden-help setup-help ## Dump all comm
 help: ## Show the commented targets.
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
-# EOF
