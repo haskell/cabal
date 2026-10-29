@@ -133,7 +133,7 @@ SETUP_COMMANDS := \
 # logs of freshly built dependencies (process, resolv, network, ...) into
 # the captured stdout and pollute the generated .txt files.
 .PHONY: cmd-help-build
-cmd-help-build: ## Build the cabal executable before capturing help output.
+cmd-help-build: ## Build the cabal executable before dumping help output.
 	@cabal build -v0 cabal-install:exe:cabal > /dev/null 2>&1
 
 cmd-v1-help/%.txt: | cmd-help-build
@@ -166,19 +166,19 @@ setup-help/help.txt: | cmd-help-build
 	@cabal run -v0 cabal-install:exe:cabal -- act-as-setup -- --help > $@ 2>/dev/null
 
 .PHONY: cmd-v1-help
-cmd-v1-help: $(addsuffix .txt,$(addprefix cmd-v1-help/,$(CABAL_V1_COMMANDS))) ## Capture --help for the v1 commands into cmd-v1-help/.
+cmd-v1-help: $(addsuffix .txt,$(addprefix cmd-v1-help/,$(CABAL_V1_COMMANDS))) ## Dump v1 commands' help.
 
 .PHONY: cmd-v2-help
-cmd-v2-help: cmd-v2-help/help.txt $(addsuffix .txt,$(addprefix cmd-v2-help/,$(CABAL_COMMANDS))) ## Capture --help for the v2 commands into cmd-v2-help/.
+cmd-v2-help: cmd-v2-help/help.txt $(addsuffix .txt,$(addprefix cmd-v2-help/,$(CABAL_COMMANDS))) ## Dump v2 commands' help.
 
 .PHONY: cmd-v2-hidden-help
-cmd-v2-hidden-help: $(addsuffix .txt,$(addprefix cmd-v2-hidden-help/,$(CABAL_HIDDEN_COMMANDS))) ## Capture --help for the hidden commands into cmd-v2-hidden-help/.
+cmd-v2-hidden-help: $(addsuffix .txt,$(addprefix cmd-v2-hidden-help/,$(CABAL_HIDDEN_COMMANDS))) ## Dump hidden commands' help.
 
 .PHONY: setup-help
-setup-help: setup-help/help.txt $(addsuffix .txt,$(addprefix setup-help/,$(SETUP_COMMANDS))) ## Capture Setup --help via act-as-setup into setup-help/.
+setup-help: setup-help/help.txt $(addsuffix .txt,$(addprefix setup-help/,$(SETUP_COMMANDS))) ## Dump Setup commands' help.
 
 .PHONY: cmd-help
-cmd-help: cmd-v2-help cmd-v1-help cmd-v2-hidden-help setup-help ## Regenerate all captured command help texts.
+cmd-help: cmd-v2-help cmd-v1-help cmd-v2-hidden-help setup-help ## Dump all commands' help.
 
 # Help
 ##############################################################################
