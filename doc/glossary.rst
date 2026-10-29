@@ -156,6 +156,12 @@ suggests. This table sets them side by side.
    * - :term:`local package`, :term:`external package`, :term:`vendoring`
      - Local means listed in the project, not stored on this machine.
        Vendoring turns an external package into a local one.
+   * - :term:`local package`, :term:`cabal.project.local`,
+       :term:`local no-index repository`, :term:`Nix-style local builds`
+     - Four senses of "local". A local package is in the project. The
+       ``.local`` file holds one machine's overrides. A local no-index
+       repository is a directory of tarballs. Nix-style local builds build
+       the project in place rather than installing it.
    * - :term:`main library`, :term:`sublibrary`, :term:`internal library`,
        :term:`public library`, :term:`foreign library`
      - A sublibrary is any named library. An internal library is a private
@@ -809,9 +815,12 @@ Alphabetical listing
 
    project
      One or more :term:`packages <package>` that are developed and built
-     together, described by a :term:`cabal.project` file. When there is no
-     project file, :term:`cabal` treats the package in the current directory
-     as a project of its own. Every build command runs within a project.
+     together, described by a :term:`cabal.project` file. Every build command
+     runs within exactly one project, found by searching upward from the
+     current directory for a project file or named by ``--project-file``.
+     When there is no project file, :term:`cabal` treats the package in the
+     current directory as a project of its own, and when there is no package
+     either, it uses an empty project.
 
    public library
      A library that other packages can depend on: a :term:`main library`, or
