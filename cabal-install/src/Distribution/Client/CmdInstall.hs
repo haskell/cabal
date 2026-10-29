@@ -470,6 +470,17 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
           (projectConfigBuildOnly config)
           [ProjectPackageRemoteTarball uri | uri <- uris]
 
+    -- A tarball package is not local to the dummy project so it cannot be
+    -- selected with an all-packages selector. Now that the tarballs have been
+    -- read we know their package names and can select them by name, as we do
+    -- for packages named on the command line.
+    let uriPkgNames = map pkgSpecifierTarget uriSpecs
+        uriTargetFilter = if installLibs then Just LibKind else Just ExeKind
+        targetSelectors' =
+          targetSelectors
+            ++ [TargetPackageNamed name uriTargetFilter | name <- uriPkgNames]
+        config' = addLocalConfigToPkgs config uriPkgNames
+
     -- check for targets already in env
     let getPackageName :: PackageSpecifier UnresolvedSourcePackage -> PackageName
         getPackageName = pkgSpecifierTarget
@@ -499,12 +510,12 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
     baseCtx <-
       establishDummyProjectBaseContext
         verbosity
-        config
+        config'
         distDirLayout
         (envSpecs' ++ pkgSpecs ++ uriSpecs)
         InstallCommand
 
-    buildCtx <- constructProjectBuildContext verbosity (baseCtx{installedPackages = Just installedIndex'}) targetSelectors
+    buildCtx <- constructProjectBuildContext verbosity (baseCtx{installedPackages = Just installedIndex'}) targetSelectors'
 
     printPlan verbosity baseCtx buildCtx
     let installCfg = InstallCfg verbosity baseCtx buildCtx platform compiler configFlags clientInstallFlags
@@ -688,7 +699,7 @@ withoutProject verbosity globalConfig targetStrings = do
   let
     packageSpecifiers :: [PackageSpecifier UnresolvedSourcePackage]
     (uris, packageSpecifiers) = partitionEithers $ map woPackageSpecifiers tss
-    packageTargets = map woPackageTargets tss
+    packageTargets = mapMaybe woPackageTargets tss
 
   -- Apply the local configuration (e.g. cli flags) to all direct targets of install command,
   -- see note in 'installAction'

@@ -46,13 +46,16 @@ woPackageNames (WoPackageId pid) = [pkgName pid]
 woPackageNames (WoPackageComponent pid _) = [pkgName pid]
 woPackageNames (WoURI _) = []
 
-woPackageTargets :: WithoutProjectTargetSelector -> TargetSelector
+-- | The target selector for a package named on the command line. A URI has no
+-- selector yet: the package it names can only be known once its tarball has
+-- been fetched and read.
+woPackageTargets :: WithoutProjectTargetSelector -> Maybe TargetSelector
 woPackageTargets (WoPackageId pid) =
-  TargetPackageNamed (pkgName pid) Nothing
+  Just $ TargetPackageNamed (pkgName pid) Nothing
 woPackageTargets (WoPackageComponent pid cn) =
-  TargetComponentUnknown (pkgName pid) (Right cn) WholeComponent
+  Just $ TargetComponentUnknown (pkgName pid) (Right cn) WholeComponent
 woPackageTargets (WoURI _) =
-  TargetAllPackages (Just ExeKind)
+  Nothing
 
 woPackageSpecifiers :: WithoutProjectTargetSelector -> Either URI (PackageSpecifier pkg)
 woPackageSpecifiers (WoPackageId pid) = Right (mkNamedPackage pid)
