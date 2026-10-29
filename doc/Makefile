@@ -51,7 +51,6 @@ check-requirements: ## Audit requirements.txt for vulnerabilities with skjold.
 	uvx skjold -c pyproject.toml config \
 	&& uv pip list --format freeze | uvx skjold -c pyproject.toml audit
 
-# Debug print environment variables
 debug: ## Print the GitHub token environment variables.
 	@echo "GITHUB_TOKEN = ${GITHUB_TOKEN}"
 	@echo "SKJOLD_GITHUB_API_TOKEN = $${SKJOLD_GITHUB_API_TOKEN}"
