@@ -18,9 +18,8 @@ either from the root of the cabal repository or from the `doc/` subdirectory:
 > make users-guide
 ```
 
-To list the other documentation targets, such as regenerating the captured
-command help texts, run `make -C doc help` from the root or `make help` from
-the `doc/` subdirectory.
+To list the other documentation targets, run `make -C doc help` from the root or
+`make help` from the `doc/` subdirectory.
 
 Note: Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, so unset the variable
 and instead set `LC_ALL=en_US.UTF-8`.
