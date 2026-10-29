@@ -180,9 +180,6 @@ setup-help: setup-help/help.txt $(addsuffix .txt,$(addprefix setup-help/,$(SETUP
 .PHONY: cmd-help
 cmd-help: cmd-v2-help cmd-v1-help cmd-v2-hidden-help setup-help ## Dump all commands' help.
 
-# Help
-##############################################################################
-
 .PHONY: help
 help: ## Show the commented targets.
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
