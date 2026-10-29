@@ -38,7 +38,12 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedInstallPlan
   , ElaboratedSharedConfig (..)
   , TargetAction (..)
+  , pkgConfigCompiler
+  , pkgConfigCompilerProgs
+  , pkgConfigPlatform
+  , setPkgConfigCompilerProgs
   )
+import Distribution.Client.ProjectPlanning.Machine (withoutMachine)
 import Distribution.Client.ProjectPlanning.Types
   ( elabDistDirParams
   )
@@ -183,7 +188,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
           . addKnownProgram haddockProgram
           . pkgConfigCompilerProgs
           $ sharedConfig
-      let sharedConfig' = sharedConfig{pkgConfigCompilerProgs = progs}
+      let sharedConfig' = setPkgConfigCompilerProgs progs sharedConfig
 
       _ <-
         requireProgramVersion
@@ -450,5 +455,5 @@ haddockProjectAction flags _extraArgs globalFlags = do
       :: ElaboratedInstallPlan
       -> [Either InstalledPackageInfo ElaboratedConfiguredPackage]
     matchingPackages =
-      fmap (foldPlanPackage Left Right)
+      fmap (foldPlanPackage (Left . withoutMachine) Right)
         . InstallPlan.toList

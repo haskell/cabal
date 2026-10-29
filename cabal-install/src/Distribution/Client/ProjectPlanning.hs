@@ -38,6 +38,11 @@ module Distribution.Client.ProjectPlanning
   , ElaboratedConfiguredPackage (..)
   , ElaboratedPlanPackage
   , ElaboratedSharedConfig (..)
+  , pkgConfigToolchain
+  , pkgConfigCompiler
+  , pkgConfigPlatform
+  , pkgConfigCompilerProgs
+  , setPkgConfigCompilerProgs
   , ElaboratedReadyPackage
   , BuildStyle (..)
   , CabalFileText
@@ -69,6 +74,9 @@ module Distribution.Client.ProjectPlanning
   , pkgHasEphemeralBuildTargets
   , elabBuildTargetWholeComponents
   , configureCompiler
+  , configureToolchains
+  , projectPackageDbsFor
+  , sameCompiler
 
     -- * Setup.hs CLI flags for building
   , setupHsScriptOptions
@@ -125,6 +133,7 @@ import Distribution.Client.ProjectConfig.Import (docProjectConfigFiles)
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.ProjectConfig.Types (defaultProjectFileParser)
 import Distribution.Client.ProjectPlanOutput
+import Distribution.Client.ProjectPlanning.Machine (HasMachine (..), WithMachine (..), withoutMachine)
 import Distribution.Client.ProjectPlanning.SetupPolicy
   ( NonSetupLibDepSolverPlanPackage (..)
   , mkDefaultSetupDeps
@@ -137,6 +146,18 @@ import Distribution.Client.Setup hiding (cabalVersion, packageName)
 import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
 import Distribution.Client.Targets (userToPackageConstraint)
+import Distribution.Client.Toolchain
+  ( Machine (..)
+  , PerMachine (..)
+  , Toolchain (..)
+  , Toolchains
+  , isCross
+  , mapWithMachine
+  , onMachine
+  , overMachine
+  , toolMachine
+  , traverseWithMachine
+  )
 import Distribution.Client.Types
 import Distribution.Client.Utils (concatMapM, duplicatesBy, incVersion)
 
@@ -182,7 +203,10 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
-import Distribution.System
+
+-- 'buildPlatform' (the compile-time host platform) is hidden: the build-machine
+-- platform now comes from the configured build toolchain, not this constant.
+import Distribution.System hiding (buildPlatform)
 
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentInclude
@@ -514,22 +538,46 @@ rebuildProjectConfig
                   $ projectConfigProvenance projectConfig
             ]
 
--- | Configure the compiler. This results in a program database that contains
--- the **configured** compiler (which is stored in a cache)
--- and **unconfigured** related programs (cannot be cached, as unconfigured).
---
--- This will be re-run when the compiler or @hc-pkg@ change, and when the
--- program search path or @extra-prog-path@ or @program-locations@ change.
---
--- In the case of @GHC@, we configure @ghc@ and @ghc-pkg@, and provide
--- unconfigured attendant programs such as @hsc2hs@, @haddock@ and toolchain
--- programs such as @ar@, @ld@. See 'Distribution.Simple.GHC.configure'.
+-- | Backwards-compatible view of 'configureToolchains' that returns just the
+-- host toolchain as a bare @(Compiler, Platform, ProgramDb)@ triple. Existing
+-- callers that don't (yet) care about the build machine use this.
 configureCompiler
   :: Verbosity
   -> DistDirLayout
   -> ProjectConfig
   -> Rebuild (Compiler, Platform, ProgramDb)
-configureCompiler
+configureCompiler verbosity distDirLayout projectConfig =
+  toTriple . flip onMachine Host <$> configureToolchains verbosity distDirLayout projectConfig
+  where
+    toTriple Toolchain{toolchainCompiler, toolchainPlatform, toolchainProgramDb} =
+      (toolchainCompiler, toolchainPlatform, toolchainProgramDb)
+
+-- | Configure the toolchain(s) the plan is built against, one per build
+-- 'Machine': the host toolchain (from @--with-compiler@ etc.) and, under
+-- cross-compilation, the build toolchain (from @--with-build-compiler@ etc.).
+-- When no build compiler is requested the build machine /is/ the host machine and
+-- the host toolchain is reused directly.
+--
+-- Each machine results in a program database that contains the __configured__
+-- compiler (which is stored in a cache) and __unconfigured__ related programs
+-- (cannot be cached, as unconfigured). A machine is re-configured when its
+-- compiler or @hc-pkg@ change, and when the program search path or
+-- @extra-prog-path@ or its program locations change.
+--
+-- The program locations are per machine: @--with-PROG@ and @program-locations@
+-- configure the host machine, @--with-build-PROG@ and @build-program-locations@
+-- the build machine. Neither machine inherits the other's: @--with-ar@ is the
+-- @ar@ for host binaries and must not produce build-machine binaries.
+--
+-- In the case of @GHC@, we configure @ghc@ and @ghc-pkg@, and provide
+-- unconfigured attendant programs such as @hsc2hs@, @haddock@ and toolchain
+-- programs such as @ar@, @ld@. See 'Distribution.Simple.GHC.configure'.
+configureToolchains
+  :: Verbosity
+  -> DistDirLayout
+  -> ProjectConfig
+  -> Rebuild Toolchains
+configureToolchains
   verbosity
   DistDirLayout
     { distProjectCacheFile
@@ -540,91 +588,243 @@ configureCompiler
         { projectConfigHcFlavor
         , projectConfigHcPath
         , projectConfigHcPkg
+        , projectConfigBuildHcFlavor
+        , projectConfigBuildHcPath
+        , projectConfigBuildHcPkg
         , projectConfigProgPathExtra
         }
-    , projectConfigAllPackages =
-      PackageConfig
-        { packageConfigProgramPaths = packageConfigProgramPathsGlobal
-        }
+    , projectConfigAllPackages
     , projectConfigLocalPackages =
-      PackageConfig
-        { packageConfigProgramPaths = packageConfigProgramPathsLocal
-        , packageConfigProgramPathExtra
+      projectConfigLocalPackages@PackageConfig
+        { packageConfigProgramPathExtra = packageConfigProgramPathExtraLocal
         }
+    , projectConfigMachinePackages
     } = do
-    let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile "compiler"
-        userProgramPaths =
-          Map.toList
-            . getMapLast
-            $ packageConfigProgramPathsGlobal <> packageConfigProgramPathsLocal
-        userPaths :: ProgramDb -> ProgramDb
-        userPaths = userSpecifyPaths userProgramPaths
-
     progsearchpath <- liftIO getSystemSearchPath
 
-    (hc, plat, hcProgDb) <-
-      rerunIfChanged
-        verbosity
-        fileMonitorCompiler
-        ( hcFlavor
-        , hcPath
-        , hcPkg
-        , progsearchpath
-        , packageConfigProgramPathsGlobal
-        , packageConfigProgramPathsLocal
-        , packageConfigProgramPathExtra
-        )
-        $ do
-          liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-          progdb <- liftIO $ do
-            -- Add paths in the global config then paths in the local config
-            let addPaths pathList = prependProgramSearchPath verbosity (fromNubList pathList) []
-            let globalPaths :: IO ProgramDb = addPaths projectConfigProgPathExtra defaultProgramDb
-            let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtra
-            (globalPaths >>= localPaths) <&> userPaths
-          result@(_, _, progdb') <-
-            liftIO $
-              Cabal.configCompiler
-                hcFlavor
-                hcPath
-                progdb
-                verbosity
-          -- Note that we added the user-supplied program locations and args
-          -- for /all/ programs, not just those for the compiler prog and
-          -- compiler-related utils. In principle we don't know which programs
-          -- the compiler will configure (and it does vary between compilers).
-          -- We do know however that the compiler will only configure the
-          -- programs it cares about, and those are the ones we monitor here.
-          monitorFiles (programsMonitorFiles progdb')
-          return result
+    -- User-supplied program locations, per machine: the machine's own settings
+    -- from the global and the local configuration (@--with-PROG@ and
+    -- @program-locations@ for the host machine, @--with-build-PROG@ and
+    -- @build-program-locations@ for the build machine), then the machine's own
+    -- @package host:*@ or @package build:*@ stanza, which overrides them.
+    -- Neither machine inherits the other's: @--with-ar@ is the @ar@ for host
+    -- binaries and must not produce build-machine binaries. This is how a
+    -- cross-compilation names the tools that answer for the host (a
+    -- target-prefixed @pkg-config@, say) without handing them to the build
+    -- machine.
+    --
+    -- NB: the global and local @extra-prog-path@ entries have no per-machine
+    -- variant, so both machines search those extra directories; only a machine
+    -- stanza's @extra-prog-path@ is the machine's own.
+    let machinePackageConfig :: Machine -> PackageConfig
+        machinePackageConfig machine =
+          machineStanzaConfig machine $
+            Map.findWithDefault mempty machine (getMapMappend projectConfigMachinePackages)
+        userProgramPaths :: Machine -> [(String, FilePath)]
+        userProgramPaths machine =
+          Map.toList
+            . getMapLast
+            $ foldMap
+              (machineProgramPaths machine)
+              [projectConfigAllPackages, projectConfigLocalPackages, machinePackageConfig machine]
+        userPaths :: Machine -> ProgramDb -> ProgramDb
+        userPaths machine = userSpecifyPaths (userProgramPaths machine)
+        machineProgramPathExtra :: Machine -> NubList FilePath
+        machineProgramPathExtra machine = packageConfigProgramPathExtra (machinePackageConfig machine)
 
-    -- Now, **outside** of the caching logic of 'rerunIfChanged':
+    -- Configure the compiler for a single machine, caching the result under the
+    -- given project-cache file. The compiler flavour/path/hc-pkg and the
+    -- program settings are the machine's own.
+    let configureMachine machine cacheName hcFlavor hcPath hcPkg = do
+          let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile cacheName
+          (hc, plat, hcProgDb) <-
+            rerunIfChanged
+              verbosity
+              fileMonitorCompiler
+              ( hcFlavor
+              , hcPath
+              , hcPkg
+              , progsearchpath
+              , userProgramPaths machine
+              , (packageConfigProgramPathExtraLocal, machineProgramPathExtra machine)
+              )
+              $ do
+                liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
+                progdb <- liftIO $ do
+                  -- Add paths in the global config, then paths in the local
+                  -- config, then the paths of this machine's stanza.
+                  let addPaths pathList = prependProgramSearchPath verbosity (fromNubList pathList) []
+                  let globalPaths :: IO ProgramDb = addPaths projectConfigProgPathExtra defaultProgramDb
+                  let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtraLocal
+                  let machinePaths :: ProgramDb -> IO ProgramDb = addPaths (machineProgramPathExtra machine)
+                  (globalPaths >>= localPaths >>= machinePaths) <&> userPaths machine
+                result@(_, _, progdb') <-
+                  liftIO $
+                    Cabal.configCompiler
+                      hcFlavor
+                      hcPath
+                      progdb
+                      verbosity
+                -- Note that we added the user-supplied program locations and args
+                -- for /all/ programs, not just those for the compiler prog and
+                -- compiler-related utils. In principle we don't know which programs
+                -- the compiler will configure (and it does vary between compilers).
+                -- We do know however that the compiler will only configure the
+                -- programs it cares about, and those are the ones we monitor here.
+                monitorFiles (programsMonitorFiles progdb')
+                return result
+
+          -- Now, **outside** of the caching logic of 'rerunIfChanged':
+          --
+          --  1. Call 'clearUnconfiguredPrograms' to ensure the consistency between
+          --     the first run (in-memory) and when deserialising from cache.
+          --  2. Add on auxiliary unconfigured programs to the ProgramDb
+          --     (e.g. hsc2hs, haddock, ar, ld...).
+          --
+          -- See Note [Caching the result of configuring the compiler]
+          finalProgDb <-
+            liftIO $ do
+              --
+              -- 'configCompilerProgDb' only re-adds the compiler's companion
+              -- tools, and 'userSpecifyPaths' only applies to programs the
+              -- database knows. @pkg-config@ is neither a companion tool nor
+              -- configured by the compiler, yet this database is the one the
+              -- solver reads the pkg-config database through: without re-adding
+              -- it here, @--with-pkg-config@ and @pkg-config-location@ would be
+              -- honoured by Setup configure but silently ignored by the solver.
+              progDb <-
+                Cabal.configCompilerProgDb
+                  verbosity
+                  hc
+                  (addKnownProgram pkgConfigProgram (clearUnconfiguredPrograms hcProgDb))
+                  hcPkg
+              -- Re-apply the user-supplied program locations: 'configCompilerProgDb'
+              -- drops the unconfigured programs (along with any user-specified
+              -- locations) and re-adds the toolchain programs (gcc, ar, ld, ...)
+              -- without them. Without this, @--with-gcc@ and the @program-locations@
+              -- section would have no effect (see #11881).
+              return $ userPaths machine progDb
+          return
+            Toolchain
+              { toolchainCompiler = hc
+              , toolchainPlatform = plat
+              , toolchainProgramDb = finalProgDb
+              }
+
+    -- The host machine keeps the cache file name the single compiler always
+    -- had, so an existing dist-newstyle is not reconfigured on upgrade.
+    hostToolchain <-
+      configureMachine
+        Host
+        "compiler"
+        (flagToMaybe projectConfigHcFlavor)
+        (flagToMaybe projectConfigHcPath)
+        (flagToMaybe projectConfigHcPkg)
+
+    -- A distinct build toolchain exists only when a build-machine compiler is
+    -- requested AND it turns out to be a different compiler from the host's.
+    -- Otherwise there is no separate build machine ('onBuild' is 'Nothing'): it
+    -- falls back to the host machine. This 'Nothing'\/'Just' is the single source
+    -- of truth for whether the build is cross-compiling.
     --
-    --  1. Call 'clearUnconfiguredPrograms' to ensure the consistency between
-    --     the first run (in-memory) and when deserialising from cache.
-    --  2. Add on auxiliary unconfigured programs to the ProgramDb
-    --     (e.g. hsc2hs, haddock, ar, ld...).
+    -- When a build compiler is requested, the flavour and path fall back to the
+    -- host's (the build compiler is the same /kind/ of compiler, and the flavour
+    -- is required — it is not inferred from the path). The @hc-pkg@ does NOT fall
+    -- back: it is discovered next to the build compiler, so inheriting the host's
+    -- @hc-pkg@ would pair it with the wrong compiler.
     --
-    -- See Note [Caching the result of configuring the compiler]
-    finalProgDb <-
-      liftIO $ do
-        progDb <-
-          Cabal.configCompilerProgDb
-            verbosity
-            hc
-            (clearUnconfiguredPrograms hcProgDb)
-            hcPkg
-        -- Re-apply the user-supplied program locations: 'configCompilerProgDb'
-        -- drops the unconfigured programs (along with any user-specified
-        -- locations) and re-adds the toolchain programs (gcc, ar, ld, ...)
-        -- without them. Without this, @--with-gcc@ and the @program-locations@
-        -- section would have no effect (see #11881).
-        return $ userPaths progDb
-    return (hc, plat, finalProgDb)
-    where
-      hcFlavor = flagToMaybe projectConfigHcFlavor
-      hcPath = flagToMaybe projectConfigHcPath
-      hcPkg = flagToMaybe projectConfigHcPkg
+    -- The comparison is made on the /configured/ compilers, not on the options:
+    -- a build system may pass @--with-build-compiler@ explicitly equal to
+    -- @--with-compiler@ (GHC's own staged bootstrap does this for its non-cross
+    -- stage1), or spell the same compiler two ways (@ghc@ vs its absolute
+    -- path). Treating that as cross-compiling would solve, elaborate and build
+    -- every shared dependency twice, under two indistinguishable 'UnitId's:
+    -- 'sameCompiler' compares exactly the compiler properties that go into a
+    -- unit id, so two toolchains it identifies would have produced identical
+    -- unit ids.
+    let buildHcFlavor = flagToMaybe projectConfigBuildHcFlavor
+        buildHcPath = flagToMaybe projectConfigBuildHcPath
+        buildHcPkg = flagToMaybe projectConfigBuildHcPkg
+    buildToolchain <-
+      if isJust buildHcFlavor || isJust buildHcPath || isJust buildHcPkg
+        then do
+          candidate <-
+            configureMachine
+              Build
+              "build-compiler"
+              (buildHcFlavor <|> flagToMaybe projectConfigHcFlavor)
+              (buildHcPath <|> flagToMaybe projectConfigHcPath)
+              buildHcPkg
+          return $
+            if sameCompiler hostToolchain candidate
+              then Nothing
+              else Just candidate
+        else pure Nothing
+
+    return PerMachine{onHost = hostToolchain, onBuild = buildToolchain}
+
+-- | Does the project configuration give any build-machine program location or
+-- argument, for any package?
+hasBuildProgramSettings :: ProjectConfig -> Bool
+hasBuildProgramSettings ProjectConfig{..} =
+  any
+    hasSettings
+    ( projectConfigAllPackages
+        : projectConfigLocalPackages
+        : Map.elems (getMapMappend projectConfigSpecificPackage)
+    )
+  where
+    hasSettings pkgconf =
+      not (Map.null (getMapLast (packageConfigBuildProgramPaths pkgconf)))
+        || not (Map.null (getMapMappend (packageConfigBuildProgramArgs pkgconf)))
+
+-- | The user-supplied program locations for packages of a given 'Machine':
+-- @--with-PROG@ and @program-locations@ for the host machine,
+-- @--with-build-PROG@ and @build-program-locations@ for the build machine.
+-- Neither machine inherits the other's.
+machineProgramPaths :: Machine -> PackageConfig -> MapLast String FilePath
+machineProgramPaths Host = packageConfigProgramPaths
+machineProgramPaths Build = packageConfigBuildProgramPaths
+
+-- | The user-supplied program arguments for packages of a given 'Machine':
+-- @--PROG-options@ and @program-options@ for the host machine,
+-- @--build-PROG-options@ and @build-program-options@ for the build machine.
+-- Neither machine inherits the other's.
+machineProgramArgs :: Machine -> PackageConfig -> MapMappend String [String]
+machineProgramArgs Host = packageConfigProgramArgs
+machineProgramArgs Build = packageConfigBuildProgramArgs
+
+-- | The configuration of a @package host:*@ or @package build:*@ stanza, as
+-- it applies to its machine. The stanza already names its machine, so in a
+-- @package build:*@ stanza the plain program fields (@gcc-location@,
+-- @ghc-options@, ...) are build-machine settings: they are moved to the
+-- build-machine fields, which is where the build machine reads them from (see
+-- 'machineProgramPaths' and 'machineProgramArgs').
+machineStanzaConfig :: Machine -> PackageConfig -> PackageConfig
+machineStanzaConfig Host pkgconf = pkgconf
+machineStanzaConfig Build pkgconf =
+  pkgconf
+    { packageConfigProgramPaths = mempty
+    , packageConfigProgramArgs = mempty
+    , packageConfigBuildProgramPaths =
+        packageConfigProgramPaths pkgconf <> packageConfigBuildProgramPaths pkgconf
+    , packageConfigBuildProgramArgs =
+        packageConfigProgramArgs pkgconf <> packageConfigBuildProgramArgs pkgconf
+    }
+
+-- | Do two toolchains build the same thing the same way?
+--
+-- This compares exactly the toolchain properties that go into a 'UnitId': the
+-- compiler's id and ABI tag, and the platform it targets. Two toolchains this
+-- identifies would produce identical unit ids, so treating them as two machines
+-- would solve, elaborate and build every shared dependency twice under
+-- indistinguishable keys. It deliberately ignores the 'ProgramDb', so the same
+-- compiler named two ways (@ghc@ and its absolute path) compares equal.
+sameCompiler :: Toolchain -> Toolchain -> Bool
+sameCompiler a b =
+  compilerId (toolchainCompiler a) == compilerId (toolchainCompiler b)
+    && compilerAbiTag (toolchainCompiler a) == compilerAbiTag (toolchainCompiler b)
+    && toolchainPlatform a == toolchainPlatform b
 
 {- Note [Caching the result of configuring the compiler]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -733,12 +933,12 @@ rebuildInstallPlan
               , progsearchpath
               )
               $ do
-                compilerEtc <- phaseConfigureCompiler projectConfig
-                _ <- phaseConfigurePrograms projectConfig compilerEtc
+                toolchains <- phaseConfigureCompiler projectConfig
+                _ <- phaseConfigurePrograms projectConfig toolchains
                 (solverPlan, pkgConfigDB, totalIndexState, activeRepos) <-
                   phaseRunSolver
                     projectConfig
-                    compilerEtc
+                    toolchains
                     localPackages
                     (fromMaybe mempty mbInstalledPackages)
                 ( elaboratedPlan
@@ -746,7 +946,7 @@ rebuildInstallPlan
                   ) <-
                   phaseElaboratePlan
                     projectConfig
-                    compilerEtc
+                    toolchains
                     pkgConfigDB
                     solverPlan
                     localPackages
@@ -776,8 +976,8 @@ rebuildInstallPlan
       --
       phaseConfigureCompiler
         :: ProjectConfig
-        -> Rebuild (Compiler, Platform, ProgramDb)
-      phaseConfigureCompiler = configureCompiler verbosity distDirLayout
+        -> Rebuild Toolchains
+      phaseConfigureCompiler = configureToolchains verbosity distDirLayout
 
       -- Configuring other programs.
       --
@@ -793,17 +993,36 @@ rebuildInstallPlan
       --
       phaseConfigurePrograms
         :: ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> Toolchains
         -> Rebuild ()
-      phaseConfigurePrograms projectConfig (_, _, compilerProgDb) = do
+      phaseConfigurePrograms projectConfig toolchains = do
         -- Users are allowed to specify program locations independently for
         -- each package (e.g. to use a particular version of a pre-processor
         -- for some packages). However they cannot do this for the compiler
-        -- itself as that's just not going to work. So we check for this.
+        -- itself as that's just not going to work. So we check for this, for
+        -- each machine against that machine's compiler.
         liftIO $
-          checkBadPerPackageCompilerPaths
-            (configuredPrograms compilerProgDb)
-            (getMapMappend (projectConfigSpecificPackage projectConfig))
+          sequence_ $
+            mapWithMachine
+              ( \machine toolchain ->
+                  checkBadPerPackageCompilerPaths
+                    (machineProgramPaths machine)
+                    (configuredPrograms (toolchainProgramDb toolchain))
+                    (getMapMappend (projectConfigSpecificPackage projectConfig))
+              )
+              toolchains
+
+        -- Without cross-compilation there is no build machine, so nothing
+        -- uses the build-machine program settings. They do not fall back to
+        -- the host machine either: say so rather than ignoring them silently.
+        unless (isCross toolchains || not (hasBuildProgramSettings projectConfig)) $
+          liftIO $
+            warn verbosity $
+              "The build-machine program settings (--with-build-PROG, "
+                ++ "--build-PROG-options, build-program-locations, "
+                ++ "build-program-options) are ignored: there is no build "
+                ++ "machine because the build is not cross-compiling. Use "
+                ++ "--with-PROG and --PROG-options instead."
 
       -- TODO: [required eventually] find/configure other programs that the
       -- user specifies.
@@ -816,10 +1035,10 @@ rebuildInstallPlan
       --
       phaseRunSolver
         :: ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> Toolchains
         -> [PackageSpecifier UnresolvedSourcePackage]
         -> InstalledPackageIndex
-        -> Rebuild (SolverInstallPlan, Maybe PkgConfigDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
+        -> Rebuild (SolverInstallPlan, PerMachine (Maybe PkgConfigDb), IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
       phaseRunSolver
         projectConfig@ProjectConfig
           { projectConfigShared
@@ -827,8 +1046,9 @@ rebuildInstallPlan
           , projectConfigAllPackages
           , projectConfigLocalPackages
           , projectConfigSpecificPackage
+          , projectConfigMachinePackages
           }
-        (compiler, platform, progdb)
+        toolchains
         localPackages
         installedPackages =
           rerunIfChanged
@@ -837,25 +1057,40 @@ rebuildInstallPlan
             ( solverSettings
             , localPackages
             , localPackagesEnabledStanzas
-            , compiler
-            , platform
-            , programDbSignature progdb
+            , -- Every machine's toolchain is part of the key: the build machine's
+              -- installed index is read inside this block, so changing only
+              -- --with-build-compiler must invalidate the cached plan too.
+              fmap toolchainSignature toolchains
             )
             $ do
+              -- Read the installed-package index once per machine: the host
+              -- toolchain's index and, when cross-compiling, the build
+              -- toolchain's index too. In a non-cross build the per-machine
+              -- toolchain has no build machine, so this reads a single index.
               installedPkgIndex <-
-                getInstalledPackages
-                  verbosity
-                  compiler
-                  progdb
-                  platform
-                  corePackageDbs
+                traverseWithMachine
+                  ( \machine tc ->
+                      getInstalledPackages
+                        verbosity
+                        (toolchainCompiler tc)
+                        (toolchainProgramDb tc)
+                        (toolchainPlatform tc)
+                        (corePackageDbs machine)
+                  )
+                  toolchains
               (sourcePkgDb, tis, ar) <-
                 getSourcePackages
                   verbosity
                   withRepoCtx
                   (solverSettingIndexState solverSettings)
                   (solverSettingActiveRepos solverSettings)
-              pkgConfigDB <- getPkgConfigDb verbosity progdb
+              -- Read the pkg-config database once per machine too. Each
+              -- toolchain's own pkg-config answers for the platform that
+              -- toolchain targets, so under cross-compilation a library
+              -- cross-compiled for the host is found through the host
+              -- toolchain and never mistaken for the build machine's copy.
+              pkgConfigDB <-
+                traverse (getPkgConfigDb verbosity . toolchainProgramDb) toolchains
 
               -- TODO: [code cleanup] it'd be better if the Compiler contained the
               -- ConfiguredPrograms that it needs, rather than relying on the progdb
@@ -868,10 +1103,11 @@ rebuildInstallPlan
                   foldProgress logMsg (pure . Left) (pure . Right) $
                     planPackages
                       verbosity
-                      compiler
-                      platform
+                      toolchains
                       solverSettings
-                      (installedPackages <> installedPkgIndex)
+                      -- Pre-supplied installed packages (e.g. from a GHC
+                      -- environment file) belong to the host machine only.
+                      (overMachine Host (installedPackages <>) installedPkgIndex)
                       sourcePkgDb
                       pkgConfigDB
                       localPackages
@@ -882,9 +1118,26 @@ rebuildInstallPlan
                     dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
-            corePackageDbs :: PackageDBStackCWD
+            -- Host-machine values, for reporting planning failures. Solving
+            -- itself is per machine.
+            Toolchain
+              { toolchainCompiler = compiler
+              , toolchainPlatform = platform
+              } = onMachine toolchains Host
+
+            toolchainSignature :: Toolchain -> (Compiler, Platform, [ConfiguredProgram])
+            toolchainSignature tc =
+              ( toolchainCompiler tc
+              , toolchainPlatform tc
+              , programDbSignature (toolchainProgramDb tc)
+              )
+
+            corePackageDbs :: Machine -> PackageDBStackCWD
             corePackageDbs =
-              Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigShared)
+              Cabal.interpretPackageDbFlags False . projectPackageDbs
+
+            projectPackageDbs :: Machine -> [Maybe PackageDBCWD]
+            projectPackageDbs = projectPackageDbsFor projectConfigShared
 
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
@@ -895,7 +1148,7 @@ rebuildInstallPlan
 
             solverSettings = resolveSolverSettings projectConfig
             logMsg message rest = debugNoWrap verbosity message >> rest
-            perPkgOption = lookupPerPkgOption (const True) projectConfigAllPackages projectConfigLocalPackages (getMapMappend projectConfigSpecificPackage)
+            perPkgOption = lookupPerPkgOption (const True) projectConfigAllPackages projectConfigLocalPackages (getMapMappend projectConfigMachinePackages) (getMapMappend projectConfigSpecificPackage) Host
 
             -- TODO: "local" misnomer: we should separate
             -- builtin/global/inplace/local packages and packages explicitly
@@ -916,8 +1169,8 @@ rebuildInstallPlan
       phaseElaboratePlan
         :: HasCallStack
         => ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
-        -> Maybe PkgConfigDb
+        -> Toolchains
+        -> PerMachine (Maybe PkgConfigDb)
         -> SolverInstallPlan
         -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
         -> Rebuild
@@ -930,9 +1183,10 @@ rebuildInstallPlan
           , projectConfigAllPackages
           , projectConfigLocalPackages
           , projectConfigSpecificPackage
+          , projectConfigMachinePackages
           , projectConfigBuildOnly
           }
-        (compiler, platform, compilerProgDb)
+        toolchains
         pkgConfigDB
         solverPlan
         localPackages = do
@@ -947,16 +1201,20 @@ rebuildInstallPlan
 
           defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
           let installDirs = fmap Cabal.fromFlag $ fmap Flag defaultInstallDirs <> projectConfigInstallDirs projectConfigShared
-          -- Configure the compiler ProgramDb now (once for the entire project),
-          -- to avoid repeatedly doing this once per package.
-          configuredCompilerProgDb <- liftIO $ configureAllKnownPrograms verbosity compilerProgDb
+          -- Configure the ProgramDb of every toolchain now (once for the entire
+          -- project), to avoid repeatedly doing this once per package. The
+          -- build machine is 'Nothing' in a non-cross build, so this configures
+          -- exactly one program database there.
+          toolchains' <-
+            liftIO $
+              traverse
+                (\tc -> (\progdb -> tc{toolchainProgramDb = progdb}) <$> configureAllKnownPrograms verbosity (toolchainProgramDb tc))
+                toolchains
           (elaboratedPlan, elaboratedShared) <-
             liftIO . runLogProgress verbosity $
               elaborateInstallPlan
                 verbosity
-                platform
-                compiler
-                configuredCompilerProgDb
+                toolchains'
                 pkgConfigDB
                 distDirLayout
                 cabalStoreDirLayout
@@ -968,6 +1226,7 @@ rebuildInstallPlan
                 projectConfigAllPackages
                 projectConfigLocalPackages
                 (getMapMappend projectConfigSpecificPackage)
+                (getMapMappend projectConfigMachinePackages)
           let instantiatedPlan =
                 instantiateInstallPlan
                   cabalStoreDirLayout
@@ -977,6 +1236,9 @@ rebuildInstallPlan
           liftIO $ debugNoWrap verbosity (showElaboratedInstallPlan instantiatedPlan)
           return (instantiatedPlan, elaboratedShared)
           where
+            -- Host-machine compiler, used to compute the install dirs.
+            compiler = toolchainCompiler (onMachine toolchains Host)
+
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
               projectConfigWithSolverRepoContext
@@ -1015,7 +1277,11 @@ rebuildInstallPlan
         -> Rebuild ElaboratedInstallPlan
       phaseImprovePlan elaboratedPlan elaboratedShared = do
         liftIO $ debug verbosity "Improving the install plan..."
-        storePkgIdSet <- getStoreEntries cabalStoreDirLayout compiler
+        -- Each machine's compiler has its own store; read them all. Unit ids
+        -- hash the compiler, so a plain union cannot confuse the machines.
+        storePkgIdSet <-
+          fmap (Set.unions . toList) . for toolchains $ \toolchain ->
+            getStoreEntries cabalStoreDirLayout (toolchainCompiler toolchain)
         let improvedPlan =
               improveInstallPlanWithInstalledPackages
                 storePkgIdSet
@@ -1027,7 +1293,7 @@ rebuildInstallPlan
         -- matches up as expected, e.g. no dangling deps, files deleted.
         return improvedPlan
         where
-          compiler = pkgConfigCompiler elaboratedShared
+          toolchains = pkgConfigToolchains elaboratedShared
 
 -- | If a 'PackageSpecifier' refers to a single package, return Just that
 -- package.
@@ -1351,19 +1617,17 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 
 planPackages
   :: Verbosity
-  -> Compiler
-  -> Platform
+  -> Toolchains
   -> SolverSettings
-  -> InstalledPackageIndex
+  -> PerMachine InstalledPackageIndex
   -> SourcePackageDb
-  -> Maybe PkgConfigDb
+  -> PerMachine (Maybe PkgConfigDb)
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> Map PackageName (Map OptionalStanza Bool)
   -> Progress String String SolverInstallPlan
 planPackages
   verbosity
-  comp
-  platform
+  toolchains
   SolverSettings{..}
   installedPkgIndex
   sourcePkgDb
@@ -1371,11 +1635,17 @@ planPackages
   localPackages
   pkgStanzasEnable =
     resolveDependencies
-      platform
-      (compilerInfo comp)
+      (fmap (\tc -> (compilerInfo (toolchainCompiler tc), toolchainPlatform tc)) toolchains)
       pkgConfigDB
       resolverParams
     where
+      -- The solver plans for the host machine; the build toolchain is available
+      -- via @toolchains@ for later machine-aware planning (e.g. setup deps).
+      Toolchain
+        { toolchainCompiler = comp
+        , toolchainPlatform = platform
+        } = onMachine toolchains Host
+
       -- TODO: [nice to have] disable multiple instances restriction in
       -- the solver, but then make sure we can cope with that in the
       -- output.
@@ -1665,14 +1935,37 @@ planPackages
 --
 -- In theory should be able to make an elaborated install plan with a policy
 -- matching that of the classic @cabal install --user@ or @--global@
+-- | The project's package-db settings for a 'Machine'.
+--
+-- @package-dbs:@ and @--package-db@ name databases of the host compiler, and
+-- a package database is only readable by the compiler that wrote it. A
+-- distinct build toolchain therefore inherits none of them: its stack is its
+-- own global database plus its own store.
+--
+-- A 'Build' machine exists only when there is a distinct build toolchain (see
+-- 'toolMachine'), so this needs no cross-compilation check. When there is no
+-- distinct build toolchain, setup scripts and build tools are built at the
+-- host machine and an ordinary build keeps the settings everywhere.
+projectPackageDbsFor
+  :: ProjectConfigShared
+  -> Machine
+  -> [Maybe PackageDBCWD]
+projectPackageDbsFor _ Build = []
+projectPackageDbsFor shared Host = projectConfigPackageDBs shared
+
 elaborateInstallPlan
   :: HasCallStack
   => Verbosity
-  -> Platform
-  -> Compiler
-  -> ProgramDb
-  -- ^ __Configured__ compiler program database (ghc, ghc-pkg, haddock, ld, etc)
-  -> Maybe PkgConfigDb
+  -> Toolchains
+  -- ^ The per-machine toolchains, each with a __configured__ compiler program
+  -- database (ghc, ghc-pkg, haddock, ld, etc). Every package is configured
+  -- against the toolchain of its own machine ('elabToolchain'); the 'Host'
+  -- machine additionally drives the project-wide decisions (package databases,
+  -- install dirs).
+  -> PerMachine (Maybe PkgConfigDb)
+  -- ^ The pkg-config database of each machine, read through that machine's
+  -- toolchain. A package's @pkgconfig-depends@ are resolved against the
+  -- database of its own machine.
   -> DistDirLayout
   -> StoreDirLayout
   -> SolverInstallPlan
@@ -1683,12 +1976,11 @@ elaborateInstallPlan
   -> PackageConfig
   -> PackageConfig
   -> Map PackageName PackageConfig
+  -> Map Machine PackageConfig
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan
   verbosity
-  platform
-  compiler
-  compilerProgDb
+  toolchains
   pkgConfigDB
   distDirLayout@DistDirLayout{..}
   storeDirLayout@StoreDirLayout{storePackageDBStack}
@@ -1696,18 +1988,21 @@ elaborateInstallPlan
   localPackages
   sourcePackageHashes
   defaultInstallDirs
-  sharedPackageConfig
+  projectConfigShared
   allPackagesConfig
   localPackagesConfig
-  perPackageConfig = do
+  perPackageConfig
+  machinePackagesConfig = do
     x <- elaboratedInstallPlan
     return (x, elaboratedSharedConfig)
     where
+      -- The full 'Toolchains' (host + build) are carried in
+      -- 'ElaboratedSharedConfig'. Each package's own machine toolchain is
+      -- selected per-package in 'elaborateSolverToCommon'; the project-wide
+      -- computations below select the machine they need explicitly.
       elaboratedSharedConfig =
         ElaboratedSharedConfig
-          { pkgConfigPlatform = platform
-          , pkgConfigCompiler = compiler
-          , pkgConfigCompilerProgs = compilerProgDb
+          { pkgConfigToolchains = toolchains
           , pkgConfigReplOptions = mempty
           }
 
@@ -1731,7 +2026,7 @@ elaborateInstallPlan
         flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
           case planpkg of
             SolverInstallPlan.PreExisting pkg ->
-              return [InstallPlan.PreExisting (instSolverPkgIPI pkg)]
+              return [InstallPlan.PreExisting (WithMachine (instSolverMachine pkg) (instSolverPkgIPI pkg))]
             SolverInstallPlan.Configured pkg ->
               let inplace_doc
                     | shouldBuildInplaceOnly pkg = text "inplace"
@@ -1750,7 +2045,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0) = do
+      elaborateSolverToComponents mapDep spkg@(SolverPackage solverPkgMachine _ _ _ deps0 exe_deps0) = do
         when (bt == PD.Make) $
           dieProgress $
             text "'build-type: Make' is no longer supported."
@@ -1776,6 +2071,7 @@ elaborateInstallPlan
                 checkPerPackageOk comps notPerCompReasons
                 pkgComp <-
                   elaborateSolverToPackage
+                    mapDep
                     notPerCompReasons
                     spkg
                     g
@@ -1829,7 +2125,7 @@ elaborateInstallPlan
               -- For ease of testing, we let per-component builds be toggled
               -- at the top level
               cuz_flag
-                | fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig) =
+                | fromFlagOrDefault True (projectConfigPerComponent projectConfigShared) =
                     []
                 | otherwise = [CuzDisablePerComponent]
 
@@ -1935,14 +2231,26 @@ elaborateInstallPlan
                             (\cid -> do_ cid)
                             (cc_includes cc0)
                         )
+                    -- Each executable dependency is tagged with the build
+                    -- 'Machine' it was solved for.  We keep exactly the set of
+                    -- executable dependencies the mix-in linking produced (so
+                    -- PATH wiring is unchanged) and only attach the machine: an
+                    -- external build-tool takes the machine of the plan node the
+                    -- solver resolved it to (the 'Build' machine under cross-
+                    -- compilation), looked up by its 'ComponentId'; an internal
+                    -- executable shares this package's own machine.
+                    exeDepMachine cid =
+                      Map.findWithDefault solverPkgMachine (confInstId cid) externalExeDepMachines
                     compExeDependencies =
-                      map
-                        annotatedIdToConfiguredId
-                        (cc_exe_deps cc0)
+                      [ WithMachine (exeDepMachine confId) confId
+                      | aid <- cc_exe_deps cc0
+                      , let confId = annotatedIdToConfiguredId aid
+                      ]
                     compExeDependencyPaths =
-                      [ (annotatedIdToConfiguredId aid', path)
-                      | aid' <- cc_exe_deps cc0
-                      , Just paths <- [Map.lookup (ann_id aid') exe_map1]
+                      [ (WithMachine (exeDepMachine confId) confId, path)
+                      | aid <- cc_exe_deps cc0
+                      , let confId = annotatedIdToConfiguredId aid
+                      , Just paths <- [Map.lookup (ann_id aid) exe_map1]
                       , path <- paths
                       ]
                     elab_comp = ElaboratedComponent{..}
@@ -2060,6 +2368,15 @@ elaborateInstallPlan
                   ]
               exe_map1 = Map.union external_exe_map $ fmap (\x -> [x]) exe_map
 
+              -- The 'Machine' the solver resolved each external executable
+              -- dependency to, keyed by 'ComponentId'.  Used to tag the
+              -- component's executable dependencies with their actual machine.
+              externalExeDepMachines =
+                Map.fromList
+                  [ (getComponentId pkg, planPkgMachine pkg)
+                  | pkg <- external_exe_dep_pkgs
+                  ]
+
               external_lib_cc_map =
                 Map.fromListWith Map.union $
                   map mkCCMapping external_lib_dep_pkgs
@@ -2080,7 +2397,7 @@ elaborateInstallPlan
                             ++ " from "
                             ++ prettyShow (elabPkgSourceId elab0)
                       )
-                      (pkgConfigDB >>= \db -> pkgConfigDbPkgVersion db pn)
+                      (onMachine pkgConfigDB (elabMachine elab0) >>= \db -> pkgConfigDbPkgVersion db pn)
                   )
                 | PkgconfigDependency pn _ <-
                     PD.pkgconfigDepends
@@ -2136,18 +2453,21 @@ elaborateInstallPlan
               <$> executables
 
       elaborateSolverToPackage
-        :: NE.NonEmpty NotPerComponentReason
+        :: (SolverId -> [ElaboratedPlanPackage])
+        -> NE.NonEmpty NotPerComponentReason
         -> SolverPackage UnresolvedPkgLoc
         -> ComponentsGraph
         -> [ElaboratedConfiguredPackage]
         -> LogProgress ElaboratedConfiguredPackage
       elaborateSolverToPackage
+        mapDep
         pkgWhyNotPerComponent
         pkg@( SolverPackage
+                _machine
                 (SourcePackage pkgid _gpd _srcloc _descOverride)
                 _flags
                 _stanzas
-                _deps0
+                deps0
                 _exe_deps0
               )
         compGraph
@@ -2200,17 +2520,28 @@ elaborateInstallPlan
             -- Need to filter out internal dependencies, because they don't
             -- correspond to anything real anymore.
             isExt confid = confSrcId confid /= pkgid
-            filterExt = filter isExt
-
             filterExt' :: [(ConfiguredId, a)] -> [(ConfiguredId, a)]
             filterExt' = filter (isExt . fst)
+
+            -- Variants for the machine-tagged executable dependencies.
+            filterExtWs = filter (isExt . withoutMachine)
+            filterExtWs' = filter (isExt . withoutMachine . fst)
 
             pkgLibDependencies =
               buildComponentDeps (filterExt' . compLibDependencies)
             pkgExeDependencies =
-              buildComponentDeps (filterExt . compExeDependencies)
+              buildComponentDeps (filterExtWs . compExeDependencies)
             pkgExeDependencyPaths =
-              buildComponentDeps (filterExt' . compExeDependencyPaths)
+              buildComponentDeps (filterExtWs' . compExeDependencyPaths)
+
+            -- The library dependencies of the @Setup.hs@ script, each tagged
+            -- with the 'Machine' the solver actually resolved it to, read
+            -- from the plan node rather than recomputed. See
+            -- 'pkgSetupLibDependencies'.
+            pkgSetupLibDependencies =
+              [ WithMachine (planPkgMachine p) (configuredId p)
+              | p <- CD.setupDeps deps0 >>= elaborateLibSolverId mapDep
+              ]
 
             -- TODO: Why is this flat?
             pkgPkgConfigDependencies =
@@ -2249,21 +2580,50 @@ elaborateInstallPlan
         -> (ElaboratedConfiguredPackage, LogProgress ())
       elaborateSolverToCommon
         pkg@( SolverPackage
+                machine
                 (SourcePackage pkgid gdesc srcloc descOverride)
                 flags
                 stanzas
                 deps0
                 _exe_deps0
               ) =
-          (elaboratedPackage, wayWarnings pkgid >> buildOptionsAdjustmentWarnings)
+          (elaboratedPackage, libraryWayWarnings toolchains perPkgOption elabMachine pkgid >> buildOptionsAdjustmentWarnings)
           where
             elaboratedPackage = ElaboratedConfiguredPackage{..}
+
+            -- The machine this package is elaborated for, and the toolchain that
+            -- goes with it. Everything this package is configured against
+            -- (finalisation, build options, configured programs) uses its own
+            -- machine's toolchain rather than the host one. In a non-cross build
+            -- the build machine falls back to the host toolchain, so this
+            -- selects the same toolchain there.
+            elabMachine = machine
+            -- The per-package option lookups, specialised to this package's
+            -- machine so that machine-qualified configuration ('package build:*',
+            -- 'package host:*') applies. The names are the ones the many uses
+            -- below expect; 'perPkgOptionOnMachine' is the machine-taking original.
+            perPkgOption :: (Package pkg, Monoid m) => pkg -> (PackageConfig -> m) -> m
+            perPkgOption = perPkgOptionOnMachine elabMachine
+            perPkgOptionFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> a
+            perPkgOptionFlag def = fmap (fromFlagOrDefault def) . perPkgOption
+            perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
+            perPkgOptionMaybe = fmap flagToMaybe . perPkgOption
+            perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
+            perPkgOptionList = perPkgOption
+            perPkgOptionLibExeFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> (PackageConfig -> Flag a) -> (a, a)
+            perPkgOptionLibExeFlag (fromFlagOrDefault -> f) pkgid' (perPkgOption pkgid' -> both) (perPkgOption pkgid' -> lib) =
+              (f both, f (both <> lib))
+            Toolchain
+              { toolchainCompiler = machineCompiler
+              , toolchainPlatform = machinePlatform
+              , toolchainProgramDb = machineProgDb
+              } = onMachine toolchains elabMachine
 
             buildOptionsAdjustmentWarnings :: LogProgress ()
             buildOptionsAdjustmentWarnings =
               mapM_ (warnProgress . text) $
                 Cabal.buildOptionsAdjustmentWarnings
-                  compiler
+                  machineCompiler
                   elabBuildOptionsRaw
                   elabBuildOptions
 
@@ -2282,8 +2642,8 @@ elaborateInstallPlan
               flags
               elabEnabledSpec
               (const Satisfied)
-              platform
-              (compilerInfo compiler)
+              machinePlatform
+              (compilerInfo machineCompiler)
               []
               gdesc of
               Right (desc, _) -> desc
@@ -2346,7 +2706,7 @@ elaborateInstallPlan
               if shouldBuildInplaceOnly pkg
                 then BuildInplaceOnly OnDisk
                 else BuildAndInstall
-            elabPackageDbs = projectConfigPackageDBs sharedPackageConfig
+            elabPackageDbs = projectPackageDbs elabMachine
             elabBuildPackageDBStack = buildAndRegisterDbs
             elabRegisterPackageDBStack = buildAndRegisterDbs
 
@@ -2357,15 +2717,26 @@ elaborateInstallPlan
                 elabPkgDescription
                 libDepGraph
                 deps0
-            elabSetupPackageDBStack = buildAndRegisterDbs
+            elabSetupPackageDBStack = buildSetupDbs
 
-            elabInplaceBuildPackageDBStack = inplacePackageDbs
-            elabInplaceRegisterPackageDBStack = inplacePackageDbs
-            elabInplaceSetupPackageDBStack = inplacePackageDbs
+            elabInplaceBuildPackageDBStack = machineInplacePackageDbs machine
+            elabInplaceRegisterPackageDBStack = machineInplacePackageDbs machine
+            elabInplaceSetupPackageDBStack = machineInplacePackageDbs setupMachine
 
+            -- A package is built against, and registered into, the databases
+            -- of its own machine.
             buildAndRegisterDbs
-              | shouldBuildInplaceOnly pkg = inplacePackageDbs
-              | otherwise = corePackageDbs
+              | shouldBuildInplaceOnly pkg = machineInplacePackageDbs machine
+              | otherwise = machineCorePackageDbs machine
+
+            -- The Setup.hs script runs on the /build/ machine, so its
+            -- dependencies come from the build machine's databases (the same
+            -- as the package's own unless cross-compiling).
+            buildSetupDbs
+              | shouldBuildInplaceOnly pkg = machineInplacePackageDbs setupMachine
+              | otherwise = machineCorePackageDbs setupMachine
+
+            setupMachine = toolMachine toolchains machine
 
             elabPkgDescriptionOverride = descOverride
 
@@ -2379,7 +2750,7 @@ elaborateInstallPlan
             elabBuildOptionsRaw =
               LBC.BuildOptions
                 { withVanillaLib = perPkgOptionFlag True pkgid packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
-                , withSharedLib = canBuildSharedLibs && pkgid `Set.member` pkgsUseSharedLibrary
+                , withSharedLib = (elabMachine, pkgid) `Set.member` pkgsUseSharedLibrary libWays
                 , withStaticLib = perPkgOptionFlag False pkgid packageConfigStaticLib
                 , withDynExe =
                     perPkgOptionFlag False pkgid packageConfigDynExe
@@ -2390,8 +2761,8 @@ elaborateInstallPlan
                 , withFullyStaticExe = perPkgOptionFlag False pkgid packageConfigFullyStaticExe
                 , withGHCiLib = perPkgOptionFlag False pkgid packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
                 , withProfExe = profExe
-                , withProfLib = canBuildProfilingLibs && pkgid `Set.member` pkgsUseProfilingLibrary
-                , withProfLibShared = canBuildProfilingSharedLibs && pkgid `Set.member` pkgsUseProfilingLibraryShared
+                , withProfLib = (elabMachine, pkgid) `Set.member` pkgsUseProfilingLibrary libWays
+                , withProfLibShared = (elabMachine, pkgid) `Set.member` pkgsUseProfilingLibraryShared libWays
                 , withBytecodeLib = perPkgOptionFlag False pkgid packageConfigBytecodeLib
                 , exeCoverage = perPkgOptionFlag False pkgid packageConfigCoverage
                 , libCoverage = perPkgOptionFlag False pkgid packageConfigCoverage
@@ -2407,10 +2778,10 @@ elaborateInstallPlan
                 , programPrefix = elabProgPrefix
                 , programSuffix = elabProgSuffix
                 }
-            okProfDyn = profilingDynamicSupportedOrUnknown compiler
+            okProfDyn = profilingDynamicSupportedOrUnknown machineCompiler
             profExe = perPkgOptionFlag False pkgid packageConfigProf
 
-            elabBuildOptions = Cabal.adjustBuildOptions compiler compilerProgDb elabBuildOptionsRaw
+            elabBuildOptions = Cabal.adjustBuildOptions machineCompiler machineProgDb elabBuildOptionsRaw
 
             ( elabProfExeDetail
               , elabProfLibDetail
@@ -2428,11 +2799,13 @@ elaborateInstallPlan
             -- the locations we discovered while configuring the compiler: this
             -- is what makes @--with-gcc@ and the @program-locations@ section in
             -- the config file win over the C compiler that GHC was built with.
+            -- The user-supplied settings are this package's machine's own (see
+            -- 'machineProgramPaths').
             elabProgramPaths =
-              getMapLast (perPkgOption pkgid packageConfigProgramPaths)
+              getMapLast (perPkgOption pkgid (machineProgramPaths elabMachine))
                 <> Map.fromList
                   [ (programId prog, programPath prog)
-                  | prog <- configuredPrograms compilerProgDb
+                  | prog <- configuredPrograms machineProgDb
                   ]
 
             elabProgramArgs =
@@ -2454,15 +2827,15 @@ elaborateInstallPlan
                   (++)
                   ( Map.fromList
                       [ (programId prog, args)
-                      | prog <- configuredPrograms compilerProgDb
+                      | prog <- configuredPrograms machineProgDb
                       , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
                       , not (null args)
                       ]
                   )
-                  (getMapMappend $ perPkgOption pkgid packageConfigProgramArgs)
+                  (getMapMappend $ perPkgOption pkgid (machineProgramArgs elabMachine))
 
             elabProgramPathExtra = fromNubList $ perPkgOption pkgid packageConfigProgramPathExtra
-            elabConfiguredPrograms = configuredPrograms compilerProgDb
+            elabConfiguredPrograms = configuredPrograms machineProgDb
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
             elabExtraLibDirsStatic = perPkgOptionList pkgid packageConfigExtraLibDirsStatic
@@ -2501,27 +2874,34 @@ elaborateInstallPlan
 
             elabBenchmarkOptions = perPkgOptionList pkgid packageConfigBenchmarkOptions
 
-      perPkgOptionFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> a
-      perPkgOptionFlag def = fmap (fromFlagOrDefault def) . perPkgOption
+      -- The per-package option lookup for a package built for a given machine.
+      -- 'elaborateSolverToCommon' fixes the machine to the package's own.
+      perPkgOptionOnMachine :: (Package pkg, Monoid m) => Machine -> pkg -> (PackageConfig -> m) -> m
+      perPkgOptionOnMachine = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig machinePackagesConfig perPackageConfig
 
-      perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
-      perPkgOptionMaybe = fmap flagToMaybe . perPkgOption
+      -- The project's package databases belong to the host compiler; a
+      -- distinct build toolchain gets none of them.
+      projectPackageDbs :: Machine -> [Maybe PackageDBCWD]
+      projectPackageDbs = projectPackageDbsFor projectConfigShared
 
-      perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
-      perPkgOptionList = perPkgOption
+      -- The package databases of a build machine: the store database of that
+      -- machine's compiler, and for in-place builds that compiler's dist
+      -- database too, on top of whichever project databases apply to the
+      -- machine. Equal for both machines unless cross-compiling.
+      machineCorePackageDbs :: Machine -> PackageDBStackCWD
+      machineCorePackageDbs s =
+        storePackageDBStack (machineCompilerOf s) (projectPackageDbs s)
 
-      perPkgOptionLibExeFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> (PackageConfig -> Flag a) -> (a, a)
-      perPkgOptionLibExeFlag (fromFlagOrDefault -> f) pkgid (perPkgOption pkgid -> both) (perPkgOption pkgid -> lib) =
-        (f both, f (both <> lib))
+      machineInplacePackageDbs :: Machine -> PackageDBStackCWD
+      machineInplacePackageDbs s =
+        machineCorePackageDbs s
+          ++ [distPackageDB (machinePlatformOf s) (compilerId (machineCompilerOf s))]
 
-      perPkgOption :: (Package pkg, Monoid m) => pkg -> (PackageConfig -> m) -> m
-      perPkgOption = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig perPackageConfig
+      machineCompilerOf :: Machine -> Compiler
+      machineCompilerOf s = toolchainCompiler (onMachine toolchains s)
 
-      inplacePackageDbs =
-        corePackageDbs
-          ++ [distPackageDB (compilerId compiler)]
-
-      corePackageDbs = storePackageDBStack compiler (projectConfigPackageDBs sharedPackageConfig)
+      machinePlatformOf :: Machine -> Platform
+      machinePlatformOf s = toolchainPlatform (onMachine toolchains s)
 
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be
@@ -2539,7 +2919,13 @@ elaborateInstallPlan
           map packageId $
             SolverInstallPlan.reverseDependencyClosure
               solverPlan
-              (map PlannedId (Set.toList pkgsLocalToProject))
+              -- Take the roots straight from the plan so each 'SolverId' carries
+              -- the machine it was solved for; a local package used as a build
+              -- tool then contributes both its host and build copies.
+              [ Graph.nodeKey pkg
+              | pkg <- SolverInstallPlan.toList solverPlan
+              , isLocalToProject pkg
+              ]
 
       isLocalToProject :: Package pkg => pkg -> Bool
       isLocalToProject pkg =
@@ -2553,135 +2939,14 @@ elaborateInstallPlan
       -- TODO: localPackages is a misnomer, it's all project packages
       -- here is where we decide which ones will be local!
 
-      pkgsUseSharedLibrary :: Set PackageId
-      pkgsUseSharedLibrary =
-        packagesWithLibDepsDownwardClosedProperty needsSharedLib
-
-      needsSharedLib pkgid =
-        fromMaybe
-          compilerShouldUseSharedLibByDefault
-          -- Case 1: --enable-shared or --disable-shared is passed explicitly, honour that.
-          ( case pkgSharedLib of
-              Just v -> Just v
-              Nothing -> case pkgDynExe of
-                -- case 2: If --enable-executable-dynamic is passed then turn on
-                -- shared library generation.
-                Just True ->
-                  -- Case 3: If --enable-profiling is passed, then we are going to
-                  -- build profiled dynamic, so no need for shared libraries.
-                  case pkgProf of
-                    Just True -> if canBuildProfilingSharedLibs then Nothing else Just True
-                    _ -> Just True
-                -- But don't necessarily turn off shared library generation if
-                -- --disable-executable-dynamic is passed. The shared objects might
-                -- be needed for something different.
-                _ -> Nothing
-          )
-        where
-          pkgSharedLib = perPkgOptionMaybe pkgid packageConfigSharedLib
-          pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
-          pkgProf = perPkgOptionMaybe pkgid packageConfigProf
-
-      -- TODO: [code cleanup] move this into the Cabal lib. It's currently open
-      -- coded in Distribution.Simple.Configure, but should be made a proper
-      -- function of the Compiler or CompilerInfo.
-      compilerShouldUseSharedLibByDefault =
-        case compilerFlavor compiler of
-          GHC -> GHC.compilerBuildWay compiler == DynWay && canBuildSharedLibs
-          _ -> False
-
-      compilerShouldUseProfilingLibByDefault =
-        case compilerFlavor compiler of
-          GHC -> GHC.compilerBuildWay compiler == ProfWay && canBuildProfilingLibs
-          _ -> False
-
-      compilerShouldUseProfilingSharedLibByDefault =
-        case compilerFlavor compiler of
-          GHC -> GHC.compilerBuildWay compiler == ProfDynWay && canBuildProfilingSharedLibs
-          _ -> False
-
-      -- Returns False if we definitely can't build shared libs
-      canBuildWayLibs predicate = case predicate compiler of
-        Just can_build -> can_build
-        -- If we don't know for certain, just assume we can
-        -- which matches behaviour in previous cabal releases
-        Nothing -> True
-
-      canBuildSharedLibs = canBuildWayLibs dynamicSupported
-      canBuildProfilingLibs = canBuildWayLibs profilingVanillaSupported
-      canBuildProfilingSharedLibs = canBuildWayLibs profilingDynamicSupported
-
-      wayWarnings pkg = do
-        when
-          (needsProfilingLib pkg && not canBuildProfilingLibs)
-          (warnProgress (text "Compiler does not support building p libraries, profiling is disabled"))
-        when
-          (needsSharedLib pkg && not canBuildSharedLibs)
-          (warnProgress (text "Compiler does not support building dyn libraries, dynamic libraries are disabled"))
-        when
-          (needsProfilingLibShared pkg && not canBuildProfilingSharedLibs)
-          (warnProgress (text "Compiler does not support building p_dyn libraries, profiling dynamic libraries are disabled."))
-
-      pkgsUseProfilingLibrary :: Set PackageId
-      pkgsUseProfilingLibrary =
-        packagesWithLibDepsDownwardClosedProperty needsProfilingLib
-
-      needsProfilingLib pkg =
-        fromFlagOrDefault compilerShouldUseProfilingLibByDefault (profBothFlag <> profLibFlag)
-        where
-          pkgid = packageId pkg
-          profBothFlag = perPkgOption pkgid packageConfigProf
-          profLibFlag = perPkgOption pkgid packageConfigProfLib
-
-      pkgsUseProfilingLibraryShared :: Set PackageId
-      pkgsUseProfilingLibraryShared =
-        packagesWithLibDepsDownwardClosedProperty needsProfilingLibShared
-
-      needsProfilingLibShared pkg =
-        fromMaybe
-          compilerShouldUseProfilingSharedLibByDefault
-          -- case 1: If --enable-profiling-shared is passed explicitly, honour that
-          ( case profLibSharedFlag of
-              Just v -> Just v
-              Nothing -> case pkgDynExe of
-                Just True ->
-                  case pkgProf of
-                    -- case 2: --enable-executable-dynamic + --enable-profiling
-                    -- turn on shared profiling libraries
-                    Just True -> if canBuildProfilingSharedLibs then Just True else Nothing
-                    _ -> Nothing
-                -- But don't necessarily turn off shared library generation is
-                -- --disable-executable-dynamic is passed. The shared objects might
-                -- be needed for something different.
-                _ -> Nothing
-          )
-        where
-          pkgid = packageId pkg
-          profLibSharedFlag = perPkgOptionMaybe pkgid packageConfigProfShared
-          pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
-          pkgProf = perPkgOptionMaybe pkgid packageConfigProf
-
-      -- TODO: [code cleanup] unused: the old deprecated packageConfigProfExe
+      libWays :: LibraryWays
+      libWays = elaborateLibraryWays toolchains libDepGraph perPkgOptionOnMachine
 
       libDepGraph =
         Graph.fromDistinctList $
           map
             NonSetupLibDepSolverPlanPackage
             (SolverInstallPlan.toList solverPlan)
-
-      packagesWithLibDepsDownwardClosedProperty property =
-        Set.fromList
-          . maybe [] (map packageId)
-          $ Graph.closure
-            libDepGraph
-            [ Graph.nodeKey pkg
-            | pkg <- SolverInstallPlan.toList solverPlan
-            , property (packageId pkg) -- just the packages that satisfy the property
-            -- TODO: [nice to have] this does not check the config consistency,
-            -- e.g. a package explicitly turning off profiling, but something
-            -- depending on it that needs profiling. This really needs a separate
-            -- package config validation/resolution pass.
-            ]
 
 -- TODO: [nice to have] config consistency checking:
 -- + profiling libs & exes, exe needs lib, recursive
@@ -2691,6 +2956,217 @@ elaborateInstallPlan
 
 -- TODO: Drop matchPlanPkg/matchElabPkg in favor of mkCCMapping
 
+-- | The set of build ways that each @(machine, package)@ should have its library
+-- built in (shared, profiling, profiling+shared).
+--
+-- Way selection is downward-closed over /library/ dependencies: if a package is
+-- built a given way, the libraries it links against must be available that way
+-- too. Capability and default-way decisions are made against each package's own
+-- /machine/ compiler, and the sets are keyed by @(Machine, PackageId)@ so that,
+-- when cross-compiling, a host package's way need does not leak onto the
+-- build-machine copy of the same package (or vice versa).
+data LibraryWays = LibraryWays
+  { pkgsUseSharedLibrary :: Set (Machine, PackageId)
+  , pkgsUseProfilingLibrary :: Set (Machine, PackageId)
+  , pkgsUseProfilingLibraryShared :: Set (Machine, PackageId)
+  }
+
+-- | A per-package project-config lookup, specialised to the @Flag Bool@ fields
+-- the way selection reads. This is 'perPkgOption' from
+-- 'elaborateInstallPlan', which merges the all\/local\/named config layers.
+type PerPkgConfigFlag = PackageId -> (PackageConfig -> Flag Bool) -> Flag Bool
+
+-- | Look up a per-package boolean option, as 'Nothing' when it is unset.
+perPkgConfigMaybe :: PerPkgConfigFlag -> PackageId -> (PackageConfig -> Flag Bool) -> Maybe Bool
+perPkgConfigMaybe lookupFlag pkgid f = flagToMaybe (lookupFlag pkgid f)
+
+-- The capability and default-way helpers below are pure functions of a single
+-- 'Compiler'; they do not look at dependencies. They used to close over the
+-- host compiler inside 'elaborateInstallPlan'; pulling them out lets each
+-- package consult its own machine compiler instead.
+
+-- | Returns 'False' only if we definitely cannot build libraries the given way;
+-- if the compiler does not say for certain we optimistically assume we can
+-- (matching the behaviour of previous cabal releases).
+-- | Whether a compiler supports building libraries in a given way, taking an
+-- unknown answer ('Nothing') as support.
+compilerCanBuildWayLibs :: (Compiler -> Maybe Bool) -> Compiler -> Bool
+compilerCanBuildWayLibs predicate compiler = fromMaybe True (predicate compiler)
+
+-- | Whether a compiler can build shared libraries.
+compilerCanBuildSharedLibs :: Compiler -> Bool
+compilerCanBuildSharedLibs = compilerCanBuildWayLibs dynamicSupported
+
+-- | Whether a compiler can build profiling libraries.
+compilerCanBuildProfilingLibs :: Compiler -> Bool
+compilerCanBuildProfilingLibs = compilerCanBuildWayLibs profilingVanillaSupported
+
+-- | Whether a compiler can build profiled shared libraries.
+compilerCanBuildProfilingSharedLibs :: Compiler -> Bool
+compilerCanBuildProfilingSharedLibs = compilerCanBuildWayLibs profilingDynamicSupported
+
+-- | Whether a compiler links against shared libraries by default (so that
+-- packages it builds need shared libraries of their dependencies).
+--
+-- TODO: [code cleanup] move these into the Cabal lib. They are currently open
+-- coded in Distribution.Simple.Configure, but should be made proper functions
+-- of the Compiler or CompilerInfo.
+compilerShouldUseSharedLibByDefault :: Compiler -> Bool
+compilerShouldUseSharedLibByDefault compiler =
+  case compilerFlavor compiler of
+    GHC -> GHC.compilerBuildWay compiler == DynWay && compilerCanBuildSharedLibs compiler
+    _ -> False
+
+-- | Whether a compiler builds profiled code by default (so that packages it
+-- builds need profiling libraries of their dependencies).
+compilerShouldUseProfilingLibByDefault :: Compiler -> Bool
+compilerShouldUseProfilingLibByDefault compiler =
+  case compilerFlavor compiler of
+    GHC -> GHC.compilerBuildWay compiler == ProfWay && compilerCanBuildProfilingLibs compiler
+    _ -> False
+
+-- | Whether a compiler builds profiled dynamic code by default (so that
+-- packages it builds need profiled shared libraries of their dependencies).
+compilerShouldUseProfilingSharedLibByDefault :: Compiler -> Bool
+compilerShouldUseProfilingSharedLibByDefault compiler =
+  case compilerFlavor compiler of
+    GHC -> GHC.compilerBuildWay compiler == ProfDynWay && compilerCanBuildProfilingSharedLibs compiler
+    _ -> False
+
+-- The @needs*@ predicates below are flat per-package checks (project config +
+-- the compiler's default way); they do not traverse dependencies. The downward
+-- closure over library deps is applied separately in 'elaborateLibraryWays'.
+
+-- | Does this package itself want a shared library build, given its own
+-- options and the compiler it is built with?
+needsSharedLib :: PerPkgConfigFlag -> Compiler -> PackageId -> Bool
+needsSharedLib lookupFlag compiler pkgid =
+  fromMaybe
+    (compilerShouldUseSharedLibByDefault compiler)
+    -- Case 1: --enable-shared or --disable-shared is passed explicitly, honour that.
+    ( case pkgSharedLib of
+        Just v -> Just v
+        Nothing -> case pkgDynExe of
+          -- case 2: If --enable-executable-dynamic is passed then turn on
+          -- shared library generation.
+          Just True ->
+            -- Case 3: If --enable-profiling is passed, then we are going to
+            -- build profiled dynamic, so no need for shared libraries.
+            case pkgProf of
+              Just True -> if compilerCanBuildProfilingSharedLibs compiler then Nothing else Just True
+              _ -> Just True
+          -- But don't necessarily turn off shared library generation if
+          -- --disable-executable-dynamic is passed. The shared objects might
+          -- be needed for something different.
+          _ -> Nothing
+    )
+  where
+    pkgSharedLib = perPkgConfigMaybe lookupFlag pkgid packageConfigSharedLib
+    pkgDynExe = perPkgConfigMaybe lookupFlag pkgid packageConfigDynExe
+    pkgProf = perPkgConfigMaybe lookupFlag pkgid packageConfigProf
+
+-- | Does this package itself want a profiling library build?
+needsProfilingLib :: PerPkgConfigFlag -> Compiler -> PackageId -> Bool
+needsProfilingLib lookupFlag compiler pkgid =
+  fromFlagOrDefault
+    (compilerShouldUseProfilingLibByDefault compiler)
+    (lookupFlag pkgid packageConfigProf <> lookupFlag pkgid packageConfigProfLib)
+
+-- | Does this package itself want a profiled shared library build?
+needsProfilingLibShared :: PerPkgConfigFlag -> Compiler -> PackageId -> Bool
+needsProfilingLibShared lookupFlag compiler pkgid =
+  fromMaybe
+    (compilerShouldUseProfilingSharedLibByDefault compiler)
+    -- case 1: If --enable-profiling-shared is passed explicitly, honour that
+    ( case profLibSharedFlag of
+        Just v -> Just v
+        Nothing -> case pkgDynExe of
+          Just True ->
+            case pkgProf of
+              -- case 2: --enable-executable-dynamic + --enable-profiling
+              -- turn on shared profiling libraries
+              Just True -> if compilerCanBuildProfilingSharedLibs compiler then Just True else Nothing
+              _ -> Nothing
+          -- But don't necessarily turn off shared library generation if
+          -- --disable-executable-dynamic is passed. The shared objects might
+          -- be needed for something different.
+          _ -> Nothing
+    )
+  where
+    profLibSharedFlag = perPkgConfigMaybe lookupFlag pkgid packageConfigProfShared
+    pkgDynExe = perPkgConfigMaybe lookupFlag pkgid packageConfigDynExe
+    pkgProf = perPkgConfigMaybe lookupFlag pkgid packageConfigProf
+
+-- | The 'Machine' of a solver-plan node, read from its machine-carrying
+-- 'SolverId' graph key.
+solverNodeMachine :: (Graph.IsNode a, Graph.Key a ~ SolverId) => a -> Machine
+solverNodeMachine = solverMachine . Graph.nodeKey
+
+-- | Decide, for every @(machine, package)@ in the plan, which library ways it
+-- should be built in. See 'LibraryWays'.
+--
+-- The graph passed in only follows /library/ dependencies (setup and exe deps,
+-- the two machine-crossing dep kinds, are excluded), keyed by machine-carrying
+-- 'SolverId'. Edges therefore never cross a machine boundary, so a single closure
+-- over the whole plan partitions cleanly by machine.
+elaborateLibraryWays
+  :: Toolchains
+  -> Graph.Graph NonSetupLibDepSolverPlanPackage
+  -> (Machine -> PerPkgConfigFlag)
+  -- ^ the per-package option lookup for a package of a given machine
+  -> LibraryWays
+elaborateLibraryWays toolchains libDepGraph lookupFlag =
+  LibraryWays
+    { pkgsUseSharedLibrary =
+        downwardClosedProperty compilerCanBuildSharedLibs needsSharedLib
+    , pkgsUseProfilingLibrary =
+        downwardClosedProperty compilerCanBuildProfilingLibs needsProfilingLib
+    , pkgsUseProfilingLibraryShared =
+        downwardClosedProperty compilerCanBuildProfilingSharedLibs needsProfilingLibShared
+    }
+  where
+    compilerFor :: Machine -> Compiler
+    compilerFor s = toolchainCompiler (onMachine toolchains s)
+
+    -- Seed the closure with every node whose own machine compiler makes it want
+    -- the way, take the downward (library-dependency) closure, key the result
+    -- by (machine, package), and keep only machines whose compiler can build it.
+    downwardClosedProperty
+      :: (Compiler -> Bool)
+      -> (PerPkgConfigFlag -> Compiler -> PackageId -> Bool)
+      -> Set (Machine, PackageId)
+    downwardClosedProperty capable needs =
+      Set.fromList
+        . filter (\(s, _) -> capable (compilerFor s))
+        . maybe [] (map (\pkg -> (solverNodeMachine pkg, packageId pkg)))
+        $ Graph.closure
+          libDepGraph
+          [ Graph.nodeKey pkg
+          | pkg <- Graph.toList libDepGraph
+          , needs (lookupFlag (solverNodeMachine pkg)) (compilerFor (solverNodeMachine pkg)) (packageId pkg)
+          -- TODO: [nice to have] this does not check config consistency, e.g. a
+          -- package explicitly turning off profiling but something depending on
+          -- it that needs profiling. That needs a separate config
+          -- validation/resolution pass.
+          ]
+
+-- | Warn when a package requests a library way its machine compiler cannot build.
+-- Uses the flat per-package predicates (not the downward closure) — we only
+-- warn about packages that themselves request the way.
+libraryWayWarnings :: Toolchains -> PerPkgConfigFlag -> Machine -> PackageId -> LogProgress ()
+libraryWayWarnings toolchains lookupFlag machine pkgid = do
+  when
+    (needsProfilingLib lookupFlag compiler pkgid && not (compilerCanBuildProfilingLibs compiler))
+    (warnProgress (text "Compiler does not support building p libraries, profiling is disabled"))
+  when
+    (needsSharedLib lookupFlag compiler pkgid && not (compilerCanBuildSharedLibs compiler))
+    (warnProgress (text "Compiler does not support building dyn libraries, dynamic libraries are disabled"))
+  when
+    (needsProfilingLibShared lookupFlag compiler pkgid && not (compilerCanBuildProfilingSharedLibs compiler))
+    (warnProgress (text "Compiler does not support building p_dyn libraries, profiling dynamic libraries are disabled."))
+  where
+    compiler = toolchainCompiler (onMachine toolchains machine)
+
 shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
 shouldBeLocal NamedPackage{} = Nothing
 shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of
@@ -2699,7 +3175,7 @@ shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of
 
 -- | Given a 'ElaboratedPlanPackage', report if it matches a 'ComponentName'.
 matchPlanPkg :: (ComponentName -> Bool) -> ElaboratedPlanPackage -> Bool
-matchPlanPkg p = InstallPlan.foldPlanPackage (p . ipiComponentName) (matchElabPkg p)
+matchPlanPkg p = InstallPlan.foldPlanPackage (p . ipiComponentName . withoutMachine) (matchElabPkg p)
 
 -- | Get the appropriate 'ComponentName' which identifies an installed
 -- component.
@@ -2733,7 +3209,7 @@ mkCCMapping
   -> (PackageName, Map ComponentName (AnnotatedId ComponentId))
 mkCCMapping =
   InstallPlan.foldPlanPackage
-    ( \ipkg ->
+    ( \(WithMachine _ ipkg) ->
         ( packageName ipkg
         , Map.singleton
             (ipiComponentName ipkg)
@@ -2777,7 +3253,7 @@ mkShapeMapping dpkg =
     (dcid, shape) =
       InstallPlan.foldPlanPackage
         -- Uses Monad (->)
-        (liftM2 (,) IPI.installedComponentId shapeInstalledPackage)
+        (liftM2 (,) IPI.installedComponentId shapeInstalledPackage . withoutMachine)
         (liftM2 (,) elabComponentId elabModuleShape)
         dpkg
     indef_uid =
@@ -2820,13 +3296,23 @@ binDirectories layout config package = case elabBuildStyle package of
       distBuildDirectory layout (elabDistDirParams config package)
         </> "build"
 
-type InstS = Map UnitId ElaboratedPlanPackage
+-- | The instantiation state is keyed by 'WithMachine UnitId': under
+-- cross-compilation the host and build copies of a component share a
+-- 'UnitId', so the machine keeps them distinct.
+type InstS = Map (WithMachine UnitId) ElaboratedPlanPackage
+
 type InstM a = State InstS a
+
+-- | The 'Machine' of an elaborated plan package.
+planPkgMachine :: ElaboratedPlanPackage -> Machine
+planPkgMachine (InstallPlan.PreExisting ipkg) = machineOf ipkg
+planPkgMachine (InstallPlan.Configured elab) = elabMachine elab
+planPkgMachine (InstallPlan.Installed elab) = elabMachine elab
 
 getComponentId
   :: ElaboratedPlanPackage
   -> ComponentId
-getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId dipkg
+getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId (withoutMachine dipkg)
 getComponentId (InstallPlan.Configured elab) = elabComponentId elab
 getComponentId (InstallPlan.Installed elab) = elabComponentId elab
 
@@ -2888,23 +3374,24 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
   where
     pkgs = InstallPlan.toList plan
 
-    cmap = Map.fromList [(getComponentId pkg, pkg) | pkg <- pkgs]
+    cmap = Map.fromList [(WithMachine (planPkgMachine pkg) (getComponentId pkg), pkg) | pkg <- pkgs]
 
     instantiateUnitId
-      :: ComponentId
+      :: Machine
+      -> ComponentId
       -> Map ModuleName (Module, BuildStyle)
       -> InstM (DefUnitId, BuildStyle)
-    instantiateUnitId cid insts = state $ \s ->
-      case Map.lookup uid s of
+    instantiateUnitId machine cid insts = state $ \s ->
+      case Map.lookup (WithMachine machine uid) s of
         Nothing ->
           -- Knot tied
           -- TODO: I don't think the knot tying actually does
           -- anything useful
           let (r, s') =
                 runState
-                  (instantiateComponent uid cid insts)
-                  (Map.insert uid r s)
-           in ((def_uid, extractElabBuildStyle r), Map.insert uid r s')
+                  (instantiateComponent uid machine cid insts)
+                  (Map.insert (WithMachine machine uid) r s)
+           in ((def_uid, extractElabBuildStyle r), Map.insert (WithMachine machine uid) r s')
         Just r -> ((def_uid, extractElabBuildStyle r), s)
       where
         def_uid = mkDefUnitId cid (fmap fst insts)
@@ -2914,18 +3401,19 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     -- the ElaboratedPlanPackage, so that will implicitly pass it on
     instantiateComponent
       :: UnitId
+      -> Machine
       -> ComponentId
       -> Map ModuleName (Module, BuildStyle)
       -> InstM ElaboratedPlanPackage
-    instantiateComponent uid cid insts
-      | Just planpkg <- Map.lookup cid cmap =
+    instantiateComponent uid machine cid insts
+      | Just planpkg <- Map.lookup (WithMachine machine cid) cmap =
           case planpkg of
             InstallPlan.Configured
               elab0@ElaboratedConfiguredPackage
                 { elabPkgOrComp = ElabComponent comp
                 } -> do
                 deps <-
-                  traverse (fmap fst . substUnitId insts) (compLinkedLibDependencies comp)
+                  traverse (fmap fst . substUnitId machine insts) (compLinkedLibDependencies comp)
                 let build_style = fold (fmap snd insts)
                 let getDep (Module dep_uid _) = [dep_uid]
                     elab1 =
@@ -2960,42 +3448,43 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
             _ -> return planpkg
       | otherwise = error ("instantiateComponent: " ++ prettyShow cid)
 
-    substUnitId :: Map ModuleName (Module, BuildStyle) -> OpenUnitId -> InstM (DefUnitId, BuildStyle)
-    substUnitId _ (DefiniteUnitId uid) =
+    substUnitId :: Machine -> Map ModuleName (Module, BuildStyle) -> OpenUnitId -> InstM (DefUnitId, BuildStyle)
+    substUnitId _ _ (DefiniteUnitId uid) =
       -- This COULD actually, secretly, be an inplace package, but in
       -- that case it doesn't matter as it's already been recorded
       -- in the package that depends on this
       return (uid, BuildAndInstall)
-    substUnitId subst (IndefFullUnitId cid insts) = do
-      insts' <- substSubst subst insts
-      instantiateUnitId cid insts'
+    substUnitId machine subst (IndefFullUnitId cid insts) = do
+      insts' <- substSubst machine subst insts
+      instantiateUnitId machine cid insts'
 
     -- NB: NOT composition
     substSubst
-      :: Map ModuleName (Module, BuildStyle)
+      :: Machine
+      -> Map ModuleName (Module, BuildStyle)
       -> Map ModuleName OpenModule
       -> InstM (Map ModuleName (Module, BuildStyle))
-    substSubst subst insts = traverse (substModule subst) insts
+    substSubst machine subst insts = traverse (substModule machine subst) insts
 
-    substModule :: Map ModuleName (Module, BuildStyle) -> OpenModule -> InstM (Module, BuildStyle)
-    substModule subst (OpenModuleVar mod_name)
+    substModule :: Machine -> Map ModuleName (Module, BuildStyle) -> OpenModule -> InstM (Module, BuildStyle)
+    substModule _machine subst (OpenModuleVar mod_name)
       | Just m <- Map.lookup mod_name subst = return m
       | otherwise = error "substModule: non-closing substitution"
-    substModule subst (OpenModule uid mod_name) = do
-      (uid', build_style) <- substUnitId subst uid
+    substModule machine subst (OpenModule uid mod_name) = do
+      (uid', build_style) <- substUnitId machine subst uid
       return (Module uid' mod_name, build_style)
 
-    indefiniteUnitId :: ComponentId -> InstM UnitId
-    indefiniteUnitId cid = do
+    indefiniteUnitId :: Machine -> ComponentId -> InstM UnitId
+    indefiniteUnitId machine cid = do
       let uid = newSimpleUnitId cid
-      r <- indefiniteComponent uid cid
-      state $ \s -> (uid, Map.insert uid r s)
+      r <- indefiniteComponent machine uid cid
+      state $ \s -> (uid, Map.insert (WithMachine machine uid) r s)
 
-    indefiniteComponent :: UnitId -> ComponentId -> InstM ElaboratedPlanPackage
-    indefiniteComponent _uid cid
+    indefiniteComponent :: Machine -> UnitId -> ComponentId -> InstM ElaboratedPlanPackage
+    indefiniteComponent machine _uid cid
       -- Only need Configured; this phase happens before improvement, so
       -- there shouldn't be any Installed packages here.
-      | Just (InstallPlan.Configured epkg) <- Map.lookup cid cmap
+      | Just (InstallPlan.Configured epkg) <- Map.lookup (WithMachine machine cid) cmap
       , ElabComponent elab_comp <- elabPkgOrComp epkg =
           do
             -- We need to do a little more processing of the includes: some
@@ -3015,7 +3504,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
             -- DefiniteUnitId (that's what substUnitId does!)
             new_deps <- for (compLinkedLibDependencies elab_comp) $ \uid ->
               if Set.null (openUnitIdFreeHoles uid)
-                then fmap (DefiniteUnitId . fst) (substUnitId Map.empty uid)
+                then fmap (DefiniteUnitId . fst) (substUnitId machine Map.empty uid)
                 else return uid
             -- NB: no fixupBuildStyle needed here, as if the indefinite
             -- component depends on any inplace packages, it itself must
@@ -3037,7 +3526,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                                 ++ [unDefUnitId d | DefiniteUnitId d <- new_deps]
                         }
                 }
-      | Just planpkg <- Map.lookup cid cmap =
+      | Just planpkg <- Map.lookup (WithMachine machine cid) cmap =
           return planpkg
       | otherwise = error ("indefiniteComponent: " ++ prettyShow cid)
 
@@ -3056,8 +3545,8 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     work = for_ pkgs $ \case
       InstallPlan.Configured elab
         | not (Map.null (elabLinkedInstantiatedWith elab)) ->
-            void $ indefiniteUnitId (elabComponentId elab)
-      pkg -> void $ instantiateUnitId (getComponentId pkg) Map.empty
+            void $ indefiniteUnitId (elabMachine elab) (elabComponentId elab)
+      pkg -> void $ instantiateUnitId (planPkgMachine pkg) (getComponentId pkg) Map.empty
 
 ---------------------------
 -- Build targets
@@ -3155,7 +3644,7 @@ availableTargets installPlan =
         [ (pkgid, cname, fake, target)
         | pkg <- InstallPlan.toList installPlan
         , (pkgid, cname, fake, target) <- case pkg of
-            InstallPlan.PreExisting ipkg -> availableInstalledTargets ipkg
+            InstallPlan.PreExisting ipkg -> availableInstalledTargets (withoutMachine ipkg)
             InstallPlan.Installed elab -> availableSourceTargets elab
             InstallPlan.Configured elab -> availableSourceTargets elab
         ]
@@ -3424,16 +3913,16 @@ pruneInstallPlanToTargets targetActionType perPkgTargetsMap elaboratedPlan =
 --
 -- For 'ElaboratedComponent', this the cached unit IDs always
 -- coincide with the real thing.
-data PrunedPackage = PrunedPackage ElaboratedConfiguredPackage [UnitId]
+data PrunedPackage = PrunedPackage ElaboratedConfiguredPackage [WithMachine UnitId]
 
 instance Package PrunedPackage where
   packageId (PrunedPackage elab _) = packageId elab
 
 instance HasUnitId PrunedPackage where
-  installedUnitId = Graph.nodeKey
+  installedUnitId (PrunedPackage elab _) = installedUnitId elab
 
 instance Graph.IsNode PrunedPackage where
-  type Key PrunedPackage = UnitId
+  type Key PrunedPackage = WithMachine UnitId
   nodeKey (PrunedPackage elab _) = Graph.nodeKey elab
   nodeNeighbors (PrunedPackage _ deps) = deps
 
@@ -3507,7 +3996,7 @@ pruneInstallPlanPass1 pkgs
   -- otherwise we'll do less
   | otherwise = pruned_packages
   where
-    pkgs' :: [InstallPlan.GenericPlanPackage IPI.InstalledPackageInfo PrunedPackage]
+    pkgs' :: [InstallPlan.GenericPlanPackage ElaboratedInstalledPackageInfo PrunedPackage]
     pkgs' = map (mapConfiguredPackage prune) pkgs
 
     prune :: ElaboratedConfiguredPackage -> PrunedPackage
@@ -3517,7 +4006,7 @@ pruneInstallPlanPass1 pkgs
 
     graph = Graph.fromDistinctList pkgs'
 
-    roots :: [UnitId]
+    roots :: [WithMachine UnitId]
     roots = mapMaybe find_root pkgs'
 
     -- Make a closed graph by calculating the closure from the roots
@@ -3557,7 +4046,7 @@ pruneInstallPlanPass1 pkgs
       | anyMultiReplTarget = map (mapConfiguredPackage add_repl_target) (Graph.toList closed_graph)
       | otherwise = Graph.toList closed_graph
 
-    is_root :: PrunedPackage -> Maybe UnitId
+    is_root :: PrunedPackage -> Maybe (WithMachine UnitId)
     is_root (PrunedPackage elab _) =
       if not $
         and
@@ -3568,7 +4057,7 @@ pruneInstallPlanPass1 pkgs
           , null (elabReplTarget elab)
           , null (elabHaddockTargets elab)
           ]
-        then Just (installedUnitId elab)
+        then Just (Graph.nodeKey elab)
         else Nothing
 
     find_root (InstallPlan.Configured pkg) = is_root pkg
@@ -3625,12 +4114,15 @@ pruneInstallPlanPass1 pkgs
     -- the optional stanzas and we'll make further tweaks to the optional
     -- stanzas in the next pass.
     --
-    pruneOptionalDependencies :: ElaboratedConfiguredPackage -> [UnitId]
+    pruneOptionalDependencies :: ElaboratedConfiguredPackage -> [WithMachine UnitId]
     pruneOptionalDependencies elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _} =
       InstallPlan.depends elab -- no pruning
-    pruneOptionalDependencies ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage pkg} =
-      (fold . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
+    pruneOptionalDependencies elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage pkg} =
+      -- Keep the (already machine-tagged) plan neighbours whose unit is still
+      -- needed after dropping optional-stanza-only dependencies.
+      filter ((`Set.member` keptUnitIds) . withoutMachine) (InstallPlan.depends elab)
       where
+        keptUnitIds = Set.fromList $ (fold . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
         keepNeeded (CD.ComponentTest _) _ = TestStanzas `optStanzaSetMember` stanzas
         keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
         keepNeeded _ _ = True
@@ -3654,9 +4146,13 @@ pruneInstallPlanPass1 pkgs
                 CD.componentNameToComponent cname
         ]
 
+    -- Keyed by plan key, not bare 'UnitId': the installed packages of the
+    -- build and host machines come from different package databases and must
+    -- not be confused with one another.
+    availablePkgs :: Set (WithMachine UnitId)
     availablePkgs =
       Set.fromList
-        [ installedUnitId pkg
+        [ Graph.nodeKey pkg
         | InstallPlan.PreExisting pkg <- pkgs
         ]
 
@@ -3692,7 +4188,7 @@ into the repl to uphold the closure property.
 -- all of the deps needed for the test suite, we go ahead and
 -- enable it always.
 optionalStanzasWithDepsAvailable
-  :: Set UnitId
+  :: Set (WithMachine UnitId)
   -> ElaboratedConfiguredPackage
   -> ElaboratedPackage
   -> OptionalStanzaSet
@@ -3700,13 +4196,13 @@ optionalStanzasWithDepsAvailable availablePkgs elab pkg =
   optStanzaSetFromList
     [ stanza
     | stanza <- optStanzaSetToList (elabStanzasAvailable elab)
-    , let deps :: [UnitId]
+    , let deps :: [WithMachine UnitId]
           deps =
             CD.select
               (optionalStanzaDeps stanza)
               -- TODO: probably need to select other
               -- dep types too eventually
-              (pkgOrderDependencies pkg)
+              (pkgOrderDependenciesOnMachine (elabMachine elab) pkg)
     , all (`Set.member` availablePkgs) deps
     ]
   where
@@ -3759,7 +4255,7 @@ pruneInstallPlanPass2 pkgs =
                 ++ libTargetsRequiredForRevDeps
                 ++ exeTargetsRequiredForRevDeps
         , elabBuildStyle =
-            if installedUnitId elab `Set.member` mustBuildOnDisk
+            if Graph.nodeKey elab `Set.member` mustBuildOnDisk
               && elabBuildStyle elab == BuildInplaceOnly InMemory
               then BuildInplaceOnly OnDisk
               else elabBuildStyle elab
@@ -3799,13 +4295,13 @@ pruneInstallPlanPass2 pkgs =
 
         libTargetsRequiredForRevDeps =
           [ c
-          | installedUnitId elab `Set.member` libDeps
+          | Graph.nodeKey elab `Set.member` libDeps
           , let c = ComponentTarget (CLibName Cabal.defaultLibName) WholeComponent
           , -- Don't enable building for anything which is being built in memory,
           -- unless it is a (transitive) library dependency of an exe build tool,
           -- in which case it must be compiled to disk so the exe can link against it.
           elabBuildStyle elab /= BuildInplaceOnly InMemory
-            || installedUnitId elab `Set.member` mustBuildOnDisk
+            || Graph.nodeKey elab `Set.member` mustBuildOnDisk
           ]
         exeTargetsRequiredForRevDeps =
           -- TODO: allow requesting executable with different name
@@ -3817,11 +4313,11 @@ pruneInstallPlanPass2 pkgs =
                     elabPkgSourceId elab
             )
             WholeComponent
-          | installedUnitId elab `Set.member` exeDeps
+          | Graph.nodeKey elab `Set.member` exeDeps
           ]
 
-    availablePkgs :: Set UnitId
-    availablePkgs = Set.fromList (map installedUnitId pkgs)
+    availablePkgs :: Set (WithMachine UnitId)
+    availablePkgs = Set.fromList (map Graph.nodeKey pkgs)
 
     inMemoryTargets :: Set ConfiguredId
     inMemoryTargets =
@@ -3830,7 +4326,7 @@ pruneInstallPlanPass2 pkgs =
         | InstallPlan.Configured pkg <- pkgs
         , -- Exclude packages that must be built on disk (for exe build tools).
         -- Their dependents will receive a real -package-id, not a promise.
-        installedUnitId pkg `Set.notMember` mustBuildOnDisk
+        Graph.nodeKey pkg `Set.notMember` mustBuildOnDisk
         , BuildInplaceOnly InMemory <- [elabBuildStyle pkg]
         ]
 
@@ -3840,7 +4336,7 @@ pruneInstallPlanPass2 pkgs =
     -- must also produce real on-disk artifacts so the exe can link against it.
     -- The repl phase still runs for these packages, so GHCi loads them from
     -- source under the same package-id, preserving type identity.
-    mustBuildOnDisk :: Set UnitId
+    mustBuildOnDisk :: Set (WithMachine UnitId)
     mustBuildOnDisk = go exeDeps Set.empty
       where
         go frontier visited
@@ -3857,31 +4353,41 @@ pruneInstallPlanPass2 pkgs =
                in go newFrontier newVisited
 
     -- Lib and exe deps computed once per in-plan package, shared below.
-    -- Note: these must be the order-dependency UnitIds, which match the
-    -- 'installedUnitId' of the units in the plan; in particular for
-    -- Backpack-instantiated units they include the instantiation, unlike
-    -- the ComponentIds from 'elabLibDependencies'.
-    perPkgDeps :: [(UnitId, [UnitId], [UnitId])]
+    -- Note: these must be the order dependencies, which match the plan key of
+    -- the units in the plan; in particular for Backpack-instantiated units
+    -- their unit ids include the instantiation, unlike the ComponentIds from
+    -- 'elabLibDependencies'.
+    --
+    -- They are keyed by plan key rather than bare 'UnitId' because the build
+    -- and host copies of a local package share an in-place unit id (in-place
+    -- unit ids do not mention the compiler). Projecting onto 'UnitId' would
+    -- merge the two nodes: 'planLibDepMap' would keep only one machine's
+    -- dependencies, and a package could be marked as needing an on-disk build,
+    -- or not, because of its twin at the other machine.
+    perPkgDeps :: [(WithMachine UnitId, [WithMachine UnitId], [WithMachine UnitId])]
     perPkgDeps =
-      [ ( installedUnitId pkg
-        , elabOrderLibDependencies pkg
+      [ ( Graph.nodeKey pkg
+        , -- Library edges are machine-preserving, so a package's library
+          -- dependencies sit on its own machine; build-tool edges carry the
+          -- machine the solver assigned them.
+          map (WithMachine (elabMachine pkg)) (elabOrderLibDependencies pkg)
         , elabOrderExeDependencies pkg
         )
       | InstallPlan.Configured pkg <- pkgs
       ]
 
     -- Library-dependency adjacency for in-plan packages only.
-    planLibDepMap :: Map UnitId [UnitId]
+    planLibDepMap :: Map (WithMachine UnitId) [WithMachine UnitId]
     planLibDepMap =
       Map.fromList [(uid, ls) | (uid, ls, _) <- perPkgDeps]
 
     -- All packages that appear as a library dep of any in-plan package.
-    libDeps :: Set UnitId
+    libDeps :: Set (WithMachine UnitId)
     libDeps =
       Set.fromList [d | (_, ls, _) <- perPkgDeps, d <- ls]
 
     -- All packages that appear as an exe dep of any in-plan package.
-    exeDeps :: Set UnitId
+    exeDeps :: Set (WithMachine UnitId)
     exeDeps =
       Set.fromList [d | (_, _, es) <- perPkgDeps, d <- es]
 
@@ -3911,9 +4417,8 @@ pruneInstallPlanToDependencies
       ElaboratedInstallPlan
 pruneInstallPlanToDependencies pkgTargets installPlan =
   assert
-    ( all
-        (isJust . InstallPlan.lookup installPlan)
-        (Set.toList pkgTargets)
+    ( pkgTargets
+        `Set.isSubsetOf` Set.fromList (map installedUnitId (InstallPlan.toList installPlan))
     )
     $ fmap (InstallPlan.new (InstallPlan.planIndepGoals installPlan))
       . checkBrokenDeps
@@ -3982,7 +4487,7 @@ setupHsScriptOptions
 setupHsScriptOptions
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   plan
-  ElaboratedSharedConfig{..}
+  sharedConfig
   distdir
   srcdir
   builddir
@@ -3996,8 +4501,13 @@ setupHsScriptOptions
           if PD.buildType elabPkgDescription == PD.Hooks
             then Nothing
             else Just cliVersion
-      , useCompiler = Just pkgConfigCompiler
-      , usePlatform = Just pkgConfigPlatform
+      , -- The Setup.hs script runs on the machine that /drives/ this
+        -- package's build, i.e. the machine before the package's own machine
+        -- ('toolMachine' of 'elabMachine'): a host-machine package's setup runs on
+        -- the build machine when there is one, and stays on the host machine
+        -- otherwise. It is therefore compiled with that machine's toolchain.
+        useCompiler = Just (toolchainCompiler setupToolchain)
+      , usePlatform = Just (toolchainPlatform setupToolchain)
       , usePackageDB = elabSetupPackageDBStack
       , usePackageIndex = Nothing
       , useSetupDependencies =
@@ -4007,7 +4517,7 @@ setupHsScriptOptions
                 elabSetupDependencies elab
             ]
       , useVersionMacros = elabSetupScriptStyle == SetupCustomExplicitDeps
-      , useProgramDb = pkgConfigCompilerProgs
+      , useProgramDb = toolchainProgramDb setupToolchain
       , useDistPref = builddir
       , useLoggingHandle = Nothing -- this gets set later
       , useWorkingDir = Just srcdir
@@ -4032,6 +4542,7 @@ setupHsScriptOptions
       }
     where
       cliVersion = setupCliVersion elabSetupScriptCliVersion
+      setupToolchain = pkgConfigMachineToolchain sharedConfig (toolMachine (pkgConfigToolchains sharedConfig) elabMachine)
 
 -- | To be used for the input for elaborateInstallPlan.
 --
@@ -4104,9 +4615,9 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       ( InstallDirs.absoluteInstallDirs
           (elabPkgSourceId elab)
           (elabUnitId elab)
-          (compilerInfo (pkgConfigCompiler elaboratedShared))
+          (compilerInfo (elabCompiler elaboratedShared elab))
           InstallDirs.NoCopyDest
-          (pkgConfigPlatform elaboratedShared)
+          (elabPlatform elaboratedShared elab)
           defaultInstallDirs
       )
         { -- absoluteInstallDirs sets these as 'undefined' but we have
@@ -4119,7 +4630,7 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       -- use special simplified install dirs
       storePackageInstallDirs'
         storeDirLayout
-        (pkgConfigCompiler elaboratedShared)
+        (elabCompiler elaboratedShared elab)
         (elabUnitId elab)
 
 -- TODO: [code cleanup] perhaps reorder this code
@@ -4140,7 +4651,7 @@ setupHsConfigureFlags
   mkSymbolicPath
   plan
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
-  sharedConfig@ElaboratedSharedConfig{..}
+  sharedConfig
   configCommonFlags = do
     -- explicitly clear, then our package db stack
     -- TODO: [required eventually] have to do this differently for older Cabal versions
@@ -4191,7 +4702,7 @@ setupHsConfigureFlags
       configProgramPaths = Map.toList elabProgramPaths
       configProgramArgs = Map.toList elabProgramArgs
       configProgramPathExtra = toNubList elabProgramPathExtra
-      configHcFlavor = toFlag (compilerFlavor pkgConfigCompiler)
+      configHcFlavor = toFlag (compilerFlavor (elabCompiler sharedConfig elab))
       configHcPath = mempty -- we use configProgramPaths instead
       configHcPkg = mempty -- we use configProgramPaths instead
       configDumpBuildInfo = toFlag elabDumpBuildInfo
@@ -4249,7 +4760,7 @@ setupHsConfigureFlags
       configUserInstall = mempty -- don't rely on defaults
       configPrograms_ = mempty -- never use, shouldn't exist
       configUseResponseFiles = mempty
-      configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported pkgConfigCompiler
+      configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported (elabCompiler sharedConfig elab)
       configIgnoreBuildTools = mempty
 
       cidToGivenComponent :: ConfiguredId -> GivenComponent
@@ -4424,14 +4935,14 @@ setupHsHaddockFlags
   -> Cabal.CommonSetupFlags
   -> Cabal.HaddockFlags
 setupHsHaddockFlags
-  (ElaboratedConfiguredPackage{..})
-  (ElaboratedSharedConfig{..})
+  elab@(ElaboratedConfiguredPackage{..})
+  sharedConfig
   _buildTimeSettings
   common =
     Cabal.HaddockFlags
       { haddockCommonFlags = common
       , haddockProgramPaths =
-          case lookupProgram haddockProgram pkgConfigCompilerProgs of
+          case lookupProgram haddockProgram (elabProgramDb sharedConfig elab) of
             Nothing -> mempty
             Just prg ->
               [
@@ -4535,16 +5046,13 @@ packageHashInputs
                 [ confInstId dep
                 | (dep, _) <- CD.select relevantDeps pkgLibDependencies
                 ]
-                  ++ [ confInstId dep
+                  ++ [ confInstId (withoutMachine dep)
                      | dep <- CD.select relevantDeps pkgExeDependencies
                      ]
             ElabComponent comp ->
               Set.fromList
-                ( map
-                    confInstId
-                    ( map fst (compLibDependencies comp)
-                        ++ compExeDependencies comp
-                    )
+                ( map (confInstId . fst) (compLibDependencies comp)
+                    ++ map (confInstId . withoutMachine) (compExeDependencies comp)
                 )
       , pkgHashOtherConfig = packageHashConfigInputs pkgshared elab
       }
@@ -4569,11 +5077,11 @@ packageHashConfigInputs
   :: ElaboratedSharedConfig
   -> ElaboratedConfiguredPackage
   -> PackageHashConfigInputs
-packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
+packageHashConfigInputs shared pkg =
   PackageHashConfigInputs
-    { pkgHashCompilerId = compilerId pkgConfigCompiler
-    , pkgHashCompilerABI = compilerAbiTag pkgConfigCompiler
-    , pkgHashPlatform = pkgConfigPlatform
+    { pkgHashCompilerId = compilerId (elabCompiler shared pkg)
+    , pkgHashCompilerABI = compilerAbiTag (elabCompiler shared pkg)
+    , pkgHashPlatform = elabPlatform shared pkg
     , pkgHashFlagAssignment = elabFlagAssignment
     , pkgHashConfigureScriptArgs = elabConfigureScriptArgs
     , pkgHashVanillaLib = withVanillaLib
@@ -4720,21 +5228,26 @@ determineCoverageFor configuredPkg plan =
     isIndefiniteOrInstantiation = not . Set.null . modShapeRequires
 
 -- | Look up and merge the options from the project config that apply to all
--- packages, all project local packages, and to specific named packages.
+-- packages, all project local packages, all packages of the package's machine
+-- (@package build:*@, @package host:*@) and to specific named packages, in
+-- that order: later, more specific, layers override earlier ones.
 lookupPerPkgOption
   :: (Package pkg, Monoid m)
   => (pkg -> Bool)
   -> PackageConfig
   -> PackageConfig
+  -> Map Machine PackageConfig
   -> Map PackageName PackageConfig
+  -> Machine
   -> pkg
   -> (PackageConfig -> m)
   -> m
-lookupPerPkgOption isLocalPkg allPackagesConfig localPackagesConfig perPackageConfig pkg f =
-  global `mappend` local `mappend` perpkg
+lookupPerPkgOption isLocalPkg allPackagesConfig localPackagesConfig machinePackagesConfig perPackageConfig machine pkg f =
+  global `mappend` local `mappend` permachine `mappend` perpkg
   where
     global = f allPackagesConfig
     local
       | isLocalPkg pkg = f localPackagesConfig
       | otherwise = mempty
+    permachine = maybe mempty (f . machineStanzaConfig machine) (Map.lookup machine machinePackagesConfig)
     perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)

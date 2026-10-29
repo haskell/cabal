@@ -96,6 +96,55 @@ architecture and version information from, which will force some
 commands (update, sdist) to require ghc present where otherwise it
 would not be necessitated.
 
+.. _conditionals-cross-compilation:
+
+Conditionals when cross-compiling
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The conditions in a project file are resolved once, before the build and
+host machines are told apart, against the *host* compiler
+(:cfg-field:`with-compiler`) and the platform it targets. When
+cross-compiling (see :cfg-field:`with-build-compiler`), ``impl``, ``os`` and
+``arch`` therefore always describe the host machine, and there is no condition
+that tests the build compiler. A constraint that should depend on the build
+compiler, such as
+
+::
+
+    -- Not supported: there is no way to test the build compiler.
+    if impl(build-ghc >= 9.2)
+      constraints: build:exe.alex < 3.6
+
+cannot be written. Some ways to get the same effect:
+
+- Leave the constraint unconditional. A constraint with the ``build:`` prefix
+  only applies to packages solved for the build machine (see
+  :cfg-field:`constraints`), and a build without a separate build compiler has
+  none, so the constraint only takes effect when cross-compiling:
+
+  ::
+
+      constraints: build:exe.alex < 3.6
+
+- Keep the settings for each build compiler in their own file and select it
+  together with the compiler, either by importing it from the project file
+  that sets :cfg-field:`with-build-compiler`, or by passing
+  ``--project-file`` on the command line:
+
+  ::
+
+      -- cabal.project.cross-ghc-9.10
+      import: cabal.project
+      with-build-compiler: ghc-9.10.3
+      constraints: build:exe.alex < 3.6
+
+- Put the settings in ``cabal.project.local`` or pass them on the command
+  line, next to the ``--with-build-compiler`` that selects the build compiler:
+
+  ::
+
+      $ cabal build --with-build-compiler=ghc-9.10.3 --constraint="build:exe.alex < 3.6"
+
 One use case for imports is to specify a `Stackage <https://www.stackage.org/>`
 snapshot, so that your cabal project can use the same set of packages as
 that snapshot. To use the ``lts-21.25`` resolver, you can write
@@ -545,6 +594,12 @@ Environment options
 
     The command line variant of this flag is ``--package-db=DB`` which can be
     specified multiple times.
+
+    When cross-compiling (see :cfg-field:`with-build-compiler`), this setting
+    applies to the host machine only. A package database can only be read by
+    the compiler that wrote it, so the build machine always uses its own
+    compiler's global database and its own store. There is currently no way to
+    add package databases for the build machine.
 
 Solver options
 --------------
@@ -1036,6 +1091,42 @@ feature was added.
     Program options are not extensively described in this documentation but a
     good amount of them can be found in the :ref:`build-info` section.
 
+    When cross-compiling (see :cfg-field:`build-compiler`), a package can be
+    built twice, once for the build machine and once for the host, and
+    ``package *`` applies to both. ``package build:*`` and ``package host:*``
+    apply to every package built for that machine only. They take precedence
+    over ``package *`` and over the fields given outside any stanza for local
+    packages, and are overridden by a stanza naming the package:
+
+    ::
+
+        package build:*
+          shared: False
+          executable-dynamic: False
+
+        package host:*
+          shared: True
+
+    Program locations and options are the exception to ``package *``
+    applying to both machines: ``PROG-location`` and ``PROG-options`` apply to
+    the host machine and ``build-PROG-location`` and ``build-PROG-options`` to
+    the build machine (see :ref:`build-machine-programs`). A machine stanza already
+    names its machine, so there the plain ``PROG-location`` and ``PROG-options``
+    fields apply to that machine.
+
+    Program locations given in a machine stanza also select the tools ``cabal``
+    itself runs for that machine, such as ``pkg-config``. This is how a
+    cross-compilation points the host machine at the tools that know its target
+    without handing them to the build machine:
+
+    ::
+
+        package host:*
+          pkg-config-location: aarch64-linux-gnu-pkg-config
+
+    The legacy project file parser (``--project-file-parser=legacy``) does not
+    accept ``package build:*`` or ``package host:*``.
+
 .. cfg-section:: None
 
 .. cfg-field:: flags: list of +flagname or -flagname (space separated)
@@ -1111,6 +1202,63 @@ feature was added.
 
     The command line variant of this flag is
     ``--with-hc-pkg=ghc-pkg-7.8``.
+
+.. cfg-field:: build-compiler: ghc, ghcjs, jhc, lhc, or uhc
+    :synopsis: Compiler flavour for the build machine (cross-compilation).
+
+    :default: the value of :cfg-field:`compiler`
+
+    When cross-compiling, the flavour of the compiler used for the *build*
+    machine: the compiler that produces the programs which have to run on the
+    machine doing the build (custom ``Setup.hs`` scripts and their
+    dependencies, ``build-tool-depends``). The *host* machine, i.e. everything
+    else, keeps using :cfg-field:`compiler`.
+
+    There is no command line variant of this field.
+
+.. cfg-field:: with-build-compiler: PATH
+               -W PATH or -WPATH, --with-build-compiler=PATH
+    :synopsis: Path to the build-machine compiler executable (cross-compilation).
+
+    Specify the compiler to use for the *build* machine when cross-compiling,
+    in the same way :cfg-field:`with-compiler` specifies the compiler for the
+    *host* machine. Setting this (or :cfg-field:`build-compiler`) to something
+    other than the host compiler is what turns a build into a cross build:
+    custom ``Setup.hs`` scripts, their dependencies and packages reached via
+    ``build-tool-depends`` are then built with the build compiler, while all
+    other packages are built with :cfg-field:`with-compiler`.
+
+    When neither this field nor :cfg-field:`build-compiler` is set, or when
+    they resolve to the same compiler as the host, there is no separate build
+    machine and the build proceeds exactly as a normal (non-cross) build.
+
+    The default value of :cfg-field:`with-build-hc-pkg` is derived from this
+    path with the same heuristic :cfg-field:`with-compiler` uses.
+
+    Like :cfg-field:`with-compiler`, this cannot be set on a per-package
+    basis, and it cannot be set inside a conditional block. Conditional blocks
+    cannot test the build compiler either; see
+    :ref:`conditionals-cross-compilation`.
+
+    The command line variant of this flag is
+    ``--with-build-compiler=ghc-9.10.3``; there is also a short version
+    ``-W ghc-9.10.3``.
+
+.. cfg-field:: with-build-hc-pkg: PATH
+               --with-build-hc-pkg=PATH
+    :synopsis: Path to the build-machine package tool (cross-compilation).
+
+    Specify the path to the package tool (e.g. ``ghc-pkg``) that goes with
+    :cfg-field:`with-build-compiler`. If omitted, it is determined from
+    :cfg-field:`with-build-compiler`. Unlike the compiler path, it does *not*
+    fall back to :cfg-field:`with-hc-pkg`, since a package tool belongs to
+    one particular compiler installation.
+
+    The command line variant of this flag is
+    ``--with-build-hc-pkg=ghc-pkg-9.10.3``.
+
+    The other programs of the build machine are configured separately from the
+    host machine's: see :ref:`build-machine-programs`.
 
 .. cfg-field:: optimization: nat
                -O[n], --enable-optimization[=n]
@@ -1917,6 +2065,62 @@ built. On the other hand, the following snippet:
         ghc-options: -Werror
 
 will apply ``-Werror`` to all packages, local and remote.
+
+.. _build-machine-programs:
+
+Build-machine programs
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. cfg-section:: build-program-options
+
+When cross-compiling (see :cfg-field:`with-build-compiler`) the program
+locations and options given with ``--with-PROG``, ``--PROG-options``,
+``program-locations`` and ``program-options`` apply to the *host* machine only,
+just as :cfg-field:`with-compiler` does. The programs used for the *build*
+machine are configured with their own settings:
+
+- on the command line, ``--with-build-PROG=PATH``,
+  ``--build-PROG-option=OPT`` and ``--build-PROG-options=OPTS``;
+- at the top level of the project file, the ``build-program-locations`` and
+  ``build-program-options`` stanzas, which take the same fields as
+  ``program-locations`` and ``program-options``;
+- in a ``package`` stanza, the ``build-PROG-location`` and
+  ``build-PROG-options`` fields.
+
+For example:
+
+::
+
+    program-locations
+        ar-location: /opt/cross/bin/aarch64-linux-gnu-ar
+
+    build-program-locations
+        ar-location: /usr/bin/ar
+
+    build-program-options
+        ghc-options: -O0
+
+Neither machine inherits the other's settings: ``ar-location`` above is the
+``ar`` used for host binaries and is never used to produce build-machine
+binaries. A build-machine program that is not given a location is found as
+usual, from the build compiler's own configuration and the program search
+path.
+
+The settings that apply are those of the machine the *package being built*
+belongs to, not those of the machine the program runs on. Tools such as
+``alex``, ``happy`` or ``hsc2hs`` always run on the build machine, but a host
+package that calls them takes them from the host settings: ``--with-alex``
+names the ``alex`` used when building host packages, and
+``--with-build-alex`` the one used when building build-machine packages (a
+build tool whose own build needs ``alex``, say). ``--with-PROG`` and
+``--with-build-PROG`` choose the programs for the packages of each machine;
+they say nothing about where those programs run.
+
+Without cross-compilation there is no build machine, so these settings have no
+effect and ``cabal`` warns that they are ignored.
+
+The :cfg-field:`extra-prog-path` entries are not per machine: both machines search
+the same extra directories.
 
 Advanced global options
 -----------------------

@@ -6,6 +6,14 @@ program-locations
     ghc-location: /tmp/bin/ghc
     gcc-location: /tmp/bin/gcc
 
+build-program-options
+    ghc-options: -fno-state-hack -bar
+    ld-options: -qux
+
+build-program-locations
+    ghc-location: /tmp/build/bin/ghc
+    ar-location: /tmp/build/bin/ar
+
 extra-prog-path: /tmp/bin/extra, /usr/local/bin
 flags: +foo -bar
 library-vanilla: False

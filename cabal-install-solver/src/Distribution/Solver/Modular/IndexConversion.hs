@@ -38,6 +38,7 @@ import           Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Modular.Dependency as D
 import Distribution.Solver.Modular.Flag as F
 import Distribution.Solver.Modular.Index
+import Distribution.Solver.Types.Machine (PerMachine, onMachine, mapWithMachine)
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
@@ -56,13 +57,25 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
+convPIs :: PerMachine (CompilerInfo, Platform)
+        -> Map PN [LabeledPackageConstraint]
         -> ShadowPkgs -> StrongFlags -> SolveExecutables
-        -> SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
+        -> PerMachine SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
         -> Index
-convPIs os arch comp constraints sip strfl solveExes iidx sidx =
-  mkIndex $
-  convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
+convPIs toolchains constraints sip strfl solveExes iidxs sidx =
+  -- Build one 'MachineIndex' per active machine. A non-cross build has only the
+  -- host machine, reproducing the old single-machine index exactly. A cross build
+  -- also has a build machine, and each machine is converted against its own
+  -- toolchain (compiler + platform) and its own installed-package index, so the
+  -- Build machine sees the build compiler's packages and the Host machine the host
+  -- compiler's. Source packages are shared, but re-evaluated per machine because
+  -- their condition trees depend on the machine's os\/arch\/compiler.
+  mapWithMachine convMachine toolchains
+  where
+    convMachine machine (comp, Platform arch os) =
+      mkIndex $
+           convIPI' sip (onMachine iidxs machine)
+             ++ convSPI' os arch comp constraints strfl solveExes sidx
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
@@ -265,7 +278,7 @@ testConditionForComponent os arch cinfo constraints p tree =
     flagAssignment :: [(FlagName, Bool)]
     flagAssignment =
         mconcat [ unFlagAssignment fa
-                | PackageConstraint (ScopeAnyQualifier _) (PackagePropertyFlags fa)
+                | PackageConstraint (ConstraintScope _ (ScopeAnyQualifier _)) (PackagePropertyFlags fa)
                     <- L.map unlabelPackageConstraint constraints]
 
     -- Simplify the condition, using the current environment. Most of this

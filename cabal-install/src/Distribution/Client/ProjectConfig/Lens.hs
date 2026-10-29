@@ -45,6 +45,7 @@ import Distribution.Simple.Setup
   , pattern NoFlag
   )
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource)
+import Distribution.Solver.Types.Machine (Machine)
 import Distribution.Solver.Types.Settings
   ( AllowBootLibInstalls (..)
   , CountConflicts (..)
@@ -104,6 +105,10 @@ projectConfigLocalPackages f s = fmap (\x -> s{T.projectConfigLocalPackages = x}
 projectConfigSpecificPackage :: Lens' ProjectConfig (MapMappend PackageName PackageConfig)
 projectConfigSpecificPackage f s = fmap (\x -> s{T.projectConfigSpecificPackage = x}) (f (T.projectConfigSpecificPackage s))
 {-# INLINEABLE projectConfigSpecificPackage #-}
+
+projectConfigMachinePackages :: Lens' ProjectConfig (MapMappend Machine PackageConfig)
+projectConfigMachinePackages f s = fmap (\x -> s{T.projectConfigMachinePackages = x}) (f (T.projectConfigMachinePackages s))
+{-# INLINEABLE projectConfigMachinePackages #-}
 
 projectConfigVerbosity :: Lens' ProjectConfigBuildOnly (Flag VerbosityFlags)
 projectConfigVerbosity f s = fmap (\x -> s{T.projectConfigVerbosity = x}) (f (T.projectConfigVerbosity s))
@@ -212,6 +217,18 @@ projectConfigHcPath f s = fmap (\x -> s{T.projectConfigHcPath = x}) (f (T.projec
 projectConfigHcPkg :: Lens' ProjectConfigShared (Flag FilePath)
 projectConfigHcPkg f s = fmap (\x -> s{T.projectConfigHcPkg = x}) (f (T.projectConfigHcPkg s))
 {-# INLINEABLE projectConfigHcPkg #-}
+
+projectConfigBuildHcFlavor :: Lens' ProjectConfigShared (Flag CompilerFlavor)
+projectConfigBuildHcFlavor f s = fmap (\x -> s{T.projectConfigBuildHcFlavor = x}) (f (T.projectConfigBuildHcFlavor s))
+{-# INLINEABLE projectConfigBuildHcFlavor #-}
+
+projectConfigBuildHcPath :: Lens' ProjectConfigShared (Flag FilePath)
+projectConfigBuildHcPath f s = fmap (\x -> s{T.projectConfigBuildHcPath = x}) (f (T.projectConfigBuildHcPath s))
+{-# INLINEABLE projectConfigBuildHcPath #-}
+
+projectConfigBuildHcPkg :: Lens' ProjectConfigShared (Flag FilePath)
+projectConfigBuildHcPkg f s = fmap (\x -> s{T.projectConfigBuildHcPkg = x}) (f (T.projectConfigBuildHcPkg s))
+{-# INLINEABLE projectConfigBuildHcPkg #-}
 
 projectConfigHaddockIndex :: Lens' ProjectConfigShared (Flag PathTemplate)
 projectConfigHaddockIndex f s = fmap (\x -> s{T.projectConfigHaddockIndex = x}) (f (T.projectConfigHaddockIndex s))
@@ -335,6 +352,14 @@ packageConfigProgramPaths f s = fmap (\x -> s{T.packageConfigProgramPaths = x}) 
 packageConfigProgramArgs :: Lens' PackageConfig (MapMappend String [String])
 packageConfigProgramArgs f s = fmap (\x -> s{T.packageConfigProgramArgs = x}) (f (T.packageConfigProgramArgs s))
 {-# INLINEABLE packageConfigProgramArgs #-}
+
+packageConfigBuildProgramPaths :: Lens' PackageConfig (MapLast String FilePath)
+packageConfigBuildProgramPaths f s = fmap (\x -> s{T.packageConfigBuildProgramPaths = x}) (f (T.packageConfigBuildProgramPaths s))
+{-# INLINEABLE packageConfigBuildProgramPaths #-}
+
+packageConfigBuildProgramArgs :: Lens' PackageConfig (MapMappend String [String])
+packageConfigBuildProgramArgs f s = fmap (\x -> s{T.packageConfigBuildProgramArgs = x}) (f (T.packageConfigBuildProgramArgs s))
+{-# INLINEABLE packageConfigBuildProgramArgs #-}
 
 packageConfigProgramPathExtra :: Lens' PackageConfig (NubList FilePath)
 packageConfigProgramPathExtra f s = fmap (\x -> s{T.packageConfigProgramPathExtra = x}) (f (T.packageConfigProgramPathExtra s))

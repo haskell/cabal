@@ -161,12 +161,17 @@ instance Described UserConstraint where
     where
       describeConstraintScope :: GrammarRegex void
       describeConstraintScope =
-        REUnion
-          [ "any." <> describePN
-          , "setup." <> describePN
-          , describePN
-          , describePN <> ":setup." <> describePN
-          ]
+        -- An optional build-machine prefix (the 'Host' machine is the invisible
+        -- default and never rendered).
+        REOpt "build:"
+          <> REUnion
+            [ "any." <> describePN
+            , "setup." <> describePN
+            , "exe." <> describePN
+            , describePN
+            , describePN <> ":setup." <> describePN
+            , describePN <> ":" <> describePN <> ":exe." <> describePN
+            ]
 
       describeConstraintProperty :: GrammarRegex void
       describeConstraintProperty =

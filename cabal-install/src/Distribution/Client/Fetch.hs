@@ -34,6 +34,7 @@ import Distribution.Client.Types
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.Machine (always)
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Solver.Types.SolverPackage
@@ -175,9 +176,8 @@ planPackages
         installPlan <-
           foldProgress logMsg (dieWithException verbosity . PlanPackages . show) return $
             resolveDependencies
-              platform
-              (compilerInfo comp)
-              pkgConfigDb
+              (always (compilerInfo comp, platform))
+              (always pkgConfigDb)
               resolverParams
 
         -- The packages we want to fetch are those packages the 'InstallPlan'
@@ -221,7 +221,7 @@ planPackages
           -- already installed. Since we want to get the source packages of
           -- things we might have installed (but not have the sources for).
           . reinstallTargets
-          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+          $ standardInstallPolicy (always installedPkgIndex) sourcePkgDb pkgSpecifiers
 
       includeDependencies = fromFlag (fetchDeps fetchFlags)
       logMsg message rest = debug verbosity message >> rest

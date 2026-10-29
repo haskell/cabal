@@ -30,8 +30,9 @@ import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
 import Distribution.Solver.Types.PackagePreferences
+import Distribution.Solver.Types.Machine (Machine)
 import Distribution.Solver.Types.Variable
 
 import Distribution.Solver.Modular.Dependency
@@ -422,8 +423,8 @@ deferSetupExeChoices = go
     go x                    = x
 
     noSetupOrExe :: Goal QPN -> Bool
-    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualSetup _)) _)) _) = False
-    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualExe _ _)) _)) _) = False
+    noSetupOrExe (Goal (P (Q (GoalScope _s _ns (QualSetup _)) _)) _) = False
+    noSetupOrExe (Goal (P (Q (GoalScope _s _ns (QualExe _ _)) _)) _) = False
     noSetupOrExe _                                                  = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
@@ -458,15 +459,20 @@ preferReallyEasyGoalChoices = go
 -- | Monad used internally in enforceSingleInstanceRestriction
 --
 -- For each package instance we record the goal for which we picked a concrete
--- instance. The SIR means that for any package instance there can only be one.
-type EnforceSIR = Reader (Map (PI PN) QPN)
+-- instance. The SIR means that for any package instance there can only be one
+-- per build machine: a Setup/Build-machine instance and a Host-machine instance of
+-- the same package+version are built by different toolchains and land in
+-- different stores, so they don't collide the way two same-machine instances
+-- would.
+type EnforceSIR = Reader (Map (Machine, PI PN) QPN)
 
 -- | Enforce ghc's single instance restriction
 --
 -- From the solver's perspective, this means that for any package instance
 -- (that is, package name + package version) there can be at most one qualified
--- goal resolving to that instance (there may be other goals _linking_ to that
--- instance however).
+-- goal, within a given build machine, resolving to that instance (there may be
+-- other goals _linking_ to that instance however, and there may be another
+-- goal at a different machine using the same instance).
 enforceSingleInstanceRestriction :: Tree d c -> Tree d c
 enforceSingleInstanceRestriction = (`runReader` M.empty) . go
   where
@@ -486,8 +492,8 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . go
 
     -- The check proper
     goP :: QPN -> POption -> EnforceSIR (Tree d c) -> EnforceSIR (Tree d c)
-    goP qpn@(Q _ pn) (POption i linkedTo) r = do
-      let inst = PI pn i
+    goP qpn@(Q (GoalScope machine _ _) pn) (POption i linkedTo) r = do
+      let inst = (machine, PI pn i)
       env <- ask
       case (linkedTo, M.lookup inst env) of
         (Just _, _) ->

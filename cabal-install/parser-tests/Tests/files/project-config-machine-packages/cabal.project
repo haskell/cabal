@@ -1,0 +1,6 @@
+package build:*
+    shared: False
+    executable-dynamic: False
+
+package host:*
+    shared: True
