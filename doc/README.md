@@ -12,11 +12,15 @@ http://cabal.readthedocs.io/
 ### How to build it
 
 Building the documentation requires uv and Python 3. Run the following command
-either from the root of the cabal repository or from the `docs/` subdirectory:
+either from the root of the cabal repository or from the `doc/` subdirectory:
 
 ``` console
 > make users-guide
 ```
+
+To list the other documentation targets, such as regenerating the captured
+command help texts, run `make -C doc help` from the root or `make help` from
+the `doc/` subdirectory.
 
 Note: Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, so unset the variable
 and instead set `LC_ALL=en_US.UTF-8`.
