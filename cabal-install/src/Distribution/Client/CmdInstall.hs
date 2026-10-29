@@ -482,10 +482,8 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
     -- for packages named on the command line.
     let uriPkgNames = map pkgSpecifierTarget uriSpecs
         uriTargetFilter = if installLibs then Just LibKind else Just ExeKind
-        targetSelectors' =
-          targetSelectors
-            ++ [TargetPackageNamed name uriTargetFilter | name <- uriPkgNames]
-        config' = addLocalConfigToPkgs config uriPkgNames
+        uriTargetSelectors = [TargetPackageNamed name uriTargetFilter | name <- uriPkgNames]
+        configWithUriPkgs = addLocalConfigToPkgs config uriPkgNames
 
     -- check for targets already in env
     let getPackageName :: PackageSpecifier UnresolvedSourcePackage -> PackageName
@@ -516,12 +514,16 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
     baseCtx <-
       establishDummyProjectBaseContext
         verbosity
-        config'
+        configWithUriPkgs
         distDirLayout
         (envSpecs' ++ pkgSpecs ++ uriSpecs)
         InstallCommand
 
-    buildCtx <- constructProjectBuildContext verbosity (baseCtx{installedPackages = Just installedIndex'}) targetSelectors'
+    buildCtx <-
+      constructProjectBuildContext
+        verbosity
+        (baseCtx{installedPackages = Just installedIndex'})
+        (targetSelectors ++ uriTargetSelectors)
 
     printPlan verbosity baseCtx buildCtx
     let installCfg = InstallCfg verbosity baseCtx buildCtx platform compiler configFlags clientInstallFlags
