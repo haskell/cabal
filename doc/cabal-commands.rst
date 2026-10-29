@@ -218,7 +218,13 @@ Arguments and flags common to some or all commands are:
 Target Forms
 ------------
 
-A cabal command target can take any of the following forms:
+A cabal command target can take any of the following forms.
+
+Project targets
+^^^^^^^^^^^^^^^
+
+These forms select packages and components of the project. They are accepted
+by every command that takes ``[TARGETS]``.
 
 -  A package target: ``[pkg:]package``, which specifies that all enabled
    components of a package to be built. By default, test suites and
@@ -247,9 +253,22 @@ A cabal command target can take any of the following forms:
 -  A filepath target: ``[package:][ctype:]filepath``, which specifies that the
    component of which the given filepath is a part of will be built.
 
+Targets outside the project
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These forms name things that are not packages of the project. Each is
+accepted only by the commands listed.
+
 -  A script target: ``path/to/script``, which specifies the path to a script
    file. This is supported by ``build``, ``repl``, ``run``, ``list-bin``, and
    ``clean``. Script targets are not part of a package.
+
+-  A repository package target: ``package``, ``package-version`` or
+   ``package:exename``, which names a package from the configured
+   repositories, optionally pinned to a version or narrowed to one of its
+   executables. This is supported by ``install`` only. The project target
+   forms above do not apply to repository packages. See
+   :ref:`cabal install<cabal-install>`.
 
 .. _command-group-global:
 
@@ -924,37 +943,62 @@ In addition ``cabal build`` accepts these flags:
     When given we will forego performing a full build and abort after running
     the configure phase of each target package.
 
+.. _cabal-install:
+
 cabal install
 ^^^^^^^^^^^^^
 
 ``cabal install [FLAGS] [TARGETS]`` builds the specified target packages and
 symlinks/copies their executables in ``installdir`` (usually ``~/.local/bin``).
+Targets may be packages of a local project, packages from a repository, or a
+mix of both. Several targets may be given at once:
 
-.. warning::
+::
 
-  If not every package has an executable to install, use ``all:exes`` rather
-  than ``all`` as the target. To overwrite an installation, use
-  ``--overwrite-policy=always`` as the default policy is ``never``.
+    $ cabal install hlint fourmolu
+    $ cabal install hlint-3.8 ./my-tool
 
-For example this command will build the latest ``cabal-install`` and symlink
-its ``cabal`` executable:
+Installing packages from a repository
+"""""""""""""""""""""""""""""""""""""
+
+Targets need not belong to a project. A bare package name, optionally with a
+version, names a package from the :ref:`configured package
+repositories<repository-specification>` (Hackage_ by default); it is fetched,
+built in the store and its executables installed. For example this command
+will build the latest ``cabal-install`` from Hackage and symlink its ``cabal``
+executable:
 
 ::
 
     $ cabal install cabal-install
 
-In addition, it's possible to use ``cabal install`` to install components
-of a local project. For example, with an up-to-date Git clone of the Cabal
-repository, this command will build cabal-install HEAD and symlink the
-``cabal`` executable:
+Outside of a project, ``package:exename`` installs only the named executable
+of a repository package, e.g. ``cabal install cabal-install:cabal``. This is
+the only component form accepted for repository packages.
+
+Installing packages from a project
+""""""""""""""""""""""""""""""""""
+
+Any :ref:`project target form<target-forms>` can be used to install packages
+and components of a local project. For example, with an up-to-date Git clone
+of the Cabal repository, this command will build cabal-install HEAD and
+symlink the ``cabal`` executable:
 
 ::
 
     $ cabal install exe:cabal
 
+.. warning::
+
+  If not every package has an executable to install, use ``all:exes`` rather
+  than ``all`` as the target.
+
+Install method and location
+"""""""""""""""""""""""""""
+
 Where symlinking is not possible (eg. on some Windows versions) the ``copy``
 method is used by default. You can specify the install method
-by using ``--install-method`` flag:
+by using ``--install-method`` flag and the location with ``--installdir``:
 
 ::
 
@@ -962,6 +1006,9 @@ by using ``--install-method`` flag:
 
 Note that copied executables are not self-contained, since they might use
 data-files from the store.
+
+To overwrite an existing installation, use ``--overwrite-policy=always`` as
+the default policy is ``never``.
 
 .. _adding-libraries:
 
