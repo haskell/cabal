@@ -64,6 +64,7 @@ module Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.HashValue (HashValue)
 import Distribution.Client.PackageHash
 import Distribution.Client.TargetSelector
   ( SubComponentTarget (..)
@@ -275,7 +276,9 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabProgramPaths :: Map String FilePath
   , elabProgramArgs :: Map String [String]
   , elabProgramPathExtra :: [FilePath]
-  , elabConfiguredPrograms :: [ConfiguredProgram]
+  , elabConfiguredProgramsHash :: HashValue
+  -- ^ Fingerprint of configured compiler programs for cache invalidation.
+  -- The programs themselves are held in 'pkgConfigCompilerProgs'.
   , elabConfigureScriptArgs :: [String]
   , elabExtraLibDirs :: [FilePath]
   , elabExtraLibDirsStatic :: [FilePath]
