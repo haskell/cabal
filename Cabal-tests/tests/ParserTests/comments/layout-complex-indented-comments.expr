@@ -2,7 +2,7 @@
   Section
     (Name
       WithComments {
-        justComments =
+        priorComments =
         [
           Comment
             "-- This is the configuration file for the 'cabal' command line tool."
@@ -11,25 +11,29 @@
           Comment
             "-- The available configuration options are listed below."
             (Position 3 1)],
+        followingComments = [],
         unComments = Position 6 1}
       "repository")
     [
       SecArgName
         WithComments {
-          justComments = [],
+          priorComments = [],
+          followingComments = [],
           unComments = Position 6 12}
         "hackage.haskell.org"]
     [
       Field
         (Name
           WithComments {
-            justComments = [],
+            priorComments = [],
+            followingComments = [],
             unComments = Position 7 3}
           "url")
         [
           FieldLine
             WithComments {
-              justComments = [
+              priorComments = [],
+              followingComments = [
                 Comment
                   "-- secure: True"
                   (Position 8 3),
@@ -47,13 +51,15 @@
   Field
     (Name
       WithComments {
-        justComments = [],
+        priorComments = [],
+        followingComments = [],
         unComments = Position 13 1}
       "remote-repo-cache")
     [
       FieldLine
         WithComments {
-          justComments = [
+          priorComments = [],
+          followingComments = [
             Comment
               "-- logs-dir: /home/foo/.cache/cabal/logs"
               (Position 14 1),
@@ -65,13 +71,15 @@
   Field
     (Name
       WithComments {
-        justComments = [],
+        priorComments = [],
+        followingComments = [],
         unComments = Position 16 1}
       "build-summary")
     [
       FieldLine
         WithComments {
-          justComments = [
+          priorComments = [],
+          followingComments = [
             Comment
               "-- build-log:"
               (Position 17 1)],
@@ -80,13 +88,15 @@
   Field
     (Name
       WithComments {
-        justComments = [],
+        priorComments = [],
+        followingComments = [],
         unComments = Position 18 1}
       "remote-build-reporting")
     [
       FieldLine
         WithComments {
-          justComments = [
+          priorComments = [],
+          followingComments = [
             Comment
               "-- report-planning-failure: False"
               (Position 19 1),
@@ -98,13 +108,15 @@
   Field
     (Name
       WithComments {
-        justComments = [],
+        priorComments = [],
+        followingComments = [],
         unComments = Position 21 1}
       "jobs")
     [
       FieldLine
         WithComments {
-          justComments = [
+          priorComments = [],
+          followingComments = [
             Comment
               "-- keep-going: False"
               (Position 22 1),
@@ -116,13 +128,15 @@
   Field
     (Name
       WithComments {
-        justComments = [],
+        priorComments = [],
+        followingComments = [],
         unComments = Position 24 1}
       "installdir")
     [
       FieldLine
         WithComments {
-          justComments = [
+          priorComments = [],
+          followingComments = [
             Comment
               "-- token:"
               (Position 25 1),
@@ -134,7 +148,8 @@
   Section
     (Name
       WithComments {
-        justComments = [
+        priorComments = [],
+        followingComments = [
           Comment
             "-- keep-temp-files: False"
             (Position 29 3),
@@ -148,7 +163,8 @@
   Section
     (Name
       WithComments {
-        justComments = [
+        priorComments = [],
+        followingComments = [
           Comment
             "-- interactive: False"
             (Position 33 3),
@@ -162,7 +178,8 @@
   Section
     (Name
       WithComments {
-        justComments = [
+        priorComments = [],
+        followingComments = [
           Comment
             "-- alex-location:"
             (Position 37 3),

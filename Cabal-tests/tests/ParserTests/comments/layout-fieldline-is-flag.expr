@@ -1,7 +1,149 @@
 [
-  Comment
-    "-- The previous thing shouldn't be parsed as a comment because it's a flag."
-    (Position 11 5),
-  Comment
-    "-- This however, is a comment."
-    (Position 12 5)]
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 1 1}
+      "cabal-version")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 1 22}
+        "2.2"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 2 1}
+      "name")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 2 22}
+        "common"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 3 1}
+      "version")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 3 22}
+        "0"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 4 1}
+      "synopsis")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 4 22}
+        "Common-stanza demo"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 5 1}
+      "build-type")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 5 22}
+        "Simple"],
+  Section
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 7 1}
+      "test-suite")
+    [
+      SecArgName
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 7 12}
+        "doctests"]
+    [
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 8 3}
+          "type")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 8 24}
+            "exitcode-stdio-1.0"],
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 9 3}
+          "main-is")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 9 24}
+            "doctests.hs"],
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 10 3}
+          "x-doctest-options")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments =
+              [
+                Comment
+                  "-- The previous thing shouldn't be parsed as a comment because it's a flag."
+                  (Position 11 5),
+                Comment
+                  "-- This however, is a comment."
+                  (Position 12 5)],
+              unComments = Position 10 24}
+            "--preserve-it"],
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 13 3}
+          "ghc-options")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 13 24}
+            "-Wall -threaded"]]]

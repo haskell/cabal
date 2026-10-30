@@ -282,10 +282,10 @@ commentsAfter :: Parser (FieldLine Position) -> Parser (FieldLine (WithComments 
 commentsAfter p = do
   x <- p
   postCmts <- many tokComment
-  pure $ fmap (WithComments postCmts) x
+  pure $ fmap (WithComments [] postCmts) x
 
 noComments :: Functor f => f ann -> f (WithComments ann)
-noComments = fmap (WithComments mempty)
+noComments = fmap (WithComments [] [])
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 prependCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
@@ -298,8 +298,17 @@ prependCommentsFields cs fs = case fs of
 prependCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 prependCommentsField [] f = f
 prependCommentsField cs f = case f of
-  (Field name fls) -> Field (L.over (traverse . L.justComments) (cs ++) name) fls
-  (Section name args fs) -> Section (L.over (traverse . L.justComments) (cs ++) name) args fs
+  (Field name fls) -> Field (L.over (traverse . L.priorComments) (cs ++) name) fls
+  (Section name args fs) -> Section (L.over (traverse . L.priorComments) (cs ++) name) args fs
+
+prependCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> Maybe [FieldLine (WithComments ann)]
+prependCommentsFieldLines [] fls = Just fls
+prependCommentsFieldLines cs fls = case fls of
+  [] -> Nothing
+  (fl : fls') -> Just $ prependCommentsFieldLine cs fl : fls'
+
+prependCommentsFieldLine :: [Comment ann] -> FieldLine (WithComments ann) -> FieldLine (WithComments ann)
+prependCommentsFieldLine cs = L.over (traverse . L.priorComments) (cs ++)
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
 appendCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
@@ -313,10 +322,10 @@ appendCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithC
 appendCommentsField [] f = f
 appendCommentsField cs f = case f of
   (Field name fls) -> case appendCommentsFieldLines cs fls of
-    Nothing -> Field (L.over (traverse . L.justComments) (++ cs) name) []
+    Nothing -> Field (L.over (traverse . L.followingComments) (++ cs) name) []
     Just fls' -> Field name fls'
   (Section name args fs) -> case appendCommentsFields cs fs of
-    Nothing -> Section (L.over (traverse . L.justComments) (++ cs) name) args []
+    Nothing -> Section (L.over (traverse . L.followingComments) (++ cs) name) args []
     Just fs' -> Section name args fs'
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
@@ -324,8 +333,13 @@ appendCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> M
 appendCommentsFieldLines [] fls = Just fls
 appendCommentsFieldLines cs fls = case fls of
   [] -> Nothing
-  [fl] -> Just [L.over (traverse . L.justComments) (++ cs) fl]
+  [fl] -> Just [L.over (traverse . L.priorComments) (++ cs) fl]
   (f : fls') -> (f :) <$> appendCommentsFieldLines cs fls'
+
+appendCommentsNameSecArgs :: Name ann -> [SectionArg ann] -> [Comment ann] -> (Name (WithComments ann), [SectionArg (WithComments ann)])
+appendCommentsNameSecArgs name [] cs = (WithComments [] cs <$> name, [])
+appendCommentsNameSecArgs name [x] cs = (noComments name, [WithComments [] cs <$> x])
+appendCommentsNameSecArgs name (x : xs) cs = (noComments x :) <$> appendCommentsNameSecArgs name xs cs
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content.
@@ -381,8 +395,12 @@ elementInLayoutContext ilevel name =
             elems <- sectionLayoutOrBraces ilevel
             case elems of
               -- If there are no elements but comments, we attach them to the name.
-              Left innerCmts -> return (Section (WithComments (commentsAfterSectionArgs <> innerCmts) <$> name) (map noComments args) [])
-              Right elems' -> return (Section (WithComments commentsAfterSectionArgs <$> name) (map noComments args) elems')
+              Left innerCmts -> do
+                let (name', args') = appendCommentsNameSecArgs name args (commentsAfterSectionArgs <> innerCmts)
+                return (Section name' args' [])
+              Right elems' -> do
+                let (name', args') = appendCommentsNameSecArgs name args commentsAfterSectionArgs
+                return (Section name' args' elems')
         )
 
 -- An element (field or section) that is valid in a non-layout context.
@@ -403,8 +421,12 @@ elementInNonLayoutContext name =
             closeBrace
 
             case elems of
-              Left innerCmts -> return (Section (WithComments (commentsAfterSectionArgs <> innerCmts) <$> name) (map noComments args) [])
-              Right elems' -> return (Section (WithComments commentsAfterSectionArgs <$> name) (map noComments args) elems')
+              Left innerCmts -> do
+                let (name', args') = appendCommentsNameSecArgs name args (commentsAfterSectionArgs <> innerCmts)
+                return (Section name' args' [])
+              Right elems' -> do
+                let (name', args') = appendCommentsNameSecArgs name args commentsAfterSectionArgs
+                return (Section name' args' elems')
         )
 
 -- The body of a field, using either layout style or braces style.
@@ -438,24 +460,25 @@ fieldLayoutOrBraces ilevel name = try braces <|> fieldLayout
   where
     braces :: Parser (Field (WithComments Position))
     braces = do
-      preCmts <- many tokComment
+      cmts <- many tokComment
       openBrace
-      (preCmts', ls) <-
+      (cmts', ls) <-
         inLexerMode (LexerMode in_field_braces) ((,) <$> many tokComment <*> many (commentsAfter fieldContent))
       closeBrace
-      return $ Field (WithComments (preCmts' <> preCmts) <$> name) ls
+      case prependCommentsFieldLines (cmts <> cmts') ls of
+        Nothing -> return $ Field (WithComments [] (cmts <> cmts') <$> name) ls
+        Just ls' -> return $ Field (noComments name) ls'
 
     -- Here, we run 'fieldContent' twice separately because only the second time it is subject to the indentation constraint.
     fieldLayout :: Parser (Field (WithComments Position))
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
-      preCmts <- many tokComment
+      cmts <- many tokComment
       l <- optionMaybe (commentsAfter fieldContent)
       ls <- many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
-      return
-        ( case l of
-            Nothing -> Field (WithComments preCmts <$> name) ls
-            Just l' -> Field (WithComments preCmts <$> name) (l' : ls)
-        )
+
+      case prependCommentsFieldLines cmts (maybe id (:) l ls) of
+        Nothing -> return $ Field (WithComments [] cmts <$> name) []
+        Just ls' -> return $ Field (noComments name) ls'
 
 -- The body of a section, using either layout style or braces style.
 --
@@ -480,14 +503,16 @@ fieldInlineOrBraces :: Name Position -> Parser (Field (WithComments Position))
 fieldInlineOrBraces name =
   ( do
       openBrace
-      (preCmts, ls) <-
+      (cmts, ls) <-
         inLexerMode (LexerMode in_field_braces) (liftA2 (,) (many tokComment) (many (commentsAfter fieldContent)))
       closeBrace
-      return (Field (WithComments preCmts <$> name) ls)
+      case prependCommentsFieldLines cmts ls of
+        Nothing -> return (Field (WithComments [] cmts <$> name) ls)
+        Just ls' -> return (Field (noComments name) ls')
   )
     <|> ( do
             ls <- inLexerMode (LexerMode in_field_braces) (option [] (fmap (\l -> [l]) fieldContent))
-            return (Field (WithComments [] <$> name) (map (WithComments [] <$>) ls))
+            return (Field (WithComments [] [] <$> name) (map (WithComments [] [] <$>) ls))
         )
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
