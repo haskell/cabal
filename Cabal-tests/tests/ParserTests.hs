@@ -11,6 +11,7 @@ import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
 import Control.Monad                               (void, unless)
+import Control.Arrow                               ((&&&))
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
@@ -42,7 +43,6 @@ import Distribution.Parsec.Source
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
-import qualified Data.Bifunctor        as Bi
 
 import qualified Distribution.InstalledPackageInfo as IPI
 
@@ -121,14 +121,14 @@ commentTests = testGroup "comments"
       readFieldTest "layout-complex-indented-comments.cabal" -- Imported from hackage integration test
     , readFieldTest "layout-comment-in-fieldline.cabal" -- Aligned leading comma after comment
 
-    , commentTest "layout-nosections-before.cabal"
-    , commentTest "layout-nosections-after.cabal"
-    , commentTest "layout-nosections-mixed.cabal"
-    , commentTest "layout-many-sections.cabal"
-    , commentTest "layout-interleaved-in-section.cabal"
-    , commentTest "layout-fieldline-is-flag.cabal"
+    , commentTest False "layout-nosections-before.cabal"
+    , commentTest False "layout-nosections-after.cabal"
+    , commentTest False "layout-nosections-mixed.cabal"
+    , commentTest False "layout-many-sections.cabal"
+    , commentTest False "layout-interleaved-in-section.cabal"
+    , commentTest False "layout-fieldline-is-flag.cabal"
 
-    , commentTest "hasktorch.cabal" -- Taken from regression, has a lot of comments
+    , commentTest True "hasktorch.cabal" -- Taken from regression, has a lot of comments
 #endif
     ]
 
@@ -152,31 +152,24 @@ readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
 
 #ifdef MIN_VERSION_tree_diff
 -- | Assert the comment structure of a given cabal file.
-commentTest :: FilePath -> TestTree
-commentTest fname = ediffGolden goldenTest fname exprFile $ do
+commentTest :: Bool -> FilePath -> TestTree
+commentTest extract fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input
-  let res = Bi.first (fst . extractComments) <$> readFieldsWithComments' contents
-
-  case res of
+  case readFieldsWithComments' contents of
     Left perr -> fail $ formatError contents perr
-    Right (cmts, warns) -> do
+    Right (res, warns) -> do
       unless (null warns) (fail $ unlines (map show warns))
-      pure cmts
-
+      pure $ if extract then toExpr (extractComments res) else toExpr res
   where
     input = "tests" </> "ParserTests" </> "comments" </> fname
     exprFile = replaceExtension input "expr"
-#endif
 
-#ifdef MIN_VERSION_tree_diff
 -- Extract comments to reduce the golden file's size and make it easier to verify.
-extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
-extractComments = Bi.first mconcat . unzip . map extractCommentsStep
-#endif
+extractComments :: (Foldable f) => [f (WithComments ann)] -> ([Comment ann], [Comment ann])
+extractComments = mconcat . map extractCommentsStep
 
-#ifdef MIN_VERSION_tree_diff
-extractCommentsStep :: (Foldable f, Functor f) => f (WithComments ann) -> ([Comment ann], f ann)
-extractCommentsStep f = (foldMap justComments f, fmap unComments f)
+extractCommentsStep :: (Foldable f) => f (WithComments ann) -> ([Comment ann], [Comment ann])
+extractCommentsStep f = foldMap (priorComments &&& followingComments) f
 #endif
 
 -------------------------------------------------------------------------------
