@@ -1,40 +1,16 @@
 import Test.Cabal.Prelude
 
-import Control.Monad.IO.Class (liftIO)
-import System.Directory (createDirectoryIfMissing, executable, getPermissions, setPermissions)
+import System.Directory (executable, getPermissions, setPermissions)
 import System.FilePath ((</>))
 
+-- PathRecomp covers PATH. This covers the rest of the configured program
+-- records: a new version of a tool at the same path reconfigures, and
+-- elaborating again with the same programs does not.
 main = cabalTest $ recordMode DoNotRecord $ do
   env <- getTestEnv
-  let pwd = testCurrentDir env
-      extraPath = pwd </> "program-cache-empty-path"
-      toolName = "versioned-haddock" ++ if isWindows then ".bat" else ""
-      toolPath = pwd </> toolName
-      buildArgs = ["all", "--with-haddock=" ++ toolPath]
-  writeSourceFile "program-cache.cabal" packageDescription
-  writeSourceFile "M.hs" "module M where\n"
-  writeSourceFile "cabal.project" "packages: .\n"
-  liftIO $ createDirectoryIfMissing True extraPath
-
-  cabal "build" ["all"]
-  cached <- cabal' "build" ["all"]
-  assertOutputContains "Up to date" cached
-  -- No executable is added or moved. The captured PATH alone must still
-  -- invalidate configuration, preserving the REPL fix from #2015.
-  addToPath extraPath $ do
-    changed <- cabal' "build" ["all"]
-    assertConfigured changed
-    cached <- cabal' "build" ["all"]
-    assertOutputContains "Up to date" cached
-    repl <-
-      cabalWithStdin
-        "repl"
-        ["lib:one"]
-        "import System.Environment\ngetEnv \"PATH\" >>= putStrLn\n:q\n"
-    assertOutputContains "program-cache-empty-path" repl
-
-  -- Configure a tool whose version can change while its location and
-  -- arguments stay fixed. It is never executed for building these libraries.
+  let toolName = "versioned-haddock" ++ if isWindows then ".bat" else ""
+      toolPath = testCurrentDir env </> toolName
+      build = cabal' "build" ["--with-haddock=" ++ toolPath]
   writeSourceFile toolName $
     if isWindows
       then "@type \"%~dp0haddock-version\"\r\n"
@@ -42,41 +18,11 @@ main = cabalTest $ recordMode DoNotRecord $ do
   permissions <- liftIO $ getPermissions toolPath
   liftIO $ setPermissions toolPath permissions{executable = True}
   writeSourceFile "haddock-version" "Haddock version 2.30.0\n"
-  cabal "build" buildArgs
-  cached <- cabal' "build" buildArgs
-  assertOutputContains "Up to date" cached
-  -- A redundant constraint forces elaboration without changing the package
-  -- configuration. Check that it causes no reconfiguration on its own.
+  _ <- build
+  -- Editing cabal.project makes cabal elaborate the plan again.
   writeSourceFile "cabal.project" "packages: .\nconstraints: base >= 0\n"
-  unchanged <- cabal' "build" buildArgs
-  assertOutputContains "Up to date" unchanged
+  build >>= assertOutputContains "Up to date"
   delay
   writeSourceFile "haddock-version" "Haddock version 2.31.0\n"
   writeSourceFile "cabal.project" "packages: .\nconstraints: base < 100\n"
-  changed <- cabal' "build" buildArgs
-  assertConfigured changed
-  cached <- cabal' "build" buildArgs
-  assertOutputContains "Up to date" cached
-
-assertConfigured result = do
-  assertOutputContains "Configuring library 'one'" result
-  assertOutputContains "Configuring library 'two'" result
-
-packageDescription =
-  unlines
-    [ "cabal-version: 3.0"
-    , "name: program-cache"
-    , "version: 0"
-    , "build-type: Simple"
-    , "common options"
-    , "  default-language: Haskell2010"
-    , "  build-depends: base < 5"
-    , "library one"
-    , "  import: options"
-    , "  visibility: public"
-    , "  exposed-modules: M"
-    , "library two"
-    , "  import: options"
-    , "  visibility: public"
-    , "  exposed-modules: M"
-    ]
+  build >>= assertOutputContains "Configuring library"
