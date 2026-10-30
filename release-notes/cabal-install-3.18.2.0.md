@@ -46,6 +46,17 @@ cabal-install 3.18.2.0 changelog and release notes
         flags: -pkg-config +bundled-c-zlib
     ```
 
+- GHCJS support is deprecated [#11609](https://github.com/haskell/cabal/issues/11609) [#12396](https://github.com/haskell/cabal/pull/12396)
+
+    This is the last release series that knows about the GHCJS compiler.
+    The next major release removes the `--ghcjs` flag, the `ghcjs` and
+    `ghcjs-pkg` programs and the GHCJS build paths, and selecting
+    `compiler: ghcjs` will fail with an error. The `ghcjs-options` family
+    of fields in package descriptions will still parse but have no effect.
+
+    Use the JavaScript backend of GHC instead, for example
+    `--with-compiler=javascript-unknown-ghcjs-ghc`.
+
 ### Important changes
 
 - Fix `renameFileWithRetry` leaving temporary files after copying [#12244](https://github.com/haskell/cabal/issues/12244) [#12246](https://github.com/haskell/cabal/pull/12246)

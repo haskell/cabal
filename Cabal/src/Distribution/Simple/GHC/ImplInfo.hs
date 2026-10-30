@@ -13,7 +13,6 @@ module Distribution.Simple.GHC.ImplInfo
   ( GhcImplInfo (..)
   , getImplInfo
   , ghcVersionImplInfo
-  , ghcjsVersionImplInfo
   ) where
 
 import Distribution.Compat.Prelude
@@ -22,7 +21,6 @@ import Prelude ()
 import Distribution.Simple.Compiler
   ( Compiler
   , CompilerFlavor (..)
-  , compilerCompatVersion
   , compilerFlavor
   , compilerVersion
   )
@@ -60,17 +58,10 @@ getImplInfo :: Compiler -> GhcImplInfo
 getImplInfo comp =
   case compilerFlavor comp of
     GHC -> ghcVersionImplInfo (compilerVersion comp)
-    GHCJS -> case compilerCompatVersion GHC comp of
-      Just ghcVer -> ghcjsVersionImplInfo (compilerVersion comp) ghcVer
-      _ ->
-        error
-          ( "Distribution.Simple.GHC.Props.getImplProps: "
-              ++ "could not find GHC version for GHCJS compiler"
-          )
     x ->
       error
-        ( "Distribution.Simple.GHC.Props.getImplProps only works"
-            ++ "for GHC-like compilers (GHC, GHCJS)"
+        ( "Distribution.Simple.GHC.ImplInfo.getImplInfo only works"
+            ++ " for GHC"
             ++ ", but found "
             ++ show x
         )
@@ -88,22 +79,3 @@ ghcVersionImplInfo ver =
     }
   where
     v = versionNumbers ver
-
-ghcjsVersionImplInfo
-  :: Version
-  -- ^ The GHCJS version
-  -> Version
-  -- ^ The GHC version
-  -> GhcImplInfo
-ghcjsVersionImplInfo _ghcjsver ghcver =
-  GhcImplInfo
-    { supportsGHC2021 = ghcv >= [9, 1]
-    , supportsGHC2024 = ghcv >= [9, 9]
-    , flagProfLate = ghcv >= [9, 4]
-    , flagHie = ghcv >= [8, 8]
-    , supportsPkgEnvFiles = ghcv >= [8, 0, 2] -- TODO: check this works in ghcjs
-    , flagWarnMissingHomeModules = ghcv >= [8, 2]
-    , unitIdForExes = ghcv >= [9, 2]
-    }
-  where
-    ghcv = versionNumbers ghcver

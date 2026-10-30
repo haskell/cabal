@@ -25,6 +25,11 @@ relative to the respective preceding *published* version.
 * License fields use identifiers from SPDX License List version
   ``3.28 2026-02-20``.
 
+* The :pkg-field:`build-type` field no longer accepts the value ``Make``.
+  Package descriptions that specify an older :pkg-field:`cabal-version` can
+  still be parsed with ``build-type: Make``, but ``Make`` has not been a
+  functional build type since at least ``Cabal-3.4``.
+
 ``cabal-version: 3.16``
 -----------------------
 

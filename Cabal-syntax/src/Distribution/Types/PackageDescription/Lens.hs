@@ -5,6 +5,7 @@ module Distribution.Types.PackageDescription.Lens
   , module Distribution.Types.PackageDescription.Lens
   ) where
 
+import Data.Bifunctor
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -34,6 +35,7 @@ import Distribution.Utils.Path
 import Distribution.Utils.ShortText (ShortText)
 import Distribution.Version (VersionRange)
 
+import qualified Data.Text as T
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.PackageDescription as T
 
@@ -100,6 +102,13 @@ category f s = fmap (\x -> s{T.category = x}) (f (T.category s))
 customFieldsPD :: Lens' PackageDescription [(String, String)]
 customFieldsPD f s = fmap (\x -> s{T.customFieldsPD = x}) (f (T.customFieldsPD s))
 {-# INLINE customFieldsPD #-}
+
+customFieldsPDText :: Lens' PackageDescription [(T.Text, T.Text)]
+customFieldsPDText = customFieldsPD . textLens
+  where
+    textLens :: Lens' [(String, String)] [(T.Text, T.Text)]
+    textLens f = fmap (map (bimap T.unpack T.unpack)) . f . map (bimap T.pack T.pack)
+{-# INLINE customFieldsPDText #-}
 
 specVersion :: Lens' PackageDescription CabalSpecVersion
 specVersion f s = fmap (\x -> s{T.specVersion = x}) (f (T.specVersion s))

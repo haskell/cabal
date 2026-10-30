@@ -6,6 +6,7 @@ module Distribution.Types.BuildInfo.Lens
   , HasBuildInfos (..)
   ) where
 
+import Data.Text (Text)
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -39,35 +40,35 @@ class HasBuildInfo a where
   buildToolDepends = buildInfo . buildToolDepends
   {-# INLINE buildToolDepends #-}
 
-  cppOptions :: Lens' a [String]
+  cppOptions :: Lens' a [Text]
   cppOptions = buildInfo . cppOptions
   {-# INLINE cppOptions #-}
 
-  asmOptions :: Lens' a [String]
+  asmOptions :: Lens' a [Text]
   asmOptions = buildInfo . asmOptions
   {-# INLINE asmOptions #-}
 
-  cmmOptions :: Lens' a [String]
+  cmmOptions :: Lens' a [Text]
   cmmOptions = buildInfo . cmmOptions
   {-# INLINE cmmOptions #-}
 
-  ccOptions :: Lens' a [String]
+  ccOptions :: Lens' a [Text]
   ccOptions = buildInfo . ccOptions
   {-# INLINE ccOptions #-}
 
-  cxxOptions :: Lens' a [String]
+  cxxOptions :: Lens' a [Text]
   cxxOptions = buildInfo . cxxOptions
   {-# INLINE cxxOptions #-}
 
-  jsppOptions :: Lens' a [String]
+  jsppOptions :: Lens' a [Text]
   jsppOptions = buildInfo . jsppOptions
   {-# INLINE jsppOptions #-}
 
-  ldOptions :: Lens' a [String]
+  ldOptions :: Lens' a [Text]
   ldOptions = buildInfo . ldOptions
   {-# INLINE ldOptions #-}
 
-  hsc2hsOptions :: Lens' a [String]
+  hsc2hsOptions :: Lens' a [Text]
   hsc2hsOptions = buildInfo . hsc2hsOptions
   {-# INLINE hsc2hsOptions #-}
 
@@ -139,27 +140,27 @@ class HasBuildInfo a where
   oldExtensions = buildInfo . oldExtensions
   {-# INLINE oldExtensions #-}
 
-  extraLibs :: Lens' a [String]
+  extraLibs :: Lens' a [Text]
   extraLibs = buildInfo . extraLibs
   {-# INLINE extraLibs #-}
 
-  extraLibsStatic :: Lens' a [String]
+  extraLibsStatic :: Lens' a [Text]
   extraLibsStatic = buildInfo . extraLibsStatic
   {-# INLINE extraLibsStatic #-}
 
-  extraGHCiLibs :: Lens' a [String]
+  extraGHCiLibs :: Lens' a [Text]
   extraGHCiLibs = buildInfo . extraGHCiLibs
   {-# INLINE extraGHCiLibs #-}
 
-  extraBundledLibs :: Lens' a [String]
+  extraBundledLibs :: Lens' a [Text]
   extraBundledLibs = buildInfo . extraBundledLibs
   {-# INLINE extraBundledLibs #-}
 
-  extraLibFlavours :: Lens' a [String]
+  extraLibFlavours :: Lens' a [Text]
   extraLibFlavours = buildInfo . extraLibFlavours
   {-# INLINE extraLibFlavours #-}
 
-  extraDynLibFlavours :: Lens' a [String]
+  extraDynLibFlavours :: Lens' a [Text]
   extraDynLibFlavours = buildInfo . extraDynLibFlavours
   {-# INLINE extraDynLibFlavours #-}
 
@@ -187,27 +188,27 @@ class HasBuildInfo a where
   installIncludes = buildInfo . installIncludes
   {-# INLINE installIncludes #-}
 
-  options :: Lens' a (PerCompilerFlavor [String])
+  options :: Lens' a (PerCompilerFlavor [Text])
   options = buildInfo . options
   {-# INLINE options #-}
 
-  profOptions :: Lens' a (PerCompilerFlavor [String])
+  profOptions :: Lens' a (PerCompilerFlavor [Text])
   profOptions = buildInfo . profOptions
   {-# INLINE profOptions #-}
 
-  sharedOptions :: Lens' a (PerCompilerFlavor [String])
+  sharedOptions :: Lens' a (PerCompilerFlavor [Text])
   sharedOptions = buildInfo . sharedOptions
   {-# INLINE sharedOptions #-}
 
-  profSharedOptions :: Lens' a (PerCompilerFlavor [String])
+  profSharedOptions :: Lens' a (PerCompilerFlavor [Text])
   profSharedOptions = buildInfo . profSharedOptions
   {-# INLINE profSharedOptions #-}
 
-  staticOptions :: Lens' a (PerCompilerFlavor [String])
+  staticOptions :: Lens' a (PerCompilerFlavor [Text])
   staticOptions = buildInfo . staticOptions
   {-# INLINE staticOptions #-}
 
-  customFieldsBI :: Lens' a [(String, String)]
+  customFieldsBI :: Lens' a [(Text, Text)]
   customFieldsBI = buildInfo . customFieldsBI
   {-# INLINE customFieldsBI #-}
 

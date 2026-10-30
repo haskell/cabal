@@ -1820,20 +1820,32 @@ system-dependent values for these fields.
     generate the ``.dyn_o`` files).
 
 .. pkg-field:: ghcjs-options: token list
+    :deprecated:
 
-   Like :pkg-field:`ghc-options` but applies to GHCJS
+    Formerly like :pkg-field:`ghc-options` but for GHCJS. Still accepted so
+    that existing packages parse, but ignored since GHCJS support was
+    removed.
 
 .. pkg-field:: ghcjs-prof-options: token list
+    :deprecated:
 
-   Like :pkg-field:`ghc-prof-options` but applies to GHCJS
+    Formerly like :pkg-field:`ghc-prof-options` but for GHCJS. Still accepted
+    so that existing packages parse, but ignored since GHCJS support was
+    removed.
 
 .. pkg-field:: ghcjs-shared-options: token list
+    :deprecated:
 
-   Like :pkg-field:`ghc-shared-options` but applies to GHCJS
+    Formerly like :pkg-field:`ghc-shared-options` but for GHCJS. Still
+    accepted so that existing packages parse, but ignored since GHCJS support
+    was removed.
 
 .. pkg-field:: ghcjs-prof-shared-options: token list
+    :deprecated:
 
-   Like :pkg-field:`ghc-prof-shared-options` but applies to GHCJS
+    Formerly like :pkg-field:`ghc-prof-shared-options` but for GHCJS. Still
+    accepted so that existing packages parse, but ignored since GHCJS support
+    was removed.
 
 .. pkg-field:: includes: filename list
     :since: 1.0
@@ -2198,6 +2210,7 @@ A typical stanza for a foreign library looks like
       lib-version-info:    6:3:2
 
       if os(Windows)
+        -- Cabal currently only supports standalone foreign libraries on Windows.
         options: standalone
         mod-def-file: MyForeignLib.def
 
@@ -2228,8 +2241,9 @@ A typical stanza for a foreign library looks like
    have any dependencies on other (Haskell) shared libraries; without
    the ``standalone`` option the generated library would have dependencies
    on the Haskell runtime library (``libHSrts``), the base library
-   (``libHSbase``), etc. Currently, ``standalone`` *must* be used on Windows
-   and *must not* be used on any other platform.
+   (``libHSbase``), etc. Currently, Cabal can only build ``standalone``
+   foreign libraries on Windows; a non-standalone foreign library is
+   rejected at configure time there.
 
 .. pkg-field:: mod-def-file: filename
 
@@ -2853,8 +2867,9 @@ To use this build type in your package, you need to:
   * Declare ``build-type: Hooks`` in your ``.cabal`` file.
   * Include a ``custom-setup`` stanza in your ``.cabal`` file, which declares
     the version of the Hooks API your package is using.
-  * Define a ``SetupHooks.hs`` module next to your ``.cabal`` file. It must
-    export a value ``setupHooks :: SetupHooks``.
+  * Define a ``SetupHooks`` module in a ``SetupHooks.hs`` file (or
+    ``SetupHooks.lhs`` file, if using literate Haskell) next to your ``.cabal``
+    file. It must export a value ``setupHooks :: SetupHooks``.
 
 More specifically, your ``.cabal`` file should resemble the following:
 

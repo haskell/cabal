@@ -179,7 +179,7 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
 
 -- TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
 --      even platform and compiler could be different if we're building things
---      like a server + client with ghc + ghcjs
+--      like a server + client with native ghc + the ghc javascript backend
 data ElaboratedSharedConfig = ElaboratedSharedConfig
   { pkgConfigPlatform :: Platform
   , pkgConfigCompiler :: Compiler -- TODO: [code cleanup] replace with CompilerInfo

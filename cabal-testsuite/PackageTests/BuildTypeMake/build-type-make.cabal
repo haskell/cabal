@@ -1,0 +1,9 @@
+cabal-version: 3.0
+name:          build-type-make
+version:       0.1.0.0
+license:       NONE
+build-type:    Make
+
+library
+    build-depends:    base
+    default-language: Haskell2010

@@ -7,6 +7,7 @@ import Prelude ()
 
 import Control.Monad (msum)
 import Data.Char (isLower)
+import qualified Data.Text as T
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
@@ -233,7 +234,7 @@ exeMainModuleName bnfo =
   -- Moreover, -main-is when parsed left-to-right can update either
   -- the "Main" module name, or the "main" function name, or both,
   -- see also 'decodeMainIsArg'.
-  fromMaybe ModuleName.main $ msum $ reverse $ map decodeMainIsArg $ findIsMainArgs ghcopts
+  fromMaybe ModuleName.main $ msum $ reverse $ map decodeMainIsArg $ findIsMainArgs $ map T.unpack ghcopts
   where
     ghcopts = hcOptions GHC bnfo
 

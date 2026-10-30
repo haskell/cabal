@@ -106,6 +106,7 @@ import Distribution.Simple.Program.Db
   , prependProgramSearchPath
   , updateConfiguredProgs
   )
+import Distribution.Simple.Program.GHC (GhcFeature (..), ghcSupports)
 import Distribution.Simple.Setup.Common as Setup
 import Distribution.Simple.Setup.Config as Setup
 import Distribution.Simple.SetupHooks.Internal
@@ -130,7 +131,6 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.UHC as UHC
 
 import Control.Exception
@@ -146,6 +146,7 @@ import Data.List
   )
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Parsec
   ( simpleParsec
@@ -823,8 +824,6 @@ buildOptionsFromConfigFlags verbosity cfg comp = do
             -- been changed to read shared libraries instead of archive
             -- files (see next code block).
             GHC.compilerBuildWay comp `notElem` [DynWay, ProfDynWay]
-          CompilerId GHCJS _ ->
-            not (GHCJS.isDynamic comp)
           _ -> False
 
   let sharedLibsByDefault
@@ -837,8 +836,6 @@ buildOptionsFromConfigFlags verbosity cfg comp = do
               -- if ghc is dynamic, then ghci needs a shared
               -- library, so we build one by default.
               GHC.compilerBuildWay comp == DynWay
-            CompilerId GHCJS _ ->
-              GHCJS.isDynamic comp
             _ -> False
       withSharedLib_ =
         -- build shared libraries if required by GHC or by the
@@ -932,13 +929,11 @@ adjustBuildOptions comp programDb opts =
       | GHC <- compilerFlavor comp
       , compilerVersion comp >= mkVersion [8, 0] =
           True
-      | GHCJS <- compilerFlavor comp = True
       | otherwise = False -- not supported by this compiler
     splitObj
       | not (LBC.splitObjs opts) = False
       | splitSec = False -- mutually exclusive with split-sections
       | GHC <- compilerFlavor comp = True
-      | GHCJS <- compilerFlavor comp = True
       | otherwise = False -- not supported by this compiler
     linkerSupportsRelocations :: Maybe Bool
     linkerSupportsRelocations =
@@ -950,9 +945,23 @@ adjustBuildOptions comp programDb opts =
             Just "NO" -> Just False
             _other -> Nothing
 
+    -- Whether a GHCi library (merged object) can be built at all.
+    canMergeObjects :: Maybe Bool
+    canMergeObjects
+      | Just ghc <- lookupProgram ghcProgram programDb
+      , ghcSupports GhcMergeObjs ghc =
+          -- GHC merges objects with the tool recorded in its settings. An
+          -- empty command means it has none (e.g. the Windows bindists, whose
+          -- lld cannot produce relocatable objects); GHC would then fall back
+          -- to an archive, which brings nothing to GHCi. A GHC with
+          -- @--merge-objs@ always reports the setting, so a missing one is
+          -- treated the same way rather than assumed capable.
+          Just $ maybe False (not . null) (Map.lookup "Merge objects command" (compilerProperties comp))
+      | otherwise = linkerSupportsRelocations
+
     ghciLib
       | LBC.withGHCiLib opts
-      , not (fromMaybe True linkerSupportsRelocations) =
+      , not (fromMaybe True canMergeObjects) =
           False
       | otherwise = LBC.withGHCiLib opts
 
@@ -996,8 +1005,8 @@ buildOptionsAdjustmentWarnings comp opts0 opts1 =
        | LBC.splitObjs opts0
        , not (LBC.splitObjs opts1)
        ]
-    ++ [ "--enable-library-for-ghci is not supported with the current"
-        ++ "  linker; ignoring..."
+    ++ [ "--enable-library-for-ghci is not supported: the linker cannot "
+        ++ "merge object files; ignoring..."
        | LBC.withGHCiLib opts0
        , not (LBC.withGHCiLib opts1)
        ]
@@ -2254,7 +2263,6 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
   packageDBs' <- filterM packageDBExists packageDBs
   case compilerFlavor comp of
     GHC -> GHC.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
-    GHCJS -> GHCJS.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
     UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     flv ->
       dieWithException verbosity $ HowToFindInstalledPackages flv
@@ -2289,8 +2297,6 @@ getPackageDBContents verbosity comp mbWorkDir packageDB progdb = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
     GHC -> GHC.getPackageDBContents verbosity mbWorkDir packageDB progdb
-    GHCJS -> GHCJS.getPackageDBContents verbosity mbWorkDir packageDB progdb
-    -- For other compilers, try to fall back on 'getInstalledPackages'.
     _ -> getInstalledPackages verbosity comp mbWorkDir [packageDB] progdb
 
 -- | A set of files (or directories) that can be monitored to detect when
@@ -2647,12 +2653,12 @@ ccLdOptionsBuildInfo cflags ldflags ldflags_static =
       extraLibDirsStatic' = filter ("-L" `isPrefixOf`) ldflags_static
    in mempty
         { includeDirs = map (makeSymbolicPath . drop 2) includeDirs'
-        , extraLibs = map (drop 2) extraLibs'
+        , extraLibs = map (Text.pack . drop 2) extraLibs'
         , extraLibDirs = map (makeSymbolicPath . drop 2) extraLibDirs'
-        , extraLibsStatic = map (drop 2) extraLibsStatic'
+        , extraLibsStatic = map (Text.pack . drop 2) extraLibsStatic'
         , extraLibDirsStatic = map (makeSymbolicPath . drop 2) extraLibDirsStatic'
-        , ccOptions = cflags'
-        , ldOptions = ldflags''
+        , ccOptions = map Text.pack cflags'
+        , ldOptions = map Text.pack ldflags''
         }
 
 -- -----------------------------------------------------------------------------
@@ -2688,8 +2694,8 @@ configCompilerEx Nothing _ _ _ verbosity = dieWithException verbosity UnknownCom
 configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
   (comp, maybePlatform, programDb) <- case hcFlavor of
     GHC -> GHC.configure verbosity hcPath hcPkg progdb
-    GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
     UHC -> UHC.configure verbosity hcPath progdb
+    GHCJS -> dieWithException verbosity GHCJSNotSupported
     _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
@@ -2708,8 +2714,8 @@ configCompiler mbFlavor hcPath progdb verbosity = do
       Just hcFlavor ->
         case hcFlavor of
           GHC -> GHC.configureCompiler verbosity hcPath progdb
-          GHCJS -> GHCJS.configureCompiler verbosity hcPath progdb
           UHC -> UHC.configure verbosity hcPath progdb
+          GHCJS -> dieWithException verbosity GHCJSNotSupported
           _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
@@ -2726,7 +2732,6 @@ configCompilerProgDb
 configCompilerProgDb verbosity comp hcProgDb hcPkgPath = do
   case compilerFlavor comp of
     GHC -> GHC.compilerProgramDb verbosity comp hcProgDb hcPkgPath
-    GHCJS -> GHCJS.compilerProgramDb verbosity comp hcProgDb hcPkgPath
     _ -> return hcProgDb
 
 -- -----------------------------------------------------------------------------
@@ -2741,12 +2746,12 @@ checkForeignDeps :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 checkForeignDeps pkg lbi verbosity =
   ifBuildsWith
     allHeaders
-    (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
+    (commonCcArgs ++ makeLdArgs (map Text.unpack allLibs)) -- I'm feeling lucky
     (return ())
     ( do
         missingLibs <- findMissingLibs
         missingHdr <- findOffendingHdr
-        explainErrors missingHdr missingLibs
+        explainErrors missingHdr (map Text.unpack missingLibs)
     )
   where
     allHeaders = collectField (fmap getSymbolicPath . includes)
@@ -2814,9 +2819,9 @@ checkForeignDeps pkg lbi verbosity =
     findMissingLibs =
       ifBuildsWith
         []
-        (makeLdArgs allLibs)
+        (makeLdArgs $ map Text.unpack allLibs)
         (return [])
-        (filterM (fmap not . libExists) allLibs)
+        (filterM (fmap not . libExists . Text.unpack) allLibs)
 
     libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
@@ -2848,8 +2853,8 @@ checkForeignDeps pkg lbi verbosity =
            , isAbsolute dir
            ]
         ++ ["-I" ++ baseDir]
-        ++ collectField cppOptions
-        ++ collectField ccOptions
+        ++ map Text.unpack (collectField cppOptions)
+        ++ map Text.unpack (collectField ccOptions)
         ++ [ "-I" ++ dir
            | dir <-
               ordNub
@@ -2867,7 +2872,7 @@ checkForeignDeps pkg lbi verbosity =
 
     commonCcArgs =
       commonCppArgs
-        ++ collectField ccOptions
+        ++ map Text.unpack (collectField ccOptions)
         ++ [ opt
            | dep <- deps
            , opt <- IPI.ccOptions dep
@@ -2883,7 +2888,7 @@ checkForeignDeps pkg lbi verbosity =
                   else extraLibDirs
               )
       ]
-        ++ collectField ldOptions
+        ++ map Text.unpack (collectField ldOptions)
         ++ [ "-L" ++ dir
            | dir <-
               ordNub

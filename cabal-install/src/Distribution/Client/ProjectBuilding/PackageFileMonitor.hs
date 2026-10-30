@@ -199,6 +199,7 @@ checkPackageFileMonitorChanged
                       { buildResultDocs = docsResult
                       , buildResultTests = testsResult
                       , buildResultLogFile = Nothing
+                      , buildResultBenchmark = Nothing
                       }
                 where
                   (docsResult, testsResult) = buildResult

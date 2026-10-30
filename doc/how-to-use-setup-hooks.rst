@@ -54,7 +54,8 @@ stanza to declare the dependencies of your ``SetupHooks``:
         base        >= 4.18 && < 5,
         Cabal-hooks >= 3.16 && < 3.18
 
-Then, define a Haskell module called ``SetupHooks.hs`` next to your ``.cabal``
+Then, define a Haskell module called ``SetupHooks`` in a ``SetupHooks.hs`` file
+(or ``SetupHooks.lhs`` file, if using literate Haskell) next to your ``.cabal``
 file. For example:
 
 .. code-block:: haskell
@@ -68,7 +69,7 @@ file. For example:
        { configureHooks = myConfigureHooks
        , buildHooks = myBuildHooks }
 
-This ``SetupHooks.hs`` module is where you define all of the hooks into the
+This ``SetupHooks`` module is where you define all of the hooks into the
 build system. The following hooks exist:
 
   * Hooks into the configure phase:
@@ -84,7 +85,10 @@ build system. The following hooks exist:
 
     * Pre-build rules. Used to define code generators or custom preprocessors,
       i.e. rules to generate source files.
-    * Post-build hook. Used before linking to inject data into build artifacts.
+    * Post-build hook. Runs once a component has been built, i.e. after
+      compilation and linking. Used to post-process the build artifacts, e.g.
+      to inject data into a freshly built executable, strip it, sign it, or
+      run it.
 
   * Hooks into the install phase (per component). These are used to copy over
     extra files when installing an executable.

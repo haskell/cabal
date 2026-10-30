@@ -1,6 +1,19 @@
 Cabal and Cabal-syntax 3.18.2.0 changelog and release notes
 ---
 
+### Notice
+
+- GHCJS support is deprecated [#11609](https://github.com/haskell/cabal/issues/11609) [#12396](https://github.com/haskell/cabal/pull/12396)
+
+    This is the last release series that knows about the GHCJS compiler.
+    The next major release removes the `Distribution.Simple.GHCJS` module,
+    the `--ghcjs` flag, the `ghcjs` and `ghcjs-pkg` programs and the GHCJS
+    build paths. The `ghcjs-options` family of fields in package
+    descriptions will still parse but have no effect.
+
+    Use the JavaScript backend of GHC instead, for example
+    `--with-compiler=javascript-unknown-ghcjs-ghc`.
+
 ### Significant changes
 
 - Mark `CabalSpecV3_18` as the latest supported specification [#12271](https://github.com/haskell/cabal/issues/12271) [#12273](https://github.com/haskell/cabal/pull/12273)

@@ -967,7 +967,7 @@ availableTargetIndexesFromSourcePackages pkgSpecifiers = AvailableTargetIndexes{
 -- TODO: [research required] what if the solution has multiple
 --      versions of this package?
 --      e.g. due to setup deps or due to multiple independent sets
---      of packages being built (e.g. ghc + ghcjs in a project)
+--      of packages being built (e.g. native ghc + the ghc javascript backend in a project)
 
 filterTargetsKind :: ComponentKind -> [AvailableTarget k] -> [AvailableTarget k]
 filterTargetsKind ckind = filterTargetsKindWith (== ckind)

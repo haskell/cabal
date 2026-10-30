@@ -3,6 +3,8 @@ module Distribution.Types.SourceRepo.Lens
   , module Distribution.Types.SourceRepo.Lens
   ) where
 
+import Data.Text (Text)
+import qualified Data.Text as T
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -18,8 +20,8 @@ repoType :: Lens' SourceRepo (Maybe RepoType)
 repoType f s = fmap (\x -> s{T.repoType = x}) (f (T.repoType s))
 {-# INLINE repoType #-}
 
-repoLocation :: Lens' SourceRepo (Maybe String)
-repoLocation f s = fmap (\x -> s{T.repoLocation = x}) (f (T.repoLocation s))
+repoLocation :: Lens' SourceRepo (Maybe Text)
+repoLocation f s = fmap (\x -> s{T.repoLocation = fmap T.unpack x}) (f (fmap T.pack (T.repoLocation s)))
 {-# INLINE repoLocation #-}
 
 repoModule :: Lens' SourceRepo (Maybe String)

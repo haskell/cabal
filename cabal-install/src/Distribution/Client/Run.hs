@@ -25,7 +25,6 @@ import Distribution.PackageDescription
 import Distribution.Simple (PackageDBX (..))
 import Distribution.Simple.Build (addInternalBuildTools)
 import Distribution.Simple.BuildPaths (exeExtension)
-import Distribution.Simple.Compiler (CompilerFlavor (..), compilerFlavor)
 import Distribution.Simple.Flag (fromFlag)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
@@ -51,8 +50,6 @@ import Distribution.Simple.Utils
   )
 import Distribution.System (Platform (..))
 import Distribution.Types.UnqualComponentName
-
-import qualified Distribution.Simple.GHCJS as GHCJS
 
 import Distribution.Client.Errors
 import Distribution.Utils.Path
@@ -137,7 +134,8 @@ splitRunArgs verbosity lbi args =
 
 -- | Run a given executable.
 run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
-run verbosity lbi exe exeArgs = do
+run verbosity lbi exe@Executable{exeName} exeArgs = do
+  let exeName' = prettyShow exeName
   curDir <- absoluteWorkingDirLBI lbi
   let distPref = fromFlag $ configDistPref $ configFlags lbi
       buildPref = buildDir lbi
@@ -158,21 +156,9 @@ run verbosity lbi exe exeArgs = do
                 (withPrograms lbi)
           }
 
-  (path, runArgs) <-
-    let exeName' = prettyShow $ exeName exe
-     in case compilerFlavor (compiler lbiForExe) of
-          GHCJS -> do
-            let (script, cmd, cmdArgs) =
-                  GHCJS.runCmd
-                    (withPrograms lbiForExe)
-                    (i buildPref </> exeName' </> exeName')
-            script' <- tryCanonicalizePath script
-            return (cmd, cmdArgs ++ [script'])
-          _ -> do
-            p <-
-              tryCanonicalizePath $
-                i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbiForExe))
-            return (p, [])
+  exePath <-
+    tryCanonicalizePath $
+      i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbiForExe))
 
   -- Compute the appropriate environment for running the executable
   let progDb = withPrograms lbiForExe
@@ -186,7 +172,7 @@ run verbosity lbi exe exeArgs = do
     if withDynExe lbiForExe
       then do
         let (Platform _ os) = hostPlatform lbiForExe
-        clbi <- case componentNameTargets' pkg_descr lbiForExe (CExeName (exeName exe)) of
+        clbi <- case componentNameTargets' pkg_descr lbiForExe (CExeName exeName) of
           [target] -> return (targetCLBI target)
           [] -> dieWithException verbosity CouldNotFindExecutable
           _ -> dieWithException verbosity FoundMultipleMatchingExes
@@ -194,5 +180,5 @@ run verbosity lbi exe exeArgs = do
         return (addLibraryPath os paths env)
       else return env
 
-  notice verbosity $ "Running " ++ prettyShow (exeName exe) ++ "..."
-  rawSystemExitWithEnvCwd verbosity mbWorkDir path (runArgs ++ exeArgs) env'
+  notice verbosity $ "Running " ++ exeName' ++ "..."
+  rawSystemExitWithEnvCwd verbosity mbWorkDir exePath exeArgs env'

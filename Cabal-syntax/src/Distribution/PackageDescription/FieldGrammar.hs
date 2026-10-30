@@ -82,8 +82,11 @@ import Distribution.Pretty (Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
+import Data.Bifunctor
 import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce (coerce)
+import Data.Text (Text)
+import qualified Data.Text as T
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
@@ -111,19 +114,19 @@ packageDescriptionFieldGrammar = do
   package <- blurFieldGrammar L.package packageIdentifierGrammar
   licenseRaw <- optionalFieldDefAla "license" SpecLicense L.licenseRaw (Left SPDX.NONE)
   licenseFiles <- licenseFilesGrammar
-  copyright <- freeTextFieldDefST "copyright" L.copyright
-  maintainer <- freeTextFieldDefST "maintainer" L.maintainer
-  author <- freeTextFieldDefST "author" L.author
-  stability <- freeTextFieldDefST "stability" L.stability
+  copyright <- freeTextFieldDef "copyright" L.copyright
+  maintainer <- freeTextFieldDef "maintainer" L.maintainer
+  author <- freeTextFieldDef "author" L.author
+  stability <- freeTextFieldDef "stability" L.stability
   testedWith <- monoidalFieldAla "tested-with" (alaList' FSep TestedWith) L.testedWith
-  homepage <- freeTextFieldDefST "homepage" L.homepage
-  pkgUrl <- freeTextFieldDefST "package-url" L.pkgUrl
-  bugReports <- freeTextFieldDefST "bug-reports" L.bugReports
+  homepage <- freeTextFieldDef "homepage" L.homepage
+  pkgUrl <- freeTextFieldDef "package-url" L.pkgUrl
+  bugReports <- freeTextFieldDef "bug-reports" L.bugReports
   let sourceRepos = []
-  synopsis <- freeTextFieldDefST "synopsis" L.synopsis
-  description <- freeTextFieldDefST "description" L.description
-  category <- freeTextFieldDefST "category" L.category
-  customFieldsPD <- prefixedFields "x-" L.customFieldsPD
+  synopsis <- freeTextFieldDef "synopsis" L.synopsis
+  description <- freeTextFieldDef "description" L.description
+  category <- freeTextFieldDef "category" L.category
+  customFieldsPD <- map (bimap T.unpack T.unpack) <$> prefixedFields "x-" L.customFieldsPDText
   buildTypeRaw <- optionalField "build-type" L.buildTypeRaw
   let setupBuildInfo = Nothing
       -- components
@@ -627,24 +630,29 @@ buildInfoFieldGrammar = do
   -- as otherwise cabal new-build cannot really work.
   --
   -- I.e. we don't want trigger unknown field warning
-  cppOptions <- monoidalFieldAla "cpp-options" (alaList' NoCommaFSep Token') L.cppOptions
+  cppOptions <- map T.pack <$> monoidalFieldAla "cpp-options" (alaList' NoCommaFSep Token') (L.cppOptions . fromTextsLens)
   asmOptions <-
-    monoidalFieldAla "asm-options" (alaList' NoCommaFSep Token') L.asmOptions
-      ^^^ availableSince CabalSpecV3_0 []
+    map T.pack
+      <$> monoidalFieldAla "asm-options" (alaList' NoCommaFSep Token') (L.asmOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_0 []
   cmmOptions <-
-    monoidalFieldAla "cmm-options" (alaList' NoCommaFSep Token') L.cmmOptions
-      ^^^ availableSince CabalSpecV3_0 []
-  ccOptions <- monoidalFieldAla "cc-options" (alaList' NoCommaFSep Token') L.ccOptions
+    map T.pack
+      <$> monoidalFieldAla "cmm-options" (alaList' NoCommaFSep Token') (L.cmmOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_0 []
+  ccOptions <- map T.pack <$> monoidalFieldAla "cc-options" (alaList' NoCommaFSep Token') (L.ccOptions . fromTextsLens)
   cxxOptions <-
-    monoidalFieldAla "cxx-options" (alaList' NoCommaFSep Token') L.cxxOptions
-      ^^^ availableSince CabalSpecV2_2 []
+    map T.pack
+      <$> monoidalFieldAla "cxx-options" (alaList' NoCommaFSep Token') (L.cxxOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV2_2 []
   jsppOptions <-
-    monoidalFieldAla "jspp-options" (alaList' NoCommaFSep Token') L.jsppOptions
-      ^^^ availableSince CabalSpecV3_16 []
-  ldOptions <- monoidalFieldAla "ld-options" (alaList' NoCommaFSep Token') L.ldOptions
+    map T.pack
+      <$> monoidalFieldAla "jspp-options" (alaList' NoCommaFSep Token') (L.jsppOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_16 []
+  ldOptions <- map T.pack <$> monoidalFieldAla "ld-options" (alaList' NoCommaFSep Token') (L.ldOptions . fromTextsLens)
   hsc2hsOptions <-
-    monoidalFieldAla "hsc2hs-options" (alaList' NoCommaFSep Token') L.hsc2hsOptions
-      ^^^ availableSince CabalSpecV3_6 []
+    map T.pack
+      <$> monoidalFieldAla "hsc2hs-options" (alaList' NoCommaFSep Token') (L.hsc2hsOptions . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_6 []
   pkgconfigDepends <- monoidalFieldAla "pkgconfig-depends" (alaList CommaFSep) L.pkgconfigDepends
   frameworks <- monoidalFieldAla "frameworks" (alaList' FSep RelativePathNT) L.frameworks
   extraFrameworkDirs <- monoidalFieldAla "extra-framework-dirs" (alaList' FSep SymbolicPathNT) L.extraFrameworkDirs
@@ -687,16 +695,18 @@ buildInfoFieldGrammar = do
       ^^^ removedIn
         CabalSpecV3_0
         "Please use 'default-extensions' or 'other-extensions' fields."
-  extraLibs <- monoidalFieldAla "extra-libraries" (alaList' VCat Token) L.extraLibs
+  extraLibs <- map T.pack <$> monoidalFieldAla "extra-libraries" (alaList' VCat Token) (L.extraLibs . fromTextsLens)
   extraLibsStatic <-
-    monoidalFieldAla "extra-libraries-static" (alaList' VCat Token) L.extraLibsStatic
-      ^^^ availableSince CabalSpecV3_8 []
-  extraGHCiLibs <- monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token) L.extraGHCiLibs
-  extraBundledLibs <- monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token) L.extraBundledLibs
-  extraLibFlavours <- monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) L.extraLibFlavours
+    map T.pack
+      <$> monoidalFieldAla "extra-libraries-static" (alaList' VCat Token) (L.extraLibsStatic . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_8 []
+  extraGHCiLibs <- map T.pack <$> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token) (L.extraGHCiLibs . fromTextsLens)
+  extraBundledLibs <- map T.pack <$> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token) (L.extraBundledLibs . fromTextsLens)
+  extraLibFlavours <- map T.pack <$> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) (L.extraLibFlavours . fromTextsLens)
   extraDynLibFlavours <-
-    monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
-      ^^^ availableSince CabalSpecV3_0 []
+    map T.pack
+      <$> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) (L.extraDynLibFlavours . fromTextsLens)
+        ^^^ availableSince CabalSpecV3_0 []
   extraLibDirs <- monoidalFieldAla "extra-lib-dirs" (alaList' FSep SymbolicPathNT) L.extraLibDirs
   extraLibDirsStatic <-
     monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep SymbolicPathNT) L.extraLibDirsStatic
@@ -740,9 +750,9 @@ hsSourceDirsGrammar =
 
 optionsFieldGrammar
   :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  => g BuildInfo (PerCompilerFlavor [Text])
 optionsFieldGrammar =
-  PerCompilerFlavor
+  perCompilerFlavorFromStrings
     <$> monoidalFieldAla "ghc-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-options" (alaList' NoCommaFSep Token') (extract GHCJS)
     -- NOTE: Hugs, NHC and JHC are not supported anymore, but these
@@ -755,42 +765,45 @@ optionsFieldGrammar =
     <* knownField "mhs-options"
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.options . lookupLens flavor
+    extract flavor = L.options . lookupLens flavor . fromTextsLens
 
 profOptionsFieldGrammar
   :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  => g BuildInfo (PerCompilerFlavor [Text])
 profOptionsFieldGrammar =
-  PerCompilerFlavor
+  perCompilerFlavorFromStrings
     <$> monoidalFieldAla "ghc-prof-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-prof-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.profOptions . lookupLens flavor
+    extract flavor = L.profOptions . lookupLens flavor . fromTextsLens
 
 sharedOptionsFieldGrammar
   :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  => g BuildInfo (PerCompilerFlavor [Text])
 sharedOptionsFieldGrammar =
-  PerCompilerFlavor
+  perCompilerFlavorFromStrings
     <$> monoidalFieldAla "ghc-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.sharedOptions . lookupLens flavor
+    extract flavor = L.sharedOptions . lookupLens flavor . fromTextsLens
 
 profSharedOptionsFieldGrammar
   :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  => g BuildInfo (PerCompilerFlavor [Text])
 profSharedOptionsFieldGrammar =
-  PerCompilerFlavor
+  perCompilerFlavorFromStrings
     <$> monoidalFieldAla "ghc-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
       ^^^ availableSince CabalSpecV3_14 []
     <*> monoidalFieldAla "ghcjs-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
       ^^^ availableSince CabalSpecV3_14 []
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.profSharedOptions . lookupLens flavor
+    extract flavor = L.profSharedOptions . lookupLens flavor . fromTextsLens
+
+perCompilerFlavorFromStrings :: [String] -> [String] -> PerCompilerFlavor [Text]
+perCompilerFlavorFromStrings xs ys = PerCompilerFlavor (map T.pack xs) (map T.pack ys)
 
 lookupLens :: (Functor f, Monoid v) => CompilerFlavor -> LensLike' f (PerCompilerFlavor v) v
 lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
@@ -807,7 +820,7 @@ flagFieldGrammar
   => FlagName
   -> g PackageFlag PackageFlag
 flagFieldGrammar flagName = do
-  flagDescription <- freeTextFieldDef "description" L.flagDescription
+  flagDescription <- T.unpack <$> freeTextFieldDef "description" L.flagDescription
   flagDefault <- booleanFieldDef "default" L.flagDefault True
   flagManual <- booleanFieldDef "manual" L.flagManual False
   pure MkPackageFlag{..}
@@ -824,7 +837,7 @@ sourceRepoFieldGrammar
   -> g SourceRepo SourceRepo
 sourceRepoFieldGrammar repoKind = do
   repoType <- optionalField "type" L.repoType
-  repoLocation <- freeTextField "location" L.repoLocation
+  repoLocation <- fmap T.unpack <$> freeTextField "location" L.repoLocation
   repoModule <- optionalFieldAla "module" Token L.repoModule
   repoBranch <- optionalFieldAla "branch" Token L.repoBranch
   repoTag <- optionalFieldAla "tag" Token L.repoTag
@@ -957,3 +970,7 @@ _syntaxExtensions =
           | e <- [minBound .. maxBound]
           , e `notElem` [Safe, Unsafe, Trustworthy]
           ]
+
+fromTextsLens :: Lens' [Text] [String]
+fromTextsLens f = fmap (map T.pack) . f . map T.unpack
+{-# INLINE fromTextsLens #-}

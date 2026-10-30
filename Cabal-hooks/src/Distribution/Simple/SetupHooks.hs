@@ -432,8 +432,10 @@ Note that 'SetupHooks' can be monoidally combined, e.g.:
 
         * Per-component post-build hooks.
 
-            These can be thought of as "pre-linking hooks" and allow injecting
-            additional data into the final executable.
+            These run after a component has been built, i.e. after compilation
+            and linking, and allow post-processing of the resulting build
+            artifacts: injecting additional data into the final executable,
+            stripping or signing it, or running a freshly built executable.
 
   * The install phase, via 'InstallHooks'.
 

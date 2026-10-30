@@ -73,7 +73,6 @@ generatePathsModule pkg_descr lbi clbi =
       _ -> False
 
     supportsRelocatableProgs GHC = isWindows
-    supportsRelocatableProgs GHCJS = isWindows
     supportsRelocatableProgs _ = False
 
     cid = componentUnitId clbi

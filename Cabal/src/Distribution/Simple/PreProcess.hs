@@ -68,6 +68,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 
+import qualified Data.Text as T
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath
   ( normalise
@@ -401,32 +402,24 @@ ppCpp = ppCpp' []
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppCpp' extraArgs bi lbi clbi =
   case compilerFlavor (compiler lbi) of
-    GHC -> ppGhcCpp ghcProgram (const True) args bi lbi clbi
-    GHCJS -> ppGhcCpp ghcjsProgram (const True) args bi lbi clbi
+    GHC -> ppGhcCpp args bi lbi clbi
     _ -> ppCpphs args bi lbi clbi
   where
     cppArgs = getCppOptions bi lbi
     args = cppArgs ++ extraArgs
 
 ppGhcCpp
-  :: Program
-  -> (Version -> Bool)
-  -> [String]
+  :: [String]
   -> BuildInfo
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> PreProcessor
-ppGhcCpp program xHs extraArgs _bi lbi clbi =
+ppGhcCpp extraArgs _bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
-        (prog, version, _) <-
-          requireProgramVersion
-            verbosity
-            program
-            anyVersion
-            (withPrograms lbi)
+        (prog, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
         runProgramCwd verbosity (mbWorkDirLBI lbi) prog $
           ["-E", "-cpp"]
             -- This is a bit of an ugly hack. We're going to
@@ -434,7 +427,7 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
             -- so we need GHC not to unlit it now or it'll get
             -- double-unlitted. In the future we might switch to
             -- using cpphs --unlit instead.
-            ++ (if xHs version then ["-x", "hs"] else [])
+            ++ ["-x", "hs"]
             ++ ["-optP-include", "-optP" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
             ++ ["-o", outFile, inFile]
             ++ extraArgs
@@ -514,7 +507,7 @@ ppHsc2hs bi lbi clbi =
       cflags
         ++ ldflags
         ++ preccldFlags
-        ++ hsc2hsOptions bi
+        ++ map T.unpack (hsc2hsOptions bi)
         ++ postccldFlags
         ++ ["-o", outFile, inFile]
       where
@@ -548,8 +541,8 @@ ppHsc2hs bi lbi clbi =
                         then PD.extraLibDirsStatic bi
                         else PD.extraLibDirs bi
                   ]
-                , ["-l" ++ opt | opt <- PD.extraLibs bi]
-                , PD.ldOptions bi
+                , ["-l" ++ T.unpack opt | opt <- PD.extraLibs bi]
+                , map T.unpack (PD.ldOptions bi)
                 , -- Options from dependent packages
                   [ opt
                   | pkg <- pkgs
@@ -587,7 +580,7 @@ ppHsc2hs bi lbi clbi =
                   -- because there will not be C++ sources.
                   --
                   -- DO NOT add PD.cxxOptions unless this changes!
-                  PD.ccOptions bi ++ PD.cppOptions bi
+                  map T.unpack (PD.ccOptions bi ++ PD.cppOptions bi)
                 ,
                   [ "-I" ++ u (autogenComponentModulesDir lbi clbi)
                   , "-I" ++ u (autogenPackageModulesDir lbi)
@@ -637,7 +630,6 @@ ppHsc2hs bi lbi clbi =
     isELF = case buildOS of OSX -> False; Windows -> False; AIX -> False; _ -> True
     packageHacks = case compilerFlavor (compiler lbi) of
       GHC -> hackRtsPackage
-      GHCJS -> hackRtsPackage
       _ -> id
     -- We don't link in the actual Haskell libraries of our dependencies, so
     -- the -u flags in the ldOptions of the rts package mean linking fails on
@@ -726,9 +718,9 @@ ppC2hsExtras mbWorkDir buildBaseDir = do
 getCppOptions :: BuildInfo -> LocalBuildInfo -> [String]
 getCppOptions bi lbi =
   platformDefines lbi
-    ++ cppOptions bi
+    ++ map T.unpack (cppOptions bi)
     ++ ["-I" ++ getSymbolicPath dir | dir <- PD.includeDirs bi]
-    ++ [opt | opt@('-' : c : _) <- PD.ccOptions bi ++ PD.cxxOptions bi, c `elem` "DIU"]
+    ++ [opt | opt@('-' : c : _) <- map T.unpack (PD.ccOptions bi ++ PD.cxxOptions bi), c `elem` "DIU"]
 
 platformDefines :: LocalBuildInfo -> [String]
 platformDefines lbi =
@@ -739,23 +731,11 @@ platformDefines lbi =
         ++ ["-D" ++ arch ++ "_BUILD_ARCH=1"]
         ++ map (\os' -> "-D" ++ os' ++ "_HOST_OS=1") osStr
         ++ map (\arch' -> "-D" ++ arch' ++ "_HOST_ARCH=1") archStr
-    GHCJS ->
-      compatGlasgowHaskell
-        ++ ["-D__GHCJS__=" ++ versionInt version]
-        ++ ["-D" ++ os ++ "_BUILD_OS=1"]
-        ++ ["-D" ++ arch ++ "_BUILD_ARCH=1"]
-        ++ map (\os' -> "-D" ++ os' ++ "_HOST_OS=1") osStr
-        ++ map (\arch' -> "-D" ++ arch' ++ "_HOST_ARCH=1") archStr
     _ -> []
   where
     comp = compiler lbi
     Platform hostArch hostOS = hostPlatform lbi
     version = compilerVersion comp
-    compatGlasgowHaskell =
-      maybe
-        []
-        (\v -> ["-D__GLASGOW_HASKELL__=" ++ versionInt v])
-        (compilerCompatVersion GHC comp)
     -- TODO: move this into the compiler abstraction
     -- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all
     -- the other compilers. Check if that's really what they want.
@@ -825,7 +805,6 @@ ppHappy _ lbi _ = pp{platformIndependent = True}
     pp = standardPP lbi happyProgram (hcFlags hc)
     hc = compilerFlavor (compiler lbi)
     hcFlags GHC = ["-agc"]
-    hcFlags GHCJS = ["-agc"]
     hcFlags _ = []
 
 ppAlex :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
@@ -834,7 +813,6 @@ ppAlex _ lbi _ = pp{platformIndependent = True}
     pp = standardPP lbi alexProgram (hcFlags hc)
     hc = compilerFlavor (compiler lbi)
     hcFlags GHC = ["-g"]
-    hcFlags GHCJS = ["-g"]
     hcFlags _ = []
 
 standardPP :: LocalBuildInfo -> Program -> [String] -> PreProcessor

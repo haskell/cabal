@@ -3,9 +3,6 @@
 
 module Main where
 
-import Prelude ()
-import Prelude.Compat
-
 import Control.Applicative                         (many, (<**>), (<|>))
 import Control.DeepSeq                             (NFData (..), force)
 import Control.Exception                           (evaluate)
@@ -37,8 +34,6 @@ import System.Directory                            (getXdgDirectory, XdgDirector
 import System.Environment                          (lookupEnv)
 import System.Exit                                 (exitFailure)
 import System.FilePath                             ((</>))
-
-import Data.Orphans ()
 
 import qualified Codec.Archive.Tar                      as Tar
 import qualified Codec.Archive.Tar.Entry                as Tar

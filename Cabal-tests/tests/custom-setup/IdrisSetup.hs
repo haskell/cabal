@@ -49,6 +49,7 @@ import Control.Monad
 import Data.IORef
 import Control.Exception (SomeException, catch)
 import Data.String (fromString)
+import qualified Data.Text as T
 
 import Distribution.Simple
 import Distribution.Simple.BuildPaths
@@ -313,14 +314,14 @@ idrisPostSDist args flags desc lbi = do
 getVersion :: Args -> S.BuildFlags -> IO HookedBuildInfo
 getVersion args flags = do
       hash <- gitHash
-      let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
+      let buildinfo = (emptyBuildInfo { cppOptions = [T.pack $ "-DVERSION=" ++ hash] }) :: BuildInfo
       return (Just buildinfo, [])
 
 idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS
         createDirectoryIfMissingVerbose verbosity True dir
         windres verbosity ["icons/idris_icon.rc","-o", dir++"/idris_icon.o"]
-        return (Nothing, [(fromString "idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
+        return (Nothing, [(fromString "idris", emptyBuildInfo { ldOptions = [T.pack $ dir ++ "/idris_icon.o"] })])
      where
         verbosity = mkVerbosity $ S.buildVerbosity flags
 

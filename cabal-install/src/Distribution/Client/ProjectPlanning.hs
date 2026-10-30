@@ -28,10 +28,10 @@
 --
 -- The division between the shared and per-package config is not set in stone
 -- for all time. For example if we wanted to generalise the install plan to
--- describe a situation where we want to build some packages with GHC and some
--- with GHCJS then the platform and compiler would no longer be shared between
--- all packages but would have to be per-package (probably with some sanity
--- condition on the graph structure).
+-- describe a situation where we want to build some packages with one compiler
+-- and some with another then the platform and compiler would no longer be
+-- shared between all packages but would have to be per-package (probably with
+-- some sanity condition on the graph structure).
 module Distribution.Client.ProjectPlanning
   ( -- * Types for the elaborated install plan
     ElaboratedInstallPlan
@@ -214,7 +214,6 @@ import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import qualified Distribution.Simple.Setup as Cabal
@@ -1540,7 +1539,7 @@ planPackages
         | isGHC, compVer >= mkVersion [8, 2] = mkVersion [2, 0]
         | otherwise = mkVersion [1, 24]
         where
-          isGHC = compFlav `elem` [GHC, GHCJS]
+          isGHC = compFlav == GHC
           compFlav = compilerFlavor comp
           compVer = compilerVersion comp
 
@@ -1751,7 +1750,10 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0) =
+      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0) = do
+        when (bt == PD.Make) $
+          dieProgress $
+            text "'build-type: Make' is no longer supported."
         case mkComponentsGraph (elabEnabledSpec elab0) pd of
           Right g -> do
             let src_comps = componentsGraphToList g
@@ -1804,7 +1806,8 @@ elaborateInstallPlan
                   -- main library in cabal. Other components will need to depend
                   -- on the main library for configured data.
                   PD.Custom -> [CuzBuildType CuzCustomBuildType]
-                  PD.Make -> error "build-type: Make is no longer supported"
+                  -- Rejected above with a proper error.
+                  PD.Make -> []
                   PD.Simple -> []
                   -- TODO: remove the following, once we make Setup a separate
                   -- component (task tracked at #9986).
@@ -2585,7 +2588,6 @@ elaborateInstallPlan
       compilerShouldUseSharedLibByDefault =
         case compilerFlavor compiler of
           GHC -> GHC.compilerBuildWay compiler == DynWay && canBuildSharedLibs
-          GHCJS -> GHCJS.isDynamic compiler
           _ -> False
 
       compilerShouldUseProfilingLibByDefault =

@@ -14,9 +14,12 @@ on:
       ghc_targets:
         type: string
         default: "install_bin install_lib update_package_db install_extra"
+      # The bootstrap cabal used to build cabal-install and cabal-testsuite.
+      # It must satisfy the setup-depends of cabal-testsuite, so keep it in
+      # sync with the cabal-version used in validate.yml (see PR #10251).
       cabal:
         type: string
-        default: 3.14.2.0
+        default: 3.18.1.0
       test:
         type: boolean
         default: true
@@ -231,7 +234,9 @@ jobs:
 
   build-mac-aarch64:
     name: Build binary (Mac aarch64)
-    runs-on: macos-latest
+    # macos-15 rather than macos-latest until actions/runner-images#14940
+    # is fixed; see #12465.
+    runs-on: macos-15
     env:
       MACOSX_DEPLOYMENT_TARGET: 10.13
       ADD_CABAL_ARGS: ""
@@ -534,7 +539,9 @@ jobs:
 
   test-mac-aarch64:
     name: Test binary (Mac aarch64)
-    runs-on: macos-latest
+    # macos-15 rather than macos-latest until actions/runner-images#14940
+    # is fixed; see #12465.
+    runs-on: macos-15
     needs: ["build-mac-aarch64"]
     if: ${{ inputs.test }}
     env:

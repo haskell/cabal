@@ -80,7 +80,8 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
-          cabal-version: latest
+          # must satisfy the setup-depends of cabal-testsuite, see PR #10251
+          cabal-version: 3.18.1.0
       - name: Haskell versions
         run: |
           ghc --version
@@ -128,7 +129,8 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
-          cabal-version: latest
+          # must satisfy the setup-depends of cabal-testsuite, see PR #10251
+          cabal-version: 3.18.1.0
       - name: Haskell versions
         run: |
           ghc --version

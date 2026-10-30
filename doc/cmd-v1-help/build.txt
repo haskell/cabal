@@ -30,8 +30,8 @@ Examples:
   cabal v1-build foo           A component (i.e. lib, exe, test suite)
 
 The flags --with-PROG and --PROG-option(s) can be used with the following programs:
-  alex ar c2hs cpphs doctest gcc ghc ghc-pkg ghcjs ghcjs-pkg haddock happy hpc
-  hsc2hs hscolour jhc ld pkg-config runghc strip tar uhc
+  alex ar c2hs cpphs doctest gcc ghc ghc-pkg haddock happy hpc hsc2hs hscolour
+  jhc ld pkg-config runghc strip tar uhc
 
 The v1-build command is a part of the legacy v1 style of cabal usage.
 

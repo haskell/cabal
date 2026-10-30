@@ -56,7 +56,6 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.PackageIndex as Index
 import qualified Distribution.Simple.UHC as UHC
 
@@ -87,6 +86,7 @@ import System.Directory
 import System.FilePath (isAbsolute)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import qualified Data.Text as T
 
 -- -----------------------------------------------------------------------------
 -- Registration
@@ -327,10 +327,7 @@ abiHash
   -> IO AbiHash
 abiHash verbosity pkg distPref lbi lib clbi =
   case compilerFlavor comp of
-    GHC -> do
-      mkAbiHash <$> GHC.libAbiHash verbosity pkg lbi' lib clbi
-    GHCJS -> do
-      mkAbiHash <$> GHCJS.libAbiHash verbosity pkg lbi' lib clbi
+    GHC -> mkAbiHash <$> GHC.libAbiHash verbosity pkg lbi' lib clbi
     _ -> return (mkAbiHash "")
   where
     comp = compiler lbi
@@ -379,7 +376,6 @@ createPackageDB
 createPackageDB verbosity comp progdb dbPath =
   case compilerFlavor comp of
     GHC -> HcPkg.init (GHC.hcPkgInfo progdb) verbosity dbPath
-    GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity dbPath
     UHC -> return ()
     _ -> dieWithException verbosity CreatePackageDB
 
@@ -424,7 +420,6 @@ withHcPkg
 withHcPkg verbosity name comp progdb f =
   case compilerFlavor comp of
     GHC -> f (GHC.hcPkgInfo progdb)
-    GHCJS -> f (GHCJS.hcPkgInfo progdb)
     _ -> dieWithException verbosity $ WithHcPkg name
 
 registerPackage
@@ -439,7 +434,6 @@ registerPackage
 registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo registerOptions =
   case compilerFlavor comp of
     GHC -> GHC.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
-    GHCJS -> GHCJS.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
     _
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported
@@ -535,10 +529,10 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.dataDir = datadir installDirs
     , IPI.hsLibraries =
         [getHSLibraryName (componentUnitId clbi) | hasLibrary]
-          ++ extraBundledLibs bi
-    , IPI.extraLibraries = extraLibs bi
-    , IPI.extraLibrariesStatic = extraLibsStatic bi
-    , IPI.extraGHCiLibraries = extraGHCiLibs bi
+          ++ map T.unpack (extraBundledLibs bi)
+    , IPI.extraLibraries = map T.unpack $ extraLibs bi
+    , IPI.extraLibrariesStatic = map T.unpack $ extraLibsStatic bi
+    , IPI.extraGHCiLibraries = map T.unpack $ extraGHCiLibs bi
     , IPI.includeDirs = absinc ++ adjustRelIncDirs relinc
     , IPI.includes = map getSymbolicPath $ includes bi
     , IPI.depends = depends
@@ -547,7 +541,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     -- We don't want cc-options to be propagated
     -- to C compilations in other packages.
     , IPI.cxxOptions = [] -- Also. NOT cxxOptions bi!
-    , IPI.ldOptions = ldOptions bi
+    , IPI.ldOptions = map T.unpack $ ldOptions bi
     , IPI.frameworks = map getSymbolicPath $ frameworks bi
     , IPI.frameworkDirs = map getSymbolicPath $ extraFrameworkDirs bi
     , IPI.haddockInterfaces =
@@ -751,7 +745,7 @@ unregisterWithHandles verbHandles pkg lbi regFlags = do
   setupMessage verbosity "Unregistering" pkgid
   withHcPkg
     verbosity
-    "unregistering is only implemented for GHC and GHCJS"
+    "unregistering is only implemented for GHC"
     (compiler lbi)
     (withPrograms lbi)
     unreg

@@ -1,0 +1,6 @@
+# cabal v2-build
+Resolving dependencies...
+Error:
+    'build-type: Make' is no longer supported.
+    In the inplace package 'build-type-make-0.1.0.0'
+    CallStack (from HasCallStack): <SNIPPED>

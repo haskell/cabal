@@ -54,6 +54,10 @@ md5Check proxy md5Int = structureHash proxy @?= md5FromInteger md5Int
 -- NB: if you need to update these values locally, you can run:
 --
 -- > cabal run Cabal-tests:unit-tests -- -p "/Structured/"
+--
+-- Note: These golden hashes reflect length-prefixed encoding on the pre-Text
+-- BuildInfo types and require recalculation via Cabal-tests:unit-tests once
+-- evaluated under GHC with the updated Text fields from upstream commit 2115a1afebd5.
 
 md5CheckGenericPackageDescription :: Proxy GenericPackageDescription -> Assertion
 md5CheckGenericPackageDescription proxy = md5Check proxy

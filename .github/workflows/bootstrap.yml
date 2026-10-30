@@ -17,11 +17,15 @@ on:
 jobs:
   bootstrap:
     strategy:
+      # A failure on one OS should not cancel, and so hide, the results on the others.
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
         ghc: ["9.6.7", "9.8.4", "9.10.3", "9.12.4"]
         include:
-          - os: macos-latest
+          # macos-15 rather than macos-latest until actions/runner-images#14940
+          # is fixed; see #12465.
+          - os: macos-15
             ghc: "9.12.4"
     name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}

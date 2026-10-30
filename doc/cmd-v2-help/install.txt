@@ -21,7 +21,6 @@ Flags for install:
                                 files (default dist)
  --keep-temp-files            # Keep temporary files.
  -g, --ghc                    # Compile with GHC
- --ghcjs                      # Compile with GHCJS
  --uhc                        # Compile with UHC
  -w PATH or -wPATH, --with-compiler=PATH
                               # Give the path to a particular compiler
