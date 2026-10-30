@@ -54,8 +54,8 @@ data Comment ann = Comment !ByteString !ann
 --
 --   @since 3.18.2
 data WithComments ann = WithComments
-  { justComments :: ![Comment ann]
-  -- ^ Extract the comments.
+  { priorComments :: ![Comment ann]
+  , followingComments :: ![Comment ann]
   , unComments :: !ann
   -- ^ Extract the annotation.
   }
