@@ -1,0 +1,69 @@
+[
+  Field
+    (Name
+      WithComments {
+        priorComments = [
+          Comment
+            "-- comment before"
+            (Position 1 1)],
+        followingComments = [],
+        unComments = Position 2 1}
+      "name")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 2 7}
+        "comment-before-nameless-field"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 3 1}
+      "version")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 3 10}
+        "1"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 4 1}
+      "cabal-version")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 4 16}
+        ">= 1.8"],
+  Section
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 6 1}
+      "library")
+    []
+    [
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 7 3}
+          "build-depends")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 8 5}
+            "base >= 4"]]]

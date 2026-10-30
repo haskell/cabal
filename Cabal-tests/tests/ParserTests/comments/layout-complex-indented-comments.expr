@@ -1,0 +1,192 @@
+[
+  Section
+    (Name
+      WithComments {
+        priorComments =
+        [
+          Comment
+            "-- This is the configuration file for the 'cabal' command line tool."
+            (Position 1 1),
+          Comment "--" (Position 2 1),
+          Comment
+            "-- The available configuration options are listed below."
+            (Position 3 1)],
+        followingComments = [],
+        unComments = Position 6 1}
+      "repository")
+    [
+      SecArgName
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 6 12}
+        "hackage.haskell.org"]
+    [
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 7 3}
+          "url")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [
+                Comment
+                  "-- secure: True"
+                  (Position 8 3),
+                Comment
+                  "-- root-keys:"
+                  (Position 9 3),
+                Comment
+                  "-- ignore-expiry: False"
+                  (Position 11 1),
+                Comment
+                  "-- http-transport:"
+                  (Position 12 1)],
+              unComments = Position 7 8}
+            "http://hackage.haskell.org/"]],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 13 1}
+      "remote-repo-cache")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [
+            Comment
+              "-- logs-dir: /home/foo/.cache/cabal/logs"
+              (Position 14 1),
+            Comment
+              "-- default-user-config:"
+              (Position 15 1)],
+          unComments = Position 13 20}
+        "/home/foo/.cache/cabal/packages"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 16 1}
+      "build-summary")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [
+            Comment
+              "-- build-log:"
+              (Position 17 1)],
+          unComments = Position 16 16}
+        "/home/foo/.cache/cabal/logs/build.log"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 18 1}
+      "remote-build-reporting")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [
+            Comment
+              "-- report-planning-failure: False"
+              (Position 19 1),
+            Comment
+              "-- per-component: True"
+              (Position 20 1)],
+          unComments = Position 18 25}
+        "none"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 21 1}
+      "jobs")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [
+            Comment
+              "-- keep-going: False"
+              (Position 22 1),
+            Comment
+              "-- offline: False"
+              (Position 23 1)],
+          unComments = Position 21 7}
+        "$ncpus"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 24 1}
+      "installdir")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [
+            Comment
+              "-- token:"
+              (Position 25 1),
+            Comment
+              "-- username:"
+              (Position 26 1)],
+          unComments = Position 24 13}
+        "/home/foo/.local/bin"],
+  Section
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [
+          Comment
+            "-- keep-temp-files: False"
+            (Position 29 3),
+          Comment
+            "-- hoogle: False"
+            (Position 30 3)],
+        unComments = Position 28 1}
+      "haddock")
+    []
+    [],
+  Section
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [
+          Comment
+            "-- interactive: False"
+            (Position 33 3),
+          Comment
+            "-- quiet: False"
+            (Position 34 3)],
+        unComments = Position 32 1}
+      "init")
+    []
+    [],
+  Section
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [
+          Comment
+            "-- alex-location:"
+            (Position 37 3),
+          Comment
+            "-- ar-location:"
+            (Position 38 3)],
+        unComments = Position 36 1}
+      "program-locations")
+    []
+    []]

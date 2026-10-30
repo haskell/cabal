@@ -20,6 +20,8 @@ module Distribution.Fields.Parser
     -- $grammar
   , readFields
   , readFields'
+  , readFieldsWithComments
+  , readFieldsWithComments'
 #ifdef CABAL_PARSEC_DEBUG
 
     -- * Internal
@@ -27,13 +29,19 @@ module Distribution.Fields.Parser
   , parseStr
   , parseBS
 #endif
+  , formatError
   ) where
 {- FOURMOLU_ENABLE -}
 
+#if !MIN_VERSION_base(4,18,0)
+import Control.Applicative (liftA2)
+#endif
 import qualified Data.ByteString.Char8 as B8
 import Data.Functor.Identity
+import qualified Distribution.Compat.Lens as L
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field
+import qualified Distribution.Fields.Field.Lens as L
 import Distribution.Fields.Lexer
 import Distribution.Fields.LexerMonad
   ( LexResult (..)
@@ -49,11 +57,10 @@ import Text.Parsec.Pos
 import Text.Parsec.Prim hiding (many, (<|>))
 import Prelude ()
 
-#ifdef CABAL_PARSEC_DEBUG
-import qualified Data.Text                as T
-import qualified Data.Text.Encoding       as T
+import qualified Data.Bifunctor as Bi
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Data.Text.Encoding.Error as T
-#endif
 
 -- $setup
 -- >>> import Data.Either (isLeft)
@@ -112,38 +119,44 @@ describeToken t = case t of
   Colon -> "\":\""
   OpenBrace -> "\"{\""
   CloseBrace -> "\"}\""
+  TokComment c -> "comment \"" ++ B8.unpack c ++ "\""
   --  SemiColon       -> "\";\""
   EOF -> "end of file"
   LexicalError is -> "character in input " ++ show (B8.head is)
 
 tokSym :: Parser (Name Position)
-tokSym', tokStr, tokOther :: Parser (SectionArg Position)
-tokIndent :: Parser Int
-tokColon, tokCloseBrace :: Parser ()
-tokOpenBrace :: Parser Position
-tokFieldLine :: Parser (FieldLine Position)
 tokSym = getTokenWithPos $ \case L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing
+
+tokSym', tokStr, tokOther :: Parser (SectionArg Position)
 tokSym' = getTokenWithPos $ \case L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
 tokStr = getTokenWithPos $ \case L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing
 tokOther = getTokenWithPos $ \case L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
-tokIndent = getToken $ \case Indent x -> Just x; _ -> Nothing
+
+tokColon, tokCloseBrace :: Parser ()
 tokColon = getToken $ \case Colon -> Just (); _ -> Nothing
-tokOpenBrace = getTokenWithPos $ \case L pos OpenBrace -> Just pos; _ -> Nothing
 tokCloseBrace = getToken $ \case CloseBrace -> Just (); _ -> Nothing
-tokFieldLine = getTokenWithPos $ \case L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
 colon, openBrace, closeBrace :: Parser ()
-sectionArg :: Parser (SectionArg Position)
-sectionArg = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
-
-fieldSecName :: Parser (Name Position)
-fieldSecName = tokSym <?> "field or section name"
-
 colon = tokColon <?> "\":\""
 openBrace = do
   pos <- tokOpenBrace <?> "\"{\""
   addLexerWarning (LexWarning LexBraces pos)
 closeBrace = tokCloseBrace <?> "\"}\""
+
+tokIndent :: Parser Int
+tokIndent = getToken $ \case Indent x -> Just x; _ -> Nothing
+tokOpenBrace :: Parser Position
+tokOpenBrace = getTokenWithPos $ \case L pos OpenBrace -> Just pos; _ -> Nothing
+tokFieldLine :: Parser (FieldLine Position)
+tokFieldLine = getTokenWithPos $ \case L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
+
+tokComment :: Parser (Comment Position)
+tokComment = getTokenWithPos $ \case L pos (TokComment c) -> Just (Comment c pos); _ -> Nothing
+sectionArg :: Parser (SectionArg Position)
+sectionArg = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
+
+fieldSecName :: Parser (Name Position)
+fieldSecName = tokSym <?> "field or section name"
 
 fieldContent :: Parser (FieldLine Position)
 fieldContent = tokFieldLine <?> "field contents"
@@ -164,6 +177,32 @@ indentOfAtLeast (IndentLevel i) = try $ do
 
 newtype LexerMode = LexerMode Int
 
+-- | Cabal's lexer is generated using Alex. It has multiple different states ("start-codes").
+-- Each state has its own rules and interprets the input stream differently.
+-- This has the benefit of providing more exact error message by having more
+-- knowledge about what symbol should follow in the input stream.
+--
+-- The lexer states are as illustrated below.
+-- The lexer doesn't control the transitions between @in_section@, @in_field_layout@ and @in_field_braces@.
+-- Instead, the parser inspects the token stream it got, and switches the lexer state:
+-- these transitions are uniquely invoked with 'inLexerMode'.
+-- For this reason, running the lexer on its own will not produce a correct token stream.
+--
+-- @
+--                                                   .---> in_field_layout  <--->  bol_field_layout
+--                                                  /
+--                                                 /
+-- start (0) ---> bol_section <-->  in_section <--(
+--                                                 \
+--                                                  \
+--                                                   `---> in_field_braces  <--->  bol_field_braces
+-- @
+--
+-- The parser instructs the lexer to change state using the function 'inLexerMode'.
+-- It runs a parser with the given mode, and then switches back to in_section.
+--
+-- To learn more about start-codes with Alex's documentation:
+-- https://haskell-alex.readthedocs.io/en/latest/syntax.html#start-codes
 inLexerMode :: LexerMode -> Parser p -> Parser p
 inLexerMode (LexerMode mode) p =
   do setLexerMode mode; x <- p; setLexerMode in_section; return x
@@ -171,40 +210,45 @@ inLexerMode (LexerMode mode) p =
 -----------------------
 -- Cabal file grammar
 --
+-- The non-terminals of the following grammar (symbols starting in uppercase)
+-- have their corresponding parser of the same name, starting with lowercase
+-- letter.
 
 -- $grammar
 --
 -- @
--- CabalStyleFile ::= SecElems
+-- CabalStyleFile             ::= Elements
 --
--- SecElems       ::= SecElem* '\\n'?
--- SecElem        ::= '\\n' SecElemLayout | SecElemBraces
--- SecElemLayout  ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
--- SecElemBraces  ::= FieldInline | FieldBraces |                 SectionBraces
--- FieldLayout    ::= name ':' line? ('\\n' line)*
--- FieldBraces    ::= name ':' '\\n'? '{' content '}'
--- FieldInline    ::= name ':' content
--- SectionLayout  ::= name arg* SecElems
--- SectionBraces  ::= name arg* '\\n'? '{' SecElems '}'
+-- Elements                   ::= Element* '\\n'?
+-- Element                    ::= '\\n' ElementInLayoutContext
+--                              | ElementInNonLayoutContext
+-- ElementInLayoutContext     ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
+-- ElementInNonLayoutContext  ::= FieldInline | FieldBraces |                 SectionBraces
+-- FieldLayout                ::= name ':' line? ('\\n' line)*
+-- FieldBraces                ::= name ':' '\\n'? '{' line* '}'
+-- FieldInline                ::= name ':' line
+-- SectionLayout              ::= name arg* Elements
+-- SectionBraces              ::= name arg* '\\n'? '{' Elements '}'
 -- @
 --
 -- and the same thing but left factored...
 --
 -- @
--- SecElems              ::= SecElem*
--- SecElem               ::= '\\n' name SecElemLayout
---                         |      name SecElemBraces
--- SecElemLayout         ::= ':'   FieldLayoutOrBraces
---                         | arg*  SectionLayoutOrBraces
--- FieldLayoutOrBraces   ::= '\\n'? '{' content '}'
---                         | line? ('\\n' line)*
--- SectionLayoutOrBraces ::= '\\n'? '{' SecElems '\\n'? '}'
---                         | SecElems
--- SecElemBraces         ::= ':' FieldInlineOrBraces
---                         | arg* '\\n'? '{' SecElems '\\n'? '}'
--- FieldInlineOrBraces   ::= '\\n'? '{' content '}'
---                         | content
+-- Elements                   ::= comment* (Element comment*)*
+-- Element                    ::= '\\n' name ElementInLayoutContext
+--                              |       name ElementInNonLayoutContext
+-- ElementInLayoutContext     ::= ':'           FieldLayoutOrBraces
+--                              | arg* comment* SectionLayoutOrBraces
+-- FieldLayoutOrBraces        ::= comment* '\\n'? '{' comment* (line comment*)* '}'
+--                              | comment* line? comment* ('\\n' line comment*)*
+-- SectionLayoutOrBraces      ::= '\\n'? '{' Elements '\\n'? '}'
+--                              | Elements
+-- ElementInNonLayoutContext  ::= ':'                   FieldInlineOrBraces
+--                              | arg* comment* '\\n'? '{' Elements '\\n'? '}'
+-- FieldInlineOrBraces        ::= '\\n'? '{' comment* (line comment*)* '}'
+--                              | line
 -- @
+--
 --
 -- Note how we have several productions with the sequence:
 --
@@ -220,21 +264,103 @@ inLexerMode (LexerMode mode) p =
 -- where the first non-space is @{@ lex as just the @{@ token, without
 -- the usual indent token. Then in the parser we can resolve everything
 -- with just one token of lookahead and so without using 'try'.
+--
+-- See [Note: Backtracking in fieldLayoutOrBraces] regarding the try combinator in 'fieldLayoutOrBraces'.
 
 -- Top level of a file using cabal syntax
 --
-cabalStyleFile :: Parser [Field Position]
+cabalStyleFile :: Parser [Field (WithComments Position)]
 cabalStyleFile = do
   es <- elements zeroIndentLevel
   eof
-  return es
+  case es of
+    Left _ -> pure [] -- We discard the comments here, because it is not a valid cabal file
+    Right es' -> pure es'
+
+-- | Collect in annotation one or more comments after a parser succeeds
+commentsAfter :: Parser (FieldLine Position) -> Parser (FieldLine (WithComments Position))
+commentsAfter p = do
+  x <- p
+  postCmts <- many tokComment
+  pure $ fmap (WithComments [] postCmts) x
+
+noComments :: Functor f => f ann -> f (WithComments ann)
+noComments = fmap (WithComments [] [])
+
+-- | Returns 'Nothing' when there is no field to attach the comments to.
+prependCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
+prependCommentsFields [] fs = Just fs
+prependCommentsFields cs fs = case fs of
+  [] -> Nothing
+  (f : fs') -> Just $ prependCommentsField cs f : fs'
+
+-- | We attach the comments to the name (foremost child) of 'Field', this hence cannot fail.
+prependCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
+prependCommentsField [] f = f
+prependCommentsField cs f = case f of
+  (Field name fls) -> Field (L.over (traverse . L.priorComments) (cs ++) name) fls
+  (Section name args fs) -> Section (L.over (traverse . L.priorComments) (cs ++) name) args fs
+
+prependCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> Maybe [FieldLine (WithComments ann)]
+prependCommentsFieldLines [] fls = Just fls
+prependCommentsFieldLines cs fls = case fls of
+  [] -> Nothing
+  (fl : fls') -> Just $ prependCommentsFieldLine cs fl : fls'
+
+prependCommentsFieldLine :: [Comment ann] -> FieldLine (WithComments ann) -> FieldLine (WithComments ann)
+prependCommentsFieldLine cs = L.over (traverse . L.priorComments) (cs ++)
+
+-- | Returns 'Nothing' when there is no field to attach the comments to.
+appendCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
+appendCommentsFields [] fs = Just fs
+appendCommentsFields cs fs = case fs of
+  [] -> Nothing
+  [f] -> Just [appendCommentsField cs f]
+  (f : fs') -> (f :) <$> appendCommentsFields cs fs'
+
+appendCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
+appendCommentsField [] f = f
+appendCommentsField cs f = case f of
+  (Field name fls) -> case appendCommentsFieldLines cs fls of
+    Nothing -> Field (L.over (traverse . L.followingComments) (++ cs) name) []
+    Just fls' -> Field name fls'
+  (Section name args fs) -> case appendCommentsFields cs fs of
+    Nothing -> Section (L.over (traverse . L.followingComments) (++ cs) name) args []
+    Just fs' -> Section name args fs'
+
+-- | Returns 'Nothing' when there is no field to attach the comments to.
+appendCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> Maybe [FieldLine (WithComments ann)]
+appendCommentsFieldLines [] fls = Just fls
+appendCommentsFieldLines cs fls = case fls of
+  [] -> Nothing
+  [fl] -> Just [L.over (traverse . L.priorComments) (++ cs) fl]
+  (f : fls') -> (f :) <$> appendCommentsFieldLines cs fls'
+
+appendCommentsNameSecArgs :: Name ann -> [SectionArg ann] -> [Comment ann] -> (Name (WithComments ann), [SectionArg (WithComments ann)])
+appendCommentsNameSecArgs name [] cs = (WithComments [] cs <$> name, [])
+appendCommentsNameSecArgs name [x] cs = (noComments name, [WithComments [] cs <$> x])
+appendCommentsNameSecArgs name (x : xs) cs = (noComments x :) <$> appendCommentsNameSecArgs name xs cs
 
 -- Elements that live at the top level or inside a section, i.e. fields
--- and sections content
+-- and sections content.
 --
--- elements ::= element*
-elements :: IndentLevel -> Parser [Field Position]
-elements ilevel = many (element ilevel)
+-- This returns either many fields with their comments attached, or just the
+-- comments if there are no fields to attach them to. Only at the top level it
+-- is deemed correct to discard these comments, because in that case having no
+-- elements isn't a valid cabal file.
+--
+-- elements ::= comment* (element comment*)*
+elements :: IndentLevel -> Parser (Either [Comment Position] [Field (WithComments Position)])
+elements ilevel = do
+  preCmts <- many tokComment
+  es <- many $ do
+    e <- element ilevel
+    postCmts <- many tokComment
+    pure $ appendCommentsField postCmts e
+
+  case prependCommentsFields preCmts es of
+    Nothing -> pure $ Left preCmts
+    Just es' -> pure $ Right es'
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
@@ -242,7 +368,7 @@ elements ilevel = many (element ilevel)
 --
 -- element ::= '\\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
-element :: IndentLevel -> Parser (Field Position)
+element :: IndentLevel -> Parser (Field (WithComments Position))
 element ilevel =
   ( do
       ilevel' <- indentOfAtLeast ilevel
@@ -258,59 +384,107 @@ element ilevel =
 -- In a layout context we can have fields and sections that themselves
 -- either use layout style or that use braces style.
 --
--- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
---                          | arg* sectionLayoutOrBraces
-elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
+-- elementInLayoutContext ::= ':'           FieldLayoutOrBraces
+--                          | arg* comment* SectionLayoutOrBraces
+elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field (WithComments Position))
 elementInLayoutContext ilevel name =
   (do colon; fieldLayoutOrBraces ilevel name)
     <|> ( do
             args <- many sectionArg
+            commentsAfterSectionArgs <- many tokComment -- Unintuitively, trailing comments are allowed in the same line of a section
             elems <- sectionLayoutOrBraces ilevel
-            return (Section name args elems)
+            case elems of
+              -- If there are no elements but comments, we attach them to the name.
+              Left innerCmts -> do
+                let (name', args') = appendCommentsNameSecArgs name args (commentsAfterSectionArgs <> innerCmts)
+                return (Section name' args' [])
+              Right elems' -> do
+                let (name', args') = appendCommentsNameSecArgs name args commentsAfterSectionArgs
+                return (Section name' args' elems')
         )
 
 -- An element (field or section) that is valid in a non-layout context.
 -- In a non-layout context we can have only have fields and sections that
 -- themselves use braces style, or inline style fields.
 --
--- elementInNonLayoutContext ::= ':' FieldInlineOrBraces
---                             | arg* '\\n'? '{' elements '\\n'? '}'
-elementInNonLayoutContext :: Name Position -> Parser (Field Position)
+-- elementInNonLayoutContext ::= ':'                    FieldInlineOrBraces
+--                             | arg* comments* '\\n'? '{' elements '\\n'? '}'
+elementInNonLayoutContext :: Name Position -> Parser (Field (WithComments Position))
 elementInNonLayoutContext name =
   (do colon; fieldInlineOrBraces name)
     <|> ( do
             args <- many sectionArg
+            commentsAfterSectionArgs <- many tokComment -- Unintuitively, trailing comments are allowed in the same line of a section
             openBrace
             elems <- elements zeroIndentLevel
             optional tokIndent
             closeBrace
-            return (Section name args elems)
+
+            case elems of
+              Left innerCmts -> do
+                let (name', args') = appendCommentsNameSecArgs name args (commentsAfterSectionArgs <> innerCmts)
+                return (Section name' args' [])
+              Right elems' -> do
+                let (name', args') = appendCommentsNameSecArgs name args commentsAfterSectionArgs
+                return (Section name' args' elems')
         )
 
 -- The body of a field, using either layout style or braces style.
 --
--- fieldLayoutOrBraces   ::= '\\n'? '{' content '}'
---                         | line? ('\\n' line)*
-fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
-fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
+-- [Note: Backtracking in fieldLayoutOrBraces]
+-- We can't pick the right branch before seeing the 'openBrace' token,
+-- there is no formal distinction between a comment and a line.
+-- Consider two examples:
+--
+-- In this listing the "--preserve-it" string should be parsed as the 'FieldLine'.
+-- @
+--   x-doctest-options:   --preserve-it
+--     -- The previous thing shouldn't be parsed as a comment because it's a flag.
+--     -- This however, is a comment.
+-- @
+--
+-- In this listing the "--c" string should be parsed as a comment.
+-- @
+-- foo: -- c
+-- {
+--  bar
+-- }
+-- @
+--
+-- We pick the braces branch and backtrack with 'try' if needed.
+--
+-- fieldLayoutOrBraces   ::= comment* '\\n'? '{' comment* (content comment*)* '}'
+--                         | comment* line? comment* ('\\n' line comment*)*
+fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field (WithComments Position))
+fieldLayoutOrBraces ilevel name = try braces <|> fieldLayout
   where
+    braces :: Parser (Field (WithComments Position))
     braces = do
+      cmts <- many tokComment
       openBrace
-      ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
+      (cmts', ls) <-
+        inLexerMode (LexerMode in_field_braces) ((,) <$> many tokComment <*> many (commentsAfter fieldContent))
       closeBrace
-      return (Field name ls)
+      case prependCommentsFieldLines (cmts <> cmts') ls of
+        Nothing -> return $ Field (WithComments [] (cmts <> cmts') <$> name) ls
+        Just ls' -> return $ Field (noComments name) ls'
+
+    -- Here, we run 'fieldContent' twice separately because only the second time it is subject to the indentation constraint.
+    fieldLayout :: Parser (Field (WithComments Position))
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
-      l <- optionMaybe fieldContent
-      ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
-      return $ case l of
-        Nothing -> Field name ls
-        Just l' -> Field name (l' : ls)
+      cmts <- many tokComment
+      l <- optionMaybe (commentsAfter fieldContent)
+      ls <- many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
+
+      case prependCommentsFieldLines cmts (maybe id (:) l ls) of
+        Nothing -> return $ Field (WithComments [] cmts <$> name) []
+        Just ls' -> return $ Field (noComments name) ls'
 
 -- The body of a section, using either layout style or braces style.
 --
 -- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
-sectionLayoutOrBraces :: IndentLevel -> Parser [Field Position]
+sectionLayoutOrBraces :: IndentLevel -> Parser (Either [Comment Position] [Field (WithComments Position)])
 sectionLayoutOrBraces ilevel =
   ( do
       openBrace
@@ -323,19 +497,22 @@ sectionLayoutOrBraces ilevel =
 
 -- The body of a field, using either inline style or braces.
 --
--- fieldInlineOrBraces   ::= '\\n'? '{' content '}'
+-- fieldInlineOrBraces   ::= '\\n'? '{' comment* (line comment*)* '}'
 --                         | content
-fieldInlineOrBraces :: Name Position -> Parser (Field Position)
+fieldInlineOrBraces :: Name Position -> Parser (Field (WithComments Position))
 fieldInlineOrBraces name =
   ( do
       openBrace
-      ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
+      (cmts, ls) <-
+        inLexerMode (LexerMode in_field_braces) (liftA2 (,) (many tokComment) (many (commentsAfter fieldContent)))
       closeBrace
-      return (Field name ls)
+      case prependCommentsFieldLines cmts ls of
+        Nothing -> return (Field (WithComments [] cmts <$> name) ls)
+        Just ls' -> return (Field (noComments name) ls')
   )
     <|> ( do
             ls <- inLexerMode (LexerMode in_field_braces) (option [] (fmap (\l -> [l]) fieldContent))
-            return (Field name ls)
+            return (Field (WithComments [] [] <$> name) (map (WithComments [] [] <$>) ls))
         )
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
@@ -365,11 +542,19 @@ fieldInlineOrBraces name =
 -- >>> readFields' "\xc2\xa0 foo: bar"
 -- Right ([Field (Name (Position 1 3) "foo") [FieldLine (Position 1 8) "bar"]],[LexWarning LexWarningNBSP (Position 1 1)])
 readFields :: B8.ByteString -> Either ParseError [Field Position]
-readFields s = fmap fst (readFields' s)
+readFields = (fmap . map . fmap) unComments . readFieldsWithComments
 
 -- | Like 'readFields' but also return lexer warnings.
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
-readFields' s = do
+readFields' = (fmap . Bi.first . map . fmap) unComments . readFieldsWithComments'
+
+-- | @since 3.18.2
+readFieldsWithComments :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
+readFieldsWithComments = fmap fst . readFieldsWithComments'
+
+-- | @since 3.18.2
+readFieldsWithComments' :: B8.ByteString -> Either ParseError ([Field (WithComments Position)], [LexWarning])
+readFieldsWithComments' s = do
   parse parser "the input" lexSt
   where
     parser = do
@@ -387,16 +572,16 @@ readFields' s = do
 --
 -- To catch during parsing we would need to parse first field/section of a section
 -- and then parse the following ones (softly) requiring the exactly the same indentation.
-checkIndentation :: [Field Position] -> [LexWarning] -> [LexWarning]
+checkIndentation :: [Field (WithComments Position)] -> [LexWarning] -> [LexWarning]
 checkIndentation [] = id
-checkIndentation (Field name _ : fs') = checkIndentation' (nameAnn name) fs'
-checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (nameAnn name) fs'
+checkIndentation (Field name _ : fs') = checkIndentation' (unComments $ nameAnn name) fs'
+checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (unComments $ nameAnn name) fs'
 
 -- | We compare adjacent fields to reduce the amount of reported indentation warnings.
-checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning]
+checkIndentation' :: Position -> [Field (WithComments Position)] -> [LexWarning] -> [LexWarning]
 checkIndentation' _ [] = id
-checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
-checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
+checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (unComments $ nameAnn name) . checkIndentation' (unComments $ nameAnn name) fs'
+checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (unComments $ nameAnn name) . checkIndentation fs . checkIndentation' (unComments $ nameAnn name) fs'
 
 -- | Check that positions' columns are the same.
 checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]
@@ -422,33 +607,40 @@ parseStr p = parseBS p . B8.pack
 
 parseBS  :: Show a => Parser a -> B8.ByteString -> IO ()
 parseBS p = parseTest' p "<input string>"
+#endif
 
 formatError :: B8.ByteString -> ParseError -> String
 formatError input perr =
-    unlines
-      [ "Parse error "++ show (errorPos perr) ++ ":"
-      , errLine
-      , indicator ++ errmsg ]
+  unlines
+    [ "Parse error " ++ show (errorPos perr) ++ ":"
+    , errLine
+    , indicator ++ errmsg
+    ]
   where
-    pos       = errorPos perr
-    ls        = lines' (T.decodeUtf8With T.lenientDecode input)
-    errLine   = T.unpack (ls !! (sourceLine pos - 1))
+    pos = errorPos perr
+    ls = lines' (T.decodeUtf8With T.lenientDecode input)
+    errLine = T.unpack (ls !! (sourceLine pos - 1))
     indicator = replicate (sourceColumn pos) ' ' ++ "^"
-    errmsg    = showErrorMessages "or" "unknown parse error"
-                                  "expecting" "unexpected" "end of file"
-                                  (errorMessages perr)
+    errmsg =
+      showErrorMessages
+        "or"
+        "unknown parse error"
+        "expecting"
+        "unexpected"
+        "end of file"
+        (errorMessages perr)
 
 -- | Handles windows/osx/unix line breaks uniformly
 lines' :: T.Text -> [T.Text]
 lines' s1
   | T.null s1 = []
   | otherwise = case T.break (\c -> c == '\r' || c == '\n') s1 of
-                  (l, s2) | Just (c,s3) <- T.uncons s2
-                         -> case T.uncons s3 of
-                              Just ('\n', s4) | c == '\r' -> l : lines' s4
-                              _               -> l : lines' s3
-                          | otherwise -> [l]
-#endif
+      (l, s2)
+        | Just (c, s3) <- T.uncons s2 ->
+            case T.uncons s3 of
+              Just ('\n', s4) | c == '\r' -> l : lines' s4
+              _ -> l : lines' s3
+        | otherwise -> [l]
 
 eof :: Parser ()
 eof = notFollowedBy anyToken <?> "end of file"

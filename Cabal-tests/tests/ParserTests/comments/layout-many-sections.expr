@@ -1,0 +1,288 @@
+[
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 1 1}
+      "cabal-version")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 1 22}
+        "2.2"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 2 1}
+      "name")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 2 22}
+        "common"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 3 1}
+      "version")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [
+            Comment
+              "-- comment 1"
+              (Position 4 3)],
+          unComments = Position 3 22}
+        "0"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 5 1}
+      "synopsis")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 5 22}
+        "Common-stanza demo demo"],
+  Field
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 6 1}
+      "build-type")
+    [
+      FieldLine
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 6 22}
+        "Simple"],
+  Section
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 8 1}
+      "source-repository")
+    [
+      SecArgName
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 8 19}
+        "head"]
+    [
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 9 3}
+          "type")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [
+                Comment
+                  "-- comment 2"
+                  (Position 10 5)],
+              unComments = Position 9 13}
+            "git"],
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 11 3}
+          "location")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 11 13}
+            "https://github.com/hvr/-.git"]],
+  Section
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 13 1}
+      "common")
+    [
+      SecArgName
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 13 8}
+        "windows"]
+    [
+      Section
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 14 3}
+          "if")
+        [
+          SecArgName
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 14 6}
+            "os",
+          SecArgOther
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 14 8}
+            "(",
+          SecArgName
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 14 9}
+            "windows",
+          SecArgOther
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 14 16}
+            ")"]
+        [
+          Field
+            (Name
+              WithComments {
+                priorComments = [],
+                followingComments = [],
+                unComments = Position 15 5}
+              "build-depends")
+            [
+              FieldLine
+                WithComments {
+                  priorComments = [],
+                  followingComments = [],
+                  unComments = Position 15 20}
+                "Win32"]]],
+  Section
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 17 1}
+      "common")
+    [
+      SecArgName
+        WithComments {
+          priorComments = [],
+          followingComments = [],
+          unComments = Position 17 8}
+        "deps"]
+    [
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 18 3}
+          "build-depends")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 19 5}
+            "base >=4.10 && <4.11,",
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 20 5}
+            "containers"]],
+  Section
+    (Name
+      WithComments {
+        priorComments = [],
+        followingComments = [],
+        unComments = Position 22 1}
+      "library")
+    []
+    [
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 23 3}
+          "import")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [
+                Comment
+                  "-- comment 3"
+                  (Position 25 5)],
+              unComments = Position 23 11}
+            "deps"],
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 26 3}
+          "default-language")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 26 21}
+            "Haskell2010"],
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 27 3}
+          "exposed-modules")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [
+                Comment
+                  "-- comment 4"
+                  (Position 28 1)],
+              unComments = Position 27 21}
+            "ElseIf"],
+      Field
+        (Name
+          WithComments {
+            priorComments = [],
+            followingComments = [],
+            unComments = Position 30 3}
+          "build-depends")
+        [
+          FieldLine
+            WithComments {
+              priorComments = [],
+              followingComments = [],
+              unComments = Position 31 5}
+            "ghc-prim"]]]
