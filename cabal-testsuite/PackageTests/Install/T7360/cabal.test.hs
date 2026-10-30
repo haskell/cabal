@@ -8,7 +8,7 @@ main = cabalTest $ do
       tarball = sdistDir </> "p-1.0.tar.gz"
       installdir = testPrefixDir env </> "bin"
   recordMode DoNotRecord $ do
-    cabal "sdist" ["p", "--output-directory", sdistDir]
+    cabal "v2-sdist" ["p", "--output-directory", sdistDir]
     cabal "install"
       [ "--ignore-project"
       , "file://" ++ tarball
