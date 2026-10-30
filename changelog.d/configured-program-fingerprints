@@ -1,6 +1,7 @@
 synopsis: Reduce configured-program duplication in build caches
 packages: cabal-install
-prs: #0000
+prs: #12500
+issues: #12463
 
 description: Store one fingerprint of the configured compiler programs in each
              elaborated component, keeping the full program records in the shared
