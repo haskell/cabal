@@ -13,6 +13,7 @@ module Distribution.Client.InLibrary
   )
 where
 
+import qualified Data.Map as Map
 import Distribution.Backpack.DescribeUnitId (setupMessage')
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.RebuildMonad
@@ -30,7 +31,6 @@ import qualified Distribution.Simple.Configure as Cabal
 import Distribution.Simple.Haddock (haddock_setupHooks)
 import Distribution.Simple.Install (install_setupHooks)
 import Distribution.Simple.LocalBuildInfo (mbWorkDirLBI)
-import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PreProcess as Cabal
 import Distribution.Simple.Program.Db
@@ -68,6 +68,7 @@ data LibraryConfigureInputs = LibraryConfigureInputs
   , localBuildConfig :: LBC.LocalBuildConfig
   , packageDBStack :: PackageDBStackCWD
   , packageDescription :: PD.PackageDescription
+  , gPackageDescription :: PD.GenericPackageDescription
   , flagAssignment :: PD.FlagAssignment
   , installedPkgIndex :: InstalledPackageIndex
   }
@@ -91,6 +92,7 @@ libraryConfigureInputsFromElabPackage
   ElaboratedSharedConfig
     { pkgConfigPlatform = plat
     , pkgConfigCompiler = compil
+    , pkgConfigPackageSources = sources
     }
   (ReadyPackage pkg)
   ipi
@@ -121,11 +123,13 @@ libraryConfigureInputsFromElabPackage
             }
       , packageDBStack = elabBuildPackageDBStack pkg
       , packageDescription = pkgDescr
+      , gPackageDescription = gpkgDescr
       , flagAssignment = elabFlagAssignment pkg
       , installedPkgIndex = ipi
       }
     where
       pkgDescr = elabPkgDescription pkg
+      gpkgDescr = pkgSourceGPkgDescription (sources Map.! elabPkgSourceId pkg)
 
 configure
   :: LibraryConfigureInputs
@@ -141,6 +145,7 @@ configure
     , localBuildConfig = lbc0
     , packageDBStack = packageDBs
     , packageDescription = pkgDescr
+    , gPackageDescription = gpkgDescr
     , flagAssignment = flagAssgn
     , installedPkgIndex = ipi
     }
@@ -193,13 +198,6 @@ configure
               , benchmarksRequested = Cabal.fromFlag (Cabal.configBenchmarks cfg)
               }
 
-    -- Read the .cabal file, as a Setup script would; the plan does not carry it.
-    pkgDescrFilePath <-
-      case Cabal.flagToMaybe $ Cabal.configCabalFilePath cfg of
-        Just pkgFile -> return pkgFile
-        Nothing -> relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir
-    gpkgDescr <- readGenericPackageDescription verbosity mbWorkDir pkgDescrFilePath
-
     -- NB: it's OK to discard constraints here: we already have a finalized PackageDescription
     -- in hand, and we are using exact UnitIds for all dependencies (this corresponds
     -- to using --exact-configuration and --dependency flags with the Setup CLI).
@@ -227,6 +225,11 @@ configure
         packageDBs'
         pkgInfo
 
+    -- Remember the .cabal filename if we know it.
+    pkgDescrFilePath <-
+      case Cabal.flagToMaybe $ Cabal.configCabalFilePath cfg of
+        Just pkgFile -> return pkgFile
+        Nothing -> relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir
     return $ lbi1{pkgDescrFile = Just pkgDescrFilePath}
 
 --------------------------------------------------------------------------------

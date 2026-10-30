@@ -38,6 +38,7 @@ module Distribution.Client.ProjectPlanning
   , ElaboratedConfiguredPackage (..)
   , ElaboratedPlanPackage
   , ElaboratedSharedConfig (..)
+  , ElaboratedPackageSource (..)
   , ElaboratedReadyPackage
   , BuildStyle (..)
   , CabalFileText
@@ -225,6 +226,7 @@ import Control.Exception (assert)
 import Control.Monad (mapM_, sequence)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State as State (State, execState, runState, state)
+import qualified Data.Binary as Binary
 import Data.Foldable (fold)
 import Data.Functor ((<&>))
 import Data.List (deleteBy, groupBy)
@@ -1709,6 +1711,11 @@ elaborateInstallPlan
           , pkgConfigCompiler = compiler
           , pkgConfigCompilerProgs = compilerProgDb
           , pkgConfigReplOptions = mempty
+          , pkgConfigPackageSources =
+              Map.fromList
+                [ (packageId pkg, ElaboratedPackageSource (srcpkgDescription (solverPkgSource pkg)))
+                | SolverInstallPlan.Configured pkg <- SolverInstallPlan.toList solverPlan
+                ]
           }
 
       preexistingInstantiatedPkgs :: Map UnitId FullUnitId
@@ -2274,6 +2281,7 @@ elaborateInstallPlan
 
             elabIsCanonical = True
             elabPkgSourceId = pkgid
+            elabGPkgDescriptionHash = hashValue (Binary.encode gdesc)
             elabPkgDescription = case PD.finalizePD
               flags
               elabEnabledSpec
