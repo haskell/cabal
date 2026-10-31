@@ -22,6 +22,7 @@ module Distribution.Simple.Setup.Common
   , configureCCompiler
   , configureLinker
   , programDbOption
+  , programDbPrependOption
   , programDbOptions
   , programDbPaths
   , programDbPaths'
@@ -255,6 +256,16 @@ programDbOption
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
 programDbOption = programDbOptionWithSuffix "-option"
+
+-- | Invocation-only arguments placed before the configured override arguments.
+-- This lets callers supply defaults without overriding explicit user options.
+programDbPrependOption
+  :: ProgramDb
+  -> ShowOrParseArgs
+  -> (flags -> [(String, [String])])
+  -> ([(String, [String])] -> (flags -> flags))
+  -> [OptionField flags]
+programDbPrependOption = programDbOptionWithSuffix "-prepend-option"
 
 programDbOptionWithSuffix
   :: String

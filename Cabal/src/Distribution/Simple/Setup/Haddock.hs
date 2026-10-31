@@ -91,6 +91,7 @@ data HaddockFlags = HaddockFlags
   { haddockCommonFlags :: !CommonSetupFlags
   , haddockProgramPaths :: [(String, FilePath)]
   , haddockProgramArgs :: [(String, [String])]
+  , haddockProgramPrependArgs :: [(String, [String])]
   , haddockHoogle :: Flag Bool
   , haddockHtml :: Flag Bool
   , haddockHtmlLocation :: Flag String
@@ -147,6 +148,7 @@ defaultHaddockFlags =
     { haddockCommonFlags = defaultCommonSetupFlags
     , haddockProgramPaths = mempty
     , haddockProgramArgs = []
+    , haddockProgramPrependArgs = []
     , haddockHoogle = Flag False
     , haddockHtml = Flag False
     , haddockHtmlLocation = NoFlag
@@ -200,6 +202,11 @@ haddockCommand =
             ParseArgs
             haddockProgramArgs
             (\v flags -> flags{haddockProgramArgs = v})
+          ++ programDbPrependOption
+            progDb
+            showOrParseArgs
+            haddockProgramPrependArgs
+            (\v flags -> flags{haddockProgramPrependArgs = v})
     }
   where
     progDb =
