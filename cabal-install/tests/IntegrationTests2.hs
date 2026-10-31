@@ -11,6 +11,7 @@ import Prelude ()
 import Distribution.Client.DistDirLayout
 import Distribution.Client.HttpUtils
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import qualified Distribution.Client.NixStyleOptions as NixStyleOptions
 import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectOrchestration
@@ -58,6 +59,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
+import Distribution.Simple.Command (CommandParse (..), commandDefaultFlags, commandParseArgs)
 import Distribution.Simple.Compiler
 import qualified Distribution.Simple.Flag as Flag
 import Distribution.Simple.Setup (CommonSetupFlags (..), HaddockFlags (..), HaddockProjectFlags (..), defaultCommonSetupFlags, defaultHaddockFlags, defaultHaddockProjectFlags, toFlag)
@@ -73,10 +75,11 @@ import qualified Data.Set as Set
 import Control.Concurrent (threadDelay)
 import Control.Exception hiding (assert)
 import Control.Monad
+import GHC.ResponseFile (unescapeArgs)
 import System.Directory
 import System.Environment (setEnv)
 import System.FilePath
-import System.IO (hPutStrLn, stderr)
+import System.IO (hPutStrLn, readFile', stderr, stdout)
 import qualified System.Info
 import System.Process (callProcess)
 
@@ -199,6 +202,16 @@ tests config =
       AllFinish
       [ testCase "Test Config options for commented options" testConfigOptionComments
       , testCase "Test Ignore Project Flag" testIgnoreProjectFlag
+      ]
+  , dependentTestGroup
+      "Documentation in the repl"
+      AllFinish
+      [ testCase "documentation flags" (testDocumentationReplFlags config)
+      ]
+  , dependentTestGroup
+      "Documentation build cache"
+      AllFinish
+      [ testCase "documentation flags" (testDocumentationFlags config)
       ]
   , dependentTestGroup
       "haddock-project"
@@ -2791,3 +2804,125 @@ testHaddockProjectDependencies config = do
     cleanHaddockProject testdir
   where
     testdir = "haddock-project/dependencies"
+
+-- | Run a test on a documentation build cache test project, from its
+-- directory, unless the compiler predates the documentation artifacts these
+-- tests rely on. The test receives the build directory of the main library of
+-- package @p@. Afterwards the project's build products, documentation and local
+-- configuration are removed, and the module @P@ of @p@ is restored.
+withDocumentationProject :: FilePath -> ProjectConfig -> (FilePath -> IO ()) -> Assertion
+withDocumentationProject testdir config test = do
+  let dir = basedir </> testdir
+      source = dir </> "p" </> "P.hs"
+      clean = cleanHaddockProject testdir >> removeFileForcibly (dir </> "cabal.project.local")
+  originalSource <- BS.readFile source
+  clean
+  flip finally (BS.writeFile source originalSource >> clean) $ do
+    ((layout, _, _, _, _), plan, shared) <- planProject testdir config
+    let safeMinor = if buildOS == Windows then 10 else 4
+    when (compilerVersion (pkgConfigCompiler shared) > mkVersion [9, safeMinor]) $ do
+      pkg <- case filter (\p -> packageName p == mkPackageName "p" && elabComponentName p == Just (CLibName LMainLibName)) (filterConfiguredPackages (InstallPlan.toList plan)) of
+        [p] -> return p
+        _ -> fail "Expected one library p"
+      withCurrentDirectory dir $ test (distBuildDirectory layout (elabDistDirParams shared pkg))
+
+-- | Replace the local configuration of the project in the current directory.
+writeLocalConfig :: [String] -> IO ()
+writeLocalConfig = writeFile "cabal.project.local" . unlines
+
+-- | Common flags of the commands run by documentation build cache tests, which
+-- report the build plans and the compiled modules.
+documentationCommonFlags :: CommonSetupFlags
+documentationCommonFlags = defaultCommonSetupFlags{setupVerbosity = Flag normal}
+
+-- | Build all packages of the project in the current directory, returning the
+-- output.
+buildAllPackages :: IO String
+buildAllPackages =
+  fst
+    <$> hCapture
+      [stdout, stderr]
+      ( CmdBuild.buildAction
+          (NixStyleOptions.updNixStyleCommonSetupFlags (const documentationCommonFlags) (commandDefaultFlags CmdBuild.buildCommand))
+          ["all"]
+          defaultGlobalFlags{globalStoreDir = Flag "store"}
+      )
+
+-- | Run the repl on a target of the project in the current directory, with the
+-- GHC arguments it would start GHCi with written to a directory instead, and
+-- return the arguments of the target's unit.
+replArguments :: String -> IO [String]
+replArguments target = do
+  dir <- makeAbsolute ("dist-newstyle" </> "repl-arguments")
+  removePathForcibly dir
+  createDirectoryIfMissing True dir
+  writeFlags <- case commandParseArgs CmdRepl.replCommand False ["--repl-multi-file=" ++ dir] of
+    CommandReadyToGo (setFlags, []) -> return setFlags
+    _ -> assertFailure "Could not parse --repl-multi-file"
+  _ <-
+    hCapture
+      [stdout, stderr]
+      ( CmdRepl.replAction
+          (writeFlags (NixStyleOptions.updNixStyleCommonSetupFlags (const documentationCommonFlags) (commandDefaultFlags CmdRepl.replCommand)))
+          [target]
+          defaultGlobalFlags{globalStoreDir = Flag "store"}
+      )
+  units <- filter (/= "paths") <$> listDirectory dir
+  case units of
+    [unit] -> unescapeArgs <$> readFile' (dir </> unit)
+    _ -> assertFailure ("Expected the arguments of one unit, found " ++ show units)
+
+-- | Documentation gives the repl @-haddock@, so that @:doc@ finds the
+-- documentation of the project's own definitions, without reconfiguring. It
+-- does not give it @-fwrite-ide-info@, which would make GHCi write over the
+-- HIE files of the build.
+testDocumentationReplFlags :: ProjectConfig -> Assertion
+testDocumentationReplFlags config = withDocumentationProject testdir config $ \buildDir -> do
+  let setupConfig = buildDir </> "setup-config"
+      settings documentation =
+        writeLocalConfig
+          [ "documentation: " ++ show documentation
+          , "haddock-hyperlink-source: True"
+          ]
+  settings False
+  disabled <- replArguments "lib:p"
+  assertBool ("-haddock without documentation: " ++ unwords disabled) ("-haddock" `notElem` disabled)
+  initialConfig <- BS.readFile setupConfig
+  settings True
+  enabled <- replArguments "lib:p"
+  assertBool ("no -haddock with documentation: " ++ unwords enabled) ("-haddock" `elem` enabled)
+  assertBool ("-fwrite-ide-info in the repl: " ++ unwords enabled) ("-fwrite-ide-info" `notElem` enabled)
+  BS.readFile setupConfig >>= assertEqual "setup-config after enabling documentation" initialConfig
+  where
+    testdir = "documentation-cache/library"
+
+-- | Documentation adds flags to the compiler invocations, not to the package
+-- configuration: enabling it compiles again, but does not reconfigure. The
+-- same flag given explicitly is a configuration change.
+testDocumentationFlags :: ProjectConfig -> Assertion
+testDocumentationFlags config = withDocumentationProject testdir config $ \buildDir -> do
+  let setupConfig = buildDir </> "setup-config"
+      settings documentation args =
+        writeLocalConfig
+          [ "documentation: " ++ show documentation
+          , "haddock-hyperlink-source: False"
+          , "package *"
+          , "  ghc-options: " ++ unwords args
+          ]
+  settings False []
+  _ <- buildAllPackages
+  initialConfig <- BS.readFile setupConfig
+  settings True []
+  enabled <- buildAllPackages
+  assertBool enabled ("documentation artifacts required" `isInfixOf` enabled)
+  BS.readFile setupConfig >>= assertEqual "setup-config after enabling documentation" initialConfig
+  -- A build that needs fewer flags reuses the artifacts of the last one.
+  settings False []
+  disabled <- buildAllPackages
+  assertBool disabled ("Up to date" `isInfixOf` disabled)
+  settings False ["-haddock"]
+  _ <- buildAllPackages
+  explicitConfig <- BS.readFile setupConfig
+  assertBool "explicit -haddock must reconfigure" (explicitConfig /= initialConfig)
+  where
+    testdir = "documentation-cache/library"

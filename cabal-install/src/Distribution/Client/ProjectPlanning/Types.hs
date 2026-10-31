@@ -291,6 +291,9 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabDumpBuildInfo :: DumpBuildInfo
   , elabProgramPaths :: Map String FilePath
   , elabProgramArgs :: Map String [String]
+  , elabHaddockProgramArgs :: [String]
+  -- ^ Automatic GHC arguments for documentation artifacts. Applied to each
+  -- invocation, separately from the user's persisted program arguments.
   , elabProgramPathExtra :: [FilePath]
   , elabConfiguredPrograms :: [ConfiguredProgram]
   , elabConfigureScriptArgs :: [String]

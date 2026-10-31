@@ -42,7 +42,7 @@ import qualified Data.Set as Set
 -- and 'updatePackageBuildFileMonitor'.
 data PackageFileMonitor = PackageFileMonitor
   { pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage ()
-  , pkgFileMonitorBuild :: FileMonitor (Set ComponentName) BuildResultMisc
+  , pkgFileMonitorBuild :: FileMonitor (Set ComponentName, Set String) BuildResultMisc
   , pkgFileMonitorReg :: FileMonitor () (Maybe InstalledPackageInfo)
   }
 
@@ -72,8 +72,9 @@ newPackageFileMonitor
       , pkgFileMonitorBuild =
           FileMonitor
             { fileMonitorCacheFile = distPackageCacheFile dparams "build"
-            , fileMonitorKeyValid = \componentsToBuild componentsAlreadyBuilt ->
+            , fileMonitorKeyValid = \(componentsToBuild, artifactsRequired) (componentsAlreadyBuilt, artifactsBuilt) ->
                 componentsToBuild `Set.isSubsetOf` componentsAlreadyBuilt
+                  && artifactsRequired `Set.isSubsetOf` artifactsBuilt
             , fileMonitorCheckIfOnlyValueChanged = True
             }
       , pkgFileMonitorReg =
@@ -101,6 +102,10 @@ packageFileMonitorKeyValues elab =
 
     -- Additionally we null out the parts that don't affect the configure step because they're simply
     -- about how tests or benchmarks are run
+    --
+    -- Automatic documentation arguments are supplied at invocation time and
+    -- tracked by the build monitor. User arguments (including explicit
+    -- -haddock and -fwrite-ide-info) must remain in the configuration key.
 
     -- TODO there may be more things to null here too, in the future.
 
@@ -113,6 +118,7 @@ packageFileMonitorKeyValues elab =
         , elabReplTarget = []
         , elabHaddockTargets = []
         , elabBuildHaddocks = False
+        , elabHaddockProgramArgs = []
         , elabTestMachineLog = Nothing
         , elabTestHumanLog = Nothing
         , elabTestShowDetails = Nothing
@@ -164,7 +170,7 @@ checkPackageFileMonitorChanged
               checkFileMonitorChanged
                 pkgFileMonitorBuild
                 srcdir
-                buildComponents
+                (buildComponents, buildArtifacts)
             regChanged <-
               checkFileMonitorChanged
                 pkgFileMonitorReg
@@ -172,10 +178,12 @@ checkPackageFileMonitorChanged
                 ()
             let mreg = changedToMaybe regChanged
             case (buildChanged, regChanged) of
-              (MonitorChanged (MonitoredValueChanged prevBuildComponents), _) ->
+              (MonitorChanged (MonitoredValueChanged (prevBuildComponents, prevBuildArtifacts)), _) ->
                 return (Left (BuildStatusBuild mreg buildReason))
                 where
-                  buildReason = BuildReasonExtraTargets prevBuildComponents
+                  buildReason
+                    | buildArtifacts `Set.isSubsetOf` prevBuildArtifacts = BuildReasonExtraTargets prevBuildComponents
+                    | otherwise = BuildReasonDocumentation
               (MonitorChanged monitorReason, _) ->
                 return (Left (BuildStatusBuild mreg buildReason))
                 where
@@ -205,6 +213,7 @@ checkPackageFileMonitorChanged
                   (docsResult, testsResult) = buildResult
     where
       (pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
+      buildArtifacts = Set.fromList (elabHaddockProgramArgs pkg)
       changedToMaybe :: MonitorChanged a b -> Maybe b
       changedToMaybe (MonitorChanged _) = Nothing
       changedToMaybe (MonitorUnchanged x _) = Just x
@@ -250,7 +259,7 @@ updatePackageBuildFileMonitor
       srcdir
       (Just timestamp)
       monitors
-      buildComponents'
+      (buildComponents', Set.fromList (elabHaddockProgramArgs pkg))
       buildResult
     where
       (_pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
