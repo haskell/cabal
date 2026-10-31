@@ -1,0 +1,5 @@
+# The hie-bios cradle for Haskell Language Server, see the "Using Haskell
+# Language Server" section of CONTRIBUTING.md.
+cradle:
+  cabal:
+    cabalProject: cabal.hie.project
