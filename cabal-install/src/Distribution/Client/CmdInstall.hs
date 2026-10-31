@@ -302,6 +302,9 @@ installCommand =
             ++ "If you want the installed executables to be available globally, "
             ++ "make sure that the PATH environment variable contains that directory. "
             ++ "\n\n"
+            ++ "A TARGET need not belong to a project. It may name a package on "
+            ++ "Hackage. Several targets, local or remote, may be given at once."
+            ++ "\n\n"
             ++ "If TARGET is a library and --lib (provisional) is used, "
             ++ "it will be added to the global environment. "
             ++ "When doing this, cabal will try to build a plan that includes all "
@@ -314,13 +317,16 @@ installCommand =
           ++ "    Install the package in the current directory\n"
           ++ "  "
           ++ pname
-          ++ " v2-install pkgname\n"
-          ++ "    Install the package named pkgname"
-          ++ " (fetching it from hackage if necessary)\n"
-          ++ "  "
-          ++ pname
           ++ " v2-install ./pkgfoo\n"
           ++ "    Install the package in the ./pkgfoo directory\n"
+          ++ "  "
+          ++ pname
+          ++ " v2-install pkgname\n"
+          ++ "    Install the package named pkgname\n"
+          ++ "  "
+          ++ pname
+          ++ " v2-install hlint-3.8 fourmolu\n"
+          ++ "    Install several packages at once, one versioned and one not\n"
     , commandOptions = \x -> filter notInstallDirOpt $ nixStyleOptions clientInstallOptions x
     , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
     }
