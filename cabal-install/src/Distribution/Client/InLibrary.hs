@@ -13,6 +13,7 @@ module Distribution.Client.InLibrary
   )
 where
 
+import qualified Data.Map as Map
 import Distribution.Backpack.DescribeUnitId (setupMessage')
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.RebuildMonad
@@ -91,6 +92,7 @@ libraryConfigureInputsFromElabPackage
   ElaboratedSharedConfig
     { pkgConfigPlatform = plat
     , pkgConfigCompiler = compil
+    , pkgConfigPackageSources = sources
     }
   (ReadyPackage pkg)
   ipi
@@ -127,7 +129,7 @@ libraryConfigureInputsFromElabPackage
       }
     where
       pkgDescr = elabPkgDescription pkg
-      gpkgDescr = elabGPkgDescription pkg
+      gpkgDescr = pkgSourceGPkgDescription (sources Map.! elabPkgSourceId pkg)
 
 configure
   :: LibraryConfigureInputs
