@@ -587,6 +587,7 @@ buildInplaceUnpackedPackage
             withFileMonitor runRepl
           PBHaddockPhase{runHaddock} -> do
             withFileMonitor runHaddock
+            updatePackageDocsFileMonitor packageFileMonitor (getSymbolicPath srcdir) pkg
             let haddockTarget = elabHaddockForHackage pkg
             when (haddockTarget == Cabal.ForHackage) $ do
               let dest = distDirectory </> name <.> "tar.gz"

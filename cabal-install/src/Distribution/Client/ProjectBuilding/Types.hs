@@ -133,6 +133,8 @@ data BuildReason
     -- we're going to build some part of a component or run a repl or any
     -- other action that does not result in additional persistent artifacts.
     BuildReasonEphemeralTargets
+  | -- | Haddock settings changed.
+    BuildReasonHaddockSettingsChanged
 
 ------------------------------------------------------------------------------
 -- Build outcomes: result of the build
