@@ -8,6 +8,9 @@ module Distribution.Client.CmdHaddock
   , haddockAction
   , ClientHaddockFlags (..)
 
+    -- * Running within an existing project
+  , haddockActionWithContext
+
     -- * Internals exposed for testing
   , selectPackageTargets
   , selectComponentTarget
@@ -167,6 +170,17 @@ haddockAction relFlags targetStrings globalFlags = do
     either (reportTargetSelectorProblems verbosity) return
       =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
 
+  haddockActionWithContext verbosity haddockFlags baseCtx targetSelectors
+
+-- | Run documentation targets in an existing project context. This lets
+-- haddock-project retain dependency configuration while overriding local output.
+haddockActionWithContext
+  :: Verbosity
+  -> HaddockFlags
+  -> ProjectBaseContext
+  -> [TargetSelector]
+  -> IO ()
+haddockActionWithContext verbosity haddockFlags baseCtx targetSelectors = do
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
       when (buildSettingOnlyDeps (buildSettings baseCtx)) $
