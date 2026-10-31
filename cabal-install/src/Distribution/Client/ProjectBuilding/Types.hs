@@ -126,6 +126,9 @@ data BuildReason
     -- we have built previously with the ones the user has asked for this
     -- time and save those. See 'updatePackageBuildFileMonitor'.
     BuildReasonExtraTargets (Set ComponentName)
+  | -- | Compilation must produce documentation artifacts that the previous
+    -- successful build did not request.
+    BuildReasonDocumentation
   | -- | Although we're not going to build any additional targets as a whole,
     -- we're going to build some part of a component or run a repl or any
     -- other action that does not result in additional persistent artifacts.
