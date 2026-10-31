@@ -68,6 +68,7 @@ module Distribution.Client.ProjectPlanning
 
     -- * Utils required for building
   , pkgHasEphemeralBuildTargets
+  , hasValidHaddockTargets
   , elabBuildTargetWholeComponents
   , configureCompiler
 
@@ -98,6 +99,8 @@ module Distribution.Client.ProjectPlanning
   ) where
 
 import Distribution.Client.Compat.Prelude
+import Distribution.Compat.Lens ((^.))
+import Distribution.Types.PackageDescription.Lens (componentModules)
 import Text.PrettyPrint
   ( colon
   , comma
@@ -3366,6 +3369,33 @@ nubComponentTargets =
 
 -- TODO: when that changes, adjust this test, e.g.
 -- \| pkgSetupScriptCliVersion >= Version [x,y] []
+
+-- | Whether the selected components will actually run Haddock. The docs
+-- monitor must use the same predicate as the execution phase.
+hasValidHaddockTargets :: ElaboratedConfiguredPackage -> Bool
+hasValidHaddockTargets ElaboratedConfiguredPackage{..}
+  | not elabBuildHaddocks = False
+  | otherwise = any componentHasHaddocks targets
+  where
+    targets :: [ComponentTarget]
+    targets =
+      elabBuildTargets
+        ++ elabTestTargets
+        ++ elabBenchTargets
+        ++ elabReplTarget
+        ++ elabHaddockTargets
+
+    componentHasHaddocks :: ComponentTarget -> Bool
+    componentHasHaddocks (ComponentTarget name _) =
+      case name of
+        CLibName LMainLibName -> hasHaddocks
+        CLibName (LSubLibName _) -> elabHaddockInternal && hasHaddocks
+        CFLibName _ -> elabHaddockForeignLibs && hasHaddocks
+        CExeName _ -> elabHaddockExecutables && hasHaddocks
+        CTestName _ -> elabHaddockTestSuites && hasHaddocks
+        CBenchName _ -> elabHaddockBenchmarks && hasHaddocks
+      where
+        hasHaddocks = not (null (elabPkgDescription ^. componentModules name))
 
 pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
 pkgHasEphemeralBuildTargets elab =
