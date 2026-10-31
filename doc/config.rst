@@ -125,6 +125,8 @@ file:
 You can run ``cabal path`` to see a list of the directories that
 ``cabal`` will use with the active configuration.
 
+.. _repository-specification:
+
 Repository specification
 ------------------------
 
