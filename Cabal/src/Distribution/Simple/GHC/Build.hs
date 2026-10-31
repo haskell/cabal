@@ -28,7 +28,6 @@ import Distribution.Utils.Path
 import Distribution.Verbosity (VerbosityHandles, mkVerbosity, verbosityHandles)
 
 import Control.Monad.IO.Class
-import System.FilePath (splitDirectories)
 
 {- Note [Build Target Dir vs Target Dir]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,13 +88,9 @@ build numJobs verbHandles pkg_descr pbci = do
   let targetDir0 :: SymbolicPath Pkg ('Dir Build)
       targetDir0 = componentBuildDir lbi clbi
       buildTargetDir0 :: SymbolicPath Pkg ('Dir Artifacts)
-      buildTargetDir0
-        -- Libraries use the target dir for building (see above)
-        | isLib = coerceSymbolicPath targetDir0
-        -- In other cases, use targetDir/<name-of-target-dir>-tmp
-        | targetDirName : _ <- reverse $ splitDirectories $ getSymbolicPath targetDir0 =
-            coerceSymbolicPath targetDir0 </> makeRelativePathEx (targetDirName ++ "-tmp")
-        | otherwise = error "GHC.build: targetDir is empty"
+      -- Libraries use the target dir for building (see above);
+      -- in other cases, use targetDir/<name-of-target-dir>-tmp
+      buildTargetDir0 = componentArtifactsDir lbi clbi
 
   liftIO $ do
     createDirectoryIfMissingVerbose verbosity True $ i targetDir0

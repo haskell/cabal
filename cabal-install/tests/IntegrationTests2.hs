@@ -223,6 +223,7 @@ tests config =
       , testCase "hyperlinked source" (testHyperlinkedSourceArtifacts config)
       , testCase "Haddock output settings" (testHaddockOutputSettings config)
       , testCase "documenting packages" (testHaddockBuildCache config)
+      , testCase "documenting an executable" (testHaddockExecutableArtifacts config)
       ]
   , dependentTestGroup
       "haddock-project"
@@ -3162,6 +3163,20 @@ testHaddockBuildCache config = withDocumentationProject "documentation-cache/lib
   reverted <- buildAllPackages
   assertBool reverted ("Compiling P" `isInfixOf` reverted)
 
+-- | Haddock must use the compilation artifacts of an executable from the
+-- directory GHC compiled it in, which is a subdirectory of its build
+-- directory, rather than write HIE files into the build directory itself.
+testHaddockExecutableArtifacts :: ProjectConfig -> Assertion
+testHaddockExecutableArtifacts config = withDocumentationProject "documentation-cache/executable" config $ \buildDir -> do
+  let exeDir = buildDir </> "x" </> "e" </> "build" </> "e"
+  writeLocalConfig ["documentation: True", "package p", "  haddock-executables: True"]
+  _ <- buildAllPackages
+  _ <- documentAllPackages
+  doesFileExist (exeDir </> "e-tmp" </> "extra-compilation-artifacts" </> "hie" </> "Main.hie")
+    >>= assertBool "HIE file of the executable"
+  doesDirectoryExist (exeDir </> "extra-compilation-artifacts")
+    >>= assertEqual "artifacts outside the executable's compilation directory" False
+
 -- | Repeating haddock-project has no build work, and leaves a normal build up
 -- to date. Its build phase prints a plan only when it has work to do, so each
 -- run prints just the Haddock plan.
@@ -3184,6 +3199,7 @@ testHaddockProjectBuildCache config = withDocumentationProject "documentation-ca
 
 -- | Check the generated index, including a sublibrary, with an arbitrary custom
 -- build directory and no pre-existing documentation in the default directory.
+-- A repeated invocation must also reuse the sublibrary's compilation artifacts.
 propHaddockProjectBuildDir :: ProjectConfig -> QC.Positive Int -> QC.Property
 propHaddockProjectBuildDir config (QC.Positive suffix) = QC.ioProperty $ do
   (_, _, sharedConfig) <- planProject testdir config
@@ -3212,9 +3228,15 @@ propHaddockProjectBuildDir config (QC.Positive suffix) = QC.ioProperty $ do
         mainInterface <- doesFileExist ("haddocks" </> "index-probe" </> "index-probe.haddock")
         subInterface <- doesFileExist ("haddocks" </> "index-probe" </> "helper" </> "helper.haddock")
         defaultDir <- doesDirectoryExist "dist-newstyle"
+        -- Compilation artifact reuse requires Haddock >= 2.28 (GHC >= 9.6).
+        (repeatedOutput, ()) <-
+          if compilerVersion (pkgConfigCompiler sharedConfig) >= mkVersion [9, 6]
+            then hCapture [stdout, stderr] run
+            else return ("", ())
         return $
-          (mainInterface, subInterface, "MainModule.html" `BS.isInfixOf` index, "HelperModule.html" `BS.isInfixOf` index, defaultDir)
-            QC.=== (True, True, True, True, False)
+          QC.counterexample repeatedOutput $
+            (mainInterface, subInterface, "MainModule.html" `BS.isInfixOf` index, "HelperModule.html" `BS.isInfixOf` index, defaultDir, "Compiling " `isInfixOf` repeatedOutput)
+              QC.=== (True, True, True, True, False, False)
   where
     testdir = "haddock-project/custom-builddir"
 
