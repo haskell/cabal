@@ -39,6 +39,7 @@ test-suite unit-tests
     UnitTests.Distribution.Simple.Command
     UnitTests.Distribution.Simple.Compiler
     UnitTests.Distribution.Simple.Glob
+    UnitTests.Distribution.Simple.GHC
     UnitTests.Distribution.Simple.Program.GHC
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Simple.Utils

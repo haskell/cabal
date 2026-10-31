@@ -86,7 +86,7 @@ import Distribution.Utils.NubList (NubListR, toNubListR)
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Language.Haskell.Extension
-import System.Directory (listDirectory)
+import System.Directory (doesPathExist, listDirectory)
 import System.Environment (getEnv)
 import System.FilePath
   ( takeDirectory
@@ -100,12 +100,13 @@ targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 
 -- | Adjust the way we find and configure gcc and ld
 configureToolchain
-  :: GhcImplInfo
+  :: PackageDBStackCWD
+  -> GhcImplInfo
   -> ConfiguredProgram
   -> Map String String
   -> ProgramDb
   -> ProgramDb
-configureToolchain _implInfo ghcProg ghcInfo =
+configureToolchain packageDbs _implInfo ghcProg ghcInfo =
   addKnownProgram
     gccProgram
       { programFindLocation = findProg gccProgramName extraGccPath
@@ -249,6 +250,9 @@ configureToolchain _implInfo ghcProg ghcInfo =
     -- we need to find out if ld supports the -x flag
     configureLd' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureLd' verbosity ldProg = do
+      -- As when reading installed packages, ignore databases that have not
+      -- been created yet (for example, a registration destination).
+      existingPackageDbs <- filterM packageDbExists packageDbs
       ldx <- withTempFile ".c" $ \testcfile testchnd ->
         withTempFile ".o" $ \testofile testohnd -> do
           hPutStrLn testchnd "int foo() { return 0; }"
@@ -257,12 +261,16 @@ configureToolchain _implInfo ghcProg ghcInfo =
           runProgram
             verbosity
             ghcProg
-            [ "-hide-all-packages"
-            , "-c"
-            , testcfile
-            , "-o"
-            , testofile
-            ]
+            -- User-supplied plugin options also apply to this C compilation,
+            -- so GHC needs the same package databases as the package build.
+            ( packageDbArgsDb existingPackageDbs
+                ++ [ "-hide-all-packages"
+                   , "-c"
+                   , testcfile
+                   , "-o"
+                   , testofile
+                   ]
+            )
           withTempFile ".o" $ \testofile' testohnd' ->
             do
               hClose testohnd'
@@ -277,6 +285,9 @@ configureToolchain _implInfo ghcProg ghcInfo =
       if ldx
         then return ldProg{programDefaultArgs = ["-x"]}
         else return ldProg
+
+    packageDbExists (SpecificPackageDB path) = doesPathExist path
+    packageDbExists _ = return True
 
 getLanguages
   :: GhcImplInfo

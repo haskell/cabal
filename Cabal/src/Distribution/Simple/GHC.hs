@@ -38,6 +38,7 @@ module Distribution.Simple.GHC
   , configure
   , configureCompiler
   , compilerProgramDb
+  , compilerProgramDbWithPackageDBs
   , getInstalledPackages
   , getInstalledPackagesMonitorFiles
   , getPackageDBContents
@@ -278,7 +279,20 @@ compilerProgramDb
   -> Maybe FilePath
   -- ^ user-specified @ghc-pkg@ path (optional)
   -> IO ProgramDb
-compilerProgramDb verbosity comp progdb1 hcPkgPath = do
+compilerProgramDb = compilerProgramDbWithPackageDBs [GlobalPackageDB, UserPackageDB]
+
+-- | Like 'compilerProgramDb', using the supplied package databases when a
+-- toolchain probe invokes GHC. Paths must be relative to the current working
+-- directory, rather than the package directory.
+compilerProgramDbWithPackageDBs
+  :: PackageDBStackCWD
+  -> Verbosity
+  -> Compiler
+  -> ProgramDb
+  -> Maybe FilePath
+  -- ^ user-specified @ghc-pkg@ path (optional)
+  -> IO ProgramDb
+compilerProgramDbWithPackageDBs packageDbs verbosity comp progdb1 hcPkgPath = do
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =
         hsc2hsProgram
@@ -320,6 +334,7 @@ compilerProgramDb verbosity comp progdb1 hcPkgPath = do
       -- in the GHC settings file
       progdb3 =
         Internal.configureToolchain
+          packageDbs
           (ghcVersionImplInfo ghcVersion)
           ghcProg
           (compilerProperties comp)
