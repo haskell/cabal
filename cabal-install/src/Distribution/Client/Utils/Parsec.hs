@@ -30,6 +30,9 @@ import Distribution.Simple.Flag
 import Distribution.Utils.NubList (NubList (..))
 import qualified Distribution.Utils.NubList as NubList
 
+-- $setup
+-- >>> import Data.Text (Text)
+
 -- | Like 'List' for usage with a 'FieldGrammar', but for 'Flag'.
 -- This enables to parse type aliases such as 'FilePath' that do not have 'Parsec' instances
 -- by using newtype variants such as 'FilePathNT'.
@@ -56,8 +59,7 @@ newtype NubList' sep b a = NubList' {_getNubList :: NubList a}
 -- alaNubList VCat :: NubList a -> NubList' VCat (Identity a) a
 --
 -- >>> :t alaNubList' FSep Token
--- alaNubList' FSep Token
---   :: NubList String -> NubList' FSep Token String
+-- alaNubList' FSep Token :: NubList Text -> NubList' FSep Token Text
 alaNubList :: sep -> NubList a -> NubList' sep (Identity a) a
 alaNubList _ = NubList'
 

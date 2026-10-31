@@ -11,6 +11,7 @@ import Distribution.Version
 
 import Control.Exception
 import Control.Monad
+import qualified Data.Text as T
 import Data.Typeable
 import System.Directory
 import System.Exit
@@ -99,12 +100,12 @@ testUnsupportedRepoType = do
     repo =
       (emptySourceRepo RepoHead)
         { repoType = Just repotype
-        , repoLocation = Just "loc"
+        , repoLocation = Just (T.pack "loc")
         }
     repo' =
       SourceRepositoryPackage
         { srpType = repotype
-        , srpLocation = "loc"
+        , srpLocation = T.pack "loc"
         , srpTag = Nothing
         , srpBranch = Nothing
         , srpSubdir = Proxy
@@ -173,13 +174,13 @@ testRepoDestinationExists =
     repo =
       (emptySourceRepo RepoHead)
         { repoType = Just (KnownRepoType Darcs)
-        , repoLocation = Just ""
+        , repoLocation = Just mempty
         }
 
 testGitFetchFailed :: Assertion
 testGitFetchFailed =
   withTestDir verbosity "repos" $ \tmpdir -> do
-    let srcdir = tmpdir </> "src"
+    let srcdir = T.pack $ tmpdir </> "src"
         repo =
           (emptySourceRepo RepoHead)
             { repoType = Just (KnownRepoType Git)
@@ -206,7 +207,7 @@ testNetworkGitClone =
     let repo1 =
           (emptySourceRepo RepoHead)
             { repoType = Just (KnownRepoType Git)
-            , repoLocation = Just "https://github.com/haskell/zlib.git"
+            , repoLocation = Just (T.pack "https://github.com/haskell/zlib.git")
             }
     clonePackagesFromSourceRepo
       verbosity
@@ -219,7 +220,7 @@ testNetworkGitClone =
     let repo2 =
           (emptySourceRepo RepoHead)
             { repoType = Just (KnownRepoType Git)
-            , repoLocation = Just (tmpdir </> "zlib1")
+            , repoLocation = Just (T.pack $ tmpdir </> "zlib1")
             }
     clonePackagesFromSourceRepo
       verbosity
@@ -232,8 +233,8 @@ testNetworkGitClone =
     let repo3 =
           (emptySourceRepo RepoHead)
             { repoType = Just (KnownRepoType Git)
-            , repoLocation = Just (tmpdir </> "zlib1")
-            , repoTag = Just "0.5.0.0"
+            , repoLocation = Just (T.pack $ tmpdir </> "zlib1")
+            , repoTag = Just (T.pack "0.5.0.0")
             }
     clonePackagesFromSourceRepo
       verbosity

@@ -100,6 +100,7 @@ import qualified Data.Map as Map
 import Data.Maybe
   ( fromJust
   )
+import qualified Data.Text as Text
 import Data.Tree as Tree
 import System.Directory
   ( doesDirectoryExist
@@ -598,7 +599,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
             installed
       , bugReports = maybe mempty Source.bugReports source
       , sourceRepo =
-          fromMaybe mempty $ (uncons Nothing repoLocation . sortBy (comparing repoKind) . sourceRepos) =<< source
+          fromMaybe mempty $ (uncons Nothing (fmap Text.unpack . repoLocation) . sortBy (comparing repoKind) . sourceRepos) =<< source
       , -- TODO: installed package info is missing synopsis
         synopsis = maybe mempty Source.synopsis source
       , description =

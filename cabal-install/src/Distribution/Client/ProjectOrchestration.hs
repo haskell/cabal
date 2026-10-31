@@ -177,6 +177,7 @@ import Control.Exception (assert)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import Distribution.Client.Errors
 import Distribution.Package
 import Distribution.Simple.Command (commandShowOptions)
@@ -276,7 +277,7 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
     configureTransport
       verbosity
       (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
-      (flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
+      (fmap Text.unpack . flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
 
   (projectConfig, localPackages) <-
     rebuildProjectConfig
