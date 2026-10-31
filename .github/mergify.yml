@@ -102,6 +102,20 @@ pull_request_rules:
       - check-success=Bootstrap post job
       - 'check-success=docs/readthedocs.org:cabal'
 
+  # label PRs with only one review
+  - actions:
+      label:
+        toggle:
+          - ':one: more approval needed'
+    name: Flag PRs that need one more approval
+    conditions:
+      - base=master
+      - -draft
+      - -closed
+      - '#approved-reviews-by=1'
+      - '#changes-requested-reviews-by=0'
+      - '-label~=^blocked:'
+
   # rebase+merge strategy
   - actions:
       queue:
