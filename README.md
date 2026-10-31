@@ -115,6 +115,12 @@ Got questions? Ask in [Haskell Matrix](https://matrix.to/#/#haskell:matrix.org)
 Support window
 --------------
 
+The Cabal project does not currently designate any Cabal or `cabal-install`
+release as a long-term support (LTS) release. The support window below
+describes the versions and GHC releases that maintainers aim to support; it
+does not create a separate LTS channel or promise backports for older
+releases.
+
 Our GHC support window is three years ([reference](https://gitlab.haskell.org/ghc/ghc/-/wikis/GHC%20Status#all-released-ghc-versions))
 for both the Cabal library and `cabal-install`.  That is:
 
