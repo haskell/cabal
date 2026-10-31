@@ -228,6 +228,11 @@ tests config =
       "haddock-project"
       AllFinish
       [ testCase "dependencies" (testHaddockProjectDependencies config)
+      , testCase "repeated runs" (testHaddockProjectBuildCache config)
+      , localOption (QC.QuickCheckTests 5) $
+          QC.testProperty "custom build directory" (propHaddockProjectBuildDir config)
+      , localOption (QC.QuickCheckTests 10) $
+          QC.testProperty "dependency documentation settings are preserved" (propHaddockProjectDependencyCache config)
       ]
   ]
 
@@ -3154,3 +3159,143 @@ testHaddockBuildCache config = withDocumentationProject "documentation-cache/lib
   BS.writeFile ("p" </> "P.hs") original
   reverted <- buildAllPackages
   assertBool reverted ("Compiling P" `isInfixOf` reverted)
+
+-- | Repeating haddock-project has no build work, and leaves a normal build up
+-- to date. Its build phase prints a plan only when it has work to do, so each
+-- run prints just the Haddock plan.
+testHaddockProjectBuildCache :: ProjectConfig -> Assertion
+testHaddockProjectBuildCache config = withDocumentationProject "documentation-cache/chain" config $ \_ -> do
+  writeLocalConfig ["documentation: True"]
+  _ <- buildAllPackages
+  replicateM_ 2 $ do
+    (output, ()) <-
+      hCapture [stdout, stderr] $
+        CmdHaddockProject.haddockProjectAction
+          defaultHaddockProjectFlags{haddockProjectCommonFlags = documentationCommonFlags}
+          ["all"]
+          defaultGlobalFlags{globalStoreDir = Flag "store"}
+    let plans = filter ("In order, the following will be built" `isInfixOf`) (lines output)
+    assertEqual output 1 (length plans)
+  replicateM_ 2 $ do
+    output <- buildAllPackages
+    assertBool output ("Up to date" `isInfixOf` output)
+
+-- | Check the generated index, including a sublibrary, with an arbitrary custom
+-- build directory and no pre-existing documentation in the default directory.
+propHaddockProjectBuildDir :: ProjectConfig -> QC.Positive Int -> QC.Property
+propHaddockProjectBuildDir config (QC.Positive suffix) = QC.ioProperty $ do
+  (_, _, sharedConfig) <- planProject testdir config
+  let safeMinor = if buildOS == Windows then 10 else 4
+  if compilerVersion (pkgConfigCompiler sharedConfig) <= mkVersion [9, safeMinor]
+    then cleanProject testdir >> return (QC.property True)
+    else do
+      let dir = basedir </> testdir
+          buildDir = "dist-custom-" ++ show suffix
+          clean = cleanHaddockProject testdir >> removePathForcibly (dir </> buildDir)
+          run =
+            CmdHaddockProject.haddockProjectAction
+              defaultHaddockProjectFlags
+                { haddockProjectCommonFlags =
+                    defaultCommonSetupFlags
+                      { setupVerbosity = Flag $ verbosityFlags testVerbosity
+                      , setupDistPref = Flag $ unsafeMakeSymbolicPath buildDir
+                      }
+                }
+              ["all"]
+              defaultGlobalFlags{globalStoreDir = Flag "store"}
+      clean
+      flip finally clean $ withCurrentDirectory dir $ do
+        run
+        index <- BS.readFile ("haddocks" </> "index.html")
+        mainInterface <- doesFileExist ("haddocks" </> "index-probe" </> "index-probe.haddock")
+        subInterface <- doesFileExist ("haddocks" </> "index-probe" </> "helper" </> "helper.haddock")
+        defaultDir <- doesDirectoryExist "dist-newstyle"
+        return $
+          (mainInterface, subInterface, "MainModule.html" `BS.isInfixOf` index, "HelperModule.html" `BS.isInfixOf` index, defaultDir)
+            QC.=== (True, True, True, True, False)
+  where
+    testdir = "haddock-project/custom-builddir"
+
+-- | Independently generated documentation options for a dependency.
+data DependencyHaddockSettings = DependencyHaddockSettings
+  { dependencyDocumentation :: Bool
+  , dependencyHoogle :: Bool
+  , dependencyHtml :: Bool
+  , dependencyLinkedSource :: Bool
+  , dependencyQuickJump :: Bool
+  }
+  deriving (Show)
+
+instance QC.Arbitrary DependencyHaddockSettings where
+  arbitrary =
+    DependencyHaddockSettings <$> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary
+  shrink (DependencyHaddockSettings documentation hoogle html linkedSource quickJump) =
+    [ DependencyHaddockSettings documentation' hoogle' html' linkedSource' quickJump'
+    | (documentation', hoogle', html', linkedSource', quickJump') <-
+        QC.shrink (documentation, hoogle, html, linkedSource, quickJump)
+    ]
+
+-- | A normal build and haddock-project must use the same dependency instances,
+-- including when dependencies have documentation disabled or different formats.
+propHaddockProjectDependencyCache :: ProjectConfig -> DependencyHaddockSettings -> QC.Property
+propHaddockProjectDependencyCache config settings@(DependencyHaddockSettings documentation hoogle html linkedSource quickJump) =
+  QC.label (if documentation then "dependency docs enabled" else "dependency docs disabled") $ QC.ioProperty $ do
+    let dir = basedir </> testdir
+        localConfig = dir </> "cabal.project.local"
+        clean = cleanHaddockProject testdir >> removeFileForcibly localConfig
+    clean
+    flip finally clean $ do
+      writeFile localConfig $
+        unlines
+          [ "documentation: True"
+          , "haddock-hyperlink-source: True"
+          , "package *"
+          , "  documentation: " ++ show documentation
+          , "  haddock-hoogle: " ++ show hoogle
+          , "  haddock-html: " ++ show html
+          , "  haddock-hyperlink-source: " ++ show linkedSource
+          , "  haddock-quickjump: " ++ show quickJump
+          ]
+      ((layout, _, _, _, _), plan, shared) <- planProject testdir config
+      let safeMinor = if buildOS == Windows then 10 else 4
+      if compilerVersion (pkgConfigCompiler shared) <= mkVersion [9, safeMinor]
+        then return (QC.property True)
+        else do
+          pkg <- case filter ((== mkPackageName "q") . packageName) (filterConfiguredPackages (InstallPlan.toList plan)) of
+            [q] -> return q
+            _ -> fail "Expected one local package q"
+          let setupConfig = distBuildDirectory layout (elabDistDirParams shared pkg) </> "setup-config"
+              commonFlags = defaultCommonSetupFlags{setupVerbosity = Flag $ verbosityFlags testVerbosity}
+              globals = defaultGlobalFlags{globalStoreDir = Flag "store"}
+              buildFlags =
+                NixStyleOptions.updNixStyleCommonSetupFlags (const commonFlags) (commandDefaultFlags CmdBuild.buildCommand)
+              flags =
+                defaultHaddockProjectFlags
+                  { haddockProjectCommonFlags = commonFlags
+                  , haddockProjectHoogle = Flag (not hoogle)
+                  }
+              run = CmdHaddockProject.haddockProjectAction flags ["all"] globals
+              dependencyInstances =
+                sort . filter ((== "p-0.1-") . take 6)
+                  <$> listDirectory (storeDirectory (defaultStoreDirLayout "store") (pkgConfigCompiler shared))
+          withCurrentDirectory dir $ do
+            CmdBuild.buildAction buildFlags ["all"] globals
+            initialInstances <- dependencyInstances
+            initialConfigTime <- getModificationTime setupConfig
+            run
+            firstConfigTime <- getModificationTime setupConfig
+            firstInstances <- dependencyInstances
+            dependencyDocs <- doesFileExist ("haddocks" </> "p" </> "p.haddock")
+            run
+            repeatedConfigTime <- getModificationTime setupConfig
+            repeatedInstances <- dependencyInstances
+            return $
+              QC.counterexample (show (settings, initialInstances, firstInstances, repeatedInstances)) $
+                ( length initialInstances
+                , firstInstances == initialInstances && repeatedInstances == initialInstances
+                , dependencyDocs
+                , initialConfigTime == firstConfigTime && firstConfigTime == repeatedConfigTime
+                )
+                  QC.=== (1, True, documentation, True)
+  where
+    testdir = "regression/program-options"
