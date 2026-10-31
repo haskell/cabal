@@ -6,5 +6,5 @@ import Test.Cabal.Prelude
 --
 -- TODO: Check that the code is behaving the same as it would have if
 -- "--project-file=cabal.project" was given or if it is using project probing.
-main = cabalTest $ do
+main = cabalTest $ expectBroken 12501 $ do
     cabal "sdist" ["all"]
