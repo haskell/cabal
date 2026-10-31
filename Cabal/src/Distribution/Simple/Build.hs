@@ -125,6 +125,7 @@ import Distribution.Compat.Graph (IsNode (..))
 import Control.Monad
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 
 import System.FilePath (takeDirectory)
 
@@ -483,7 +484,7 @@ buildComponent
             testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 inplaceDir distPref
       preprocessComponent pkg_descr comp lbi clbi False verbosity suffixHandlers
       extras <- preprocessExtras verbosity comp lbi -- TODO find cpphs processed files
-      (genDir, generatedExtras) <- generateCode (testCodeGenerators test) (testName test) pkg_descr (testBuildInfo test) lbi clbi verbosity
+      (genDir, generatedExtras) <- generateCode (map Text.unpack $ testCodeGenerators test) (testName test) pkg_descr (testBuildInfo test) lbi clbi verbosity
       setupMessage'
         verbosity
         "Building"
@@ -595,7 +596,7 @@ buildComponent
           return Nothing
         CTest test@TestSuite{testInterface = TestSuiteExeV10{}} -> do
           let exe = testSuiteExeV10AsExe test
-          (genDir, generatedExtras) <- generateCode (testCodeGenerators test) (testName test) pkg_descr (testBuildInfo test) lbi clbi verbosity
+          (genDir, generatedExtras) <- generateCode (map Text.unpack $ testCodeGenerators test) (testName test) pkg_descr (testBuildInfo test) lbi clbi verbosity
           let ebi = buildInfo exe
               exe' = exe{buildInfo = addSrcDir (addExtraOtherModules (addExtraCSources ebi extras) generatedExtras) genDir} -- todo extend hssrcdirs
           buildExe verbosity numJobs pkg_descr lbi exe' clbi

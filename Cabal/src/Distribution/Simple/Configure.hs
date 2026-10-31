@@ -2865,7 +2865,7 @@ checkForeignDeps pkg lbi verbosity =
                 -- dedupe include dirs of dependencies
                 -- to prevent quadratic blow-up
            ]
-        ++ [ opt
+        ++ [ Text.unpack opt
            | dep <- deps
            , opt <- IPI.ccOptions dep
            ]
@@ -2873,7 +2873,7 @@ checkForeignDeps pkg lbi verbosity =
     commonCcArgs =
       commonCppArgs
         ++ map Text.unpack (collectField ccOptions)
-        ++ [ opt
+        ++ [ Text.unpack opt
            | dep <- deps
            , opt <- IPI.ccOptions dep
            ]

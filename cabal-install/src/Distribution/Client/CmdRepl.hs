@@ -92,6 +92,7 @@ import Distribution.Package
   , UnitId
   , installedUnitId
   , mkPackageName
+  , mkPackageNameST
   , packageName
   )
 import Distribution.Simple.Command
@@ -171,6 +172,7 @@ import Data.List
   )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import Distribution.Client.ProjectConfig
   ( ProjectConfig (..)
   , ProjectConfigShared (..)
@@ -324,9 +326,9 @@ resolveProjectTarget flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrin
       let projectFile = projectConfigProjectFile . projectConfigShared $ projectConfig ctx
       let pkgs = projectPackages $ projectConfig ctx
       case pkgs of
-        [pkg] | pkg `notElem` targetStrings -> do
-          retargetNotice ("package '" ++ pkg ++ "'")
-          return (ctxMulti, [TargetPackageNamed (mkPackageName pkg) Nothing])
+        [pkg] | Text.unpack pkg `notElem` targetStrings -> do
+          retargetNotice ("package '" ++ Text.unpack pkg ++ "'")
+          return (ctxMulti, [TargetPackageNamed (mkPackageNameST pkg) Nothing])
         _ ->
           if isMulti && not (null pkgs)
             then do
@@ -334,7 +336,7 @@ resolveProjectTarget flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrin
               return (ctxMulti, [TargetAllPackages Nothing])
             else
               dieWithException verbosity $
-                RenderReplTargetProblem [render (reportProjectNoTarget projectFile pkgs)]
+                RenderReplTargetProblem [render (reportProjectNoTarget projectFile (map Text.unpack pkgs))]
     _ -> return (ctxMulti, userTargetSelectors)
   where
     verbosity = cfgVerbosity normal flags
