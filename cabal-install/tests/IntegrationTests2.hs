@@ -89,6 +89,7 @@ import Test.Tasty.ExpectedFailure
 import Test.Tasty.HUnit hiding (testCase)
 import qualified Test.Tasty.HUnit as T (testCase)
 import Test.Tasty.Options
+import qualified Test.Tasty.QuickCheck as QC
 import Test.Tasty.Runners
 
 import System.IO.Silently
@@ -200,7 +201,8 @@ tests config =
   , dependentTestGroup
       "Flag tests"
       AllFinish
-      [ testCase "Test Config options for commented options" testConfigOptionComments
+      [ QC.testProperty "documentation source settings" (propHaddockDocumentation config)
+      , testCase "Test Config options for commented options" testConfigOptionComments
       , testCase "Test Ignore Project Flag" testIgnoreProjectFlag
       ]
   , dependentTestGroup
@@ -212,6 +214,7 @@ tests config =
       "Documentation build cache"
       AllFinish
       [ testCase "documentation flags" (testDocumentationFlags config)
+      , testCase "hyperlinked source" (testHyperlinkedSourceArtifacts config)
       ]
   , dependentTestGroup
       "haddock-project"
@@ -2129,6 +2132,35 @@ testProgramOptionsSpecific config0 = do
         { packageConfigProgramArgs = programArgs
         }
 
+-- | Check the elaborated plan, including explicit overrides of the source default.
+propHaddockDocumentation :: ProjectConfig -> Bool -> Maybe Bool -> QC.Property
+propHaddockDocumentation config0 documentation linkedSource =
+  QC.label (show (documentation, linkedSource)) $ QC.ioProperty $ do
+    (_, elaboratedPlan, shared) <- planProject testdir config
+    let packages = filterConfiguredPackages (InstallPlan.toList elaboratedPlan)
+        settings pkg =
+          let args = elabHaddockProgramArgs pkg
+           in ( elabHaddockLinkedSource pkg
+              , "-haddock" `elem` args
+              , "-fwrite-ide-info" `elem` args
+              )
+        supportsHie = compilerVersion (pkgConfigCompiler shared) >= mkVersion [8, 8]
+    cleanProject testdir
+    return $
+      map settings packages
+        QC.=== [(expectedLinkedSource, documentation, documentation && expectedLinkedSource && supportsHie)]
+  where
+    testdir = "targets/lib-only"
+    expectedLinkedSource = fromMaybe documentation linkedSource
+    config =
+      config0
+        { projectConfigLocalPackages =
+            (projectConfigLocalPackages config0)
+              { packageConfigDocumentation = Flag documentation
+              , packageConfigHaddockLinkedSource = maybe Flag.NoFlag Flag linkedSource
+              }
+        }
+
 filterConfiguredPackages :: [ElaboratedPlanPackage] -> [ElaboratedConfiguredPackage]
 filterConfiguredPackages [] = []
 filterConfiguredPackages (InstallPlan.PreExisting _ : pkgs) = filterConfiguredPackages pkgs
@@ -2926,5 +2958,46 @@ testDocumentationFlags config = withDocumentationProject testdir config $ \build
   _ <- buildAllPackages
   explicitConfig <- BS.readFile setupConfig
   assertBool "explicit -haddock must reconfigure" (explicitConfig /= initialConfig)
+  where
+    testdir = "documentation-cache/library"
+
+-- | With documentation, hyperlinked source is enabled by default, and the
+-- compilation writes the HIE files Haddock needs, without reconfiguring.
+-- The same flag given explicitly is a configuration change.
+testHyperlinkedSourceArtifacts :: ProjectConfig -> Assertion
+testHyperlinkedSourceArtifacts config = withDocumentationProject testdir config $ \buildDir -> do
+  let setupConfig = buildDir </> "setup-config"
+      hie = buildDir </> "build" </> "extra-compilation-artifacts" </> "hie" </> "P.hie"
+      settings documentation args =
+        writeLocalConfig
+          [ "documentation: " ++ show documentation
+          , "package *"
+          , "  ghc-options: " ++ unwords args
+          ]
+      assertHie expected = doesFileExist hie >>= assertEqual "HIE artifact" expected
+  settings False []
+  _ <- buildAllPackages
+  initialConfig <- BS.readFile setupConfig
+  assertHie False
+  settings True []
+  _ <- buildAllPackages
+  assertHie True
+  BS.readFile setupConfig >>= assertEqual "setup-config after enabling documentation" initialConfig
+  -- Compiling without documentation drops the recorded artifacts, so enabling
+  -- documentation again compiles to produce them.
+  removeFile hie
+  settings False []
+  BS.appendFile ("p" </> "P.hs") "\n-- edited\n"
+  _ <- buildAllPackages
+  assertHie False
+  settings True []
+  _ <- buildAllPackages
+  assertHie True
+  settings False ["-fwrite-ide-info"]
+  removeFile hie
+  _ <- buildAllPackages
+  assertHie True
+  explicitConfig <- BS.readFile setupConfig
+  assertBool "explicit -fwrite-ide-info must reconfigure" (explicitConfig /= initialConfig)
   where
     testdir = "documentation-cache/library"

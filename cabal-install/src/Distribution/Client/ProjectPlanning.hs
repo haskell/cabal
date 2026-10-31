@@ -2350,6 +2350,11 @@ elaborateInstallPlan
             -- configuration key and retain precedence over these defaults.
             elabHaddockProgramArgs =
               ["-haddock" | elabBuildHaddocks]
+                ++ [ "-fwrite-ide-info"
+                   | elabBuildHaddocks
+                   , elabHaddockLinkedSource
+                   , compilerVersion compiler >= mkVersion [8, 8]
+                   ]
 
             -- Older custom Setups cannot accept invocation-only defaults.
             -- Persist them there, retaining the corresponding reconfiguration.
@@ -2501,7 +2506,7 @@ elaborateInstallPlan
             elabHaddockBenchmarks = perPkgOptionFlag False pkgid packageConfigHaddockBenchmarks
             elabHaddockInternal = perPkgOptionFlag False pkgid packageConfigHaddockInternal
             elabHaddockCss = perPkgOptionMaybe pkgid packageConfigHaddockCss
-            elabHaddockLinkedSource = perPkgOptionFlag False pkgid packageConfigHaddockLinkedSource
+            elabHaddockLinkedSource = perPkgOptionFlag elabBuildHaddocks pkgid packageConfigHaddockLinkedSource
             elabHaddockQuickJump = perPkgOptionFlag False pkgid packageConfigHaddockQuickJump
             elabHaddockHscolourCss = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
             elabHaddockContents = perPkgOptionMaybe pkgid packageConfigHaddockContents
