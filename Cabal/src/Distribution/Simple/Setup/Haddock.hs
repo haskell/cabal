@@ -397,7 +397,7 @@ emptyHaddockFlags = mempty
 -- functionality to the user, but simply use 'Visible' for only local packages.
 -- Visibility of modules is available since @haddock-2.26.1@.
 data Visibility = Visible | Hidden
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 data HaddockProjectFlags = HaddockProjectFlags
   { haddockProjectCommonFlags :: !CommonSetupFlags
