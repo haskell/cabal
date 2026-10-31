@@ -321,7 +321,7 @@ defaultMainHelperWithHandles :: VerbosityHandles -> UserHooks -> Args -> IO ()
 defaultMainHelperWithHandles verbHandles hooks args =
   topHandler (isUserException (Proxy @(VerboseException CabalException))) $ do
     args' <- expandResponse args
-    command <- commandsRun (globalCommand commands) commands args'
+    command <- commandsRun globalUI commands args'
     case command of
       CommandHelp help -> printHelp help
       CommandList opts -> printOptionsList opts
@@ -367,8 +367,14 @@ defaultMainHelperWithHandles verbHandles hooks args =
     addAction cmd action =
       cmd `commandAddAction` \flags as globalFlags ->
         void $ action verbHandles globalFlags hooks flags as
+    globalUI :: CommandUI GlobalFlags
+    globalUI = globalCommand rawCommands
+
     commands :: [Command (GlobalFlags -> IO ())]
-    commands =
+    commands = map (withGlobalOptionNote globalUI) rawCommands
+
+    rawCommands :: [Command (GlobalFlags -> IO ())]
+    rawCommands =
       [ configureCommand progs `addAction` configureAction
       , buildCommand progs `addAction` buildAction
       , replCommand progs `addAction` replAction

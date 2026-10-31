@@ -34,6 +34,7 @@ module Distribution.Simple.Command
     -- ** Associating actions with commands
   , Command
   , commandAddAction
+  , withGlobalOptionNote
   , noExtraFlags
 
     -- ** Building lists of commands
@@ -626,6 +627,64 @@ commandAddAction command action =
     applyDefaultArgs mkflags args =
       let flags = mkflags (commandDefaultFlags command)
        in action flags args
+
+-- | Make a command's parser aware of the program's global options: when the
+-- parser rejects an argument that the global command would have accepted as
+-- an option (e.g. @cabal get --config-file=foo@).
+withGlobalOptionNote :: CommandUI globalFlags -> Command action -> Command action
+withGlobalOptionNote globalUI (Command name synopsis parse cmdType) =
+  Command name synopsis parse' cmdType
+  where
+    parse' args = case parse args of
+      CommandErrors errs ->
+        CommandErrors
+          (errs ++ maybeToList (misplacedGlobalOptionNote globalOpts args))
+      parseResult -> parseResult
+
+    globalOpts = commandGetOpts ParseArgs globalUI
+
+-- | @'Just' note@ if some argument rejected by the command's parser would
+-- have been accepted as an option by the global parser, i.e. a global option
+-- was given after the command name.
+misplacedGlobalOptionNote :: [GetOpt.OptDescr a] -> [String] -> Maybe String
+misplacedGlobalOptionNote globalOpts cmdArgs =
+  case nonEmpty (misplacedGlobalOptions globalOpts cmdArgs) of
+    Nothing -> Nothing
+    Just (opt :| []) -> Just (noteOne opt)
+    Just (opt :| more) -> Just (noteMany (opt : more))
+  where
+    quoted opt = "`" ++ opt ++ "'"
+
+    noteOne opt =
+      "Note: the option "
+        ++ quoted opt
+        ++ " is global and must be specified before the command."
+
+    noteMany opts =
+      "Note: the options "
+        ++ intercalate ", " (map quoted opts)
+        ++ " are global and must be specified before the command."
+
+-- | The arguments rejected by the command's parser that the global command's
+-- parser would have accepted as options: global options given after the
+-- command name.
+misplacedGlobalOptions :: [GetOpt.OptDescr a] -> [String] -> [String]
+misplacedGlobalOptions globalOpts cmdArgs =
+  let (_, nonOptions, unrecognised, _) =
+        GetOpt.getOpt' GetOpt.Permute globalOpts cmdArgs
+   in [ arg
+      | arg <- cmdArgs
+      , isOptionLike arg
+      , arg `notElem` nonOptions
+      , arg `notElem` unrecognised
+      ]
+  where
+    isOptionLike arg = case arg of
+      -- the end-of-options terminator is not an option
+      "--" -> False
+      '-' : '-' : _ -> True
+      '-' : _ : _ -> True
+      _ -> False
 
 -- Print suggested command if edit distance is < 5
 badCommand :: [Command action] -> String -> CommandParse a
