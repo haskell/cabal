@@ -352,6 +352,9 @@ updatePackageBuildFileMonitor
   pkgBuildStatus
   monitors
   buildResult =
+    -- Called only for the compilation phase, including compilation required
+    -- by ephemeral commands. Never leave an old successful build cache valid
+    -- after replacing its artifacts.
     updateFileMonitor
       pkgFileMonitorBuild
       srcdir
@@ -388,6 +391,10 @@ updatePackageDocsFileMonitor PackageFileMonitor{pkgFileMonitorDocs} srcdir pkg =
     -- are monitored, so changing such a file does not regenerate the
     -- documentation of a build with documentation enabled.
     updateFileMonitor pkgFileMonitorDocs srcdir Nothing [] (haddockDocSettings pkg) ()
+
+invalidatePackageBuildFileMonitor :: PackageFileMonitor -> IO ()
+invalidatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild} =
+  removeFileForcibly (fileMonitorCacheFile pkgFileMonitorBuild)
 
 updatePackageRegFileMonitor
   :: PackageFileMonitor

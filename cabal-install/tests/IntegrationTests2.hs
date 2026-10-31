@@ -214,6 +214,7 @@ tests config =
       "Documentation in the repl"
       AllFinish
       [ testCase "documentation flags" (testDocumentationReplFlags config)
+      , testCase "build cache" (testReplBuildCache config)
       ]
   , dependentTestGroup
       "Documentation build cache"
@@ -221,6 +222,7 @@ tests config =
       [ testCase "documentation flags" (testDocumentationFlags config)
       , testCase "hyperlinked source" (testHyperlinkedSourceArtifacts config)
       , testCase "Haddock output settings" (testHaddockOutputSettings config)
+      , testCase "documenting packages" (testHaddockBuildCache config)
       ]
   , dependentTestGroup
       "haddock-project"
@@ -3013,6 +3015,16 @@ testDocumentationReplFlags config = withDocumentationProject testdir config $ \b
   where
     testdir = "documentation-cache/library"
 
+-- | A repl that does not write over the compilation artifacts of a build,
+-- here one that only writes the GHC arguments, keeps its build cache.
+testReplBuildCache :: ProjectConfig -> Assertion
+testReplBuildCache config = withDocumentationProject "documentation-cache/library" config $ \buildDir -> do
+  let buildCache = buildDir </> "cache" </> "build"
+  _ <- buildAllPackages
+  doesFileExist buildCache >>= assertBool "build cache after a build"
+  _ <- replArguments "lib:p"
+  doesFileExist buildCache >>= assertBool "build cache after a repl"
+
 -- | Documentation adds flags to the compiler invocations, not to the package
 -- configuration: enabling it compiles again, but does not reconfigure. The
 -- same flag given explicitly is a configuration change.
@@ -3105,3 +3117,40 @@ testHaddockOutputSettings config = withDocumentationProject testdir config $ \bu
   assertBool same ("Up to date" `isInfixOf` same)
   where
     testdir = "documentation-cache/library"
+
+-- | Document all packages of the project in the current directory, returning
+-- the output.
+documentAllPackages :: IO String
+documentAllPackages =
+  fst
+    <$> hCapture
+      [stdout, stderr]
+      ( CmdHaddock.haddockAction
+          (NixStyleOptions.updNixStyleCommonSetupFlags (const documentationCommonFlags) (commandDefaultFlags CmdHaddock.haddockCommand))
+          ["all"]
+          defaultGlobalFlags{globalStoreDir = Flag "store"}
+      )
+
+-- | Documenting all packages after a build must leave the build up to date.
+assertBuildUpToDateAfterHaddock :: Assertion
+assertBuildUpToDateAfterHaddock = do
+  writeLocalConfig ["documentation: True"]
+  _ <- buildAllPackages
+  _ <- documentAllPackages
+  output <- buildAllPackages
+  assertBool output ("Up to date" `isInfixOf` output)
+
+-- | Documenting packages compiles the libraries that other targets need, but
+-- does not complete a build: a later build must be up to date, unless the
+-- compiled source has changed since.
+testHaddockBuildCache :: ProjectConfig -> Assertion
+testHaddockBuildCache config = withDocumentationProject "documentation-cache/library" config $ \_ -> do
+  assertBuildUpToDateAfterHaddock
+  -- p is compiled for q while documenting. After an edit compiled this way
+  -- is reverted, a build must compile p again.
+  original <- BS.readFile ("p" </> "P.hs")
+  BS.writeFile ("p" </> "P.hs") (original <> "\n-- edited\n")
+  _ <- documentAllPackages
+  BS.writeFile ("p" </> "P.hs") original
+  reverted <- buildAllPackages
+  assertBool reverted ("Compiling P" `isInfixOf` reverted)
