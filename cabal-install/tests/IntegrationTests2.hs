@@ -9,9 +9,12 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.DistDirLayout
+import qualified Distribution.Client.FileMonitor as FileMonitor
 import Distribution.Client.HttpUtils
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import qualified Distribution.Client.NixStyleOptions as NixStyleOptions
 import Distribution.Client.ProjectBuilding
+import Distribution.Client.ProjectBuilding.PackageFileMonitor
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectOrchestration
   ( distinctTargetComponents
@@ -30,7 +33,8 @@ import Distribution.Client.Targets
   , UserConstraintScope (UserAnyQualifier)
   )
 import Distribution.Client.Types
-  ( PackageLocation (..)
+  ( GenericReadyPackage (..)
+  , PackageLocation (..)
   , PackageSpecifier (..)
   , UnresolvedSourcePackage
   )
@@ -58,9 +62,11 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
+import Distribution.Simple.Command (commandDefaultFlags)
 import Distribution.Simple.Compiler
 import qualified Distribution.Simple.Flag as Flag
-import Distribution.Simple.Setup (CommonSetupFlags (..), HaddockFlags (..), HaddockProjectFlags (..), defaultCommonSetupFlags, defaultHaddockFlags, defaultHaddockProjectFlags, toFlag)
+import Distribution.Simple.InstallDirs (toPathTemplate)
+import Distribution.Simple.Setup (CommonSetupFlags (..), HaddockFlags (..), HaddockProjectFlags (..), HaddockTarget (..), defaultCommonSetupFlags, defaultHaddockFlags, defaultHaddockProjectFlags, toFlag)
 import Distribution.System
 import Distribution.Text
 import Distribution.Utils.Path (unsafeMakeSymbolicPath)
@@ -76,7 +82,7 @@ import Control.Monad
 import System.Directory
 import System.Environment (setEnv)
 import System.FilePath
-import System.IO (hPutStrLn, stderr)
+import System.IO (hPutStrLn, stderr, stdout)
 import qualified System.Info
 import System.Process (callProcess)
 
@@ -86,6 +92,7 @@ import Test.Tasty.ExpectedFailure
 import Test.Tasty.HUnit hiding (testCase)
 import qualified Test.Tasty.HUnit as T (testCase)
 import Test.Tasty.Options
+import qualified Test.Tasty.QuickCheck as QC
 import Test.Tasty.Runners
 
 import System.IO.Silently
@@ -197,13 +204,21 @@ tests config =
   , dependentTestGroup
       "Flag tests"
       AllFinish
-      [ testCase "Test Config options for commented options" testConfigOptionComments
+      [ QC.testProperty "documentation source settings" (propHaddockDocumentation config)
+      , QC.testProperty "Haddock output settings preserve the configuration cache" (propHaddockConfigurationCache config)
+      , testCase "Test Config options for commented options" testConfigOptionComments
       , testCase "Test Ignore Project Flag" testIgnoreProjectFlag
       ]
   , dependentTestGroup
       "haddock-project"
       AllFinish
       [ testCase "dependencies" (testHaddockProjectDependencies config)
+      , localOption (QC.QuickCheckTests 5) $
+          QC.testProperty "custom build directory" (propHaddockProjectBuildDir config)
+      , localOption (QC.QuickCheckTests 10) $
+          QC.testProperty "dependency documentation settings are preserved" (propHaddockProjectDependencyCache config)
+      , localOption (QC.QuickCheckTests 4) $
+          QC.testProperty "configured compiler arguments and plugins are preserved" (propHaddockCompilerArguments config)
       ]
   ]
 
@@ -2112,6 +2127,107 @@ testProgramOptionsSpecific config0 = do
         { packageConfigProgramArgs = programArgs
         }
 
+-- | Check the elaborated plan, including explicit overrides of the source default.
+propHaddockDocumentation :: ProjectConfig -> Bool -> Maybe Bool -> QC.Property
+propHaddockDocumentation config0 documentation linkedSource =
+  QC.label (show (documentation, linkedSource)) $ QC.ioProperty $ do
+    (_, elaboratedPlan, shared) <- planProject testdir config
+    let packages = filterConfiguredPackages (InstallPlan.toList elaboratedPlan)
+        settings pkg =
+          let args = Map.findWithDefault [] "ghc" (elabProgramArgs pkg)
+           in ( elabHaddockLinkedSource pkg
+              , "-haddock" `elem` args
+              , "-fwrite-ide-info" `elem` args
+              )
+        supportsHie = compilerVersion (pkgConfigCompiler shared) >= mkVersion [8, 8]
+    cleanProject testdir
+    return $
+      map settings packages
+        QC.=== [(expectedLinkedSource, documentation, documentation && expectedLinkedSource && supportsHie)]
+  where
+    testdir = "targets/lib-only"
+    expectedLinkedSource = fromMaybe documentation linkedSource
+    config =
+      config0
+        { projectConfigLocalPackages =
+            (projectConfigLocalPackages config0)
+              { packageConfigDocumentation = Flag documentation
+              , packageConfigHaddockLinkedSource = maybe Flag.NoFlag Flag linkedSource
+              }
+        }
+
+-- Haddock options may change in either direction without reconfiguring, but
+-- compiler options must still invalidate the persisted configuration cache.
+propHaddockConfigurationCache :: ProjectConfig -> Bool -> Maybe String -> QC.Property
+propHaddockConfigurationCache config0 enabled value = QC.ioProperty $ do
+  ((layout, _, _, _, _), plan, shared) <- planProject testdir config
+  results <- for (filterConfiguredPackages (InstallPlan.toList plan)) $ \pkg -> do
+    let monitor = newPackageFileMonitor shared layout (elabDistDirParams shared pkg)
+        root = distProjectRootDirectory layout
+        checkConfig p =
+          FileMonitor.checkFileMonitorChanged
+            (pkgFileMonitorConfig monitor)
+            root
+            (fst (packageFileMonitorKeyValues p))
+        changed (FileMonitor.MonitorChanged _) = True
+        changed (FileMonitor.MonitorUnchanged _ _) = False
+        haddockPkg =
+          pkg
+            { elabHaddockHoogle = enabled
+            , elabHaddockHtml = enabled
+            , elabHaddockHtmlLocation = value
+            , elabHaddockForeignLibs = enabled
+            , elabHaddockForHackage = if enabled then ForHackage else ForDevelopment
+            , elabHaddockExecutables = enabled
+            , elabHaddockTestSuites = enabled
+            , elabHaddockBenchmarks = enabled
+            , elabHaddockInternal = enabled
+            , elabHaddockCss = value
+            , elabHaddockLinkedSource = enabled
+            , elabHaddockQuickJump = enabled
+            , elabHaddockHscolourCss = value
+            , elabHaddockContents = toPathTemplate <$> value
+            , elabHaddockIndex = toPathTemplate <$> value
+            , elabHaddockBaseUrl = value
+            , elabHaddockResourcesDir = value
+            , elabHaddockOutputDir = value
+            , elabHaddockUseUnicode = enabled
+            }
+        compilerPkg =
+          haddockPkg
+            { elabProgramArgs = Map.insertWith (++) "ghc" ["-XOverloadedStrings"] (elabProgramArgs haddockPkg)
+            }
+        programPkg =
+          haddockPkg
+            { elabProgramArgs = Map.insertWith (++) "haddock" ["--no-warnings"] (elabProgramArgs haddockPkg)
+            }
+        configureFlags p =
+          setupHsConfigureFlags
+            (pure . unsafeMakeSymbolicPath)
+            plan
+            (ReadyPackage p)
+            shared
+            defaultCommonSetupFlags
+    originalFlags <- configureFlags pkg
+    haddockFlags <- configureFlags haddockPkg
+    createDirectoryIfMissing True (takeDirectory (FileMonitor.fileMonitorCacheFile (pkgFileMonitorConfig monitor)))
+    updatePackageConfigFileMonitor monitor root pkg
+    forward <- changed <$> checkConfig haddockPkg
+    updatePackageConfigFileMonitor monitor root haddockPkg
+    backward <- changed <$> checkConfig pkg
+    compilerChanged <- changed <$> checkConfig compilerPkg
+    programChanged <- changed <$> checkConfig programPkg
+    return (originalFlags == haddockFlags, forward, backward, compilerChanged, programChanged)
+  cleanProject testdir
+  return (results QC.=== [(True, False, False, True, True)])
+  where
+    testdir = "targets/lib-only"
+    config =
+      config0
+        { projectConfigLocalPackages =
+            (projectConfigLocalPackages config0){packageConfigDocumentation = Flag True}
+        }
+
 filterConfiguredPackages :: [ElaboratedPlanPackage] -> [ElaboratedConfiguredPackage]
 filterConfiguredPackages [] = []
 filterConfiguredPackages (InstallPlan.PreExisting _ : pkgs) = filterConfiguredPackages pkgs
@@ -2791,3 +2907,201 @@ testHaddockProjectDependencies config = do
     cleanHaddockProject testdir
   where
     testdir = "haddock-project/dependencies"
+
+-- | Check the generated index, including a sublibrary, with an arbitrary custom
+-- build directory and no pre-existing documentation in the default directory.
+-- A repeated invocation must also reuse the sublibrary's compilation artifacts.
+propHaddockProjectBuildDir :: ProjectConfig -> QC.Positive Int -> QC.Property
+propHaddockProjectBuildDir config (QC.Positive suffix) = QC.ioProperty $ do
+  (_, _, sharedConfig) <- planProject testdir config
+  let safeMinor = if buildOS == Windows then 10 else 4
+  if compilerVersion (pkgConfigCompiler sharedConfig) <= mkVersion [9, safeMinor]
+    then cleanProject testdir >> return (QC.property True)
+    else do
+      let dir = basedir </> testdir
+          buildDir = "dist-custom-" ++ show suffix
+          clean = cleanHaddockProject testdir >> removePathForcibly (dir </> buildDir)
+          run =
+            CmdHaddockProject.haddockProjectAction
+              defaultHaddockProjectFlags
+                { haddockProjectCommonFlags =
+                    defaultCommonSetupFlags
+                      { setupVerbosity = Flag $ verbosityFlags testVerbosity
+                      , setupDistPref = Flag $ unsafeMakeSymbolicPath buildDir
+                      }
+                }
+              ["all"]
+              defaultGlobalFlags{globalStoreDir = Flag "store"}
+      clean
+      flip finally clean $ withCurrentDirectory dir $ do
+        run
+        index <- BS.readFile ("haddocks" </> "index.html")
+        mainInterface <- doesFileExist ("haddocks" </> "index-probe" </> "index-probe.haddock")
+        subInterface <- doesFileExist ("haddocks" </> "index-probe" </> "helper" </> "helper.haddock")
+        defaultDir <- doesDirectoryExist "dist-newstyle"
+        -- Compilation artifact reuse requires Haddock >= 2.28 (GHC >= 9.6).
+        (repeatedOutput, ()) <-
+          if compilerVersion (pkgConfigCompiler sharedConfig) >= mkVersion [9, 6]
+            then hCapture [stdout, stderr] run
+            else return ("", ())
+        return $
+          QC.counterexample repeatedOutput $
+            (mainInterface, subInterface, "MainModule.html" `BS.isInfixOf` index, "HelperModule.html" `BS.isInfixOf` index, defaultDir, "Compiling " `isInfixOf` repeatedOutput)
+              QC.=== (True, True, True, True, False, False)
+  where
+    testdir = "haddock-project/custom-builddir"
+
+-- | Independently generated documentation options for a dependency.
+data DependencyHaddockSettings = DependencyHaddockSettings
+  { dependencyDocumentation :: Bool
+  , dependencyHoogle :: Bool
+  , dependencyHtml :: Bool
+  , dependencyLinkedSource :: Bool
+  , dependencyQuickJump :: Bool
+  }
+  deriving (Show)
+
+instance QC.Arbitrary DependencyHaddockSettings where
+  arbitrary =
+    DependencyHaddockSettings <$> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary
+  shrink (DependencyHaddockSettings documentation hoogle html linkedSource quickJump) =
+    [ DependencyHaddockSettings documentation' hoogle' html' linkedSource' quickJump'
+    | (documentation', hoogle', html', linkedSource', quickJump') <-
+        QC.shrink (documentation, hoogle, html, linkedSource, quickJump)
+    ]
+
+-- | A normal build and haddock-project must use the same dependency instances,
+-- including when dependencies have documentation disabled or different formats.
+propHaddockProjectDependencyCache :: ProjectConfig -> DependencyHaddockSettings -> QC.Property
+propHaddockProjectDependencyCache config settings@(DependencyHaddockSettings documentation hoogle html linkedSource quickJump) =
+  QC.label (if documentation then "dependency docs enabled" else "dependency docs disabled") $ QC.ioProperty $ do
+    let dir = basedir </> testdir
+        localConfig = dir </> "cabal.project.local"
+        clean = cleanHaddockProject testdir >> removeFileForcibly localConfig
+    clean
+    flip finally clean $ do
+      writeFile localConfig $
+        unlines
+          [ "documentation: True"
+          , "haddock-hyperlink-source: True"
+          , "package *"
+          , "  documentation: " ++ show documentation
+          , "  haddock-hoogle: " ++ show hoogle
+          , "  haddock-html: " ++ show html
+          , "  haddock-hyperlink-source: " ++ show linkedSource
+          , "  haddock-quickjump: " ++ show quickJump
+          ]
+      ((layout, _, _, _, _), plan, shared) <- planProject testdir config
+      let safeMinor = if buildOS == Windows then 10 else 4
+      if compilerVersion (pkgConfigCompiler shared) <= mkVersion [9, safeMinor]
+        then return (QC.property True)
+        else do
+          pkg <- case filter ((== mkPackageName "q") . packageName) (filterConfiguredPackages (InstallPlan.toList plan)) of
+            [q] -> return q
+            _ -> fail "Expected one local package q"
+          let setupConfig = distBuildDirectory layout (elabDistDirParams shared pkg) </> "setup-config"
+              commonFlags = defaultCommonSetupFlags{setupVerbosity = Flag $ verbosityFlags testVerbosity}
+              globals = defaultGlobalFlags{globalStoreDir = Flag "store"}
+              buildFlags =
+                NixStyleOptions.updNixStyleCommonSetupFlags (const commonFlags) (commandDefaultFlags CmdBuild.buildCommand)
+              flags =
+                defaultHaddockProjectFlags
+                  { haddockProjectCommonFlags = commonFlags
+                  , haddockProjectHoogle = Flag (not hoogle)
+                  }
+              run = CmdHaddockProject.haddockProjectAction flags ["all"] globals
+              dependencyInstances =
+                sort . filter ((== "p-0.1-") . take 6)
+                  <$> listDirectory (storeDirectory (defaultStoreDirLayout "store") (pkgConfigCompiler shared))
+          withCurrentDirectory dir $ do
+            CmdBuild.buildAction buildFlags ["all"] globals
+            initialInstances <- dependencyInstances
+            initialConfigTime <- getModificationTime setupConfig
+            run
+            firstConfigTime <- getModificationTime setupConfig
+            firstInstances <- dependencyInstances
+            dependencyDocs <- doesFileExist ("haddocks" </> "p" </> "p.haddock")
+            run
+            repeatedConfigTime <- getModificationTime setupConfig
+            repeatedInstances <- dependencyInstances
+            return $
+              QC.counterexample (show (settings, initialInstances, firstInstances, repeatedInstances)) $
+                ( length initialInstances
+                , firstInstances == initialInstances && repeatedInstances == initialInstances
+                , dependencyDocs
+                , initialConfigTime == firstConfigTime && firstConfigTime == repeatedConfigTime
+                )
+                  QC.=== (1, True, documentation, True)
+  where
+    testdir = "regression/program-options"
+
+-- | Haddock must use the build's configured compiler arguments, including
+-- plugins, and preserve component options in vanilla and shared-only builds.
+propHaddockCompilerArguments :: ProjectConfig -> QC.Positive Int -> Bool -> QC.Property
+propHaddockCompilerArguments config (QC.Positive value) requestSharedOnly = QC.ioProperty $ do
+  let dir = basedir </> testdir
+      localConfig = dir </> "cabal.project.local"
+      clean = cleanHaddockProject testdir >> removeFileForcibly localConfig
+      compilerArgs =
+        [ "-UPROGRAM_OPTION_VALUE"
+        , "-DPROGRAM_OPTION_VALUE=" ++ show (1 + value `mod` 1000)
+        , "-plugin-package=haddock-probe-plugin"
+        , "-fplugin=HaddockProbePlugin"
+        ]
+  clean
+  flip finally clean $ do
+    (_, _, shared) <- planProject testdir config
+    let compiler = pkgConfigCompiler shared
+        safeMinor = if buildOS == Windows then 10 else 4
+        supportsShared = dynamicSupported compiler /= Just False
+        sharedOnly = requestSharedOnly && supportsShared
+        clientConfig =
+          mempty
+            { packageConfigProgramArgs = MapMappend (Map.singleton "ghc" compilerArgs)
+            , packageConfigVanillaLib = Flag (not sharedOnly)
+            , packageConfigSharedLib = Flag supportsShared
+            }
+    if compilerVersion compiler <= mkVersion [9, safeMinor]
+      then return (QC.property True)
+      else do
+        writeProjectConfigFile localConfig $
+          mempty
+            { projectConfigLocalPackages = mempty{packageConfigDocumentation = Flag True}
+            , projectConfigSpecificPackage = MapMappend (Map.singleton (mkPackageName "plugin-client") clientConfig)
+            }
+        let commonFlags = defaultCommonSetupFlags{setupVerbosity = Flag normal}
+            globals = defaultGlobalFlags{globalStoreDir = Flag "store"}
+            buildFlags =
+              NixStyleOptions.updNixStyleCommonSetupFlags (const commonFlags) (commandDefaultFlags CmdBuild.buildCommand)
+            haddockFlags =
+              defaultHaddockProjectFlags
+                { haddockProjectCommonFlags = commonFlags{setupVerbosity = Flag deafening}
+                }
+        withCurrentDirectory dir $ do
+          _ <- hCapture [stdout, stderr] $ CmdBuild.buildAction buildFlags ["all"] globals
+          (output, ()) <-
+            hCapture [stdout, stderr] $
+              CmdHaddockProject.haddockProjectAction haddockFlags ["all"] globals
+          interface <- doesFileExist ("haddocks" </> "plugin-client" </> "plugin-client.haddock")
+          let supportsReuse = compilerVersion compiler >= mkVersion [9, 6]
+              -- Read the actual response-file arguments, independently of
+              -- whether GHC initializes plugins when reusing interfaces.
+              haddockCompilerArgs =
+                [ arg
+                | line <- lines output
+                , [arg] <- [words line]
+                , "--optghc=" `isPrefixOf` arg
+                ]
+              expectedArgs = map ("--optghc=" ++) compilerArgs
+              recompiled =
+                any (\line -> "[" `isPrefixOf` line && "] Compiling " `isInfixOf` line) (lines output)
+          return $
+            QC.label (if sharedOnly then "shared only" else "vanilla") $
+              QC.counterexample (unlines haddockCompilerArgs) $
+                ( interface
+                , expectedArgs `isInfixOf` haddockCompilerArgs
+                , supportsReuse && recompiled
+                )
+                  QC.=== (True, True, False)
+  where
+    testdir = "haddock-project/compiler-arguments"

@@ -1836,11 +1836,17 @@ running ``setup haddock``.
                --haddock-hyperlink-source
     :synopsis: Generate hyperlinked source code for documentation
 
-    :default: False
+    :default: True when documentation is enabled; False otherwise
 
-    Generated hyperlinked source code using `HsColour`_, and have
-    Haddock documentation link to it.
+    Generate hyperlinked source code and have Haddock documentation link to it.
     This is equivalent to running ``haddock`` with the ``--hyperlinked-source`` flag.
+    Set this to ``False`` to disable hyperlinked source even when
+    :cfg-field:`documentation` is enabled.
+
+    When documentation and hyperlinked source are enabled, normal GHC builds
+    also produce extended interface (``.hie``) files on GHC 8.8 and later.
+    Haddock can reuse these files to avoid recompiling modules when generating
+    hyperlinked source.
 
 .. cfg-field:: haddock-hscolour-css: PATH
                --haddock-hscolour-css=PATH
