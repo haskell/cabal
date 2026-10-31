@@ -235,7 +235,9 @@ tests config =
       "haddock-project"
       AllFinish
       [ testCase "dependencies" (testHaddockProjectDependencies config)
+      , testCase "documenting once" (testHaddockProjectDocumentsOnce config)
       , testCase "repeated runs" (testHaddockProjectBuildCache config)
+      , testCase "output directory" (testHaddockProjectOutputDir config)
       , localOption (QC.QuickCheckTests 5) $
           QC.testProperty "custom build directory" (propHaddockProjectBuildDir config)
       , localOption (QC.QuickCheckTests 10) $
@@ -2938,6 +2940,24 @@ testHaddockProjectDependencies config = do
   where
     testdir = "haddock-project/dependencies"
 
+-- | Without documentation enabled, haddock-project compiles the packages with
+-- the flags that let Haddock reuse their compilation artifacts, but runs
+-- Haddock only once for each, into its output directory, and leaves a build up
+-- to date.
+testHaddockProjectDocumentsOnce :: ProjectConfig -> Assertion
+testHaddockProjectDocumentsOnce config = withDocumentationProject "documentation-cache/library" config $ \buildDir -> do
+  (output, ()) <-
+    hCapture [stdout, stderr] $
+      CmdHaddockProject.haddockProjectAction
+        defaultHaddockProjectFlags{haddockProjectCommonFlags = documentationCommonFlags}
+        ["all"]
+        defaultGlobalFlags{globalStoreDir = Flag "store"}
+  let runs = filter ("Running Haddock on library for p-0.1" `isInfixOf`) (lines output)
+  assertEqual output 1 (length runs)
+  doesDirectoryExist (buildDir </> "doc") >>= assertEqual "documentation in the build directory" False
+  build <- buildAllPackages
+  assertBool build ("Up to date" `isInfixOf` build)
+
 -- | Run a test on a documentation build cache test project, from its
 -- directory, unless the compiler predates the documentation artifacts these
 -- tests rely on. The test receives the build directory of the main library of
@@ -3248,6 +3268,35 @@ testHaddockProjectBuildCache config = withDocumentationProject "documentation-ca
   replicateM_ 2 $ do
     output <- buildAllPackages
     assertBool output ("Up to date" `isInfixOf` output)
+
+-- | haddock-project documents local packages directly into its output
+-- directory, where their hyperlinked sources link to each other with relative
+-- links, and leaves the documentation of a build as it is.
+testHaddockProjectOutputDir :: ProjectConfig -> Assertion
+testHaddockProjectOutputDir config = withDocumentationProject "haddock-output-dir" config $ \buildDir -> do
+  writeLocalConfig ["documentation: True"]
+  _ <- buildAllPackages
+  let buildDocs = buildDir </> "doc" </> "html" </> "p" </> "P.html"
+  original <- BS.readFile buildDocs
+  (haddockOutput, ()) <-
+    hCapture [stdout, stderr] $
+      CmdHaddockProject.haddockProjectAction
+        defaultHaddockProjectFlags{haddockProjectCommonFlags = documentationCommonFlags}
+        ["all"]
+        defaultGlobalFlags{globalStoreDir = Flag "store"}
+  BS.readFile buildDocs >>= assertEqual (haddockOutput ++ "documentation of the build") original
+  assertLinksTo
+    ("haddocks" </> "q" </> "src" </> "Q.html")
+    ["../../p/src/P.html", "../../p/helper/src/Helper.html"]
+  assertLinksTo
+    ("haddocks" </> "p" </> "helper" </> "src" </> "Helper.html")
+    ["../../../p/src/P.html"]
+  -- What the local packages link to is in the output directory.
+  for_ ["haddocks" </> "q" </> "Q.html", "haddocks" </> "q" </> "src" </> "Q.html"] $ \page -> do
+    html <- readFile page
+    assertBool (page ++ " must not link to local files") (not ("href=\"file://" `isInfixOf` html))
+  output <- buildAllPackages
+  assertBool output ("Up to date" `isInfixOf` output)
 
 -- | Check the generated index, including a sublibrary, with an arbitrary custom
 -- build directory and no pre-existing documentation in the default directory.

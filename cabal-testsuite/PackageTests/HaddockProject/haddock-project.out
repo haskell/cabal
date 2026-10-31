@@ -25,5 +25,5 @@ In order, the following will be built:
  - a-0.1.0.0 (lib) (ephemeral targets)
 Preprocessing library for a-0.1.0.0...
 Running Haddock on library for a-0.1.0.0...
-Documentation created: <ROOT>/dist-newstyle/build/<ARCH>/ghc-<GHCVER>/a-0.1.0.0/doc/html/a
-Documentation created: haddocks/index.html
+Documentation created: <ROOT>/haddocks/a
+Documentation created: <ROOT>/haddocks/index.html
