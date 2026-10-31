@@ -24,6 +24,10 @@ Flags for build:
                                 to PROG as a single argument)
  --PROG-options=OPTS          # Give extra options to PROG (split on spaces,
                                 use "" to prevent splitting)
+ --PROG-prepend-option=OPT    # Give an extra option to PROG for this
+                                invocation only, placed before its configured
+                                options (passed directly to PROG as a single
+                                argument)
 
 Examples:
   cabal build               All the components in the package

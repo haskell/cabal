@@ -1197,6 +1197,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         { haddockCommonFlags = commonFlags
         , haddockProgramPaths = mempty
         , haddockProgramArgs = mempty
+        , haddockProgramPrependArgs = mempty
         , haddockHoogle = packageConfigHaddockHoogle
         , haddockHtml = packageConfigHaddockHtml
         , haddockHtmlLocation = fmap Text.unpack packageConfigHaddockHtmlLocation

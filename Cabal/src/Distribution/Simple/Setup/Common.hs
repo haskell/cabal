@@ -22,6 +22,7 @@ module Distribution.Simple.Setup.Common
   , configureCCompiler
   , configureLinker
   , programDbOption
+  , programDbPrependOption
   , programDbOptions
   , programDbPaths
   , programDbPaths'
@@ -254,16 +255,43 @@ programDbOption
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programDbOption = programDbOptionWithSuffix "-option"
+programDbOption =
+  programDbOptionWithSuffix "-option" $ \prog ->
+    "Give an extra option to "
+      ++ prog
+      ++ " (passed directly to "
+      ++ prog
+      ++ " as a single argument)"
 
+-- | Invocation-only arguments placed before the configured override arguments.
+-- This lets callers supply defaults without overriding explicit user options.
+programDbPrependOption
+  :: ProgramDb
+  -> ShowOrParseArgs
+  -> (flags -> [(String, [String])])
+  -> ([(String, [String])] -> (flags -> flags))
+  -> [OptionField flags]
+programDbPrependOption =
+  programDbOptionWithSuffix "-prepend-option" $ \prog ->
+    "Give an extra option to "
+      ++ prog
+      ++ " for this invocation only, placed before its configured options"
+      ++ " (passed directly to "
+      ++ prog
+      ++ " as a single argument)"
+
+-- | For each known program @PROG@ in 'progDb', produce an 'OptionField'
+-- named @PROG@ followed by the given suffix, which takes a single argument
+-- for @PROG@ and is described by applying the given function to @PROG@.
 programDbOptionWithSuffix
   :: String
+  -> (String -> String)
   -> ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programDbOptionWithSuffix suffix progDb showOrParseArgs get set =
+programDbOptionWithSuffix suffix description progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs -> [programOption "PROG"]
@@ -276,12 +304,7 @@ programDbOptionWithSuffix suffix progDb showOrParseArgs get set =
       option
         ""
         [prog ++ suffix]
-        ( "Give an extra option to "
-            ++ prog
-            ++ " (passed directly to "
-            ++ prog
-            ++ " as a single argument)"
-        )
+        (description prog)
         get
         set
         ( reqArg'
