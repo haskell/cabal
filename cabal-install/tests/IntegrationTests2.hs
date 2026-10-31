@@ -9,10 +9,12 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.DistDirLayout
+import qualified Distribution.Client.FileMonitor as FileMonitor
 import Distribution.Client.HttpUtils
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.NixStyleOptions as NixStyleOptions
 import Distribution.Client.ProjectBuilding
+import Distribution.Client.ProjectBuilding.PackageFileMonitor
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectOrchestration
   ( distinctTargetComponents
@@ -31,7 +33,8 @@ import Distribution.Client.Targets
   , UserConstraintScope (UserAnyQualifier)
   )
 import Distribution.Client.Types
-  ( PackageLocation (..)
+  ( GenericReadyPackage (..)
+  , PackageLocation (..)
   , PackageSpecifier (..)
   , UnresolvedSourcePackage
   )
@@ -62,7 +65,8 @@ import Distribution.PackageDescription
 import Distribution.Simple.Command (CommandParse (..), commandDefaultFlags, commandParseArgs)
 import Distribution.Simple.Compiler
 import qualified Distribution.Simple.Flag as Flag
-import Distribution.Simple.Setup (CommonSetupFlags (..), HaddockFlags (..), HaddockProjectFlags (..), defaultCommonSetupFlags, defaultHaddockFlags, defaultHaddockProjectFlags, toFlag)
+import Distribution.Simple.InstallDirs (toPathTemplate)
+import Distribution.Simple.Setup (CommonSetupFlags (..), HaddockFlags (..), HaddockProjectFlags (..), HaddockTarget (..), defaultCommonSetupFlags, defaultHaddockFlags, defaultHaddockProjectFlags, toFlag)
 import Distribution.System
 import Distribution.Text
 import Distribution.Utils.Path (unsafeMakeSymbolicPath)
@@ -202,6 +206,7 @@ tests config =
       "Flag tests"
       AllFinish
       [ QC.testProperty "documentation source settings" (propHaddockDocumentation config)
+      , QC.testProperty "Haddock output settings preserve the configuration cache" (propHaddockConfigurationCache config)
       , testCase "Test Config options for commented options" testConfigOptionComments
       , testCase "Test Ignore Project Flag" testIgnoreProjectFlag
       ]
@@ -215,6 +220,7 @@ tests config =
       AllFinish
       [ testCase "documentation flags" (testDocumentationFlags config)
       , testCase "hyperlinked source" (testHyperlinkedSourceArtifacts config)
+      , testCase "Haddock output settings" (testHaddockOutputSettings config)
       ]
   , dependentTestGroup
       "haddock-project"
@@ -2161,6 +2167,85 @@ propHaddockDocumentation config0 documentation linkedSource =
               }
         }
 
+-- Haddock options may change in either direction without reconfiguring, but
+-- compiler options must still invalidate the persisted configuration cache.
+propHaddockConfigurationCache :: ProjectConfig -> Bool -> Maybe String -> QC.Property
+propHaddockConfigurationCache config0 enabled value = QC.ioProperty $ do
+  ((layout, _, _, _, _), plan, shared) <- planProject testdir config
+  results <- for (filterConfiguredPackages (InstallPlan.toList plan)) $ \pkg -> do
+    let monitor = newPackageFileMonitor shared layout (elabDistDirParams shared pkg)
+        root = distProjectRootDirectory layout
+        checkConfig p =
+          FileMonitor.checkFileMonitorChanged
+            (pkgFileMonitorConfig monitor)
+            root
+            (fst (packageFileMonitorKeyValues p))
+        changed (FileMonitor.MonitorChanged _) = True
+        changed (FileMonitor.MonitorUnchanged _ _) = False
+        haddockPkg =
+          pkg
+            { elabHaddockHoogle = enabled
+            , elabHaddockHtml = enabled
+            , elabHaddockHtmlLocation = value
+            , elabHaddockForeignLibs = enabled
+            , elabHaddockForHackage = if enabled then ForHackage else ForDevelopment
+            , elabHaddockExecutables = enabled
+            , elabHaddockTestSuites = enabled
+            , elabHaddockBenchmarks = enabled
+            , elabHaddockInternal = enabled
+            , elabHaddockCss = value
+            , elabHaddockLinkedSource = enabled
+            , elabHaddockQuickJump = enabled
+            , elabHaddockHscolourCss = value
+            , elabHaddockContents = toPathTemplate <$> value
+            , elabHaddockIndex = toPathTemplate <$> value
+            , elabHaddockBaseUrl = value
+            , elabHaddockResourcesDir = value
+            , elabHaddockOutputDir = value
+            , elabHaddockUseUnicode = enabled
+            }
+        compilerPkg =
+          haddockPkg
+            { elabProgramArgs = Map.insertWith (++) "ghc" ["-XOverloadedStrings"] (elabProgramArgs haddockPkg)
+            }
+        programPkg =
+          haddockPkg
+            { elabProgramArgs = Map.insertWith (++) "haddock" ["--no-warnings"] (elabProgramArgs haddockPkg)
+            }
+        configureFlags p =
+          setupHsConfigureFlags
+            (pure . unsafeMakeSymbolicPath)
+            plan
+            (ReadyPackage p)
+            shared
+            defaultCommonSetupFlags
+    originalFlags <- configureFlags pkg
+    haddockFlags <- configureFlags haddockPkg
+    createDirectoryIfMissing True (takeDirectory (FileMonitor.fileMonitorCacheFile (pkgFileMonitorConfig monitor)))
+    updatePackageConfigFileMonitor monitor root pkg
+    forward <- changed <$> checkConfig haddockPkg
+    updatePackageConfigFileMonitor monitor root haddockPkg
+    backward <- changed <$> checkConfig pkg
+    compilerChanged <- changed <$> checkConfig compilerPkg
+    explicitArtifactArgsChanged <-
+      and
+        <$> forM
+          ["-haddock", "-fwrite-ide-info"]
+          ( \arg ->
+              changed <$> checkConfig haddockPkg{elabProgramArgs = Map.insertWith (++) "ghc" [arg] (elabProgramArgs haddockPkg)}
+          )
+    programChanged <- changed <$> checkConfig programPkg
+    return (originalFlags == haddockFlags, forward, backward, compilerChanged && explicitArtifactArgsChanged, programChanged)
+  cleanProject testdir
+  return (results QC.=== [(True, False, False, True, True)])
+  where
+    testdir = "targets/lib-only"
+    config =
+      config0
+        { projectConfigLocalPackages =
+            (projectConfigLocalPackages config0){packageConfigDocumentation = Flag True}
+        }
+
 filterConfiguredPackages :: [ElaboratedPlanPackage] -> [ElaboratedConfiguredPackage]
 filterConfiguredPackages [] = []
 filterConfiguredPackages (InstallPlan.PreExisting _ : pkgs) = filterConfiguredPackages pkgs
@@ -2999,5 +3084,26 @@ testHyperlinkedSourceArtifacts config = withDocumentationProject testdir config 
   assertHie True
   explicitConfig <- BS.readFile setupConfig
   assertBool "explicit -fwrite-ide-info must reconfigure" (explicitConfig /= initialConfig)
+  where
+    testdir = "documentation-cache/library"
+
+-- | Haddock output settings rerun Haddock without reconfiguring or compiling,
+-- and settings that produce the same output do not rerun it. A sublibrary
+-- that a normal build does not document is not rescheduled either.
+testHaddockOutputSettings :: ProjectConfig -> Assertion
+testHaddockOutputSettings config = withDocumentationProject testdir config $ \buildDir -> do
+  let setupConfig = buildDir </> "setup-config"
+  writeLocalConfig ["documentation: True"]
+  _ <- buildAllPackages
+  initialConfig <- BS.readFile setupConfig
+  writeLocalConfig ["documentation: True", "haddock-quickjump: True"]
+  changed <- buildAllPackages
+  assertBool changed ("Running Haddock on library for p-0.1" `isInfixOf` changed)
+  assertBool changed (not ("Compiling " `isInfixOf` changed))
+  BS.readFile setupConfig >>= assertEqual "setup-config after changing Haddock output" initialConfig
+  -- HTML is the default output, so requesting it changes nothing.
+  writeLocalConfig ["documentation: True", "haddock-quickjump: True", "haddock-html: True"]
+  same <- buildAllPackages
+  assertBool same ("Up to date" `isInfixOf` same)
   where
     testdir = "documentation-cache/library"
