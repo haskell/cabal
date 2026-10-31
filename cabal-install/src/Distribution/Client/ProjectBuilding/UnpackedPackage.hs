@@ -68,7 +68,6 @@ import Distribution.Client.Utils
   , progressMessage
   )
 
-import Distribution.Compat.Lens
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
@@ -81,10 +80,6 @@ import Distribution.Simple.Compiler
   )
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Simple.LocalBuildInfo
-  ( ComponentName (..)
-  , LibraryName (..)
-  )
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -92,7 +87,6 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Types.BuildType
-import Distribution.Types.PackageDescription.Lens (componentModules)
 
 import Distribution.Client.Errors
 import Distribution.Simple.Utils
@@ -1065,31 +1059,6 @@ buildPhaseName PBReplPhase{} = "repl"
 buildPhaseName PBInstallPhase{} = "install"
 buildPhaseName PBTestPhase{} = "test"
 buildPhaseName PBBenchPhase{} = "bench"
-
-hasValidHaddockTargets :: ElaboratedConfiguredPackage -> Bool
-hasValidHaddockTargets ElaboratedConfiguredPackage{..}
-  | not elabBuildHaddocks = False
-  | otherwise = any componentHasHaddocks components
-  where
-    components :: [ComponentTarget]
-    components =
-      elabBuildTargets
-        ++ elabTestTargets
-        ++ elabBenchTargets
-        ++ elabReplTarget
-        ++ elabHaddockTargets
-
-    componentHasHaddocks :: ComponentTarget -> Bool
-    componentHasHaddocks (ComponentTarget name _) =
-      case name of
-        CLibName LMainLibName -> hasHaddocks
-        CLibName (LSubLibName _) -> elabHaddockInternal && hasHaddocks
-        CFLibName _ -> elabHaddockForeignLibs && hasHaddocks
-        CExeName _ -> elabHaddockExecutables && hasHaddocks
-        CTestName _ -> elabHaddockTestSuites && hasHaddocks
-        CBenchName _ -> elabHaddockBenchmarks && hasHaddocks
-      where
-        hasHaddocks = not (null (elabPkgDescription ^. componentModules name))
 
 withTempInstalledPackageInfoFile
   :: Verbosity
