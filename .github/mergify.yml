@@ -102,6 +102,22 @@ pull_request_rules:
       - check-success=Bootstrap post job
       - 'check-success=docs/readthedocs.org:cabal'
 
+  # label PRs with no reviews after two weeks
+  - actions:
+      label:
+        toggle:
+          - ':ghost: haunting the review queue'
+    name: Flag PRs with no review after two weeks
+    conditions:
+      - base=master
+      - -draft
+      - -closed
+      - '#approved-reviews-by=0'
+      - '#changes-requested-reviews-by=0'
+      - '#commented-reviews-by=0'
+      - created-at<14 days ago
+      - '-label~=^blocked:'
+
   # rebase+merge strategy
   - actions:
       queue:
