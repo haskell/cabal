@@ -254,7 +254,16 @@ programDbOption
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programDbOption progDb showOrParseArgs get set =
+programDbOption = programDbOptionWithSuffix "-option"
+
+programDbOptionWithSuffix
+  :: String
+  -> ProgramDb
+  -> ShowOrParseArgs
+  -> (flags -> [(String, [String])])
+  -> ([(String, [String])] -> (flags -> flags))
+  -> [OptionField flags]
+programDbOptionWithSuffix suffix progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs -> [programOption "PROG"]
@@ -266,7 +275,7 @@ programDbOption progDb showOrParseArgs get set =
     programOption prog =
       option
         ""
-        [prog ++ "-option"]
+        [prog ++ suffix]
         ( "Give an extra option to "
             ++ prog
             ++ " (passed directly to "
