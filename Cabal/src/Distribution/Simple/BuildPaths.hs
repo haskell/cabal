@@ -34,6 +34,7 @@ module Distribution.Simple.BuildPaths
   , haddockLibraryName
   , haddockLibraryPath
   , haddockLibraryPath'
+  , haddockLibraryUnitIdPath'
   , mkGenericStaticLibName
   , mkLibName
   , mkProfLibName
@@ -280,6 +281,16 @@ haddockLibraryPath pkg_descr lib =
 haddockLibraryPath' :: PackageName -> LibraryName -> FilePath
 haddockLibraryPath' pkg_name lib_name =
   haddockLibraryName' pkg_name lib_name <.> "haddock"
+
+-- | The file recording the unit that the documentation of a library in a
+-- Haddock output directory was generated for, relative to that directory. It
+-- is next to the interface of the library, see 'haddockLibraryDirPath'' and
+-- 'haddockLibraryPath''. Component names contain no dots, so it does not clash
+-- with the directory of a sublibrary.
+haddockLibraryUnitIdPath' :: HaddockTarget -> PackageIdentifier -> LibraryName -> FilePath
+haddockLibraryUnitIdPath' haddockTarget pkgid lib_name =
+  haddockLibraryDirPath' haddockTarget pkgid lib_name
+    </> (haddockLibraryPath' (pkgName pkgid) lib_name ++ ".unit-id")
 
 -- -----------------------------------------------------------------------------
 -- Source File helper

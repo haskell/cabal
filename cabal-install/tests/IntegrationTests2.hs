@@ -226,6 +226,12 @@ tests config =
       , testCase "documenting an executable" (testHaddockExecutableArtifacts config)
       ]
   , dependentTestGroup
+      "Documentation output directory"
+      AllFinish
+      [ testCase "links to dependencies" (testHaddockOutputDirLinks config)
+      , testCase "documentation of another unit" (testHaddockOutputDirOtherUnit config)
+      ]
+  , dependentTestGroup
       "haddock-project"
       AllFinish
       [ testCase "dependencies" (testHaddockProjectDependencies config)
@@ -3129,13 +3135,18 @@ testHaddockOutputSettings config = withDocumentationProject testdir config $ \bu
 -- | Document all packages of the project in the current directory, returning
 -- the output.
 documentAllPackages :: IO String
-documentAllPackages =
+documentAllPackages = documentPackages ["all"]
+
+-- | Document the given targets of the project in the current directory,
+-- returning the output.
+documentPackages :: [String] -> IO String
+documentPackages targets =
   fst
     <$> hCapture
       [stdout, stderr]
       ( CmdHaddock.haddockAction
           (NixStyleOptions.updNixStyleCommonSetupFlags (const documentationCommonFlags) (commandDefaultFlags CmdHaddock.haddockCommand))
-          ["all"]
+          targets
           defaultGlobalFlags{globalStoreDir = Flag "store"}
       )
 
@@ -3176,6 +3187,47 @@ testHaddockExecutableArtifacts config = withDocumentationProject "documentation-
     >>= assertBool "HIE file of the executable"
   doesDirectoryExist (exeDir </> "extra-compilation-artifacts")
     >>= assertEqual "artifacts outside the executable's compilation directory" False
+
+-- | Assert that an HTML page links to each of the given files.
+assertLinksTo :: FilePath -> [FilePath] -> Assertion
+assertLinksTo page targets = do
+  html <- backslashToSlash <$> readFile page
+  for_ targets $ \target ->
+    assertBool (page ++ " must link to " ++ target) (backslashToSlash target `isInfixOf` html)
+  where
+    -- Links may be joined with the native path separator.
+    backslashToSlash = map (\c -> if c == '\\' then '/' else c)
+
+-- | Packages documented into the same output directory link to their
+-- documentation there, including that of a sublibrary, with relative links.
+testHaddockOutputDirLinks :: ProjectConfig -> Assertion
+testHaddockOutputDirLinks config = withDocumentationProject "haddock-output-dir" config $ \_ -> do
+  writeLocalConfig ["haddock-output-dir: haddocks"]
+  _ <- documentAllPackages
+  assertLinksTo
+    ("haddocks" </> "q" </> "Q.html")
+    ["../p/P.html#t:Value", "../p/helper/Helper.html#t:Helper"]
+  assertLinksTo
+    ("haddocks" </> "p" </> "helper" </> "Helper.html")
+    ["../../p/P.html#t:Value"]
+
+-- | Documentation in the output directory that was generated for another unit,
+-- e.g. an earlier version of a dependency, is not linked to.
+testHaddockOutputDirOtherUnit :: ProjectConfig -> Assertion
+testHaddockOutputDirOtherUnit config = withDocumentationProject "haddock-output-dir" config $ \_ -> do
+  let unitIdFile = "haddocks" </> "p" </> "p.haddock.unit-id"
+  writeLocalConfig ["haddock-output-dir: haddocks"]
+  _ <- documentAllPackages
+  doesFileExist unitIdFile >>= assertBool "unit of the documentation of p"
+  -- The first run for q alone documents p again, for its own targets.
+  _ <- documentPackages ["q"]
+  writeFile unitIdFile "p-0.0-other"
+  output <- documentPackages ["q"]
+  assertBool output ("Running Haddock on library for q-0.1" `isInfixOf` output)
+  assertBool output (not ("Running Haddock on library for p-0.1" `isInfixOf` output))
+  html <- readFile' ("haddocks" </> "q" </> "Q.html")
+  assertBool "Q.html links to documentation of another unit" (not ("href=\"../p/P.html" `isInfixOf` html))
+  assertLinksTo ("haddocks" </> "q" </> "Q.html") ["../p/helper/Helper.html#t:Helper"]
 
 -- | Repeating haddock-project has no build work, and leaves a normal build up
 -- to date. Its build phase prints a plan only when it has work to do, so each
