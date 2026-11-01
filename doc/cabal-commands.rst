@@ -1143,7 +1143,7 @@ the vendored packages:
 .. code-block:: console
 
     $ cabal vendor
-    Vendored 12 packages into /home/me/proj/vendor
+    Vendored 12 packages into vendor
 
     To build using the vendored packages, add the following to the project file
     (the 'url' line must stay indented under 'repository'):
@@ -1168,7 +1168,7 @@ the vendored one override them for the packages it contains:
 .. code-block:: console
 
     $ cabal vendor aeson
-    Vendored 1 of 12 dependencies into /home/me/proj/vendor
+    Vendored 1 of 12 dependencies into vendor
     ...
     active-repositories: :rest, vendored:override
 
