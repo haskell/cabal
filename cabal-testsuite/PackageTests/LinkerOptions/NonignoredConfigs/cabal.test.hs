@@ -65,7 +65,7 @@ main = cabalTest $ do
                 (testCurrentDir env </> "basic" ++ show idx)
             withDirectory ("basic" ++ show idx) $ do
                         packageEnv <- (</> ("basic" ++ show idx ++ ".env")) . testWorkDir <$> getTestEnv
-                        let installOptions = ["--disable-deterministic", "--lib", "--package-env=" ++ packageEnv] ++ linkConfigFlags linking ++ ["basic"]
+                        let installOptions = ["--lib", "--package-env=" ++ packageEnv] ++ linkConfigFlags linking ++ ["basic"]
                         recordMode RecordMarked $ do
                             recordHeader $ "install options:" : installOptions
                             cabal "v2-install" installOptions

@@ -231,6 +231,7 @@ import Data.List (deleteBy, groupBy)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import Distribution.Client.Errors
 import Distribution.Solver.Types.ProjectConfigPath
 import GHC.Stack (HasCallStack)
@@ -2463,7 +2464,7 @@ elaborateInstallPlan
 
             elabProgramPathExtra = fromNubList $ perPkgOption pkgid packageConfigProgramPathExtra
             elabConfiguredPrograms = configuredPrograms compilerProgDb
-            elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
+            elabConfigureScriptArgs = Text.unpack <$> perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
             elabExtraLibDirsStatic = perPkgOptionList pkgid packageConfigExtraLibDirsStatic
             elabExtraFrameworkDirs = perPkgOptionList pkgid packageConfigExtraFrameworkDirs
@@ -2473,7 +2474,7 @@ elaborateInstallPlan
 
             elabHaddockHoogle = perPkgOptionFlag False pkgid packageConfigHaddockHoogle
             elabHaddockHtml = perPkgOptionFlag False pkgid packageConfigHaddockHtml
-            elabHaddockHtmlLocation = perPkgOptionMaybe pkgid packageConfigHaddockHtmlLocation
+            elabHaddockHtmlLocation = Text.unpack <$> perPkgOptionMaybe pkgid packageConfigHaddockHtmlLocation
             elabHaddockForeignLibs = perPkgOptionFlag False pkgid packageConfigHaddockForeignLibs
             elabHaddockForHackage = perPkgOptionFlag Cabal.ForDevelopment pkgid packageConfigHaddockForHackage
             elabHaddockExecutables = perPkgOptionFlag False pkgid packageConfigHaddockExecutables
@@ -2486,8 +2487,8 @@ elaborateInstallPlan
             elabHaddockHscolourCss = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
             elabHaddockContents = perPkgOptionMaybe pkgid packageConfigHaddockContents
             elabHaddockIndex = perPkgOptionMaybe pkgid packageConfigHaddockIndex
-            elabHaddockBaseUrl = perPkgOptionMaybe pkgid packageConfigHaddockBaseUrl
-            elabHaddockResourcesDir = perPkgOptionMaybe pkgid packageConfigHaddockResourcesDir
+            elabHaddockBaseUrl = Text.unpack <$> perPkgOptionMaybe pkgid packageConfigHaddockBaseUrl
+            elabHaddockResourcesDir = Text.unpack <$> perPkgOptionMaybe pkgid packageConfigHaddockResourcesDir
             elabHaddockOutputDir = perPkgOptionMaybe pkgid packageConfigHaddockOutputDir
             elabHaddockUseUnicode = perPkgOptionFlag False pkgid packageConfigHaddockUseUnicode
 

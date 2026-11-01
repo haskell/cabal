@@ -348,6 +348,7 @@ test-suite unit-tests
       UnitTests.Distribution.Client.Init.FileCreators
       UnitTests.Distribution.Client.InstallPlan
       UnitTests.Distribution.Client.JobControl
+      UnitTests.Distribution.Client.NixStyleOptions
       UnitTests.Distribution.Client.ProjectConfig
       UnitTests.Distribution.Client.ProjectPlanning
       UnitTests.Distribution.Client.Store
@@ -378,6 +379,7 @@ test-suite unit-tests
       , network-uri >= 2.6.2.0 && <2.7
       , random
       , tar
+      , text
       , time
       , zlib
       , tasty >= 1.2.3 && <1.6
@@ -500,5 +502,6 @@ test-suite long-tests
     , tasty-expected-failure
     , tasty-hunit >= 0.10
     , tasty-quickcheck <0.12
+    , text
     , QuickCheck >= 2.14 && <2.20
     , pretty-show >= 1.6.15

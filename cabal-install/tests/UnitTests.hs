@@ -15,6 +15,7 @@ import qualified UnitTests.Distribution.Client.IndexUtils.Timestamp
 import qualified UnitTests.Distribution.Client.Init
 import qualified UnitTests.Distribution.Client.InstallPlan
 import qualified UnitTests.Distribution.Client.JobControl
+import qualified UnitTests.Distribution.Client.NixStyleOptions
 import qualified UnitTests.Distribution.Client.ProjectConfig
 import qualified UnitTests.Distribution.Client.ProjectPlanning
 import qualified UnitTests.Distribution.Client.Store
@@ -72,6 +73,9 @@ main = do
       , testGroup
           "UnitTests.Distribution.Client.JobControl"
           UnitTests.Distribution.Client.JobControl.tests
+      , testGroup
+          "UnitTests.Distribution.Client.NixStyleOptions"
+          UnitTests.Distribution.Client.NixStyleOptions.tests
       , testGroup
           "UnitTests.Distribution.Client.ProjectConfig"
           UnitTests.Distribution.Client.ProjectConfig.tests

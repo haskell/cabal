@@ -227,6 +227,8 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
+import qualified Data.Text.Encoding as Text
 
 import Network.URI
   ( URI (..)
@@ -270,7 +272,7 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
     buildSettingRemoteRepos
     buildSettingLocalNoIndexRepos
     buildSettingCacheDir
-    buildSettingHttpTransport
+    (fmap Text.unpack buildSettingHttpTransport)
     (Just buildSettingIgnoreExpiry)
     buildSettingProgPathExtra
 
@@ -298,7 +300,7 @@ projectConfigWithSolverRepoContext
           )
           projectConfigCacheDir
       )
-      (flagToMaybe projectConfigHttpTransport)
+      (Text.unpack <$> flagToMaybe projectConfigHttpTransport)
       (flagToMaybe projectConfigIgnoreExpiry)
       (fromNubList projectConfigProgPathExtra)
 
@@ -773,7 +775,7 @@ defaultImplicitProjectConfig :: ProjectConfig
 defaultImplicitProjectConfig =
   mempty
     { -- We expect a package in the current directory.
-      projectPackages = ["./*.cabal"]
+      projectPackages = [Text.pack "./*.cabal"]
     , projectConfigProvenance = Set.singleton Implicit
     }
 
@@ -1211,8 +1213,8 @@ findProjectPackages
 findProjectPackages
   DistDirLayout{distProjectRootDirectory}
   ProjectConfig{..} = do
-    requiredPkgs <- findPackageLocations True projectPackages
-    optionalPkgs <- findPackageLocations False projectPackagesOptional
+    requiredPkgs <- findPackageLocations True (map Text.unpack projectPackages)
+    optionalPkgs <- findPackageLocations False (map Text.unpack projectPackagesOptional)
     let repoPkgs = map ProjectPackageRemoteRepo projectPackagesRepo
         namedPkgs = map ProjectPackageNamed projectPackagesNamed
 
@@ -1432,7 +1434,7 @@ fetchAndReadSourcePackages
           configureTransport
             verbosity
             progPathExtra
-            preferredHttpTransport
+            (fmap Text.unpack preferredHttpTransport)
       sequenceA
         [ fetchAndReadSourcePackageRemoteTarball
           verbosity
@@ -1655,12 +1657,12 @@ syncAndReadSourcePackagesRemoteRepos
               ]
           else do
             liftIO . warn verbosity $ "--offline was specified, skipping sync of repositories:"
-            liftIO . for_ repoGroupWithPaths $ \(repo, _, _) -> warn verbosity $ srpLocation repo
+            liftIO . for_ repoGroupWithPaths $ \(repo, _, _) -> warn verbosity $ Text.unpack $ srpLocation repo
 
         -- Run post-checkout-command if it is specified
         for_ repoGroupWithPaths $ \(repo, _, repoPath) ->
           for_ (nonEmpty (srpCommand repo)) $ \(cmd :| args) -> liftIO $ do
-            maybeExit $ rawSystemIOWithEnv verbosity cmd args (Just repoPath) Nothing Nothing Nothing Nothing
+            maybeExit $ rawSystemIOWithEnv verbosity (Text.unpack cmd) (map Text.unpack args) (Just repoPath) Nothing Nothing Nothing Nothing
 
         -- But for reading we go through each 'SourceRepo' including its subdir
         -- value and have to know which path each one ended up in.
@@ -1857,7 +1859,7 @@ localFileNameForRemoteTarball uri =
 -- intended to produce non-clashing file names for different repos.
 localFileNameForRemoteRepo :: SourceRepoList -> FilePath
 localFileNameForRemoteRepo SourceRepositoryPackage{srpType, srpLocation} =
-  mangleName srpLocation ++ "-" ++ showHashValue locationHash
+  mangleName (Text.unpack srpLocation) ++ "-" ++ showHashValue locationHash
   where
     mangleName =
       truncateString 10
@@ -1869,7 +1871,7 @@ localFileNameForRemoteRepo SourceRepositoryPackage{srpType, srpLocation} =
     locationHash :: HashValue
     locationHash =
       hashValue $
-        LBS.fromChunks [toUTF8BS srpLocation, toUTF8BS (show srpType)]
+        LBS.fromChunks [Text.encodeUtf8 srpLocation, toUTF8BS (show srpType)]
 
 -- | Truncate a string, with a visual indication that it is truncated.
 truncateString :: Int -> String -> String

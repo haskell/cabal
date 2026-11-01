@@ -72,6 +72,7 @@ import Distribution.Solver.Types.SourcePackage
 
 import Control.Monad (mapM_)
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 import Distribution.Client.Errors
 import Distribution.Utils.NubList
   ( fromNubList
@@ -319,7 +320,7 @@ instance Exception ClonePackageException where
       "Failed to fetch the source repository for package "
         ++ prettyShow pkgid
         ++ ", repository location "
-        ++ srpLocation repo
+        ++ Text.unpack (srpLocation repo)
         ++ " ("
         ++ vcsprogname
         ++ " failed with "

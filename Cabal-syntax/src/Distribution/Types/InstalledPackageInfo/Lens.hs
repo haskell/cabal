@@ -7,6 +7,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Text (Text)
 import Distribution.Backpack (OpenModule)
 import Distribution.License (License)
 import Distribution.ModuleName (ModuleName)
@@ -14,7 +15,6 @@ import Distribution.Package (AbiHash, ComponentId, PackageIdentifier, UnitId)
 import Distribution.Types.InstalledPackageInfo (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.Types.LibraryName (LibraryName)
 import Distribution.Types.LibraryVisibility (LibraryVisibility)
-import Distribution.Utils.ShortText (ShortText)
 
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.InstalledPackageInfo as T
@@ -39,7 +39,7 @@ sourceLibName :: Lens' InstalledPackageInfo LibraryName
 sourceLibName f s = fmap (\x -> s{T.sourceLibName = x}) (f (T.sourceLibName s))
 {-# INLINE sourceLibName #-}
 
-compatPackageKey :: Lens' InstalledPackageInfo String
+compatPackageKey :: Lens' InstalledPackageInfo Text
 compatPackageKey f s = fmap (\x -> s{T.compatPackageKey = x}) (f (T.compatPackageKey s))
 {-# INLINE compatPackageKey #-}
 
@@ -47,39 +47,39 @@ license :: Lens' InstalledPackageInfo (Either SPDX.License License)
 license f s = fmap (\x -> s{T.license = x}) (f (T.license s))
 {-# INLINE license #-}
 
-copyright :: Lens' InstalledPackageInfo ShortText
+copyright :: Lens' InstalledPackageInfo Text
 copyright f s = fmap (\x -> s{T.copyright = x}) (f (T.copyright s))
 {-# INLINE copyright #-}
 
-maintainer :: Lens' InstalledPackageInfo ShortText
+maintainer :: Lens' InstalledPackageInfo Text
 maintainer f s = fmap (\x -> s{T.maintainer = x}) (f (T.maintainer s))
 {-# INLINE maintainer #-}
 
-author :: Lens' InstalledPackageInfo ShortText
+author :: Lens' InstalledPackageInfo Text
 author f s = fmap (\x -> s{T.author = x}) (f (T.author s))
 {-# INLINE author #-}
 
-stability :: Lens' InstalledPackageInfo ShortText
+stability :: Lens' InstalledPackageInfo Text
 stability f s = fmap (\x -> s{T.stability = x}) (f (T.stability s))
 {-# INLINE stability #-}
 
-homepage :: Lens' InstalledPackageInfo ShortText
+homepage :: Lens' InstalledPackageInfo Text
 homepage f s = fmap (\x -> s{T.homepage = x}) (f (T.homepage s))
 {-# INLINE homepage #-}
 
-pkgUrl :: Lens' InstalledPackageInfo ShortText
+pkgUrl :: Lens' InstalledPackageInfo Text
 pkgUrl f s = fmap (\x -> s{T.pkgUrl = x}) (f (T.pkgUrl s))
 {-# INLINE pkgUrl #-}
 
-synopsis :: Lens' InstalledPackageInfo ShortText
+synopsis :: Lens' InstalledPackageInfo Text
 synopsis f s = fmap (\x -> s{T.synopsis = x}) (f (T.synopsis s))
 {-# INLINE synopsis #-}
 
-description :: Lens' InstalledPackageInfo ShortText
+description :: Lens' InstalledPackageInfo Text
 description f s = fmap (\x -> s{T.description = x}) (f (T.description s))
 {-# INLINE description #-}
 
-category :: Lens' InstalledPackageInfo ShortText
+category :: Lens' InstalledPackageInfo Text
 category f s = fmap (\x -> s{T.category = x}) (f (T.category s))
 {-# INLINE category #-}
 
@@ -131,19 +131,19 @@ dataDir :: Lens' InstalledPackageInfo FilePath
 dataDir f s = fmap (\x -> s{T.dataDir = x}) (f (T.dataDir s))
 {-# INLINE dataDir #-}
 
-hsLibraries :: Lens' InstalledPackageInfo [String]
+hsLibraries :: Lens' InstalledPackageInfo [Text]
 hsLibraries f s = fmap (\x -> s{T.hsLibraries = x}) (f (T.hsLibraries s))
 {-# INLINE hsLibraries #-}
 
-extraLibraries :: Lens' InstalledPackageInfo [String]
+extraLibraries :: Lens' InstalledPackageInfo [Text]
 extraLibraries f s = fmap (\x -> s{T.extraLibraries = x}) (f (T.extraLibraries s))
 {-# INLINE extraLibraries #-}
 
-extraLibrariesStatic :: Lens' InstalledPackageInfo [String]
+extraLibrariesStatic :: Lens' InstalledPackageInfo [Text]
 extraLibrariesStatic f s = fmap (\x -> s{T.extraLibrariesStatic = x}) (f (T.extraLibrariesStatic s))
 {-# INLINE extraLibrariesStatic #-}
 
-extraGHCiLibraries :: Lens' InstalledPackageInfo [String]
+extraGHCiLibraries :: Lens' InstalledPackageInfo [Text]
 extraGHCiLibraries f s = fmap (\x -> s{T.extraGHCiLibraries = x}) (f (T.extraGHCiLibraries s))
 {-# INLINE extraGHCiLibraries #-}
 
@@ -151,7 +151,7 @@ includeDirs :: Lens' InstalledPackageInfo [FilePath]
 includeDirs f s = fmap (\x -> s{T.includeDirs = x}) (f (T.includeDirs s))
 {-# INLINE includeDirs #-}
 
-includes :: Lens' InstalledPackageInfo [String]
+includes :: Lens' InstalledPackageInfo [Text]
 includes f s = fmap (\x -> s{T.includes = x}) (f (T.includes s))
 {-# INLINE includes #-}
 
@@ -163,15 +163,15 @@ abiDepends :: Lens' InstalledPackageInfo [AbiDependency]
 abiDepends f s = fmap (\x -> s{T.abiDepends = x}) (f (T.abiDepends s))
 {-# INLINE abiDepends #-}
 
-ccOptions :: Lens' InstalledPackageInfo [String]
+ccOptions :: Lens' InstalledPackageInfo [Text]
 ccOptions f s = fmap (\x -> s{T.ccOptions = x}) (f (T.ccOptions s))
 {-# INLINE ccOptions #-}
 
-cxxOptions :: Lens' InstalledPackageInfo [String]
+cxxOptions :: Lens' InstalledPackageInfo [Text]
 cxxOptions f s = fmap (\x -> s{T.cxxOptions = x}) (f (T.cxxOptions s))
 {-# INLINE cxxOptions #-}
 
-ldOptions :: Lens' InstalledPackageInfo [String]
+ldOptions :: Lens' InstalledPackageInfo [Text]
 ldOptions f s = fmap (\x -> s{T.ldOptions = x}) (f (T.ldOptions s))
 {-# INLINE ldOptions #-}
 
@@ -179,7 +179,7 @@ frameworkDirs :: Lens' InstalledPackageInfo [FilePath]
 frameworkDirs f s = fmap (\x -> s{T.frameworkDirs = x}) (f (T.frameworkDirs s))
 {-# INLINE frameworkDirs #-}
 
-frameworks :: Lens' InstalledPackageInfo [String]
+frameworks :: Lens' InstalledPackageInfo [Text]
 frameworks f s = fmap (\x -> s{T.frameworks = x}) (f (T.frameworks s))
 {-# INLINE frameworks #-}
 
