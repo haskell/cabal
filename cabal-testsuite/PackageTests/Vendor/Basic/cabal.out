@@ -2,7 +2,7 @@
 Downloading the latest package list from test-local-repo
 # cabal v2-vendor
 Resolving dependencies...
-Would vendor the following packages into <ROOT>/vendor:
+Would vendor the following packages into vendor:
  - my-lib-1.0
 # cabal v2-vendor
 Error: [Cabal-7170]
@@ -14,7 +14,7 @@ Cannot vendor main: local packages of this project are not vendored.
 Error: [Cabal-7169]
 'vendor' takes package names as arguments, but 'lib:my-lib' is not a package name.
 # cabal v2-vendor
-Vendored 1 package into <ROOT>/vendor
+Vendored 1 package into vendor
 
 To build using the vendored packages, add the following to the project file
 (the 'url' line must stay indented under 'repository'):
@@ -40,7 +40,7 @@ Building executable 'main' for main-1.0...
 # cabal v2-vendor
 Warning: Error during construction of file+noindex test-local-repo repository index: <ROOT>/cabal.dist/repo: getDirectoryContents:openDirStream: does not exist (No such file or directory)
 Resolving dependencies...
-Vendored 1 package into <ROOT>/vendor
+Vendored 1 package into vendor
 
 To build using the vendored packages, add the following to the project file
 (the 'url' line must stay indented under 'repository'):

@@ -2,7 +2,7 @@
 Downloading the latest package list from test-local-repo
 # cabal v2-vendor
 Resolving dependencies...
-Vendored 1 of 2 dependencies into <ROOT>/vendor
+Vendored 1 of 2 dependencies into vendor
 
 To build using the vendored packages, add the following to the project file
 (the 'url' line must stay indented under 'repository'):
