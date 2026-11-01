@@ -315,7 +315,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
     then do
       noticeNoWrap verbosity $
         unlines $
-          ("Would vendor the following packages into " ++ vendorDir ++ ":")
+          ("Would vendor the following packages into " ++ displayVendorDir projectRoot vendorDir ++ ":")
             : [" - " ++ prettyShow pkgid | pkgid <- Map.keys selected]
       when prune $ do
         stale <- staleVendorFiles vendorDir (Map.keysSet sources)
@@ -452,6 +452,16 @@ pruneVendorDir verbosity vendorDir keep = do
 plural :: Int -> String -> String -> String
 plural n singular pluralForm = if n == 1 then singular else pluralForm
 
+-- | The vendor directory as shown to the user: relative to the project root
+-- when it lies inside the project, so that it reads the same as the @url:@
+-- line of the printed stanza. A directory outside the project stays absolute.
+displayVendorDir :: FilePath -> FilePath -> FilePath
+displayVendorDir projectRoot vendorDir
+  | isRelative relativeDir = asPosixPath relativeDir
+  | otherwise = vendorDir
+  where
+    relativeDir = makeRelative projectRoot vendorDir
+
 -- | What was vendored, and the project configuration needed to use it.
 vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource)] -> [PackageId] -> String
 vendorReport projectRoot vendorDir partial total selected unpacked =
@@ -471,16 +481,14 @@ vendorReport projectRoot vendorDir partial total selected unpacked =
   where
     summary
       | partial =
-          "Vendored " ++ show (length selected) ++ " of " ++ show total ++ " dependencies into " ++ vendorDir
+          "Vendored " ++ show (length selected) ++ " of " ++ show total ++ " dependencies into " ++ displayDir
       | otherwise =
-          "Vendored " ++ show (length selected) ++ " " ++ plural (length selected) "package" "packages" ++ " into " ++ vendorDir
+          "Vendored " ++ show (length selected) ++ " " ++ plural (length selected) "package" "packages" ++ " into " ++ displayDir
 
     -- Prefer a path relative to the project root, so that the vendored
     -- repository can be committed along with the project.
     relativeDir = makeRelative projectRoot vendorDir
-    displayDir
-      | isRelative relativeDir = asPosixPath relativeDir
-      | otherwise = vendorDir
+    displayDir = displayVendorDir projectRoot vendorDir
     vendorUrl
       | isRelative relativeDir = "file+noindex:" ++ asPosixPath relativeDir
       | Windows <- buildOS = "file+noindex:" ++ asPosixPath vendorDir
