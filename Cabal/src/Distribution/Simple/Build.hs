@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
@@ -607,10 +606,6 @@ buildComponent
               exe' = exe{buildInfo = addExtraCSources ebi extras}
           buildExe verbosity numJobs pkg_descr lbi exe' clbi
           return Nothing
-#if __GLASGOW_HASKELL__ < 811
--- silence pattern-match warnings prior to GHC 9.0
-        _ -> error "impossible"
-#endif
 
 generateCode
   :: [String]
@@ -762,10 +757,6 @@ replComponent
           let ebi = buildInfo exe
               exe' = exe{buildInfo = ebi{cSources = cSources ebi ++ extras}}
           replExe verbHandles replFlags pkg_descr lbi exe' clbi
-#if __GLASGOW_HASKELL__ < 811
--- silence pattern-match warnings prior to GHC 9.0
-        _ -> error "impossible"
-#endif
 
 ----------------------------------------------------
 -- Shared code for buildComponent and replComponent

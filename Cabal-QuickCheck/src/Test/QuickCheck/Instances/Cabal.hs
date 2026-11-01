@@ -1,10 +1,6 @@
-{-# LANGUAGE CPP           #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Test.QuickCheck.Instances.Cabal () where
 
-#if !MIN_VERSION_base(4,18,0)
-import Control.Applicative        (liftA2)
-#endif
 import Data.Bits                  (countLeadingZeros, finiteBitSize, shiftL, shiftR)
 import Data.Char                  (isAlphaNum, isDigit, toLower)
 import Data.List                  (intercalate, (\\))

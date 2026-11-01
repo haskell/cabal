@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module UnitTests.Distribution.Client.Init.Golden
   ( tests
   ) where
@@ -11,9 +9,6 @@ import Test.Tasty.HUnit
 import qualified Data.ByteString.Lazy.Char8 as BS8
 import Data.List.NonEmpty (fromList)
 import Data.List.NonEmpty as NEL (NonEmpty, drop)
-#if __GLASGOW_HASKELL__ < 804
-import Data.Semigroup ((<>))
-#endif
 
 import Distribution.CabalSpecVersion
 import Distribution.Client.Init.FlagExtractors
