@@ -26,6 +26,7 @@ module Distribution.Client.Types.Repo
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Data.Text (Text)
 import Network.URI (URI (..), nullURI, parseAbsoluteURI, uriToString)
 
 import Distribution.Simple.Utils (toUTF8BS)
@@ -57,7 +58,7 @@ data RemoteRepo = RemoteRepo
   -- to allow for a smooth transition from opt-in to opt-out security
   -- (once we switch to opt-out, all access to the central Hackage
   -- repository should be secure by default)
-  , remoteRepoRootKeys :: [String]
+  , remoteRepoRootKeys :: [Text]
   -- ^ Root key IDs (for bootstrapping)
   , remoteRepoKeyThreshold :: Int
   -- ^ Threshold for verification during bootstrapping
@@ -110,7 +111,7 @@ remoteRepoSecureLens :: Lens' RemoteRepo (Maybe Bool)
 remoteRepoSecureLens f s = fmap (\x -> s{remoteRepoSecure = x}) (f (remoteRepoSecure s))
 {-# INLINE remoteRepoSecureLens #-}
 
-remoteRepoRootKeysLens :: Lens' RemoteRepo [String]
+remoteRepoRootKeysLens :: Lens' RemoteRepo [Text]
 remoteRepoRootKeysLens f s = fmap (\x -> s{remoteRepoRootKeys = x}) (f (remoteRepoRootKeys s))
 {-# INLINE remoteRepoRootKeysLens #-}
 

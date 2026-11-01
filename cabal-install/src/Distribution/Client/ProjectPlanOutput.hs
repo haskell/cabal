@@ -71,6 +71,7 @@ import qualified Data.ByteString.Lazy as BS
 import Data.Either (fromRight)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 import System.FilePath
 import System.IO
@@ -286,9 +287,9 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             filter
               ((/= J.Null) . snd)
               [ "type" J..= jdisplay srpType
-              , "location" J..= J.String srpLocation
-              , "branch" J..= fmap J.String srpBranch
-              , "tag" J..= fmap J.String srpTag
+              , "location" J..= J.String (Text.unpack srpLocation)
+              , "branch" J..= fmap (J.String . Text.unpack) srpBranch
+              , "tag" J..= fmap (J.String . Text.unpack) srpTag
               , "subdir" J..= fmap J.String srpSubdir
               ]
 

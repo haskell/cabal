@@ -89,6 +89,7 @@ import Control.Monad.Trans
 import qualified Data.Char as Char
 import qualified Data.List as List
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 import System.Directory
   ( doesDirectoryExist
   , doesFileExist
@@ -155,7 +156,7 @@ validateSourceRepo = \repo -> do
   let rtype = srpType repo
   vcs <- Map.lookup rtype knownVCSs ?! SourceRepoRepoTypeUnsupported (srpToProxy repo) rtype
   let uri = srpLocation repo
-  return (repo, uri, rtype, vcs)
+  return (repo, Text.unpack uri, rtype, vcs)
   where
     a ?! e = maybe (Left e) Right a
 
@@ -252,7 +253,7 @@ cloneSourceRepo
           verbosity
           (vcsProgram vcs)
           repo
-          srcuri
+          (Text.unpack srcuri)
           destdir
 
 -- | Synchronise a set of 'SourceRepo's referring to the same repository with
@@ -323,7 +324,7 @@ vcsBzr =
         tagArgs :: [String]
         tagArgs = case srpTag repo of
           Nothing -> []
-          Just tag -> ["-r", "tag:" ++ tag]
+          Just tag -> ["-r", "tag:" ++ Text.unpack tag]
         verboseArg :: [String]
         verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
@@ -376,7 +377,7 @@ vcsDarcs =
         tagArgs :: [String]
         tagArgs = case srpTag repo of
           Nothing -> []
-          Just tag -> ["-t", tag]
+          Just tag -> ["-t", Text.unpack tag]
         verboseArg :: [String]
         verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
@@ -402,7 +403,7 @@ vcsDarcs =
         Right (_ : _ : _ : x : _)
           | Just tag <- (List.stripPrefix "tagged " . List.dropWhile Char.isSpace) x
           , Just tag' <- srpTag
-          , tag == tag' ->
+          , tag == Text.unpack tag' ->
               pure ()
         Left e | not (isDoesNotExistError e) -> throw e
         _ -> do
@@ -424,11 +425,11 @@ vcsDarcs =
               }
 
         cloneArgs :: [String]
-        cloneArgs = ["clone"] ++ tagArgs ++ [srpLocation, localDir] ++ verboseArg
+        cloneArgs = ["clone"] ++ tagArgs ++ [Text.unpack srpLocation, localDir] ++ verboseArg
         tagArgs :: [String]
         tagArgs = case srpTag of
           Nothing -> []
-          Just tag -> ["-t" ++ tag]
+          Just tag -> ["-t" ++ Text.unpack tag]
         verboseArg :: [String]
         verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
@@ -462,7 +463,7 @@ vcsGit =
     vcsCloneRepo verbosity prog repo srcuri destdir =
       [programInvocation prog cloneArgs]
         -- And if there's a tag, we have to do that in a second step:
-        ++ [git (resetArgs tag) | tag <- maybeToList (srpTag repo)]
+        ++ [git (resetArgs (Text.unpack tag)) | tag <- maybeToList (srpTag repo)]
         ++ [ whenGitModulesExists $ git $ ["submodule", "sync", "--recursive"] ++ verboseArg
            , whenGitModulesExists $ git $ ["submodule", "update", "--init", "--force", "--recursive"] ++ verboseArg
            ]
@@ -480,7 +481,7 @@ vcsGit =
             ++ branchArgs
             ++ verboseArg
         branchArgs = case srpBranch repo of
-          Just b -> ["--branch", b]
+          Just b -> ["--branch", Text.unpack b]
           Nothing -> []
         resetArgs tag = "reset" : verboseArg ++ ["--hard", tag, "--"]
         verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
@@ -578,7 +579,7 @@ vcsGit =
           --
           -- Option 2 is what Cabal has done historically, and we're keeping it
           -- for now. Option 1 is possible but seems to have little benefit.
-          git localDir ("fetch" : verboseArg ++ ["origin", ref])
+          git localDir ("fetch" : verboseArg ++ ["origin", Text.unpack ref])
           pure "FETCH_HEAD"
 
       -- Then, reset to the appropriate ref.
@@ -607,7 +608,7 @@ vcsGit =
               }
 
         cloneArgs =
-          ["clone", "--depth=1", "--no-checkout", loc, localDir]
+          ["clone", "--depth=1", "--no-checkout", Text.unpack loc, localDir]
             ++ case peer of
               Nothing -> []
               Just peerLocalDir -> ["--reference", peerLocalDir]
@@ -664,10 +665,10 @@ vcsHg =
             ++ tagArgs
             ++ verboseArg
         branchArgs = case srpBranch repo of
-          Just b -> ["--branch", b]
+          Just b -> ["--branch", Text.unpack b]
           Nothing -> []
         tagArgs = case srpTag repo of
-          Just t -> ["--rev", t]
+          Just t -> ["--rev", Text.unpack t]
           Nothing -> []
         verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
@@ -704,14 +705,14 @@ vcsHg =
               { progInvokeCwd = Just cwd
               }
         cloneArgs =
-          ["clone", "--noupdate", srpLocation repo, localDir]
+          ["clone", "--noupdate", Text.unpack (srpLocation repo), localDir]
             ++ verboseArg
         verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
         checkoutArgs =
           ["checkout", "--clean"]
             ++ tagArgs
         tagArgs = case srpTag repo of
-          Just t -> ["--rev", t]
+          Just t -> ["--rev", Text.unpack t]
           Nothing -> []
 
 hgProgram :: Program
@@ -850,7 +851,7 @@ vcsPijul =
     vcsCloneRepo _verbosity prog repo srcuri destdir =
       [programInvocation prog cloneArgs]
         -- And if there's a tag, we have to do that in a second step:
-        ++ [ (programInvocation prog (checkoutArgs tag))
+        ++ [ (programInvocation prog (checkoutArgs (Text.unpack tag)))
             { progInvokeCwd = Just destdir
             }
            | tag <- maybeToList (srpTag repo)
@@ -862,7 +863,7 @@ vcsPijul =
             ++ branchArgs
         branchArgs :: [String]
         branchArgs = case srpBranch repo of
-          Just b -> ["--from-branch", b]
+          Just b -> ["--from-branch", Text.unpack b]
           Nothing -> []
         checkoutArgs tag = "checkout" : [tag] -- TODO: this probably doesn't work either
     vcsSyncRepos
@@ -901,7 +902,7 @@ vcsPijul =
 
         cloneArgs :: [String]
         cloneArgs =
-          ["clone", loc, localDir]
+          ["clone", Text.unpack loc, localDir]
             ++ case peer of
               Nothing -> []
               Just peerLocalDir -> [peerLocalDir]
@@ -909,7 +910,7 @@ vcsPijul =
             loc = srpLocation
         checkoutArgs :: [String]
         checkoutArgs = "checkout" : ["--force", checkoutTarget, "--"]
-        checkoutTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag) -- TODO: this is definitely wrong.
+        checkoutTarget = maybe "HEAD" Text.unpack (srpBranch `mplus` srpTag) -- TODO: this is definitely wrong.
 
 pijulProgram :: Program
 pijulProgram =

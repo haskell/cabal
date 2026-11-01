@@ -10,6 +10,7 @@ module Distribution.Client.CmdConfigure
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import qualified Data.Text as Text
 import System.Directory
 import System.FilePath
 
@@ -157,7 +158,7 @@ configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
             configureTransport
               v
               (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
-              (flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
+              (fmap Text.unpack . flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
           (CondNode (imps, conf) bs) <-
             runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
               readProjectLocalExtraConfig

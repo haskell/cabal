@@ -519,7 +519,7 @@ ppHsc2hs bi lbi clbi =
                 , osxFrameworkDirs
                 , [ arg
                   | isOSX
-                  , opt <- map getSymbolicPath (PD.frameworks bi) ++ concatMap Installed.frameworks pkgs
+                  , opt <- map getSymbolicPath (PD.frameworks bi) ++ concatMap (map T.unpack . Installed.frameworks) pkgs
                   , arg <- ["-framework", opt]
                   ]
                 , -- Note that on ELF systems, wherever we use -L, we must also use -R
@@ -550,13 +550,13 @@ ppHsc2hs bi lbi clbi =
                       ["-L" ++ opt | opt <- Installed.libraryDirs pkg]
                         ++ [ "-Wl,-R," ++ opt | isELF, opt <- Installed.libraryDirs pkg
                            ]
-                        ++ [ "-l" ++ opt
+                        ++ [ "-l" ++ T.unpack opt
                            | opt <-
                               if withFullyStaticExe lbi
                                 then Installed.extraLibrariesStatic pkg
                                 else Installed.extraLibraries pkg
                            ]
-                        ++ Installed.ldOptions pkg
+                        ++ map T.unpack (Installed.ldOptions pkg)
                   ]
                 ]
 
@@ -592,7 +592,7 @@ ppHsc2hs bi lbi clbi =
                   | pkg <- pkgs
                   , opt <-
                       ["-I" ++ opt | opt <- Installed.includeDirs pkg]
-                        ++ Installed.ccOptions pkg
+                        ++ map T.unpack (Installed.ccOptions pkg)
                   ]
                 ]
 
@@ -674,7 +674,7 @@ ppC2hs bi lbi clbi =
                    | pkg <- pkgs
                    , opt <-
                       ["-I" ++ opt | opt <- Installed.includeDirs pkg]
-                        ++ [ opt | opt@('-' : c : _) <- Installed.ccOptions pkg,
+                        ++ [ opt | opt@('-' : c : _) <- map T.unpack $ Installed.ccOptions pkg,
                            -- c2hs uses the C ABI
                            -- We assume that there are only C sources
                            -- and C++ functions are exported via a C

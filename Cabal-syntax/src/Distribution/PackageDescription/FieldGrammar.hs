@@ -178,7 +178,7 @@ libraryFieldGrammar
      , c (List CommaVCat (Identity ModuleReexport) ModuleReexport)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List NoCommaFSep Token' String)
+     , c (List NoCommaFSep Token' Text)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
@@ -188,7 +188,7 @@ libraryFieldGrammar
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => LibraryName
@@ -240,9 +240,9 @@ foreignLibFieldGrammar
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List FSep (RelativePathNT Source File) (RelativePath Source File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
-     , c (List NoCommaFSep Token' String)
+     , c (List NoCommaFSep Token' Text)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => UnqualComponentName
@@ -281,9 +281,9 @@ executableFieldGrammar
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (RelativePathNT Source File)
-     , c (List NoCommaFSep Token' String)
+     , c (List NoCommaFSep Token' Text)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => UnqualComponentName
@@ -310,7 +310,7 @@ data TestSuiteStanza = TestSuiteStanza
   , _testStanzaMainIs :: Maybe (RelativePath Source File)
   , _testStanzaTestModule :: Maybe ModuleName
   , _testStanzaBuildInfo :: BuildInfo
-  , _testStanzaCodeGenerators :: [String]
+  , _testStanzaCodeGenerators :: [Text]
   }
 
 instance L.HasBuildInfo TestSuiteStanza where
@@ -332,7 +332,7 @@ testStanzaBuildInfo :: Lens' TestSuiteStanza BuildInfo
 testStanzaBuildInfo f s = fmap (\x -> s{_testStanzaBuildInfo = x}) (f (_testStanzaBuildInfo s))
 {-# INLINE testStanzaBuildInfo #-}
 
-testStanzaCodeGenerators :: Lens' TestSuiteStanza [String]
+testStanzaCodeGenerators :: Lens' TestSuiteStanza [Text]
 testStanzaCodeGenerators f s = fmap (\x -> s{_testStanzaCodeGenerators = x}) (f (_testStanzaCodeGenerators s))
 {-# INLINE testStanzaCodeGenerators #-}
 
@@ -343,12 +343,12 @@ testSuiteFieldGrammar
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
-     , c (List CommaFSep Token String)
+     , c (List CommaFSep Token Text)
      , c (List CommaVCat (Identity Dependency) Dependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List NoCommaFSep Token' String)
+     , c (List NoCommaFSep Token' Text)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
@@ -359,7 +359,7 @@ testSuiteFieldGrammar
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (RelativePathNT Source File)
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => g TestSuiteStanza TestSuiteStanza
@@ -495,7 +495,7 @@ benchmarkFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List NoCommaFSep Token' String)
+     , c (List NoCommaFSep Token' Text)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
@@ -506,7 +506,7 @@ benchmarkFieldGrammar
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (RelativePathNT Source File)
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => g BenchmarkStanza BenchmarkStanza
@@ -600,7 +600,7 @@ buildInfoFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List NoCommaFSep Token' String)
+     , c (List NoCommaFSep Token' Text)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
@@ -610,7 +610,7 @@ buildInfoFieldGrammar
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
-     , c (List VCat Token String)
+     , c (List VCat Token Text)
      , c (MQuoted Language)
      )
   => g BuildInfo BuildInfo
@@ -630,29 +630,24 @@ buildInfoFieldGrammar = do
   -- as otherwise cabal new-build cannot really work.
   --
   -- I.e. we don't want trigger unknown field warning
-  cppOptions <- map T.pack <$> monoidalFieldAla "cpp-options" (alaList' NoCommaFSep Token') (L.cppOptions . fromTextsLens)
+  cppOptions <- monoidalFieldAla "cpp-options" (alaList' NoCommaFSep Token') L.cppOptions
   asmOptions <-
-    map T.pack
-      <$> monoidalFieldAla "asm-options" (alaList' NoCommaFSep Token') (L.asmOptions . fromTextsLens)
-        ^^^ availableSince CabalSpecV3_0 []
+    monoidalFieldAla "asm-options" (alaList' NoCommaFSep Token') L.asmOptions
+      ^^^ availableSince CabalSpecV3_0 []
   cmmOptions <-
-    map T.pack
-      <$> monoidalFieldAla "cmm-options" (alaList' NoCommaFSep Token') (L.cmmOptions . fromTextsLens)
-        ^^^ availableSince CabalSpecV3_0 []
-  ccOptions <- map T.pack <$> monoidalFieldAla "cc-options" (alaList' NoCommaFSep Token') (L.ccOptions . fromTextsLens)
+    monoidalFieldAla "cmm-options" (alaList' NoCommaFSep Token') L.cmmOptions
+      ^^^ availableSince CabalSpecV3_0 []
+  ccOptions <- monoidalFieldAla "cc-options" (alaList' NoCommaFSep Token') L.ccOptions
   cxxOptions <-
-    map T.pack
-      <$> monoidalFieldAla "cxx-options" (alaList' NoCommaFSep Token') (L.cxxOptions . fromTextsLens)
-        ^^^ availableSince CabalSpecV2_2 []
+    monoidalFieldAla "cxx-options" (alaList' NoCommaFSep Token') L.cxxOptions
+      ^^^ availableSince CabalSpecV2_2 []
   jsppOptions <-
-    map T.pack
-      <$> monoidalFieldAla "jspp-options" (alaList' NoCommaFSep Token') (L.jsppOptions . fromTextsLens)
-        ^^^ availableSince CabalSpecV3_16 []
-  ldOptions <- map T.pack <$> monoidalFieldAla "ld-options" (alaList' NoCommaFSep Token') (L.ldOptions . fromTextsLens)
+    monoidalFieldAla "jspp-options" (alaList' NoCommaFSep Token') L.jsppOptions
+      ^^^ availableSince CabalSpecV3_16 []
+  ldOptions <- monoidalFieldAla "ld-options" (alaList' NoCommaFSep Token') L.ldOptions
   hsc2hsOptions <-
-    map T.pack
-      <$> monoidalFieldAla "hsc2hs-options" (alaList' NoCommaFSep Token') (L.hsc2hsOptions . fromTextsLens)
-        ^^^ availableSince CabalSpecV3_6 []
+    monoidalFieldAla "hsc2hs-options" (alaList' NoCommaFSep Token') L.hsc2hsOptions
+      ^^^ availableSince CabalSpecV3_6 []
   pkgconfigDepends <- monoidalFieldAla "pkgconfig-depends" (alaList CommaFSep) L.pkgconfigDepends
   frameworks <- monoidalFieldAla "frameworks" (alaList' FSep RelativePathNT) L.frameworks
   extraFrameworkDirs <- monoidalFieldAla "extra-framework-dirs" (alaList' FSep SymbolicPathNT) L.extraFrameworkDirs
@@ -695,18 +690,16 @@ buildInfoFieldGrammar = do
       ^^^ removedIn
         CabalSpecV3_0
         "Please use 'default-extensions' or 'other-extensions' fields."
-  extraLibs <- map T.pack <$> monoidalFieldAla "extra-libraries" (alaList' VCat Token) (L.extraLibs . fromTextsLens)
+  extraLibs <- monoidalFieldAla "extra-libraries" (alaList' VCat Token) L.extraLibs
   extraLibsStatic <-
-    map T.pack
-      <$> monoidalFieldAla "extra-libraries-static" (alaList' VCat Token) (L.extraLibsStatic . fromTextsLens)
-        ^^^ availableSince CabalSpecV3_8 []
-  extraGHCiLibs <- map T.pack <$> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token) (L.extraGHCiLibs . fromTextsLens)
-  extraBundledLibs <- map T.pack <$> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token) (L.extraBundledLibs . fromTextsLens)
-  extraLibFlavours <- map T.pack <$> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) (L.extraLibFlavours . fromTextsLens)
+    monoidalFieldAla "extra-libraries-static" (alaList' VCat Token) L.extraLibsStatic
+      ^^^ availableSince CabalSpecV3_8 []
+  extraGHCiLibs <- monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token) L.extraGHCiLibs
+  extraBundledLibs <- monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token) L.extraBundledLibs
+  extraLibFlavours <- monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) L.extraLibFlavours
   extraDynLibFlavours <-
-    map T.pack
-      <$> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) (L.extraDynLibFlavours . fromTextsLens)
-        ^^^ availableSince CabalSpecV3_0 []
+    monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
+      ^^^ availableSince CabalSpecV3_0 []
   extraLibDirs <- monoidalFieldAla "extra-lib-dirs" (alaList' FSep SymbolicPathNT) L.extraLibDirs
   extraLibDirsStatic <-
     monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep SymbolicPathNT) L.extraLibDirsStatic
@@ -749,10 +742,10 @@ hsSourceDirsGrammar =
     wrongLens f bi = (\fps -> set L.hsSourceDirs fps bi) <$> f []
 
 optionsFieldGrammar
-  :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
+  :: (FieldGrammar c g, c (List NoCommaFSep Token' Text))
   => g BuildInfo (PerCompilerFlavor [Text])
 optionsFieldGrammar =
-  perCompilerFlavorFromStrings
+  PerCompilerFlavor
     <$> monoidalFieldAla "ghc-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-options" (alaList' NoCommaFSep Token') (extract GHCJS)
     -- NOTE: Hugs, NHC and JHC are not supported anymore, but these
@@ -764,46 +757,43 @@ optionsFieldGrammar =
     -- NOTE: These are used by MicroCabal for MicroHs
     <* knownField "mhs-options"
   where
-    extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.options . lookupLens flavor . fromTextsLens
+    extract :: CompilerFlavor -> ALens' BuildInfo [Text]
+    extract flavor = L.options . lookupLens flavor
 
 profOptionsFieldGrammar
-  :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
+  :: (FieldGrammar c g, c (List NoCommaFSep Token' Text))
   => g BuildInfo (PerCompilerFlavor [Text])
 profOptionsFieldGrammar =
-  perCompilerFlavorFromStrings
+  PerCompilerFlavor
     <$> monoidalFieldAla "ghc-prof-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-prof-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
-    extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.profOptions . lookupLens flavor . fromTextsLens
+    extract :: CompilerFlavor -> ALens' BuildInfo [Text]
+    extract flavor = L.profOptions . lookupLens flavor
 
 sharedOptionsFieldGrammar
-  :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
+  :: (FieldGrammar c g, c (List NoCommaFSep Token' Text))
   => g BuildInfo (PerCompilerFlavor [Text])
 sharedOptionsFieldGrammar =
-  perCompilerFlavorFromStrings
+  PerCompilerFlavor
     <$> monoidalFieldAla "ghc-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
-    extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.sharedOptions . lookupLens flavor . fromTextsLens
+    extract :: CompilerFlavor -> ALens' BuildInfo [Text]
+    extract flavor = L.sharedOptions . lookupLens flavor
 
 profSharedOptionsFieldGrammar
-  :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
+  :: (FieldGrammar c g, c (List NoCommaFSep Token' Text))
   => g BuildInfo (PerCompilerFlavor [Text])
 profSharedOptionsFieldGrammar =
-  perCompilerFlavorFromStrings
+  PerCompilerFlavor
     <$> monoidalFieldAla "ghc-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
       ^^^ availableSince CabalSpecV3_14 []
     <*> monoidalFieldAla "ghcjs-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
       ^^^ availableSince CabalSpecV3_14 []
   where
-    extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.profSharedOptions . lookupLens flavor . fromTextsLens
-
-perCompilerFlavorFromStrings :: [String] -> [String] -> PerCompilerFlavor [Text]
-perCompilerFlavorFromStrings xs ys = PerCompilerFlavor (map T.pack xs) (map T.pack ys)
+    extract :: CompilerFlavor -> ALens' BuildInfo [Text]
+    extract flavor = L.profSharedOptions . lookupLens flavor
 
 lookupLens :: (Functor f, Monoid v) => CompilerFlavor -> LensLike' f (PerCompilerFlavor v) v
 lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
@@ -837,7 +827,7 @@ sourceRepoFieldGrammar
   -> g SourceRepo SourceRepo
 sourceRepoFieldGrammar repoKind = do
   repoType <- optionalField "type" L.repoType
-  repoLocation <- fmap T.unpack <$> freeTextField "location" L.repoLocation
+  repoLocation <- freeTextField "location" L.repoLocation
   repoModule <- optionalFieldAla "module" Token L.repoModule
   repoBranch <- optionalFieldAla "branch" Token L.repoBranch
   repoTag <- optionalFieldAla "tag" Token L.repoTag
@@ -970,7 +960,3 @@ _syntaxExtensions =
           | e <- [minBound .. maxBound]
           , e `notElem` [Safe, Unsafe, Trustworthy]
           ]
-
-fromTextsLens :: Lens' [Text] [String]
-fromTextsLens f = fmap (map T.pack) . f . map T.unpack
-{-# INLINE fromTextsLens #-}
