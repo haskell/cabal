@@ -9,6 +9,7 @@ module Distribution.Types.InstalledPackageInfo.FieldGrammar
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Text (Text)
 import Distribution.Backpack
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens (Lens', (&), (.~))
@@ -27,6 +28,7 @@ import Distribution.Version
 
 import qualified Data.Char as Char
 import qualified Data.Map as Map
+import qualified Data.Text as T
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Text.PrettyPrint as Disp
@@ -61,7 +63,7 @@ ipiFieldGrammar
      , c (List FSep (Identity UnitId) UnitId)
      , c (List FSep (MQuoted ModuleName) ModuleName)
      , c (List FSep FilePathNT String)
-     , c (List FSep Token String)
+     , c (List FSep Token Text)
      , c (MQuoted MungedPackageName)
      , c (MQuoted Version)
      , c CompatPackageKey
@@ -81,7 +83,7 @@ ipiFieldGrammar =
     -- Basic fields
     <@> optionalFieldDef "id" L.installedUnitId (mkUnitId "")
     <@> optionalFieldDefAla "instantiated-with" InstWith L.instantiatedWith []
-    <@> optionalFieldDefAla "key" CompatPackageKey L.compatPackageKey ""
+    <@> (T.pack <$> optionalFieldDefAla "key" CompatPackageKey (L.compatPackageKey . fromTextLens) mempty)
     <@> optionalFieldDefAla "license" SpecLicenseLenient L.license (Left SPDX.NONE)
     <@> freeTextFieldDef "copyright" L.copyright
     <@> freeTextFieldDef "maintainer" L.maintainer
@@ -110,7 +112,7 @@ ipiFieldGrammar =
     <@> monoidalFieldAla "extra-libraries-static" (alaList' FSep Token) L.extraLibrariesStatic
     <@> monoidalFieldAla "extra-ghci-libraries" (alaList' FSep Token) L.extraGHCiLibraries
     <@> monoidalFieldAla "include-dirs" (alaList' FSep FilePathNT) L.includeDirs
-    <@> monoidalFieldAla "includes" (alaList' FSep FilePathNT) L.includes
+    <@> (map T.pack <$> monoidalFieldAla "includes" (alaList' FSep FilePathNT) (L.includes . fromTextsLens))
     <@> monoidalFieldAla "depends" (alaList FSep) L.depends
     <@> monoidalFieldAla "abi-depends" (alaList FSep) L.abiDepends
     <@> monoidalFieldAla "cc-options" (alaList' FSep Token) L.ccOptions
@@ -318,3 +320,11 @@ basicFieldGrammar = do
             else _basicLibVisibility'
       , ..
       }
+
+fromTextLens :: Lens' Text String
+fromTextLens f = fmap T.pack . f . T.unpack
+{-# INLINE fromTextLens #-}
+
+fromTextsLens :: Lens' [Text] [String]
+fromTextsLens f = fmap (map T.pack) . f . map T.unpack
+{-# INLINE fromTextsLens #-}

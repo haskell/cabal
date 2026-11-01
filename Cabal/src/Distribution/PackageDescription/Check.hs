@@ -47,6 +47,7 @@ import Prelude ()
 
 import Data.List (group)
 import qualified Data.List as L
+import Data.Text (Text)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
@@ -85,6 +86,7 @@ import qualified System.Directory (listDirectory)
 import qualified System.FilePath.Windows as FilePath.Windows (isValid)
 
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import qualified Distribution.Utils.ShortText as ShortText
 import qualified Distribution.Utils.String as String
 
@@ -780,11 +782,11 @@ checkMissingVcsInfo rs =
 -- https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_cons_4
 checkGitProtocol
   :: Monad m
-  => Maybe String -- Repository location
+  => Maybe Text -- Repository location
   -> CheckM m ()
 checkGitProtocol mloc =
   checkP
-    (fmap (isPrefixOf "git://") mloc == Just True)
+    (fmap (Text.isPrefixOf (Text.pack "git://")) mloc == Just True)
     (PackageBuildWarning GitProtocol)
 
 -- ------------------------------------------------------------

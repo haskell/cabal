@@ -8,6 +8,7 @@ module Distribution.Client.Types.PackageLocation
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import qualified Data.Text as T
 import Network.URI (URI)
 
 import Distribution.Types.PackageId (PackageId)
@@ -43,7 +44,7 @@ instance Pretty (PackageLocation local) where
   pretty (RemoteTarballPackage uri _) = showToken $ show uri
   pretty (RepoTarballPackage repo pid _) = pretty pid <> showToken "@" <> pretty (repoName repo)
   pretty (RemoteSourceRepoPackage sourceRepo _) =
-    pretty (srpType sourceRepo) <+> showToken (srpLocation sourceRepo)
+    pretty (srpType sourceRepo) <+> showToken (T.unpack (srpLocation sourceRepo))
 
 instance Binary local => Binary (PackageLocation local)
 instance Structured local => Structured (PackageLocation local)
