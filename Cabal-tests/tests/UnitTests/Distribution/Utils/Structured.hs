@@ -55,14 +55,13 @@ md5Check proxy md5Int = structureHash proxy @?= md5FromInteger md5Int
 --
 -- > cabal run Cabal-tests:unit-tests -- -p "/Structured/"
 --
--- Note: These golden hashes reflect length-prefixed encoding on the pre-Text
--- BuildInfo types and require recalculation via Cabal-tests:unit-tests once
--- evaluated under GHC with the updated Text fields from upstream commit 2115a1afebd5.
+-- Note: These golden hashes reflect length-prefixed encoding on types incorporating
+-- the updated Text fields from upstream SourceRepo / SourceRepositoryPackage.
 
 md5CheckGenericPackageDescription :: Proxy GenericPackageDescription -> Assertion
 md5CheckGenericPackageDescription proxy = md5Check proxy
-    0x9a954d83a0a8e766784c35279b08b277
+    0xd7cc2d8233a052535f6a1cd8d2fde667
 
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
-    0xb0a6e46660b21eb5fb46d2e615e641a0
+    0xafb54e07d2553924b71f679aace917bb
