@@ -53,6 +53,49 @@ jobs:
     with:
       branches: '["${{ github.ref }}"]'
 
+  ghcup:
+    name: ghcup
+    needs: [ "release-workflow" ]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: artifacts-*
+          merge-multiple: true
+          path: ./out
+
+      - name: Install requirements
+        run: |
+          sudo apt-get update && sudo apt-get install -y tar xz-utils rclone
+        shell: bash
+
+      - name: GHCup release channel
+        run: |
+          tar xf out/cabal-install-*-x86_64-linux-unknown.tar.xz
+          rm -f plan.json
+          RELEASE_VER=$(./cabal --numeric-version)
+          rm cabal
+          cd out/
+          bash ../.github/scripts/ghcup_yaml.bash \
+            "${RELEASE_VER}" \
+            "${RCLONE_CONFIG_CABAL_ENDPOINT}" \
+            "${{ github.event.pull_request.number }}" \
+            > ghcup-${{ github.event.pull_request.number }}.yaml
+          rclone copy . cabal:cabal-install/${{ github.event.pull_request.number }}/
+        env:
+          RCLONE_CONFIG_CABAL_TYPE: s3
+          RCLONE_CONFIG_CABAL_NO_CHECK_BUCKET: true
+          RCLONE_CONFIG_CABAL_ACL: ""
+          RCLONE_CONFIG_CABAL_ACCESS_KEY_ID: ${{ secrets.RCLONE_CONFIG_CABAL_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_CABAL_SECRET_ACCESS_KEY: ${{ secrets.RCLONE_CONFIG_CABAL_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_CABAL_ENDPOINT: ${{ secrets.RCLONE_CONFIG_CABAL_ENDPOINT }}
+          RCLONE_CONFIG_CABAL_PROVIDER: Other
+
   release:
     name: release
     needs: [ "release-workflow" ]
