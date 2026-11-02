@@ -385,7 +385,7 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
       :: PreProcessCommand
       -> (SymbolicPathX allowAbsolute1 Pkg to1, FilePath)
       -> (SymbolicPathX allowAbsolute Pkg to, FilePath)
-      -> IO ()
+      -> IO [MonitorFilePath]
     runPreProcessorWithHsBootHack
       runPreProcessor
       (inBaseDir, inRelativeFile)
@@ -408,6 +408,12 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
           outBoot = replaceExtension outFile "hs-boot"
         exists <- doesFileExist inBoot
         when exists $ copyFileVerbose verbosity inBoot outBoot
+        return $
+          [monitorFileHashed inFile, monitorFileExistence outFile]
+            ++ if exists
+              then [monitorFileHashed inBoot, monitorFileExistence outBoot]
+              else [monitorNonExistentFile inBoot]
+
 
 -- ------------------------------------------------------------
 
