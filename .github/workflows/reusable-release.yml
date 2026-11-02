@@ -234,9 +234,7 @@ jobs:
 
   build-mac-aarch64:
     name: Build binary (Mac aarch64)
-    # macos-15 rather than macos-latest until actions/runner-images#14940
-    # is fixed; see #12465.
-    runs-on: macos-15
+    runs-on: macos-latest
     env:
       MACOSX_DEPLOYMENT_TARGET: 10.13
       ADD_CABAL_ARGS: ""
@@ -539,9 +537,7 @@ jobs:
 
   test-mac-aarch64:
     name: Test binary (Mac aarch64)
-    # macos-15 rather than macos-latest until actions/runner-images#14940
-    # is fixed; see #12465.
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: ["build-mac-aarch64"]
     if: ${{ inputs.test }}
     env:
