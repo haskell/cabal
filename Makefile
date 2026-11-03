@@ -89,6 +89,8 @@ ruff-version-check:
 			exit 1; \
 		fi
 
+# Ruff applies safe fixes. Unsafe ones must be fixed by hand.
+# SEE: https://docs.astral.sh/ruff/linter/#fix-safety
 .PHONY: style-python
 style-python: ruff-version-check ## Format and lint the Python files with ruff.
 	@$(RUFF) format $(PYTHON_FILES) && $(RUFF) check --fix $(PYTHON_FILES)
