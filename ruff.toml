@@ -1,0 +1,11 @@
+line-length = 100
+target-version = "py39"
+
+[format]
+# Keep the quote style each file already uses so the initial reformat is minimal.
+quote-style = "preserve"
+
+[lint]
+# pyflakes (F) and pycodestyle (E, W) only: real defects such as unused imports
+# and bare excepts, without the stylistic rule sets.
+select = ["E", "F", "W"]

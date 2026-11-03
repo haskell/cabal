@@ -76,6 +76,17 @@ style-commit: ## Run the code styler on the previous commit.
 	@git diff --name-only HEAD $(COMMIT) -- $(FORMAT_DIRS) \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
+RUFF := uvx ruff@0.17.3
+PYTHON_FILES := doc/cabaldomain.py doc/conf.py bootstrap/bootstrap.py
+
+.PHONY: style-python
+style-python: ## Format and lint the Python files with ruff.
+	@$(RUFF) format $(PYTHON_FILES) && $(RUFF) check --fix $(PYTHON_FILES)
+
+.PHONY: style-python-check
+style-python-check: ## Check Python formatting and lint without changing files.
+	@$(RUFF) format --check $(PYTHON_FILES) && $(RUFF) check $(PYTHON_FILES)
+
 .PHONY: whitespace
 whitespace: ## Run fix-whitespace in check mode.
 	fix-whitespace --check --verbose
