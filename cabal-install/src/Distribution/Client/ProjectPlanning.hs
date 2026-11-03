@@ -4364,10 +4364,9 @@ pruneInstallPlanPass2 pkgs =
     perPkgDeps :: [(WithMachine UnitId, [WithMachine UnitId], [WithMachine UnitId])]
     perPkgDeps =
       [ ( Graph.nodeKey pkg
-        , -- Library edges are machine-preserving, so a package's library
-          -- dependencies sit on its own machine; build-tool edges carry the
-          -- machine the solver assigned them.
-          map (WithMachine (elabMachine pkg)) (elabOrderLibDependencies pkg)
+        , -- Already machine-tagged: the setup dependencies of a host package
+          -- sit on the build machine.
+          elabOrderLibDependencies pkg
         , elabOrderExeDependencies pkg
         )
       | InstallPlan.Configured pkg <- pkgs

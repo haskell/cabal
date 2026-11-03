@@ -141,7 +141,6 @@ import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Version
 
 import qualified Data.ByteString.Lazy as LBS
-import Data.Foldable (fold)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import Distribution.Verbosity
@@ -585,52 +584,12 @@ instance IsNode ElaboratedConfiguredPackage where
   type Key ElaboratedConfiguredPackage = WithMachine UnitId
   nodeKey elab = WithMachine (elabMachine elab) (elabUnitId elab)
 
-  -- The guiding rule is: a neighbour's machine is whatever the solver assigned
-  -- the dependency, and must be /read/ from the resolved plan node, never
-  -- recomputed. Recomputation is what made build-tool/setup edges wrong before
-  -- (they used an earlier @toolMachine@ that invented the 'Build' machine even for
-  -- a non-cross build that has no separate build machine). So build-tool and
-  -- setup edges come from 'elabOrderExeDependencies' and
-  -- 'elabSetupLibDependencies', both of which store the machine of the plan node
-  -- the solver resolved the dependency to.
-  --
-  -- Library edges are the one exception, and use this package's own
-  -- 'elabMachine' rather than reading it off each resolved lib node. The more
-  -- principled thing would be to read it, symmetrically with the exe/setup
-  -- edges above, but we deliberately do not, for two reasons:
-  --
-  --   1. It would be redundant. A library edge is machine-/preserving/ by
-  --      definition: the solver only changes machine across build-tool/setup
-  --      boundaries (the single 'toolMachine' in the solver's Dependency module),
-  --      never across a library dependency, because a library links into a
-  --      same-machine artifact. So a machine-@s@ node's library dependencies are
-  --      always themselves at machine @s@ == 'elabMachine', and reading the node
-  --      would return exactly that.
-  --   2. It is not even cleanly possible for a per-component build. There the
-  --      library order dependencies ('compOrderLibDependencies') come from the
-  --      Backpack mix-in linker output (@lc_includes@, abstract 'OpenUnitId's),
-  --      not from the resolved 'SolverId' plan nodes, so there is no resolved
-  --      node in hand to read a machine from without threading machine through the
-  --      linker. Reading it only on the (easy) package path would leave the two
-  --      paths asymmetric for no behavioural gain.
-  --
-  -- Setup dependencies are the deps of the @Setup.hs@ component, so they are
-  -- excluded from 'libDeps' (which takes only the non-setup component deps)
-  -- and added with their own (solver-assigned) machine instead. They are
-  -- excluded by component, not by subtracting their 'UnitId's from the full
-  -- order list: a library dependency and a setup dependency may share a
-  -- 'UnitId' while sitting at different machines (e.g. @base@ when the build
-  -- and host compilers agree on it), and subtracting by 'UnitId' would drop
-  -- the library edge.
+  -- Each neighbour carries the machine of the plan node it refers to; see
+  -- 'elabOrderLibDependencies' and 'elabOrderExeDependencies'.
   nodeNeighbors elab =
     ordNub $
-      map (WithMachine (elabMachine elab)) libDeps
+      elabOrderLibDependencies elab
         ++ elabOrderExeDependencies elab
-        ++ map (fmap fromConfiguredId) (elabSetupLibDependencies elab)
-    where
-      libDeps = case elabPkgOrComp elab of
-        ElabPackage pkg -> map (fromConfiguredId . fst) (CD.nonSetupDeps (pkgLibDependencies pkg))
-        ElabComponent comp -> compOrderLibDependencies comp
 
 instance HasMachine ElaboratedConfiguredPackage where
   machineOf = elabMachine
@@ -682,16 +641,37 @@ elabDistDirParams shared elab =
     , distParamOptimization = LBC.withOptimization $ elabBuildOptions elab
     }
 
--- | The library "order dependencies" of a package: the 'UnitId's of the
--- libraries that must be built before it.  Used purely for build ordering.
-elabOrderLibDependencies :: ElaboratedConfiguredPackage -> [UnitId]
+-- | The library dependencies of a package, including those of its
+-- @Setup.hs@ script, as the plan keys of the nodes they refer to.
+--
+-- A setup dependency carries the machine the solver assigned it, read from
+-- 'elabSetupLibDependencies': when cross-compiling, the setup dependencies of
+-- a host package sit on the build machine. It is read, not recomputed;
+-- recomputing it is what made setup and build-tool edges wrong before, when
+-- an earlier @toolMachine@ invented a 'Build' machine for a non-cross build.
+--
+-- The other library dependencies take the package's own 'elabMachine'. The
+-- solver changes machine only across build-tool and setup boundaries (the
+-- single 'toolMachine' in its Dependency module), never across a library
+-- dependency, because a library links into an artifact for the same machine.
+-- Reading the machine off each node would return 'elabMachine' anyway, and is
+-- not cleanly possible for a per-component build: there
+-- 'compOrderLibDependencies' comes from the Backpack mix-in linker output
+-- (@lc_includes@, abstract 'OpenUnitId's), not from resolved plan nodes.
+--
+-- The setup dependencies are split off by component, not by subtracting
+-- their 'UnitId's from the full list. A library dependency and a setup
+-- dependency may share a 'UnitId' on different machines (an in-place unit id
+-- does not mention the compiler, and @base@ coincides when the two compilers
+-- agree on it), and subtracting would drop the library edge.
+elabOrderLibDependencies :: ElaboratedConfiguredPackage -> [WithMachine UnitId]
 elabOrderLibDependencies elab =
   case elabPkgOrComp elab of
     ElabPackage pkg ->
-      map (newSimpleUnitId . confInstId) $
-        ordNub $
-          fold (map fst <$> pkgLibDependencies pkg)
-    ElabComponent comp -> compOrderLibDependencies comp
+      ordNub $
+        map (WithMachine (elabMachine elab) . fromConfiguredId . fst) (CD.nonSetupDeps (pkgLibDependencies pkg))
+          ++ map (fmap fromConfiguredId) (elabSetupLibDependencies elab)
+    ElabComponent comp -> map (WithMachine (elabMachine elab)) (compOrderLibDependencies comp)
 
 -- | The library dependencies (i.e., the libraries we depend on, NOT
 -- the dependencies of the library), NOT including setup dependencies.
