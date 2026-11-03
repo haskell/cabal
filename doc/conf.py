@@ -11,6 +11,7 @@ import os
 # Support for :base-ref:, etc.
 sys.path.insert(0, os.path.abspath('.'))
 import cabaldomain
+from sphinx import addnodes
 
 version = "3.19.0.0"
 
@@ -154,8 +155,6 @@ texinfo_documents = [
         'Compilers',
     ),
 ]
-
-from sphinx import addnodes
 
 
 def parse_ghci_cmd(env, sig, signode):

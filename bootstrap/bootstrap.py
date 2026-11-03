@@ -7,12 +7,6 @@ bootstrap.py - bootstrapping utility for cabal-install.
 See bootstrap/README.md for usage instructions.
 """
 
-USAGE = """
-This utility is only intended for use in building cabal-install
-on a new platform. If you already have a functional (if dated) cabal-install
-please rather run `cabal install .`.
-"""
-
 import argparse
 from enum import Enum
 import hashlib
@@ -28,6 +22,12 @@ import http.client
 import time
 from textwrap import dedent
 from typing import Optional, Dict, List, Tuple, NewType, BinaryIO, NamedTuple
+
+USAGE = """
+This utility is only intended for use in building cabal-install
+on a new platform. If you already have a functional (if dated) cabal-install
+please rather run `cabal install .`.
+"""
 
 # logging.basicConfig(level=logging.INFO)
 
@@ -372,12 +372,12 @@ def archive_name(cabalversion):
             i = subprocess_run(['lsb_release', '-si'], stdout=subprocess.PIPE, encoding='UTF-8')
             r = subprocess_run(['lsb_release', '-sr'], stdout=subprocess.PIPE, encoding='UTF-8')
             version = linuxname(i.stdout, r.stdout)
-        except:
+        except Exception:
             try:
                 with open('/etc/alpine-release') as f:
                     alpinever = f.read().strip()
                     return f'alpine-{alpinever}'
-            except:
+            except Exception:
                 pass
     elif system == 'darwin':
         version = 'darwin-' + macname(platform.mac_ver()[0])
@@ -527,7 +527,8 @@ def main() -> None:
         plan = gen_fetch_plan(info)
 
         print(
-            f'Fetching sources to bootstrap cabal-install with GHC {ghc.version} at {ghc.ghc_path}...'
+            f'Fetching sources to bootstrap cabal-install with GHC {ghc.version} '
+            f'at {ghc.ghc_path}...'
         )
 
         # In temporary directory, create a directory which we will archive

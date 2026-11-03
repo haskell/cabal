@@ -427,8 +427,6 @@ class CabalPackageSection(CabalObject):
         By default make an object description from name and adding
         either deprecated or since as annotation.
         '''
-        env = self.state.document.settings.env
-
         sig = sig.strip()
         parts = sig.split(' ', 1)
         name = parts[0]
@@ -476,8 +474,6 @@ class CabalField(CabalObject):
         By default make an object description from name and adding
         either deprecated or since as annotation.
         '''
-        env = self.state.document.settings.env
-
         sig = sig.strip()
         parts = sig.split(':', 1)
         name = parts[0]
@@ -553,8 +549,6 @@ class CabalConfigSection(CabalObject):
         By default make an object description from name and adding
         either deprecated or since as annotation.
         '''
-        env = self.state.document.settings.env
-
         sig = sig.strip()
         parts = sig.split(' ', 1)
         name = parts[0]
@@ -598,10 +592,8 @@ class ConfigField(CabalField):
             section = self.env.ref_context.get(self.section_key)
             if section is not None:
                 parts = ('cfg-flag', section, name)
-                indexname = section + ':' + name
             else:
                 parts = ('cfg-flag', name)
-                indexname = name
             indexentry = name + '; cabal project option'
             targetname = '-'.join(parts)
             return indexentry, targetname
@@ -887,7 +879,7 @@ class CabalDomain(Domain):
     def clear_doc(self, docname):
         for k in ['pkg-sections', 'pkg-fields', 'cfg-sections', 'cfg-fields', 'cfg-flags']:
             to_del = []
-            for name, (fn, _, _) in self.data[k].items():
+            for name, (fn, _target, _meta) in self.data[k].items():
                 if fn == docname:
                     to_del.append(name)
             for name in to_del:
