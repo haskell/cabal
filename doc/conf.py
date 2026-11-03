@@ -7,7 +7,6 @@
 #
 import sys
 import os
-import sphinx_rtd_theme
 
 # Support for :base-ref:, etc.
 sys.path.insert(0, os.path.abspath('.'))
@@ -15,12 +14,7 @@ import cabaldomain
 
 version = "3.19.0.0"
 
-extensions = [
-    'sphinx.ext.extlinks',
-    'sphinx.ext.todo',
-    'sphinx-jsonschema',
-    'sphinxnotes.strike'
-]
+extensions = ['sphinx.ext.extlinks', 'sphinx.ext.todo', 'sphinx-jsonschema', 'sphinxnotes.strike']
 
 templates_path = ['_templates']
 source_suffix = '.rst'
@@ -30,22 +24,20 @@ root_doc = 'index'
 # extlinks -- see http://www.sphinx-doc.org/en/stable/ext/extlinks.html
 extlinks = {
     'issue': ('https://github.com/haskell/cabal/issues/%s', 'issue #%s'),
-
     'ghc-wiki': ('https://gitlab.haskell.org/ghc/ghc/-/wikis/%s', '%s'),
     'ghc-ticket': ('https://gitlab.haskell.org/ghc/ghc/-/issues/%s', 'GHC issue #%s'),
-
     'hackage-pkg': ('http://hackage.haskell.org/package/%s', '%s'),
 }
 
 # General information about the project.
-project = u'Cabal'
-copyright = u'2003-2026, Cabal Team'
+project = 'Cabal'
+copyright = '2003-2026, Cabal Team'
 # N.B. version comes from ghc_config
 release = version  # The full version, including alpha/beta/rc tags.
 
 # Syntax highlighting
 highlight_language = 'cabal'
-#pygments_style = 'tango'
+# pygments_style = 'tango'
 
 primary_domain = 'cabal'
 
@@ -95,7 +87,7 @@ html_theme_options = {
 html_use_opensearch = 'https://cabal.readthedocs.io/en/stable'
 
 # This is the file name suffix for HTML files (e.g. ".xhtml").
-#html_file_suffix = None
+# html_file_suffix = None
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'CabalUsersGuide'
@@ -122,13 +114,12 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'users_guide.tex', u'GHC Users Guide Documentation',
-   u'GHC Team', 'manual'),
+    ('index', 'users_guide.tex', 'GHC Users Guide Documentation', 'GHC Team', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-#latex_logo = 'images/logo.pdf'
+# latex_logo = 'images/logo.pdf'
 latex_logo = 'images/Cabal-dark.png'
 
 # If true, show page references after internal links.
@@ -141,12 +132,10 @@ todo_include_todos = True
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    ('cabal', 'cabal', 'The Haskell Cabal', 'The Cabal Team', 1)
-]
+man_pages = [('cabal', 'cabal', 'The Haskell Cabal', 'The Cabal Team', 1)]
 
 # If true, show URL addresses after external links.
-#man_show_urls = False
+# man_show_urls = False
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -155,13 +144,19 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'CabalUsersGuide', u'Cabal Users Guide',
-   u'Cabal Team', 'CabalUsersGuide', 'The Haskell Cabal.',
-   'Compilers'),
+    (
+        'index',
+        'CabalUsersGuide',
+        'Cabal Users Guide',
+        'Cabal Team',
+        'CabalUsersGuide',
+        'The Haskell Cabal.',
+        'Compilers',
+    ),
 ]
 
 from sphinx import addnodes
-from docutils import nodes
+
 
 def parse_ghci_cmd(env, sig, signode):
     name = sig.split(';')[0]
@@ -169,17 +164,20 @@ def parse_ghci_cmd(env, sig, signode):
     signode += addnodes.desc_name(name, sig)
     return name
 
+
 def parse_flag(env, sig, signode):
     import re
+
     names = []
     for i, flag in enumerate(sig.split(',')):
         flag = flag.strip()
         sep = '='
         parts = flag.split('=')
         if len(parts) == 1:
-            sep=' '
+            sep = ' '
             parts = flag.split()
-        if len(parts) == 0: continue
+        if len(parts) == 0:
+            continue
 
         name = parts[0]
         names.append(name)
@@ -193,36 +191,47 @@ def parse_flag(env, sig, signode):
 
     return names[0]
 
+
 def setup(app):
-    from sphinx.util.docfields import Field, TypedField
+    from sphinx.util.docfields import Field
 
     increase_python_stack()
 
     # the :ghci-cmd: directive used in ghci.rst
-    app.add_object_type('ghci-cmd', 'ghci-cmd',
-                        parse_node=parse_ghci_cmd,
-                        objname='GHCi command',
-                        indextemplate='pair: %s; GHCi command')
+    app.add_object_type(
+        'ghci-cmd',
+        'ghci-cmd',
+        parse_node=parse_ghci_cmd,
+        objname='GHCi command',
+        indextemplate='pair: %s; GHCi command',
+    )
 
-    app.add_object_type('ghc-flag', 'ghc-flag',
-                        objname='GHC command-line option',
-                        parse_node=parse_flag,
-                        indextemplate='pair: %s; GHC option',
-                        doc_field_types=[
-                            Field('since', label='Introduced in GHC version', names=['since']),
-                            Field('default', label='Default value', names=['default']),
-                            Field('static')
-                        ])
+    app.add_object_type(
+        'ghc-flag',
+        'ghc-flag',
+        objname='GHC command-line option',
+        parse_node=parse_flag,
+        indextemplate='pair: %s; GHC option',
+        doc_field_types=[
+            Field('since', label='Introduced in GHC version', names=['since']),
+            Field('default', label='Default value', names=['default']),
+            Field('static'),
+        ],
+    )
 
-    app.add_object_type('rts-flag', 'rts-flag',
-                        objname='runtime system command-line option',
-                        parse_node=parse_flag,
-                        indextemplate='pair: %s; RTS option',
-                        doc_field_types=[
-                            Field('since', label='Introduced in GHC version', names=['since']),
-                        ])
+    app.add_object_type(
+        'rts-flag',
+        'rts-flag',
+        objname='runtime system command-line option',
+        parse_node=parse_flag,
+        indextemplate='pair: %s; RTS option',
+        doc_field_types=[
+            Field('since', label='Introduced in GHC version', names=['since']),
+        ],
+    )
 
     cabaldomain.setup(app)
+
 
 def increase_python_stack():
     # Workaround sphinx-build recursion limit overflow:
