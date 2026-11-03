@@ -18,6 +18,7 @@ import Distribution.Client.Errors
 import Distribution.Client.ProjectPlanning hiding (pruneInstallPlanToTargets)
 import Distribution.Client.ProjectPlanning.Machine (withoutMachine)
 import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.Toolchain (Machine (..))
 import Distribution.Client.Types.ConfiguredId (confInstId)
 import Distribution.Client.Utils hiding (pvpize)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo, installedComponentId)
@@ -138,10 +139,12 @@ genBoundsAction flags targetStrings globalFlags =
     let genBoundsActionForPkg :: ElaboratedConfiguredPackage -> [GenBoundsResult]
         genBoundsActionForPkg pkg =
           -- Step 5: Match up the user specified targets with the local packages.
+          -- The targets are host-machine nodes (see 'availableTargets').
           case Map.lookup (installedUnitId pkg) targets of
-            Nothing -> []
-            Just tgts ->
-              map (\(tgt, _) -> getBoundsForComponent tgt pkg pkgVersionMap) tgts
+            Just tgts
+              | elabMachine pkg == Host ->
+                  map (\(tgt, _) -> getBoundsForComponent tgt pkg pkgVersionMap) tgts
+            _ -> []
 
     -- Process each package to find the ones needing bounds
     let boundsActions = concatMap genBoundsActionForPkg localPkgs

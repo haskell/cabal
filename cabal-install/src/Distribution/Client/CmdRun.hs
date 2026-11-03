@@ -73,6 +73,7 @@ import Distribution.Client.Setup
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
   )
+import Distribution.Client.Toolchain (Machine (..))
 import Distribution.Client.Utils
   ( giveRTSWarning
   , occursOnlyOrBefore
@@ -456,7 +457,8 @@ matchingPackagesByUnitId uid =
     ( foldPlanPackage
         (const Nothing)
         ( \x ->
-            if elabUnitId x == uid
+            -- The target is the host-machine node (see 'availableTargets').
+            if elabUnitId x == uid && elabMachine x == Host
               then Just x
               else Nothing
         )
