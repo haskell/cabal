@@ -11,6 +11,7 @@ module Distribution.Client.ProjectConfig.FieldGrammar
 import Data.Bool (bool)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
+import qualified Data.Text as T
 import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGrammar)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
@@ -31,8 +32,8 @@ import qualified Text.PrettyPrint as PP
 
 projectConfigFieldGrammar :: ProjectConfigPath -> [String] -> ParsecFieldGrammar' ProjectConfig
 projectConfigFieldGrammar source knownPrograms = do
-  projectPackages <- getPackageLocationTokens <$> monoidalField "packages" ignoredLens
-  projectPackagesOptional <- getPackageLocationTokens <$> monoidalField "optional-packages" ignoredLens
+  projectPackages <- map T.pack . getPackageLocationTokens <$> monoidalField "packages" ignoredLens
+  projectPackagesOptional <- map T.pack . getPackageLocationTokens <$> monoidalField "optional-packages" ignoredLens
   let projectPackagesRepo = mempty
   projectPackagesNamed <- monoidalFieldAla "extra-packages" formatPackageVersionConstraints L.projectPackagesNamed
   projectConfigBuildOnly <- blurFieldGrammar L.projectConfigBuildOnly projectConfigBuildOnlyFieldGrammar
