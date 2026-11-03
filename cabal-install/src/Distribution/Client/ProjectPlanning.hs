@@ -3631,6 +3631,13 @@ data TargetRequested
 -- had a plan that contained two instances of the same version of a package.
 -- This approach makes it relatively easy to select all instances\/variants
 -- of a component.
+--
+-- Only host-machine plan nodes are targets. What the user asks to build, run
+-- or load is built for the host; a build-machine node exists only to serve a
+-- build tool or a @Setup.hs@ of another package, and every local package has
+-- a host copy. The two copies of a local package share an in-place unit id,
+-- so offering both would make each user target name two nodes ('setRootTargets'
+-- and the commands look targets up by 'UnitId').
 availableTargets
   :: ElaboratedInstallPlan
   -> Map
@@ -3640,6 +3647,7 @@ availableTargets installPlan =
   let rs =
         [ (pkgid, cname, fake, target)
         | pkg <- InstallPlan.toList installPlan
+        , planPkgMachine pkg == Host
         , (pkgid, cname, fake, target) <- case pkg of
             InstallPlan.PreExisting ipkg -> availableInstalledTargets (withoutMachine ipkg)
             InstallPlan.Installed elab -> availableSourceTargets elab
@@ -3942,6 +3950,11 @@ setRootTargets targetAction perPkgTargetsMap =
     -- based on the root targets from the user, not targets implied by reverse
     -- dependencies. Those comes in the second pass once we know the rev deps.
     --
+    -- A target names the host-machine node (see 'availableTargets'); its
+    -- build-machine twin, which has the same in-place unit id, is not a
+    -- target and gets only the targets its reverse dependencies need.
+    setElabBuildTargets elab
+      | elabMachine elab /= Host = elab
     setElabBuildTargets elab =
       case ( Map.lookup (installedUnitId elab) perPkgTargetsMap
            , targetAction
@@ -4027,11 +4040,18 @@ pruneInstallPlanPass1 pkgs
     -- reverse closure after calculating roots to capture dependencies which are on the path between roots.
     -- In order to start a multi-repl session with all the desired targets we need to load all these components into
     -- the repl at once to satisfy the closure property.
-    all_desired_repl_targets = Set.fromList [elabUnitId cp | InstallPlan.Configured cp <- fromMaybe [] $ Graph.revClosure closed_graph roots]
+    --
+    -- Keyed by plan key, not bare 'UnitId': the build and host copies of a
+    -- local package share an in-place unit id. Keying by 'UnitId' would make
+    -- the build-machine copy an in-memory repl target too whenever its host
+    -- twin is one, and a host package's Setup.hs would then find no
+    -- registered copy of its setup dependency.
+    all_desired_repl_targets :: Set (WithMachine UnitId)
+    all_desired_repl_targets = Set.fromList [Graph.nodeKey cp | InstallPlan.Configured cp <- fromMaybe [] $ Graph.revClosure closed_graph roots]
 
     add_repl_target :: ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage
     add_repl_target ecp
-      | elabUnitId ecp `Set.member` all_desired_repl_targets =
+      | Graph.nodeKey ecp `Set.member` all_desired_repl_targets =
           ecp
             { elabReplTarget = maybeToList (ComponentTarget <$> elabComponentName ecp <*> pure WholeComponent)
             , elabBuildStyle = BuildInplaceOnly InMemory
@@ -4267,12 +4287,33 @@ pruneInstallPlanPass2 pkgs =
                     keepNeeded (CD.ComponentTest _) _ = TestStanzas `optStanzaSetMember` stanzas
                     keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
                     keepNeeded _ _ = True
+
+                    -- The setup dependencies sit on the machine the solver
+                    -- assigned them, the other components' on the package's
+                    -- own (see 'elabOrderLibDependencies').
+                    markPromised :: CD.Component -> [(ConfiguredId, Bool)] -> [(ConfiguredId, Bool)]
+                    markPromised CD.ComponentSetup = map (\d -> addInternal (setupDepMachine (fst d)) d)
+                    markPromised _ = map (addInternal (elabMachine elab))
+
+                    setupDepMachines :: Map ConfiguredId Machine
+                    setupDepMachines =
+                      Map.fromList [(cid, m) | WithMachine m cid <- pkgSetupLibDependencies pkg]
+
+                    -- Both lists are built from the same solver setup
+                    -- dependencies in 'elaborateSolverToPackage', so the
+                    -- lookup cannot miss.
+                    setupDepMachine :: ConfiguredId -> Machine
+                    setupDepMachine cid =
+                      Map.findWithDefault
+                        (error ("pruneInstallPlanPass2: setup dependency " ++ show cid ++ " is not in pkgSetupLibDependencies"))
+                        cid
+                        setupDepMachines
                  in ElabPackage $
                       pkg
                         { pkgStanzasEnabled =
                             stanzas
                         , pkgLibDependencies =
-                            CD.mapDeps (\_ -> map addInternal) $
+                            CD.mapDeps markPromised $
                               CD.filterDeps keepNeeded (pkgLibDependencies pkg)
                         , pkgExeDependencies =
                             CD.filterDeps keepNeeded (pkgExeDependencies pkg)
@@ -4282,13 +4323,14 @@ pruneInstallPlanPass2 pkgs =
               ElabComponent comp ->
                 ElabComponent $
                   comp
-                    { compLibDependencies = map addInternal (compLibDependencies comp)
+                    { compLibDependencies = map (addInternal (elabMachine elab)) (compLibDependencies comp)
                     }
         }
       where
         -- We initially assume that all the dependencies are external (hence the boolean is always
         -- False) and here we correct the dependencies so the right packages are marked promised.
-        addInternal (cid, _) = (cid, cid `Set.member` inMemoryTargets)
+        addInternal :: Machine -> (ConfiguredId, Bool) -> (ConfiguredId, Bool)
+        addInternal m (cid, _) = (cid, WithMachine m cid `Set.member` inMemoryTargets)
 
         libTargetsRequiredForRevDeps =
           [ c
@@ -4316,10 +4358,12 @@ pruneInstallPlanPass2 pkgs =
     availablePkgs :: Set (WithMachine UnitId)
     availablePkgs = Set.fromList (map Graph.nodeKey pkgs)
 
-    inMemoryTargets :: Set ConfiguredId
+    -- Keyed by machine as well: the build and host copies of a local package
+    -- have the same 'ConfiguredId', and only one of them may be in memory.
+    inMemoryTargets :: Set (WithMachine ConfiguredId)
     inMemoryTargets =
       Set.fromList
-        [ configuredId pkg
+        [ WithMachine (elabMachine pkg) (configuredId pkg)
         | InstallPlan.Configured pkg <- pkgs
         , -- Exclude packages that must be built on disk (for exe build tools).
         -- Their dependents will receive a real -package-id, not a promise.
@@ -4405,6 +4449,10 @@ mapConfiguredPackage _ (InstallPlan.PreExisting pkg) =
 -- | Try to remove the given targets from the install plan.
 --
 -- This is not always possible.
+--
+-- The targets name host-machine nodes (see 'availableTargets'). The
+-- build-machine twin of a target, which has the same in-place unit id, is a
+-- dependency of some other package and stays.
 pruneInstallPlanToDependencies
   :: Set UnitId
   -> ElaboratedInstallPlan
@@ -4413,16 +4461,19 @@ pruneInstallPlanToDependencies
       ElaboratedInstallPlan
 pruneInstallPlanToDependencies pkgTargets installPlan =
   assert
-    ( pkgTargets
-        `Set.isSubsetOf` Set.fromList (map installedUnitId (InstallPlan.toList installPlan))
+    ( targetKeys
+        `Set.isSubsetOf` Set.fromList (map Graph.nodeKey (InstallPlan.toList installPlan))
     )
     $ fmap (InstallPlan.new (InstallPlan.planIndepGoals installPlan))
       . checkBrokenDeps
       . Graph.fromDistinctList
-      . filter (\pkg -> installedUnitId pkg `Set.notMember` pkgTargets)
+      . filter (\pkg -> Graph.nodeKey pkg `Set.notMember` targetKeys)
       . InstallPlan.toList
     $ installPlan
   where
+    targetKeys :: Set (WithMachine UnitId)
+    targetKeys = Set.map (WithMachine Host) pkgTargets
+
     -- Our strategy is to remove the packages we don't want and then check
     -- if the remaining graph is broken or not, ie any packages with dangling
     -- dependencies. If there are then we cannot prune the given targets.
