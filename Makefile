@@ -295,7 +295,7 @@ bootstrap-subr-%: phony
 	cd bootstrap && $(CABALCONF) $(CABALRUN) -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 9.6.7 9.8.4 9.10.3 9.12.4
+BOOTSTRAP_GHC_VERSIONS := 9.6.7 9.8.4 9.10.3 9.12.4 9.14.1
 
 .PHONY: bootstrap-jsons
 bootstrap-jsons: ## Generate bootstrap JSONs for Linux (autodetects method).

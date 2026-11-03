@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        ghc: ["9.6.7", "9.8.4", "9.10.3", "9.12.4"]
+        ghc: ["9.6.7", "9.8.4", "9.10.3", "9.12.4", "9.14.1"]
         include:
           # macos-15 rather than macos-latest until actions/runner-images#14940
           # is fixed; see #12465.
