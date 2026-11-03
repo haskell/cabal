@@ -347,7 +347,8 @@ Verbosity options
     form ``-v2`` is also supported.
 
 .. cfg-field:: build-timings: boolean
-               --build-timings
+    :cmdline-opts:
+        --build-timings
 
     Log timing information to stdout, in the following format::
 
@@ -465,8 +466,9 @@ Environment options
 -------------------
 
 .. cfg-field:: offline: boolean
-               --offline
-               --no-offline
+    :cmdline-opts:
+        --offline
+        --no-offline
     :synopsis: Disable package downloads from the network.
 
     :default: ``False``
@@ -476,8 +478,9 @@ Environment options
     The command line variant of this field is ``--offline``.
 
 .. cfg-field:: package-env: environment name or filepath
-               --package-env=ENV
-               --env=ENV
+    :cmdline-opts:
+        --package-env=ENV
+        --env=ENV
     :synopsis: Package environment file to create or modify.
 
     :default: unset
@@ -489,7 +492,8 @@ Environment options
     ``--env=ENV``.
 
 .. cfg-field:: store-dir: filepath
-               --store-dir=DIR
+    :cmdline-opts:
+        --store-dir=DIR
 
     Specifies the name of the directory of the global package store.
 
@@ -857,7 +861,8 @@ Build options
 -------------
 
 .. cfg-field:: builddir: directory
-               --builddir=DIR
+    :cmdline-opts:
+        --builddir=DIR
 
     Specifies the name of the directory where build products for
     build will be stored; defaults to ``dist-newstyle``.  If a
@@ -868,8 +873,9 @@ Build options
     This option can only be specified from the command line.
 
 .. cfg-field:: build-info: boolean
-               --enable-build-info
-               --disable-build-info
+    :cmdline-opts:
+        --enable-build-info
+        --disable-build-info
     :synopsis: Whether build information for each individual component should be
                written in a machine readable format.
 
@@ -894,7 +900,8 @@ Build options
         in the future we might add or remove fields, depending on the needs of other tooling.
 
 .. cfg-field:: logs-dir: directory
-               --logs-dir=DIR
+    :cmdline-opts:
+        --logs-dir=DIR
     :synopsis: Directory to store build logs.
 
     :default: ``~/.cabal/logs``
@@ -905,7 +912,8 @@ Build options
     The command line variant of this flag is ``--logs-dir=DIR``.
 
 .. cfg-field:: build-summary: template filepath
-               --build-summary=TEMPLATE
+    :cmdline-opts:
+        --build-summary=TEMPLATE
     :synopsis: Build summaries location.
 
     :default: ``~/.cabal/logs/build.log``
@@ -919,7 +927,8 @@ Build options
     ``--build-summary=TEMPLATE``.
 
 .. cfg-field:: build-log: template filepath
-               --build-log=TEMPLATE
+    :cmdline-opts:
+        --build-log=TEMPLATE
     :synopsis: Build log location template.
 
     :default: unset
@@ -930,7 +939,8 @@ Build options
     The command line variant of this flag is ``--build-log=TEMPLATE``.
 
 .. cfg-field:: remote-build-reporting: none, anonymous, or detailed
-               --remote-build-reporting=LEVEL
+    :cmdline-opts:
+        --remote-build-reporting=LEVEL
     :synopsis: Build report level for remote reporting.
 
     :default: ``none``
@@ -944,7 +954,8 @@ Install options
 ---------------
 
 .. cfg-field:: overwrite-policy: always, never, or prompt
-               --overwrite-policy=POLICY
+    :cmdline-opts:
+        --overwrite-policy=POLICY
     :synopsis: How to handle existing executable links.
 
     :default: ``never``
@@ -956,7 +967,8 @@ Install options
     ``--overwrite-policy=POLICY``.
 
 .. cfg-field:: install-method: copy or symlink
-               --install-method=METHOD
+    :cmdline-opts:
+        --install-method=METHOD
     :synopsis: How to install executables.
 
     :default: platform dependent
@@ -967,7 +979,8 @@ Install options
     The command line variant of this field is ``--install-method=METHOD``.
 
 .. cfg-field:: installdir: directory
-               --installdir=DIR
+    :cmdline-opts:
+        --installdir=DIR
     :synopsis: Target directory for installed executables.
 
     :default: platform dependent
@@ -978,7 +991,8 @@ Install options
     The command line variant of this field is ``--installdir=DIR``.
 
 .. cfg-field:: symlink-bindir: directory
-               --symlink-bindir=DIR
+    :cmdline-opts:
+        --symlink-bindir=DIR
     :synopsis: Add symlinks to installed executables into this directory.
 
     :default: unset
@@ -989,7 +1003,8 @@ Install options
     The command line variant of this field is ``--symlink-bindir=DIR``.
 
 .. cfg-field:: lib: boolean
-               --lib
+    :cmdline-opts:
+        --lib
     :synopsis: Install libraries instead of executables.
 
     :default: ``False``
@@ -2018,7 +2033,6 @@ Advanced global options
     <https://gitlab.haskell.org/ghc/ghc/-/issues/13753>`_ that supports
     the ``-package-env -`` option that allows ignoring the package
     environment files).
-    :cmdline-opts:
 
 .. _cmdoption-http-transport:
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
@@ -2067,8 +2081,6 @@ Advanced global options
 
     The command line variant of this flag is
     ``--remote-repo-cache=DIR``.
-    :cmdline-opts:
-    :cmdline-opts:
 
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -2226,7 +2238,8 @@ Most users generally won't need these.
     The command line variant of this field is ``--(no-)prefer-oldest``.
 
 .. cfg-field:: prefer-version: (oldest|latest|installed-or-latest)
-               --prefer-version=(oldest|latest|installed-or-latest)
+    :cmdline-opts:
+        --prefer-version=(oldest|latest|installed-or-latest)
     :synopsis: Specify how to pick package versions
     :since:    3.20
 
@@ -2245,7 +2258,8 @@ Specialised logging options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. cfg-field:: report-planning-failure: boolean
-               --report-planning-failure
+    :cmdline-opts:
+        --report-planning-failure
     :synopsis: Report dependency solving failures.
 
     :default: ``False``
