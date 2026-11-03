@@ -203,6 +203,27 @@ jobs:
           name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: ${{ env.CABAL_EXEC_TAR }}
 
+      # The tests of cabal-testsuite/PackageTests/MHS build packages with
+      # MicroHs, and are skipped where it is not installed. It builds from
+      # source in about a minute, with a C compiler and nothing else.
+      - name: Restore MicroHs
+        if: runner.os == 'Linux' && matrix.ghc == env.GHC_FOR_RELEASE
+        id: microhs
+        uses: actions/cache@v6
+        with:
+          path: ~/.mcabal
+          key: microhs-${{ steps.get-osver.outputs.osver }}-v0.16.9.0
+
+      - name: Install MicroHs
+        if: runner.os == 'Linux' && matrix.ghc == env.GHC_FOR_RELEASE
+        run: |
+          if [ "${{ steps.microhs.outputs.cache-hit }}" != true ]; then
+            git clone --quiet --depth 1 --branch v0.16.9.0 https://github.com/augustss/MicroHs "$RUNNER_TEMP/microhs"
+            make -C "$RUNNER_TEMP/microhs" minstall
+          fi
+          echo "$HOME/.mcabal/bin" >> "$GITHUB_PATH"
+          "$HOME/.mcabal/bin/mhs" --numeric-version
+
       - name: Validate tests
         env:
           # `rawSystemStdInOut reports text decoding errors`

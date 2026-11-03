@@ -56,6 +56,7 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 
 import qualified Distribution.Simple.GHC as GHC
+import qualified Distribution.Simple.MHS as MHS
 import qualified Distribution.Simple.PackageIndex as Index
 import qualified Distribution.Simple.UHC as UHC
 
@@ -254,6 +255,7 @@ registerAll verbHandles pkg lbi regFlags ipis =
     writeRegisterScript =
       case compilerFlavor (compiler lbi) of
         UHC -> notice verbosity "Registration scripts not needed for uhc"
+        MHS -> notice verbosity "Registration scripts not needed for mhs"
         _ ->
           withHcPkg
             verbosity
@@ -377,6 +379,7 @@ createPackageDB verbosity comp progdb dbPath =
   case compilerFlavor comp of
     GHC -> HcPkg.init (GHC.hcPkgInfo progdb) verbosity dbPath
     UHC -> return ()
+    MHS -> MHS.createPackageDB verbosity dbPath
     _ -> dieWithException verbosity CreatePackageDB
 
 doesPackageDBExist :: FilePath -> IO Bool
@@ -434,6 +437,7 @@ registerPackage
 registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo registerOptions =
   case compilerFlavor comp of
     GHC -> GHC.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
+    MHS -> MHS.registerPackage verbosity mbWorkDir comp progdb packageDbs installedPkgInfo
     _
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported

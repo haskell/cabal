@@ -168,6 +168,7 @@ files of a package:
 
 .. option:: -g, --ghc
             --uhc
+            --mhs
 
     Specify which Haskell implementation to use to build the package. At
     most one of these flags may be given. If none is given, the
@@ -202,7 +203,8 @@ files of a package:
     programs is as follows:
     ``alex``, ``ar``, ``c2hs``, ``cpphs``, ``doctest``, ``gcc``, ``ghc``,
     ``ghc-pkg``, ``haddock``, ``happy``, ``hpc``, ``hsc2hs``, ``hscolour``,
-    ``jhc``, ``ld``, ``pkg-config``, ``runghc``, ``strip``, ``tar``, ``uhc``.
+    ``jhc``, ``ld``, ``mhs``, ``pkg-config``, ``runghc``, ``strip``, ``tar``,
+    ``uhc``.
 
 .. option:: --PROG-options=OPTS
 
