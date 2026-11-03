@@ -1807,6 +1807,13 @@ Undocumented options
 For the most part, these options are the command line versions of :ref:`project
 configuration<cabal-project-file>` field options.
 
+Verbosity options
+^^^^^^^^^^^^^^^^^
+
+.. option:: --build-timings
+
+    See :cfg-field:`build-timings` for more information.
+
 Global configuration options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1822,6 +1829,21 @@ Global configuration options
 
     See :cfg-field:`semaphore` for more information.
 
+Environment options
+^^^^^^^^^^^^^^^^^^^
+
+.. option:: --offline, --no-offline
+
+    See :cfg-field:`offline` for more information.
+
+.. option:: --package-env=ENV, --env=ENV
+
+    See :cfg-field:`package-env` for more information.
+
+.. option:: --store-dir=DIR
+
+    See :cfg-field:`store-dir` for more information.
+
 Solver configuration options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1832,6 +1854,44 @@ Solver configuration options
 .. option:: --reject-unconstrained-dependencies
 
     See :cfg-field:`reject-unconstrained-dependencies` for more information.
+
+Build options
+^^^^^^^^^^^^^
+
+.. option:: --build-log=TEMPLATE
+
+    See :cfg-field:`build-log` for more information.
+
+.. option:: --builddir=DIR
+
+    See :cfg-field:`builddir` for more information.
+
+.. option:: --remote-build-reporting=LEVEL
+
+    See :cfg-field:`remote-build-reporting` for more information.
+
+Install options
+^^^^^^^^^^^^^^^
+
+.. option:: --install-method=METHOD
+
+    See :cfg-field:`install-method` for more information.
+
+.. option:: --installdir=DIR
+
+    See :cfg-field:`installdir` for more information.
+
+.. option:: --lib
+
+    See :cfg-field:`lib` for more information.
+
+.. option:: --overwrite-policy=POLICY
+
+    See :cfg-field:`overwrite-policy` for more information.
+
+.. option:: --symlink-bindir=DIR
+
+    See :cfg-field:`symlink-bindir` for more information.
 
 Package configuration options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1929,8 +1989,8 @@ Dynamic linking options
 
     See :cfg-field:`relocatable` for more information.
 
-Dynamic linking options
-^^^^^^^^^^^^^^^^^^^^^^^
+Static linking options
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. option:: --enable-executable-static, --disable-executable-static
 
@@ -2130,9 +2190,17 @@ Advanced solver options
 
     See :cfg-field:`prefer-oldest` for more information.
 
+.. option:: --prefer-version=(oldest|latest|installed-or-latest)
+
+    See :cfg-field:`prefer-version` for more information.
+
 .. option:: --reorder-goals, --no-reorder-goals
 
     See :cfg-field:`reorder-goals` for more information.
+
+.. option:: --report-planning-failure
+
+    See :cfg-field:`report-planning-failure` for more information.
 
 .. option:: --solver
 
