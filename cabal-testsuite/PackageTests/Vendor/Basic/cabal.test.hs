@@ -1,4 +1,4 @@
-import System.Directory (removeDirectoryRecursive, removeFile)
+import System.Directory (createDirectory, removePathForcibly)
 import Test.Cabal.Prelude
 
 -- Vendor the dependencies of a project into a file+noindex repository, then
@@ -24,9 +24,12 @@ main = cabalTest $ withShorterPathForNewBuildStore $ withRepo "repo" $ do
   assertOutputContains "url: file+noindex:vendor" r
   assertOutputContains "active-repositories: vendored" r
 
-  -- Take away the original repository so that only the vendored one can
-  -- satisfy the build.
-  liftIO $ removeDirectoryRecursive (testRepoDir env)
+  -- Empty the original repository so that only the vendored one can satisfy
+  -- the build. The directory itself stays, since a missing repository
+  -- directory draws a warning whose wording differs by platform.
+  liftIO $ do
+    removePathForcibly (testRepoDir env)
+    createDirectory (testRepoDir env)
   withProjectFile "cabal.vendored.project" $ do
     cabal "v2-build" ["--offline", "all"]
     -- Vendoring again from the vendored repository is a no-op.
