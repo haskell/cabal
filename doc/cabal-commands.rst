@@ -612,7 +612,7 @@ skipped with a warning since their ``packages:`` entry would still be used.
 The command then prints the stanza to add to the project file to build from
 the vendored packages:
 
-.. code-block:: console
+.. code-block:: text
 
     $ cabal vendor
     Vendored 12 packages into vendor
@@ -651,7 +651,7 @@ instance to pin a few packages to exact sources while the rest still come from
 Hackage. The printed stanza then keeps the other repositories active and makes
 the vendored one override them for the packages it contains:
 
-.. code-block:: console
+.. code-block:: text
 
     $ cabal vendor aeson
     Vendored 1 of 12 dependencies into vendor
