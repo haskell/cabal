@@ -22,11 +22,11 @@ Commands:
  [project configuration]
   configure              Add extra project configuration.
   freeze                 Freeze dependencies.
+  vendor                 Vendor dependencies into a local repository.
   gen-bounds             Generate dependency bounds for packages in the project.
   outdated               Check for outdated dependencies.
   path                   Query for simple project information.
   target                 Target a subset of all targets.
-  vendor                 Vendor dependencies into a local repository.
 
  [project building and installing]
   build                  Compile targets within the project.
