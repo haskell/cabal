@@ -866,6 +866,11 @@ readProjectFileSkeletonGen
 -- against the project root, so that a local repository (for example one
 -- written by @cabal vendor@) can be referred to with a relative path and
 -- committed together with the project.
+--
+-- As with the @packages:@ entries in 'checkFilePackageMatch', the path may be
+-- absolute or relative to the project root and @</>@ does the right thing
+-- either way: an absolute path, or on Windows one that starts with a
+-- separator but has no drive, comes back unchanged.
 resolveLocalRepoPaths :: FilePath -> ProjectConfig -> ProjectConfig
 resolveLocalRepoPaths root config =
   config
@@ -877,9 +882,7 @@ resolveLocalRepoPaths root config =
     }
   where
     shared = projectConfigShared config
-    resolve repo
-      | isAbsolute (localRepoPath repo) = repo
-      | otherwise = repo{localRepoPath = normalise (root </> localRepoPath repo)}
+    resolve repo = repo{localRepoPath = root </> localRepoPath repo}
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
