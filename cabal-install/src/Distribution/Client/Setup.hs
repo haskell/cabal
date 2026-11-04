@@ -388,11 +388,11 @@ globalCommand commands =
                 , startGroup "project configuration"
                 , addCmd "configure"
                 , addCmd "freeze"
+                , addCmd "vendor"
                 , addCmd "gen-bounds"
                 , addCmd "outdated"
                 , addCmd "path"
                 , addCmd "target"
-                , addCmd "vendor"
                 , par
                 , startGroup "project building and installing"
                 , addCmd "build"
