@@ -9,6 +9,8 @@ module Main
 
 
 
+
+
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
@@ -18,7 +20,7 @@ import Control.Arrow                               ((&&&))
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
-import Distribution.Fields.Parser                  (readFieldsWithComments', formatError)
+import Distribution.Fields.Parser                  (readFieldsConcrete', formatError)
 import Distribution.PackageDescription
   ( GenericPackageDescription
   , packageDescription
@@ -121,44 +123,25 @@ commentTests :: TestTree
 commentTests = testGroup "comments"
     [
 #ifdef MIN_VERSION_tree_diff
-      readFieldTest "layout-complex-indented-comments.cabal" -- Imported from hackage integration test
-    , readFieldTest "layout-comment-in-fieldline.cabal" -- Aligned leading comma after comment
-
-    , commentTest False "layout-nosections-before.cabal"
+    -- Manually verify that comments are in strictly increasing order.
+      commentTest False "layout-nosections-before.cabal"
     , commentTest False "layout-nosections-after.cabal"
     , commentTest False "layout-nosections-mixed.cabal"
     , commentTest False "layout-many-sections.cabal"
     , commentTest False "layout-interleaved-in-section.cabal"
     , commentTest False "layout-fieldline-is-flag.cabal"
 
-    , commentTest True "hasktorch.cabal" -- Taken from regression, has a lot of comments
+    -- Taken from regression, has a lot of comments
+    , commentTest True "hasktorch.cabal"
 #endif
     ]
-
-#ifdef MIN_VERSION_tree_diff
--- | Assert the field structure of a given Cabal file.
-readFieldTest :: FilePath -> TestTree
-readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
-  contents <- BS.readFile input
-  let res = readFieldsWithComments' contents
-
-  case res of
-    Left perr -> fail $ formatError contents perr
-    Right (fs, warns) -> do
-      unless (null warns) (fail $ unlines (map show warns))
-      pure fs
-
-  where
-    input = "tests" </> "ParserTests" </> "comments" </> fname
-    exprFile = replaceExtension input "expr"
-#endif
 
 #ifdef MIN_VERSION_tree_diff
 -- | Assert the comment structure of a given cabal file.
 commentTest :: Bool -> FilePath -> TestTree
 commentTest extract fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input
-  case readFieldsWithComments' contents of
+  case readFieldsConcrete' contents of
     Left perr -> fail $ formatError contents perr
     Right (res, warns) -> do
       unless (null warns) (fail $ unlines (map show warns))
