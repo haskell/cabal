@@ -756,8 +756,10 @@ The following settings control the behavior of the dependency solver:
     in the same way as in the :ref:`global configuration file <config-file-discovery>`;
     see :ref:`repository-specification` for the fields and :ref:`local-no-index-repositories`
     for repositories that are plain directories of package tarballs. In a
-    project file the path of a ``file+noindex:`` repository may be relative to
-    the project root, as in ``url: file+noindex:vendor``. The
+    project file the path of a ``file+noindex:`` repository may be relative,
+    as in ``url: file+noindex:vendor``. Like the paths in
+    :cfg-field:`packages`, a relative path is resolved against the project
+    root, whichever project file or import it is in. The
     :ref:`cabal vendor <cabal-vendor>` command writes such a repository from a
     project's dependencies.
 
