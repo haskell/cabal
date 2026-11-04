@@ -3,9 +3,10 @@ import Test.Cabal.Prelude
 import System.Directory (executable, getPermissions, setPermissions)
 import System.FilePath ((</>))
 
--- PathRecomp covers PATH. This covers the rest of the configured program
--- records: a new version of a tool at the same path reconfigures, and
--- elaborating again with the same programs does not.
+-- The configure key fingerprints the configured program records: a new
+-- version of a tool at the same path reconfigures, and elaborating the plan
+-- again with the same programs does not. PathRecomp covers a changed PATH
+-- reaching the repl.
 main = cabalTest $ recordMode DoNotRecord $ do
   env <- getTestEnv
   let toolName = "versioned-haddock" ++ if isWindows then ".bat" else ""
@@ -19,7 +20,8 @@ main = cabalTest $ recordMode DoNotRecord $ do
   liftIO $ setPermissions toolPath permissions{executable = True}
   writeSourceFile "haddock-version" "Haddock version 2.30.0\n"
   _ <- build
-  -- Editing cabal.project makes cabal elaborate the plan again.
+  -- The script is the monitored file, not the version file it reads, so
+  -- editing cabal.project is what makes cabal elaborate the plan again.
   writeSourceFile "cabal.project" "packages: .\nconstraints: base >= 0\n"
   build >>= assertOutputContains "Up to date"
   delay

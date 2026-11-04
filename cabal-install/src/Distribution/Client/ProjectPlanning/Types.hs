@@ -277,8 +277,10 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabProgramArgs :: Map String [String]
   , elabProgramPathExtra :: [FilePath]
   , elabConfiguredProgramsHash :: HashValue
-  -- ^ Fingerprint of configured compiler programs for cache invalidation.
-  -- The programs themselves are held in 'pkgConfigCompilerProgs'.
+  -- ^ Fingerprint of the configured programs in 'pkgConfigCompilerProgs'.
+  -- This record is the configure cache key, so the fingerprint keeps every
+  -- program's location, version, arguments and environment, @PATH@ included,
+  -- in that key without a copy of the records in each component.
   , elabConfigureScriptArgs :: [String]
   , elabExtraLibDirs :: [FilePath]
   , elabExtraLibDirsStatic :: [FilePath]
