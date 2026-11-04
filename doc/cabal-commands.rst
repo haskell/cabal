@@ -634,8 +634,8 @@ downloaded for them.
 
 .. note::
 
-    If the directory falls out of step with the plan, the failure surfaces before
-    any network access:
+    If the directory falls out of step with the plan, cabal reports the mismatch
+    rather than fetching anything:
 
     - A dependency missing from the directory is missing from the repository,
       since the index is built from the files present. With
