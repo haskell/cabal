@@ -20,8 +20,8 @@ module Distribution.Fields.Parser
     -- $grammar
   , readFields
   , readFields'
-  , readFieldsWithComments
-  , readFieldsWithComments'
+  , readFieldsConcrete
+  , readFieldsConcrete'
 #ifdef CABAL_PARSEC_DEBUG
 
     -- * Internal
@@ -548,19 +548,21 @@ fieldInlineOrBraces name =
 -- >>> readFields' "\xc2\xa0 foo: bar"
 -- Right ([Field (Name (Position 1 3) "foo") [FieldLine (Position 1 8) "bar"]],[LexWarning LexWarningNBSP (Position 1 1)])
 readFields :: B8.ByteString -> Either ParseError [Field Position]
-readFields = (Bi.second . map . fmap) unComments . readFieldsWithComments
+readFields = (Bi.second . map . fmap) unComments . readFieldsConcrete
 
 -- | Like 'readFields' but also return lexer warnings.
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
-readFields' = (Bi.second . Bi.first . map . fmap) unComments . readFieldsWithComments'
+readFields' = (Bi.second . Bi.first . map . fmap) unComments . readFieldsConcrete'
 
 -- | @since 3.18.2
-readFieldsWithComments :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
-readFieldsWithComments = fmap fst . readFieldsWithComments'
+--   Read fields from 'ByteString' with concrete annotation.
+readFieldsConcrete :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
+readFieldsConcrete = fmap fst . readFieldsConcrete'
 
 -- | @since 3.18.2
-readFieldsWithComments' :: B8.ByteString -> Either ParseError ([Field (WithComments Position)], [LexWarning])
-readFieldsWithComments' s = do
+--   Read fields from 'ByteString' with concrete annotation with lexer warnings.
+readFieldsConcrete' :: B8.ByteString -> Either ParseError ([Field (WithComments Position)], [LexWarning])
+readFieldsConcrete' s = do
   parse parser "the input" lexSt
   where
     parser = do
