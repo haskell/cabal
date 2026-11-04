@@ -106,7 +106,8 @@ vendorCommand =
         wrapText $
           "Copy the source tarballs of the project's dependencies into a "
             ++ "directory laid out as a 'file+noindex' package repository, so "
-            ++ "that the project can later be built without network access.\n\n"
+            ++ "that the project can later be built without network access. "
+            ++ "Tarballs not already in the download cache are downloaded first.\n\n"
             ++ "The dependencies are those selected by the solver for the current "
             ++ "project configuration, including build tools and setup "
             ++ "dependencies. Each is written as '<pkgid>.tar.gz', with its "
