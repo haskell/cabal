@@ -1160,6 +1160,20 @@ exactly the vendored versions and no other repository is consulted, and
 ``cabal build --offline`` accepts packages from it since nothing is
 downloaded for them.
 
+If the directory falls out of step with the plan, the failure surfaces before
+any network access:
+
+- A dependency missing from the directory is missing from the repository,
+  since the index is built from the files present. With
+  ``active-repositories: vendored`` the solver reports it as an unknown
+  package. With ``:rest, vendored:override`` the solver takes it from another
+  repository instead, and ``--offline`` then refuses to download it as it
+  would any other package.
+- A tarball that is present but damaged, or a stale ``.cabal`` file, fails
+  when the package is unpacked or built.
+- A ``url:`` naming a directory that does not exist is reported with a warning
+  when the repository index is constructed, and the repository is then empty.
+
 Package names can be given to vendor only some of the dependencies, for
 instance to pin a few packages to exact sources while the rest still come from
 Hackage. The printed stanza then keeps the other repositories active and makes
