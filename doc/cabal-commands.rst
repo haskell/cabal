@@ -1197,8 +1197,8 @@ The ``cabal vendor`` command supports the following options:
 
     After vendoring, remove ``<package>-<version>.tar.gz`` and
     ``<package>-<version>.cabal`` files for packages that are not
-    dependencies in the current plan — for instance older versions left
-    behind by a refresh. Files that are not package files, such as
+    dependencies in the current plan, such as older versions left behind
+    by a refresh. Files that are not package files, such as
     ``preferred-versions``, are never touched. Pruning goes by the whole
     plan even when package names are given, so a partial run with
     ``--prune`` keeps the other dependencies' files. A directory shared by
