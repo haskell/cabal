@@ -602,8 +602,7 @@ current project configuration, including build tools and setup dependencies.
 The directory defaults to ``vendor`` in the project root. For every dependency
 it contains ``<package>-<version>.tar.gz`` and, for packages from a package
 repository with a revised ``.cabal`` file, that file as
-``<package>-<version>.cabal``; cabal reads the directory as a repository
-without any further index. Dependencies from ``source-repository-package``
+``<package>-<version>.cabal``. Dependencies from ``source-repository-package``
 stanzas are vendored as source distributions of their checkouts, which lets
 the stanza be removed afterwards. Local packages of the project are not
 vendored, and packages given as remote or local tarballs in ``packages:`` are
