@@ -179,14 +179,15 @@ newtype LexerMode = LexerMode Int
 
 -- | Cabal's lexer is generated using Alex. It has multiple different states ("start-codes").
 -- Each state has its own rules and interprets the input stream differently.
--- This has the benefit of providing more exact error message by having more
--- knowledge about what symbol should follow in the input stream.
+-- This has the benefit of providing more exact error messages because the parser can inform
+-- the lexer what symbol should follow in the input stream.
 --
 -- The lexer states are as illustrated below.
 -- The lexer doesn't control the transitions between @in_section@, @in_field_layout@ and @in_field_braces@.
 -- Instead, the parser inspects the token stream it got, and switches the lexer state:
 -- these transitions are uniquely invoked with 'inLexerMode'.
 -- For this reason, running the lexer on its own will not produce a correct token stream.
+-- The lexer must be used in conjunction with the parser.
 --
 -- @
 --                                                   .---> in_field_layout  <--->  bol_field_layout
@@ -231,7 +232,7 @@ inLexerMode (LexerMode mode) p =
 -- SectionBraces              ::= name arg* '\\n'? '{' Elements '}'
 -- @
 --
--- and the same thing but left factored...
+-- and the same thing but left factored, with comments...
 --
 -- @
 -- Elements                   ::= comment* (Element comment*)*
@@ -294,7 +295,7 @@ prependCommentsFields cs fs = case fs of
   [] -> Nothing
   (f : fs') -> Just $ prependCommentsField cs f : fs'
 
--- | We attach the comments to the name (foremost child) of 'Field', this hence cannot fail.
+-- | We attach the comments to the name (leftmost child) of 'Field', this hence cannot fail.
 prependCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 prependCommentsField [] f = f
 prependCommentsField cs f = case f of
@@ -325,7 +326,7 @@ appendCommentsField cs f = case f of
     Nothing -> Field (L.over (traverse . L.followingComments) (++ cs) name) []
     Just fls' -> Field name fls'
   (Section name args fs) -> case appendCommentsFields cs fs of
-    Nothing -> Section (L.over (traverse . L.followingComments) (++ cs) name) args []
+    Nothing -> let (name', args') = appendCommentsNameSecArgs' name args cs in Section name' args' []
     Just fs' -> Section name args fs'
 
 -- | Returns 'Nothing' when there is no field to attach the comments to.
@@ -336,17 +337,22 @@ appendCommentsFieldLines cs fls = case fls of
   [fl] -> Just [L.over (traverse . L.priorComments) (++ cs) fl]
   (f : fls') -> (f :) <$> appendCommentsFieldLines cs fls'
 
+-- | Similar to 'appendCommentsNameSecArgs\''.
 appendCommentsNameSecArgs :: Name ann -> [SectionArg ann] -> [Comment ann] -> (Name (WithComments ann), [SectionArg (WithComments ann)])
-appendCommentsNameSecArgs name [] cs = (WithComments [] cs <$> name, [])
-appendCommentsNameSecArgs name [x] cs = (noComments name, [WithComments [] cs <$> x])
-appendCommentsNameSecArgs name (x : xs) cs = (noComments x :) <$> appendCommentsNameSecArgs name xs cs
+appendCommentsNameSecArgs name args cs = appendCommentsNameSecArgs' (noComments name) (map noComments args) cs
+
+-- | Insert comments to the rightmost child, whether it's a section name or the last section argument.
+appendCommentsNameSecArgs' :: Name (WithComments ann) -> [SectionArg (WithComments ann)] -> [Comment ann] -> (Name (WithComments ann), [SectionArg (WithComments ann)])
+appendCommentsNameSecArgs' name [] cs = (L.over (traverse . L.followingComments) (++ cs) name, [])
+appendCommentsNameSecArgs' name [x] cs = (name, [L.over (traverse . L.followingComments) (++ cs) x])
+appendCommentsNameSecArgs' name (x : xs) cs = (x :) <$> appendCommentsNameSecArgs' name xs cs
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content.
 --
 -- This returns either many fields with their comments attached, or just the
 -- comments if there are no fields to attach them to. Only at the top level it
--- is deemed correct to discard these comments, because in that case having no
+-- is correct to discard these comments, because in that case having no
 -- elements isn't a valid cabal file.
 --
 -- elements ::= comment* (element comment*)*
@@ -367,7 +373,7 @@ elements ilevel = do
 -- a line on its own (so that we know its indentation level).
 --
 -- element ::= '\\n' name elementInLayoutContext
---           |      name elementInNonLayoutContext
+--           |       name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field (WithComments Position))
 element ilevel =
   ( do
@@ -391,12 +397,11 @@ elementInLayoutContext ilevel name =
   (do colon; fieldLayoutOrBraces ilevel name)
     <|> ( do
             args <- many sectionArg
-            commentsAfterSectionArgs <- many tokComment -- Unintuitively, trailing comments are allowed in the same line of a section
+            commentsAfterSectionArgs <- many tokComment
             elems <- sectionLayoutOrBraces ilevel
             case elems of
-              -- If there are no elements but comments, we attach them to the name.
-              Left innerCmts -> do
-                let (name', args') = appendCommentsNameSecArgs name args (commentsAfterSectionArgs <> innerCmts)
+              Left justCmts -> do
+                let (name', args') = appendCommentsNameSecArgs name args (commentsAfterSectionArgs <> justCmts)
                 return (Section name' args' [])
               Right elems' -> do
                 let (name', args') = appendCommentsNameSecArgs name args commentsAfterSectionArgs
@@ -414,15 +419,15 @@ elementInNonLayoutContext name =
   (do colon; fieldInlineOrBraces name)
     <|> ( do
             args <- many sectionArg
-            commentsAfterSectionArgs <- many tokComment -- Unintuitively, trailing comments are allowed in the same line of a section
+            commentsAfterSectionArgs <- many tokComment
             openBrace
             elems <- elements zeroIndentLevel
             optional tokIndent
             closeBrace
 
             case elems of
-              Left innerCmts -> do
-                let (name', args') = appendCommentsNameSecArgs name args (commentsAfterSectionArgs <> innerCmts)
+              Left justCmts -> do
+                let (name', args') = appendCommentsNameSecArgs name args (commentsAfterSectionArgs <> justCmts)
                 return (Section name' args' [])
               Right elems' -> do
                 let (name', args') = appendCommentsNameSecArgs name args commentsAfterSectionArgs
@@ -452,6 +457,7 @@ elementInNonLayoutContext name =
 -- @
 --
 -- We pick the braces branch and backtrack with 'try' if needed.
+-- 'try' restores the input consumed as comments, which may or may not be a line in the layout branch.
 --
 -- fieldLayoutOrBraces   ::= comment* '\\n'? '{' comment* (content comment*)* '}'
 --                         | comment* line? comment* ('\\n' line comment*)*
@@ -463,7 +469,7 @@ fieldLayoutOrBraces ilevel name = try braces <|> fieldLayout
       cmts <- many tokComment
       openBrace
       (cmts', ls) <-
-        inLexerMode (LexerMode in_field_braces) ((,) <$> many tokComment <*> many (commentsAfter fieldContent))
+        inLexerMode (LexerMode in_field_braces) (liftA2 (,) (many tokComment) (many (commentsAfter fieldContent)))
       closeBrace
       case prependCommentsFieldLines (cmts <> cmts') ls of
         Nothing -> return $ Field (WithComments [] (cmts <> cmts') <$> name) ls
@@ -512,7 +518,7 @@ fieldInlineOrBraces name =
   )
     <|> ( do
             ls <- inLexerMode (LexerMode in_field_braces) (option [] (fmap (\l -> [l]) fieldContent))
-            return (Field (WithComments [] [] <$> name) (map (WithComments [] [] <$>) ls))
+            return (Field (noComments name) (map noComments ls))
         )
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
@@ -542,11 +548,11 @@ fieldInlineOrBraces name =
 -- >>> readFields' "\xc2\xa0 foo: bar"
 -- Right ([Field (Name (Position 1 3) "foo") [FieldLine (Position 1 8) "bar"]],[LexWarning LexWarningNBSP (Position 1 1)])
 readFields :: B8.ByteString -> Either ParseError [Field Position]
-readFields = (fmap . map . fmap) unComments . readFieldsWithComments
+readFields = (Bi.second . map . fmap) unComments . readFieldsWithComments
 
 -- | Like 'readFields' but also return lexer warnings.
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
-readFields' = (fmap . Bi.first . map . fmap) unComments . readFieldsWithComments'
+readFields' = (Bi.second . Bi.first . map . fmap) unComments . readFieldsWithComments'
 
 -- | @since 3.18.2
 readFieldsWithComments :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
