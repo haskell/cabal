@@ -109,9 +109,10 @@ vendorCommand =
             ++ "that the project can later be built without network access.\n\n"
             ++ "The dependencies are those selected by the solver for the current "
             ++ "project configuration, including build tools and setup "
-            ++ "dependencies. Each is written as '<pkgid>.tar.gz', with the "
-            ++ "revised '.cabal' file from the package index next to it as "
-            ++ "'<pkgid>.cabal'. Dependencies from 'source-repository-package' "
+            ++ "dependencies. Each is written as '<pkgid>.tar.gz', with its "
+            ++ "'.cabal' file from the package index, which carries any "
+            ++ "revision, next to it as '<pkgid>.cabal'. Dependencies from "
+            ++ "'source-repository-package' "
             ++ "stanzas are vendored as source distributions of their checkouts. "
             ++ "Local packages of the project are not vendored.\n\n"
             ++ "The directory defaults to 'vendor' in the project root and can be "
@@ -120,8 +121,9 @@ vendorCommand =
             ++ "the vendored packages are used. When package names are given, "
             ++ "only those packages are vendored.\n\n"
             ++ "With '--unpack', the named packages are also unpacked into "
-            ++ "'src/' under the vendor directory, with the revised '.cabal' "
-            ++ "file applied, so that they can be worked on as local packages "
+            ++ "'src/' under the vendor directory, with the '.cabal' file from "
+            ++ "the package index applied, so that they can be worked on as "
+            ++ "local packages "
             ++ "listed in 'packages:'.\n"
     , commandNotes = Just $ \pname ->
         "Examples:\n"
@@ -203,8 +205,8 @@ vendorOptions _ =
 
 -- | Where a vendored package comes from.
 data VendorSource
-  = -- | A package from a package repository, with the revised @.cabal@ file
-    -- from the repository's index if it has one.
+  = -- | A package from a package repository, with the @.cabal@ file from
+    -- the repository's index, which carries any revision, if it has one.
     FromRepo Repo (Maybe LBS.ByteString)
   | -- | A package from a @source-repository-package@ stanza, as the source
     -- distribution tarball that cabal made from its checkout.
@@ -364,8 +366,8 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         mempty -- ClientInstallFlags, not needed here
 
 -- | Copy one package into the vendor directory: the tarball as
--- @\<pkgid\>.tar.gz@ and, for repository packages with a revised @.cabal@
--- file, that file as @\<pkgid\>.cabal@ next to it. That is the layout
+-- @\<pkgid\>.tar.gz@ and, for repository packages, the @.cabal@ file from
+-- the index as @\<pkgid\>.cabal@ next to it. That is the layout
 -- "Distribution.Client.IndexUtils" reads a @file+noindex@ repository from.
 vendorPackage :: Verbosity -> RepoContext -> FilePath -> PackageId -> VendorSource -> IO ()
 vendorPackage verbosity repoCtxt vendorDir pkgid source = do
@@ -388,7 +390,7 @@ vendorPackage verbosity repoCtxt vendorDir pkgid source = do
       _ -> return ()
 
 -- | Unpack a vendored package into @src/@ under the vendor directory, with
--- the revised @.cabal@ file applied as @cabal get@ does, so that it can be
+-- the @.cabal@ file from the index applied as @cabal get@ does, so that it can be
 -- listed in @packages:@ and worked on. A directory that is already there is
 -- left alone: it may hold edits.
 unpackVendored :: Verbosity -> FilePath -> PackageId -> VendorSource -> IO [PackageId]
