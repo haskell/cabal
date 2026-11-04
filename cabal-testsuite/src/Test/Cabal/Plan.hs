@@ -15,7 +15,7 @@ module Test.Cabal.Plan
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.Types
-import qualified Data.Text as Text
+import Data.Text qualified as Text
 import Distribution.Package
 import Distribution.Parsec (eitherParsec, simpleParsec)
 import Distribution.Pretty (prettyShow)

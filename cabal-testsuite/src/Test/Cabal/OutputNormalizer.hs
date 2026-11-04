@@ -15,7 +15,7 @@ import Data.Array ((!))
 import Text.Regex.Base
 import Text.Regex.TDFA
 
-import qualified Data.Foldable as F
+import Data.Foldable qualified as F
 
 normalizeOutput :: NormalizerEnv -> String -> String
 normalizeOutput nenv =
