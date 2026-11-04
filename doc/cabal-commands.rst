@@ -596,8 +596,9 @@ cabal vendor
 a directory laid out as a :ref:`local no-index repository
 <local-no-index-repositories>`, so that the project can be built without
 network access, for example when packaging it for a distribution or in a
-sandboxed build. The dependencies are the ones the solver picks for the
-current project configuration, including build tools and setup dependencies.
+sandboxed build. Tarballs not already in the download cache are downloaded
+first. The dependencies are the ones the solver picks for the current project
+configuration, including build tools and setup dependencies.
 
 The directory defaults to ``vendor`` in the project root. For every dependency
 it contains ``<package>-<version>.tar.gz`` and, for packages from a package
@@ -677,7 +678,7 @@ The ``cabal vendor`` command supports the following options:
 .. option:: --dry-run
 
     Only print the packages that would be vendored (and, with ``--prune``,
-    the files that would be removed); write nothing.
+    the files that would be removed); download nothing and write nothing.
 
 .. option:: --prune
 
