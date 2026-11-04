@@ -465,6 +465,9 @@ Environment options
     :default: ``False``
 
     If ``True``, Cabal refuses to download packages from remote repositories.
+    Packages from a :ref:`local no-index repository
+    <local-no-index-repositories>` are read from disk rather than downloaded, so
+    they are not affected.
 
     The command line variant of this field is ``--offline``.
 

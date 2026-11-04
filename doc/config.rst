@@ -217,6 +217,9 @@ project root, so the repository can be kept in the project's source tree. The
 project's dependencies. Relative paths in the global configuration file are
 resolved against the current working directory, which is not recommended.
 
+Packages from a local no-index repository are read from disk, not downloaded,
+so building with :cfg-field:`offline` works with them.
+
 For example, if ``/absolute/path/to/directory`` looks like
 ::
 
