@@ -601,12 +601,13 @@ current project configuration, including build tools and setup dependencies.
 
 The directory defaults to ``vendor`` in the project root. For every dependency
 it contains ``<package>-<version>.tar.gz`` and, for packages from a package
-repository with a revised ``.cabal`` file, that file as
-``<package>-<version>.cabal``. Dependencies from ``source-repository-package``
-stanzas are vendored as source distributions of their checkouts, which lets
-the stanza be removed afterwards. Local packages of the project are not
-vendored, and packages given as remote or local tarballs in ``packages:`` are
-skipped with a warning since their ``packages:`` entry would still be used.
+repository, the ``.cabal`` file from the package index as
+``<package>-<version>.cabal``, which carries any revision. Dependencies from
+``source-repository-package`` stanzas are vendored as source distributions of
+their checkouts, which lets the stanza be removed afterwards. Local packages
+of the project are not vendored, and packages given as remote or local
+tarballs in ``packages:`` are skipped with a warning since their ``packages:``
+entry would still be used.
 
 The command then prints the stanza to add to the project file to build from
 the vendored packages:
@@ -693,7 +694,8 @@ The ``cabal vendor`` command supports the following options:
 .. option:: --unpack
 
     Also unpack the named packages into ``src/`` under the vendor directory,
-    with the revised ``.cabal`` file applied, and print the ``packages:``
+    with the ``.cabal`` file from the package index applied, and print the
+    ``packages:``
     line that makes them local packages of the project. A local package
     takes precedence over the vendored tarball of the same name, so this is
     the way to try a change in a dependency; remove the ``packages:`` entry
