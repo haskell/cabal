@@ -72,8 +72,7 @@ import Distribution.Simple.PackageDescription
   ( readGenericPackageDescription
   )
 import Distribution.Simple.PreProcess
-  ( ppUnlit
-  , runSimplePreProcessor
+  ( runUnlit
   )
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
@@ -968,7 +967,7 @@ updateSetupScript verbosity options _ Custom = do
   when srcNewer $
     if useHs
       then copyFileVerbose verbosity src (i (setupHs options))
-      else runSimplePreProcessor ppUnlit src (i (setupHs options)) verbosity
+      else runUnlit src (i (setupHs options)) verbosity
   where
     customSetupHs = workingDir options </> "Setup.hs"
     customSetupLhs = workingDir options </> "Setup.lhs"

@@ -28,9 +28,9 @@ module Distribution.Simple.PreProcess
   , builtinHaskellSuffixes
   , builtinHaskellBootSuffixes
   , PreProcessor (..)
-  , PreProcessorKey (..)
-  , mkSimplePreProcessor
+  , PreProcessorInvocation (..)
   , runSimplePreProcessor
+  , runUnlit
   , ppCpp
   , ppCpp'
   , ppC2hs
@@ -111,30 +111,21 @@ type PreProcessorExtras =
   -> SymbolicPath Pkg (Dir Source)
   -> IO [RelativePath Source File]
 
-mkSimplePreProcessor
-  :: (FilePath -> FilePath -> Verbosity -> IO ())
-  -> (FilePath, FilePath)
-  -> (FilePath, FilePath)
-  -> Verbosity
-  -> IO ()
-mkSimplePreProcessor
-  simplePP
-  (inBaseDir, inRelativeFile)
-  (outBaseDir, outRelativeFile)
-  verbosity = simplePP inFile outFile verbosity
-    where
-      inFile = normalise (inBaseDir </> inRelativeFile)
-      outFile = normalise (outBaseDir </> outRelativeFile)
-
 runSimplePreProcessor
-  :: PreProcessor
+  :: (FilePath -> FilePath -> Verbosity -> IO ())
   -> FilePath
   -> FilePath
   -> Verbosity
   -> IO ()
-runSimplePreProcessor pp inFile outFile verbosity = do
-  (runPreProcessor, _) <- getPreProcessor pp verbosity
-  runPreProcessor (".", inFile) (".", outFile) verbosity
+runSimplePreProcessor
+  simplePP
+  inFile'
+  outFile'
+  verbosity = do
+    simplePP inFile outFile verbosity
+    where
+      inFile = normalise inFile'
+      outFile = normalise outFile'
 
 -- | A preprocessor for turning non-Haskell files with the given 'Suffix'
 -- (i.e. file extension) into plain Haskell source files.
@@ -352,22 +343,28 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
         -- Use file monitoring to only re-run the preprocessor if either the
         -- input file or the preprocessor itself have changed.
         -- See Note [Preprocessor monitoring].
-        (runPreProcessor, key) <- getPreProcessor pp verbosity
+        let destDir = i buildLoc </> takeDirectory srcStem
+            inBaseDir = psrcLoc
+            inRelativeFile = getSymbolicPath psrcRelFile
+            outBaseDir = buildLoc
+            outRelativeFile = srcStem <.> "hs"
+            inFile = (getSymbolicPath inBaseDir, inRelativeFile)
+            outFile = (getSymbolicPath outBaseDir, outRelativeFile)
+        invocation <- getPreProcessor pp verbosity inFile outFile
         let recompile = liftIO $ do
-              let destDir = i buildLoc </> takeDirectory srcStem
               createDirectoryIfMissingVerbose verbosity True destDir
               runPreProcessorWithHsBootHack
-                runPreProcessor
-                (psrcLoc, getSymbolicPath psrcRelFile)
-                (buildLoc, srcStem <.> "hs")
+                (inBaseDir, inRelativeFile)
+                (outBaseDir, outRelativeFile)
+                invocation
         void . execWriterT $
           rerunIfChanged'
             verbosity
-            (interpretSymbolicPath mbWorkDir (makeSymbolicPath ""))
+            cwd
             sequence
             [
               ( newFileMonitor (i buildLoc </> srcStem <.> ext <> "-cache")
-              , key
+              , invocation
               , recompile
               )
             ]
@@ -376,27 +373,30 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
     buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
     buildAsSrcLoc = coerceSymbolicPath buildLoc
 
+    cwd :: FilePath
+    cwd = interpretSymbolicPath mbWorkDir (makeSymbolicPath "")
+
     -- FIXME: This is a somewhat nasty hack. GHC requires that hs-boot files
     -- be in the same place as the hs files, so if we put the hs file in dist/
     -- then we need to copy the hs-boot file there too. This should probably be
     -- done another way. Possibly we should also be looking for .lhs-boot
     -- files, but I think that preprocessors only produce .hs files.
     runPreProcessorWithHsBootHack
-      :: PreProcessCommand
-      -> (SymbolicPathX allowAbsolute1 Pkg to1, FilePath)
+      :: (SymbolicPathX allowAbsolute1 Pkg to1, FilePath)
       -> (SymbolicPathX allowAbsolute Pkg to, FilePath)
+      -> PreProcessorInvocation
       -> IO [MonitorFilePath]
     runPreProcessorWithHsBootHack
-      runPreProcessor
       (inBaseDir, inRelativeFile)
-      (outBaseDir, outRelativeFile) = do
+      (outBaseDir, outRelativeFile)
+      invocation = do
         -- Preprocessors are expected to take into account the working
         -- directory, e.g. using runProgramCwd with a working directory
         -- computed with mbWorkDirLBI.
         -- Hence the use of 'getSymbolicPath' here.
-        runPreProcessor
-          (getSymbolicPath inBaseDir, inRelativeFile)
-          (getSymbolicPath outBaseDir, outRelativeFile)
+        runPreProcessorInvocation
+          invocation
+          mbWorkDir
           verbosity
 
         -- Here we interact directly with the file system, so we must
@@ -414,6 +414,32 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
               then [monitorFileHashed inBoot, monitorFileExistence outBoot]
               else [monitorNonExistentFile inBoot]
 
+runPreProcessorInvocation :: PreProcessorInvocation
+                          -> Maybe (SymbolicPath CWD (Dir to))
+                          -> Verbosity
+                          -> IO ()
+runPreProcessorInvocation (PreProcessorUnlit inFile outFile) _cwd verbosity =
+  runUnlit inFile outFile verbosity
+runPreProcessorInvocation (PreProcessorProgram prog args _) cwd verbosity =
+  runProgramCwd verbosity cwd prog args
+runPreProcessorInvocation (PreProcessorViaResponseFile tempFileName prog crossArgs args _) cwd verbosity =
+  withResponseFile
+    verbosity
+    defaultTempFileOptions
+    tempFileName
+    Nothing
+    args
+    ( \responseFileName ->
+        runPreProcessorInvocation
+          (PreProcessorProgram prog (crossArgs ++ ["@" ++ responseFileName]) [])
+          cwd
+          verbosity
+    )
+
+runUnlit :: FilePath -> FilePath -> Verbosity -> IO ()
+runUnlit inFile outFile verbosity = do
+  withUTF8FileContents inFile $ \contents ->
+    either (writeUTF8File outFile) (dieWithException verbosity) (unlit inFile contents)
 
 -- ------------------------------------------------------------
 
@@ -428,11 +454,10 @@ ppUnlit =
   PreProcessor
     { platformIndependent = True
     , ppOrdering = unsorted
-    , getPreProcessor = \_ -> do
-        let runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-              withUTF8FileContents inFile $ \contents ->
-                either (writeUTF8File outFile) (dieWithException verbosity) (unlit inFile contents)
-        return (runPreProcessor, PreProcessorBuiltin)
+    , getPreProcessor = \_verbosity (inFileDir, inFileName) (outFileDir, outFileName) -> do
+        let inFile = inFileDir </> inFileName
+            outFile = outFileDir </> outFileName
+        return $ PreProcessorUnlit inFile outFile
     }
 
 ppCpp :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
@@ -457,29 +482,27 @@ ppGhcCpp extraArgs _bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , getPreProcessor = \verbosity' -> do
-        progVersion <- getProgVersion verbosity'
-        let ppInfo = PreProcessorPrograms [fst progVersion]
-        return (runPreProcessor progVersion, ppInfo)
+    , getPreProcessor = \verbosity' (inFileDir, inFileName) (outFileDir, outFileName) -> do
+        (prog, _) <- getProgVersion verbosity'
+        let inFile = inFileDir </> inFileName
+            outFile = outFileDir </> outFileName
+        let args :: [String]
+            args = ["-E", "-cpp"]
+                    -- This is a bit of an ugly hack. We're going to
+                    -- unlit the file ourselves later on if appropriate,
+                    -- so we need GHC not to unlit it now or it'll get
+                    -- double-unlitted. In the future we might switch to
+                    -- using cpphs --unlit instead.
+                    ++ ["-x", "hs"]
+                    ++ ["-optP-include", "-optP" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
+                    ++ ["-o", outFile, inFile]
+                    ++ extraArgs
+        return $ PreProcessorProgram prog args []
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
-
-    runPreProcessor (prog, _version) =
-      mkSimplePreProcessor $ \inFile outFile verbosity -> do
-        runProgramCwd verbosity (mbWorkDirLBI lbi) prog $
-          ["-E", "-cpp"]
-            -- This is a bit of an ugly hack. We're going to
-            -- unlit the file ourselves later on if appropriate,
-            -- so we need GHC not to unlit it now or it'll get
-            -- double-unlitted. In the future we might switch to
-            -- using cpphs --unlit instead.
-            ++ ["-x", "hs"]
-            ++ ["-optP-include", "-optP" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
-            ++ ["-o", outFile, inFile]
-            ++ extraArgs
 
     getProgVersion
       :: Verbosity
@@ -498,25 +521,23 @@ ppCpphs extraArgs _bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , getPreProcessor = \verbosity -> do
-        progVersion <- getProgVersion verbosity
-        let ppInfo = PreProcessorPrograms [fst progVersion]
-        return (runPreProcessor progVersion, ppInfo)
+    , getPreProcessor = \verbosity (inFileDir, inFileName) (outFileDir, outFileName) -> do
+        (cpphsProg, cpphsVersion) <- getProgVersion verbosity
+        let inFile = inFileDir </> inFileName
+            outFile = outFileDir </> outFileName
+        let args :: [String]
+            args = ("-O" ++ outFile)
+                   : inFile
+                   : "--noline"
+                   : "--strip"
+                   : ["--include=" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName) | cpphsVersion >= mkVersion [1, 6]]
+                   ++ extraArgs
+        return $ PreProcessorProgram cpphsProg args []
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
-
-    runPreProcessor (cpphsProg, cpphsVersion) =
-      mkSimplePreProcessor $ \inFile outFile verbosity -> do
-        runProgramCwd verbosity (mbWorkDirLBI lbi) cpphsProg $
-          ("-O" ++ outFile)
-            : inFile
-            : "--noline"
-            : "--strip"
-            : ["--include=" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName) | cpphsVersion >= mkVersion [1, 6]]
-            ++ extraArgs
 
     getProgVersion
       :: Verbosity
@@ -535,38 +556,32 @@ ppHsc2hs bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , getPreProcessor = \verbosity -> do
-        progVersion <- getProgVersion verbosity
-        let (gccProg, hsc2hsProg, _) = progVersion
-        let ppInfo = PreProcessorPrograms [gccProg, hsc2hsProg]
-        return (runPreProcessor progVersion, ppInfo)
+    , getPreProcessor = \verbosity (inFileDir, inFileName) (outFileDir, outFileName) -> do
+        (gccProg, hsc2hsProg, hsc2hsVersion) <- getProgVersion verbosity
+        let inFile = inFileDir </> inFileName
+            outFile = outFileDir </> outFileName
+        let isCross = hostPlatform lbi /= buildPlatform
+            crossArgs = if isCross then ["-x"] else []
+        let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0, 68, 4]
+            pureArgs = genPureArgs hsc2hsVersion gccProg inFile outFile
+        if hsc2hsSupportsResponseFiles
+          then
+            return $ PreProcessorViaResponseFile
+              "hsc2hs-response.txt"
+              gccProg
+              crossArgs
+              pureArgs
+              [hsc2hsProg]
+          else
+            return $ PreProcessorProgram
+              gccProg
+              (crossArgs ++ pureArgs)
+              [hsc2hsProg]
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     u :: SymbolicPathX allowAbs Pkg to -> FilePath
     u = interpretSymbolicPathCWD
-    mbWorkDir = mbWorkDirLBI lbi
-
-    runPreProcessor (gccProg, hsc2hsProg, hsc2hsVersion) =
-      mkSimplePreProcessor $ \inFile outFile verbosity -> do
-        let runHsc2hs = runProgramCwd verbosity mbWorkDir hsc2hsProg
-        -- See Trac #13896 and https://github.com/haskell/cabal/issues/3122.
-        let isCross = hostPlatform lbi /= buildPlatform
-            prependCrossFlags = if isCross then ("-x" :) else id
-        let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0, 68, 4]
-            pureArgs = genPureArgs hsc2hsVersion gccProg inFile outFile
-        if hsc2hsSupportsResponseFiles
-          then
-            withResponseFile
-              verbosity
-              defaultTempFileOptions
-              "hsc2hs-response.txt"
-              Nothing
-              pureArgs
-              ( \responseFileName ->
-                  runHsc2hs (prependCrossFlags ["@" ++ responseFileName])
-              )
-          else runHsc2hs (prependCrossFlags pureArgs)
 
     getProgVersion
       :: Verbosity
@@ -733,56 +748,48 @@ ppC2hs bi lbi clbi =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , getPreProcessor = \verbosity -> do
+    , getPreProcessor = \verbosity (inBaseDir, inRelativeFile) (outBaseDir, outRelativeFile) -> do
         progVersion <- getProgVersion verbosity
         let (gccProg, c2hsProg, _) = progVersion
-        let ppInfo = PreProcessorPrograms [gccProg, c2hsProg]
-        return (runPreProcessor progVersion, ppInfo)
+            args :: [String]
+            args = ["--cpp=" ++ programPath gccProg, "--cppopts=-E"]
+                   ++ ["--cppopts=" ++ opt | opt <- getCppOptions bi lbi]
+                   ++ ["--cppopts=-include" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
+                   ++ ["--include=" ++ outBaseDir]
+                   -- Options from dependent packages
+                   ++ [ "--cppopts=" ++ opt
+                      | pkg <- pkgs
+                      , opt <-
+                         ["-I" ++ opt | opt <- Installed.includeDirs pkg]
+                           ++ [ opt | opt@('-' : c : _) <- Installed.ccOptions pkg,
+                              -- c2hs uses the C ABI
+                              -- We assume that there are only C sources
+                              -- and C++ functions are exported via a C
+                              -- interface and wrapped in a C source file.
+                              -- Therefore we do not supply C++ flags
+                              -- because there will not be C++ sources.
+                              --
+                              --
+                              -- DO NOT add Installed.cxxOptions unless this changes!
+                              c `elem` "DIU"
+                              ]
+                      ]
+                   -- TODO: install .chi files for packages, so we can --include
+                   -- those dirs here, for the dependencies
+
+                   -- input and output files
+                   ++ [ "--output-dir=" ++ outBaseDir
+                      , "--output=" ++ outRelativeFile
+                      , inBaseDir </> inRelativeFile
+                      ]
+        return $ PreProcessorProgram c2hsProg args [gccProg]
     }
   where
     pkgs = PackageIndex.topologicalOrder (installedPkgs lbi)
-    mbWorkDir = mbWorkDirLBI lbi
+
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
-
-    runPreProcessor
-      (gccProg, c2hsProg, _)
-      (inBaseDir, inRelativeFile)
-      (outBaseDir, outRelativeFile)
-      verbosity = do
-        runProgramCwd verbosity mbWorkDir c2hsProg $
-          -- Options from the current package:
-          ["--cpp=" ++ programPath gccProg, "--cppopts=-E"]
-            ++ ["--cppopts=" ++ opt | opt <- getCppOptions bi lbi]
-            ++ ["--cppopts=-include" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
-            ++ ["--include=" ++ outBaseDir]
-            -- Options from dependent packages
-            ++ [ "--cppopts=" ++ opt
-               | pkg <- pkgs
-               , opt <-
-                  ["-I" ++ opt | opt <- Installed.includeDirs pkg]
-                    ++ [ opt | opt@('-' : c : _) <- Installed.ccOptions pkg,
-                       -- c2hs uses the C ABI
-                       -- We assume that there are only C sources
-                       -- and C++ functions are exported via a C
-                       -- interface and wrapped in a C source file.
-                       -- Therefore we do not supply C++ flags
-                       -- because there will not be C++ sources.
-                       --
-                       --
-                       -- DO NOT add Installed.cxxOptions unless this changes!
-                       c `elem` "DIU"
-                       ]
-               ]
-            -- TODO: install .chi files for packages, so we can --include
-            -- those dirs here, for the dependencies
-
-            -- input and output files
-            ++ [ "--output-dir=" ++ outBaseDir
-               , "--output=" ++ outRelativeFile
-               , inBaseDir </> inRelativeFile
-               ]
 
     getProgVersion verbosity = do
       (c2hsProg, c2hsVersion) <-
@@ -911,20 +918,14 @@ standardPP lbi prog args =
   PreProcessor
     { platformIndependent = False
     , ppOrdering = unsorted
-    , getPreProcessor = \_ ->
-        pure
-          ( runPreProcessor
-          , PreProcessorPrograms . maybeToList $ lookupProgram prog (withPrograms lbi)
-          )
+    , getPreProcessor = \verbosity (inFileDir, inFileName) (outFileDir, outFileName) -> do
+        let inFile = inFileDir </> inFileName
+        let outFile = outFileDir </> outFileName
+        (progVer, _) <- requireProgram verbosity prog (withPrograms lbi)
+        let args' = args ++ ["-o", outFile, inFile]
+        pure $
+          PreProcessorProgram progVer args' []
     }
-  where
-    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      runDbProgramCwd
-        verbosity
-        (mbWorkDirLBI lbi)
-        prog
-        (withPrograms lbi)
-        (args ++ ["-o", outFile, inFile])
 
 -- | Convenience function; get the suffixes of these preprocessors.
 ppSuffixes :: [PPSuffixHandler] -> [Suffix]

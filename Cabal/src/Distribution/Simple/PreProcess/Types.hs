@@ -13,8 +13,7 @@
 module Distribution.Simple.PreProcess.Types
   ( Suffix (..)
   , PreProcessor (..)
-  , PreProcessCommand
-  , PreProcessorKey (..)
+  , PreProcessorInvocation (..)
   , builtinHaskellSuffixes
   , builtinHaskellBootSuffixes
   )
@@ -92,42 +91,41 @@ data PreProcessor = PreProcessor
   -- @since 3.8.1.0
   , getPreProcessor
       :: Verbosity
-      -> IO (PreProcessCommand, PreProcessorKey)
+      -> (FilePath, FilePath) -- ^ input
+      -> (FilePath, FilePath) -- ^ output
+      -> IO PreProcessorInvocation
   }
 
--- | Uniquely identifies a specific preprocessor (version) for change
--- monitoring purposes.
+-- | Uniquely identifies a specific preprocessor, including the preprocessor
+-- itself and any arguments that need to be tracked for monitoring purposes.
 -- This value should change iff the preprocessor itself changes in a way that
 -- requires re-running it for a given input file.
 -- See Note [Preprocessor monitoring] in Distribution.Simple.PreProcess
-data PreProcessorKey
-  = -- | A built-in preprocessor; these only change when Cabal itself does, so
-    -- there is no need to track changes for these.
-    PreProcessorBuiltin
+data PreProcessorInvocation
+  = -- | The Unlit pre-processor. This one is built in, and only changes when
+    -- Cabal itself does, so there is no need to track any changes for it, other
+    -- than the input and output files.
+    PreProcessorUnlit
+      FilePath -- ^ input file
+      FilePath -- ^ output file
   | -- | A preprocessor that runs some program, identified uniquely by the
-    -- configured program.
-    PreProcessorPrograms [ConfiguredProgram]
-  | -- | A custom preprocessor, identified uniquely by a supplied string. Use
-    -- this for preprocessors that may change between builds, but cannot be
-    -- implemented using 'ConfiguredProgram'.
-    PreProcessorCustom String
+    -- configured program and its arguments.
+    PreProcessorProgram
+      ConfiguredProgram -- ^ the main program to run
+      [String] -- ^ arguments to pass to the main program
+      [ConfiguredProgram] -- ^ additional programs that the preprocessor depends on
+  | -- | A preprocessor that depends on a response file (a temporary file
+    -- available for the duration of the invocation).
+    PreProcessorViaResponseFile
+      FilePath -- ^ filename pattern for the response file
+      ConfiguredProgram -- ^ the main program to run
+      [String] -- ^ arguments to pass directly
+      [String] -- ^ arguments to write into the response file
+      [ConfiguredProgram] -- ^ additional programs that the preprocessor depends on
   deriving (Generic, Eq)
 
-instance Binary PreProcessorKey
-instance Structured PreProcessorKey
-
--- | A command to run a given preprocessor on a single source file.
---
--- The input and output file paths are passed in as arguments, as it is
--- the build system and not the package author which chooses the location of
--- source files.
-type PreProcessCommand =
-  (FilePath, FilePath)
-  -- ^ Location of the source file relative to a base dir
-  -> (FilePath, FilePath)
-  -- ^ Output file name, relative to an output base dir
-  -> Verbosity
-  -> IO () -- Should exit if the preprocessor fails
+instance Binary PreProcessorInvocation
+instance Structured PreProcessorInvocation
 
 -- | A suffix (or file extension).
 --
