@@ -2,7 +2,7 @@ import Distribution.System (OS (Windows), buildOS)
 import System.FilePath ((</>))
 import qualified System.FilePath.Posix as Posix
 import qualified System.FilePath.Windows as Windows
-import System.Directory (removeDirectoryRecursive, removeFile)
+import System.Directory (removePathForcibly)
 import Test.Cabal.Prelude
 
 -- A dependency taken from a git repository with source-repository-package is
@@ -40,7 +40,8 @@ main = cabalTest $ withShorterPathForNewBuildStore $ recordMode DoNotRecord $ do
   assertOutputContains "pkg-a-1.0 (git " r
 
   -- Drop the stanza and the upstream repository: the vendored source
-  -- distribution is all that is left.
+  -- distribution is all that is left. Git marks its object files read-only,
+  -- which removeDirectoryRecursive cannot delete on Windows.
   writeSourceFile "cabal.vendored.project" $
     unlines
       [ "packages: dummy-app"
@@ -50,7 +51,7 @@ main = cabalTest $ withShorterPathForNewBuildStore $ recordMode DoNotRecord $ do
       , ""
       , "active-repositories: vendored"
       ]
-  liftIO $ removeDirectoryRecursive (cwd </> "upstream")
+  liftIO $ removePathForcibly (cwd </> "upstream")
   withProjectFile "cabal.vendored.project" $
     cabal "v2-build" ["--offline", "all"]
   where
