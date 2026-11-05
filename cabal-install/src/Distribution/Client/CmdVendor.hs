@@ -64,7 +64,7 @@ import Distribution.Simple.Utils
   ( copyFileVerbose
   , dieWithException
   , info
-  , noticeNoWrap
+  , noticeDoc
   , warn
   , wrapText
   , writeFileAtomic
@@ -92,13 +92,6 @@ import System.FilePath
   , (</>)
   )
 import Text.PrettyPrint
-  ( colon
-  , hsep
-  , nest
-  , render
-  , text
-  , vcat
-  )
 import qualified Text.PrettyPrint as Pretty
 
 -------------------------------------------------------------------------------
@@ -335,22 +328,16 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
 
   if dryRun
     then do
-      noticeNoWrap verbosity $
-        unlines $
-          ("Would vendor the following packages into " ++ displayVendorDir projectRoot vendorDir ++ ":")
-            : [" - " ++ prettyShow pkgid | pkgid <- Map.keys selected]
+      noticeDoc verbosity . listing ("Would vendor the following packages into " ++ displayVendorDir projectRoot vendorDir) $
+        pretty <$> Map.keys selected
       when prune $ do
         stale <- staleVendorFiles vendorDir (Map.keysSet sources)
         unless (null stale) $
-          noticeNoWrap verbosity $
-            unlines $
-              "Would remove the following files not in the current plan:"
-                : [" - " ++ file | file <- stale]
+          noticeDoc verbosity . listing "Would remove the following files not in the current plan" $
+            text <$> stale
       when unpack $
-        noticeNoWrap verbosity $
-          unlines $
-            ("Would unpack the following packages into " ++ unpackDir ++ ":")
-              : [" - " ++ prettyShow pkgid | pkgid <- Map.keys selected]
+        noticeDoc verbosity . listing ("Would unpack the following packages into " ++ unpackDir) $
+          pretty <$> Map.keys selected
     else do
       createDirectoryIfMissing True vendorDir
       projectConfigWithBuilderRepoContext verbosity buildSettings $ \repoCtxt ->
@@ -359,10 +346,9 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       when prune $ do
         removed <- pruneVendorDir verbosity vendorDir (Map.keysSet sources)
         unless (null removed) $
-          noticeNoWrap verbosity $
-            unlines $
-              ("Removed " ++ show (length removed) ++ " " ++ plural (length removed) "file" "files" ++ " not in the current plan:")
-                : [" - " ++ file | file <- removed]
+          noticeDoc verbosity $
+            listing ("Removed " ++ show (length removed) ++ " " ++ plural (length removed) "file" "files" ++ " not in the current plan") $
+              text <$> removed
 
       -- The index cache of a file+noindex repository is never invalidated by
       -- cabal itself, so drop it; it is rebuilt on first use.
@@ -375,7 +361,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
           then fmap concat . for (Map.toList selected) $ uncurry (unpackVendored verbosity vendorDir)
           else return []
 
-      noticeNoWrap verbosity $
+      noticeDoc verbosity $
         vendorReport projectRoot vendorDir partial (Map.size sources) (Map.toList selected) unpacked
   where
     verbosity = cfgVerbosity normal flags
@@ -474,6 +460,10 @@ pruneVendorDir verbosity vendorDir keep = do
 plural :: Int -> String -> String -> String
 plural n singular pluralForm = if n == 1 then singular else pluralForm
 
+-- | A heading, closed with a colon, over a dashed list of items.
+listing :: String -> [Doc] -> Doc
+listing heading items = vcat [text heading Pretty.<> colon, nest 1 $ vcat [char '-' <+> item | item <- items]]
+
 -- | The vendor directory as shown to the user: relative to the project root
 -- when it lies inside the project, so that it reads the same as the @url:@
 -- line of the printed stanza. A directory outside the project stays absolute.
@@ -485,27 +475,30 @@ displayVendorDir projectRoot vendorDir
     relativeDir = makeRelative projectRoot vendorDir
 
 -- | What was vendored, and the project configuration needed to use it.
-vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource)] -> [PackageId] -> String
+vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource)] -> [PackageId] -> Doc
 vendorReport projectRoot vendorDir partial total selected unpacked =
-  unlines $
+  vcat $
     [ summary
-    , ""
-    , "To build using the vendored packages, add the following to the project file"
-    , "(the 'url' line must stay indented under 'repository'):"
-    , ""
-    , "repository " ++ vendoredRepoName
-    , "  url: " ++ vendorUrl
-    , ""
-    , "active-repositories: " ++ activeRepos
+    , blank
+    , text "To build using the vendored packages, add the following to the project file"
+    , text "(the 'url' line must stay indented under 'repository'):"
+    , blank
+    , text "repository" <+> text vendoredRepoName
+    , nest 2 $ text "url" Pretty.<> colon <+> text vendorUrl
+    , blank
+    , text "active-repositories" Pretty.<> colon <+> text activeRepos
     ]
       ++ sourceRepoNotes
       ++ unpackNotes
   where
+    -- An empty line. Unlike 'Pretty.empty', it is not dropped by 'vcat'.
+    blank = text ""
+
     summary
       | partial =
-          "Vendored " ++ show (length selected) ++ " of " ++ show total ++ " dependencies into " ++ displayDir
+          hsep [text "Vendored", int (length selected), text "of", int total, text "dependencies into", text displayDir]
       | otherwise =
-          "Vendored " ++ show (length selected) ++ " " ++ plural (length selected) "package" "packages" ++ " into " ++ displayDir
+          hsep [text "Vendored", int (length selected), text (plural (length selected) "package" "packages"), text "into", text displayDir]
 
     -- Prefer a path relative to the project root, so that the vendored
     -- repository can be committed along with the project.
@@ -526,28 +519,26 @@ vendorReport projectRoot vendorDir partial total selected unpacked =
       case [(pkgid, srp) | (pkgid, FromSourceRepo srp _) <- selected] of
         [] -> []
         srps ->
-          [ ""
-          , "The vendored repository now provides these source-repository-package"
-          , "dependencies, whose stanzas can be removed from the project file:"
+          [ blank
+          , text "The vendored repository now provides these source-repository-package"
+          , text "dependencies, whose stanzas can be removed from the project file:"
+          , nest 2 $ vcat [char '-' <+> pretty pkgid <+> parens (describeSourceRepo srp) | (pkgid, srp) <- srps]
           ]
-            ++ [ "  - " ++ prettyShow pkgid ++ " (" ++ describeSourceRepo srp ++ ")"
-               | (pkgid, srp) <- srps
-               ]
 
     unpackNotes = case unpacked of
       [] -> []
       pkgids ->
-        [ ""
-        , "Unpacked into " ++ displayDir ++ "/src. To work on these as local packages,"
-        , "which take precedence over the vendored ones, add to the project file:"
-        , ""
-        , "packages:"
+        [ blank
+        , text $ "Unpacked into " ++ displayDir ++ "/src. To work on these as local packages,"
+        , text "which take precedence over the vendored ones, add to the project file:"
+        , blank
+        , text "packages" Pretty.<> colon
+        , nest 2 $ vcat [text (displayDir ++ "/src/" ++ prettyShow pkgid) | pkgid <- pkgids]
         ]
-          ++ ["  " ++ displayDir ++ "/src/" ++ prettyShow pkgid | pkgid <- pkgids]
 
     describeSourceRepo SourceRepositoryPackage{srpType, srpLocation, srpTag, srpBranch, srpSubdir} =
-      intercalate ", " $
-        [prettyShow srpType ++ " " ++ Text.unpack srpLocation]
-          ++ ["tag " ++ Text.unpack tag | Just tag <- [srpTag]]
-          ++ ["branch " ++ Text.unpack branch | Just branch <- [srpBranch]]
-          ++ ["subdir " ++ subdir | Just subdir <- [srpSubdir]]
+      hsep . punctuate comma $
+        [pretty srpType <+> text (Text.unpack srpLocation)]
+          ++ [text "tag" <+> text (Text.unpack tag) | Just tag <- [srpTag]]
+          ++ [text "branch" <+> text (Text.unpack branch) | Just branch <- [srpBranch]]
+          ++ [text "subdir" <+> text subdir | Just subdir <- [srpSubdir]]
