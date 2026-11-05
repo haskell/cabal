@@ -241,9 +241,10 @@ then the cache will be stored inside the :cfg-field:`remote-repo-cache` director
 The part of the path will be used to determine the cache key part.
 
 .. note::
-    ``cabal-install`` creates a ``.cache`` file, and will aggressively use
-    its contents if it exists. Therefore if you change the contents of
-    the directory, remember to wipe the cache too.
+    ``cabal-install`` creates a ``noindex.cache`` file, and will aggressively
+    use its contents if it exists. Therefore if you change the contents of
+    the directory, remember to wipe the cache too, or run ``cabal update``,
+    which rebuilds it.
 
 .. note::
     The URI scheme ``file:`` is interpreted as a remote repository,

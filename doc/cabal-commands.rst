@@ -647,6 +647,24 @@ downloaded for them.
     - A ``url:`` naming a directory that does not exist is reported with a warning
       when the repository index is constructed, and the repository is then empty.
 
+.. warning::
+
+    After the vendor directory changes other than by ``cabal vendor``, for
+    example by pulling or checking out a commit with different vendored
+    packages, delete the ``noindex.cache`` file inside it before building.
+
+    cabal reads the directory once, keeps what it found in that file, and does
+    not notice later changes. With a stale cache, cabal can fail to find a
+    package that is in the directory or fail to read one that is no longer
+    there, and the reports in the note above do not apply. ``cabal vendor``
+    removes the file when it has finished, so the next command reads the
+    directory again. ``cabal update`` also rebuilds it, but it contacts every
+    other configured repository as well.
+
+    Keep ``noindex.cache`` out of version control, for example by adding
+    ``vendor/noindex.cache`` to ``.gitignore``. See
+    :ref:`local-no-index-repositories`.
+
 Package names can be given to vendor only some of the dependencies, for
 instance to pin a few packages to exact sources while the rest still come from
 Hackage. The printed stanza then keeps the other repositories active and makes
@@ -660,7 +678,7 @@ the vendored one override them for the packages it contains:
     active-repositories: :rest, vendored:override
 
 Running ``cabal vendor`` again writes the dependencies of the current plan to
-the directory (overwriting files of the same name), refreshes its index cache
+the directory (overwriting files of the same name), removes its index cache
 and leaves other files alone, so partial runs accumulate; ``--prune`` removes
 the package files that the current plan does not need. Note that once
 ``active-repositories`` names only the vendored repository, the plan is solved
