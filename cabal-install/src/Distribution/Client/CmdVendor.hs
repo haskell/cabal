@@ -161,10 +161,10 @@ vendorCommand =
             ]
         ]
       where
-        example args what =
+        example args effect =
           vcat
             [ hsep $ text <$> pname : "v2-vendor" : args
-            , nest 2 $ text what
+            , nest 2 $ text effect
             ]
 
 -------------------------------------------------------------------------------
