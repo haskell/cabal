@@ -460,6 +460,12 @@ pruneVendorDir verbosity vendorDir keep = do
 plural :: Int -> String -> String -> String
 plural n singular pluralForm = if n == 1 then singular else pluralForm
 
+-- | A line of text with an empty line above it, as a @<br>@ would leave
+-- between two blocks. The empty line is a 'text', which 'vcat' keeps where
+-- it would drop 'Pretty.empty'.
+brText :: String -> Doc
+brText line = text "" $+$ text line
+
 -- | A heading, closed with a colon, over a dashed list of items.
 listing :: String -> [Doc] -> Doc
 listing heading items = vcat [text heading Pretty.<> colon, nest 1 $ vcat [char '-' <+> item | item <- items]]
@@ -479,21 +485,15 @@ vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource
 vendorReport projectRoot vendorDir partial total selected unpacked =
   vcat $
     [ summary
-    , blank
-    , text "To build using the vendored packages, add the following to the project file"
+    , brText "To build using the vendored packages, add the following to the project file"
     , text "(the 'url' line must stay indented under 'repository'):"
-    , blank
-    , text "repository" <+> text vendoredRepoName
+    , brText "repository" <+> text vendoredRepoName
     , nest 2 $ text "url" Pretty.<> colon <+> text vendorUrl
-    , blank
-    , text "active-repositories" Pretty.<> colon <+> text activeRepos
+    , brText "active-repositories" Pretty.<> colon <+> text activeRepos
     ]
       ++ sourceRepoNotes
       ++ unpackNotes
   where
-    -- An empty line. Unlike 'Pretty.empty', it is not dropped by 'vcat'.
-    blank = text ""
-
     summary
       | partial =
           hsep [text "Vendored", int (length selected), text "of", int total, text "dependencies into", text displayDir]
@@ -519,8 +519,7 @@ vendorReport projectRoot vendorDir partial total selected unpacked =
       case [(pkgid, srp) | (pkgid, FromSourceRepo srp _) <- selected] of
         [] -> []
         srps ->
-          [ blank
-          , text "The vendored repository now provides these source-repository-package"
+          [ brText "The vendored repository now provides these source-repository-package"
           , text "dependencies, whose stanzas can be removed from the project file:"
           , nest 2 $ vcat [char '-' <+> pretty pkgid <+> parens (describeSourceRepo srp) | (pkgid, srp) <- srps]
           ]
@@ -528,11 +527,9 @@ vendorReport projectRoot vendorDir partial total selected unpacked =
     unpackNotes = case unpacked of
       [] -> []
       pkgids ->
-        [ blank
-        , text $ "Unpacked into " ++ displayDir ++ "/src. To work on these as local packages,"
+        [ brText $ "Unpacked into " ++ displayDir ++ "/src. To work on these as local packages,"
         , text "which take precedence over the vendored ones, add to the project file:"
-        , blank
-        , text "packages" Pretty.<> colon
+        , brText "packages" Pretty.<> colon
         , nest 2 $ vcat [text (displayDir ++ "/src/" ++ prettyShow pkgid) | pkgid <- pkgids]
         ]
 
