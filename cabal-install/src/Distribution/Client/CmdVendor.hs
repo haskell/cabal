@@ -295,7 +295,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
 
       unpacked <-
         if unpack
-          then fmap concat . for (Map.toList selected) $ uncurry (unpackVendored verbosity vendorDir)
+          then fmap catMaybes . for (Map.toList selected) $ uncurry (unpackVendored verbosity vendorDir)
           else return []
 
       noticeDoc verbosity $ vendorReport displayDir (Map.size sources) (Map.toList selected) unpacked
@@ -328,8 +328,8 @@ vendorPackage verbosity repoCtxt vendorDir pkgid@(prettyShow -> pkgName) source 
 -- | Unpack a vendored package into @src/@ under the vendor directory, with
 -- the @.cabal@ file from the index applied as @cabal get@ does, so that it can be
 -- listed in @packages:@ and worked on. A directory that is already there is
--- left alone: it may hold edits.
-unpackVendored :: Verbosity -> FilePath -> PackageId -> VendorSource -> IO [PackageId]
+-- left alone, as it may hold edits, and then nothing is returned.
+unpackVendored :: Verbosity -> FilePath -> PackageId -> VendorSource -> IO (Maybe PackageId)
 unpackVendored verbosity vendorDir pkgid@(prettyShow -> pkgName) source = do
   let unpackDir = vendorDir </> "src"
       pkgDir = unpackDir </> pkgName
@@ -339,11 +339,11 @@ unpackVendored verbosity vendorDir pkgid@(prettyShow -> pkgName) source = do
     then do
       warn verbosity $
         "Not unpacking " ++ pkgName ++ ": " ++ pkgDir ++ " already exists and may hold changes; remove it to unpack again."
-      return []
+      return Nothing
     else do
       createDirectoryIfMissing True unpackDir
       unpackPackage verbosity unpackDir pkgid (sourceCabalFile source) tarball
-      return [pkgid]
+      return (Just pkgid)
 
 -- | The package a file in the vendor directory belongs to, for the file
 -- names that the @file+noindex@ reader understands: @\<pkgid\>.tar.gz@ and
