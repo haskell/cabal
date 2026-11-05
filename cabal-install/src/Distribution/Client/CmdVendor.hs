@@ -17,6 +17,7 @@ import Distribution.Client.Errors
 import Distribution.Client.FetchUtils (fetchRepoTarball)
 import Distribution.Client.Get (unpackPackage)
 import Distribution.Client.GlobalFlags (RepoContext)
+import Distribution.Client.InstallPlan (foldPlanPackage)
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..), cfgVerbosity, defaultNixStyleFlags, nixStyleOptions)
 import Distribution.Client.ProjectConfig (projectConfigWithBuilderRepoContext)
@@ -222,14 +223,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
   let projectRoot = distProjectRootDirectory distDirLayout
   vendorDir <- makeAbsolute $ fromFlagOrDefault (projectRoot </> "vendor") vendorOutputDir
 
-  let elabPkgs =
-        [ elab
-        | pkg <- InstallPlan.toList elaboratedPlan
-        , elab <- case pkg of
-            InstallPlan.Configured elab -> [elab]
-            InstallPlan.Installed elab -> [elab]
-            InstallPlan.PreExisting _ -> []
-        ]
+  let elabPkgs = concatMap (foldPlanPackage (const []) pure) (InstallPlan.toList elaboratedPlan)
       localNames = Set.fromList [packageName elab | elab <- elabPkgs, elabLocalToProject elab]
 
       -- One package can appear once per component in the plan, so collect
