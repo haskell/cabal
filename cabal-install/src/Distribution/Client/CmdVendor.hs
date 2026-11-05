@@ -288,11 +288,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
   where
     pickRun settings = if buildSettingDryRun settings then vendorDryRun else vendor settings
     verbosity = cfgVerbosity normal flags
-    cliConfig =
-      commandLineFlagsToProjectConfig
-        globalFlags
-        flags
-        mempty -- ClientInstallFlags, not needed here
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty
 
 vendorDryRun :: Verbosity -> Prune -> Unpack -> (FilePath, FilePath) -> (Sources, Sources) -> IO ()
 vendorDryRun verbosity (Prune prune) (Unpack unpack) (vendorDir, displayDir) (selected, sources) = do
