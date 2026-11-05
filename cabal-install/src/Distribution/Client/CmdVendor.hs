@@ -354,17 +354,8 @@ vendorFilePackageId file = simpleParsec =<< stripExtension "tar.gz" file <|> str
 staleVendorFiles :: FilePath -> Set PackageId -> IO [FilePath]
 staleVendorFiles vendorDir keep = do
   exists <- doesDirectoryExist vendorDir
-  if not exists
-    then return []
-    else do
-      entries <- listDirectory vendorDir
-      return $
-        sort
-          [ file
-          | file <- entries
-          , Just pkgid <- [vendorFilePackageId file]
-          , pkgid `Set.notMember` keep
-          ]
+  entries <- if exists then listDirectory vendorDir else return []
+  return . sort $ filter (maybe False (`Set.notMember` keep) . vendorFilePackageId) entries
 
 -- | Remove the package files that belong to packages not in the given set,
 -- returning what was removed.
