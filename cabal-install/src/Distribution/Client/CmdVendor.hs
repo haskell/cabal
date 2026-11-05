@@ -51,7 +51,6 @@ import Distribution.Simple.Utils
 import Distribution.System (OS (Windows), buildOS)
 import Distribution.Verbosity (normal)
 
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
@@ -181,13 +180,13 @@ vendorOptions _ =
 data VendorSource
   = -- | A package from a package repository, with the @.cabal@ file from
     -- the repository's index, which carries any revision, if it has one.
-    FromRepo Repo (Maybe LBS.ByteString)
+    FromRepo Repo (Maybe CabalFileText)
   | -- | A package from a @source-repository-package@ stanza, as the source
     -- distribution tarball that cabal made from its checkout.
     FromSourceRepo SourceRepoMaybe FilePath
 
 -- | The @.cabal@ file to go with a vendored package, if its source has one.
-sourceCabalFile :: VendorSource -> Maybe LBS.ByteString
+sourceCabalFile :: VendorSource -> Maybe CabalFileText
 sourceCabalFile (FromRepo _ cabalFile) = cabalFile
 sourceCabalFile FromSourceRepo{} = Nothing
 
