@@ -104,8 +104,8 @@ vendorCommand =
     , commandSynopsis = "Vendor dependencies into a local repository."
     , commandUsage = usageAlternatives "v2-vendor" ["[FLAGS]", "[PACKAGES] [FLAGS]"]
     , commandDescription =
-        Just . const . render $
-          vcat [intro, selection, directory, unpacking]
+        Just . const . render . vcat $
+          paragraph <$> [intro, selection, directory, unpacking]
     , commandNotes = Just $ \pname -> render (examples pname) ++ "\n"
     , commandDefaultFlags = defaultNixStyleFlags defaultVendorFlags
     , commandOptions = nixStyleOptions vendorOptions
@@ -116,37 +116,33 @@ vendorCommand =
     paragraph = text . wrapText
 
     intro =
-      paragraph $
-        "Copy the source tarballs of the project's dependencies into a "
-          ++ "directory laid out as a 'file+noindex' package repository, so "
-          ++ "that the project can later be built without network access. "
-          ++ "Tarballs not already in the download cache are downloaded first."
+      "Copy the source tarballs of the project's dependencies into a "
+        ++ "directory laid out as a 'file+noindex' package repository, so "
+        ++ "that the project can later be built without network access. "
+        ++ "Tarballs not already in the download cache are downloaded first."
 
     selection =
-      paragraph $
-        "The dependencies are those selected by the solver for the current "
-          ++ "project configuration, including build tools and setup "
-          ++ "dependencies. Each is written as '<pkgid>.tar.gz', with its "
-          ++ "'.cabal' file from the package index, which carries any "
-          ++ "revision, next to it as '<pkgid>.cabal'. Dependencies from "
-          ++ "'source-repository-package' stanzas are vendored as source "
-          ++ "distributions of their checkouts. Local packages of the project "
-          ++ "are not vendored."
+      "The dependencies are those selected by the solver for the current "
+        ++ "project configuration, including build tools and setup "
+        ++ "dependencies. Each is written as '<pkgid>.tar.gz', with its "
+        ++ "'.cabal' file from the package index, which carries any "
+        ++ "revision, next to it as '<pkgid>.cabal'. Dependencies from "
+        ++ "'source-repository-package' stanzas are vendored as source "
+        ++ "distributions of their checkouts. Local packages of the project "
+        ++ "are not vendored."
 
     directory =
-      paragraph $
-        "The directory defaults to 'vendor' in the project root and can be "
-          ++ "changed with '--output-directory'. After vendoring, the command "
-          ++ "prints the 'repository' stanza to add to the project file so that "
-          ++ "the vendored packages are used. When package names are given, "
-          ++ "only those packages are vendored."
+      "The directory defaults to 'vendor' in the project root and can be "
+        ++ "changed with '--output-directory'. After vendoring, the command "
+        ++ "prints the 'repository' stanza to add to the project file so that "
+        ++ "the vendored packages are used. When package names are given, "
+        ++ "only those packages are vendored."
 
     unpacking =
-      paragraph $
-        "With '--unpack', the named packages are also unpacked into "
-          ++ "'src/' under the vendor directory, with the '.cabal' file from "
-          ++ "the package index applied, so that they can be worked on as "
-          ++ "local packages listed in 'packages:'."
+      "With '--unpack', the named packages are also unpacked into "
+        ++ "'src/' under the vendor directory, with the '.cabal' file from "
+        ++ "the package index applied, so that they can be worked on as "
+        ++ "local packages listed in 'packages:'."
 
     examples pname =
       vcat
@@ -331,12 +327,10 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         pretty <$> Map.keys selected
       when prune $ do
         stale <- staleVendorFiles vendorDir (Map.keysSet sources)
-        unless (null stale) $
-          noticeDoc verbosity . listing "Would remove the following files not in the current plan" $
-            text <$> stale
-      when unpack $
-        noticeDoc verbosity . listing ("Would unpack the following packages into " ++ unpackDir) $
-          pretty <$> Map.keys selected
+        unless (null stale) . noticeDoc verbosity . listing "Would remove the following files not in the current plan" $
+          text <$> stale
+      when unpack . noticeDoc verbosity . listing ("Would unpack the following packages into " ++ unpackDir) $
+        pretty <$> Map.keys selected
     else do
       createDirectoryIfMissing True vendorDir
       projectConfigWithBuilderRepoContext verbosity buildSettings $ \repoCtxt ->
@@ -344,10 +338,8 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
 
       when prune $ do
         removed <- pruneVendorDir verbosity vendorDir (Map.keysSet sources)
-        unless (null removed) $
-          noticeDoc verbosity $
-            listing ("Removed " ++ show (length removed) ++ " " ++ plural (length removed) "file" "files" ++ " not in the current plan") $
-              text <$> removed
+        let heading = "Removed " ++ show (length removed) ++ " " ++ plural (length removed) "file" "files" ++ " not in the current plan"
+        unless (null removed) . noticeDoc verbosity . listing heading $ text <$> removed
 
       -- The index cache of a file+noindex repository is never invalidated by
       -- cabal itself, so drop it; it is rebuilt on first use.
