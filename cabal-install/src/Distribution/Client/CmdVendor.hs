@@ -202,6 +202,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       Just pkgName -> return (pkgName :: PackageName)
       Nothing -> dieWithException verbosity (VendorInvalidPackageName arg)
   let unpack = fromFlagOrDefault False vendorUnpack
+      prune = fromFlagOrDefault False vendorPrune
   when (unpack && null pkgNames) $ dieWithException verbosity VendorUnpackNeedsPackages
 
   ProjectBaseContext
@@ -257,7 +258,6 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         | null pkgNames = sources
         | otherwise = Map.filterWithKey (\pkgid _ -> packageName pkgid `Set.member` wanted) sources
 
-      prune = fromFlagOrDefault False vendorPrune
       displayDir = displayVendorDir projectRoot vendorDir
 
   unless (null unknown) $ dieWithException verbosity (VendorUnknownPackages unknown)
