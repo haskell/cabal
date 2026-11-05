@@ -255,11 +255,11 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       selected
         | null pkgNames = sources
         | otherwise = Map.filterWithKey (\pkgid _ -> packageName pkgid `Set.member` wanted) sources
-      partial = Map.size selected < Map.size sources
 
       dryRun = buildSettingDryRun buildSettings || buildSettingOnlyDownload buildSettings
       prune = fromFlagOrDefault False vendorPrune
       unpackDir = vendorDir </> "src"
+      displayDir = displayVendorDir projectRoot vendorDir
 
   unless (null unknown) $ dieWithException verbosity (VendorUnknownPackages unknown)
   unless (null local) $ dieWithException verbosity (VendorLocalPackages local)
@@ -269,7 +269,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
 
   if dryRun
     then do
-      noticeDoc verbosity . listing ("Would vendor the following packages into " ++ displayVendorDir projectRoot vendorDir) $
+      noticeDoc verbosity . listing ("Would vendor the following packages into " ++ displayDir) $
         pretty <$> Map.keys selected
       when prune $ do
         stale <- staleVendorFiles vendorDir (Map.keysSet sources)
@@ -296,8 +296,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
           then fmap concat . for (Map.toList selected) $ uncurry (unpackVendored verbosity vendorDir)
           else return []
 
-      noticeDoc verbosity $
-        vendorReport projectRoot vendorDir partial (Map.size sources) (Map.toList selected) unpacked
+      noticeDoc verbosity $ vendorReport displayDir (Map.size sources) (Map.toList selected) unpacked
   where
     verbosity = cfgVerbosity normal flags
     cliConfig =
@@ -414,8 +413,8 @@ displayVendorDir projectRoot vendorDir@(makeRelative projectRoot -> relativeDir)
   | otherwise = vendorDir
 
 -- | What was vendored, and the project configuration needed to use it.
-vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource)] -> [PackageId] -> Doc
-vendorReport projectRoot vendorDir partial total selected@(length -> count) unpacked =
+vendorReport :: FilePath -> Int -> [(PackageId, VendorSource)] -> [PackageId] -> Doc
+vendorReport displayDir total selected@(length -> count) unpacked =
   vcat $
     [ summary
     , brText "To build using the vendored packages, add the following to the project file"
@@ -433,14 +432,14 @@ vendorReport projectRoot vendorDir partial total selected@(length -> count) unpa
       | otherwise =
           hsep [text "Vendored", int count, text (plural count "package" "packages"), text "into", text displayDir]
 
-    -- Prefer a path relative to the project root, so that the vendored
-    -- repository can be committed along with the project.
-    relativeDir = makeRelative projectRoot vendorDir
-    displayDir = displayVendorDir projectRoot vendorDir
+    partial = count < total
+
+    -- A directory inside the project is given relative to the project root,
+    -- so that the vendored repository can be committed along with the project.
     vendorUrl
-      | isRelative relativeDir = "file+noindex:" ++ asPosixPath relativeDir
-      | Windows <- buildOS = "file+noindex:" ++ asPosixPath vendorDir
-      | otherwise = "file+noindex://" ++ vendorDir
+      | isRelative displayDir = "file+noindex:" ++ displayDir
+      | Windows <- buildOS = "file+noindex:" ++ asPosixPath displayDir
+      | otherwise = "file+noindex://" ++ displayDir
 
     -- With only some dependencies vendored, the other repositories have to
     -- stay active; the vendored one then overrides them for its packages.
