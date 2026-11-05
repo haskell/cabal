@@ -182,6 +182,11 @@ data VendorSource
     -- distribution tarball that cabal made from its checkout.
     FromSourceRepo SourceRepoMaybe FilePath
 
+type Sources = Map PackageId VendorSource
+
+newtype Prune = Prune Bool
+newtype Unpack = Unpack Bool
+
 -- | The @.cabal@ file to go with a vendored package, if its source has one.
 sourceCabalFile :: VendorSource -> Maybe CabalFileText
 sourceCabalFile (FromRepo _ cabalFile) = cabalFile
@@ -192,14 +197,14 @@ sourceCabalFile FromSourceRepo{} = Nothing
 -- neither.
 classify
   :: ElaboratedConfiguredPackage
-  -> (Map PackageId VendorSource, Map PackageId String)
-  -> (Map PackageId VendorSource, Map PackageId String)
+  -> (Sources, Map PackageId String)
+  -> (Sources, Map PackageId String)
 classify elab@(packageId -> pkgid) acc@(vendorable, skipped)
   | elabLocalToProject elab = acc
   | otherwise =
       case elabPkgSourceLocation elab of
-        RepoTarballPackage repo _ _ -> vendor (FromRepo repo (elabPkgDescriptionOverride elab))
-        RemoteSourceRepoPackage srp (Just tarball) -> vendor (FromSourceRepo srp tarball)
+        RepoTarballPackage repo _ _ -> accept (FromRepo repo (elabPkgDescriptionOverride elab))
+        RemoteSourceRepoPackage srp (Just tarball) -> accept (FromSourceRepo srp tarball)
         RemoteSourceRepoPackage srp Nothing ->
           skip $ "source repository " ++ Text.unpack (srpLocation srp) ++ " has not been fetched"
         RemoteTarballPackage uri _ ->
@@ -209,7 +214,7 @@ classify elab@(packageId -> pkgid) acc@(vendorable, skipped)
         LocalUnpackedPackage path ->
           skip $ "local directory " ++ path ++ " is listed in the project's packages"
   where
-    vendor source = (Map.insert pkgid source vendorable, skipped)
+    accept source = (Map.insert pkgid source vendorable, skipped)
     skip why = (vendorable, Map.insert pkgid why skipped)
 
 -- | The name of the repository in the stanza printed for the user.
@@ -227,7 +232,6 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       Just pkgName -> return (pkgName :: PackageName)
       Nothing -> dieWithException verbosity (VendorInvalidPackageName arg)
   let unpack = fromFlagOrDefault False vendorUnpack
-      prune = fromFlagOrDefault False vendorPrune
   when (unpack && null pkgNames) $ dieWithException verbosity VendorUnpackNeedsPackages
 
   ProjectBaseContext
@@ -271,7 +275,8 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         | null pkgNames = sources
         | otherwise = Map.filterWithKey (\pkgid _ -> packageName pkgid `Set.member` wanted) sources
 
-      displayDir = displayVendorDir projectRoot vendorDir
+      prune = Prune (fromFlagOrDefault False vendorPrune)
+      dirs = (vendorDir, displayVendorDir projectRoot vendorDir)
 
   unless (null unknown) $ dieWithException verbosity (VendorUnknownPackages unknown)
   unless (null local) $ dieWithException verbosity (VendorLocalPackages local)
@@ -280,35 +285,8 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
     warn verbosity $ "Not vendoring " ++ pkgid ++ ": " ++ why ++ "."
 
   if buildSettingDryRun buildSettings
-    then do
-      noticeDoc verbosity . listing ("Would vendor the following packages into " ++ displayDir) $
-        pretty <$> Map.keys selected
-      when prune $ do
-        stale <- staleVendorFiles vendorDir (Map.keysSet sources)
-        unless (null stale) . noticeDoc verbosity . listing "Would remove the following files not in the current plan" $
-          text <$> stale
-      when unpack . noticeDoc verbosity . listing ("Would unpack the following packages into " ++ displayDir ++ "/src") $
-        pretty <$> Map.keys selected
-    else do
-      createDirectoryIfMissing True vendorDir
-      projectConfigWithBuilderRepoContext verbosity buildSettings $ \repoCtxt ->
-        for_ (Map.toList selected) $ uncurry (vendorPackage verbosity repoCtxt vendorDir)
-
-      when prune $ do
-        removed@(length -> count) <- pruneVendorDir verbosity vendorDir (Map.keysSet sources)
-        let heading = "Removed " ++ show count ++ " " ++ plural count "file" "files" ++ " not in the current plan"
-        unless (null removed) . noticeDoc verbosity . listing heading $ text <$> removed
-
-      -- Planning may have written the cache again, before the files above
-      -- were copied or removed.
-      dropIndexCache vendorDir
-
-      unpacked <-
-        if unpack
-          then fmap catMaybes . for (Map.toList selected) $ uncurry (unpackVendored verbosity vendorDir)
-          else return []
-
-      noticeDoc verbosity $ vendorReport displayDir (Map.size sources) (Map.toList selected) unpacked
+    then vendorDryRun verbosity prune (Unpack unpack) dirs (selected, sources)
+    else vendor verbosity buildSettings prune (Unpack unpack) dirs (selected, sources)
   where
     verbosity = cfgVerbosity normal flags
     cliConfig =
@@ -316,6 +294,39 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         globalFlags
         flags
         mempty -- ClientInstallFlags, not needed here
+
+vendorDryRun :: Verbosity -> Prune -> Unpack -> (FilePath, FilePath) -> (Sources, Sources) -> IO ()
+vendorDryRun verbosity (Prune prune) (Unpack unpack) (vendorDir, displayDir) (selected, sources) = do
+  noticeDoc verbosity . listing ("Would vendor the following packages into " ++ displayDir) $
+    pretty <$> Map.keys selected
+  when prune $ do
+    stale <- staleVendorFiles vendorDir (Map.keysSet sources)
+    unless (null stale) . noticeDoc verbosity . listing "Would remove the following files not in the current plan" $
+      text <$> stale
+  when unpack . noticeDoc verbosity . listing ("Would unpack the following packages into " ++ displayDir ++ "/src") $
+    pretty <$> Map.keys selected
+
+vendor :: Verbosity -> BuildTimeSettings -> Prune -> Unpack -> (FilePath, FilePath) -> (Sources, Sources) -> IO ()
+vendor verbosity buildSettings (Prune prune) (Unpack unpack) (vendorDir, displayDir) (selected, sources) = do
+  createDirectoryIfMissing True vendorDir
+  projectConfigWithBuilderRepoContext verbosity buildSettings $ \repoCtxt ->
+    for_ (Map.toList selected) $ uncurry (vendorPackage verbosity repoCtxt vendorDir)
+
+  when prune $ do
+    removed@(length -> count) <- pruneVendorDir verbosity vendorDir (Map.keysSet sources)
+    let heading = "Removed " ++ show count ++ " " ++ plural count "file" "files" ++ " not in the current plan"
+    unless (null removed) . noticeDoc verbosity . listing heading $ text <$> removed
+
+  -- Planning may have written the cache again, before the files above
+  -- were copied or removed.
+  dropIndexCache vendorDir
+
+  unpacked <-
+    if unpack
+      then fmap catMaybes . for (Map.toList selected) $ uncurry (unpackVendored verbosity vendorDir)
+      else return []
+
+  noticeDoc verbosity $ vendorReport displayDir (Map.size sources) (Map.toList selected) unpacked
 
 -- | Copy one package into the vendor directory: the tarball as
 -- @\<pkgid\>.tar.gz@ and, for repository packages, the @.cabal@ file from
