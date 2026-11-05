@@ -130,11 +130,7 @@ vendorCommand =
             ]
         ]
       where
-        example args effect =
-          vcat
-            [ hsep $ text <$> pname : "v2-vendor" : args
-            , nest 2 $ text effect
-            ]
+        example args effect = vcat [hsep $ text <$> pname : "v2-vendor" : args, nest 2 $ text effect]
 
 -------------------------------------------------------------------------------
 -- Flags
@@ -203,8 +199,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       Just name -> return (name :: PackageName)
       Nothing -> dieWithException verbosity (VendorInvalidPackageName arg)
   let unpack = fromFlagOrDefault False vendorUnpack
-  when (unpack && null pkgNames) $
-    dieWithException verbosity VendorUnpackNeedsPackages
+  when (unpack && null pkgNames) $ dieWithException verbosity VendorUnpackNeedsPackages
 
   ProjectBaseContext
     { distDirLayout
@@ -225,9 +220,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       Nothing
 
   let projectRoot = distProjectRootDirectory distDirLayout
-  vendorDir <-
-    makeAbsolute $
-      fromFlagOrDefault (projectRoot </> "vendor") vendorOutputDir
+  vendorDir <- makeAbsolute $ fromFlagOrDefault (projectRoot </> "vendor") vendorOutputDir
 
   let elabPkgs =
         [ elab
@@ -247,9 +240,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         | otherwise =
             case elabPkgSourceLocation elab of
               RepoTarballPackage repo _ _ ->
-                ( Map.insert pkgid (FromRepo repo (elabPkgDescriptionOverride elab)) vendorable
-                , skipped
-                )
+                (Map.insert pkgid (FromRepo repo (elabPkgDescriptionOverride elab)) vendorable, skipped)
               RemoteSourceRepoPackage srp (Just tarball) ->
                 (Map.insert pkgid (FromSourceRepo srp tarball) vendorable, skipped)
               RemoteSourceRepoPackage srp Nothing ->
@@ -272,16 +263,12 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         | otherwise = Map.filterWithKey (\pkgid _ -> packageName pkgid `Set.member` wanted) sources
       partial = Map.size selected < Map.size sources
 
-      dryRun =
-        buildSettingDryRun buildSettings
-          || buildSettingOnlyDownload buildSettings
+      dryRun = buildSettingDryRun buildSettings || buildSettingOnlyDownload buildSettings
       prune = fromFlagOrDefault False vendorPrune
       unpackDir = vendorDir </> "src"
 
-  unless (null unknown) $
-    dieWithException verbosity (VendorUnknownPackages unknown)
-  unless (null local) $
-    dieWithException verbosity (VendorLocalPackages local)
+  unless (null unknown) $ dieWithException verbosity (VendorUnknownPackages unknown)
+  unless (null local) $ dieWithException verbosity (VendorLocalPackages local)
 
   for_ notVendored $ \(pkgid, why) ->
     warn verbosity $ "Not vendoring " ++ prettyShow pkgid ++ ": " ++ why ++ "."
