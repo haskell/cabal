@@ -284,10 +284,9 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
   for_ (Map.toList notVendored) $ \(prettyShow -> pkgid, why) ->
     warn verbosity $ "Not vendoring " ++ pkgid ++ ": " ++ why ++ "."
 
-  if buildSettingDryRun buildSettings
-    then vendorDryRun verbosity prune (Unpack unpack) dirs (selected, sources)
-    else vendor verbosity buildSettings prune (Unpack unpack) dirs (selected, sources)
+  pickRun buildSettings verbosity prune (Unpack unpack) dirs (selected, sources)
   where
+    pickRun settings = if buildSettingDryRun settings then vendorDryRun else vendor settings
     verbosity = cfgVerbosity normal flags
     cliConfig =
       commandLineFlagsToProjectConfig
@@ -306,8 +305,8 @@ vendorDryRun verbosity (Prune prune) (Unpack unpack) (vendorDir, displayDir) (se
   when unpack . noticeDoc verbosity . listing ("Would unpack the following packages into " ++ displayDir ++ "/src") $
     pretty <$> Map.keys selected
 
-vendor :: Verbosity -> BuildTimeSettings -> Prune -> Unpack -> (FilePath, FilePath) -> (Sources, Sources) -> IO ()
-vendor verbosity buildSettings (Prune prune) (Unpack unpack) (vendorDir, displayDir) (selected, sources) = do
+vendor :: BuildTimeSettings -> Verbosity -> Prune -> Unpack -> (FilePath, FilePath) -> (Sources, Sources) -> IO ()
+vendor buildSettings verbosity (Prune prune) (Unpack unpack) (vendorDir, displayDir) (selected, sources) = do
   createDirectoryIfMissing True vendorDir
   projectConfigWithBuilderRepoContext verbosity buildSettings $ \repoCtxt ->
     for_ (Map.toList selected) $ uncurry (vendorPackage verbosity repoCtxt vendorDir)
