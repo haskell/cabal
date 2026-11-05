@@ -1,4 +1,4 @@
-import System.Directory (removeDirectoryRecursive, removeFile)
+import System.Directory (removeFile)
 import Test.Cabal.Prelude
 
 -- Vendor only one of two dependencies; the other keeps coming from the
