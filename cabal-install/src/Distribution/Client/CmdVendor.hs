@@ -84,6 +84,7 @@ import System.Directory
   , listDirectory
   , makeAbsolute
   , removeFile
+  , removePathForcibly
   )
 import System.FilePath
   ( isRelative
@@ -342,10 +343,8 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         unless (null removed) . noticeDoc verbosity . listing heading $ text <$> removed
 
       -- The index cache of a file+noindex repository is never invalidated by
-      -- cabal itself, so drop it; it is rebuilt on first use.
-      let cacheFile = vendorDir </> "noindex.cache"
-      cacheExists <- doesFileExist cacheFile
-      when cacheExists $ removeFile cacheFile
+      -- cabal itself, so drop it if there is one; it is rebuilt on first use.
+      removePathForcibly $ vendorDir </> "noindex.cache"
 
       unpacked <-
         if unpack
