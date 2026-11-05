@@ -229,23 +229,24 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
 
       -- One package can appear once per component in the plan, so collect
       -- by package id.
-      (sources, notVendored) = foldr classify (Map.empty, []) elabPkgs
-      classify elab@(packageId -> pkgid) (vendorable, skipped)
-        | elabLocalToProject elab = (vendorable, skipped)
+      (sources, notVendored) = foldr classify (Map.empty, Map.empty) elabPkgs
+      classify elab@(packageId -> pkgid) acc@(vendorable, skipped)
+        | elabLocalToProject elab = acc
         | otherwise =
             case elabPkgSourceLocation elab of
-              RepoTarballPackage repo _ _ ->
-                (Map.insert pkgid (FromRepo repo (elabPkgDescriptionOverride elab)) vendorable, skipped)
-              RemoteSourceRepoPackage srp (Just tarball) ->
-                (Map.insert pkgid (FromSourceRepo srp tarball) vendorable, skipped)
+              RepoTarballPackage repo _ _ -> vendor (FromRepo repo (elabPkgDescriptionOverride elab))
+              RemoteSourceRepoPackage srp (Just tarball) -> vendor (FromSourceRepo srp tarball)
               RemoteSourceRepoPackage srp Nothing ->
-                (vendorable, (pkgid, "source repository " ++ Text.unpack (srpLocation srp) ++ " has not been fetched") : skipped)
+                skip $ "source repository " ++ Text.unpack (srpLocation srp) ++ " has not been fetched"
               RemoteTarballPackage uri _ ->
-                (vendorable, (pkgid, "remote tarball " ++ show uri ++ " is listed in the project's packages") : skipped)
+                skip $ "remote tarball " ++ show uri ++ " is listed in the project's packages"
               LocalTarballPackage path ->
-                (vendorable, (pkgid, "local tarball " ++ path ++ " is listed in the project's packages") : skipped)
+                skip $ "local tarball " ++ path ++ " is listed in the project's packages"
               LocalUnpackedPackage path ->
-                (vendorable, (pkgid, "local directory " ++ path ++ " is listed in the project's packages") : skipped)
+                skip $ "local directory " ++ path ++ " is listed in the project's packages"
+        where
+          vendor source = (Map.insert pkgid source vendorable, skipped)
+          skip why = (vendorable, Map.insert pkgid why skipped)
 
       -- Restrict to the requested package names, if any.
       wanted = Set.fromList pkgNames
@@ -263,7 +264,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
   unless (null unknown) $ dieWithException verbosity (VendorUnknownPackages unknown)
   unless (null local) $ dieWithException verbosity (VendorLocalPackages local)
 
-  for_ notVendored $ \(prettyShow -> pkgid, why) ->
+  for_ (Map.toList notVendored) $ \(prettyShow -> pkgid, why) ->
     warn verbosity $ "Not vendoring " ++ pkgid ++ ": " ++ why ++ "."
 
   if dryRun
