@@ -63,7 +63,7 @@ import System.Directory
   , removeFile
   , removePathForcibly
   )
-import System.FilePath (isRelative, makeRelative, (<.>), (</>))
+import System.FilePath (isRelative, makeRelative, stripExtension, (<.>), (</>))
 import Text.PrettyPrint hiding ((<>))
 
 -------------------------------------------------------------------------------
@@ -349,13 +349,7 @@ unpackVendored verbosity vendorDir pkgid@(prettyShow -> pkgName) source = do
 -- names that the @file+noindex@ reader understands: @\<pkgid\>.tar.gz@ and
 -- the @\<pkgid\>.cabal@ sidecar. Anything else is not a package file.
 vendorFilePackageId :: FilePath -> Maybe PackageId
-vendorFilePackageId file =
-  listToMaybe
-    [ pkgid
-    | suffix <- [".tar.gz", ".cabal"]
-    , suffix `isSuffixOf` file
-    , Just pkgid <- [simpleParsec (take (length file - length suffix) file)]
-    ]
+vendorFilePackageId file = simpleParsec =<< stripExtension "tar.gz" file <|> stripExtension "cabal" file
 
 -- | The package files in the vendor directory that belong to packages not in
 -- the given set.
