@@ -91,8 +91,7 @@ import System.FilePath
   , (<.>)
   , (</>)
   )
-import Text.PrettyPrint
-import qualified Text.PrettyPrint as Pretty
+import Text.PrettyPrint hiding ((<>))
 
 -------------------------------------------------------------------------------
 -- Command
@@ -151,7 +150,7 @@ vendorCommand =
 
     examples pname =
       vcat
-        [ text "Examples" Pretty.<> colon
+        [ text "Examples" <> colon
         , nest 2 . vcat $
             [ example [] "Vendor all dependencies of the project into ./vendor"
             , example ["--output-directory=deps"] "Vendor all dependencies of the project into ./deps"
@@ -462,13 +461,13 @@ plural n singular pluralForm = if n == 1 then singular else pluralForm
 
 -- | A line of text with an empty line above it, as a @<br>@ would leave
 -- between two blocks. The empty line is a 'text', which 'vcat' keeps where
--- it would drop 'Pretty.empty'.
+-- it would drop 'Text.PrettyPrint.empty'.
 brText :: String -> Doc
 brText line = text "" $+$ text line
 
 -- | A heading, closed with a colon, over a dashed list of items.
 listing :: String -> [Doc] -> Doc
-listing heading items = vcat [text heading Pretty.<> colon, nest 1 $ vcat [char '-' <+> item | item <- items]]
+listing heading items = vcat [text heading <> colon, nest 1 $ vcat [char '-' <+> item | item <- items]]
 
 -- | The vendor directory as shown to the user: relative to the project root
 -- when it lies inside the project, so that it reads the same as the @url:@
@@ -488,8 +487,8 @@ vendorReport projectRoot vendorDir partial total selected unpacked =
     , brText "To build using the vendored packages, add the following to the project file"
     , text "(the 'url' line must stay indented under 'repository'):"
     , brText "repository" <+> text vendoredRepoName
-    , nest 2 $ text "url" Pretty.<> colon <+> text vendorUrl
-    , brText "active-repositories" Pretty.<> colon <+> text activeRepos
+    , nest 2 $ (text "url" <> colon) <+> text vendorUrl
+    , (brText "active-repositories" <> colon) <+> text activeRepos
     ]
       ++ sourceRepoNotes
       ++ unpackNotes
@@ -529,7 +528,7 @@ vendorReport projectRoot vendorDir partial total selected unpacked =
       pkgids ->
         [ brText $ "Unpacked into " ++ displayDir ++ "/src. To work on these as local packages,"
         , text "which take precedence over the vendored ones, add to the project file:"
-        , brText "packages" Pretty.<> colon
+        , brText "packages" <> colon
         , nest 2 $ vcat [text (displayDir ++ "/src/" ++ prettyShow pkgid) | pkgid <- pkgids]
         ]
 
