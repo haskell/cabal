@@ -626,6 +626,11 @@ the vendored packages:
 
     active-repositories: vendored
 
+    If the directory is committed with the project, keep cabal's index cache out
+    of version control, for example by adding this line to .gitignore:
+
+    vendor/noindex.cache
+
 The path is relative to the project root (see :ref:`local-no-index-repositories`),
 so the ``vendor`` directory can be committed together with the project. With
 ``active-repositories`` naming only the vendored repository, the solver sees
