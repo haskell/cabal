@@ -91,6 +91,15 @@ import System.FilePath
   , (<.>)
   , (</>)
   )
+import Text.PrettyPrint
+  ( colon
+  , hsep
+  , nest
+  , render
+  , text
+  , vcat
+  )
+import qualified Text.PrettyPrint as Pretty
 
 -------------------------------------------------------------------------------
 -- Command
@@ -102,59 +111,69 @@ vendorCommand =
     { commandName = "v2-vendor"
     , commandSynopsis = "Vendor dependencies into a local repository."
     , commandUsage = usageAlternatives "v2-vendor" ["[FLAGS]", "[PACKAGES] [FLAGS]"]
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Copy the source tarballs of the project's dependencies into a "
-            ++ "directory laid out as a 'file+noindex' package repository, so "
-            ++ "that the project can later be built without network access. "
-            ++ "Tarballs not already in the download cache are downloaded first.\n\n"
-            ++ "The dependencies are those selected by the solver for the current "
-            ++ "project configuration, including build tools and setup "
-            ++ "dependencies. Each is written as '<pkgid>.tar.gz', with its "
-            ++ "'.cabal' file from the package index, which carries any "
-            ++ "revision, next to it as '<pkgid>.cabal'. Dependencies from "
-            ++ "'source-repository-package' "
-            ++ "stanzas are vendored as source distributions of their checkouts. "
-            ++ "Local packages of the project are not vendored.\n\n"
-            ++ "The directory defaults to 'vendor' in the project root and can be "
-            ++ "changed with '--output-directory'. After vendoring, the command "
-            ++ "prints the 'repository' stanza to add to the project file so that "
-            ++ "the vendored packages are used. When package names are given, "
-            ++ "only those packages are vendored.\n\n"
-            ++ "With '--unpack', the named packages are also unpacked into "
-            ++ "'src/' under the vendor directory, with the '.cabal' file from "
-            ++ "the package index applied, so that they can be worked on as "
-            ++ "local packages "
-            ++ "listed in 'packages:'.\n"
-    , commandNotes = Just $ \pname ->
-        "Examples:\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-vendor\n"
-          ++ "    Vendor all dependencies of the project into ./vendor\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-vendor --output-directory=deps\n"
-          ++ "    Vendor all dependencies of the project into ./deps\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-vendor aeson text\n"
-          ++ "    Vendor only the aeson and text packages\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-vendor --dry-run\n"
-          ++ "    Show which packages would be vendored\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-vendor --prune\n"
-          ++ "    Vendor all dependencies and remove packages no longer needed\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-vendor --unpack aeson\n"
-          ++ "    Vendor aeson and unpack it into vendor/src/ to work on it\n"
+    , commandDescription =
+        Just . const . render $
+          vcat [intro, selection, directory, unpacking]
+    , commandNotes = Just $ \pname -> render (examples pname) ++ "\n"
     , commandDefaultFlags = defaultNixStyleFlags defaultVendorFlags
     , commandOptions = nixStyleOptions vendorOptions
     }
+  where
+    -- A wrapped paragraph ends with a newline, so stacking paragraphs with
+    -- 'vcat' leaves a blank line between them.
+    paragraph = text . wrapText
+
+    intro =
+      paragraph $
+        "Copy the source tarballs of the project's dependencies into a "
+          ++ "directory laid out as a 'file+noindex' package repository, so "
+          ++ "that the project can later be built without network access. "
+          ++ "Tarballs not already in the download cache are downloaded first."
+
+    selection =
+      paragraph $
+        "The dependencies are those selected by the solver for the current "
+          ++ "project configuration, including build tools and setup "
+          ++ "dependencies. Each is written as '<pkgid>.tar.gz', with its "
+          ++ "'.cabal' file from the package index, which carries any "
+          ++ "revision, next to it as '<pkgid>.cabal'. Dependencies from "
+          ++ "'source-repository-package' stanzas are vendored as source "
+          ++ "distributions of their checkouts. Local packages of the project "
+          ++ "are not vendored."
+
+    directory =
+      paragraph $
+        "The directory defaults to 'vendor' in the project root and can be "
+          ++ "changed with '--output-directory'. After vendoring, the command "
+          ++ "prints the 'repository' stanza to add to the project file so that "
+          ++ "the vendored packages are used. When package names are given, "
+          ++ "only those packages are vendored."
+
+    unpacking =
+      paragraph $
+        "With '--unpack', the named packages are also unpacked into "
+          ++ "'src/' under the vendor directory, with the '.cabal' file from "
+          ++ "the package index applied, so that they can be worked on as "
+          ++ "local packages listed in 'packages:'."
+
+    examples pname =
+      vcat
+        [ text "Examples" Pretty.<> colon
+        , nest 2 . vcat $
+            [ example [] "Vendor all dependencies of the project into ./vendor"
+            , example ["--output-directory=deps"] "Vendor all dependencies of the project into ./deps"
+            , example ["aeson", "text"] "Vendor only the aeson and text packages"
+            , example ["--dry-run"] "Show which packages would be vendored"
+            , example ["--prune"] "Vendor all dependencies and remove packages no longer needed"
+            , example ["--unpack", "aeson"] "Vendor aeson and unpack it into vendor/src/ to work on it"
+            ]
+        ]
+      where
+        example args what =
+          vcat
+            [ hsep $ text <$> pname : "v2-vendor" : args
+            , nest 2 $ text what
+            ]
 
 -------------------------------------------------------------------------------
 -- Flags
