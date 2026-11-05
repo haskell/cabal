@@ -265,14 +265,11 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
             InstallPlan.Installed elab -> [elab]
             InstallPlan.PreExisting _ -> []
         ]
-      localNames =
-        Set.fromList
-          [packageName elab | elab <- elabPkgs, elabLocalToProject elab]
+      localNames = Set.fromList [packageName elab | elab <- elabPkgs, elabLocalToProject elab]
 
       -- One package can appear once per component in the plan, so collect
       -- by package id.
-      (sources, notVendored) =
-        foldr classify (Map.empty, []) elabPkgs
+      (sources, notVendored) = foldr classify (Map.empty, []) elabPkgs
       classify elab (vendorable, skipped)
         | elabLocalToProject elab = (vendorable, skipped)
         | otherwise =
