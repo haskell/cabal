@@ -1,0 +1,6 @@
+packages: .
+
+repository vendored
+  url: file+noindex:vendor
+
+active-repositories: vendored

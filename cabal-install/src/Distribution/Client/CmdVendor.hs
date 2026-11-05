@@ -214,6 +214,14 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
     } <-
     establishProjectBaseContext verbosity cliConfig OtherCommand
 
+  let projectRoot = distProjectRootDirectory distDirLayout
+  vendorDir <- makeAbsolute $ fromFlagOrDefault (projectRoot </> "vendor") vendorOutputDir
+
+  -- The project may already take packages from the vendor directory, and the
+  -- directory may have changed since cabal last read it. Plan from what is
+  -- there now.
+  dropIndexCache vendorDir
+
   (_, elaboratedPlan, _, _, _) <-
     rebuildInstallPlan
       verbosity
@@ -222,9 +230,6 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       projectConfig
       localPackages
       Nothing
-
-  let projectRoot = distProjectRootDirectory distDirLayout
-  vendorDir <- makeAbsolute $ fromFlagOrDefault (projectRoot </> "vendor") vendorOutputDir
 
   let elabPkgs = concatMap (foldPlanPackage (const []) pure) (InstallPlan.toList elaboratedPlan)
       localNames = Set.fromList [packageName elab | elab <- elabPkgs, elabLocalToProject elab]
@@ -286,9 +291,9 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         let heading = "Removed " ++ show count ++ " " ++ plural count "file" "files" ++ " not in the current plan"
         unless (null removed) . noticeDoc verbosity . listing heading $ text <$> removed
 
-      -- The index cache of a file+noindex repository is never invalidated by
-      -- cabal itself, so drop it if there is one; it is rebuilt on first use.
-      removePathForcibly $ vendorDir </> "noindex.cache"
+      -- Planning may have written the cache again, before the files above
+      -- were copied or removed.
+      dropIndexCache vendorDir
 
       unpacked <-
         if unpack
@@ -341,6 +346,12 @@ unpackVendored verbosity vendorDir pkgid@(prettyShow -> pkgName) source = do
       createDirectoryIfMissing True unpackDir
       unpackPackage verbosity unpackDir pkgid (sourceCabalFile source) tarball
       return (Just pkgid)
+
+-- | Remove the index cache that cabal keeps in the directory of a
+-- @file+noindex@ repository. cabal does not bring that cache up to date when
+-- the directory changes, and builds it again when it is missing.
+dropIndexCache :: FilePath -> IO ()
+dropIndexCache vendorDir = removePathForcibly $ vendorDir </> "noindex.cache"
 
 -- | The package a file in the vendor directory belongs to, for the file
 -- names that the @file+noindex@ reader understands: @\<pkgid\>.tar.gz@ and
