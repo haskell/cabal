@@ -581,9 +581,7 @@ vcsGit =
           -- for now. Option 1 is possible but seems to have little benefit.
           --
           -- In a shallow checkout, fetch only the commit itself: without
-          -- `--depth=1`, git fetches all of its history (#12523). A complete
-          -- checkout (git ignores `--depth` when it clones a local path) stays
-          -- complete, so that the other checkouts can share its objects.
+          -- `--depth=1`, git fetches all of its history (#12523).
           shallow <- isShallowCheckout localDir
           git localDir ("fetch" : verboseArg ++ ["--depth=1" | shallow] ++ ["origin", Text.unpack ref])
           pure "FETCH_HEAD"
