@@ -12,6 +12,10 @@ main = cabalTest $ withShorterPathForNewBuildStore $ withRepo "repo" $ do
   -- Unpacking everything is refused.
   fails $ cabal "v2-vendor" ["--unpack"]
 
+  -- A dry run says where the package would be unpacked and writes nothing.
+  cabal "v2-vendor" ["my-lib", "--unpack", "--dry-run"]
+  shouldDirectoryNotExist vendorDir
+
   r <- cabal' "v2-vendor" ["my-lib", "--unpack"]
   shouldExist (vendorDir </> "my-lib-1.0.tar.gz")
   shouldExist (srcDir </> "my-lib.cabal")

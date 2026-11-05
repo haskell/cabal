@@ -258,7 +258,6 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
 
       dryRun = buildSettingDryRun buildSettings || buildSettingOnlyDownload buildSettings
       prune = fromFlagOrDefault False vendorPrune
-      unpackDir = vendorDir </> "src"
       displayDir = displayVendorDir projectRoot vendorDir
 
   unless (null unknown) $ dieWithException verbosity (VendorUnknownPackages unknown)
@@ -275,7 +274,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         stale <- staleVendorFiles vendorDir (Map.keysSet sources)
         unless (null stale) . noticeDoc verbosity . listing "Would remove the following files not in the current plan" $
           text <$> stale
-      when unpack . noticeDoc verbosity . listing ("Would unpack the following packages into " ++ unpackDir) $
+      when unpack . noticeDoc verbosity . listing ("Would unpack the following packages into " ++ displayDir ++ "/src") $
         pretty <$> Map.keys selected
     else do
       createDirectoryIfMissing True vendorDir
