@@ -187,6 +187,31 @@ sourceCabalFile :: VendorSource -> Maybe CabalFileText
 sourceCabalFile (FromRepo _ cabalFile) = cabalFile
 sourceCabalFile FromSourceRepo{} = Nothing
 
+-- | Add a package of the plan to the ones to vendor or, with the reason, to
+-- the ones that cannot be vendored. A local package of the project is
+-- neither.
+classify
+  :: ElaboratedConfiguredPackage
+  -> (Map PackageId VendorSource, Map PackageId String)
+  -> (Map PackageId VendorSource, Map PackageId String)
+classify elab@(packageId -> pkgid) acc@(vendorable, skipped)
+  | elabLocalToProject elab = acc
+  | otherwise =
+      case elabPkgSourceLocation elab of
+        RepoTarballPackage repo _ _ -> vendor (FromRepo repo (elabPkgDescriptionOverride elab))
+        RemoteSourceRepoPackage srp (Just tarball) -> vendor (FromSourceRepo srp tarball)
+        RemoteSourceRepoPackage srp Nothing ->
+          skip $ "source repository " ++ Text.unpack (srpLocation srp) ++ " has not been fetched"
+        RemoteTarballPackage uri _ ->
+          skip $ "remote tarball " ++ show uri ++ " is listed in the project's packages"
+        LocalTarballPackage path ->
+          skip $ "local tarball " ++ path ++ " is listed in the project's packages"
+        LocalUnpackedPackage path ->
+          skip $ "local directory " ++ path ++ " is listed in the project's packages"
+  where
+    vendor source = (Map.insert pkgid source vendorable, skipped)
+    skip why = (vendorable, Map.insert pkgid why skipped)
+
 -- | The name of the repository in the stanza printed for the user.
 vendoredRepoName :: String
 vendoredRepoName = "vendored"
@@ -237,23 +262,6 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       -- One package can appear once per component in the plan, so collect
       -- by package id.
       (sources, notVendored) = foldr classify (Map.empty, Map.empty) elabPkgs
-      classify elab@(packageId -> pkgid) acc@(vendorable, skipped)
-        | elabLocalToProject elab = acc
-        | otherwise =
-            case elabPkgSourceLocation elab of
-              RepoTarballPackage repo _ _ -> vendor (FromRepo repo (elabPkgDescriptionOverride elab))
-              RemoteSourceRepoPackage srp (Just tarball) -> vendor (FromSourceRepo srp tarball)
-              RemoteSourceRepoPackage srp Nothing ->
-                skip $ "source repository " ++ Text.unpack (srpLocation srp) ++ " has not been fetched"
-              RemoteTarballPackage uri _ ->
-                skip $ "remote tarball " ++ show uri ++ " is listed in the project's packages"
-              LocalTarballPackage path ->
-                skip $ "local tarball " ++ path ++ " is listed in the project's packages"
-              LocalUnpackedPackage path ->
-                skip $ "local directory " ++ path ++ " is listed in the project's packages"
-        where
-          vendor source = (Map.insert pkgid source vendorable, skipped)
-          skip why = (vendorable, Map.insert pkgid why skipped)
 
       -- Restrict to the requested package names, if any.
       wanted = Set.fromList pkgNames
