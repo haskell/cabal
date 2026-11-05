@@ -505,7 +505,7 @@ vcsGit =
         -- But git refuses to reference a shallow clone, so only pass it on
         -- when git's own marker `.git/shallow` is absent.
         -- Fixes #12296.
-        primaryIsShallow <- doesFileExist (primaryLocalDir </> ".git" </> "shallow")
+        primaryIsShallow <- isShallowCheckout primaryLocalDir
         let peer = if primaryIsShallow then Nothing else Just primaryLocalDir
         sequence_
           [ vcsSyncRepo verbosity gitProg repo localDir peer
@@ -579,7 +579,13 @@ vcsGit =
           --
           -- Option 2 is what Cabal has done historically, and we're keeping it
           -- for now. Option 1 is possible but seems to have little benefit.
-          git localDir ("fetch" : verboseArg ++ ["origin", Text.unpack ref])
+          --
+          -- In a shallow checkout, fetch only the commit itself: without
+          -- `--depth=1`, git fetches all of its history (#12523). A complete
+          -- checkout (git ignores `--depth` when it clones a local path) stays
+          -- complete, so that the other checkouts can share its objects.
+          shallow <- isShallowCheckout localDir
+          git localDir ("fetch" : verboseArg ++ ["--depth=1" | shallow] ++ ["origin", Text.unpack ref])
           pure "FETCH_HEAD"
 
       -- Then, reset to the appropriate ref.
@@ -617,6 +623,10 @@ vcsGit =
             loc = srpLocation
 
         verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
+
+    -- Git's own marker of a shallow repository.
+    isShallowCheckout :: FilePath -> IO Bool
+    isShallowCheckout localDir = doesFileExist (localDir </> ".git" </> "shallow")
 
 gitProgram :: Program
 gitProgram =
