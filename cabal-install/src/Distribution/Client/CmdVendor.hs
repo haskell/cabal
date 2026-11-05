@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | cabal-install CLI command: vendor
 module Distribution.Client.CmdVendor
@@ -197,7 +198,7 @@ vendorAction :: NixStyleFlags VendorFlags -> [String] -> GlobalFlags -> IO ()
 vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendorPrune, vendorUnpack}} pkgArgs globalFlags = do
   pkgNames <- for pkgArgs $ \arg ->
     case simpleParsec arg of
-      Just name -> return (name :: PackageName)
+      Just pkgName -> return (pkgName :: PackageName)
       Nothing -> dieWithException verbosity (VendorInvalidPackageName arg)
   let unpack = fromFlagOrDefault False vendorUnpack
   when (unpack && null pkgNames) $ dieWithException verbosity VendorUnpackNeedsPackages
@@ -311,11 +312,11 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
 -- the index as @\<pkgid\>.cabal@ next to it. That is the layout
 -- "Distribution.Client.IndexUtils" reads a @file+noindex@ repository from.
 vendorPackage :: Verbosity -> RepoContext -> FilePath -> PackageId -> VendorSource -> IO ()
-vendorPackage verbosity repoCtxt vendorDir pkgid source = do
+vendorPackage verbosity repoCtxt vendorDir pkgid@(prettyShow -> pkgName) source = do
   src <- case source of
     FromRepo repo _ -> fetchRepoTarball verbosity repoCtxt repo pkgid
     FromSourceRepo _ tarball -> return tarball
-  let dest = vendorDir </> prettyShow pkgid <.> "tar.gz"
+  let dest = vendorDir </> pkgName <.> "tar.gz"
   -- When the project already takes this package from the vendor directory,
   -- the source is the destination.
   sameFile <- do
@@ -327,7 +328,7 @@ vendorPackage verbosity repoCtxt vendorDir pkgid source = do
     copyFileVerbose verbosity src dest
     case source of
       FromRepo _ (Just cabalFile) ->
-        writeFileAtomic (vendorDir </> prettyShow pkgid <.> "cabal") cabalFile
+        writeFileAtomic (vendorDir </> pkgName <.> "cabal") cabalFile
       _ -> return ()
 
 -- | Unpack a vendored package into @src/@ under the vendor directory, with
@@ -335,10 +336,10 @@ vendorPackage verbosity repoCtxt vendorDir pkgid source = do
 -- listed in @packages:@ and worked on. A directory that is already there is
 -- left alone: it may hold edits.
 unpackVendored :: Verbosity -> FilePath -> PackageId -> VendorSource -> IO [PackageId]
-unpackVendored verbosity vendorDir pkgid source = do
+unpackVendored verbosity vendorDir pkgid@(prettyShow -> pkgName) source = do
   let unpackDir = vendorDir </> "src"
-      pkgDir = unpackDir </> prettyShow pkgid
-      tarball = vendorDir </> prettyShow pkgid <.> "tar.gz"
+      pkgDir = unpackDir </> pkgName
+      tarball = vendorDir </> pkgName <.> "tar.gz"
       override = case source of
         FromRepo _ cabalFile -> cabalFile
         FromSourceRepo _ _ -> Nothing
@@ -346,7 +347,7 @@ unpackVendored verbosity vendorDir pkgid source = do
   if exists
     then do
       warn verbosity $
-        "Not unpacking " ++ prettyShow pkgid ++ ": " ++ pkgDir ++ " already exists and may hold changes; remove it to unpack again."
+        "Not unpacking " ++ pkgName ++ ": " ++ pkgDir ++ " already exists and may hold changes; remove it to unpack again."
       return []
     else do
       createDirectoryIfMissing True unpackDir
