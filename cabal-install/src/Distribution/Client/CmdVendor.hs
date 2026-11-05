@@ -6,8 +6,6 @@
 module Distribution.Client.CmdVendor
   ( vendorCommand
   , vendorAction
-  , VendorFlags (..)
-  , defaultVendorFlags
   ) where
 
 import Distribution.Client.Compat.Prelude
