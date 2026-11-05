@@ -18,32 +18,14 @@ import Distribution.Client.FetchUtils (fetchRepoTarball)
 import Distribution.Client.Get (unpackPackage)
 import Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.NixStyleOptions
-  ( NixStyleFlags (..)
-  , cfgVerbosity
-  , defaultNixStyleFlags
-  , nixStyleOptions
-  )
-import Distribution.Client.ProjectConfig
-  ( projectConfigWithBuilderRepoContext
-  )
+import Distribution.Client.NixStyleOptions (NixStyleFlags (..), cfgVerbosity, defaultNixStyleFlags, nixStyleOptions)
+import Distribution.Client.ProjectConfig (projectConfigWithBuilderRepoContext)
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.Setup (GlobalFlags)
-import Distribution.Client.Types
-  ( PackageLocation (..)
-  , Repo (..)
-  , asPosixPath
-  )
-import Distribution.Client.Types.SourceRepo
-  ( SourceRepoMaybe
-  , SourceRepositoryPackage (..)
-  )
-import Distribution.Package
-  ( PackageName
-  , packageId
-  , packageName
-  )
+import Distribution.Client.Types (PackageLocation (..), Repo (..), asPosixPath)
+import Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..))
+import Distribution.Package (PackageName, packageId, packageName)
 import Distribution.ReadE (succeedReadE)
 import Distribution.Simple.Command
   ( CommandUI (..)
@@ -53,12 +35,7 @@ import Distribution.Simple.Command
   , reqArg
   , usageAlternatives
   )
-import Distribution.Simple.Flag
-  ( Flag
-  , flagToList
-  , fromFlagOrDefault
-  , pattern Flag
-  )
+import Distribution.Simple.Flag (Flag, flagToList, fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Setup (trueArg)
 import Distribution.Simple.Utils
   ( copyFileVerbose
@@ -86,12 +63,7 @@ import System.Directory
   , removeFile
   , removePathForcibly
   )
-import System.FilePath
-  ( isRelative
-  , makeRelative
-  , (<.>)
-  , (</>)
-  )
+import System.FilePath (isRelative, makeRelative, (<.>), (</>))
 import Text.PrettyPrint hiding ((<>))
 
 -------------------------------------------------------------------------------
