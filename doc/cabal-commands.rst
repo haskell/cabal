@@ -656,15 +656,17 @@ downloaded for them.
 
     After the vendor directory changes other than by ``cabal vendor``, for
     example by pulling or checking out a commit with different vendored
-    packages, delete the ``noindex.cache`` file inside it before building.
+    packages, delete the ``noindex.cache`` file inside it before building, or
+    run ``cabal vendor`` again with the same arguments.
 
     cabal reads the directory once, keeps what it found in that file, and does
     not notice later changes. With a stale cache, cabal can fail to find a
     package that is in the directory or fail to read one that is no longer
     there, and the reports in the note above do not apply. ``cabal vendor``
-    removes the file when it has finished, so the next command reads the
-    directory again. ``cabal update`` also rebuilds it, but it contacts every
-    other configured repository as well.
+    removes the file before it reads the directory and again when it has
+    finished, so both it and the next command see the directory as it is.
+    ``cabal update`` also rebuilds the file, but it contacts every other
+    configured repository as well.
 
     Keep ``noindex.cache`` out of version control, for example by adding
     ``vendor/noindex.cache`` to ``.gitignore``. See
