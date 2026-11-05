@@ -259,7 +259,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         | null pkgNames = sources
         | otherwise = Map.filterWithKey (\pkgid _ -> packageName pkgid `Set.member` wanted) sources
 
-      dryRun = buildSettingDryRun buildSettings || buildSettingOnlyDownload buildSettings
+      dryRun = buildSettingDryRun buildSettings
       prune = fromFlagOrDefault False vendorPrune
       displayDir = displayVendorDir projectRoot vendorDir
 
