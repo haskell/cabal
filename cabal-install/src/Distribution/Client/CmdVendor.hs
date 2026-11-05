@@ -207,15 +207,13 @@ classify elab@(packageId -> pkgid) acc@(vendorable, skipped)
         RemoteSourceRepoPackage srp (Just tarball) -> accept (FromSourceRepo srp tarball)
         RemoteSourceRepoPackage srp Nothing ->
           skip $ "source repository " ++ Text.unpack (srpLocation srp) ++ " has not been fetched"
-        RemoteTarballPackage uri _ ->
-          skip $ "remote tarball " ++ show uri ++ " is listed in the project's packages"
-        LocalTarballPackage path ->
-          skip $ "local tarball " ++ path ++ " is listed in the project's packages"
-        LocalUnpackedPackage path ->
-          skip $ "local directory " ++ path ++ " is listed in the project's packages"
+        RemoteTarballPackage uri _ -> listed $ "remote tarball " ++ show uri
+        LocalTarballPackage path -> listed $ "local tarball " ++ path
+        LocalUnpackedPackage path -> listed $ "local directory " ++ path
   where
     accept source = (Map.insert pkgid source vendorable, skipped)
     skip why = (vendorable, Map.insert pkgid why skipped)
+    listed what = skip $ what ++ " is listed in the project's packages"
 
 -- | The name of the repository in the stanza printed for the user.
 vendoredRepoName :: String
@@ -420,27 +418,26 @@ vendorReport displayDir total selected@(length -> count) unpacked =
     , brText "To build using the vendored packages, add the following to the project file"
     , text "(the 'url' line must stay indented under 'repository'):"
     , brText "repository" <+> text vendoredRepoName
-    , nest 2 $ (text "url" <> colon) <+> text vendorUrl
+    , nest 2 $ (text "url" <> colon) <+> text ("file+noindex:" ++ urlPath)
     , (brText "active-repositories" <> colon) <+> text activeRepos
     ]
       ++ cacheNote
       ++ sourceRepoNotes
       ++ unpackNotes
   where
-    summary
-      | partial =
-          hsep [text "Vendored", int count, text "of", int total, text "dependencies into", text displayDir]
-      | otherwise =
-          hsep [text "Vendored", int count, text (plural count "package" "packages"), text "into", text displayDir]
+    summary = hsep $ [text "Vendored", int count] ++ counted ++ [text "into", text displayDir]
+    counted
+      | partial = [text "of", int total, text "dependencies"]
+      | otherwise = [text (plural count "package" "packages")]
 
     partial = count < total
 
     -- A directory inside the project is given relative to the project root,
     -- so that the vendored repository can be committed along with the project.
-    vendorUrl
-      | isRelative displayDir = "file+noindex:" ++ displayDir
-      | Windows <- buildOS = "file+noindex:" ++ asPosixPath displayDir
-      | otherwise = "file+noindex://" ++ displayDir
+    urlPath
+      | isRelative displayDir = displayDir
+      | Windows <- buildOS = asPosixPath displayDir
+      | otherwise = "//" ++ displayDir
 
     -- cabal writes its index of the repository into the directory. It goes
     -- stale when the directory changes, so it should not be committed with it.
