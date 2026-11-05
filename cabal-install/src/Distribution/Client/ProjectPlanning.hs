@@ -2403,8 +2403,8 @@ elaborateInstallPlan
                 , stripExes = perPkgOptionFlag False pkgid packageConfigStripExes
                 , withDebugInfo = perPkgOptionFlag NoDebugInfo pkgid packageConfigDebugInfo
                 , relocatable = perPkgOptionFlag False pkgid packageConfigRelocatable
-                , withProfLibDetail = elabProfExeDetail
-                , withProfExeDetail = elabProfLibDetail
+                , withProfLibDetail = elabProfLibDetail
+                , withProfExeDetail = elabProfExeDetail
                 , programPrefix = elabProgPrefix
                 , programSuffix = elabProgSuffix
                 }
