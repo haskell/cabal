@@ -186,6 +186,7 @@ type Sources = Map PackageId VendorSource
 
 newtype Prune = Prune Bool
 newtype Unpack = Unpack Bool
+newtype DisplayDir = DisplayDir String
 
 -- | The @.cabal@ file to go with a vendored package, if its source has one.
 sourceCabalFile :: VendorSource -> Maybe CabalFileText
@@ -288,8 +289,8 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
     verbosity = cfgVerbosity normal flags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty
 
-vendorDryRun :: Verbosity -> Prune -> Unpack -> (FilePath, FilePath) -> (Sources, Sources) -> IO ()
-vendorDryRun verbosity (Prune prune) (Unpack unpack) (vendorDir, displayDir) (selected, sources) = do
+vendorDryRun :: Verbosity -> Prune -> Unpack -> (FilePath, DisplayDir) -> (Sources, Sources) -> IO ()
+vendorDryRun verbosity (Prune prune) (Unpack unpack) (vendorDir, DisplayDir displayDir) (selected, sources) = do
   noticeDoc verbosity . listing ("Would vendor the following packages into " ++ displayDir) $
     pretty <$> Map.keys selected
   when prune $ do
@@ -299,7 +300,7 @@ vendorDryRun verbosity (Prune prune) (Unpack unpack) (vendorDir, displayDir) (se
   when unpack . noticeDoc verbosity . listing ("Would unpack the following packages into " ++ displayDir ++ "/src") $
     pretty <$> Map.keys selected
 
-vendor :: BuildTimeSettings -> Verbosity -> Prune -> Unpack -> (FilePath, FilePath) -> (Sources, Sources) -> IO ()
+vendor :: BuildTimeSettings -> Verbosity -> Prune -> Unpack -> (FilePath, DisplayDir) -> (Sources, Sources) -> IO ()
 vendor buildSettings verbosity (Prune prune) (Unpack unpack) (vendorDir, displayDir) (selected, sources) = do
   createDirectoryIfMissing True vendorDir
   projectConfigWithBuilderRepoContext verbosity buildSettings $ \repoCtxt ->
@@ -405,14 +406,14 @@ listing heading items = vcat [text heading <> colon, nest 1 $ vcat [char '-' <+>
 -- | The vendor directory as shown to the user: relative to the project root
 -- when it lies inside the project, so that it reads the same as the @url:@
 -- line of the printed stanza. A directory outside the project stays absolute.
-displayVendorDir :: FilePath -> FilePath -> FilePath
+displayVendorDir :: FilePath -> FilePath -> DisplayDir
 displayVendorDir projectRoot vendorDir@(makeRelative projectRoot -> relativeDir)
-  | isRelative relativeDir = asPosixPath relativeDir
-  | otherwise = vendorDir
+  | isRelative relativeDir = DisplayDir (asPosixPath relativeDir)
+  | otherwise = DisplayDir vendorDir
 
 -- | What was vendored, and the project configuration needed to use it.
-vendorReport :: FilePath -> Int -> [(PackageId, VendorSource)] -> [PackageId] -> Doc
-vendorReport displayDir total selected@(length -> count) unpacked =
+vendorReport :: DisplayDir -> Int -> [(PackageId, VendorSource)] -> [PackageId] -> Doc
+vendorReport (DisplayDir dir) total selected@(length -> count) unpacked =
   vcat $
     [ summary
     , brText "To build using the vendored packages, add the following to the project file"
@@ -425,7 +426,7 @@ vendorReport displayDir total selected@(length -> count) unpacked =
       ++ sourceRepoNotes
       ++ unpackNotes
   where
-    summary = hsep $ [text "Vendored", int count] ++ counted ++ [text "into", text displayDir]
+    summary = hsep $ [text "Vendored", int count] ++ counted ++ [text "into", text dir]
     counted
       | partial = [text "of", int total, text "dependencies"]
       | otherwise = [text (plural count "package" "packages")]
@@ -435,17 +436,17 @@ vendorReport displayDir total selected@(length -> count) unpacked =
     -- A directory inside the project is given relative to the project root,
     -- so that the vendored repository can be committed along with the project.
     urlPath
-      | isRelative displayDir = displayDir
-      | Windows <- buildOS = asPosixPath displayDir
-      | otherwise = "//" ++ displayDir
+      | isRelative dir = dir
+      | Windows <- buildOS = asPosixPath dir
+      | otherwise = "//" ++ dir
 
     -- cabal writes its index of the repository into the directory. It goes
     -- stale when the directory changes, so it should not be committed with it.
     cacheNote
-      | isRelative displayDir =
+      | isRelative dir =
           [ brText "If the directory is committed with the project, keep cabal's index cache out"
           , text "of version control, for example by adding this line to .gitignore:"
-          , brText $ displayDir ++ "/noindex.cache"
+          , brText $ dir ++ "/noindex.cache"
           ]
       | otherwise = []
 
@@ -467,10 +468,10 @@ vendorReport displayDir total selected@(length -> count) unpacked =
     unpackNotes = case unpacked of
       [] -> []
       pkgids ->
-        [ brText $ "Unpacked into " ++ displayDir ++ "/src. To work on these as local packages,"
+        [ brText $ "Unpacked into " ++ dir ++ "/src. To work on these as local packages,"
         , text "which take precedence over the vendored ones, add to the project file:"
         , brText "packages" <> colon
-        , nest 2 $ vcat [text (displayDir ++ "/src/" ++ prettyShow pkgid) | pkgid <- pkgids]
+        , nest 2 $ vcat [text (dir ++ "/src/" ++ prettyShow pkgid) | pkgid <- pkgids]
         ]
 
     describeSourceRepo SourceRepositoryPackage{srpType, srpLocation, srpTag, srpBranch, srpSubdir} =
