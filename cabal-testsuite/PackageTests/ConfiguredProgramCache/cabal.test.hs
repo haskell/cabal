@@ -20,8 +20,8 @@ main = cabalTest $ recordMode DoNotRecord $ do
   liftIO $ setPermissions toolPath permissions{executable = True}
   writeSourceFile "haddock-version" "Haddock version 2.30.0\n"
   _ <- build
-  -- The script is the monitored file, not the version file it reads, so
-  -- editing cabal.project is what makes cabal elaborate the plan again.
+  -- Nothing monitors the tool, so cabal probes its version again only when
+  -- it elaborates the plan again, which editing cabal.project makes it do.
   writeSourceFile "cabal.project" "packages: .\nconstraints: base >= 0\n"
   build >>= assertOutputContains "Up to date"
   delay
