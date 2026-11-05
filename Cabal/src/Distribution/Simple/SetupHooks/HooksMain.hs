@@ -255,12 +255,14 @@ instance Exception (VerboseException SetupHooksExeException) where
       ++ exceptionWithMetadata stack timestamp verb (setupHooksExeExceptionMessage err)
 
 -- | The verbosity used inside the hooks executable.
---
--- The hooks executable is always invoked as a separate process, so stdout
--- and stderr are available for verbosity output and can be redirected via
--- the @System.Process@ API.
 hooksExeVerbosity :: Verbosity
-hooksExeVerbosity = mkVerbosity defaultVerbosityHandles Verbosity.normal
+hooksExeVerbosity =
+  mkVerbosity
+    -- 'defaultVerbosityHandles': the hooks executable is invoked as a separate
+    -- process. See (LH2) in Note [Logging handles] in Distribution.Verbosity.
+    defaultVerbosityHandles
+    -- 'normal': this is just for errors in the hooks executable protocol.
+    Verbosity.normal
 
 --------------------------------------------------------------------------------
 -- Main entry point
@@ -374,8 +376,14 @@ hookHandlers =
             case preBuildComponentRules of
               Nothing -> return (Map.empty, [])
               Just pbcRules ->
+                -- 'defaultVerbosityHandles': see (LH2) in Note [Logging handles] in Distribution.Verbosity.
                 liftIO $
-                  computeRules hooksExeVerbosity preBuildInputs pbcRules
+                  computeRules
+                    ( mkVerbosity defaultVerbosityHandles $
+                        buildingWhatVerbosity (buildingWhat preBuildInputs)
+                    )
+                    preBuildInputs
+                    pbcRules
   , let hookName = "runPreBuildRuleDeps"
      in HookHandler hookName $ \h _ ->
           runHookHandle h hookName $ \(ruleId, ruleDeps) ->
