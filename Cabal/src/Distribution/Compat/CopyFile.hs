@@ -33,16 +33,21 @@ import Control.Exception
 import Data.Bits
          ( (.|.) )
 import System.IO.Error
-         ( ioeSetLocation )
+         ( ioeSetLocation, isAlreadyExistsError, tryIOError )
 import System.Directory
          ( renameFile, removeFile )
 import System.FilePath
-         ( takeDirectory )
+         ( takeDirectory, (</>) )
 import System.IO
-         ( hClose, hGetBuf, hPutBuf, openBinaryTempFile )
+         ( Handle, hClose, hGetBuf, hPutBuf )
 import Foreign
          ( allocaBytes )
 
+import System.Posix.IO
+         ( OpenFileFlags (cloexec, creat, exclusive), OpenMode (WriteOnly)
+         , defaultFileFlags, fdToHandle, openFd )
+import System.Posix.Process
+         ( getProcessID )
 import System.Posix.Types
          ( FileMode )
 import System.Posix.Files
@@ -90,7 +95,7 @@ copyFile fromFPath toFPath =
              do allocaBytes bufferSize $ copyContents hFrom hTmp
                 hClose hTmp
                 renameFile tmpFPath toFPath
-      openTmp = openBinaryTempFile (takeDirectory toFPath) ".copyFile.tmp"
+      openTmp = openCopyTarget (takeDirectory toFPath)
       cleanTmp (tmpFPath, hTmp) = do
         hClose hTmp          `catchIO` \_ -> return ()
         removeFile tmpFPath  `catchIO` \_ -> return ()
@@ -101,6 +106,28 @@ copyFile fromFPath toFPath =
               when (count > 0) $ do
                       hPutBuf hTo buffer count
                       copyContents hFrom hTo buffer
+
+-- | Create the temporary file that 'copyFile' writes to, with @O_CLOEXEC@ set
+-- from the start. 'System.IO.openBinaryTempFile' cannot ask for that flag.
+--
+-- cabal-install runs this library in-process, on several threads. A process
+-- that another thread starts while this file is open would inherit the
+-- descriptor and keep it for as long as it runs, and the kernel refuses to
+-- execute a file that anything holds open for writing. An executable we have
+-- just installed would then fail with @ETXTBSY@, even after we close and rename
+-- it.
+openCopyTarget :: FilePath -> IO (FilePath, Handle)
+openCopyTarget dir = getProcessID >>= \pid -> go (show pid) (0 :: Int)
+  where
+    go pid n = do
+      let path = dir </> (".copyFile" ++ pid ++ "-" ++ show n ++ ".tmp")
+      res <- tryIOError (openFd path WriteOnly flags)
+      case res of
+        Right fd -> (,) path <$> fdToHandle fd
+        Left ioe
+          | isAlreadyExistsError ioe -> go pid (n + 1)
+          | otherwise -> ioError ioe
+    flags = defaultFileFlags{creat = Just 0o600, exclusive = True, cloexec = True}
 #else
 copyFile = copyFileWithMetadata
 #endif /* mingw32_HOST_OS */
