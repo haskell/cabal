@@ -58,7 +58,6 @@ import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
   , doesDirectoryExist
-  , doesFileExist
   , listDirectory
   , makeAbsolute
   , removeFile
@@ -319,12 +318,9 @@ vendorPackage verbosity repoCtxt vendorDir pkgid@(prettyShow -> pkgName) source 
     FromSourceRepo _ tarball -> return tarball
   let dest = vendorDir </> pkgName <.> "tar.gz"
   -- When the project already takes this package from the vendor directory,
-  -- the source is the destination.
-  sameFile <- do
-    destExists <- doesFileExist dest
-    if destExists
-      then (==) <$> canonicalizePath src <*> canonicalizePath dest
-      else return False
+  -- the source is the destination. The destination need not exist yet:
+  -- canonicalizePath resolves as much of a path as is there.
+  sameFile <- (==) <$> canonicalizePath src <*> canonicalizePath dest
   unless sameFile $ do
     copyFileVerbose verbosity src dest
     for_ (sourceCabalFile source) $ writeFileAtomic (vendorDir </> pkgName <.> "cabal")
