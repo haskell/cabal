@@ -230,7 +230,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
       -- One package can appear once per component in the plan, so collect
       -- by package id.
       (sources, notVendored) = foldr classify (Map.empty, []) elabPkgs
-      classify elab (vendorable, skipped)
+      classify elab@(packageId -> pkgid) (vendorable, skipped)
         | elabLocalToProject elab = (vendorable, skipped)
         | otherwise =
             case elabPkgSourceLocation elab of
@@ -246,8 +246,6 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
                 (vendorable, (pkgid, "local tarball " ++ path ++ " is listed in the project's packages") : skipped)
               LocalUnpackedPackage path ->
                 (vendorable, (pkgid, "local directory " ++ path ++ " is listed in the project's packages") : skipped)
-        where
-          pkgid = packageId elab
 
       -- Restrict to the requested package names, if any.
       wanted = Set.fromList pkgNames
@@ -265,8 +263,8 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
   unless (null unknown) $ dieWithException verbosity (VendorUnknownPackages unknown)
   unless (null local) $ dieWithException verbosity (VendorLocalPackages local)
 
-  for_ notVendored $ \(pkgid, why) ->
-    warn verbosity $ "Not vendoring " ++ prettyShow pkgid ++ ": " ++ why ++ "."
+  for_ notVendored $ \(prettyShow -> pkgid, why) ->
+    warn verbosity $ "Not vendoring " ++ pkgid ++ ": " ++ why ++ "."
 
   if dryRun
     then do
@@ -284,8 +282,8 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         for_ (Map.toList selected) $ uncurry (vendorPackage verbosity repoCtxt vendorDir)
 
       when prune $ do
-        removed <- pruneVendorDir verbosity vendorDir (Map.keysSet sources)
-        let heading = "Removed " ++ show (length removed) ++ " " ++ plural (length removed) "file" "files" ++ " not in the current plan"
+        removed@(length -> count) <- pruneVendorDir verbosity vendorDir (Map.keysSet sources)
+        let heading = "Removed " ++ show count ++ " " ++ plural count "file" "files" ++ " not in the current plan"
         unless (null removed) . noticeDoc verbosity . listing heading $ text <$> removed
 
       -- The index cache of a file+noindex repository is never invalidated by
@@ -410,15 +408,13 @@ listing heading items = vcat [text heading <> colon, nest 1 $ vcat [char '-' <+>
 -- when it lies inside the project, so that it reads the same as the @url:@
 -- line of the printed stanza. A directory outside the project stays absolute.
 displayVendorDir :: FilePath -> FilePath -> FilePath
-displayVendorDir projectRoot vendorDir
+displayVendorDir projectRoot vendorDir@(makeRelative projectRoot -> relativeDir)
   | isRelative relativeDir = asPosixPath relativeDir
   | otherwise = vendorDir
-  where
-    relativeDir = makeRelative projectRoot vendorDir
 
 -- | What was vendored, and the project configuration needed to use it.
 vendorReport :: FilePath -> FilePath -> Bool -> Int -> [(PackageId, VendorSource)] -> [PackageId] -> Doc
-vendorReport projectRoot vendorDir partial total selected unpacked =
+vendorReport projectRoot vendorDir partial total selected@(length -> count) unpacked =
   vcat $
     [ summary
     , brText "To build using the vendored packages, add the following to the project file"
@@ -432,9 +428,9 @@ vendorReport projectRoot vendorDir partial total selected unpacked =
   where
     summary
       | partial =
-          hsep [text "Vendored", int (length selected), text "of", int total, text "dependencies into", text displayDir]
+          hsep [text "Vendored", int count, text "of", int total, text "dependencies into", text displayDir]
       | otherwise =
-          hsep [text "Vendored", int (length selected), text (plural (length selected) "package" "packages"), text "into", text displayDir]
+          hsep [text "Vendored", int count, text (plural count "package" "packages"), text "into", text displayDir]
 
     -- Prefer a path relative to the project root, so that the vendored
     -- repository can be committed along with the project.
