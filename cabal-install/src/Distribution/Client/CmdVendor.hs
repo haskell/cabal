@@ -176,12 +176,7 @@ data VendorFlags = VendorFlags
   deriving (Eq, Show)
 
 defaultVendorFlags :: VendorFlags
-defaultVendorFlags =
-  VendorFlags
-    { vendorOutputDir = mempty
-    , vendorPrune = mempty
-    , vendorUnpack = mempty
-    }
+defaultVendorFlags = VendorFlags mempty mempty mempty
 
 vendorOptions :: ShowOrParseArgs -> [OptionField VendorFlags]
 vendorOptions _ =
