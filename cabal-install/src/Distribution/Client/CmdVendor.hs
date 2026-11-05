@@ -186,6 +186,11 @@ data VendorSource
     -- distribution tarball that cabal made from its checkout.
     FromSourceRepo SourceRepoMaybe FilePath
 
+-- | The @.cabal@ file to go with a vendored package, if its source has one.
+sourceCabalFile :: VendorSource -> Maybe LBS.ByteString
+sourceCabalFile (FromRepo _ cabalFile) = cabalFile
+sourceCabalFile FromSourceRepo{} = Nothing
+
 -- | The name of the repository in the stanza printed for the user.
 vendoredRepoName :: String
 vendoredRepoName = "vendored"
@@ -323,10 +328,7 @@ vendorPackage verbosity repoCtxt vendorDir pkgid@(prettyShow -> pkgName) source 
       else return False
   unless sameFile $ do
     copyFileVerbose verbosity src dest
-    case source of
-      FromRepo _ (Just cabalFile) ->
-        writeFileAtomic (vendorDir </> pkgName <.> "cabal") cabalFile
-      _ -> return ()
+    for_ (sourceCabalFile source) $ writeFileAtomic (vendorDir </> pkgName <.> "cabal")
 
 -- | Unpack a vendored package into @src/@ under the vendor directory, with
 -- the @.cabal@ file from the index applied as @cabal get@ does, so that it can be
@@ -337,9 +339,6 @@ unpackVendored verbosity vendorDir pkgid@(prettyShow -> pkgName) source = do
   let unpackDir = vendorDir </> "src"
       pkgDir = unpackDir </> pkgName
       tarball = vendorDir </> pkgName <.> "tar.gz"
-      override = case source of
-        FromRepo _ cabalFile -> cabalFile
-        FromSourceRepo _ _ -> Nothing
   exists <- doesDirectoryExist pkgDir
   if exists
     then do
@@ -348,7 +347,7 @@ unpackVendored verbosity vendorDir pkgid@(prettyShow -> pkgName) source = do
       return []
     else do
       createDirectoryIfMissing True unpackDir
-      unpackPackage verbosity unpackDir pkgid override tarball
+      unpackPackage verbosity unpackDir pkgid (sourceCabalFile source) tarball
       return [pkgid]
 
 -- | The package a file in the vendor directory belongs to, for the file
