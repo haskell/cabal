@@ -398,6 +398,7 @@ vendorReport displayDir total selected@(length -> count) unpacked =
     , nest 2 $ (text "url" <> colon) <+> text vendorUrl
     , (brText "active-repositories" <> colon) <+> text activeRepos
     ]
+      ++ cacheNote
       ++ sourceRepoNotes
       ++ unpackNotes
   where
@@ -415,6 +416,16 @@ vendorReport displayDir total selected@(length -> count) unpacked =
       | isRelative displayDir = "file+noindex:" ++ displayDir
       | Windows <- buildOS = "file+noindex:" ++ asPosixPath displayDir
       | otherwise = "file+noindex://" ++ displayDir
+
+    -- cabal writes its index of the repository into the directory. It goes
+    -- stale when the directory changes, so it should not be committed with it.
+    cacheNote
+      | isRelative displayDir =
+          [ brText "If the directory is committed with the project, keep cabal's index cache out"
+          , text "of version control, for example by adding this line to .gitignore:"
+          , brText $ displayDir ++ "/noindex.cache"
+          ]
+      | otherwise = []
 
     -- With only some dependencies vendored, the other repositories have to
     -- stay active; the vendored one then overrides them for its packages.

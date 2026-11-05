@@ -21,6 +21,11 @@ repository vendored
 
 active-repositories: vendored
 
+If the directory is committed with the project, keep cabal's index cache out
+of version control, for example by adding this line to .gitignore:
+
+vendor/noindex.cache
+
 Unpacked into vendor/src. To work on these as local packages,
 which take precedence over the vendored ones, add to the project file:
 
@@ -37,6 +42,11 @@ repository vendored
   url: file+noindex:vendor
 
 active-repositories: vendored
+
+If the directory is committed with the project, keep cabal's index cache out
+of version control, for example by adding this line to .gitignore:
+
+vendor/noindex.cache
 # cabal v2-run
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1

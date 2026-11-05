@@ -23,6 +23,11 @@ repository vendored
   url: file+noindex:vendor
 
 active-repositories: vendored
+
+If the directory is committed with the project, keep cabal's index cache out
+of version control, for example by adding this line to .gitignore:
+
+vendor/noindex.cache
 # cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
@@ -47,3 +52,8 @@ repository vendored
   url: file+noindex:vendor
 
 active-repositories: vendored
+
+If the directory is committed with the project, keep cabal's index cache out
+of version control, for example by adding this line to .gitignore:
+
+vendor/noindex.cache

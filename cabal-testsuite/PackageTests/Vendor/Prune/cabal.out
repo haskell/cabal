@@ -11,6 +11,11 @@ repository vendored
   url: file+noindex:vendor
 
 active-repositories: vendored
+
+If the directory is committed with the project, keep cabal's index cache out
+of version control, for example by adding this line to .gitignore:
+
+vendor/noindex.cache
 # cabal v2-vendor
 Resolving dependencies...
 Vendored 2 packages into vendor
@@ -22,6 +27,11 @@ repository vendored
   url: file+noindex:vendor
 
 active-repositories: vendored
+
+If the directory is committed with the project, keep cabal's index cache out
+of version control, for example by adding this line to .gitignore:
+
+vendor/noindex.cache
 # cabal v2-vendor
 Would vendor the following packages into vendor:
  - my-lib-2.0
@@ -44,6 +54,11 @@ repository vendored
   url: file+noindex:vendor
 
 active-repositories: :rest, vendored:override
+
+If the directory is committed with the project, keep cabal's index cache out
+of version control, for example by adding this line to .gitignore:
+
+vendor/noindex.cache
 # cabal v2-vendor
 Vendored 2 packages into vendor
 
@@ -54,3 +69,8 @@ repository vendored
   url: file+noindex:vendor
 
 active-repositories: vendored
+
+If the directory is committed with the project, keep cabal's index cache out
+of version control, for example by adding this line to .gitignore:
+
+vendor/noindex.cache
