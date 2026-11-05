@@ -1,7 +1,7 @@
 ---
 synopsis: Stop doubling the leading slash of the `configure` script path on POSIX
 packages: [Cabal]
-prs: 0000
+prs: 12527
 ---
 
 `build-type: Configure` packages ran `./configure` as `//path/to/configure`.
