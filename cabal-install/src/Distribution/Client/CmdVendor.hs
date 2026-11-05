@@ -257,7 +257,6 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
         | null pkgNames = sources
         | otherwise = Map.filterWithKey (\pkgid _ -> packageName pkgid `Set.member` wanted) sources
 
-      dryRun = buildSettingDryRun buildSettings
       prune = fromFlagOrDefault False vendorPrune
       displayDir = displayVendorDir projectRoot vendorDir
 
@@ -267,7 +266,7 @@ vendorAction flags@NixStyleFlags{extraFlags = VendorFlags{vendorOutputDir, vendo
   for_ (Map.toList notVendored) $ \(prettyShow -> pkgid, why) ->
     warn verbosity $ "Not vendoring " ++ pkgid ++ ": " ++ why ++ "."
 
-  if dryRun
+  if buildSettingDryRun buildSettings
     then do
       noticeDoc verbosity . listing ("Would vendor the following packages into " ++ displayDir) $
         pretty <$> Map.keys selected
