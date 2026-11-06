@@ -480,8 +480,10 @@ shortListOf1 bound gen = sized $ \n -> do
     k <- choose (1, 1 `max` ((n `div` 2) `min` bound))
     vectorOf k gen
 
+-- | The parsec parser reads a single-value field as one token, stopping at a
+-- comma, whereas the legacy parser took the rest of the line.
 arbitraryShortToken :: Gen String
-arbitraryShortToken = arbitraryShortStringWithout "{}[]"
+arbitraryShortToken = arbitraryShortStringWithout "{}[],"
 
 arbitraryShortPath :: Gen String
 arbitraryShortPath = arbitraryShortStringWithout "{}[],<>:|*?" `suchThat` (not . winDevice)
