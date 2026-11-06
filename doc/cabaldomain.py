@@ -89,14 +89,13 @@ To be done:
   At least setup and 'new-build` subcommands should get special directives
 
 - Improve rendering of flags in `.. cfg-field::` directive. It should be
-  possible without copy-pasting code from sphinx.directives.ObjectDescription
-  by examining result of ObjectDescription.run and inserting flags into
-  desc_content node.
+  possible by inserting flags into the desc_content node from
+  ObjectDescription.transform_content, as is done for since and deprecated.
 
   Alternatively Or `.. flags::` sub-directive can be added which will be aware
   of parent `.. cfg-field` directive.
 
-- With same ObjectDescription.run trick as above, render since and deprecated
+- With same transform_content hook as above, render since and deprecated
   info same way as standard object fields, and use fancy rendering only on
   references page.
 
@@ -364,73 +363,47 @@ class CabalObject(ObjectDescription):
 
     def run(self):
         self.cabal_meta = self.get_meta()
-        result = super(CabalObject, self).run()
+        return super(CabalObject, self).run()
 
-        if self.cabal_meta.since is not None \
-           or self.cabal_meta.deprecated is not None:
+    def transform_content(self, contentnode):
+        '''
+        As in sphinx.directives.ObjectDescription
 
-            #find content part of description
-            for item in result:
-                if isinstance(item, addnodes.desc):
-                    desc = item
-                    break
+        Adds Since, Deprecated and Removed entries to the field list at the
+        start of the description, creating the list if there is none.
+        '''
+        meta = self.cabal_meta
+        if meta.since is None and meta.deprecated is None:
+            return
+
+        # find existing field list and add to it
+        # or create new one
+        for item in contentnode:
+            if isinstance(item, nodes.field_list):
+                field_list = item
+                break
+        else:
+            field_list = nodes.field_list('')
+            contentnode.insert(0, field_list)
+
+        def add_field(label, version):
+            field = nodes.field('')
+            field += nodes.field_name(label, label)
+            if isinstance(version, Version):
+                text = 'Cabal ' + str(version)
             else:
-                return result
+                text = ''
+            field += nodes.field_body(text, nodes.paragraph(text, text))
+            field_list.insert(0, field)
 
-            for item in desc:
-                if isinstance(item, addnodes.desc_content):
-                    contents = item
-                    break
-            else:
-                return result
+        if meta.since is not None:
+            add_field('Since', meta.since)
 
-            # find existing field list and add to it
-            # or create new one
-            for item in contents:
-                if isinstance(item, nodes.field_list):
-                    field_list = item
-                    break
-            else:
-                field_list = nodes.field_list('')
-                contents.insert(0, field_list)
+        if meta.deprecated is not None:
+            add_field('Deprecated', meta.deprecated)
 
-
-            if self.cabal_meta.since is not None:
-                #docutils horror
-                field = nodes.field('')
-                field_name = nodes.field_name('Since', 'Since')
-                since = 'Cabal ' + str(self.cabal_meta.since)
-                field_body = nodes.field_body(since, nodes.paragraph(since, since))
-                field += field_name
-                field += field_body
-                field_list.insert(0, field)
-
-            if self.cabal_meta.deprecated is not None:
-                field = nodes.field('')
-                field_name = nodes.field_name('Deprecated', 'Deprecated')
-                if isinstance(self.cabal_meta.deprecated, Version):
-                    since = 'Cabal ' + str(self.cabal_meta.deprecated)
-                else:
-                    since = ''
-
-                field_body = nodes.field_body(since, nodes.paragraph(since, since))
-                field += field_name
-                field += field_body
-                field_list.insert(0, field)
-
-            if self.cabal_meta.removed is not None:
-                field = nodes.field('')
-                field_name = nodes.field_name('Removed', 'Removed')
-                if isinstance(self.cabal_meta.removed, Version):
-                    since = 'Cabal ' + str(self.cabal_meta.removed)
-                else:
-                    since = ''
-
-                field_body = nodes.field_body(since, nodes.paragraph(since, since))
-                field += field_name
-                field += field_body
-                field_list.insert(0, field)
-        return result
+        if meta.removed is not None:
+            add_field('Removed', meta.removed)
 
 class CabalPackageSection(CabalObject):
     """
