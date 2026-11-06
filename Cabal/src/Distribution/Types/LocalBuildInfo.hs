@@ -283,20 +283,20 @@ pattern LocalBuildInfo
             { packageBuildDescr =
               LBC.PackageBuildDescr
                 { packageConfigFlags
-                , componentConfigFlags
                 , flagAssignment
-                , componentEnabledSpec
                 , compiler
                 , hostPlatform
                 , localPkgDescr
-                , installDirTemplates
-                , withPackageDB
                 , pkgDescrFile
-                , extraCoverageFor
                 }
             , componentBuildDescr =
               LBC.ComponentBuildDescr
-                { componentGraph
+                { componentConfigFlags
+                , componentEnabledSpec
+                , installDirTemplates
+                , withPackageDB
+                , extraCoverageFor
+                , componentGraph
                 , componentNameMap
                 , promisedPkgs
                 , installedPkgs

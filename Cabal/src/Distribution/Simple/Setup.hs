@@ -100,6 +100,7 @@ module Distribution.Simple.Setup
   , benchmarkCommand
   , CopyDest (..)
   , configureArgs
+  , packageConfigureArgs
   , configureOptions
   , configureCCompiler
   , configureLinker

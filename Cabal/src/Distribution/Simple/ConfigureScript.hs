@@ -26,9 +26,10 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup.Common
-import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
 import Distribution.System (Platform, buildPlatform)
+import Distribution.Types.ConfigFlags (PackageConfigFlags)
+import qualified Distribution.Types.ConfigFlags as CF
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
@@ -47,15 +48,17 @@ import qualified Data.Map as Map
 
 runConfigureScript
   :: VerbosityHandles
-  -> ConfigFlags
+  -> CommonSetupFlags
+  -> PackageConfigFlags
+  -> [String]
+  -- ^ arguments to the @configure@ script
   -> FlagAssignment
   -> ProgramDb
   -> Platform
   -- ^ host platform
   -> IO ()
-runConfigureScript verbHandles cfg flags programDb hp = do
-  let commonCfg = configCommonFlags cfg
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonCfg)
+runConfigureScript verbHandles commonCfg pkgFlags args flags programDb hp = do
+  let verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonCfg)
   dist_dir <- findDistPrefOrDefault $ setupDistPref commonCfg
   let build_dir = dist_dir </> makeRelativePathEx "build"
       mbWorkDir = flagToMaybe $ setupWorkingDir commonCfg
@@ -166,7 +169,7 @@ runConfigureScript verbHandles cfg flags programDb hp = do
                , Just $ unwords [showFlagValue fv | fv <- unFlagAssignment flags]
                )
              ]
-  let extraPath = fromNubList $ configProgramPathExtra cfg
+  let extraPath = fromNubList $ CF.configProgramPathExtra pkgFlags
   let mkFlagsEnv fs var = maybe (unwords fs) (++ (" " ++ unwords fs)) (lookup var env)
       spSep = [FilePath.searchPathSeparator]
       pathEnv =
@@ -200,9 +203,6 @@ runConfigureScript verbHandles cfg flags programDb hp = do
           { progInvokeCwd = Just build_in
           }
     Nothing -> dieWithException verbosity NotFoundMsg
-  where
-    args = configureArgs backwardsCompatHack cfg
-    backwardsCompatHack = False
 
 -- | Convert Windows path to Unix ones
 toUnix :: String -> String

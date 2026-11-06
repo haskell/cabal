@@ -117,6 +117,7 @@ import Distribution.Utils.Structured
   )
 
 import qualified Distribution.Types.BuildInfo.Lens as BI (buildInfo)
+import Distribution.Types.ConfigFlags (ComponentConfigFlags)
 import Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo (PersistedBuildInfo, commonFlagsBuildLocation)
 import Distribution.Types.TargetInfo
@@ -264,7 +265,9 @@ data PreConfComponentInputs = PreConfComponentInputs
   { localBuildConfig :: LocalBuildConfig
   , packageBuildDescr :: PackageBuildDescr
   , commonFlags :: CommonSetupFlags
-  -- ^ The common flags of the configuration step.
+  -- ^ The common flags of the per-component configuration step.
+  , componentConfigFlags :: ComponentConfigFlags
+  -- ^ The component-level configure flags.
   , component :: Component
   }
   deriving (Generic, Show)

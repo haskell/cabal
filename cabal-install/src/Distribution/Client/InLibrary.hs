@@ -23,7 +23,7 @@ import qualified Distribution.Client.SetupHooks.CallHooksExe as ExternalHooksExe
 import Distribution.Client.Types
 
 import qualified Distribution.PackageDescription as PD
-import Distribution.Simple (Compiler, PackageDBStackCWD)
+import Distribution.Simple (Compiler)
 import qualified Distribution.Simple.Bench as Cabal
 import Distribution.Simple.Build (build_setupHooks, repl_setupHooks)
 import qualified Distribution.Simple.Configure as Cabal
@@ -44,8 +44,7 @@ import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo
 import Distribution.Utils.Path
-  ( makeSymbolicPath
-  , relativeSymbolicPath
+  ( relativeSymbolicPath
   )
 import Distribution.Verbosity
   ( VerbosityHandles
@@ -53,7 +52,6 @@ import Distribution.Verbosity
   )
 
 import Distribution.Types.HookedBuildInfo (emptyHookedBuildInfo)
-import System.Directory (canonicalizePath)
 
 --------------------------------------------------------------------------------
 -- Configure
@@ -65,7 +63,6 @@ data LibraryConfigureInputs = LibraryConfigureInputs
   , buildType :: BuildType
   , compRequested :: Maybe PD.ComponentName
   , localBuildConfig :: LBC.LocalBuildConfig
-  , packageDBStack :: PackageDBStackCWD
   , packageDescription :: PD.PackageDescription
   , gPackageDescription :: PD.GenericPackageDescription
   , flagAssignment :: PD.FlagAssignment
@@ -115,7 +112,6 @@ libraryConfigureInputsFromElabPackage
             { LBC.withPrograms = progDb
             , LBC.withBuildOptions = elabBuildOptions pkg
             }
-      , packageDBStack = elabBuildPackageDBStack pkg
       , packageDescription = pkgDescr
       , gPackageDescription = gpkgDescr
       , flagAssignment = elabFlagAssignment pkg
@@ -137,7 +133,6 @@ configure
     , buildType = bt
     , compRequested = mbComp
     , localBuildConfig = lbc0
-    , packageDBStack = packageDBs
     , packageDescription = pkgDescr
     , gPackageDescription = gpkgDescr
     , flagAssignment = flagAssgn
@@ -161,11 +156,6 @@ configure
 
     let pkgId :: PD.PackageIdentifier
         pkgId = PD.package pkgDescr
-
-    -- cabal-install uses paths relative to the current working directory,
-    -- while the Cabal library expects symbolic paths. Perform the conversion here
-    -- by making the paths absolute.
-    packageDBs' <- traverse (traverse $ fmap makeSymbolicPath . canonicalizePath) packageDBs
 
     -- Configure package
     case mbComp of
@@ -216,7 +206,6 @@ configure
         compRequestedSpec
         compil
         plat
-        packageDBs'
         pkgInfo
 
     -- Remember the .cabal filename if we know it.

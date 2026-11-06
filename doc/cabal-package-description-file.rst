@@ -3262,6 +3262,33 @@ will be passed via environment variables:
    whether flag ``<flag>`` is enabled. Note that any any non-alpha-numeric
    characters in the flag name are replaced with ``_``.
 
+The options ``--with-compiler`` and ``--with-hc-pkg`` of the configure step, and
+all the options specified with ``--configure-option=``, are passed on to the
+``configure`` script.
+
+.. warning::
+
+   The ``configure`` script is **not** told where the package will be
+   installed: it is not passed ``--prefix``, ``--bindir``, ``--libdir``,
+   ``--dynlibdir``, ``--datadir``, ``--libexecdir`` or ``--sysconfdir``.
+
+   .. versionchanged:: 3.20
+      Previous versions of Cabal did pass these options.
+
+   The ``configure`` script is run once for the whole package, but a package
+   does not have a single installation location: each of its components
+   (libraries, executables, ...) can be built and installed on its own, in a
+   directory of its own. This is how ``cabal`` installs the components of a
+   package into its store. A script that is run once cannot be given the
+   installation directories of all the components, and giving it those of
+   one particular component would silently produce a configuration which is
+   wrong for the others.
+
+   A ``configure`` script should therefore only discover information about
+   the system. To refer to the files installed by a package, use the
+   ``Paths_``\ *pkgname* module (see :ref:`accessing-data-files`), which is
+   generated separately for each component.
+
 The build information file should have the following structure:
 
     *buildinfo*

@@ -477,7 +477,7 @@ configure_setupHooks
     -- Cabal package-wide configure
     (allConstraints, pkgInfo) <-
       computePackageInfo verbHandles cfg lbc1 g_pkg_descr comp
-    (packageDbs, pkg_descr0, flags) <-
+    (pkg_descr0, flags) <-
       finalizePackageDescription
         verbHandles
         cfg
@@ -499,7 +499,6 @@ configure_setupHooks
       enabledComps
       comp
       platform
-      packageDbs
       pkgInfo
 
 configureFinal
@@ -513,7 +512,6 @@ configureFinal
   -> ComponentRequestedSpec
   -> Compiler
   -> Platform
-  -> PackageDBStack
   -> PackageInfo
   -> IO LocalBuildInfo
 configureFinal
@@ -527,7 +525,6 @@ configureFinal
   enabledComps
   comp
   platform
-  packageDbs
   pkgInfo@PackageInfo
     { installedPackageSet = installedPkgSet
     , promisedDepsSet = promisedDeps
@@ -544,7 +541,7 @@ configureFinal
 
       -- Cabal package-wide configure
       (lbc2, pbd2) <-
-        configurePackage verbHandles cfg lbc1 pkgDescr0 flags enabledComps comp platform packageDbs
+        configurePackage verbHandles cfg lbc1 pkgDescr0 flags enabledComps comp platform
 
       -- Package-wide post-configure hook
       for_ postConfPackageHook $ runPostConfPackageHook (configCommonFlags cfg) lbc2 pbd2
@@ -554,12 +551,12 @@ configureFinal
         let pkgDescr2 = LBC.localPkgDescr pbd2
         applyComponentDiffs
           verbosity
-          (for preConfComponentHook . runPreConfComponentHook lbc2 pbd2 (configCommonFlags cfg))
+          (for preConfComponentHook . runPreConfComponentHook lbc2 pbd2 (configCommonFlags cfg) (CF.componentFlags cfg))
           pkgDescr2
       let pbd3 = pbd2{LBC.localPkgDescr = pkgDescr}
 
       -- Cabal per-component configure
-      finalCheckPackage verbHandles (configCommonFlags cfg) gpkgDescr pbd3 hookedBuildInfo
+      finalCheckPackage verbHandles (configCommonFlags cfg) gpkgDescr pbd3 enabledComps hookedBuildInfo
 
       let
         use_external_internal_deps =
@@ -594,7 +591,7 @@ configureFinal
           pkgInfo
           pkgDescr
           enabledComps
-      configureComponents verbHandles cfg lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
+      configureComponents verbHandles cfg lbc2 pbd3 enabledComps installedPkgSet promisedDeps externalPkgDeps
 
 runPreConfPackageHook
   :: ConfigFlags
@@ -653,15 +650,17 @@ runPreConfComponentHook
   :: LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
   -> CommonSetupFlags
+  -> CF.ComponentConfigFlags
   -> Component
   -> (SetupHooks.PreConfComponentInputs -> IO SetupHooks.PreConfComponentOutputs)
   -> IO SetupHooks.ComponentDiff
-runPreConfComponentHook lbc pbd common c hook = do
+runPreConfComponentHook lbc pbd common compFlags c hook = do
   let input =
         SetupHooks.PreConfComponentInputs
           { SetupHooks.localBuildConfig = lbc
           , SetupHooks.packageBuildDescr = pbd
           , SetupHooks.commonFlags = common
+          , SetupHooks.componentConfigFlags = compFlags
           , SetupHooks.component = c
           }
   SetupHooks.PreConfComponentOutputs
@@ -1052,9 +1051,8 @@ configurePackage
   -> ComponentRequestedSpec
   -> Compiler
   -> Platform
-  -> PackageDBStack
   -> IO (LBC.LocalBuildConfig, LBC.PackageBuildDescr)
-configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform packageDbs = do
+configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform = do
   let common = configCommonFlags cfg
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       programDb0 = LBC.withPrograms lbc0
@@ -1104,41 +1102,16 @@ configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform pa
   (pkg_descr2, programDb2) <-
     configurePkgconfigPackages verbosity pkg_descr0 programDb1 enabled
 
-  let use_external_internal_deps =
-        case enabled of
-          OneComponentRequestedSpec{} -> True
-          ComponentRequestedSpec{} -> False
-
-  -- Compute installation directory templates, based on user
-  -- configuration.
-  --
-  -- TODO: Move this into a helper function.
-  defaultDirs :: InstallDirTemplates <-
-    defaultInstallDirs'
-      use_external_internal_deps
-      (compilerFlavor comp)
-      (fromFlagOrDefault True (configUserInstall cfg))
-      (hasLibs pkg_descr2)
   let
-    installDirs =
-      combineInstallDirs
-        fromFlagOrDefault
-        defaultDirs
-        (configInstallDirs cfg)
     lbc = lbc0{LBC.withPrograms = programDb2}
     pbd =
       LBC.PackageBuildDescr
         { packageConfigFlags = CF.packageFlags cfg
-        , componentConfigFlags = CF.componentFlags cfg
         , flagAssignment = flags
-        , componentEnabledSpec = enabled
         , compiler = comp
         , hostPlatform = platform
         , localPkgDescr = pkg_descr2
-        , installDirTemplates = installDirs
-        , withPackageDB = packageDbs
         , pkgDescrFile = Nothing
-        , extraCoverageFor = []
         }
 
   debug verbosity $
@@ -1240,17 +1213,10 @@ finalizePackageDescription
   -> ComponentRequestedSpec
   -> [PackageVersionConstraint]
   -> PackageInfo
-  -> IO (PackageDBStack, PackageDescription, FlagAssignment)
+  -> IO (PackageDescription, FlagAssignment)
 finalizePackageDescription verbHandles cfg g_pkg_descr comp platform enabled allConstraints pkgInfo = do
   let common = configCommonFlags cfg
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-
-  -- What package database(s) to use
-  let packageDbs :: PackageDBStack
-      packageDbs =
-        interpretPackageDbFlags
-          (fromFlagOrDefault True (configUserInstall cfg))
-          (configPackageDBs cfg)
 
   -- pkg_descr:   The resolved package description, that does not contain any
   --              conditionals, because we have an assignment for
@@ -1288,7 +1254,7 @@ finalizePackageDescription verbHandles cfg g_pkg_descr comp platform enabled all
       comp
       platform
       g_pkg_descr
-  return (packageDbs, pkg_descr0, flags)
+  return (pkg_descr0, flags)
 
 addExtraIncludeLibDirsFromConfigFlags
   :: PackageDescription -> ConfigFlags -> PackageDescription
@@ -1344,6 +1310,7 @@ finalCheckPackage
   -> CommonSetupFlags
   -> GenericPackageDescription
   -> LBC.PackageBuildDescr
+  -> ComponentRequestedSpec
   -> HookedBuildInfo
   -> IO ()
 finalCheckPackage
@@ -1354,9 +1321,9 @@ finalCheckPackage
       { localPkgDescr = pkg_descr
       , compiler = comp
       , hostPlatform = compPlatform
-      , componentEnabledSpec = enabled
       }
     )
+  enabled
   hookedBuildInfo =
     do
       let verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
@@ -1404,6 +1371,7 @@ configureComponents
   -> ConfigFlags
   -> LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
+  -> ComponentRequestedSpec
   -> InstalledPackageIndex
   -> Map (PackageName, ComponentName) PromisedComponent
   -> ([PreExistingComponent], [ConfiguredPromisedComponent])
@@ -1412,12 +1380,12 @@ configureComponents
   verbHandles
   cfg
   lbc@(LBC.LocalBuildConfig{withPrograms = programDb})
-  pbd0@( LBC.PackageBuildDescr
+  pbd@( LBC.PackageBuildDescr
           { localPkgDescr = pkg_descr
           , compiler = comp
-          , componentEnabledSpec = enabled
           }
         )
+  enabled
   installedPackageSet
   promisedDepsSet
   externalPkgDeps =
@@ -1428,6 +1396,23 @@ configureComponents
             case enabled of
               OneComponentRequestedSpec{} -> True
               ComponentRequestedSpec{} -> False
+
+      -- Compute installation directory templates, based on user
+      -- configuration.
+      --
+      -- TODO: Move this into a helper function.
+      defaultDirs :: InstallDirTemplates <-
+        defaultInstallDirs'
+          use_external_internal_deps
+          (compilerFlavor comp)
+          (fromFlagOrDefault True (configUserInstall cfg))
+          (hasLibs pkg_descr)
+      let
+        installDirs =
+          combineInstallDirs
+            fromFlagOrDefault
+            defaultDirs
+            (configInstallDirs cfg)
 
       -- Compute internal component graph
       --
@@ -1465,46 +1450,50 @@ configureComponents
               Map.empty
               buildComponents
 
-      let cbd =
-            LBC.ComponentBuildDescr
-              { componentGraph = Graph.fromDistinctList buildComponents
-              , componentNameMap = buildComponentsMap
-              , promisedPkgs = promisedDepsSet
-              , installedPkgs = packageDependsIndex
-              }
+      let
+        -- For whole-package configure, we determine the
+        -- extraCoverageFor of the main lib and sub libs here.
+        extraCoverageUnitIds = case enabled of
+          -- Whole package configure, add package libs
+          ComponentRequestedSpec{} -> mapMaybe mbCompUnitId buildComponents
+          -- Component configure, no need to do anything since
+          -- extra-coverage-for will be passed for all other components that
+          -- should be covered.
+          OneComponentRequestedSpec{} -> []
+        mbCompUnitId LibComponentLocalBuildInfo{componentUnitId} = Just componentUnitId
+        mbCompUnitId _ = Nothing
 
-          -- For whole-package configure, we determine the
-          -- extraCoverageFor of the main lib and sub libs here.
-          extraCoverageUnitIds = case enabled of
-            -- Whole package configure, add package libs
-            ComponentRequestedSpec{} -> mapMaybe mbCompUnitId buildComponents
-            -- Component configure, no need to do anything since
-            -- extra-coverage-for will be passed for all other components that
-            -- should be covered.
-            OneComponentRequestedSpec{} -> []
-          mbCompUnitId LibComponentLocalBuildInfo{componentUnitId} = Just componentUnitId
-          mbCompUnitId _ = Nothing
+        cbd =
+          LBC.ComponentBuildDescr
+            { componentConfigFlags = CF.componentFlags cfg
+            , componentEnabledSpec = enabled
+            , installDirTemplates = installDirs
+            , withPackageDB =
+                interpretPackageDbFlags
+                  (fromFlagOrDefault True (configUserInstall cfg))
+                  (configPackageDBs cfg)
+            , extraCoverageFor = extraCoverageUnitIds
+            , componentGraph = Graph.fromDistinctList buildComponents
+            , componentNameMap = buildComponentsMap
+            , promisedPkgs = promisedDepsSet
+            , installedPkgs = packageDependsIndex
+            }
 
-          pbd =
-            pbd0
-              { LBC.extraCoverageFor = extraCoverageUnitIds
-              }
+        lbd =
+          LBC.LocalBuildDescr
+            { packageBuildDescr = pbd
+            , componentBuildDescr = cbd
+            }
 
-          lbd =
-            LBC.LocalBuildDescr
-              { packageBuildDescr = pbd
-              , componentBuildDescr = cbd
-              }
-
-          lbi =
-            NewLocalBuildInfo
-              { localBuildLocation = commonFlagsBuildLocation (configCommonFlags cfg)
-              , persistedBuildInfo =
-                  PersistedBuildInfo
-                    { localBuildDescr = lbd
-                    , localBuildConfig = lbc
-                    }
-              }
+        lbi =
+          NewLocalBuildInfo
+            { localBuildLocation = commonFlagsBuildLocation (configCommonFlags cfg)
+            , persistedBuildInfo =
+                PersistedBuildInfo
+                  { localBuildDescr = lbd
+                  , localBuildConfig = lbc
+                  }
+            }
 
       when (LBC.relocatable $ LBC.withBuildOptions lbc) $
         checkRelocatable verbosity pkg_descr lbi

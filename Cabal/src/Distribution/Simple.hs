@@ -989,7 +989,9 @@ autoconfUserHooks =
             mbWorkDir = flagToMaybe $ setupWorkingDir common
         runConfigureScript
           defaultVerbosityHandles
-          flags
+          common
+          (CF.packageFlags flags)
+          (packageConfigureArgs (CF.packageFlags flags))
           (flagAssignment lbi)
           (withPrograms lbi)
           (hostPlatform lbi)
@@ -1060,21 +1062,19 @@ autoconfSetupHooks =
           , SetupHooks.packageBuildDescr =
             LBC.PackageBuildDescr
               { LBC.packageConfigFlags = pkgFlags
-              , LBC.componentConfigFlags = compFlags
               , LBC.flagAssignment = flags
               , LBC.hostPlatform = plat
               }
           }
         ) =
-        runConfigureScript defaultVerbosityHandles cfg flags progs plat
-        where
-          cfg =
-            CF.NewConfigFlags
-              { CF.commonFlags = common
-              , CF.initialPrograms = Nothing
-              , CF.packageFlags = pkgFlags
-              , CF.componentFlags = compFlags
-              }
+        runConfigureScript
+          defaultVerbosityHandles
+          common
+          pkgFlags
+          (packageConfigureArgs pkgFlags)
+          flags
+          progs
+          plat
 
     pre_conf_comp
       :: SetupHooks.PreConfComponentInputs
