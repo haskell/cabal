@@ -1,0 +1,14 @@
+cabal-version: 3.14
+name:          pkg
+version:       0.1.0.0
+build-type:    Hooks
+extra-source-files: marker.txt
+
+custom-setup
+  setup-depends: base, Cabal, Cabal-hooks, directory
+
+library
+  exposed-modules:  Lib
+  hs-source-dirs:   src
+  build-depends:    base
+  default-language: Haskell2010
