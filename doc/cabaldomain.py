@@ -59,8 +59,10 @@ Added directives
 
    Describes a cabal.project field.
 
-   Can have multiple arguments, if arguments start with '-' then it is treated
-   as a cabal flag.
+   Takes an optional ``:cmdline-opts:`` option listing the command line
+   equivalents of the field, one per line. Each is rendered as a link to the
+   matching ``.. option::`` entry in cabal-commands.rst; a short option links
+   to the first long option in the list.
 
    Can have a :default: field. Will group on reference page under pkg-section
    if set and parent header otherwise.
@@ -69,9 +71,6 @@ Added directives
 
    References field added by `.. cfg-field`.
 
-.. rst::role:: cfg-flag
-
-   References flag added by `.. cfg-field`.
 
 
 All roles can be supplied with title as in standard sphinx references::
@@ -134,29 +133,6 @@ def parse_deprecated(txt):
     except ValueError:
         return True
 
-def parse_flag(env, sig, signode):
-    import re
-    names = []
-    for i, flag in enumerate(sig.split(',')):
-        flag = flag.strip()
-        sep = '='
-        parts = flag.split('=')
-        if len(parts) == 1:
-            sep=' '
-            parts = flag.split()
-        if len(parts) == 0: continue
-
-        name = parts[0]
-        names.append(name)
-        sig = sep + ' '.join(parts[1:])
-        sig = re.sub(r'<([-a-zA-Z ]+)>', r'⟨\1⟩', sig)
-        if i > 0:
-            signode += addnodes.desc_name(', ', ', ')
-        signode += addnodes.desc_name(name, name)
-        if len(sig) > 0:
-            signode += addnodes.desc_addname(sig, sig)
-
-    return names[0]
 
 
 class Meta(object):
@@ -562,38 +538,48 @@ class CabalConfigSection(CabalObject):
         env.ref_context['cabal:cfg-section'] = section
         return super(CabalConfigSection, self).run()
 
+OPTION_NAME = re.compile(r'^--?[^\s=\[]+')
+
+def option_name(label):
+    '''``--jobs[=NUM]`` -> ``--jobs``, ``-j[NUM]`` -> ``-j``'''
+    return OPTION_NAME.match(label).group(0)
+
+def parse_cmdline_opts(text):
+    '''
+    One command line option per line. A long option links to its own
+    ``std:option`` entry in cabal-commands.rst. A short option has no entry
+    of its own there, so it links to the first long option in the list.
+    '''
+    labels = [line.strip() for line in text.splitlines() if line.strip()]
+    long_names = [option_name(label) for label in labels if label.startswith('--')]
+    short_target = long_names[0] if long_names else None
+    return [(label, option_name(label) if label.startswith('--')
+                    else short_target or option_name(label))
+            for label in labels]
+
+def cmdline_opts_block(options):
+    block = nodes.container(classes=['cabal-cmdline-opts'])
+    for label, target in options:
+        line = nodes.paragraph(classes=['cabal-cmdline-option'])
+        line += nodes.inline('$ ', '$ ', classes=['cabal-cmdline-icon'])
+        refnode = addnodes.pending_xref('', refdomain='std', reftype='option',
+                                        reftarget=target, refwarn=False)
+        refnode += nodes.literal(label, label)
+        line += refnode
+        block += line
+    return block
+
 class ConfigField(CabalField):
     section_key = 'cabal:cfg-section'
     indextemplate = '%s ; cabal project option'
-    def handle_signature(self, sig, signode):
-        sig = sig.strip()
-        if sig.startswith('-'):
-            name = parse_flag(self, sig, signode)
-        else:
-            name = super(ConfigField, self).handle_signature(sig, signode)
+    option_spec = dict(CabalField.option_spec,
+                       **{'cmdline-opts': directives.unchanged})
 
-        return name
-
-    def get_index_entry(self, env, name):
-        if name.startswith('-'):
-            section = self.env.ref_context.get(self.section_key)
-            if section is not None:
-                parts = ('cfg-flag', section, name)
-                indexname = section + ':' + name
-            else:
-                parts = ('cfg-flag', name)
-                indexname = name
-            indexentry = name + '; cabal project option'
-            targetname = '-'.join(parts)
-            return indexentry, targetname
-        else:
-            return super(ConfigField,self).get_index_entry(env, name)
-
-    def get_env_key(self, env, name):
-        section = self.env.ref_context.get(self.section_key)
-        if name.startswith('-'):
-            return (section, name), 'cfg-flags'
-        return (section, name), 'cfg-fields'
+    def transform_content(self, contentnode):
+        super(ConfigField, self).transform_content(contentnode)
+        text = self.options.get('cmdline-opts')
+        if text:
+            contentnode.insert(0, cmdline_opts_block(parse_cmdline_opts(text)))
 
 class CabalConfigFieldXRef(CabalFieldXRef):
     section_key = 'cabal:cfg-section'
@@ -667,7 +653,6 @@ class ConfigFieldIndex(Index):
 
         # (title, section store, fields store)
         entries = [('cabal.project fields', 'cfg-section', 'cfg-field'),
-                   ('cabal project flags', 'cfg-section', 'cfg-flag'),
                    ('package.cabal fields', 'pkg-section', 'pkg-field')]
 
         result = []
@@ -717,7 +702,7 @@ def make_data_keys(typ, target, node):
         section = node.get('cabal:pkg-section')
         return [(section, target),
                 (None, target)]
-    elif typ in ('cfg-field', 'cfg-flag'):
+    elif typ == 'cfg-field':
         section = node.get('cabal:cfg-section')
         return [(section, target), (None, target)]
     else:
@@ -762,7 +747,7 @@ def render_meta_title(meta):
 
 def make_title(typ, key, meta):
     '''
-    Render title of an object (section, field or flag)
+    Render title of an object (section or field)
     '''
     if typ == 'pkg-section':
         return "package.cabal " + key + " section " + render_meta_title(meta)
@@ -782,10 +767,6 @@ def make_title(typ, key, meta):
     elif typ == 'cfg-field':
         section, name = key
         return "cabal.project " + name + " field " + render_meta_title(meta)
-
-    elif typ == 'cfg-flag':
-        section, name = key
-        return "cabal flag " + name + " " + render_meta_title(meta)
 
     else:
         raise ValueError("Unknown type: " + typ)
@@ -838,7 +819,6 @@ class CabalDomain(Domain):
         'pkg-field'  : CabalPackageFieldXRef(warn_dangling=True),
         'cfg-section': XRefRole(warn_dangling=True),
         'cfg-field'  : CabalConfigFieldXRef(warn_dangling=True),
-        'cfg-flag'   : CabalConfigFieldXRef(warn_dangling=True),
     }
     initial_data = {
         'pkg-sections': {},
@@ -847,7 +827,6 @@ class CabalDomain(Domain):
         'index-num'   : {}, #per document number of objects
                             # used to order references page
         'cfg-fields'  : {},
-        'cfg-flags'   : {},
     }
     indices = [
         ConfigFieldIndex
@@ -857,11 +836,10 @@ class CabalDomain(Domain):
         'pkg-field'  : 'pkg-fields',
         'cfg-section': 'cfg-sections',
         'cfg-field'  : 'cfg-fields',
-        'cfg-flag'   : 'cfg-flags',
     }
     def clear_doc(self, docname):
         for k in ['pkg-sections', 'pkg-fields', 'cfg-sections',
-                  'cfg-fields', 'cfg-flags']:
+                  'cfg-fields']:
             to_del = []
             for name, (fn, _, _) in self.data[k].items():
                 if fn == docname:
@@ -891,7 +869,7 @@ class CabalDomain(Domain):
         Used for search functionality
         '''
         for typ in ['pkg-section', 'pkg-field',
-                    'cfg-section', 'cfg-field', 'cfg-flag']:
+                    'cfg-section', 'cfg-field']:
             key = self.types[typ]
             for name, (fn, target, meta) in self.data[key].items():
                 title = make_title(typ, name, meta)
