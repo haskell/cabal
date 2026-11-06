@@ -180,10 +180,24 @@ instance Structured ProgramDb where
 -- it contains functions. So to fully restore a deserialised 'ProgramDb' use
 -- this function to add back all the known 'Program's.
 --
--- * It does not add the default programs, but you probably want them, use
+-- * It does not add the default programs. You probably want those, so use
 --   'builtinPrograms' in addition to any extra you might need.
-restoreProgramDb :: [Program] -> ProgramDb -> ProgramDb
-restoreProgramDb = addKnownPrograms
+--
+-- * It keeps programs that are already known as they are.
+restoreProgramDb
+  :: [Program] -- ^ Programs to restore (e.g. 'builtinPrograms').
+               --
+               -- For programs with the same name, later ones take precedence
+               -- over earlier ones.
+  -> ProgramDb
+  -> ProgramDb
+restoreProgramDb progs progdb =
+  progdb
+    { unconfiguredProgs =
+        Map.union
+          (unconfiguredProgs progdb)
+          (Map.fromList [(programName prog, (prog, Nothing, [])) | prog <- progs])
+    }
 
 -- -------------------------------
 -- Managing unconfigured programs
@@ -284,9 +298,20 @@ userSpecifyPath
   -- ^ user-specified path to the program
   -> ProgramDb
   -> ProgramDb
-userSpecifyPath name path = updateUnconfiguredProgs $
-  flip Map.update name $
-    \(prog, _, args) -> Just (prog, Just path, args)
+userSpecifyPath name path progdb =
+  case Map.lookup name (unconfiguredProgs progdb) of
+    Nothing -> progdb
+    Just (prog, _, args) ->
+      progdb
+        { unconfiguredProgs =
+            Map.insert name (prog, Just path, args) (unconfiguredProgs progdb)
+        , configuredProgs =
+            Map.update configuredAtPath name (configuredProgs progdb)
+        }
+  where
+    configuredAtPath configuredProg
+      | programLocation configuredProg == UserSpecified path = Just configuredProg
+      | otherwise = Nothing
 
 userMaybeSpecifyPath
   :: String
