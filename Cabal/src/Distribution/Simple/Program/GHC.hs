@@ -886,10 +886,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ["-optP" ++ opt | opt <- ghcOptCppOptions opts]
         , -- The JavaScript preprocessor flag (-optJSP) only exists since GHC
           -- 9.10.2; passing it to an older GHC is an error.
-          let ghc912 = case compilerCompatVersion GHC comp of
+          let jsppSupported = case compilerCompatVersion GHC comp of
                 Just v -> v >= mkVersion [9, 10, 2]
                 Nothing -> False
-           in ["-optJSP" ++ opt | ghc912, opt <- ghcOptJSppOptions opts]
+           in ["-optJSP" ++ opt | jsppSupported, opt <- ghcOptJSppOptions opts]
         , concat
             [ ["-optP-include", "-optP" ++ u inc]
             | inc <- flags ghcOptCppIncludes
