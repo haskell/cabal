@@ -166,7 +166,7 @@ Programs used for building
 The following options govern the programs used to process the source
 files of a package:
 
-.. option:: -g, --ghc
+.. option:: --ghc
             --uhc
 
     Specify which Haskell implementation to use to build the package. At

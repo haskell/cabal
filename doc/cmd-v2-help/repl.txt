@@ -80,7 +80,7 @@ Flags for repl:
                                 1)
  --disable-optimization       # Build without optimization
  -g[n], --enable-debug-info[=n]
-                              # Emit debug info (n is 0--3, default is 0)
+                              # Emit debug info (n is 0--3, default is 2)
  --disable-debug-info         # Don't emit debug info
  --enable-build-info          # Enable build information generation during
                                 project building

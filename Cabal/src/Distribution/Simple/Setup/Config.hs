@@ -600,7 +600,7 @@ configureOptions showOrParseArgs =
               )
               "g"
               ["enable-debug-info"]
-              "Emit debug info (n is 0--3, default is 0)"
+              "Emit debug info (n is 0--3, default is 2)"
           , noArg
               (Flag NoDebugInfo)
               []
