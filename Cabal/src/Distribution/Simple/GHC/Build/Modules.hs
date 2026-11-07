@@ -43,6 +43,7 @@ import Distribution.Types.TestSuiteInterface
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity (VerbosityHandles, mkVerbosity, verbosityLevel)
+import Distribution.Version (mkVersion)
 import System.FilePath ()
 
 {-
@@ -271,6 +272,19 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
       DynWay -> dynOpts
       ProfWay -> profOpts
       ProfDynWay -> profDynOpts
+
+  unless (null (PD.jsppOptions bi)) $
+    case compilerCompatVersion GHC comp of
+      Just v ->
+        when (v < mkVersion [9, 10, 2]) $
+          warn verbosity $
+            "Ignoring 'jspp-options': -optJSP is only supported by GHC 9.10.2 and later (found GHC "
+              ++ prettyShow v
+              ++ ")"
+      Nothing ->
+        warn
+          verbosity
+          "Ignoring 'jspp-options': -optJSP is only supported by GHC 9.10.2 and later (unknown compiler version)"
 
   when
     ( withBytecode
