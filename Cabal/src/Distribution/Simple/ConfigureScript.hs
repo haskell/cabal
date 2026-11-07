@@ -214,7 +214,7 @@ toUnix s = let tmp = normalise s
                parts = FilePath.splitDirectories rest
            in  l ++ intercalate "/" parts
 #else
-toUnix s = intercalate "/" $ FilePath.splitDirectories s
+toUnix s = s
 #endif
 
 badAutoconfCharacters :: [(Char, String)]

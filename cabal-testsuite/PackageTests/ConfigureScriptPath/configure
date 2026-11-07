@@ -1,0 +1,6 @@
+case "$0" in
+  //*)
+    echo "configure was invoked with a doubled leading slash: $0" >&2
+    exit 1
+    ;;
+esac
