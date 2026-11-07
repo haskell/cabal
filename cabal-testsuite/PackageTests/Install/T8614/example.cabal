@@ -1,0 +1,12 @@
+name: example
+version: 1.0
+build-type: Simple
+cabal-version: >= 1.2
+
+executable example1
+  main-is: example1.hs
+  build-depends: base
+
+executable example2
+  main-is: example2.hs
+  build-depends: base
