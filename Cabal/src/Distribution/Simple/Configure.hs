@@ -762,7 +762,8 @@ preConfigurePackage verbHandles cfg g_pkg_descr = do
     , compPlatform :: Platform
     , programDb00 :: ProgramDb
     ) <-
-    configCompilerEx
+    configCompilerExWithPackageDBs
+      (configPackageDBStack cfg)
       (flagToMaybe (configHcFlavor cfg))
       (flagToMaybe (configHcPath cfg))
       (flagToMaybe (configHcPkg cfg))
@@ -2672,7 +2673,8 @@ configCompilerAuxEx verbHandles cfg = do
   programDb <- mkProgramDb verbHandles cfg defaultProgramDb
   let common = configCommonFlags cfg
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  configCompilerEx
+  configCompilerExWithPackageDBs
+    (configPackageDBStack cfg)
     (flagToMaybe $ configHcFlavor cfg)
     (flagToMaybe $ configHcPath cfg)
     (flagToMaybe $ configHcPkg cfg)
@@ -2690,10 +2692,30 @@ configCompilerEx
   -> ProgramDb
   -> Verbosity
   -> IO (Compiler, Platform, ProgramDb)
-configCompilerEx Nothing _ _ _ verbosity = dieWithException verbosity UnknownCompilerException
-configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
+configCompilerEx = configCompilerExWithPackageDBs [GlobalPackageDB, UserPackageDB]
+
+configPackageDBStack :: ConfigFlags -> PackageDBStackCWD
+configPackageDBStack cfg =
+  interpretPackageDBStack (flagToMaybe $ configWorkingDir cfg) $
+    interpretPackageDbFlags
+      (fromFlagOrDefault True $ configUserInstall cfg)
+      (configPackageDBs cfg)
+
+configCompilerExWithPackageDBs
+  :: PackageDBStackCWD
+  -> Maybe CompilerFlavor
+  -> Maybe FilePath
+  -> Maybe FilePath
+  -> ProgramDb
+  -> Verbosity
+  -> IO (Compiler, Platform, ProgramDb)
+configCompilerExWithPackageDBs _ Nothing _ _ _ verbosity = dieWithException verbosity UnknownCompilerException
+configCompilerExWithPackageDBs packageDbs (Just hcFlavor) hcPath hcPkg progdb verbosity = do
   (comp, maybePlatform, programDb) <- case hcFlavor of
-    GHC -> GHC.configure verbosity hcPath hcPkg progdb
+    GHC -> do
+      (ghc, platform, ghcProgDb) <- GHC.configureCompiler verbosity hcPath progdb
+      programDb <- GHC.compilerProgramDbWithPackageDBs packageDbs verbosity ghc ghcProgDb hcPkg
+      return (ghc, platform, programDb)
     UHC -> UHC.configure verbosity hcPath progdb
     GHCJS -> dieWithException verbosity GHCJSNotSupported
     _ -> dieWithException verbosity UnknownCompilerException
