@@ -40,6 +40,7 @@ import Distribution.Client.Targets
 import Distribution.Client.Types (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 import Distribution.Client.Types.AllowNewer
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)
+import Distribution.Solver.Types.Machine (Machine (..))
 import Distribution.Solver.Types.OptionalStanza (OptionalStanza (..), OptionalStanzaMap, OptionalStanzaSet, optStanzaSetFromList, optStanzaTabulate)
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
 
@@ -281,6 +282,29 @@ instance Arbitrary RelaxedDep where
 -------------------------------------------------------------------------------
 
 instance Arbitrary UserConstraintScope where
+  -- Only 'Nothing' and 'Just Build' round-trip through the constraint
+  -- pretty-printer/parser: the 'Host' machine is the invisible default and
+  -- renders empty, so it would come back as 'Nothing'. Never generate it.
+  --
+  -- 'Just Build' is not paired with the any-setup qualifier either: it would
+  -- print as @build:setup.foo@, which the parser (deliberately) reads as the
+  -- setup dependency of a package named @build@. A setup dependency is on
+  -- the build machine whenever there is one, so @setup.foo@ says the same.
+  arbitrary = do
+    q <- arbitrary
+    s <- case q of
+      UserAnySetupQualifier _ -> pure Nothing
+      _ -> elements [Nothing, Just Build]
+    pure (UserConstraintScope s q)
+  shrink (UserConstraintScope s q) =
+    [ UserConstraintScope s q'
+    | q' <- shrink q
+    , case q' of
+        UserAnySetupQualifier _ -> isNothing s
+        _ -> True
+    ]
+
+instance Arbitrary UserConstraintQualifier where
   arbitrary = genericArbitrary
   shrink = genericShrink
 
@@ -289,8 +313,7 @@ instance Arbitrary UserQualifier where
     oneof
       [ pure UserQualToplevel
       , UserQualSetup <$> arbitrary
-      -- -- TODO: Re-enable UserQualExe tests once we decide on a syntax.
-      -- , UserQualExe <$> arbitrary <*> arbitrary
+      , UserQualExe <$> arbitrary <*> arbitrary
       ]
 
 instance Arbitrary UserConstraint where

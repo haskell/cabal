@@ -5,6 +5,7 @@
 --
 module Distribution.Solver.Types.PackageConstraint (
     ConstraintScope(..),
+    ConstraintQualifier(..),
     scopeToplevel,
     scopeToPackageName,
     constraintScopeMatches,
@@ -24,14 +25,26 @@ import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..
 import Distribution.Version                        (VersionRange, simplifyVersionRange)
 
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
+import Distribution.Solver.Types.Machine             (Machine (..), showMachine)
 
 import qualified Text.PrettyPrint as Disp
 
 
--- | Determines to what packages and in what contexts a
--- constraint applies.
-data ConstraintScope
+-- | Determines to what packages and in what contexts a constraint applies.
+--
+-- A scope pairs an optional 'Machine' with a 'ConstraintQualifier'. When
+-- the machine is 'Nothing' the constraint applies on every machine; when it is
+-- @'Just' s@ it applies only to goals solved for machine @s@. (Top-level goals
+-- are always solved at the 'Host' machine, so 'scopeToplevel' pins the machine to
+-- @'Just' 'Host'@.)
+data ConstraintScope =
+    ConstraintScope (Maybe Machine) ConstraintQualifier
+  deriving (Eq, Show)
+
+-- | The qualifier part of a 'ConstraintScope': which goals a constraint
+-- applies to, independently of the build machine.
+data ConstraintQualifier
      -- | A scope that applies when the given package is used as a build target.
      -- In other words, the scope applies iff a goal has a top-level qualifier
      -- and its namespace matches the given package name. A namespace is
@@ -47,6 +60,9 @@ data ConstraintScope
      -- | The package with the specified name when it has a
      -- setup qualifier.
    | ScopeAnySetupQualifier PackageName
+     -- | The package with the specified name when it has an
+     -- executable (build-tool) qualifier.
+   | ScopeAnyExeQualifier PackageName
      -- | The package with the specified name regardless of
      -- qualifier.
    | ScopeAnyQualifier PackageName
@@ -54,34 +70,57 @@ data ConstraintScope
 
 -- | Constructor for a common use case: the constraint applies to
 -- the package with the specified name when that package is a
--- top-level dependency in the default namespace.
+-- top-level dependency in the default namespace. Top-level goals are always
+-- solved at the 'Host' machine, so the scope is pinned there.
 scopeToplevel :: PackageName -> ConstraintScope
-scopeToplevel = ScopeQualified QualToplevel
+scopeToplevel = ConstraintScope (Just Host) . ScopeQualified QualToplevel
 
 -- | Returns the package name associated with a constraint scope.
 scopeToPackageName :: ConstraintScope -> PackageName
-scopeToPackageName (ScopeTarget pn) = pn
-scopeToPackageName (ScopeQualified _ pn) = pn
-scopeToPackageName (ScopeAnySetupQualifier pn) = pn
-scopeToPackageName (ScopeAnyQualifier pn) = pn
+scopeToPackageName (ConstraintScope _ (ScopeTarget pn)) = pn
+scopeToPackageName (ConstraintScope _ (ScopeQualified _ pn)) = pn
+scopeToPackageName (ConstraintScope _ (ScopeAnySetupQualifier pn)) = pn
+scopeToPackageName (ConstraintScope _ (ScopeAnyExeQualifier pn)) = pn
+scopeToPackageName (ConstraintScope _ (ScopeAnyQualifier pn)) = pn
 
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
-constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
-  let namespaceMatches DefaultNamespace = True
-      namespaceMatches (Independent namespacePn) = pn == namespacePn
-  in namespaceMatches ns && q == QualToplevel && pn == pn'
-constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath _ q') pn') =
+constraintScopeMatches (ConstraintScope mmachine qualifier) (Q (GoalScope machine ns q) pn') =
+    maybe True (== machine) mmachine && constraintQualifierMatches qualifier ns q pn'
+
+-- | Whether the qualifier part of a constraint scope matches a goal, given the
+-- goal's namespace, qualifier and package name.
+constraintQualifierMatches :: ConstraintQualifier -> Namespace -> Qualifier -> PackageName -> Bool
+constraintQualifierMatches (ScopeTarget pn) ns q pn' =
+    namespaceMatches ns && q == QualToplevel && pn == pn'
+  where
+    namespaceMatches DefaultNamespace = True
+    namespaceMatches (Independent namespacePn) = pn == namespacePn
+constraintQualifierMatches (ScopeQualified q pn) _ns q' pn' =
     q == q' && pn == pn'
-constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
-  let setup (PackagePath _ (QualSetup _)) = True
-      setup _                             = False
-  in setup pp && pn == pn'
-constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
+constraintQualifierMatches (ScopeAnySetupQualifier pn) _ns q pn' =
+    setup q && pn == pn'
+  where
+    setup (QualSetup _) = True
+    setup _             = False
+constraintQualifierMatches (ScopeAnyExeQualifier pn) _ns q pn' =
+    exe q && pn == pn'
+  where
+    exe (QualExe _ _) = True
+    exe _             = False
+constraintQualifierMatches (ScopeAnyQualifier pn) _ns _q pn' = pn == pn'
 
 instance Pretty ConstraintScope where
+  pretty (ConstraintScope mmachine qualifier) = dispMachinePrefix mmachine <<>> pretty qualifier
+    where
+      -- The 'Host' machine is the invisible default, so only 'Build' is rendered.
+      dispMachinePrefix (Just Build) = Disp.text (showMachine Build) <<>> Disp.text ":"
+      dispMachinePrefix _            = Disp.empty
+
+instance Pretty ConstraintQualifier where
   pretty (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn
   pretty (ScopeQualified q pn) = dispQualifier q <<>> pretty pn
   pretty (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> pretty pn
+  pretty (ScopeAnyExeQualifier pn) = Disp.text "exe." <<>> pretty pn
   pretty (ScopeAnyQualifier pn) = Disp.text "any." <<>> pretty pn
 
 -- | A package property is a logical predicate on packages.

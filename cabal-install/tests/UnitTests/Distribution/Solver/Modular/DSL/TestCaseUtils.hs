@@ -49,7 +49,8 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 -- cabal-install
 
 import Distribution.Client.Dependency (foldProgress)
-import qualified Distribution.Solver.Types.PackagePath as P
+import qualified Distribution.Solver.Types.GoalScope as P
+import qualified Distribution.Solver.Types.Machine as Machine
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
@@ -328,20 +329,24 @@ runTest SolverTest{..} = withFrozenCallStack $ askOption $ \(OptionShowSolverLog
     toQPN q pn = P.Q pp (C.mkPackageName pn)
       where
         pp = case q of
-          QualNone -> P.PackagePath P.DefaultNamespace P.QualToplevel
+          QualNone -> P.GoalScope Machine.Host P.DefaultNamespace P.QualToplevel
           QualIndep p ->
-            P.PackagePath
+            P.GoalScope
+              Machine.Host
               (P.Independent $ C.mkPackageName p)
               P.QualToplevel
           QualSetup s ->
-            P.PackagePath
+            P.GoalScope
+              Machine.Host
               P.DefaultNamespace
               (P.QualSetup (C.mkPackageName s))
           QualIndepSetup p s ->
-            P.PackagePath
+            P.GoalScope
+              Machine.Host
               (P.Independent $ C.mkPackageName p)
               (P.QualSetup (C.mkPackageName s))
           QualExe p1 p2 ->
-            P.PackagePath
+            P.GoalScope
+              Machine.Host
               P.DefaultNamespace
               (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))

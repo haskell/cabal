@@ -6,7 +6,9 @@ module Test.Cabal.Plan
   ( Plan (..)
   , DistDirOrBinFile (..)
   , InstallItem (..)
+  , ConfiguredInplace (..)
   , ConfiguredGlobal (..)
+  , Machine (..)
   , Revision (..)
   , planDistDir
   , buildInfoFile
@@ -15,6 +17,7 @@ module Test.Cabal.Plan
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.Types
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as Text
 import Distribution.Package
 import Distribution.Parsec (eitherParsec, simpleParsec)
@@ -40,6 +43,7 @@ data ConfiguredInplace = ConfiguredInplace
   , configuredInplaceVersion :: Version
   , configuredInplaceRevision :: Revision
   , configuredInplaceComponentName :: Maybe ComponentName
+  , configuredInplaceMachine :: Machine
   }
   deriving (Show)
 
@@ -49,8 +53,25 @@ data ConfiguredGlobal = ConfiguredGlobal
   , configuredGlobalVersion :: Version
   , configuredGlobalRevision :: Revision
   , configuredGlobalComponentName :: Maybe ComponentName
+  , configuredGlobalMachine :: Machine
   }
   deriving (Show)
+
+-- | The build machine of a plan entry, as recorded in the @machine@ field of
+-- plan.json. Under cross-compilation the same package can appear at both
+-- machines; in an ordinary build everything is on the host machine.
+data Machine = Build | Host
+  deriving (Eq, Show)
+
+instance FromJSON Machine where
+  parseJSON = withText "Machine" $ \t -> case Text.unpack t of
+    "build" -> return Build
+    "host" -> return Host
+    s -> fail ("unrecognized value of 'machine' field: " ++ s)
+
+-- | Older plan.json files have no @machine@ field; everything was host then.
+parseMachine :: Object -> Parser Machine
+parseMachine v = fromMaybe Host <$> v .:? "machine"
 
 newtype Revision = Revision Int
   deriving (Show, Eq, FromJSON)
@@ -82,7 +103,8 @@ instance FromJSON ConfiguredInplace where
     pkg_version <- v .: "pkg-version"
     pkg_revision <- v .: "pkg-revision"
     component_name <- v .:? "component-name"
-    return (ConfiguredInplace dist_dir build_info pkg_name pkg_version pkg_revision component_name)
+    machine <- parseMachine v
+    return (ConfiguredInplace dist_dir build_info pkg_name pkg_version pkg_revision component_name machine)
   parseJSON invalid = typeMismatch "ConfiguredInplace" invalid
 
 instance FromJSON ConfiguredGlobal where
@@ -92,7 +114,8 @@ instance FromJSON ConfiguredGlobal where
     pkg_version <- v .: "pkg-version"
     pkg_revision <- v .: "pkg-revision"
     component_name <- v .:? "component-name"
-    return (ConfiguredGlobal bin_file pkg_name pkg_version pkg_revision component_name)
+    machine <- parseMachine v
+    return (ConfiguredGlobal bin_file pkg_name pkg_version pkg_revision component_name machine)
   parseJSON invalid = typeMismatch "ConfiguredGlobal" invalid
 
 instance FromJSON PackageName where
@@ -115,7 +138,10 @@ data DistDirOrBinFile = DistDir FilePath | BinFile FilePath
 
 planDistDir :: Plan -> PackageName -> ComponentName -> DistDirOrBinFile
 planDistDir plan pkg_name cname =
-  case concatMap p (planInstallPlan plan) of
+  -- Under cross-compilation a component can be in the plan on both machines;
+  -- the host-machine copy is the one a test normally means (it is what the
+  -- user targeted), so prefer it when that resolves the ambiguity.
+  case preferHost (concatMap p (planInstallPlan plan)) of
     [x] -> x
     [] ->
       error $
@@ -133,6 +159,9 @@ planDistDir plan pkg_name cname =
           ++ prettyShow pkg_name
           ++ " in install plan"
   where
+    preferHost xs = case [x | (Host, x) <- xs] of
+      [x] -> [x]
+      _ -> map snd xs
     p APreExisting = []
     p (AConfiguredGlobal conf) = do
       guard (configuredGlobalPackageName conf == pkg_name)
@@ -141,13 +170,13 @@ planDistDir plan pkg_name cname =
         Just cname' -> cname == cname'
       case configuredGlobalBinFile conf of
         Nothing -> []
-        Just bin_file -> return $ BinFile bin_file
+        Just bin_file -> return (configuredGlobalMachine conf, BinFile bin_file)
     p (AConfiguredInplace conf) = do
       guard (configuredInplacePackageName conf == pkg_name)
       guard $ case configuredInplaceComponentName conf of
         Nothing -> True
         Just cname' -> cname == cname'
-      return $ DistDir $ configuredInplaceDistDir conf
+      return (configuredInplaceMachine conf, DistDir (configuredInplaceDistDir conf))
 
 buildInfoFile :: Plan -> PackageName -> ComponentName -> FilePath
 buildInfoFile plan pkg_name cname =

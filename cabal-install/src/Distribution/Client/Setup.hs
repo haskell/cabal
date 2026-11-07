@@ -39,6 +39,7 @@ module Distribution.Client.Setup
   , benchmarkOptions
   , filterBenchmarkFlags
   , configureExOptions
+  , buildProgramOptions
   , reconfigureCommand
   , installCommand
   , InstallFlags (..)
@@ -138,6 +139,7 @@ import Distribution.Client.GlobalFlags
   )
 import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Compiler (CompilerFlavor)
 import Distribution.FieldGrammar.Newtypes (SpecVersion (..))
 import Distribution.PackageDescription
   ( BuildType (..)
@@ -183,7 +185,7 @@ import Distribution.Simple.InstallDirs
   , fromPathTemplate
   , toPathTemplate
   )
-import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
+import Distribution.Simple.Program (ProgramDb, defaultProgramDb, knownPrograms, programName)
 import Distribution.Simple.Setup
   ( BenchmarkFlags (benchmarkCommonFlags)
   , BooleanFlag (..)
@@ -202,6 +204,7 @@ import Distribution.Simple.Setup
   , optionVerbosity
   , readPackageDbList
   , showPackageDbList
+  , splitArgs
   , testCommonFlags
   , trueArg
   )
@@ -918,6 +921,20 @@ data ConfigExFlags = ConfigExFlags
   , configAllowOlder :: Maybe AllowOlder
   , configWriteGhcEnvironmentFilesPolicy
       :: Flag WriteGhcEnvironmentFilesPolicy
+  , configBuildHcFlavor :: Flag CompilerFlavor
+  -- ^ Compiler flavour for the build machine (cross-compilation). Project-file
+  -- only (@build-compiler@); no command-line option.
+  , configBuildHcPath :: Flag FilePath
+  -- ^ Path to the compiler for the build machine (@--with-build-compiler@).
+  , configBuildHcPkg :: Flag FilePath
+  -- ^ Path to the package tool for the build machine (@--with-build-hc-pkg@).
+  , configBuildProgramPaths :: [(String, FilePath)]
+  -- ^ Program locations for the build machine (@--with-build-PROG@). The
+  -- counterpart of 'configProgramPaths', which applies to the host machine only.
+  , configBuildProgramArgs :: [(String, [String])]
+  -- ^ Extra program arguments for the build machine (@--build-PROG-option(s)@).
+  -- The counterpart of 'configProgramArgs', which applies to the host machine
+  -- only.
   }
   deriving (Eq, Show, Generic)
   deriving (Semigroup, Monoid) via Generically ConfigExFlags
@@ -984,6 +1001,20 @@ configureExOptions _showOrParseArgs src =
       (\v flags -> flags{configBackup = v})
       (boolOpt [] [])
   , option
+      "W"
+      ["with-build-compiler", "with-build-hc"]
+      "give the path to the compiler for the build machine (cross-compilation)"
+      configBuildHcPath
+      (\v flags -> flags{configBuildHcPath = v})
+      (reqArgFlag "PATH")
+  , option
+      ""
+      ["with-build-hc-pkg"]
+      "give the path to the package tool for the build machine (cross-compilation)"
+      configBuildHcPkg
+      (\v flags -> flags{configBuildHcPkg = v})
+      (reqArgFlag "PATH")
+  , option
       "c"
       ["constraint"]
       "Specify constraints on a package (version, installed/source, flags)"
@@ -1047,6 +1078,74 @@ configureExOptions _showOrParseArgs src =
           writeGhcEnvironmentFilesPolicyPrinter
       )
   ]
+
+-- | The build-machine counterparts of Cabal's @--with-PROG@, @--PROG-option@
+-- and @--PROG-options@: @--with-build-PROG@, @--build-PROG-option@ and
+-- @--build-PROG-options@.
+--
+-- Under cross-compilation the plain flags configure the programs used for the
+-- host machine (like @--with-compiler@), and these configure the programs used
+-- for the build machine (like @--with-build-compiler@). Neither machine inherits
+-- the other's settings: @--with-ar@ is the @ar@ for host binaries and has no
+-- business producing build-machine binaries. Without cross-compilation there
+-- is no build machine and these flags have no effect.
+--
+-- They are not part of 'configureExOptions' for the same reason the plain
+-- flags are not part of 'configureOptions': the config file gives program
+-- locations and options in sections, not as top-level fields.
+buildProgramOptions :: ShowOrParseArgs -> [OptionField ConfigExFlags]
+buildProgramOptions showOrParseArgs =
+  map withBuildProgramPath progs
+    ++ map buildProgramOption progs
+    ++ map buildProgramOptions' progs
+  where
+    -- we don't want a verbose help text list so we just show a generic one
+    progs = case showOrParseArgs of
+      ShowArgs -> ["PROG"]
+      ParseArgs -> map (programName . fst) (knownPrograms defaultProgramDb)
+
+    withBuildProgramPath prog =
+      option
+        ""
+        ["with-build-" ++ prog]
+        ("give the path to " ++ prog ++ " for the build machine (cross-compilation)")
+        configBuildProgramPaths
+        (\v flags -> flags{configBuildProgramPaths = v})
+        ( reqArg'
+            "PATH"
+            (\path -> [(prog, path)])
+            (\progPaths -> [path | (prog', path) <- progPaths, prog == prog'])
+        )
+
+    buildProgramOption prog =
+      option
+        ""
+        ["build-" ++ prog ++ "-option"]
+        ( "give an extra option to "
+            ++ prog
+            ++ " for the build machine (passed directly to "
+            ++ prog
+            ++ " as a single argument)"
+        )
+        configBuildProgramArgs
+        (\v flags -> flags{configBuildProgramArgs = v})
+        ( reqArg'
+            "OPT"
+            (\arg -> [(prog, [arg])])
+            (\progArgs -> concat [args | (prog', args) <- progArgs, prog == prog'])
+        )
+
+    buildProgramOptions' prog =
+      option
+        ""
+        ["build-" ++ prog ++ "-options"]
+        ( "give extra options to "
+            ++ prog
+            ++ " for the build machine (split on spaces, use \"\" to prevent splitting)"
+        )
+        configBuildProgramArgs
+        (\v flags -> flags{configBuildProgramArgs = v})
+        (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
 
 writeGhcEnvironmentFilesPolicyParser :: ReadE (Flag WriteGhcEnvironmentFilesPolicy)
 writeGhcEnvironmentFilesPolicyParser = ReadE $ \case

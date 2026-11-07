@@ -7,6 +7,9 @@ package bar
     profiling-detail: late-toplevel
     library-profiling-detail: none
     program-prefix: prefix/path
+    ghc-options: -O2
+    build-ghc-options: -O0
+    build-gcc-location: /tmp/build/bin/gcc
 
 package baz
     shared: True

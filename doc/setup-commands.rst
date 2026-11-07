@@ -1038,10 +1038,30 @@ Miscellaneous options
         # dependency of the Setup.hs script of package foo.
         $ cabal install --constraint="foo:setup.bar == 1.0"
 
-    ..  TODO: Uncomment this example once we decide on a syntax for 'exe'.
-    ..  # Example use of the 'exe' (executable build tool)
-        # qualifier. This constraint applies to package baz when it
-        # is a dependency of the build tool bar being used to
+    When cross-compiling (see :cfg-field:`with-build-compiler`), a
+    constraint can additionally be restricted to the *build* machine, i.e.
+    to packages built with the build compiler, by prefixing it with
+    ``build:``. Without the prefix a constraint applies on every machine.
+    Since only setup and build-tool dependencies are solved for the build
+    machine, the prefix is only meaningful together with the ``any``,
+    ``setup`` or ``exe`` qualifiers. Without cross-compilation there is no
+    build machine, so a ``build:`` constraint matches nothing:
+
+    ::
+
+        # Use the installed rts for every build-machine package.
+        $ cabal install --constraint="build:any.rts installed"
+
+    ::
+
+        # Example uses of 'exe' (executable build tool) qualifiers.
+
+        # This constraint applies to package bar wherever it is
+        # depended on as a build tool (build-tool-depends).
+        $ cabal install --constraint="exe.bar == 1.0"
+
+        # This constraint applies to package baz when it is a
+        # dependency of the build tool bar being used to
         # build package foo.
         $ cabal install --constraint="foo:bar:exe.baz == 1.0"
 
