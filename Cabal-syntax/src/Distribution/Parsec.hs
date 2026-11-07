@@ -332,15 +332,23 @@ parsecLeadingCommaNonEmpty p = do
     lp = p <* P.spaces
     comma = P.char ',' *> P.spaces P.<?> "comma"
 
+-- | List of items separated by optional commas. A trailing comma is
+-- accepted, a leading comma is not.
+--
+-- @
+-- p*              -- no commas: many p
+-- p (comma p)*    -- p \`sepBy\` comma
+-- (p comma)*      -- trailing comma is accepted
+-- @
 parsecOptCommaList :: CabalParsing m => m a -> m [a]
-parsecOptCommaList p = P.sepBy (p <* P.spaces) (P.optional comma)
+parsecOptCommaList p = P.sepEndBy (p <* P.spaces) (P.optional comma)
   where
     comma = P.char ',' *> P.spaces
 
 -- | Like 'parsecOptCommaList' but
 --
 -- * require all or none commas
--- * accept leading or trailing comma.
+-- * additionally accept a leading comma.
 --
 -- @
 -- p (comma p)*  -- p `sepBy` comma
