@@ -15,3 +15,6 @@ extend-ignore-re = [
 # Unicode category, not a misspelling of 'And'.
 nd = "nd"
 certifi = "certifi" # Python package name
+
+# Misspellings typos does not know about, with their corrections.
+bytcode = "bytecode"
