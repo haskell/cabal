@@ -1838,16 +1838,19 @@ running ``setup haddock``.
 
     :default: False
 
-    Generated hyperlinked source code using `HsColour`_, and have
-    Haddock documentation link to it.
+    Generate hyperlinked source code and have Haddock documentation
+    link to it.
     This is equivalent to running ``haddock`` with the ``--hyperlinked-source`` flag.
+    Haddock versions older than 2.17 don't support that flag, so for those
+    Cabal falls back to generating the source with `HsColour`_.
 
 .. cfg-field:: haddock-hscolour-css: PATH
                --haddock-hscolour-css=PATH
     :synopsis: Location of CSS file for HsColour
 
     The CSS file that should be used to style the generated hyperlinked
-    source code (from `HsColour`_).
+    source code (from `HsColour`_). Only used for the HsColour fallback
+    with Haddock versions older than 2.17.
 
 .. cfg-field:: haddock-contents-location: URL
                --haddock-contents-location=URL
