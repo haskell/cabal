@@ -11,6 +11,7 @@ module Distribution.Client.DistDirLayout
   , DistDirParams (..)
   , ProjectFileKey (..)
   , defaultDistDirLayout
+  , relativiseProjectPath
 
     -- * 'ProjectRoot'
   , ProjectRoot (..)
@@ -29,6 +30,7 @@ module Distribution.Client.DistDirLayout
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import System.Directory (canonicalizePath)
 import System.FilePath
 
 import Distribution.Client.Config
@@ -50,6 +52,7 @@ import Distribution.Simple.Compiler
   , PackageDBX (..)
   )
 import Distribution.Simple.Configure (interpretPackageDbFlags)
+import Distribution.Simple.Utils (shortRelativePath)
 import Distribution.System
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
@@ -337,3 +340,18 @@ mkCabalDirLayout mstoreDir mlogDir = do
   cabalLogsDirectory <-
     maybe defaultLogsDir pure mlogDir
   pure CabalDirLayout{..}
+
+-- | Rewrite an absolute path inside the project, so that it is relative to
+-- the build tree root. Paths outside the project are unchanged.
+relativiseProjectPath :: DistDirLayout -> FilePath -> IO FilePath
+relativiseProjectPath DistDirLayout{distProjectRootDirectory, distDirectory} path
+  | isAbsolute path = do
+      projectRoot <- canonicalizePath distProjectRootDirectory
+      buildTree <- canonicalizePath distDirectory
+      target <- canonicalizePath path
+      let inProject p = splitDirectories projectRoot `isPrefixOf` splitDirectories p
+      return $
+        if inProject buildTree && inProject target
+          then shortRelativePath buildTree target
+          else path
+  | otherwise = return path

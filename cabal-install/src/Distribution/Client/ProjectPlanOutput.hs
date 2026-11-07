@@ -93,19 +93,21 @@ writePlanExternalRepresentation
 writePlanExternalRepresentation
   distDirLayout
   elaboratedInstallPlan
-  elaboratedSharedConfig =
+  elaboratedSharedConfig = do
+    plan <- encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig
     writeFileAtomic (distProjectCacheFile distDirLayout "plan.json")
-      $ BB.toLazyByteString
-        . J.encodeToBuilder
-      $ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig
+      . BB.toLazyByteString
+      . J.encodeToBuilder
+      $ plan
 
 -- | Renders a subset of the elaborated install plan in a semi-stable JSON
 -- format.
-encodePlanAsJson :: DistDirLayout -> ElaboratedInstallPlan -> ElaboratedSharedConfig -> J.Value
-encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
+encodePlanAsJson :: DistDirLayout -> ElaboratedInstallPlan -> ElaboratedSharedConfig -> IO J.Value
+encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig = do
   -- TODO: [nice to have] include all of the sharedPackageConfig and all of
   --      the parts of the elaboratedInstallPlan
-  J.object
+  installPlan <- installPlanToJ elaboratedInstallPlan
+  return $ J.object
     [ "cabal-version" J..= jdisplay cabalInstallVersion
     , "cabal-lib-version" J..= jdisplay cabalVersion
     , "compiler-id"
@@ -114,19 +116,22 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     , "compiler-abi" J..= jdisplay (compilerAbiTag (pkgConfigCompiler elaboratedSharedConfig))
     , "os" J..= jdisplay os
     , "arch" J..= jdisplay arch
-    , "install-plan" J..= installPlanToJ elaboratedInstallPlan
+    , "install-plan" J..= installPlan
     ]
   where
     plat :: Platform
     plat@(Platform arch os) = pkgConfigPlatform elaboratedSharedConfig
 
-    installPlanToJ :: ElaboratedInstallPlan -> [J.Value]
-    installPlanToJ = map planPackageToJ . InstallPlan.toList
+    mkPath :: FilePath -> IO FilePath
+    mkPath = relativiseProjectPath distDirLayout
 
-    planPackageToJ :: ElaboratedPlanPackage -> J.Value
+    installPlanToJ :: ElaboratedInstallPlan -> IO [J.Value]
+    installPlanToJ = traverse planPackageToJ . InstallPlan.toList
+
+    planPackageToJ :: ElaboratedPlanPackage -> IO J.Value
     planPackageToJ pkg =
       case pkg of
-        InstallPlan.PreExisting ipi -> installedPackageInfoToJ ipi
+        InstallPlan.PreExisting ipi -> pure (installedPackageInfoToJ ipi)
         InstallPlan.Configured elab -> elaboratedPackageToJ False elab
         InstallPlan.Installed elab -> elaboratedPackageToJ True elab
     -- Note that the plan.json currently only uses the elaborated plan,
@@ -149,9 +154,47 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         , "depends" J..= map jdisplay (installedDepends ipi)
         ]
 
-    elaboratedPackageToJ :: Bool -> ElaboratedConfiguredPackage -> J.Value
-    elaboratedPackageToJ isInstalled elab =
-      J.object $
+    elaboratedPackageToJ :: Bool -> ElaboratedConfiguredPackage -> IO J.Value
+    elaboratedPackageToJ isInstalled elab = do
+      pkgSrc <- packageLocationToJ (elabPkgSourceLocation elab)
+      distDirFields <- case elabBuildStyle elab of
+        BuildInplaceOnly{} -> do
+          distDirField <- mkPath dist_dir
+          buildInfoField <- buildInfoFileLocation
+          pure ["dist-dir" J..= J.String distDirField, buildInfoField]
+        BuildAndInstall ->
+          -- TODO: install dirs?
+          pure []
+      pkgOrCompFields <- case elabPkgOrComp elab of
+        ElabPackage pkg -> do
+          components <-
+            traverse
+              ( \(c, (ldeps, edeps)) -> do
+                  binFile <- bin_file c
+                  pure $
+                    comp2str c
+                      J..= J.object
+                        ( [ "depends" J..= map ((jdisplay . confInstId) . fst) ldeps
+                          , "exe-depends" J..= map (jdisplay . confInstId) edeps
+                          ]
+                            ++ binFile
+                        )
+              )
+              ( ComponentDeps.toList $
+                  ComponentDeps.zip
+                    (pkgLibDependencies pkg)
+                    (pkgExeDependencies pkg)
+              )
+          pure ["components" J..= J.object components]
+        ElabComponent comp -> do
+          binFile <- bin_file (compSolverName comp)
+          pure $
+            [ "depends" J..= map ((jdisplay . confInstId) . fst) (elabLibDependencies elab)
+            , "exe-depends" J..= map jdisplay (elabExeDependencies elab)
+            , "component-name" J..= J.String (comp2str (compSolverName comp))
+            ]
+              ++ binFile
+      pure . J.object $
         [ "type"
             J..= J.String
               ( if isInstalled
@@ -172,7 +215,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
               | (fn, v) <- PD.unFlagAssignment (elabFlagAssignment elab)
               ]
         , "style" J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
-        , "pkg-src" J..= packageLocationToJ (elabPkgSourceLocation elab)
+        , "pkg-src" J..= pkgSrc
         ]
           ++ [ "pkg-cabal-sha256" J..= J.String (showHashValue hash)
              | Just hash <- [fmap hashValue (elabPkgDescriptionOverride elab)]
@@ -180,37 +223,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           ++ [ "pkg-src-sha256" J..= J.String (showHashValue hash)
              | Just hash <- [elabPkgSourceHash elab]
              ]
-          ++ ( case elabBuildStyle elab of
-                BuildInplaceOnly{} ->
-                  ["dist-dir" J..= J.String dist_dir] ++ [buildInfoFileLocation]
-                BuildAndInstall ->
-                  -- TODO: install dirs?
-                  []
-             )
-          ++ case elabPkgOrComp elab of
-            ElabPackage pkg ->
-              let components =
-                    J.object $
-                      [ comp2str c
-                        J..= J.object
-                          ( [ "depends" J..= map ((jdisplay . confInstId) . fst) ldeps
-                            , "exe-depends" J..= map (jdisplay . confInstId) edeps
-                            ]
-                              ++ bin_file c
-                          )
-                      | (c, (ldeps, edeps)) <-
-                          ComponentDeps.toList $
-                            ComponentDeps.zip
-                              (pkgLibDependencies pkg)
-                              (pkgExeDependencies pkg)
-                      ]
-               in ["components" J..= components]
-            ElabComponent comp ->
-              [ "depends" J..= map ((jdisplay . confInstId) . fst) (elabLibDependencies elab)
-              , "exe-depends" J..= map jdisplay (elabExeDependencies elab)
-              , "component-name" J..= J.String (comp2str (compSolverName comp))
-              ]
-                ++ bin_file (compSolverName comp)
+          ++ distDirFields
+          ++ pkgOrCompFields
       where
         -- \| Only add build-info file location if the Setup.hs CLI
         -- is recent enough to be able to generate build info files.
@@ -219,41 +233,49 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         -- Consumers of `plan.json` can use the nullability of this file location
         -- to indicate that the given component uses `build-type: Custom`
         -- with an old lib:Cabal version.
-        buildInfoFileLocation :: J.Pair
+        buildInfoFileLocation :: IO J.Pair
         buildInfoFileLocation
           | setupCliVersion (elabSetupScriptCliVersion elab) < mkVersion [3, 7, 0, 0] =
-              "build-info" J..= J.Null
-          | otherwise =
-              "build-info" J..= J.String (getSymbolicPath $ buildInfoPref $ makeSymbolicPath dist_dir)
+              pure $ "build-info" J..= J.Null
+          | otherwise = do
+              path <- mkPath $ getSymbolicPath $ buildInfoPref $ makeSymbolicPath dist_dir
+              pure $ "build-info" J..= J.String path
 
-        packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
+        packageLocationToJ :: PackageLocation (Maybe FilePath) -> IO J.Value
         packageLocationToJ pkgloc =
           case pkgloc of
-            LocalUnpackedPackage local ->
-              J.object
-                [ "type" J..= J.String "local"
-                , "path" J..= J.String local
-                ]
-            LocalTarballPackage local ->
-              J.object
-                [ "type" J..= J.String "local-tar"
-                , "path" J..= J.String local
-                ]
+            LocalUnpackedPackage local -> do
+              path <- mkPath local
+              pure $
+                J.object
+                  [ "type" J..= J.String "local"
+                  , "path" J..= J.String path
+                  ]
+            LocalTarballPackage local -> do
+              path <- mkPath local
+              pure $
+                J.object
+                  [ "type" J..= J.String "local-tar"
+                  , "path" J..= J.String path
+                  ]
             RemoteTarballPackage uri _ ->
-              J.object
-                [ "type" J..= J.String "remote-tar"
-                , "uri" J..= J.String (show uri)
-                ]
+              pure $
+                J.object
+                  [ "type" J..= J.String "remote-tar"
+                  , "uri" J..= J.String (show uri)
+                  ]
             RepoTarballPackage repo _ _ ->
-              J.object
-                [ "type" J..= J.String "repo-tar"
-                , "repo" J..= repoToJ repo
-                ]
+              pure $
+                J.object
+                  [ "type" J..= J.String "repo-tar"
+                  , "repo" J..= repoToJ repo
+                  ]
             RemoteSourceRepoPackage srcRepo _ ->
-              J.object
-                [ "type" J..= J.String "source-repo"
-                , "source-repo" J..= sourceRepoToJ srcRepo
-                ]
+              pure $
+                J.object
+                  [ "type" J..= J.String "source-repo"
+                  , "source-repo" J..= sourceRepoToJ srcRepo
+                  ]
 
         repoToJ :: Repo -> J.Value
         repoToJ repo =
@@ -299,29 +321,28 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             distDirLayout
             (elabDistDirParams elaboratedSharedConfig elab)
 
-        bin_file :: ComponentDeps.Component -> [J.Pair]
+        bin_file :: ComponentDeps.Component -> IO [J.Pair]
         bin_file c = case c of
           ComponentDeps.ComponentExe s -> bin_file' s
           ComponentDeps.ComponentTest s -> bin_file' s
           ComponentDeps.ComponentBench s -> bin_file' s
           ComponentDeps.ComponentFLib s -> flib_file' s
-          _ -> []
-        bin_file' s =
-          ["bin-file" J..= J.String bin]
-          where
-            bin =
-              if isInplaceBuildStyle (elabBuildStyle elab)
-                then dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
-                else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
+          _ -> pure []
 
-        flib_file' :: Pretty a => a -> [J.Pair]
-        flib_file' s =
-          ["bin-file" J..= J.String bin]
-          where
-            bin =
-              if isInplaceBuildStyle (elabBuildStyle elab)
-                then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
-                else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
+        bin_file' s = do
+          bin <-
+            if isInplaceBuildStyle (elabBuildStyle elab)
+              then mkPath $ dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
+              else pure $ InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
+          pure ["bin-file" J..= J.String bin]
+
+        flib_file' :: Pretty a => a -> IO [J.Pair]
+        flib_file' s = do
+          bin <-
+            if isInplaceBuildStyle (elabBuildStyle elab)
+              then mkPath $ dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
+              else pure $ InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
+          pure ["bin-file" J..= J.String bin]
 
     comp2str :: ComponentDeps.Component -> String
     comp2str = prettyShow

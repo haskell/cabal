@@ -92,10 +92,8 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Reader (asks, runReaderT, withReaderT)
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import qualified Crypto.Hash.SHA256 as SHA256
-import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Char as Char
 import Data.List (isPrefixOf, stripPrefix)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
@@ -444,11 +442,8 @@ withProjectFile fp m =
 withPlan :: TestM a -> TestM a
 withPlan m = do
   env0 <- getTestEnv
-  let filepath = testDistDir env0 </> "cache" </> "plan.json"
-  mplan <- JSON.eitherDecode `fmap` liftIO (BSL.readFile filepath)
-  case mplan of
-    Left err -> fail $ "withPlan: cannot decode plan " ++ err
-    Right plan -> withReaderT (\env -> env{testPlan = Just plan}) m
+  plan <- liftIO . readPlan $ testDistDir env0 </> "cache" </> "plan.json"
+  withReaderT (\env -> env{testPlan = Just plan}) m
 
 -- | Run an executable from a package.  Requires 'withPlan' to have
 -- been run so that we can find the dist dir.
