@@ -167,6 +167,219 @@ For these test executables, `-p` which applies a regex filter to the test
 names. When running `cabal-install` test suites, one need only use `cabal test` or
 `cabal run <test-target>` in order to test locally.
 
+## Using Haskell Language Server
+
+[Haskell Language Server][hls] (HLS) works on this repository through the
+[`hie.yaml`](./hie.yaml) cradle in the root, which points it at the
+[`cabal.hie.project`](./cabal.hie.project) project rather than the default
+`cabal.project`. With that in place, there is nothing to set up beyond having
+an HLS that matches the `ghc` on your `PATH`.
+
+> [!WARNING]
+> Without `hie.yaml`, HLS tries to load the default project and fails with
+> `Failed to parse result of calling cabal` when the `cabal` on your `PATH` is
+> cabal-install 3.18 or later, including a build of this repository. HLS uses
+> [hie-bios][hie-bios], which asks `cabal repl --with-repl` for the flags to
+> load the project, and that fails to resolve dependencies because
+> `cabal-testsuite` has a custom setup depending on an older and incompatible
+> version of `Cabal`. hie-bios then falls back to an older method that
+> cabal-install 3.18 broke. The `cabal.hie.project` project leaves out
+> `cabal-testsuite`, so its own code is the one part of the repository that HLS
+> doesn't cover.
+
+To check the setup from the command line, run HLS on a file. It loads the file
+the same way as it would in an editor and reports what it found:
+
+```
+$ haskell-language-server-9.14.1 cabal-install/main/Main.hs
+...
+Completed (1 file worked, 0 files failed)
+```
+
+HLS and the Haskell debugger share a build directory under `~/.cache/hie-bios`,
+which is why they share a project. Starting the debugger while HLS is still
+loading, or the other way around, can make them trip over each other in there.
+
+[hls]: https://haskell-language-server.readthedocs.io/
+
+## Using the Haskell Debugger
+
+We can debug `cabal` with the [Haskell debugger][hdb] to set breakpoints, step
+through, and watch variables. This can be done from the command line or within
+any editor that supports the [Debug Adapter Protocol][debug-protocol], such as
+VS Code.
+
+To get set up:
+
+1. Install `hdb`. It needs GHC 9.14 or later, and the `ghc` on your `PATH` when
+   you run `hdb` has to be the version `hdb` was built with.
+
+2. Make sure the `cabal` on your `PATH` supports `cabal repl --with-repl`
+   (cabal-install 3.16 or later). `hdb` uses [hie-bios][hie-bios] to find out
+   how to load the project and hie-bios in turn runs this command.
+
+[hdb]: https://well-typed.github.io/haskell-debugger/
+[debug-protocol]: https://microsoft.github.io/debug-adapter-protocol/
+[hie-bios]: https://github.com/haskell/hie-bios
+
+### Debugging Project and Cradle
+
+We have a project and cradle for debugging:
+
+* [`cabal.hie.project`](./cabal.hie.project) with a subset of packages, leaving
+  out `cabal-testsuite`. This is the same project that Haskell Language Server
+  uses.
+
+* [`hie-hdb.yaml`](./hie-hdb.yaml) uses this project and lists which components
+  to load.  Breakpoints can only be set in those components. Everything else is
+  a compiled dependency. This is a separate cradle from the `hie.yaml` that
+  Haskell Language Server uses, as it loads many components at once, so it has
+  to be given explicitly to `hdb`.
+
+> [!WARNING]
+> Do not use `cabal.project`, the default project, for debugging. `hdb` tries to
+> load every component of every package but will fail with:
+>
+> ```
+> Failed to get compiler options using hie-bios cradle
+> ```
+>
+> This is because `cabal-testsuite` and its custom setup uses an older and
+> incompatible version of `Cabal`.
+
+### Debugging from the Command Line
+
+Run `hdb` from the root of the repository, giving it the cradle, the file with
+`main` in it and, after `--`, the arguments for `cabal`:
+
+```
+$ hdb --cradle-file hie-hdb.yaml cabal-install/main/Main.hs -- --version
+```
+
+Each time it starts, `hdb` loads all of the components as bytecode, more than
+500 modules. Expect this to take a while and a decent chunk of memory. The first
+time, `hie-bios` also builds the dependencies into its own build directory,
+under `~/.cache/hie-bios`, leaving `dist-newstyle` alone.
+
+Once loaded, set breakpoints by file and line, with the path relative to the
+root of the repository, and then `run`:
+
+```
+(hdb) break cabal-install/src/Distribution/Client/Main.hs 323
+(hdb) run
+Stopped at breakpoint
+(hdb) variables
+_result : IO () = <fn> :: IO ()
+args : [String] = [...]
+  0 : [Char] = "--version"
+(hdb) next
+(hdb) continue
+cabal-install version 3.19.0.0
+compiled using version 3.19.0.0 of the Cabal library
+(hdb) exit
+```
+
+The `cabal` being debugged runs in the root of the repository. To have it work
+on another project, use `--project-dir`:
+
+```
+$ hdb --cradle-file hie-hdb.yaml cabal-install/main/Main.hs -- \
+    build all --dry-run --project-dir=/path/to/project
+```
+
+> [!TIP]
+> If a breakpoint is not hit, check that `cabal` has not skipped that work.
+> For instance, the solver does not run when the project already has an
+> up-to-date plan. If `hdb` fails to start, add `-v 3` to see what hie-bios
+> and `cabal repl` are doing.
+
+> [!TIP]
+> Each time it stops or evaluates an expression, `hdb` repeats some warnings
+> from GHC, such as `<interactive>:1:1: warning: [GHC-15328] [-Wdeprecations]`.
+> Add `--extra-ghc-args=-w` before the file with `main` in it to silence these.
+
+### Debugging from VS Code
+
+Install the [Haskell Debugger
+extension](https://marketplace.visualstudio.com/items?itemName=Well-Typed.haskell-debugger-extension)
+and start VS Code from a shell that has the right `ghc` and `hdb` on its
+`PATH`. Then add a configuration to `.vscode/launch.json`, changing `entryArgs`
+to the arguments for `cabal`:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "haskell-debugger",
+      "request": "launch",
+      "name": "cabal --version",
+      "projectRoot": "${workspaceFolder}",
+      "entryFile": "cabal-install/main/Main.hs",
+      "entryPoint": "main",
+      "entryArgs": ["--version"],
+      "extraGhcArgs": ["-w"],
+      "cradleFile": "hie-hdb.yaml"
+    }
+  ]
+}
+```
+
+The `cradleFile` is relative to the `projectRoot`. The `-w` in `extraGhcArgs`
+keeps the debug console free of the warnings GHC would otherwise repeat each
+time the debugger stops or evaluates an expression.
+
+### Debugging a Test Suite
+
+To debug a test suite, add its component to `componentsToLoad` in
+`hie-hdb.yaml`, for example `cabal-install:test:unit-tests`, and give `hdb` the
+file with the `main` of the test suite and the arguments for the test suite.
+Where we would run a test with:
+
+```
+$ cabal run cabal-install:test:unit-tests -- --pattern simpleTest1
+```
+
+The equivalent for debugging that test is:
+
+```
+$ hdb --cradle-file hie-hdb.yaml cabal-install/tests/UnitTests.hs -- --pattern simpleTest1
+```
+
+> [!NOTE]
+> A test suite ends by exiting with an exit code, which is an exception that
+> the debugger reports as uncaught. So when all tests pass, expect to see
+> `ExitSuccess`, and from VS Code:
+>
+> ```
+> Uncaught exception of type SomeException was thrown!
+> ExitSuccess
+> ```
+>
+> This goes to the debug console. The output of the test suite itself, with the
+> results of the tests, can be seen in the terminal window.
+
+A test suite runs in the root of the repository, not in the directory of its
+package.  Some tests read or write files relative to the directory of their
+package. To run a test suite from there with the command line debugger, start
+`hdb` in the package directory, giving it the absolute path of the cradle and
+paths relative to the package for the file with `main` and for breakpoints:
+
+```
+$ cd cabal-install
+$ hdb --cradle-file "$(realpath ../hie-hdb.yaml)" tests/UnitTests.hs -- --pattern simpleTest1
+(hdb) break tests/UnitTests.hs 32
+```
+
+`hdb` has no setting for the working directory of the program being debugged.
+When it is started from an editor, the way to change directory is to stop at a
+breakpoint on the first line of `main` and evaluate this, in the debug console
+for VS Code, before continuing:
+
+```
+System.Directory.setCurrentDirectory "cabal-install"
+```
+
 ## Running other checks locally
 
 Various other checks done by CI can be run locally to make sure your code doesn't
