@@ -1,0 +1,6 @@
+# cabal v2-sdist
+Wrote tarball sdist to <ROOT>/dep-1.0.tar.gz
+# cabal v2-vendor
+Resolving dependencies...
+Warning: Not vendoring dep-1.0: local tarball <ROOT>/dep-1.0.tar.gz is listed in the project's packages.
+Would vendor the following packages into vendor:

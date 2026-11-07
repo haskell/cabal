@@ -1,0 +1,6 @@
+packages: ., vendor/src/my-lib-1.0
+
+repository vendored
+  url: file+noindex:vendor
+
+active-repositories: vendored
