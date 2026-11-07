@@ -1,0 +1,23 @@
+-- A project for debugging cabal with the Haskell debugger (hdb), used by the
+-- hie-hdb.yaml cradle. See the "Using the Haskell debugger" section of
+-- CONTRIBUTING.md.
+--
+-- This leaves out cabal-testsuite because `cabal repl --with-repl`, that the
+-- debugger relies on, needs Cabal >= 3.16 for the setup of every package in the
+-- project and the custom setup of cabal-testsuite depends on an older Cabal.
+import: project-cabal/ghc-options.config
+import: project-cabal/ghc-latest.config
+import: project-cabal/pkgs/cabal.config
+import: project-cabal/pkgs/install.config
+import: project-cabal/pkgs/tests.config
+import: project-cabal/constraints.config
+
+tests: True
+
+-- The debugger loads packages as bytecode, ignoring optimization flags and
+-- warning that it does so.
+optimization: False
+
+-- Keep compiler warnings out of the debugger's console.
+program-options
+  ghc-options: -w
