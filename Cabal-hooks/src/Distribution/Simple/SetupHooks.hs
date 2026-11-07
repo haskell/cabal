@@ -773,18 +773,18 @@ findAndMonitorSourceDirsFileExts
 findAndMonitorSourceDirsFileExts
   PreBuildComponentInputs
     { localBuildInfo
-    , buildingWhat = what
     , targetInfo
-    } exts =
+    } exts = do
+  -- Use the caller's verbosity, as per (LH1) in Note [Logging handles]
+  -- in Distribution.Verbosity.
+  RulesEnv { rulesEnvVerbosity = verbosity } <- RulesT Reader.ask
   let
     comp       = targetComponent targetInfo
-    verbosity  = mkVerbosity defaultVerbosityHandles (buildingWhatVerbosity what)
     mbWorkDir  = mbWorkDirLBI localBuildInfo
     searchDirs = hsSourceDirs $ componentBuildInfo comp
     fileGlob   = case exts of
       e NE.:| []  -> [WildCard, Literal ("." ++ e)]
       e NE.:| es  -> [WildCard, Literal ".", Union (map (\ext -> [Literal ext]) (e : es))]
     glob       = GlobDirRecursive fileGlob
-  in
-    findAndMonitorDirFileGlob mbWorkDir verbosity searchDirs glob
+  findAndMonitorDirFileGlob mbWorkDir verbosity searchDirs glob
 {-# INLINEABLE findAndMonitorSourceDirsFileExts #-}
