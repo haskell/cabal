@@ -64,6 +64,7 @@ module Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.HashValue (HashValue)
 import Distribution.Client.PackageHash
 import Distribution.Client.TargetSelector
   ( SubComponentTarget (..)
@@ -275,7 +276,11 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabProgramPaths :: Map String FilePath
   , elabProgramArgs :: Map String [String]
   , elabProgramPathExtra :: [FilePath]
-  , elabConfiguredPrograms :: [ConfiguredProgram]
+  , elabConfiguredProgramsHash :: HashValue
+  -- ^ Fingerprint of the configured programs in 'pkgConfigCompilerProgs'.
+  -- This record is the configure cache key, so the fingerprint keeps every
+  -- program's location, version, arguments and environment, @PATH@ included,
+  -- in that key without a copy of the records in each component.
   , elabConfigureScriptArgs :: [String]
   , elabExtraLibDirs :: [FilePath]
   , elabExtraLibDirsStatic :: [FilePath]
