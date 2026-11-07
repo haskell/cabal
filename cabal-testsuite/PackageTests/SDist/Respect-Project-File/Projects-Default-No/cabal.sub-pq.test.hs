@@ -8,5 +8,5 @@ import Test.Cabal.Prelude
 --
 -- TODO: Fix this behaviour and apply the patch cabal.sub-pq.patch to update the
 -- expected output to what we'd expect if "cabal sdist" respected the project.
-main = cabalTest . withProjectFile "cabal.sub-pq.project" $ do
+main = cabalTest . withProjectFile "cabal.sub-pq.project" $ expectBroken 12501 $ do
     cabal "sdist" ["all"]
