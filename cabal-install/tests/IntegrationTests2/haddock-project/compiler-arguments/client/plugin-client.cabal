@@ -1,0 +1,10 @@
+cabal-version: 3.0
+name: plugin-client
+version: 0.1
+build-type: Simple
+
+library
+  exposed-modules: PluginClient
+  build-depends: base, haddock-probe-plugin
+  default-language: Haskell2010
+  ghc-options: -DPROGRAM_OPTION_VALUE=0 -DCOMPONENT_OPTION_PRESENT=1
