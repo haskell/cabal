@@ -502,8 +502,7 @@ vcsGit =
         vcsSyncRepo verbosity gitProg primaryRepo primaryLocalDir Nothing
         -- Each of the `secondaryRepos` clones the primary checkout as
         -- `git clone --reference`, so that the group shares one object store.
-        -- But git refuses to reference a shallow clone, so only pass it on
-        -- when git's own marker `.git/shallow` is absent.
+        -- But git refuses to reference a shallow clone.
         -- Fixes #12296.
         primaryIsShallow <- isShallowCheckout primaryLocalDir
         let peer = if primaryIsShallow then Nothing else Just primaryLocalDir
