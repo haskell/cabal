@@ -25,14 +25,14 @@ init: ## Set up git hooks and ignored revisions.
 	@git config core.hooksPath .githooks
 	## TODO
 
-# NOTE: Keep this in sync with `.github/workflows/format.yml`.
+# NOTE: Keep this in sync with `.github/workflows/format.yml`, and sorted alphabetically.
 FORMAT_DIRS := \
 	Cabal \
 	Cabal-syntax \
+	Cabal-tests/exes \
 	cabal-install \
 	cabal-testsuite/src \
-	cabal-validate \
-	Cabal-tests/exes
+	cabal-validate
 
 FORMAT_DIRS_TODO := \
 	Cabal-QuickCheck \
