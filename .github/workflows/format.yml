@@ -16,5 +16,7 @@ jobs:
         pattern: |
           Cabal/**/*.hs
           Cabal-syntax/**/*.hs
+          Cabal-tests/exes/**/*.hs
           cabal-install/**/*.hs
+          cabal-testsuite/src/**/*.hs
           cabal-validate/**/*.hs
