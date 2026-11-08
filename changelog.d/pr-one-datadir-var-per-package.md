@@ -1,7 +1,7 @@
 ---
 synopsis: Give the setup of a component each datadir variable once
 packages: [cabal-install]
-prs: 0000
+prs: 12552
 issues: 12544
 ---
 
