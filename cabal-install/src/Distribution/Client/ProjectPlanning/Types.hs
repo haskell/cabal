@@ -428,11 +428,14 @@ dataDirsEnvironmentForPlan
   -> ElaboratedInstallPlan
   -> [(String, Maybe FilePath)]
 dataDirsEnvironmentForPlan distDirLayout =
-  mapMaybe
-    ( InstallPlan.foldPlanPackage
-        (const Nothing)
-        (dataDirEnvVarForPackage distDirLayout)
-    )
+  -- Each component of a package is a unit of its own in the plan, and they
+  -- all give the same variable.
+  ordNub
+    . mapMaybe
+      ( InstallPlan.foldPlanPackage
+          (const Nothing)
+          (dataDirEnvVarForPackage distDirLayout)
+      )
     . InstallPlan.toList
 
 -- | Construct an environment variable that points
