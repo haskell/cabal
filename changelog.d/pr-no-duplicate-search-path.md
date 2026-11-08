@@ -1,7 +1,7 @@
 ---
 synopsis: Search for each program once in each directory of the search path
 packages: [Cabal]
-prs: 0000
+prs: 12551
 issues: 12544
 ---
 
