@@ -1600,7 +1600,10 @@ mkPromisedDepsSet comps = Map.fromList [((packageName pn, CLibName ln), p) | p@(
 mkProgramDb :: VerbosityHandles -> ConfigFlags -> ProgramDb -> IO ProgramDb
 mkProgramDb verbHandles cfg initialProgramDb = do
   programDb <-
-    modifyProgramSearchPath (getProgramSearchPath initialProgramDb ++) -- We need to have the paths to programs installed by build-tool-depends before all other paths
+    -- We need to have the paths to programs installed by build-tool-depends
+    -- before all other paths. The search path already ends with them, so keep
+    -- only their first occurrence: a path listed twice is searched twice.
+    modifyProgramSearchPath (nub . (getProgramSearchPath initialProgramDb ++))
       <$> prependProgramSearchPath verbosity searchpath [] initialProgramDb
   pure
     . userSpecifyArgss (configProgramArgs cfg)
