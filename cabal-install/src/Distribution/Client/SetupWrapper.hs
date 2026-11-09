@@ -676,8 +676,11 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
         -- Use 'mkProgramDb' to pass user-supplied per-package
         -- program options (--PROG-options=...).
         mkProgramDb verbHandles flags
-          (restoreProgramDb builtinPrograms $
-            pkgConfigCompilerProgs elabSharedConfig)
+          -- Don't leak local program search paths via the compiler's ProgramDb.
+          ( setProgramSearchPath defaultProgramSearchPath
+          . restoreProgramDb builtinPrograms
+          $ pkgConfigCompilerProgs elabSharedConfig
+          )
       setupProgDb <-
         prependProgramSearchPath verbosity
           (useExtraPathEnv options)

@@ -4008,7 +4008,8 @@ setupHsScriptOptions
                 elabSetupDependencies elab
             ]
       , useVersionMacros = elabSetupScriptStyle == SetupCustomExplicitDeps
-      , useProgramDb = pkgConfigCompilerProgs
+      , -- Don't leak local program search paths via the compiler's ProgramDb.
+        useProgramDb = setProgramSearchPath defaultProgramSearchPath pkgConfigCompilerProgs
       , useDistPref = builddir
       , useLoggingHandle = Nothing -- this gets set later
       , useWorkingDir = Just srcdir
