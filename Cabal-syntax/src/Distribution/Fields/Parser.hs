@@ -334,7 +334,7 @@ appendCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> M
 appendCommentsFieldLines [] fls = Just fls
 appendCommentsFieldLines cs fls = case fls of
   [] -> Nothing
-  [fl] -> Just [L.over (traverse . L.priorComments) (++ cs) fl]
+  [fl] -> Just [L.over (traverse . L.followingComments) (++ cs) fl]
   (f : fls') -> (f :) <$> appendCommentsFieldLines cs fls'
 
 -- | Similar to 'appendCommentsNameSecArgs\''.
