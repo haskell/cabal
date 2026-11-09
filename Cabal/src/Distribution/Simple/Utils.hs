@@ -671,7 +671,7 @@ logMsg markWhen verbosity@(verbosityChosenOutputHandle -> h) msg = withFrozenCal
   ts <- getPOSIXTime
   hPutStr h $ withMetadata ts markWhen FlagTrace (verbosityFlags verbosity) msg
   -- REVIEW: Should we always flush or only for the debug functions?
-  hFlush stdout
+  hFlush h
 
 -- | Useful status messages.
 --
@@ -934,7 +934,7 @@ logCommand verbosity cp = do
   case Process.cwd cp of
     Just cwd -> debugNoWrap verbosity $ "with working directory: " ++ show cwd
     Nothing -> return ()
-  hFlush stdout
+  hFlush (verbosityChosenOutputHandle verbosity)
 
 -- | Execute the given command with the given arguments, exiting
 -- with the same exit code if the command fails.
