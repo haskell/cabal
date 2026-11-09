@@ -34,7 +34,6 @@ import Prelude ()
 
 import Control.Exception as Exception
   ( Handler (Handler)
-  , bracket
   , catches
   , handleJust
   )
@@ -52,11 +51,6 @@ import System.FilePath
   ( equalFilePath
   , takeDirectory
   , (<.>)
-  )
-import System.IO
-  ( IOMode (AppendMode)
-  , hClose
-  , openFile
   )
 import System.IO.Error
   ( ioeGetFileName
@@ -146,6 +140,7 @@ import Distribution.Client.Utils
   , logDirChange
   , mergeBy
   , progressMessage
+  , withLogFile
   )
 import Distribution.Package
   ( HasMungedPackageId (..)
@@ -2063,9 +2058,8 @@ installUnpackedPackage
             return (Just logFileName)
 
       setup cmd getCommonFlags flags mLogPath =
-        Exception.bracket
-          (traverse (`openFile` AppendMode) mLogPath)
-          (traverse_ hClose)
+        withLogFile
+          mLogPath
           ( \logFileHandle ->
               setupWrapper
                 (setVerbosityHandles logFileHandle verbosity)
