@@ -149,7 +149,10 @@ import Distribution.Simple.Utils
   , rewriteFileEx
   , rewriteFileLBS
   , tryFindPackageDesc
+  , withTempDirectory
   )
+import Distribution.Compat.ResponseFile (escapeArgs)
+import Distribution.Utils.Generic (toUTF8BS)
 
 import Distribution.Compat.Stack
 import Distribution.ReadE
@@ -171,12 +174,19 @@ import Distribution.Client.SetupHooks.CallHooksExe
   ( externalSetupHooksABI, hooksProgFilePath )
 
 import Control.Concurrent.STM (TVar, readTVarIO)
+import qualified Data.ByteString as SBS
 import qualified Data.ByteString.Lazy as BS
 import Data.Kind (Type, Constraint)
 import qualified Data.Map.Lazy as Map
 import Data.Type.Equality  ( type (==) )
 import Data.Type.Bool      ( If )
-import System.Directory (doesFileExist)
+import System.Directory
+  ( createDirectoryIfMissing
+  , doesDirectoryExist
+  , doesFileExist
+  , listDirectory
+  , renameFile
+  )
 import System.FilePath ((<.>), (</>))
 import Data.Functor ((<&>))
 import System.IO (Handle, hPutStr)
@@ -184,11 +194,7 @@ import System.Process (StdStream (..))
 import qualified System.Process as Process
 
 #ifdef mingw32_HOST_OS
-import Distribution.Simple.Utils
-         ( withTempDirectory )
-
 import Control.Exception   ( bracket )
-import System.Directory    ( doesDirectoryExist )
 import System.FilePath     ( equalFilePath, takeDirectory, takeFileName )
 import qualified System.Win32 as Win32
 #endif
@@ -535,18 +541,50 @@ chooseSetupMethod verbosity options pkg buildType' mbLibraryMethod =
         compileExternalExe verbosity options pkg buildType' WantSetup
       return (version, ExternalMethod path, options')
 
-runSetupMethod :: WithCallStack (SetupMethod UseGeneralSetup -> SetupRunner UseGeneralSetup)
-runSetupMethod (ExternalMethod path) = externalSetupMethod path
+runSetupMethod :: WithCallStack (SetupWorkingDirMethod -> SetupMethod UseGeneralSetup -> SetupRunner UseGeneralSetup)
+runSetupMethod workDirMethod (ExternalMethod path) = externalSetupMethod workDirMethod path
+
+-- | How to set the working directory when invoking a @Setup@ executable.
+data SetupWorkingDirMethod
+  = -- | Run the @Setup@ executable in the current working directory, and pass
+    -- the working directory with @--working-dir@.
+    WorkingDirFlag
+  | -- | Run the @Setup@ executable in the package directory, and do not pass
+    -- the @--working-dir@ flag.
+    WorkingDirCwd
+
+-- | How do we set the working directory for a @Setup@ executable?
+--
+-- When possible, use @--working-dir@, as it leads to improved error messages
+-- that are relative to the project directory, which is the most intuitive
+-- for users.
+--
+-- For legacy build types (Custom, Make), always set the working directory of
+-- the invoked process. This is a courtesy to avoid breaking old
+-- @build-type: Custom@ packages that don't know about @--working-dir@.
+setupWorkingDirMethod :: BuildType -> Version -> SetupWorkingDirMethod
+setupWorkingDirMethod bt cabalLibVersion =
+  case bt of
+    Simple    -> byFlagWhenSupported
+    Hooks     -> byFlagWhenSupported
+    Configure -> byFlagWhenSupported
+    Custom    -> WorkingDirCwd
+    Make      -> WorkingDirCwd
+  where
+    byFlagWhenSupported
+      | cabalLibVersion >= mkVersion [3, 13, 0] = WorkingDirFlag
+      | otherwise = WorkingDirCwd
 
 -- | Run a configured 'Setup' with specific arguments.
 runSetup
   :: Verbosity
   -> Setup UseGeneralSetup
+  -> SetupWorkingDirMethod
   -> [String]
   -- ^ command-line arguments
   -> SetupRunnerArgs UseGeneralSetup
   -> IO (SetupRunnerRes UseGeneralSetup)
-runSetup verbosity setup args0 setupArgs = do
+runSetup verbosity setup workDirMethod args0 setupArgs = do
   let method = setupMethod setup
       options = setupScriptOptions setup
       bt = setupBuildType setup
@@ -560,7 +598,7 @@ runSetup verbosity setup args0 setupArgs = do
         ++ "  After:  "
         ++ show args
         ++ "\n"
-  runSetupMethod method verbosity options bt args setupArgs
+  runSetupMethod workDirMethod method verbosity options bt args setupArgs
 
 -- | This is a horrible hack to make sure passing fancy verbosity
 -- flags (e.g., @-v'info +callstack'@) doesn't break horribly on
@@ -613,10 +651,42 @@ runSetupCommand verbosity setup cmd getCommonFlags flags extraArgs setupArgs =
   -- The 'setupWorkingDir' flag corresponds to a global argument which needs to
   -- be passed before the individual command (e.g. 'configure' or 'build').
   let common = getCommonFlags flags
-      globalFlags = mempty { globalWorkingDir = setupWorkingDir common }
+      workDirMethod = setupWorkingDirMethod (setupBuildType setup) (setupVersion setup)
+      globalFlags = case workDirMethod of
+        WorkingDirFlag -> mempty { globalWorkingDir = setupWorkingDir common }
+        WorkingDirCwd -> mempty
       args = commandShowOptions (globalCommand []) globalFlags
           ++ (commandName cmd : commandShowOptions cmd flags ++ extraArgs)
-  in runSetup verbosity setup args setupArgs
+  in runSetup verbosity setup workDirMethod args setupArgs
+
+-- | Run a @Setup repl@ that writes multi-repl options files into a temporary
+-- directory, then move these files into the given output directory, prefixed
+-- with @-working-dir@ so that GHC resolves their relative paths against the
+-- directory that the @Setup@ was run in.
+withReplOptionsRelativeTo
+  :: SymbolicPath CWD (Dir Pkg)
+  -- ^ working directory of the @Setup@ process
+  -> FilePath
+  -- ^ multi-repl output directory
+  -> (FilePath -> IO a)
+  -- ^ run @Setup repl@, writing options into the given directory
+  -> IO a
+withReplOptionsRelativeTo pkgDir outDir runSetupRepl =
+  withTempDirectory outDir "setup-repl" $ \tmpDir -> do
+    res <- runSetupRepl tmpDir
+    unitFiles <- filter (/= "paths") <$> listDirectory tmpDir
+    for_ unitFiles $ \unitFile -> do
+      opts <- SBS.readFile (tmpDir </> unitFile)
+      SBS.writeFile (outDir </> unitFile) $
+        toUTF8BS (escapeArgs ["-working-dir", getSymbolicPath pkgDir]) <> opts
+    let pathsDir = tmpDir </> "paths"
+    hasPaths <- doesDirectoryExist pathsDir
+    when hasPaths $ do
+      createDirectoryIfMissing False (outDir </> "paths")
+      pathFiles <- listDirectory pathsDir
+      for_ pathFiles $ \pathFile ->
+        renameFile (pathsDir </> pathFile) (outDir </> "paths" </> pathFile)
+    return res
 
 -- | Configure a 'Setup' and run a command in one step. The command flags
 -- may depend on the Cabal library version in use.
@@ -642,8 +712,20 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
     extraArgs = getExtraArgs version
   case setupMethod setup of
     ExternalMethod path -> do
-      runSetupCommand verbosity setup{setupMethod = ExternalMethod path}
-        cmd getCommonFlags flags extraArgs NotInLibrary
+      let runExternal flags' =
+            runSetupCommand verbosity setup{setupMethod = ExternalMethod path}
+              cmd getCommonFlags flags' extraArgs NotInLibrary
+      case wrapperArgs of
+        InLibraryArgs (InLibraryPostConfigureArgs SReplPhase _)
+          | WorkingDirCwd <- setupWorkingDirMethod (setupBuildType setup) version
+          , Just pkgDir <- useWorkingDir options
+          , Flag outDir <- replOptionsFlagOutput (replReplOptions flags)
+          -> withReplOptionsRelativeTo pkgDir outDir $ \tmpDir ->
+               runExternal flags
+                 { replReplOptions =
+                     (replReplOptions flags) { replOptionsFlagOutput = Flag tmpDir }
+                 }
+        _ -> runExternal flags
       return $ case wrapperArgs of
        NotInLibrary -> ()
        InLibraryArgs libArgs ->
@@ -768,8 +850,9 @@ things:
 
 -- ------------------------------------------------------------
 
-invoke :: Verbosity -> FilePath -> [String] -> SetupScriptOptions -> IO ()
-invoke verbosity path args options = do
+-- | Run a @Setup@ executable.
+invoke :: Verbosity -> SetupWorkingDirMethod -> FilePath -> [String] -> SetupScriptOptions -> IO ()
+invoke verbosity workDirMethod path args options = do
   info verbosity $ unwords (path : args)
   case useLoggingHandle options of
     Nothing -> return ()
@@ -783,20 +866,27 @@ invoke verbosity path args options = do
   env <-
     getEffectiveEnvironment $
       [ ("PATH", Just searchpath)
-      , ("HASKELL_DIST_DIR", Just (getSymbolicPath $ useDistPref options))
+      , ("HASKELL_DIST_DIR", Just distDir)
       ]
         ++ progOverrideEnv progDb
 
   let loggingHandle = maybe Inherit UseHandle (useLoggingHandle options)
       cp =
         (proc path args)
-          { Process.cwd = getSymbolicPath <$> useWorkingDir options
+          { Process.cwd = cwd
           , Process.env = env
           , Process.std_out = loggingHandle
           , Process.std_err = loggingHandle
           , Process.delegate_ctlc = isInteractive options
           }
   maybeExit $ rawSystemProc verbosity cp
+  where
+    (cwd, distDir) =
+      case workDirMethod of
+        WorkingDirFlag ->
+          (Nothing, interpretSymbolicPath (useWorkingDir options) (useDistPref options))
+        WorkingDirCwd ->
+          (getSymbolicPath <$> useWorkingDir options, getSymbolicPath (useDistPref options))
 
 -- ------------------------------------------------------------
 
@@ -804,11 +894,12 @@ invoke verbosity path args options = do
 
 -- ------------------------------------------------------------
 
-externalSetupMethod :: WithCallStack (FilePath -> SetupRunner UseGeneralSetup)
-externalSetupMethod path verbosity options _ args NotInLibrary =
+externalSetupMethod :: WithCallStack (SetupWorkingDirMethod -> FilePath -> SetupRunner UseGeneralSetup)
+externalSetupMethod workDirMethod path verbosity options _ args NotInLibrary =
 #ifndef mingw32_HOST_OS
   invoke
     verbosity
+    workDirMethod
     path
     args
     options
@@ -818,7 +909,7 @@ externalSetupMethod path verbosity options _ args NotInLibrary =
       then invokeWithWin32CleanHack path
       else invoke' path
   where
-    invoke' p = invoke verbosity p args options
+    invoke' p = invoke verbosity workDirMethod p args options
 
     invokeWithWin32CleanHack origPath = do
       info verbosity $ "Using the Win32 clean hack."
