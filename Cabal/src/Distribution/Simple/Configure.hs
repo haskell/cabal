@@ -563,6 +563,8 @@ configureFinal
         opts' <- adjustBuildOptionsAndWarn verbosity comp (LBC.withPrograms lbc0) opts
         return lbc0{LBC.withBuildOptions = opts'}
 
+      warnProfLateWithDefaultDetail verbosity cfg pkgDescr0 (LBC.withBuildOptions lbc1)
+
       -- Cabal package-wide configure
       (lbc2, pbd2) <-
         configurePackage verbHandles cfg lbc1 pkgDescr0 flags enabledComps comp platform packageDbs
@@ -978,6 +980,40 @@ adjustBuildOptions comp programDb opts =
     libCov
       | LBC.libCoverage opts, not (coverageSupported comp) = False
       | otherwise = LBC.libCoverage opts
+
+-- | Warn when @-fprof-late@ is passed as a GHC option while the profiling
+-- detail level is left at its default. The default level adds its own cost
+-- centres on top of the late ones, which costs more without giving a better
+-- profile (#9052).
+--
+-- This looks at the effective detail level rather than whether the flag was
+-- set, because cabal-install always passes an explicit level. It runs from
+-- 'configureFinal', which both @Setup configure@ and cabal-install go through.
+warnProfLateWithDefaultDetail
+  :: Verbosity
+  -> ConfigFlags
+  -> PackageDescription
+  -> LBC.BuildOptions
+  -> IO ()
+warnProfLateWithDefaultDetail verbosity cfg pkgDescr opts =
+  when ("-fprof-late" `elem` ghcArgs && usesDefaultDetail) $
+    warn
+      verbosity
+      ( "The GHC option -fprof-late is set, but the profiling detail level "
+          ++ "is left at its default, which adds its own cost centres on top "
+          ++ "of the late ones. This increases overhead without improving the "
+          ++ "profile. Use '--profiling-detail=late' (or 'profiling-detail: late' "
+          ++ "in cabal.project) instead of passing -fprof-late as a GHC option."
+      )
+  where
+    ghcArgs =
+      concat [args | ("ghc", args) <- configProgramArgs cfg]
+        ++ map Text.unpack (concatMap (hcOptions GHC) (allBuildInfo pkgDescr))
+    usesDefaultDetail =
+      (LBC.withProfExe opts && LBC.withProfExeDetail opts == ProfDetailDefault)
+        || ( (LBC.withProfLib opts || LBC.withProfLibShared opts)
+              && LBC.withProfLibDetail opts == ProfDetailDefault
+           )
 
 -- | Warnings to emit after downgrading 'LBC.BuildOptions' when the
 -- compiler (or another toolchain program) doesn't support a requested feature.
