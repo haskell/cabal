@@ -427,16 +427,15 @@ dataDirsEnvironmentForPlan
   :: DistDirLayout
   -> ElaboratedInstallPlan
   -> [(String, Maybe FilePath)]
-dataDirsEnvironmentForPlan distDirLayout =
-  -- Each component of a package is a unit of its own in the plan, and they
-  -- all give the same variable.
-  ordNub
-    . mapMaybe
-      ( InstallPlan.foldPlanPackage
-          (const Nothing)
-          (dataDirEnvVarForPackage distDirLayout)
-      )
-    . InstallPlan.toList
+dataDirsEnvironmentForPlan distDirLayout plan =
+  -- The plan has a unit for each component of a package, and the variable is
+  -- the package's: take it once per package.
+  Map.elems $
+    Map.fromList
+      [ (packageId elab, var)
+      | elab <- mapMaybe (InstallPlan.foldPlanPackage (const Nothing) Just) (InstallPlan.toList plan)
+      , var <- maybeToList (dataDirEnvVarForPackage distDirLayout elab)
+      ]
 
 -- | Construct an environment variable that points
 -- the package's datadir to its correct location.
