@@ -86,8 +86,6 @@ import Distribution.Simple.LocalBuildInfo
   , LibraryName (..)
   )
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
-import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.Setup as Cabal
@@ -111,7 +109,6 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.List.NonEmpty as NE
 
-import Control.Concurrent.STM (TVar, atomically, modifyTVar)
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
 import Data.IORef (newIORef, readIORef, writeIORef)
 import GHC.Clock (getMonotonicTime)
@@ -176,7 +173,7 @@ buildAndRegisterUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> TVar InstalledPackageIndex
+  -> ProjectInstalledIndex
   -- ^ Running 'InstalledPackageIndex', updated as @cabal-install@ registers
   -- packages
   -> SymbolicPath CWD (Dir Pkg)
@@ -202,7 +199,7 @@ buildAndRegisterUnpackedPackage
     }
   plan
   rpkg@(ReadyPackage pkg)
-  ipiTVar
+  installedIndex
   srcdir
   builddir
   mlogFile
@@ -217,7 +214,7 @@ buildAndRegisterUnpackedPackage
               Cabal.configCommonFlags
               configureFlags
               configureArgs
-              (InLibraryArgs $ InLibraryConfigureArgs pkgshared rpkg ipiTVar)
+              (InLibraryArgs $ InLibraryConfigureArgs pkgshared rpkg installedIndex)
 
     -- Build phase
     timedDelegate $
@@ -533,7 +530,7 @@ buildInplaceUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> TVar InstalledPackageIndex
+  -> ProjectInstalledIndex
   -> BuildStatusRebuild
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
@@ -552,7 +549,7 @@ buildInplaceUnpackedPackage
   pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
   plan
   rpkg@(ReadyPackage pkg)
-  ipiTVar
+  installedIndex
   buildStatus
   srcdir
   builddir = do
@@ -576,7 +573,7 @@ buildInplaceUnpackedPackage
         pkgshared
         plan
         rpkg
-        ipiTVar
+        installedIndex
         srcdir
         builddir
         Nothing -- no log file for inplace builds!
@@ -632,7 +629,7 @@ buildInplaceUnpackedPackage
                     -- Keep the per-project running InstalledPackageIndex up to date.
                     -- See (ProjIPI2) from Note [Per-project InstalledPackageIndex]
                     -- in Distribution.Client.ProjectBuilding.
-                    atomically $ modifyTVar ipiTVar (PackageIndex.insert ipkg)
+                    insertProjectInstalledIndex ipkg installedIndex
                     return (Just ipkg)
                   else return Nothing
 
@@ -738,7 +735,7 @@ buildInplaceUnpackedPackage
       whenReRegister action =
         case buildStatus of
           -- We registered the package already.
-          -- No need to update ipiTVar: the InstalledPackageInfo for this package
+          -- No need to update installedIndex: the InstalledPackageInfo for this package
           -- was picked up at startup.
           -- See Note [Per-project InstalledPackageIndex] in Distribution.Client.ProjectBuilding.
           BuildStatusBuild (Just _) _ ->
@@ -771,7 +768,7 @@ buildAndInstallUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> TVar InstalledPackageIndex
+  -> ProjectInstalledIndex
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
   -> IO BuildResult
@@ -791,7 +788,7 @@ buildAndInstallUnpackedPackage
     }
   plan
   rpkg@(ReadyPackage pkg)
-  ipiTVar
+  installedIndex
   srcdir
   builddir = do
     createDirectoryIfMissingVerbose verbosity True (interpretSymbolicPath (Just srcdir) builddir)
@@ -820,7 +817,7 @@ buildAndInstallUnpackedPackage
         pkgshared
         plan
         rpkg
-        ipiTVar
+        installedIndex
         srcdir
         builddir
         mlogFile
@@ -886,7 +883,7 @@ buildAndInstallUnpackedPackage
               -- (takes ~100ms).
               mipkg <- readIORef ipkgRef
               ipkg <- maybe getInstalledPackageInfo return mipkg
-              atomically $ modifyTVar ipiTVar (PackageIndex.insert ipkg)
+              insertProjectInstalledIndex ipkg installedIndex
 
           -- No tests on install
           PBTestPhase{} -> return ()

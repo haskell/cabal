@@ -164,13 +164,13 @@ import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Verbosity
 import Distribution.Client.Errors
 import qualified Distribution.Client.InLibrary as InLibrary
+import Distribution.Client.ProjectBuilding.Types (ProjectInstalledIndex, readProjectInstalledIndex)
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Simple.SetupHooks.HooksMain
   ( hooksVersion )
 import Distribution.Client.SetupHooks.CallHooksExe
   ( externalSetupHooksABI, hooksProgFilePath )
 
-import Control.Concurrent.STM (TVar, readTVarIO)
 import qualified Data.ByteString.Lazy as BS
 import Data.Kind (Type, Constraint)
 import qualified Data.Map.Lazy as Map
@@ -231,7 +231,7 @@ data InLibraryArgs (lbi :: Type) (flags :: Type) where
   InLibraryConfigureArgs
     :: ElaboratedSharedConfig
     -> ElaboratedReadyPackage
-    -> TVar InstalledPackageIndex
+    -> ProjectInstalledIndex
     -> InLibraryArgs lbi ConfigFlags
   InLibraryPostConfigureArgs
     :: SPostConfigurePhase flags
@@ -278,8 +278,8 @@ inLibraryMethod :: SetupRunnerArgs spec -> Maybe (SetupMethod spec)
 inLibraryMethod NotInLibrary = Nothing
 inLibraryMethod (InLibraryArgs libArgs) =
   LibraryMethod <$> case libArgs of
-    InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar ->
-      Just (InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar)
+    InLibraryConfigureArgs elabSharedConfig elabReadyPkg installedIndex ->
+      Just (InLibraryConfigureArgs elabSharedConfig elabReadyPkg installedIndex)
     InLibraryPostConfigureArgs sPhase mbLBI ->
       InLibraryPostConfigureArgs sPhase <$> mbLBI
 
@@ -658,7 +658,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                SRegisterPhase -> ()
                STestPhase     -> ()
                SBenchPhase    -> ()
-    LibraryMethod (InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar) -> do
+    LibraryMethod (InLibraryConfigureArgs elabSharedConfig elabReadyPkg installedIndex) -> do
       -- Start from the pre-configured compiler ProgramDb, augmented
       -- with all builtin programs (restored as unconfigured).
       -- This ensures:
@@ -683,10 +683,11 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
           (useExtraPathEnv options)
           (useExtraEnvOverrides options)
           baseProgDb
-      -- Read the project InstalledPackageIndex to avoid needing to query
-      -- @ghc-pkg@ to obtain it.
+      -- Read the project InstalledPackageIndex, loading it if this is the
+      -- first configure to need it, to avoid querying @ghc-pkg@ per package.
+      -- See (ProjIPI3) from Note [Per-project InstalledPackageIndex]
       -- in Distribution.Client.ProjectBuilding.
-      ipi <- readTVarIO ipiTVar
+      ipi <- readProjectInstalledIndex installedIndex
       lbi0 <-
         InLibrary.configure
           (InLibrary.libraryConfigureInputsFromElabPackage

@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -- | Types for the "Distribution.Client.ProjectBuilding"
 --
 -- Moved out to avoid module cycles.
@@ -18,6 +20,12 @@ module Distribution.Client.ProjectBuilding.Types
   , DeferredBenchmark (..)
   , BuildFailure (..)
   , BuildFailureReason (..)
+
+    -- * Per-project installed package index
+  , ProjectInstalledIndex
+  , newProjectInstalledIndex
+  , readProjectInstalledIndex
+  , insertProjectInstalledIndex
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -29,6 +37,10 @@ import Distribution.Client.Types (DocsResult, TestsResult)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package (PackageId, UnitId)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
+
+import Control.Concurrent.MVar (MVar, modifyMVar, modifyMVar_, newMVar)
 
 ------------------------------------------------------------------------------
 -- Pre-build status: result of the dry run
@@ -187,3 +199,38 @@ data BuildFailureReason
   | BenchFailed SomeException
   | InstallFailed SomeException
   deriving (Show)
+
+------------------------------------------------------------------------------
+-- Per-project installed package index
+--
+
+-- | The running 'InstalledPackageIndex' of the whole project, read from the
+-- package dbs the first time a package is configured. See
+-- Note [Per-project InstalledPackageIndex] in "Distribution.Client.ProjectBuilding".
+data ProjectInstalledIndex
+  = ProjectInstalledIndex
+      (IO InstalledPackageIndex)
+      -- ^ The bulk read of every package db the plan touches, run at most once.
+      (MVar (Maybe InstalledPackageIndex))
+      -- ^ 'Nothing' until the first 'readProjectInstalledIndex'.
+
+-- | Make an index that runs the given read on first use.
+newProjectInstalledIndex :: IO InstalledPackageIndex -> IO ProjectInstalledIndex
+newProjectInstalledIndex load = ProjectInstalledIndex load <$> newMVar Nothing
+
+-- | Read the index, loading it first if no one has yet. Concurrent first
+-- readers wait for the one load rather than each running their own.
+readProjectInstalledIndex :: ProjectInstalledIndex -> IO InstalledPackageIndex
+readProjectInstalledIndex (ProjectInstalledIndex load var) =
+  modifyMVar var $ \case
+    Just ipi -> return (Just ipi, ipi)
+    Nothing -> do
+      ipi <- load
+      return (Just ipi, ipi)
+
+-- | Record a library that was just registered. Before the first read this is
+-- a no-op: the registration went to one of the package dbs that the read
+-- covers, so the index will pick it up then.
+insertProjectInstalledIndex :: InstalledPackageInfo -> ProjectInstalledIndex -> IO ()
+insertProjectInstalledIndex ipkg (ProjectInstalledIndex _ var) =
+  modifyMVar_ var (return . fmap (PackageIndex.insert ipkg))
