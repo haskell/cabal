@@ -1923,10 +1923,11 @@ Program locations
 
 .. cfg-section:: program-locations
 
-The ``program-locations`` stanza tells ``cabal`` where to find the programs it
-runs during a build. Each program gets a ``<prog>-location`` field, and any
-program from the :ref:`list of known programs<program_options>` can be given
-one. For example:
+A ``<prog>-location: PATH`` field in the ``program-locations`` stanza is the
+strongest way to say which program ``cabal`` should run: ``cabal`` uses that
+exact path and ignores every other way it would otherwise have found the
+program. Any program from the :ref:`list of known programs<program_options>`
+can be given a location. For example:
 
 ::
 
@@ -1941,20 +1942,6 @@ configuration file.
 
 The C compiler set with ``gcc-location`` is passed on to GHC (as ``-pgmc``), so
 it is used for the C sources of your local packages and of their dependencies.
-
-The same ``<prog>-location`` fields can be given inside a ``package`` stanza to
-use a different program for just that package, for example a particular
-version of a preprocessor:
-
-::
-
-    package foo
-        happy-location: /opt/happy-1.20/bin/happy
-
-This does not work for the compiler itself or the programs that come with it,
-such as ``ghc`` and ``ghc-pkg``, because all packages have to be built with the
-same compiler. ``cabal`` reports an error if one of those is set inside a
-``package`` stanza. Use :cfg-field:`with-compiler` to choose the compiler.
 
 Advanced global options
 -----------------------
