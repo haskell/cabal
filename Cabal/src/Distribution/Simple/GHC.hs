@@ -348,6 +348,8 @@ compilerProgramDb verbosity comp progdb1 hcPkgPath = do
 -- > /usr/local/bin/ghc-pkg-ghc-6.6.1(.exe)
 -- > /usr/local/bin/ghc-pkg-6.6.1(.exe)
 -- > /usr/local/bin/ghc-pkg(.exe)
+--
+-- See (C) in Note [Program search paths] in "Distribution.Simple.Configure".
 guessToolFromGhcPath
   :: Program
   -> ConfiguredProgram

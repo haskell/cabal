@@ -94,7 +94,11 @@ import Distribution.Simple.PackageIndex as PackageIndex
   ( InstalledPackageIndex
   , lookupPackageName
   )
-import Distribution.Simple.Program (ProgramDb)
+import Distribution.Simple.Program
+  ( ProgramDb
+  , ProgramSearchPathEntry (..)
+  , getProgramSearchPath
+  )
 import Distribution.Simple.Setup
   ( CommonSetupFlags (..)
   , ConfigFlags (..)
@@ -285,7 +289,9 @@ configureSetupScript
       , useDistPref = distPref
       , useLoggingHandle = Nothing
       , useWorkingDir = Nothing
-      , useExtraPathEnv = []
+      , -- The program DB was made by 'mkProgramDb', so we can recover the
+        -- program search dirs by looking there.
+        useProgramSearchDirs = [dir | ProgramSearchPathDir dir <- getProgramSearchPath progdb]
       , useExtraEnvOverrides = []
       , setupCacheLock = lock
       , useWin32CleanHack = False

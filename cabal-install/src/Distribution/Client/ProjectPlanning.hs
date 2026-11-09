@@ -4008,16 +4008,12 @@ setupHsScriptOptions
                 elabSetupDependencies elab
             ]
       , useVersionMacros = elabSetupScriptStyle == SetupCustomExplicitDeps
-      , -- Don't leak local program search paths via the compiler's ProgramDb.
-        useProgramDb = setProgramSearchPath defaultProgramSearchPath pkgConfigCompilerProgs
+      , useProgramDb = pkgConfigCompilerProgs
       , useDistPref = builddir
       , useLoggingHandle = Nothing -- this gets set later
       , useWorkingDir = Just srcdir
-      , useExtraPathEnv = elabExeDependencyPaths elab ++ elabProgramPathExtra
-      , -- note that the above adds the extra-prog-path directly following the elaborated
-        -- dep paths, so that it overrides the normal path, but _not_ the elaborated extensions
-        -- for build-tools-depends.
-        useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
+      , useProgramSearchDirs = elabProgramSearchDirs elab
+      , useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
       , useWin32CleanHack = False -- TODO: [required eventually]
       , setupCacheLock = Just cacheLock
       , isInteractive = False
@@ -4192,7 +4188,8 @@ setupHsConfigureFlags
 
       configProgramPaths = Map.toList elabProgramPaths
       configProgramArgs = Map.toList elabProgramArgs
-      configProgramPathExtra = toNubList elabProgramPathExtra
+      -- See (B) and (E) in Note [Program search paths] in Distribution.Simple.Configure.
+      configProgramPathExtra = toNubList (elabProgramSearchDirs elab)
       configHcFlavor = toFlag (compilerFlavor pkgConfigCompiler)
       configHcPath = mempty -- we use configProgramPaths instead
       configHcPkg = mempty -- we use configProgramPaths instead

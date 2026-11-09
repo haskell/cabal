@@ -24,12 +24,11 @@ import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
-import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.Find (programSearchPathAsPATHVar)
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
 import Distribution.System (Platform, buildPlatform)
-import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
 
@@ -166,18 +165,15 @@ runConfigureScript verbHandles cfg flags programDb hp = do
                , Just $ unwords [showFlagValue fv | fv <- unFlagAssignment flags]
                )
              ]
-  let extraPath = fromNubList $ configProgramPathExtra cfg
+  -- The configure script runs with the same search path as the package's
+  -- programs: see Note [Program search paths] in Distribution.Simple.Configure.
+  let searchPath = getProgramSearchPath programDb
+  pathEnv <- programSearchPathAsPATHVar searchPath
   let mkFlagsEnv fs var = maybe (unwords fs) (++ (" " ++ unwords fs)) (lookup var env)
-      spSep = [FilePath.searchPathSeparator]
-      pathEnv =
-        maybe
-          (intercalate spSep extraPath)
-          ((intercalate spSep extraPath ++ spSep) ++)
-          $ lookup "PATH" env
       overEnv =
         ("CFLAGS", Just (mkFlagsEnv ccFlags "CFLAGS"))
           : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
-          ++ [("PATH", Just pathEnv) | not (null extraPath)]
+          ++ [("PATH", Just pathEnv)]
           ++ cabalFlagEnv
       maybeHostFlag = ["--host=" ++ show (pretty hp) | hp /= buildPlatform]
       args' =
@@ -187,7 +183,7 @@ runConfigureScript verbHandles cfg flags programDb hp = do
           ++ ["CXX=" ++ cxxProgShort | Just cxxProgShort <- [mcxxProgShort]]
           ++ maybeHostFlag
       shProg = simpleProgram "sh"
-  progDb <- prependProgramSearchPath verbosity extraPath [] emptyProgramDb
+  let progDb = setProgramSearchPath searchPath emptyProgramDb
   shConfiguredProg <-
     lookupProgram shProg
       `fmap` configureProgram verbosity shProg progDb

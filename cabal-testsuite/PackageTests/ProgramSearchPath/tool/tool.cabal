@@ -1,0 +1,9 @@
+cabal-version: 3.0
+name: tool
+version: 0
+build-type: Simple
+
+executable tool
+  main-is: Main.hs
+  build-depends: base
+  default-language: Haskell2010

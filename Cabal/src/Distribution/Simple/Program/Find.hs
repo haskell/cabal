@@ -89,6 +89,8 @@ findProgramOnSearchPath
   -> IO (Maybe (FilePath, [FilePath]))
 findProgramOnSearchPath verbosity searchpath prog = do
   debug verbosity $ "Searching for " ++ prog ++ " in path."
+  -- TODO: this probes a directory twice if it is listed both as a
+  -- 'ProgramSearchPathDir' and in PATH.
   res <- tryPathElems [] searchpath
   case res of
     Nothing -> debug verbosity ("Cannot find " ++ prog ++ " on the path")
@@ -176,6 +178,8 @@ getExtraPathEnv verbosity env extras = do
 -- algorithm looks at more than just the @%PATH%@.
 programSearchPathAsPATHVar :: ProgramSearchPath -> IO String
 programSearchPathAsPATHVar searchpath = do
+  -- TODO: this lists a directory twice if it is listed both as a
+  -- 'ProgramSearchPathDir' and in PATH.
   ess <- traverse getEntries searchpath
   return (intercalate [searchPathSeparator] (concat ess))
   where

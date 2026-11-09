@@ -1,6 +1,7 @@
 ---
 synopsis: Top-level extra-prog-path only applies to local packages
 packages: [cabal-install]
+prs: 12556
 ---
 
 A top-level `extra-prog-path` in a project file now properly applies to local

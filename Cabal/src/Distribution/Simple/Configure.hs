@@ -102,7 +102,6 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
   ( ProgramDb (..)
   , lookupProgramByName
-  , modifyProgramSearchPath
   , prependProgramSearchPath
   , updateConfiguredProgs
   )
@@ -1599,9 +1598,8 @@ mkPromisedDepsSet comps = Map.fromList [((packageName pn, CLibName ln), p) | p@(
 -- arguments.
 mkProgramDb :: VerbosityHandles -> ConfigFlags -> ProgramDb -> IO ProgramDb
 mkProgramDb verbHandles cfg initialProgramDb = do
-  programDb <-
-    modifyProgramSearchPath (getProgramSearchPath initialProgramDb ++) -- We need to have the paths to programs installed by build-tool-depends before all other paths
-      <$> prependProgramSearchPath verbosity searchpath [] initialProgramDb
+  -- See (B), (E) and (P) in Note [Program search paths]
+  programDb <- prependProgramSearchPath verbosity searchpath [] initialProgramDb
   pure
     . userSpecifyArgss (configProgramArgs cfg)
     . userSpecifyPaths (configProgramPaths cfg)
@@ -1610,12 +1608,54 @@ mkProgramDb verbHandles cfg initialProgramDb = do
     verbosity = mkVerbosity verbHandles $ fromFlagOrDefault normal (configVerbosity cfg)
     searchpath = fromNubList (configProgramPathExtra cfg)
 
--- Note. We try as much as possible to _prepend_ rather than postpend the extra-prog-path
--- so that we can override the system path. However, in a v2-build, at this point, the "system" path
--- has already been extended by both the built-tools-depends paths, as well as the program-path-extra
--- so for v2 builds adding it again is entirely unnecessary. However, it needs to get added again _anyway_
--- so as to take effect for v1 builds or standalone calls to Setup.hs
--- In this instance, the lesser evil is to not allow it to override the system path.
+{- Note [Program search paths]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Within Cabal, configuration (of a package or of a single component within a
+package) produces a program search path (see 'progSearchPath'). It is used:
+
+  1. When configuring a program, to find its location
+     (see 'configureUnconfiguredProgram').
+  2. When running a program: 'programOverrideEnv' modifies the environment a
+     program runs in so that it gets a PATH that reflects the search path we
+     used to locate the program when we configured it.
+
+Program lookup proceeds as follows:
+
+  (O) Use the explicit override, if there was one (e.g. "--with-happy=<path>").
+
+      The override is given by 'configProgramPaths' (one entry per --with-PROG flag)
+      and recorded in the 'ProgramDb' by 'userSpecifyPaths'.
+
+  (C) If the program comes bundled with the compiler, then use the location of
+      the compiler to find it (e.g. find `ghc-pkg` next to where we found `ghc`).
+      See 'guessToolFromGhcPath'.
+
+  If none of the cases above apply, we fall back to the program search path,
+  which must respect the following order:
+
+    (B) Build tools specified in 'build-tool-depends'. This includes both
+        internal and external build tools.
+    (E) Search paths given with --extra-prog-path, e.g. '--extra-prog-path=/opt/llvm/bin'.
+    (P) The PATH environment variable.
+
+We arrange this as follows:
+
+  1. Cabal puts internal build tools at the front, with 'addInternalBuildTools'.
+     (This is a bit of a special case, as it happens when building, not at
+     configure time.)
+  2. The rest of B & E is seen by Cabal as a single list that it gets given
+     (see 'configProgramPathExtra').
+
+     It is the responsibility of callers (e.g. cabal-install) to construct this
+     list in a way that respects the order above, for example by putting the
+     directories of external build tools first in this list.
+  3. Cabal falls back to P when lookup in 'configProgramPathExtra' fails.
+
+B takes precedence over both E and P to ensure that build tools that were solved
+for are used (e.g. to ensure the build tool has the exact version requested by
+the user, as in #9756).
+E takes precedence over P to allow users to customise program locations.
+-}
 
 -- -----------------------------------------------------------------------------
 -- Helper functions for configure
