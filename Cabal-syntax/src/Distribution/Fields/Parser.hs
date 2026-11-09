@@ -462,12 +462,11 @@ elementInNonLayoutContext name =
 -- fieldLayoutOrBraces   ::= comment* '\\n'? '{' comment* (content comment*)* '}'
 --                         | comment* line? comment* ('\\n' line comment*)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field (WithComments Position))
-fieldLayoutOrBraces ilevel name = try braces <|> fieldLayout
+fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
   where
     braces :: Parser (Field (WithComments Position))
     braces = do
-      cmts <- many tokComment
-      openBrace
+      cmts <- try (many tokComment <* openBrace)
       (cmts', ls) <-
         inLexerMode (LexerMode in_field_braces) (liftA2 (,) (many tokComment) (many (commentsAfter fieldContent)))
       closeBrace
