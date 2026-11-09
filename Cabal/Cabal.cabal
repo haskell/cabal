@@ -171,6 +171,7 @@ library
     Distribution.Simple.Utils
     Distribution.TestSuite
     Distribution.Types.AnnotatedId
+    Distribution.Types.ComponentDiff
     Distribution.Types.ComponentInclude
     Distribution.Types.ConfigFlags
     Distribution.Types.DumpBuildInfo

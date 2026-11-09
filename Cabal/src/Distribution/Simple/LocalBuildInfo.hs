@@ -27,6 +27,7 @@ module Distribution.Simple.LocalBuildInfo
   , packageRoot
   , packageRootLBI
   , configFlags
+  , localPkgDescr
   , progPrefix
   , progSuffix
   , interpretSymbolicPathLBI
@@ -259,12 +260,9 @@ depLibraryPaths
 depLibraryPaths
   inplace
   relative
-  lbi@( LocalBuildInfo
-          { localPkgDescr = pkgDescr
-          , installedPkgs = installed
-          }
-        )
+  lbi@(LocalBuildInfo{installedPkgs = installed})
   clbi = do
+    let pkgDescr = localPkgDescr lbi
     let installDirs = absoluteComponentInstallDirs pkgDescr lbi (componentUnitId clbi) NoCopyDest
         executable = case clbi of
           ExeComponentLocalBuildInfo{} -> True

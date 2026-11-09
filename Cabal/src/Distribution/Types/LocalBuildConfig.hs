@@ -17,6 +17,7 @@ module Distribution.Types.LocalBuildConfig
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.ComponentDiff (ComponentDiff)
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ConfigFlags (ComponentConfigFlags, PackageConfigFlags)
@@ -90,6 +91,8 @@ data ComponentBuildDescr = ComponentBuildDescr
   -- the hpc coverage report for testsuites run with @--enable-coverage@.
   -- Notably, this list must exclude indefinite libraries and instantiations
   -- because HPC does not support backpack (Nov. 2023).
+  , componentDiffs :: Map ComponentName ComponentDiff
+  -- ^ Per-component diffs relative to the package-level package description.
   , componentGraph :: Graph ComponentLocalBuildInfo
   -- ^ All the components to build, ordered by topological
   -- sort, and with their INTERNAL dependencies over the

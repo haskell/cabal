@@ -10,7 +10,7 @@ where
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.LocalBuildInfo (componentNameTargets', distPrefLBI)
+import Distribution.Types.LocalBuildInfo (componentNameTargets', distPrefLBI, localPkgDescr)
 import Distribution.Types.TargetInfo (targetCLBI)
 
 import Distribution.Client.Utils (tryCanonicalizePath)

@@ -525,11 +525,7 @@ replAction verbHandles globalFlags hooks flags args = do
   let pkg_descr0 = localPkgDescr lbi
   sanityCheckHookedBuildInfo verbosity pkg_descr0 pbi
   let pkg_descr = updatePackageDescription pbi pkg_descr0
-      lbi' =
-        lbi
-          { withPrograms = progs
-          , localPkgDescr = pkg_descr
-          }
+      lbi' = (applyHookedBuildInfo pbi lbi){withPrograms = progs}
   replHook hooks pkg_descr lbi' hooks flags' args
   postRepl hooks args flags' pkg_descr lbi'
 
@@ -800,9 +796,14 @@ hookedActionWithArgs
     let pkg_descr0 = localPkgDescr lbi0
     sanityCheckHookedBuildInfo verbosity pkg_descr0 pbi
     let pkg_descr = updatePackageDescription pbi pkg_descr0
-        lbi = lbi0{localPkgDescr = pkg_descr}
+        lbi = applyHookedBuildInfo pbi lbi0
     cmd_hook hooks args pkg_descr lbi hooks flags
     post_hook hooks args flags pkg_descr lbi
+
+-- | Apply a 'HookedBuildInfo' to the package description of a 'LocalBuildInfo'.
+applyHookedBuildInfo :: HookedBuildInfo -> LocalBuildInfo -> LocalBuildInfo
+applyHookedBuildInfo hbi lbi =
+  lbi{packageLevelPkgDescr = updatePackageDescription hbi (packageLevelPkgDescr lbi)}
 
 sanityCheckHookedBuildInfo
   :: Verbosity -> PackageDescription -> HookedBuildInfo -> IO ()
@@ -998,7 +999,7 @@ autoconfUserHooks =
         pbi <- getHookedBuildInfo verbosity mbWorkDir (buildDir lbi)
         sanityCheckHookedBuildInfo verbosity pkg_descr pbi
         let pkg_descr' = updatePackageDescription pbi pkg_descr
-            lbi' = lbi{localPkgDescr = pkg_descr'}
+            lbi' = applyHookedBuildInfo pbi lbi
         postConf simpleUserHooks args flags pkg_descr' lbi'
 
     readHookWithArgs

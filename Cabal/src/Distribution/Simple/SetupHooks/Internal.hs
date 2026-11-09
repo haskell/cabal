@@ -84,7 +84,6 @@ where
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compat.Lens ((.~))
 import Distribution.ModuleName (ModuleName)
 import Distribution.PackageDescription
 import Distribution.Pretty (prettyShow)
@@ -116,7 +115,7 @@ import Distribution.Utils.Structured
   , structuredEncodeFile
   )
 
-import qualified Distribution.Types.BuildInfo.Lens as BI (buildInfo)
+import Distribution.Types.ComponentDiff
 import Distribution.Types.ConfigFlags (ComponentConfigFlags)
 import Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo (PersistedBuildInfo, commonFlagsBuildLocation)
@@ -127,6 +126,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Coerce (coerce)
 import Data.Either (fromRight)
+import Data.Functor.Compose (Compose (..))
 import qualified Data.Graph as Graph
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import qualified Data.List.NonEmpty as NE
@@ -536,30 +536,6 @@ type TestSuiteDiff = TestSuite
 type BenchmarkDiff = Benchmark
 type BuildInfoDiff = BuildInfo
 
--- | A diff to a Cabal 'Component', that gets combined monoidally into
--- an existing 'Component'.
-newtype ComponentDiff = ComponentDiff {componentDiff :: Component}
-  deriving (Semigroup, Show)
-
-emptyComponentDiff :: ComponentName -> ComponentDiff
-emptyComponentDiff name = ComponentDiff $
-  case name of
-    CLibName{} -> CLib emptyLibrary
-    CFLibName{} -> CFLib emptyForeignLib
-    CExeName{} -> CExe emptyExecutable
-    CTestName{} -> CTest emptyTestSuite
-    CBenchName{} -> CBench emptyBenchmark
-
-buildInfoComponentDiff :: ComponentName -> BuildInfo -> ComponentDiff
-buildInfoComponentDiff name bi = ComponentDiff $
-  BI.buildInfo .~ bi $
-    case name of
-      CLibName{} -> CLib emptyLibrary
-      CFLibName{} -> CFLib emptyForeignLib
-      CExeName{} -> CExe emptyExecutable
-      CTestName{} -> CTest emptyTestSuite
-      CBenchName{} -> CBench emptyBenchmark
-
 applyLibraryDiff :: Verbosity -> Library -> LibraryDiff -> IO Library
 applyLibraryDiff verbosity lib diff =
   case illegalLibraryDiffReasons lib diff of
@@ -749,65 +725,25 @@ illegalBuildInfoDiffReasons
            | not $ target_build_depends == targetBuildDepends bi || target_build_depends == targetBuildDepends emptyBuildInfo
            ]
 
--- | Traverse the components of a 'PackageDescription'.
+-- | Compute a diff for each component of a package description, and apply
+-- these diffs.
 --
--- The function must preserve the component type, i.e. map a 'CLib' to a 'CLib',
--- a 'CExe' to a 'CExe', etc.
-traverseComponents
-  :: Applicative m
-  => (Component -> m Component)
-  -> PackageDescription
-  -> m PackageDescription
-traverseComponents f pd =
-  upd_pd
-    <$> traverse f_lib (library pd)
-    <*> traverse f_lib (subLibraries pd)
-    <*> traverse f_flib (foreignLibs pd)
-    <*> traverse f_exe (executables pd)
-    <*> traverse f_test (testSuites pd)
-    <*> traverse f_bench (benchmarks pd)
-  where
-    f_lib lib = \case { CLib lib' -> lib'; c -> mismatch (CLib lib) c } <$> f (CLib lib)
-    f_flib flib = \case { CFLib flib' -> flib'; c -> mismatch (CFLib flib) c } <$> f (CFLib flib)
-    f_exe exe = \case { CExe exe' -> exe'; c -> mismatch (CExe exe) c } <$> f (CExe exe)
-    f_test test = \case { CTest test' -> test'; c -> mismatch (CTest test) c } <$> f (CTest test)
-    f_bench bench = \case { CBench bench' -> bench'; c -> mismatch (CBench bench) c } <$> f (CBench bench)
-
-    upd_pd lib sublibs flibs exes tests benchs =
-      pd
-        { library = lib
-        , subLibraries = sublibs
-        , foreignLibs = flibs
-        , executables = exes
-        , testSuites = tests
-        , benchmarks = benchs
-        }
-
-    -- This is a panic, because we maintain this invariant elsewhere:
-    -- see 'componentDiffError' in 'applyComponentDiff', which catches an
-    -- invalid per-component configure hook.
-    mismatch c1 c2 =
-      error $
-        "Mismatched component types: "
-          ++ showComponentName (componentName c1)
-          ++ " "
-          ++ showComponentName (componentName c2)
-          ++ "."
-{-# INLINEABLE traverseComponents #-}
-
+-- Returns the diffs together with the resulting package description.
 applyComponentDiffs
   :: Verbosity
   -> (Component -> IO (Maybe ComponentDiff))
   -> PackageDescription
-  -> IO PackageDescription
-applyComponentDiffs verbosity f = traverseComponents apply_diff
+  -> IO (Map ComponentName ComponentDiff, PackageDescription)
+applyComponentDiffs verbosity f = getCompose . traverseComponents (Compose . apply_diff)
   where
-    apply_diff :: Component -> IO Component
+    apply_diff :: Component -> IO (Map ComponentName ComponentDiff, Component)
     apply_diff c = do
       mbDiff <- f c
       case mbDiff of
-        Just diff -> applyComponentDiff verbosity c diff
-        Nothing -> return c
+        Just diff -> do
+          c' <- applyComponentDiff verbosity c diff
+          return (Map.singleton (componentName c) diff, c')
+        Nothing -> return (Map.empty, c)
 
 forComponents_ :: Applicative m => PackageDescription -> (Component -> m ()) -> m ()
 forComponents_ pd f = getAp . getConst $ traverseComponents (Const . Ap . f) pd
@@ -1273,9 +1209,6 @@ buildInfoExecutableDiff bi = emptyExecutable{buildInfo = bi}
 
 --------------------------------------------------------------------------------
 -- Instances for serialisation
-
-deriving newtype instance Binary ComponentDiff
-deriving newtype instance Structured ComponentDiff
 
 instance Binary PreConfPackageInputs
 instance Structured PreConfPackageInputs

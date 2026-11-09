@@ -115,6 +115,7 @@ import Distribution.Simple.SetupHooks.Internal
 import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.Utils
 import Distribution.System
+import Distribution.Types.ComponentDiff (ComponentDiff, addComponentDiffs)
 import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.ConfigFlags as CF
 import Distribution.Types.DependencySatisfaction (DependencySatisfaction (..))
@@ -547,16 +548,14 @@ configureFinal
       for_ postConfPackageHook $ runPostConfPackageHook (configCommonFlags cfg) lbc2 pbd2
 
       -- Per-component pre-configure hooks
-      pkgDescr <- do
-        let pkgDescr2 = LBC.localPkgDescr pbd2
+      (hookDiffs, pkgDescr) <-
         applyComponentDiffs
           verbosity
           (for preConfComponentHook . runPreConfComponentHook lbc2 pbd2 (configCommonFlags cfg) (CF.componentFlags cfg))
-          pkgDescr2
-      let pbd3 = pbd2{LBC.localPkgDescr = pkgDescr}
+          (LBC.localPkgDescr pbd2)
 
       -- Cabal per-component configure
-      finalCheckPackage verbHandles (configCommonFlags cfg) gpkgDescr pbd3 enabledComps hookedBuildInfo
+      finalCheckPackage verbHandles (configCommonFlags cfg) gpkgDescr pbd2 pkgDescr enabledComps hookedBuildInfo
 
       let
         use_external_internal_deps =
@@ -591,7 +590,7 @@ configureFinal
           pkgInfo
           pkgDescr
           enabledComps
-      configureComponents verbHandles cfg lbc2 pbd3 enabledComps installedPkgSet promisedDeps externalPkgDeps
+      configureComponents verbHandles cfg lbc2 pbd2 hookDiffs enabledComps installedPkgSet promisedDeps externalPkgDeps
 
 runPreConfPackageHook
   :: ConfigFlags
@@ -1310,6 +1309,8 @@ finalCheckPackage
   -> CommonSetupFlags
   -> GenericPackageDescription
   -> LBC.PackageBuildDescr
+  -> PackageDescription
+  -- ^ the package description (with component diffs applied)
   -> ComponentRequestedSpec
   -> HookedBuildInfo
   -> IO ()
@@ -1318,11 +1319,11 @@ finalCheckPackage
   common
   g_pkg_descr
   ( LBC.PackageBuildDescr
-      { localPkgDescr = pkg_descr
-      , compiler = comp
+      { compiler = comp
       , hostPlatform = compPlatform
       }
     )
+  pkg_descr
   enabled
   hookedBuildInfo =
     do
@@ -1371,6 +1372,7 @@ configureComponents
   -> ConfigFlags
   -> LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
+  -> Map ComponentName ComponentDiff
   -> ComponentRequestedSpec
   -> InstalledPackageIndex
   -> Map (PackageName, ComponentName) PromisedComponent
@@ -1380,11 +1382,8 @@ configureComponents
   verbHandles
   cfg
   lbc@(LBC.LocalBuildConfig{withPrograms = programDb})
-  pbd@( LBC.PackageBuildDescr
-          { localPkgDescr = pkg_descr
-          , compiler = comp
-          }
-        )
+  pbd@(LBC.PackageBuildDescr{compiler = comp})
+  diffs
   enabled
   installedPackageSet
   promisedDepsSet
@@ -1396,6 +1395,7 @@ configureComponents
             case enabled of
               OneComponentRequestedSpec{} -> True
               ComponentRequestedSpec{} -> False
+          pkg_descr = addComponentDiffs diffs (LBC.localPkgDescr pbd)
 
       -- Compute installation directory templates, based on user
       -- configuration.
@@ -1473,6 +1473,7 @@ configureComponents
                   (fromFlagOrDefault True (configUserInstall cfg))
                   (configPackageDBs cfg)
             , extraCoverageFor = extraCoverageUnitIds
+            , componentDiffs = diffs
             , componentGraph = Graph.fromDistinctList buildComponents
             , componentNameMap = buildComponentsMap
             , promisedPkgs = promisedDepsSet

@@ -19,7 +19,8 @@ module Distribution.Types.LocalBuildInfo
       , componentNameMap
       , promisedPkgs
       , installedPkgs
-      , localPkgDescr
+      , packageLevelPkgDescr
+      , componentDiffs
       , withPrograms
       , withPackageDB
       , withVanillaLib
@@ -57,6 +58,7 @@ module Distribution.Types.LocalBuildInfo
   , localUnitId
   , localCompatPackageKey
   , localPackage
+  , localPkgDescr
   , buildDir
   , setupFlagsBuildDir
   , distPrefLBI
@@ -103,6 +105,7 @@ module Distribution.Types.LocalBuildInfo
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.ComponentDiff (ComponentDiff, addComponentDiffs)
 import Distribution.Types.ComponentId
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
@@ -205,6 +208,7 @@ pattern LocalBuildInfo
   -> Map (PackageName, ComponentName) PromisedComponent
   -> InstalledPackageIndex
   -> PackageDescription
+  -> Map ComponentName ComponentDiff
   -> ProgramDb
   -> PackageDBStack
   -> Bool
@@ -246,7 +250,8 @@ pattern LocalBuildInfo
   , componentNameMap
   , promisedPkgs
   , installedPkgs
-  , localPkgDescr
+  , packageLevelPkgDescr
+  , componentDiffs
   , withPrograms
   , withPackageDB
   , withVanillaLib
@@ -286,7 +291,7 @@ pattern LocalBuildInfo
                 , flagAssignment
                 , compiler
                 , hostPlatform
-                , localPkgDescr
+                , localPkgDescr = packageLevelPkgDescr
                 , pkgDescrFile
                 }
             , componentBuildDescr =
@@ -296,6 +301,7 @@ pattern LocalBuildInfo
                 , installDirTemplates
                 , withPackageDB
                 , extraCoverageFor
+                , componentDiffs
                 , componentGraph
                 , componentNameMap
                 , promisedPkgs
@@ -427,7 +433,31 @@ localComponentId lbi =
 -- | Extract the 'PackageIdentifier' of a 'LocalBuildInfo'.
 -- This is a "safe" use of 'localPkgDescr'
 localPackage :: LocalBuildInfo -> PackageId
-localPackage (LocalBuildInfo{localPkgDescr = pkg}) = package pkg
+localPackage = package . localPkgDescr
+
+-- | The package description of a configured package: its package-level
+-- package description with the per-component diffs applied to it.
+--
+-- WARNING WARNING WARNING Be VERY careful about using
+-- this function; we haven't deprecated it but using it
+-- could introduce subtle bugs related to
+-- 'HookedBuildInfo'.
+--
+-- In principle, this is supposed to contain the
+-- resolved package description, that does not contain
+-- any conditionals.  However, it MAY NOT contain
+-- the description with a 'HookedBuildInfo' applied
+-- to it; see 'HookedBuildInfo' for the whole sordid saga.
+-- As much as possible, Cabal library should avoid using
+-- this parameter.
+localPkgDescr :: LocalBuildInfo -> PackageDescription
+localPkgDescr lbi =
+  addComponentDiffs (LBC.componentDiffs cbd) (LBC.localPkgDescr pbd)
+  where
+    LBC.LocalBuildDescr
+      { packageBuildDescr = pbd
+      , componentBuildDescr = cbd
+      } = localBuildDescr (persistedBuildInfo lbi)
 
 -- | Extract the 'UnitId' from the library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake unit ID based on
@@ -575,20 +605,20 @@ buildWays lbi =
 
 {-# WARNING componentNameTargets, unitIdTarget, allTargetsInBuildOrder, withAllTargetsInBuildOrder, neededTargetsInBuildOrder, withNeededTargetsInBuildOrder "By using this function, you may be introducing a bug where you retrieve a 'Component' which does not have 'HookedBuildInfo' applied to it.  See the documentation for 'HookedBuildInfo' for an explanation of the issue.  If you have a 'PackageDescription' handy (NOT from the 'LocalBuildInfo'), try using the primed version of the function, which takes it as an extra argument." #-}
 componentNameTargets :: LocalBuildInfo -> ComponentName -> [TargetInfo]
-componentNameTargets lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
-  componentNameTargets' pkg lbi
+componentNameTargets lbi =
+  componentNameTargets' (localPkgDescr lbi) lbi
 unitIdTarget :: LocalBuildInfo -> UnitId -> Maybe TargetInfo
-unitIdTarget lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
-  unitIdTarget' pkg lbi
+unitIdTarget lbi =
+  unitIdTarget' (localPkgDescr lbi) lbi
 allTargetsInBuildOrder :: LocalBuildInfo -> [TargetInfo]
-allTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
-  allTargetsInBuildOrder' pkg lbi
+allTargetsInBuildOrder lbi =
+  allTargetsInBuildOrder' (localPkgDescr lbi) lbi
 withAllTargetsInBuildOrder :: LocalBuildInfo -> (TargetInfo -> IO ()) -> IO ()
-withAllTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
-  withAllTargetsInBuildOrder' pkg lbi
+withAllTargetsInBuildOrder lbi =
+  withAllTargetsInBuildOrder' (localPkgDescr lbi) lbi
 neededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> [TargetInfo]
-neededTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
-  neededTargetsInBuildOrder' pkg lbi
+neededTargetsInBuildOrder lbi =
+  neededTargetsInBuildOrder' (localPkgDescr lbi) lbi
 withNeededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> (TargetInfo -> IO ()) -> IO ()
-withNeededTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
-  withNeededTargetsInBuildOrder' pkg lbi
+withNeededTargetsInBuildOrder lbi =
+  withNeededTargetsInBuildOrder' (localPkgDescr lbi) lbi
