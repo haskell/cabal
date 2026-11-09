@@ -659,25 +659,24 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                STestPhase     -> ()
                SBenchPhase    -> ()
     LibraryMethod (InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar) -> do
-      -- Start from the pre-configured compiler ProgramDb, augmented
-      -- with all builtin programs (restored as unconfigured).
+      -- Start from the pre-configured compiler ProgramDb, augment it with
+      -- the builtin programs it does not already contain (restored as unconfigured),
+      -- and apply the per-package program locations and arguments.
+      --
       -- This ensures:
-      --   (a) configureAllKnownPrograms inside configureFinal skips
-      --       compiler programs (already configured at project level),
+      --   (a) configureAllKnownPrograms inside configureFinal skips compiler
+      --       programs already configured at project level, unless the package
+      --       specifies a different location for them;
       --   (b) builtin preprocessors like alex and happy are present as
       --       unconfigured programs, so configureFinal's
       --       configureAllKnownPrograms can find them using the
       --       per-package search path (respecting extra-prog-path).
       -- See (1) in Note [Constructing the ProgramDb].
-
-      -- Apply per-package user-supplied program args/paths.
-      -- See (2)(a) in Note [Constructing the ProgramDb]
       baseProgDb <-
-        -- Use 'mkProgramDb' to pass user-supplied per-package
-        -- program options (--PROG-options=...).
         mkProgramDb verbHandles flags
           (restoreProgramDb builtinPrograms $
             pkgConfigCompilerProgs elabSharedConfig)
+      -- See (2)(a) in Note [Constructing the ProgramDb].
       setupProgDb <-
         prependProgramSearchPath verbosity
           (useExtraPathEnv options)
@@ -734,17 +733,24 @@ includes the call to 'configCompilerEx'.
 To obtain a program database with all the required information, we do a few
 things:
 
-  (1) We retrieve the pre-configured compiler program database (typically
-      containing ghc, ghc-pkg, haddock, and toolchain programs such as ar, ld),
-      and restore all builtin programs (alex, happy, hsc2hs, ...) as unconfigured
-      entries on top of it.
+  (1) We retrieve the compiler program database, configured at the project
+      level. Configuring the compiler made its companion programs (ghc-pkg,
+      haddock, hsc2hs, ...) and toolchain programs (gcc, ld, ar, ...) known, with
+      compiler-specific ways of finding and configuring them. On top of it, we
+      restore the builtin programs that are not already known (alex, happy, ...)
+      as unconfigured programs.
 
       This serves two purposes:
 
-        (a) The compiler programs (ghc, ghc-pkg, haddock, hsc2hs, ...) that were
-            already configured at the project level appear in 'configuredProgs'.
-            The 'configureAllKnownPrograms' call inside the Cabal per-package
-            'configureFinal' skips them, saving redundant work.
+        (a) The compiler programs that were already configured at the project
+            level appear in 'configuredProgs'. The 'configureAllKnownPrograms'
+            call inside the Cabal per-package 'configureFinal' skips them,
+            saving redundant work.
+
+            A per-package location for one of these programs discards its
+            project-level configuration (see 'userSpecifyPath'), and
+            'configureFinal' configures it again with its compiler-specific
+            'Program' (e.g. gcc gets the C compiler flags of GHC).
 
         (b) Builtin preprocessors (e.g. alex, happy) are NOT configured at the
             project level; restoring them here means the call to
