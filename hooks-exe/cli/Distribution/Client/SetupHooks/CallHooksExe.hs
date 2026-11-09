@@ -38,7 +38,7 @@ import System.FilePath
 import Distribution.Compat.Prelude
 import qualified Distribution.Compat.Binary as Binary
 import Distribution.Simple
-  ( autoconfSetupHooks )
+  ( autoconfSetupHooksWithHandles )
 import Distribution.Simple.Build
   ( builtinPreBuildHooks )
 import Distribution.Simple.BuildPaths
@@ -60,7 +60,7 @@ import Distribution.Utils.Path
   , interpretSymbolicPath
   )
 import Distribution.Verbosity
-  ( Verbosity, VerbosityHandles, mkVerbosity )
+  ( Verbosity, VerbosityHandles, mkVerbosity, verbosityHandles )
 
 -- hooks-cli
 import Distribution.Client.SetupHooks.CallHooksExe.Errors
@@ -169,7 +169,9 @@ buildTypeSetupHooks
   -> SetupHooks
 buildTypeSetupHooks verb mbWorkDir distPref = \case
   Hooks -> externalSetupHooks verb $ hooksProgFilePath mbWorkDir distPref
-  Configure -> autoconfSetupHooks
+  -- The built-in Configure hooks run in-process:
+  -- see (LH1) in Note [Logging handles] in Distribution.Verbosity.
+  Configure -> autoconfSetupHooksWithHandles (verbosityHandles verb)
   _ -> noSetupHooks
     -- Note: if any built-in functionality is implemented using SetupHooks,
     -- we would also need to include those.

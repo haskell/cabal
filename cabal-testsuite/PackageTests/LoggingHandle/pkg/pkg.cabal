@@ -1,0 +1,10 @@
+cabal-version: 3.0
+name:          pkg
+version:       0.1
+build-type:    Simple
+
+library
+  exposed-modules:  Pkg
+  build-depends:    base, dep
+  hs-source-dirs:   src
+  default-language: Haskell2010
