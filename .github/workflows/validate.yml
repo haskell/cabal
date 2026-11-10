@@ -66,17 +66,8 @@ jobs:
             "9.12.4",
             "9.10.3",
             "9.8.4",
-            "9.6.7",
-            "9.4.8"
+            "9.6.7"
           ]
-        exclude:
-          # GHC 9.4.8 links with gold, which the Ubuntu 26.04 image that
-          # ubuntu-latest now resolves to no longer ships; see #12525.
-          - sys: { os: ubuntu-latest, shell: bash }
-            ghc: "9.4.8"
-        include:
-          - sys: { os: ubuntu-24.04, shell: bash }
-            ghc: "9.4.8"
     defaults:
       run:
         shell: ${{ matrix.sys.shell }}

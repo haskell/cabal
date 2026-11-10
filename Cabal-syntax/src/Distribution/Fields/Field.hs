@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
 -- These types are parameterized by an annotation.
@@ -30,13 +28,11 @@ module Distribution.Fields.Field
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Char as Char
+import qualified Data.Foldable1 as F1
 import Distribution.Compat.Prelude
 import Distribution.Pretty (showTokenStr)
 import Distribution.Utils.Generic (fromUTF8BS)
 import Prelude ()
-#if MIN_VERSION_base(4,18,0)
-import qualified Data.Foldable1 as F1
-#endif
 
 -------------------------------------------------------------------------------
 -- Cabal file
@@ -159,8 +155,6 @@ fieldLinesToString =
 -- Foldable1
 -------------------------------------------------------------------------------
 
-#if MIN_VERSION_base(4,18,0)
-
 -- | @since 3.12.0.0
 instance F1.Foldable1 Field where
   foldMap1 f (Field x ys) =
@@ -179,5 +173,3 @@ instance F1.Foldable1 SectionArg where
 -- | @since 3.12.0.0
 instance F1.Foldable1 Name where
   foldMap1 = (. nameAnn)
-
-#endif

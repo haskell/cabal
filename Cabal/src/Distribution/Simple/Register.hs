@@ -78,7 +78,6 @@ import Distribution.Simple.Setup.Haddock (HaddockTarget (ForDevelopment))
 import Distribution.Simple.Setup.Register
 import Distribution.Simple.Utils
 import Distribution.System
-import Distribution.Utils.MapAccum
 import Distribution.Utils.Path
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
@@ -87,6 +86,7 @@ import System.FilePath (isAbsolute)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Text as T
+import Data.Traversable (mapAccumM)
 
 -- -----------------------------------------------------------------------------
 -- Registration

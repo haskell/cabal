@@ -203,7 +203,7 @@ import Data.Foldable
   )
 import Data.Traversable (Traversable (sequenceA, traverse), for)
 
-import qualified Data.Foldable
+import qualified Data.Foldable1
 
 -- Extra exports
 import Control.Applicative (Alternative (..), Const (..))
@@ -245,29 +245,13 @@ import qualified Debug.Trace
 (<<>>) :: Disp.Doc -> Disp.Doc -> Disp.Doc
 (<<>>) = (Disp.<>)
 
--- TODO: if we want foldr1/foldl1 to work on more than NonEmpty, we
--- can define a local typeclass 'Foldable1', e.g.
---
--- @
--- class Foldable f => Foldable1 f
---
--- instance Foldable1 NonEmpty
---
--- foldr1 :: Foldable1 t => (a -> a -> a) -> t a -> a
--- foldr1 = Data.Foldable.foldr1
---
--- foldl1 :: Foldable1 t => (a -> a -> a) -> t a -> a
--- foldl1 = Data.Foldable.foldl1
--- @
---
-
 {-# INLINE foldr1 #-}
 foldr1 :: (a -> a -> a) -> NonEmpty a -> a
-foldr1 = Data.Foldable.foldr1
+foldr1 = Data.Foldable1.foldr1
 
 {-# INLINE foldl1 #-}
 foldl1 :: (a -> a -> a) -> NonEmpty a -> a
-foldl1 = Data.Foldable.foldl1
+foldl1 = Data.Foldable1.foldl1
 
 -------------------------------------------------------------------------------
 -- Trace
