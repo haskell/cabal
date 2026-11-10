@@ -1439,16 +1439,12 @@ testTargetProblemsTest config reportSubCase = do
           [ mkTargetPackage "p-0.1"
           , mkTargetPackage "q-0.1"
           ]
-    targets <- case resolveTargets requestedSelectors of
-      Right ts ->
-        assertFailure $ "expected target problems, but got: " ++ show ts
-      Left problems ->
-        CmdTest.reportTargetProblems
-          testVerbosity
-          (Flag False)
-          requestedSelectors
-          resolveTargets
-          problems
+    targets <-
+      CmdTest.resolveSkippingNoTests
+        testVerbosity
+        (Flag False)
+        resolveTargets
+        requestedSelectors
     distinctTargetComponents targets
       @?= Set.fromList [("p-0.1-inplace-p-tests", CTestName "p-tests")]
 

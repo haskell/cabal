@@ -12,7 +12,7 @@ module Distribution.Client.CmdTest
   , isSubComponentProblem
   , notTestProblem
   , noTestsProblem
-  , reportTargetProblems
+  , resolveSkippingNoTests
   , selectPackageTargets
   , selectComponentTarget
   ) where
@@ -152,10 +152,11 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
               elaboratedPlan
               Nothing
       targets <-
-        either
-          (reportTargetProblems verbosity failWhenNoTestSuites targetSelectors resolveTargets)
-          return
-          $ resolveTargets targetSelectors
+        resolveSkippingNoTests
+          verbosity
+          failWhenNoTestSuites
+          resolveTargets
+          targetSelectors
 
       let elaboratedPlan' =
             pruneInstallPlanToTargets
@@ -267,43 +268,51 @@ isSubComponentProblem pkgid name subcomponent =
   CustomTargetProblem $
     TargetProblemIsSubComponent pkgid name subcomponent
 
--- | Targets that do not contain any test suites do not abort the command
+-- | Resolve the requested targets, skipping those without test suites.
+--
+-- Targets that do not contain any test suites do not abort the command
 -- (unless @--test-fail-when-no-test-suites@ is given): they are skipped with
--- a notice, and the remaining requested targets are resolved and tested.
-reportTargetProblems
+-- a notice, and the remaining requested targets are resolved and tested. If
+-- no targets remain, the command exits successfully. Any other target
+-- problem is an error.
+resolveSkippingNoTests
   :: Verbosity
   -> Flag Bool
   -- ^ @--test-fail-when-no-test-suites@
-  -> [TargetSelector]
-  -- ^ the target selectors requested on the command line
   -> ([TargetSelector] -> Either [TestTargetProblem] TargetsMap)
   -- ^ how to resolve (a subset of) the requested targets
-  -> [TestTargetProblem]
+  -> [TargetSelector]
+  -- ^ the target selectors requested on the command line
   -> IO TargetsMap
-reportTargetProblems verbosity failWhenNoTestSuites targetSelectors resolveTargets problems =
-  if failWhenNoTestSuites /= Flag True && null otherProblems && not (null noTestsSelectors)
-    then do
-      for_ noTestsSelectors $ notice verbosity . renderAllowedNoTestsProblem
-
-      let remainingSelectors = filter (`notElem` noTestsSelectors) targetSelectors
-      if null remainingSelectors
-        then System.Exit.exitSuccess
-        else
-          either
-            (reportTargetProblems verbosity failWhenNoTestSuites remainingSelectors resolveTargets)
-            return
-            $ resolveTargets remainingSelectors
-    else dieWithException verbosity $ ReportTargetProblems problemsMessage
+resolveSkippingNoTests verbosity failWhenNoTestSuites resolveTargets = go
   where
-    problemsMessage = unlines . map renderTestTargetProblem $ problems
+    go selectors = case resolveTargets selectors of
+      Right targets -> return targets
+      Left problems
+        | failWhenNoTestSuites /= Flag True
+        , null otherProblems
+        , not (null noTestsSelectors) -> do
+            for_ noTestsSelectors $ notice verbosity . renderAllowedNoTestsProblem
+            case filter (`notElem` noTestsSelectors) selectors of
+              [] -> System.Exit.exitSuccess
+              remaining -> go remaining
+        | otherwise -> reportTargetProblems verbosity problems
+        where
+          (noTestsProblems, otherProblems) =
+            flip partition problems $ \case
+              CustomTargetProblem (TargetProblemNoTests _) -> True
+              _ -> False
 
-    (noTestsProblems, otherProblems) =
-      flip partition problems $ \case
-        (CustomTargetProblem (TargetProblemNoTests _)) -> True
-        _ -> False
+          noTestsSelectors =
+            ordNub [selector | CustomTargetProblem (TargetProblemNoTests selector) <- noTestsProblems]
 
-    noTestsSelectors =
-      ordNub [selector | CustomTargetProblem (TargetProblemNoTests selector) <- noTestsProblems]
+-- | Render the target problems and die.
+reportTargetProblems :: Verbosity -> [TestTargetProblem] -> IO a
+reportTargetProblems verbosity =
+  dieWithException verbosity
+    . ReportTargetProblems
+    . unlines
+    . map renderTestTargetProblem
 
 -- | The message displayed for each skipped target that does not contain
 --   any test suites.
