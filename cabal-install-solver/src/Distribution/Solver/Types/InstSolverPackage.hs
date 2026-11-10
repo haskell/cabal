@@ -8,6 +8,7 @@ import Prelude ()
 import Distribution.Package ( Package(..), HasMungedPackageId(..), HasUnitId(..) )
 import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.SolverId
+import Distribution.Solver.Types.Machine ( Machine )
 import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
 import Distribution.Types.MungedPackageName
@@ -16,6 +17,8 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 -- | An 'InstSolverPackage' is a pre-existing installed package
 -- specified by the dependency solver.
 data InstSolverPackage = InstSolverPackage {
+      -- | The build machine this installed package was resolved for.
+      instSolverMachine :: Machine,
       instSolverPkgIPI :: InstalledPackageInfo,
       instSolverPkgLibDeps :: ComponentDeps [SolverId],
       instSolverPkgExeDeps :: ComponentDeps [SolverId]

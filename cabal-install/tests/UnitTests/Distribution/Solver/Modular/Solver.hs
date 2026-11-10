@@ -24,9 +24,9 @@ import Language.Haskell.Extension
 
 -- cabal-install
 import Distribution.Solver.Types.Flag
+import qualified Distribution.Solver.Types.GoalScope as P
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
-import qualified Distribution.Solver.Types.PackagePath as P
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 
@@ -2175,7 +2175,7 @@ dbLangs1 =
 -- If you specify `A == 2`, that top-level should /not/ apply to an independent goal!
 testIndepGoals7 :: String -> SolverTest
 testIndepGoals7 name =
-  constraints [ExVersionConstraint (scopeToplevel "A") (V.thisVersion (V.mkVersion [2]))] $
+  constraints [ExVersionConstraint (ScopeQualified P.QualToplevel "A") (V.thisVersion (V.mkVersion [2]))] $
     independentGoals $
       mkTest dbIndepGoals78 name ["A"] $
         -- The more recent version should be picked by the solver. As said
@@ -2725,7 +2725,7 @@ dbSetupStanza =
 
 -- With the "top-level" qualifier syntax
 setupStanzaTest1 :: SolverTest
-setupStanzaTest1 = constraints [ExStanzaConstraint (scopeToplevel "B") [TestStanzas]] $ mkTest dbSetupStanza "setupStanzaTest1" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+setupStanzaTest1 = constraints [ExStanzaConstraint (ScopeQualified P.QualToplevel "B") [TestStanzas]] $ mkTest dbSetupStanza "setupStanzaTest1" ["A"] (solverSuccess [("A", 1), ("B", 1)])
 
 -- With the "any" qualifier syntax
 setupStanzaTest2 :: SolverTest

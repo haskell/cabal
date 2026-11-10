@@ -551,14 +551,14 @@ fromSolverInstallPlan f plan =
 
         (pidMap', ipiMap') =
           case nodeKey pkg of
-            PreExistingId _ uid -> (pidMap, Map.insert uid pkgs' ipiMap)
-            PlannedId pid -> (Map.insert pid pkgs' pidMap, ipiMap)
+            PreExistingId machine _ uid -> (pidMap, Map.insert (machine, uid) pkgs' ipiMap)
+            PlannedId machine pid -> (Map.insert (machine, pid) pkgs' pidMap, ipiMap)
 
-    mapDep _ ipiMap (PreExistingId _pid uid)
-      | Just pkgs <- Map.lookup uid ipiMap = pkgs
+    mapDep _ ipiMap (PreExistingId machine _pid uid)
+      | Just pkgs <- Map.lookup (machine, uid) ipiMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
-    mapDep pidMap _ (PlannedId pid)
-      | Just pkgs <- Map.lookup pid pidMap = pkgs
+    mapDep pidMap _ (PlannedId machine pid)
+      | Just pkgs <- Map.lookup (machine, pid) pidMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
 
 -- This shouldn't happen, since mapDep should only be called
@@ -592,15 +592,15 @@ fromSolverInstallPlanWithProgress f plan = do
       pkgs' <- f (mapDep pidMap ipiMap) pkg
       let (pidMap', ipiMap') =
             case nodeKey pkg of
-              PreExistingId _ uid -> (pidMap, Map.insert uid pkgs' ipiMap)
-              PlannedId pid -> (Map.insert pid pkgs' pidMap, ipiMap)
+              PreExistingId machine _ uid -> (pidMap, Map.insert (machine, uid) pkgs' ipiMap)
+              PlannedId machine pid -> (Map.insert (machine, pid) pkgs' pidMap, ipiMap)
       return (pidMap', ipiMap', pkgs' ++ pkgs)
 
-    mapDep _ ipiMap (PreExistingId _pid uid)
-      | Just pkgs <- Map.lookup uid ipiMap = pkgs
+    mapDep _ ipiMap (PreExistingId machine _pid uid)
+      | Just pkgs <- Map.lookup (machine, uid) ipiMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
-    mapDep pidMap _ (PlannedId pid)
-      | Just pkgs <- Map.lookup pid pidMap = pkgs
+    mapDep pidMap _ (PlannedId machine pid)
+      | Just pkgs <- Map.lookup (machine, pid) pidMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
 
 -- This shouldn't happen, since mapDep should only be called

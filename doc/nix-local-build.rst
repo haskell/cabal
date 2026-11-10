@@ -277,6 +277,14 @@ this folder (the most important two are first):
     Haskell data structure as well as an example tool showing possible
     applications.
 
+    Every entry of ``install-plan`` carries a ``machine`` field, either
+    ``"host"`` or ``"build"``. In an ordinary build every entry is on the
+    host machine. When cross-compiling (see :cfg-field:`with-build-compiler`)
+    the packages built for the build machine (build tools, custom
+    ``Setup.hs`` dependencies) are on the build machine, and the same package
+    may appear once per machine, possibly under the same ``id``; the machine is
+    what tells the two entries apart.
+
     .. todo::
 
         Document JSON schema (including version history of schema)

@@ -4,7 +4,7 @@ module UnitTests.Distribution.Client.Targets
 
 import Distribution.Client.Targets
   ( UserConstraint (..)
-  , UserConstraintScope (..)
+  , UserConstraintQualifier (..)
   , UserQualifier (..)
   , readUserConstraint
   )
@@ -14,6 +14,7 @@ import Distribution.Version (anyVersion, mkVersion, thisVersion)
 
 import Distribution.Parsec (explicitEitherParsec, parsec, parsecCommaList)
 
+import Distribution.Solver.Types.Machine (Machine (..))
 import Distribution.Solver.Types.OptionalStanza (OptionalStanza (..))
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
 
@@ -81,6 +82,21 @@ exampleConstraints =
         PackagePropertyInstalled
     )
   ,
+    ( "build:any.rts installed"
+    , UserConstraintOnMachine
+        Build
+        (UserAnyQualifier (pn "rts"))
+        PackagePropertyInstalled
+    )
+  , -- A package literally named "build" keeps its pre-existing meaning: this
+    -- is the setup dependency of package "build", not a build-machine constraint.
+
+    ( "build:setup.foo installed"
+    , UserConstraint
+        (UserQualified (UserQualSetup (pn "build")) (pn "foo"))
+        PackagePropertyInstalled
+    )
+  ,
     ( "process:setup.bytestring ==5.2"
     , UserConstraint
         (UserQualified (UserQualSetup (pn "process")) (pn "bytestring"))
@@ -100,11 +116,18 @@ exampleConstraints =
             )
         )
     )
-    -- -- TODO: Re-enable UserQualExe tests once we decide on a syntax.
-    --
-    -- , ("foo:happy:exe.template-haskell test",
-    --    UserConstraint (UserQualified (UserQualExe (pn "foo") (pn "happy")) (pn "template-haskell"))
-    --                   (PackagePropertyStanzas [TestStanzas]))
+  ,
+    ( "exe.happy installed"
+    , UserConstraint
+        (UserAnyExeQualifier (pn "happy"))
+        PackagePropertyInstalled
+    )
+  ,
+    ( "foo:happy:exe.template-haskell test"
+    , UserConstraint
+        (UserQualified (UserQualExe (pn "foo") (pn "happy")) (pn "template-haskell"))
+        (PackagePropertyStanzas [TestStanzas])
+    )
   ]
   where
     pn = mkPackageName

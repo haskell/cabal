@@ -86,6 +86,7 @@ import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Client.ProjectPlanning
   ( storePackageInstallDirs'
   )
+import Distribution.Client.ProjectPlanning.Machine (WithMachine (..))
 import Distribution.Client.ProjectPlanning.Types
   ( ElaboratedInstallPlan
   )
@@ -97,6 +98,7 @@ import Distribution.Client.Setup
   , GlobalFlags (..)
   , InstallFlags (..)
   )
+import Distribution.Client.Toolchain (Machine (..))
 import Distribution.Client.Types
   ( PackageLocation (..)
   , PackageSpecifier (..)
@@ -784,7 +786,8 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelector
       gatherTargets :: UnitId -> TargetSelector
       gatherTargets targetId = TargetPackageNamed pkgName targetFilter
         where
-          targetUnit = Map.findWithDefault (error "cannot find target unit") targetId planMap
+          -- The target is the host-machine node (see 'availableTargets').
+          targetUnit = Map.findWithDefault (error "cannot find target unit") (WithMachine Host targetId) planMap
           PackageIdentifier{..} = packageId targetUnit
 
       localTargets = map gatherTargets (Map.keys targetsMap)

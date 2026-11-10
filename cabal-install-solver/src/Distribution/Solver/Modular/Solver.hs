@@ -20,7 +20,8 @@ import Distribution.Verbosity
 import Distribution.Compiler (CompilerInfo)
 
 import Distribution.Version
-import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.GoalScope
+import Distribution.Solver.Types.Machine (Machine (..), PerMachine)
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
@@ -91,9 +92,9 @@ newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 -- before exploration.
 --
 solve :: SolverConfig                         -- ^ solver parameters
-      -> CompilerInfo
+      -> PerMachine CompilerInfo                  -- ^ the compiler of each build machine
       -> Index                                -- ^ all available packages as an index
-      -> Maybe PkgConfigDb                    -- ^ available pkg-config pkgs
+      -> PerMachine (Maybe PkgConfigDb)           -- ^ available pkg-config pkgs, per build machine
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> M.Map PN [LabeledPackageConstraint]  -- ^ global constraints
       -> S.Set PN                             -- ^ global goals
@@ -269,5 +270,5 @@ _removeGR = trav go
    dummy =
        DependencyGoal $
        DependencyReason
-           (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
+           (Q (GoalScope Host DefaultNamespace QualToplevel) (mkPackageName "$"))
            M.empty S.empty

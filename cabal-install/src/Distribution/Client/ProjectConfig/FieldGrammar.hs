@@ -35,6 +35,7 @@ projectConfigFieldGrammar source knownPrograms = do
   let projectConfigProvenance = Set.singleton (Explicit source)
       projectConfigAllPackages = mempty
       projectConfigSpecificPackage = mempty
+      projectConfigMachinePackages = mempty
   projectConfigLocalPackages <- blurFieldGrammar L.projectConfigLocalPackages (packageConfigFieldGrammar knownPrograms)
   pure ProjectConfig{..}
 
@@ -76,6 +77,9 @@ projectConfigSharedFieldGrammar source = do
   projectConfigHcFlavor <- optionalFieldDef "compiler" L.projectConfigHcFlavor mempty
   projectConfigHcPath <- optionalFieldDefAla "with-compiler" (alaFlag FilePathNT) L.projectConfigHcPath mempty
   projectConfigHcPkg <- optionalFieldDefAla "with-hc-pkg" (alaFlag FilePathNT) L.projectConfigHcPkg mempty
+  projectConfigBuildHcFlavor <- optionalFieldDef "build-compiler" L.projectConfigBuildHcFlavor mempty
+  projectConfigBuildHcPath <- optionalFieldDefAla "with-build-compiler" (alaFlag FilePathNT) L.projectConfigBuildHcPath mempty
+  projectConfigBuildHcPkg <- optionalFieldDefAla "with-build-hc-pkg" (alaFlag FilePathNT) L.projectConfigBuildHcPkg mempty
   projectConfigHaddockIndex <- optionalFieldDef "doc-index-file" L.projectConfigHaddockIndex mempty
   projectConfigInstallDirs <- blurFieldGrammar L.projectConfigInstallDirs installDirsGrammar
   projectConfigPackageDBs <- monoidalFieldAla "package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigPackageDBs
@@ -115,6 +119,8 @@ packageConfigFieldGrammar knownPrograms = do
       ^^^ hiddenField
   let packageConfigProgramPaths = mempty
       packageConfigProgramArgs = mempty
+      packageConfigBuildProgramPaths = mempty
+      packageConfigBuildProgramArgs = mempty
   packageConfigProgramPathExtra <- monoidalFieldAla "extra-prog-path" (alaNubList' FSep FilePathNT) L.packageConfigProgramPathExtra
   packageConfigFlagAssignment <- monoidalField "flags" L.packageConfigFlagAssignment
   packageConfigVanillaLib <- optionalFieldDef "library-vanilla" L.packageConfigVanillaLib mempty
@@ -181,6 +187,9 @@ packageConfigFieldGrammar knownPrograms = do
   -- When declared at top level (packageConfigLocalPackages), the PackageConfig must contain a program-options stanza/program-locations for these fields.
   traverse_ (knownField . BS.pack . (<> "-options")) knownPrograms
   traverse_ (knownField . BS.pack . (<> "-location")) knownPrograms
+  -- Likewise build-<prog>-options and build-<prog>-location, for the build machine.
+  traverse_ (knownField . BS.pack . ("build-" <>) . (<> "-options")) knownPrograms
+  traverse_ (knownField . BS.pack . ("build-" <>) . (<> "-location")) knownPrograms
   pure
     PackageConfig
       { -- The haddock-all field provides a default value, but explicit declarations can override it

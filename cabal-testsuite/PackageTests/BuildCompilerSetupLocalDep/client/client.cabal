@@ -1,0 +1,22 @@
+cabal-version: 2.0
+name:          client
+version:       0.1.0.0
+build-type:    Custom
+
+custom-setup
+  setup-depends:
+      base
+    , Cabal >= 2.0
+    , helper
+
+-- A library so that the repl test has a valid repl target in client.
+library
+  hs-source-dirs:   src
+  exposed-modules:  Client
+  build-depends:    base
+  default-language: Haskell2010
+
+executable check-compiler
+  main-is:          Main.hs
+  build-depends:    base
+  default-language: Haskell2010
