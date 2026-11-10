@@ -1245,7 +1245,7 @@ Object code options
 ^^^^^^^^^^^^^^^^^^^
 
 .. cfg-field:: debug-info: boolean | integer [0 .. 3]
-               --enable-debug-info[=n]
+               -g[n], --enable-debug-info[=n]
                --disable-debug-info
     :synopsis: Build with debug info enabled.
     :since: 1.22
@@ -1253,8 +1253,9 @@ Object code options
     :default: False
 
     If the compiler supports outputting OS native debug info, setting
-    ``debug-info: True`` will instruct it to do so.  The command line variant of
-    this flag is ``--enable-debug-info`` and ``--disable-debug-info``.
+    ``debug-info: True`` will instruct it to do so.  The command line variants of
+    this flag are ``-g[n]``, ``--enable-debug-info[=n]`` and
+    ``--disable-debug-info``.
 
     .. admonition:: GHC Behaviour
         :class: tip
