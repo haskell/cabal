@@ -341,10 +341,15 @@ mkCabalDirLayout mstoreDir mlogDir = do
   pure CabalDirLayout{..}
 
 -- | Rewrite an absolute path inside the project, so that it is relative to
--- the build tree root. Paths outside the project are unchanged.
+-- the build tree root. Paths outside the project, and paths containing @..@,
+-- are unchanged.
 relativiseProjectPath :: DistDirLayout -> FilePath -> FilePath
 relativiseProjectPath DistDirLayout{distProjectRootDirectory, distDirectory} path
   | isAbsolute path
+  , -- Appropriately relativizing paths with '..' is trickly, and requires
+    -- going through System.Directory.canonicalizePath. Instead, in the rare
+    -- case this even happens, let's fallback to non-relativization.
+    all (notElem "..") [projectRoot, buildTree, target]
   , projectRoot `isPrefixOf` buildTree
   , projectRoot `isPrefixOf` target =
       shortRelativePath (joinPath buildTree) (joinPath target)
