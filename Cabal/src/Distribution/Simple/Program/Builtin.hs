@@ -51,6 +51,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Version
 
+import Data.Function (applyWhen)
 import qualified Data.Map as Map
 
 -- ------------------------------------------------------------
@@ -107,8 +108,6 @@ ghcProgram =
       let ignorePackageEnv prog = prog{programDefaultArgs = "-package-env=-" : programDefaultArgs prog}
 
           canIgnorePackageEnv = orLaterVersion $ mkVersion [8, 4, 4]
-
-          applyWhen cond f prog = if cond then f prog else prog
 
       return $
         maybe

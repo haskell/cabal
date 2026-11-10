@@ -218,7 +218,6 @@ import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Lens (Lens', over)
 import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
-import Distribution.Compat.SysInfo as SIC
 import Distribution.ModuleName as ModuleName
 import Distribution.Simple.Errors
 import Distribution.Simple.PreProcess.Types
@@ -366,7 +365,7 @@ cabalCompilerInfo =
   concat
     [ SI.compilerName
     , " "
-    , intercalate "." (map show (DV.versionBranch SIC.fullCompilerVersion))
+    , intercalate "." (map show (DV.versionBranch SI.fullCompilerVersion))
     , " on "
     , SI.os
     , " "

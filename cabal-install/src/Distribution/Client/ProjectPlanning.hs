@@ -147,7 +147,6 @@ import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 
 import Distribution.CabalSpecVersion
 import Distribution.Utils.LogProgress
-import Distribution.Utils.MapAccum
 import Distribution.Utils.NubList
 import Distribution.Utils.Path hiding
   ( (<.>)
@@ -232,6 +231,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
+import Data.Traversable (mapAccumM)
 import Distribution.Client.Errors
 import Distribution.Solver.Types.ProjectConfigPath
 import GHC.Stack (HasCallStack)

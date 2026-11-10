@@ -25,7 +25,6 @@ import Distribution.Backpack.ModuleScope
 import Distribution.Backpack.ModuleShape
 import Distribution.Backpack.PreModuleShape
 import Distribution.Backpack.UnifyM
-import Distribution.Utils.MapAccum
 
 import Distribution.ModuleName
 import Distribution.Package
@@ -38,6 +37,7 @@ import Distribution.Verbosity
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.Traversable (mapAccumM)
 import Distribution.Pretty (pretty)
 import Text.PrettyPrint (Doc, hang, hsep, quotes, text, vcat, ($+$))
 

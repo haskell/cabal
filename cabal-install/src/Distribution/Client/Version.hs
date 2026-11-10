@@ -11,9 +11,9 @@ module Distribution.Client.Version
 
 import Data.List (intercalate)
 import qualified Data.Version as DV
-import qualified Distribution.Compat.SysInfo as SIC
 import Distribution.Version
 import qualified System.Info as SI
+import qualified System.Info as SIC (fullCompilerVersion)
 
 import qualified Paths_cabal_install as PackageInfo
 
