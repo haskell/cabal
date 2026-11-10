@@ -19,12 +19,17 @@ jobs:
 
   ruff:
     runs-on: ubuntu-latest
+    env:
+      # Ruff reads this as the default for --output-format.
+      RUFF_OUTPUT_FORMAT: github
     steps:
     - uses: actions/checkout@v7
     - uses: astral-sh/setup-uv@v7
-    # Findings are reported as warning annotations and do not fail the job.
-    # Drop the sed and the "|| true" from a step to make it an error.
+    # The make targets fail on any finding. Here the findings are rewritten
+    # into warning annotations and the exit status is ignored, so the job
+    # does not fail. Drop the sed and the "|| true" from a step to make it
+    # an error.
     - name: Python formatting (warnings only)
-      run: make style-python-format-check RUFF_OUTPUT=github | sed 's/^::error/::warning/' || true
+      run: make style-python-format-check | sed 's/^::error/::warning/' || true
     - name: Python lint (warnings only)
-      run: make style-python-lint-check RUFF_OUTPUT=github | sed 's/^::error/::warning/' || true
+      run: make style-python-lint-check | sed 's/^::error/::warning/' || true
