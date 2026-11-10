@@ -29,6 +29,8 @@ module Distribution.Client.SetupWrapper
   , SetupRunnerRes
   , RightFlagsForPhase
   , setupWrapper
+  , readPersistedLocalBuildInfo
+  , userCommonFlags
   , SetupScriptOptions (..)
   , SetupDependencies (..)
   , setupDependencies
@@ -149,7 +151,10 @@ import Distribution.Simple.Utils
   , rewriteFileEx
   , rewriteFileLBS
   , tryFindPackageDesc
+  , withTempDirectory
   )
+import Distribution.Compat.ResponseFile (escapeArgs)
+import Distribution.Utils.Generic (toUTF8BS)
 
 import Distribution.Compat.Stack
 import Distribution.ReadE
@@ -171,12 +176,19 @@ import Distribution.Client.SetupHooks.CallHooksExe
   ( externalSetupHooksABI, hooksProgFilePath )
 
 import Control.Concurrent.STM (TVar, readTVarIO)
+import qualified Data.ByteString as SBS
 import qualified Data.ByteString.Lazy as BS
 import Data.Kind (Type, Constraint)
 import qualified Data.Map.Lazy as Map
 import Data.Type.Equality  ( type (==) )
 import Data.Type.Bool      ( If )
-import System.Directory (doesFileExist)
+import System.Directory
+  ( createDirectoryIfMissing
+  , doesDirectoryExist
+  , doesFileExist
+  , listDirectory
+  , renameFile
+  )
 import System.FilePath ((<.>), (</>))
 import Data.Functor ((<&>))
 import System.IO (Handle, hPutStr)
@@ -184,11 +196,7 @@ import System.Process (StdStream (..))
 import qualified System.Process as Process
 
 #ifdef mingw32_HOST_OS
-import Distribution.Simple.Utils
-         ( withTempDirectory )
-
 import Control.Exception   ( bracket )
-import System.Directory    ( doesDirectoryExist )
 import System.FilePath     ( equalFilePath, takeDirectory, takeFileName )
 import qualified System.Win32 as Win32
 #endif
@@ -535,18 +543,50 @@ chooseSetupMethod verbosity options pkg buildType' mbLibraryMethod =
         compileExternalExe verbosity options pkg buildType' WantSetup
       return (version, ExternalMethod path, options')
 
-runSetupMethod :: WithCallStack (SetupMethod UseGeneralSetup -> SetupRunner UseGeneralSetup)
-runSetupMethod (ExternalMethod path) = externalSetupMethod path
+runSetupMethod :: WithCallStack (SetupWorkingDirMethod -> SetupMethod UseGeneralSetup -> SetupRunner UseGeneralSetup)
+runSetupMethod workDirMethod (ExternalMethod path) = externalSetupMethod workDirMethod path
+
+-- | How to set the working directory when invoking a @Setup@ executable.
+data SetupWorkingDirMethod
+  = -- | Run the @Setup@ executable in the current working directory, and pass
+    -- the working directory with @--working-dir@.
+    WorkingDirFlag
+  | -- | Run the @Setup@ executable in the package directory, and do not pass
+    -- the @--working-dir@ flag.
+    WorkingDirCwd
+
+-- | How do we set the working directory for a @Setup@ executable?
+--
+-- When possible, use @--working-dir@, as it leads to improved error messages
+-- that are relative to the project directory, which is the most intuitive
+-- for users.
+--
+-- For legacy build types (Custom, Make), always set the working directory of
+-- the invoked process. This is a courtesy to avoid breaking old
+-- @build-type: Custom@ packages that don't know about @--working-dir@.
+setupWorkingDirMethod :: BuildType -> Version -> SetupWorkingDirMethod
+setupWorkingDirMethod bt cabalLibVersion =
+  case bt of
+    Simple    -> byFlagWhenSupported
+    Hooks     -> byFlagWhenSupported
+    Configure -> byFlagWhenSupported
+    Custom    -> WorkingDirCwd
+    Make      -> WorkingDirCwd
+  where
+    byFlagWhenSupported
+      | cabalLibVersion >= mkVersion [3, 13, 0] = WorkingDirFlag
+      | otherwise = WorkingDirCwd
 
 -- | Run a configured 'Setup' with specific arguments.
 runSetup
   :: Verbosity
   -> Setup UseGeneralSetup
+  -> SetupWorkingDirMethod
   -> [String]
   -- ^ command-line arguments
   -> SetupRunnerArgs UseGeneralSetup
   -> IO (SetupRunnerRes UseGeneralSetup)
-runSetup verbosity setup args0 setupArgs = do
+runSetup verbosity setup workDirMethod args0 setupArgs = do
   let method = setupMethod setup
       options = setupScriptOptions setup
       bt = setupBuildType setup
@@ -560,7 +600,7 @@ runSetup verbosity setup args0 setupArgs = do
         ++ "  After:  "
         ++ show args
         ++ "\n"
-  runSetupMethod method verbosity options bt args setupArgs
+  runSetupMethod workDirMethod method verbosity options bt args setupArgs
 
 -- | This is a horrible hack to make sure passing fancy verbosity
 -- flags (e.g., @-v'info +callstack'@) doesn't break horribly on
@@ -602,21 +642,55 @@ runSetupCommand
   -> Setup UseGeneralSetup
   -> CommandUI flags
   -- ^ command definition
-  -> (flags -> CommonSetupFlags)
   -> flags
   -- ^ command flags
   -> [String]
   -- ^ extra command-line arguments
   -> SetupRunnerArgs UseGeneralSetup
   -> IO (SetupRunnerRes UseGeneralSetup)
-runSetupCommand verbosity setup cmd getCommonFlags flags extraArgs setupArgs =
-  -- The 'setupWorkingDir' flag corresponds to a global argument which needs to
-  -- be passed before the individual command (e.g. 'configure' or 'build').
-  let common = getCommonFlags flags
-      globalFlags = mempty { globalWorkingDir = setupWorkingDir common }
-      args = commandShowOptions (globalCommand []) globalFlags
+runSetupCommand verbosity setup cmd flags extraArgs setupArgs = do
+  let workDir = useWorkingDir $ setupScriptOptions setup
+      workDirMethod = setupWorkingDirMethod (setupBuildType setup) (setupVersion setup)
+  -- The --working-dir flag is a global argument, which needs to be passed
+  -- before the individual command (e.g. 'configure' or 'build').
+  let globalArgs = case workDirMethod of
+        WorkingDirFlag ->
+          commandShowOptions (globalCommand [])
+            mempty { globalWorkingDir = maybeToFlag workDir }
+        WorkingDirCwd -> []
+      args =
+        globalArgs
           ++ (commandName cmd : commandShowOptions cmd flags ++ extraArgs)
-  in runSetup verbosity setup args setupArgs
+  runSetup verbosity setup workDirMethod args setupArgs
+
+-- | Run a @Setup repl@ that writes multi-repl options files into a temporary
+-- directory, then move these files into the given output directory, prefixed
+-- with @-working-dir@ so that GHC resolves their relative paths against the
+-- directory that the @Setup@ was run in.
+withReplOptionsRelativeTo
+  :: SymbolicPath CWD (Dir Pkg)
+  -- ^ working directory of the @Setup@ process
+  -> FilePath
+  -- ^ multi-repl output directory
+  -> (FilePath -> IO a)
+  -- ^ run @Setup repl@, writing options into the given directory
+  -> IO a
+withReplOptionsRelativeTo pkgDir outDir runSetupRepl =
+  withTempDirectory outDir "setup-repl" $ \tmpDir -> do
+    res <- runSetupRepl tmpDir
+    unitFiles <- filter (/= "paths") <$> listDirectory tmpDir
+    for_ unitFiles $ \unitFile -> do
+      opts <- SBS.readFile (tmpDir </> unitFile)
+      SBS.writeFile (outDir </> unitFile) $
+        toUTF8BS (escapeArgs ["-working-dir", getSymbolicPath pkgDir]) <> opts
+    let pathsDir = tmpDir </> "paths"
+    hasPaths <- doesDirectoryExist pathsDir
+    when hasPaths $ do
+      createDirectoryIfMissing False (outDir </> "paths")
+      pathFiles <- listDirectory pathsDir
+      for_ pathFiles $ \pathFile ->
+        renameFile (pathsDir </> pathFile) (outDir </> "paths" </> pathFile)
+    return res
 
 -- | Configure a 'Setup' and run a command in one step. The command flags
 -- may depend on the Cabal library version in use.
@@ -627,23 +701,45 @@ setupWrapper
   -> SetupScriptOptions
   -> Maybe PackageDescription
   -> CommandUI flags
-  -> (flags -> CommonSetupFlags)
-  -> (Version -> IO flags)
-  -- ^ produce command flags given the Cabal library version
+  -> (Version -> CommonSetupFlags -> IO flags)
+  -- ^ produce command flags given the Cabal library version and the common
+  -- flags of the command
+  --
+  -- The common flags given here are the only source of the location of the
+  -- package (its working directory and dist directory), which is that of
+  -- the 'SetupScriptOptions'.
   -> (Version -> [String])
   -> SetupRunnerArgs setupSpec
   -> IO (SetupRunnerRes setupSpec)
-setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wrapperArgs = do
+setupWrapper verbosity options mpkg cmd getFlags getExtraArgs wrapperArgs = do
   setup <- getSetup verbosity options mpkg (inLibraryMethod wrapperArgs)
   let version = setupVersion setup
-  flags <- getFlags version
+      commonFlags =
+        defaultCommonSetupFlags
+          { setupVerbosity = toFlag $ verbosityFlags verbosity
+          , setupWorkingDir = maybeToFlag $ useWorkingDir options
+          , setupDistPref = toFlag $ useDistPref options
+          }
+  flags <- getFlags version commonFlags
   let
     verbHandles = verbosityHandles verbosity
     extraArgs = getExtraArgs version
   case setupMethod setup of
     ExternalMethod path -> do
-      runSetupCommand verbosity setup{setupMethod = ExternalMethod path}
-        cmd getCommonFlags flags extraArgs NotInLibrary
+      let runExternal flags' =
+            runSetupCommand verbosity setup{setupMethod = ExternalMethod path}
+              cmd flags' extraArgs NotInLibrary
+      case wrapperArgs of
+        InLibraryArgs (InLibraryPostConfigureArgs SReplPhase _)
+          | WorkingDirCwd <- setupWorkingDirMethod (setupBuildType setup) version
+          , Just pkgDir <- useWorkingDir options
+          , Flag outDir <- replOptionsFlagOutput (replReplOptions flags)
+          -> withReplOptionsRelativeTo pkgDir outDir $ \tmpDir ->
+               runExternal flags
+                 { replReplOptions =
+                     (replReplOptions flags) { replOptionsFlagOutput = Flag tmpDir }
+                 }
+        _ -> runExternal flags
       return $ case wrapperArgs of
        NotInLibrary -> ()
        InLibraryArgs libArgs ->
@@ -662,10 +758,10 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
       -- Start from the pre-configured compiler ProgramDb, augmented
       -- with all builtin programs (restored as unconfigured).
       -- This ensures:
-      --   (a) configureAllKnownPrograms inside configureFinal skips
+      --   (a) configureAllKnownPrograms inside configurePackage skips
       --       compiler programs (already configured at project level),
       --   (b) builtin preprocessors like alex and happy are present as
-      --       unconfigured programs, so configureFinal's
+      --       unconfigured programs, so configurePackage's
       --       configureAllKnownPrograms can find them using the
       --       per-package search path (respecting extra-prog-path).
       -- See (1) in Note [Constructing the ProgramDb].
@@ -696,7 +792,6 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
              elabSharedConfig
              elabReadyPkg
              ipi
-             extraArgs
           )
           flags
       let progs0 = LBI.withPrograms lbi0
@@ -707,12 +802,10 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
             lbi0
               { LBI.withPrograms = progs1
               }
-          mbWorkDir = useWorkingDir options
-          distPref = useDistPref options
       -- Write the LocalBuildInfo to disk. This is needed, for instance, if we
       -- skip re-configuring; we retrieve the LocalBuildInfo stored on disk from
       -- the previous invocation of 'configure' and pass it to 'build'.
-      writePersistBuildConfig mbWorkDir distPref lbi
+      writePersistBuildConfig lbi
       return (Just lbi)
     LibraryMethod (InLibraryPostConfigureArgs sPhase lbi) ->
       case sPhase of
@@ -723,6 +816,36 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
         STestPhase     -> InLibrary.test     verbHandles flags lbi extraArgs
         SBenchPhase    -> InLibrary.bench    verbHandles flags lbi extraArgs
         SRegisterPhase -> InLibrary.register             flags lbi extraArgs
+
+-- | The common flags of a command whose flags were given by the user on the
+-- command line: the common flags given by 'setupWrapper', with the user's
+-- options that do not concern the location of the package.
+userCommonFlags
+  :: CommonSetupFlags
+  -- ^ the common flags given by the user
+  -> CommonSetupFlags
+  -- ^ the common flags given by 'setupWrapper'
+  -> CommonSetupFlags
+userCommonFlags user common =
+  common
+    { setupVerbosity = setupVerbosity common <> setupVerbosity user
+    , setupCabalFilePath = setupCabalFilePath user
+    , setupKeepTempFiles = setupKeepTempFiles user
+    }
+
+-- | Read the 'LocalBuildInfo' saved by a previous in-library configure.
+readPersistedLocalBuildInfo
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ the working directory of the package
+  -> SymbolicPath Pkg (Dir Dist)
+  -- ^ the dist directory of the package
+  -> IO (Either ConfigStateFileError LocalBuildInfo)
+readPersistedLocalBuildInfo mbWorkDir distPref =
+  fmap restorePrograms <$> tryGetPersistBuildConfig mbWorkDir distPref
+  where
+    -- Unconfigured programs are not serialised; restore the builtin ones.
+    restorePrograms lbi =
+      lbi{LBI.withPrograms = restoreProgramDb builtinPrograms (LBI.withPrograms lbi)}
 
 {- Note [Constructing the ProgramDb]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -744,11 +867,11 @@ things:
         (a) The compiler programs (ghc, ghc-pkg, haddock, hsc2hs, ...) that were
             already configured at the project level appear in 'configuredProgs'.
             The 'configureAllKnownPrograms' call inside the Cabal per-package
-            'configureFinal' skips them, saving redundant work.
+            'configurePackage' skips them, saving redundant work.
 
         (b) Builtin preprocessors (e.g. alex, happy) are NOT configured at the
             project level; restoring them here means the call to
-            'configureAllKnownPrograms' in 'configureFinal' can find them using
+            'configureAllKnownPrograms' in 'configurePackage' can find them using
             the per-package search path (including 'extra-prog-path').
 
   (2)
@@ -768,8 +891,9 @@ things:
 
 -- ------------------------------------------------------------
 
-invoke :: Verbosity -> FilePath -> [String] -> SetupScriptOptions -> IO ()
-invoke verbosity path args options = do
+-- | Run a @Setup@ executable.
+invoke :: Verbosity -> SetupWorkingDirMethod -> FilePath -> [String] -> SetupScriptOptions -> IO ()
+invoke verbosity workDirMethod path args options = do
   info verbosity $ unwords (path : args)
   case useLoggingHandle options of
     Nothing -> return ()
@@ -783,20 +907,27 @@ invoke verbosity path args options = do
   env <-
     getEffectiveEnvironment $
       [ ("PATH", Just searchpath)
-      , ("HASKELL_DIST_DIR", Just (getSymbolicPath $ useDistPref options))
+      , ("HASKELL_DIST_DIR", Just distDir)
       ]
         ++ progOverrideEnv progDb
 
   let loggingHandle = maybe Inherit UseHandle (useLoggingHandle options)
       cp =
         (proc path args)
-          { Process.cwd = getSymbolicPath <$> useWorkingDir options
+          { Process.cwd = cwd
           , Process.env = env
           , Process.std_out = loggingHandle
           , Process.std_err = loggingHandle
           , Process.delegate_ctlc = isInteractive options
           }
   maybeExit $ rawSystemProc verbosity cp
+  where
+    (cwd, distDir) =
+      case workDirMethod of
+        WorkingDirFlag ->
+          (Nothing, interpretSymbolicPath (useWorkingDir options) (useDistPref options))
+        WorkingDirCwd ->
+          (getSymbolicPath <$> useWorkingDir options, getSymbolicPath (useDistPref options))
 
 -- ------------------------------------------------------------
 
@@ -804,11 +935,12 @@ invoke verbosity path args options = do
 
 -- ------------------------------------------------------------
 
-externalSetupMethod :: WithCallStack (FilePath -> SetupRunner UseGeneralSetup)
-externalSetupMethod path verbosity options _ args NotInLibrary =
+externalSetupMethod :: WithCallStack (SetupWorkingDirMethod -> FilePath -> SetupRunner UseGeneralSetup)
+externalSetupMethod workDirMethod path verbosity options _ args NotInLibrary =
 #ifndef mingw32_HOST_OS
   invoke
     verbosity
+    workDirMethod
     path
     args
     options
@@ -818,7 +950,7 @@ externalSetupMethod path verbosity options _ args NotInLibrary =
       then invokeWithWin32CleanHack path
       else invoke' path
   where
-    invoke' p = invoke verbosity p args options
+    invoke' p = invoke verbosity workDirMethod p args options
 
     invokeWithWin32CleanHack origPath = do
       info verbosity $ "Using the Win32 clean hack."

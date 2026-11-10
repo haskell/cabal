@@ -21,7 +21,6 @@ module Distribution.Simple.Setup.Test
       , testDistPref
       , testCabalFilePath
       , testWorkingDir
-      , testTargets
       , ..
       )
   , emptyTestFlags
@@ -87,6 +86,8 @@ instance Semigroup TestShowDetails where
 
 data TestFlags = TestFlags
   { testCommonFlags :: !CommonSetupFlags
+  , testTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , testHumanLog :: Flag PathTemplate
   , testMachineLog :: Flag PathTemplate
   , testShowDetails :: Flag TestShowDetails
@@ -104,14 +105,12 @@ pattern TestCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> TestFlags
 pattern TestCommonFlags
   { testVerbosity
   , testDistPref
   , testWorkingDir
   , testCabalFilePath
-  , testTargets
   } <-
   ( testCommonFlags ->
       CommonSetupFlags
@@ -119,7 +118,6 @@ pattern TestCommonFlags
         , setupDistPref = testDistPref
         , setupWorkingDir = testWorkingDir
         , setupCabalFilePath = testCabalFilePath
-        , setupTargets = testTargets
         }
     )
 
@@ -130,6 +128,7 @@ defaultTestFlags :: TestFlags
 defaultTestFlags =
   TestFlags
     { testCommonFlags = defaultCommonSetupFlags
+    , testTargets = []
     , testHumanLog = toFlag $ toPathTemplate "$pkgid-$test-suite.log"
     , testMachineLog = toFlag $ toPathTemplate "$pkgid.log"
     , testShowDetails = toFlag Direct

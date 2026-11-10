@@ -21,7 +21,6 @@ module Distribution.Simple.Setup.Build
       , buildDistPref
       , buildCabalFilePath
       , buildWorkingDir
-      , buildTargets
       , ..
       )
   , emptyBuildFlags
@@ -51,6 +50,8 @@ import Distribution.Verbosity
 
 data BuildFlags = BuildFlags
   { buildCommonFlags :: !CommonSetupFlags
+  , buildTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , buildProgramPaths :: [(String, FilePath)]
   , buildProgramArgs :: [(String, [String])]
   , buildNumJobs :: Flag (Maybe Int)
@@ -64,14 +65,12 @@ pattern BuildCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> BuildFlags
 pattern BuildCommonFlags
   { buildVerbosity
   , buildDistPref
   , buildWorkingDir
   , buildCabalFilePath
-  , buildTargets
   } <-
   ( buildCommonFlags ->
       CommonSetupFlags
@@ -79,7 +78,6 @@ pattern BuildCommonFlags
         , setupDistPref = buildDistPref
         , setupWorkingDir = buildWorkingDir
         , setupCabalFilePath = buildCabalFilePath
-        , setupTargets = buildTargets
         }
     )
 
@@ -90,6 +88,7 @@ defaultBuildFlags :: BuildFlags
 defaultBuildFlags =
   BuildFlags
     { buildCommonFlags = defaultCommonSetupFlags
+    , buildTargets = []
     , buildProgramPaths = mempty
     , buildProgramArgs = []
     , buildNumJobs = mempty

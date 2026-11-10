@@ -10,7 +10,7 @@ where
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.LocalBuildInfo (componentNameTargets')
+import Distribution.Types.LocalBuildInfo (componentNameTargets', distPrefLBI, localPkgDescr)
 import Distribution.Types.TargetInfo (targetCLBI)
 
 import Distribution.Client.Utils (tryCanonicalizePath)
@@ -25,7 +25,6 @@ import Distribution.PackageDescription
 import Distribution.Simple (PackageDBX (..))
 import Distribution.Simple.Build (addInternalBuildTools)
 import Distribution.Simple.BuildPaths (exeExtension)
-import Distribution.Simple.Flag (fromFlag)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   , LocalBuildInfo (..)
@@ -40,7 +39,6 @@ import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Register (internalPackageDBPath)
 
-import Distribution.Simple.Setup (ConfigFlags (..))
 import Distribution.Simple.Utils
   ( addLibraryPath
   , dieWithException
@@ -137,7 +135,7 @@ run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
 run verbosity lbi exe@Executable{exeName} exeArgs = do
   let exeName' = prettyShow exeName
   curDir <- absoluteWorkingDirLBI lbi
-  let distPref = fromFlag $ configDistPref $ configFlags lbi
+  let distPref = distPrefLBI lbi
       buildPref = buildDir lbi
       pkg_descr = localPkgDescr lbi
       i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path

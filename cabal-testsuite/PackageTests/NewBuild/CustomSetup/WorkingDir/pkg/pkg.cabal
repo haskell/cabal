@@ -1,0 +1,14 @@
+cabal-version: 3.0
+name:          pkg
+version:       0.1.0.0
+build-type:    Custom
+extra-source-files: marker.txt
+
+custom-setup
+  setup-depends: Cabal >= 3.13, base, directory
+
+library
+  exposed-modules:  Lib
+  hs-source-dirs:   src
+  build-depends:    base
+  default-language: Haskell2010

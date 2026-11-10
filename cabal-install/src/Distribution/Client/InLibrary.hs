@@ -23,7 +23,7 @@ import qualified Distribution.Client.SetupHooks.CallHooksExe as ExternalHooksExe
 import Distribution.Client.Types
 
 import qualified Distribution.PackageDescription as PD
-import Distribution.Simple (Compiler, PackageDBStackCWD)
+import Distribution.Simple (Compiler)
 import qualified Distribution.Simple.Bench as Cabal
 import Distribution.Simple.Build (build_setupHooks, repl_setupHooks)
 import qualified Distribution.Simple.Configure as Cabal
@@ -41,11 +41,11 @@ import Distribution.Simple.Utils
 import Distribution.System (Platform)
 import Distribution.Types.BuildType
 import Distribution.Types.ComponentRequestedSpec
+import qualified Distribution.Types.ConfigFlags as CF
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo
 import Distribution.Utils.Path
-  ( makeSymbolicPath
-  , relativeSymbolicPath
+  ( relativeSymbolicPath
   )
 import Distribution.Verbosity
   ( VerbosityHandles
@@ -53,7 +53,6 @@ import Distribution.Verbosity
   )
 
 import Distribution.Types.HookedBuildInfo (emptyHookedBuildInfo)
-import System.Directory (canonicalizePath)
 
 --------------------------------------------------------------------------------
 -- Configure
@@ -65,7 +64,6 @@ data LibraryConfigureInputs = LibraryConfigureInputs
   , buildType :: BuildType
   , compRequested :: Maybe PD.ComponentName
   , localBuildConfig :: LBC.LocalBuildConfig
-  , packageDBStack :: PackageDBStackCWD
   , packageDescription :: PD.PackageDescription
   , gPackageDescription :: PD.GenericPackageDescription
   , flagAssignment :: PD.FlagAssignment
@@ -79,8 +77,6 @@ libraryConfigureInputsFromElabPackage
   -> ElaboratedSharedConfig
   -> ElaboratedReadyPackage
   -> InstalledPackageIndex
-  -> [String]
-  -- ^ targets
   -> LibraryConfigureInputs
 libraryConfigureInputsFromElabPackage
   verbHandles
@@ -93,8 +89,7 @@ libraryConfigureInputsFromElabPackage
     , pkgConfigCompiler = compil
     }
   (ReadyPackage pkg)
-  ipi
-  userTargets =
+  ipi =
     LibraryConfigureInputs
       { verbosityHandles = verbHandles
       , compiler = compil
@@ -115,11 +110,9 @@ libraryConfigureInputsFromElabPackage
             _ -> Nothing
       , localBuildConfig =
           LBC.LocalBuildConfig
-            { LBC.extraConfigArgs = userTargets
-            , LBC.withPrograms = progDb
+            { LBC.withPrograms = progDb
             , LBC.withBuildOptions = elabBuildOptions pkg
             }
-      , packageDBStack = elabBuildPackageDBStack pkg
       , packageDescription = pkgDescr
       , gPackageDescription = gpkgDescr
       , flagAssignment = elabFlagAssignment pkg
@@ -141,7 +134,6 @@ configure
     , buildType = bt
     , compRequested = mbComp
     , localBuildConfig = lbc0
-    , packageDBStack = packageDBs
     , packageDescription = pkgDescr
     , gPackageDescription = gpkgDescr
     , flagAssignment = flagAssgn
@@ -153,8 +145,8 @@ configure
     -- compiler or re-resolving the conditionals in the package, as we have done
     -- all of that already.
     --
-    -- To achieve this, we call the Cabal 'configureFinal' function which skips
-    -- these preparatory steps.
+    -- To achieve this, we call the Cabal 'configurePackage' and
+    -- 'configureComponents' functions, which skip these preparatory steps.
     let verbFlags = Cabal.fromFlag $ Cabal.configVerbosity cfg
         verbosity = mkVerbosity verbHandles verbFlags
         mbWorkDir = Cabal.flagToMaybe $ Cabal.configWorkingDir cfg
@@ -165,11 +157,6 @@ configure
 
     let pkgId :: PD.PackageIdentifier
         pkgId = PD.package pkgDescr
-
-    -- cabal-install uses paths relative to the current working directory,
-    -- while the Cabal library expects symbolic paths. Perform the conversion here
-    -- by making the paths absolute.
-    packageDBs' <- traverse (traverse $ fmap makeSymbolicPath . canonicalizePath) packageDBs
 
     -- Configure package
     case mbComp of
@@ -185,9 +172,17 @@ configure
     -- TODO: we should implement recompilation checking on the level of
     -- individual components, so that we only re-configure the components that
     -- need reconfiguring (including running their hooks). See #11761.
-    lbc1 <- case preConfPackageHook confHooks of
-      Nothing -> return lbc0
-      Just hk -> Cabal.runPreConfPackageHook cfg compil plat lbc0 hk
+    pkgConfig <-
+      Cabal.configurePackage
+        verbHandles
+        confHooks
+        (Cabal.configCommonFlags cfg)
+        (CF.packageFlags cfg)
+        lbc0
+        pkgDescr
+        flagAssgn
+        compil
+        plat
     let compRequestedSpec = case mbComp of
           Just compName -> OneComponentRequestedSpec compName
           Nothing ->
@@ -205,22 +200,24 @@ configure
       --
       -- See (ProjIPI3) from Note [Per-project InstalledPackageIndex]
       -- in Distribution.Client.ProjectBuilding.
-      Cabal.computePackageInfoFromIndex verbHandles cfg gpkgDescr ipi
+      Cabal.computePackageInfoFromIndex
+        verbHandles
+        (Cabal.configCommonFlags cfg)
+        (CF.componentFlags cfg)
+        gpkgDescr
+        ipi
 
-    -- Post-configure hooks & per-component configure
+    -- Per-component configure
     lbi1 <-
-      Cabal.configureFinal
+      Cabal.configureComponents
         verbHandles
         confHooks
         emptyHookedBuildInfo
-        cfg
-        lbc1
-        (gpkgDescr, pkgDescr)
-        flagAssgn
+        (Cabal.configCommonFlags cfg)
+        (CF.componentFlags cfg)
+        pkgConfig
+        gpkgDescr
         compRequestedSpec
-        compil
-        plat
-        packageDBs'
         pkgInfo
 
     -- Remember the .cabal filename if we know it.

@@ -115,6 +115,7 @@ import Distribution.Client.SetupWrapper
   , SetupScriptOptions (..)
   , defaultSetupScriptOptions
   , setupWrapper
+  , userCommonFlags
   )
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
@@ -201,18 +202,15 @@ import Distribution.Simple.Setup
   , TestFlags (..)
   , buildCommand
   , copyCommonFlags
-  , defaultCommonSetupFlags
   , defaultDistPref
   , emptyBuildFlags
   , flagToMaybe
   , fromFlag
   , fromFlagOrDefault
   , haddockCommand
-  , maybeToFlag
   , registerCommonFlags
   , setupDistPref
   , setupVerbosity
-  , setupWorkingDir
   , testCommonFlags
   , toFlag
   )
@@ -1460,6 +1458,7 @@ performInstallations
                       installedPkgIndex
                       cacheLock
                       rpkg
+                      (makeSymbolicPath <$> mpath)
                   )
                   configFlags'
                   installFlags
@@ -1471,7 +1470,6 @@ performInstallations
                   pkg
                   rpkg
                   pkgoverride
-                  mpath
                   useLogFile
     where
       cinfo = compilerInfo comp
@@ -1484,12 +1482,13 @@ performInstallations
           (useDistPref defaultSetupScriptOptions)
           (setupDistPref $ configCommonFlags configFlags)
 
-      setupScriptOptions index lock rpkg =
+      setupScriptOptions index lock rpkg mbWorkDir =
         configureSetupScript
           packageDBs
           comp
           platform
           progdb
+          mbWorkDir
           distPref
           (chooseCabalVersion configExFlags (libVersion miscOptions))
           (Just lock)
@@ -1817,8 +1816,6 @@ installUnpackedPackage
   -> PackageDescription
   -> ReadyPackage
   -> PackageDescriptionOverride
-  -> Maybe FilePath
-  -- ^ Directory to change to before starting the installation.
   -> UseLogFile
   -- ^ File to log output to (if any)
   -> IO BuildOutcome
@@ -1837,8 +1834,9 @@ installUnpackedPackage
   pkg
   rpkg
   pkgoverride
-  workingDir
   useLogFile = do
+    let mbWorkDir = useWorkingDir scriptOptions
+        workingDir = getSymbolicPath <$> mbWorkDir
     -- Override the .cabal file if necessary
     case pkgoverride of
       Nothing -> return ()
@@ -1853,49 +1851,44 @@ installUnpackedPackage
             ++ " with the latest revision from the index."
         writeFileAtomic descFilePath pkgtxt
 
-    let mbWorkDir = fmap makeSymbolicPath workingDir
-        commonFlags ver =
+    let commonFlags ver common =
           (`filterCommonFlags` ver) $
-            defaultCommonSetupFlags
-              { setupDistPref = setupDistPref $ configCommonFlags configFlags
-              , setupVerbosity = toFlag $ verbosityFlags verbosity'
-              , setupWorkingDir = maybeToFlag mbWorkDir
-              }
+            common{setupVerbosity = toFlag $ verbosityFlags verbosity'}
 
     -- Make sure that we pass --libsubdir etc to 'setup configure' (necessary if
     -- the setup script was compiled against an old version of the Cabal lib).
     configFlags' <- addDefaultInstallDirs configFlags
     -- Filter out flags not supported by the old versions of the Cabal lib.
-    let configureFlags :: Version -> ConfigFlags
-        configureFlags =
+    let configureFlags :: CommonSetupFlags -> Version -> ConfigFlags
+        configureFlags common =
           filterConfigureFlags
             configFlags'
               { configCommonFlags =
-                  (configCommonFlags configFlags')
+                  (userCommonFlags (configCommonFlags configFlags') common)
                     { setupVerbosity = toFlag $ verbosityFlags verbosity'
                     }
               }
 
-        buildFlags vers =
-          emptyBuildFlags{buildCommonFlags = commonFlags vers}
+        buildFlags vers common =
+          emptyBuildFlags{buildCommonFlags = commonFlags vers common}
         shouldHaddock = fromFlag (installDocumentation installFlags)
-        haddockFlags' vers =
-          haddockFlags{haddockCommonFlags = commonFlags vers}
+        haddockFlags' vers common =
+          haddockFlags{haddockCommonFlags = commonFlags vers common}
         testsEnabled =
           fromFlag (configTests configFlags)
             && fromFlagOrDefault False (installRunTests installFlags)
-        testFlags' vers =
+        testFlags' vers common =
           (`filterTestFlags` vers) $
-            testFlags{testCommonFlags = commonFlags vers}
-        copyFlags vers =
+            testFlags{testCommonFlags = commonFlags vers common}
+        copyFlags vers common =
           Cabal.emptyCopyFlags
             { Cabal.copyDest = toFlag InstallDirs.NoCopyDest
-            , copyCommonFlags = commonFlags vers
+            , copyCommonFlags = commonFlags vers common
             }
         shouldRegister = PackageDescription.hasLibs pkg
-        registerFlags vers =
+        registerFlags vers common =
           Cabal.emptyRegisterFlags
-            { registerCommonFlags = commonFlags vers
+            { registerCommonFlags = commonFlags vers common
             }
 
     -- Path to the optional log file.
@@ -1905,19 +1898,19 @@ installUnpackedPackage
       -- Configure phase
       onFailure ConfigureFailed $ do
         noticeProgress ProgressStarting
-        setup configureCommand configCommonFlags (return . configureFlags) mLogPath
+        setup configureCommand (\vers common -> return $ configureFlags common vers) mLogPath
 
         -- Build phase
         onFailure BuildFailed $ do
           noticeProgress ProgressBuilding
-          setup buildCommand' buildCommonFlags (return . buildFlags) mLogPath
+          setup buildCommand' (\vers -> return . buildFlags vers) mLogPath
 
           -- Doc generation phase
           docsResult <-
             if shouldHaddock
               then
                 ( do
-                    setup haddockCommand haddockCommonFlags (return . haddockFlags') mLogPath
+                    setup haddockCommand (\vers -> return . haddockFlags' vers) mLogPath
                     return DocsOk
                 )
                   `catchIO` (\_ -> return DocsFailed)
@@ -1927,7 +1920,7 @@ installUnpackedPackage
           -- Tests phase
           onFailure TestsFailed $ do
             when (testsEnabled && PackageDescription.hasTests pkg) $
-              setup Cabal.testCommand testCommonFlags (return . testFlags') mLogPath
+              setup Cabal.testCommand (\vers -> return . testFlags' vers) mLogPath
 
             let testsResult
                   | testsEnabled = TestsOk
@@ -1944,7 +1937,7 @@ installUnpackedPackage
                 platform
                 pkg
                 $ do
-                  setup Cabal.copyCommand copyCommonFlags (return . copyFlags) mLogPath
+                  setup Cabal.copyCommand (\vers -> return . copyFlags vers) mLogPath
 
               -- Capture installed package configuration file, so that
               -- it can be incorporated into the final InstallPlan
@@ -2006,21 +1999,20 @@ installUnpackedPackage
               (configUserInstall configFlags')
 
       genPkgConfs
-        :: (Version -> Cabal.RegisterFlags)
+        :: (Version -> CommonSetupFlags -> Cabal.RegisterFlags)
         -> Maybe FilePath
         -> IO [Installed.InstalledPackageInfo]
       genPkgConfs flags mLogPath = do
         tmp <- getTemporaryDirectory
         withTempDirectory tmp (tempTemplate "pkgConf") $ \dir -> do
           let pkgConfDest = makeSymbolicPath dir </> makeRelativePathEx "pkgConf"
-              registerFlags' version =
-                (flags version)
+              registerFlags' version common =
+                (flags version common)
                   { Cabal.regGenPkgConf = toFlag (Just pkgConfDest)
                   }
           setup
             Cabal.registerCommand
-            registerCommonFlags
-            (return . registerFlags')
+            (\version -> return . registerFlags' version)
             mLogPath
           is_dir <- doesDirectoryExist (interpretSymbolicPathCWD pkgConfDest)
           let notHidden = not . isHidden
@@ -2062,20 +2054,16 @@ installUnpackedPackage
             removeFileForcibly logFileName
             return (Just logFileName)
 
-      setup cmd getCommonFlags flags mLogPath =
+      setup cmd flags mLogPath =
         Exception.bracket
           (traverse (`openFile` AppendMode) mLogPath)
           (traverse_ hClose)
           ( \logFileHandle ->
               setupWrapper
                 (setVerbosityHandles logFileHandle verbosity)
-                scriptOptions
-                  { useLoggingHandle = logFileHandle
-                  , useWorkingDir = makeSymbolicPath <$> workingDir
-                  }
+                scriptOptions{useLoggingHandle = logFileHandle}
                 (Just pkg)
                 cmd
-                getCommonFlags
                 flags
                 (const [])
                 NotInLibrary

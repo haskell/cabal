@@ -114,6 +114,7 @@ import Distribution.Client.SetupWrapper
   , SetupScriptOptions (..)
   , defaultSetupScriptOptions
   , setupWrapper
+  , userCommonFlags
   )
 import Distribution.Client.Targets
   ( readUserTargets
@@ -255,7 +256,6 @@ import Distribution.Verbosity as Verbosity
   , defaultVerbosityHandles
   , mkVerbosity
   , normal
-  , verbosityFlags
   , verbosityHandles
   )
 import Distribution.Version
@@ -468,7 +468,7 @@ mainWorker args = do
       , regularCmd initCommand initAction
       , regularCmd userConfigCommand userConfigAction
       , regularCmd CmdPath.pathCommand CmdPath.pathAction
-      , wrapperCmd hscolourCommand hscolourCommonFlags
+      , wrapperCmd hscolourCommand hscolourCommonFlags (\common flags -> flags{hscolourCommonFlags = common})
       , hiddenCmd formatCommand formatAction
       , hiddenCmd actAsSetupCommand actAsSetupAction
       , hiddenCmd manpageCommand (manpageAction commandSpecs)
@@ -505,8 +505,8 @@ mainWorker args = do
           , legacyCmd testCommand testAction
           , legacyCmd benchmarkCommand benchmarkAction
           , legacyCmd cleanCommand cleanAction
-          , legacyWrapperCmd copyCommand copyCommonFlags
-          , legacyWrapperCmd registerCommand registerCommonFlags
+          , legacyWrapperCmd copyCommand copyCommonFlags (\common flags -> flags{copyCommonFlags = common})
+          , legacyWrapperCmd registerCommand registerCommonFlags (\common flags -> flags{registerCommonFlags = common})
           , legacyCmd reconfigureCommand reconfigureAction
           ]
 
@@ -535,16 +535,18 @@ wrapperCmd
   :: Monoid flags
   => CommandUI flags
   -> (flags -> CommonSetupFlags)
+  -> (CommonSetupFlags -> flags -> flags)
   -> CommandSpec Action
-wrapperCmd ui getCommonFlags =
-  CommandSpec ui (`wrapperAction` getCommonFlags) NormalCommand
+wrapperCmd ui getCommonFlags setCommonFlags =
+  CommandSpec ui (\cmd -> wrapperAction cmd getCommonFlags setCommonFlags) NormalCommand
 
 wrapperAction
   :: Monoid flags
   => CommandUI flags
   -> (flags -> CommonSetupFlags)
+  -> (CommonSetupFlags -> flags -> flags)
   -> Command Action
-wrapperAction command getCommonFlags =
+wrapperAction command getCommonFlags setCommonFlags =
   commandAddAction
     command
       { commandDefaultFlags = mempty
@@ -569,8 +571,7 @@ wrapperAction command getCommonFlags =
         setupScriptOptions
         Nothing
         command
-        getCommonFlags
-        (const (return flags))
+        (\_ common' -> return $ setCommonFlags (userCommonFlags common common') flags)
         (const extraArgs)
         NotInLibrary
 
@@ -685,24 +686,25 @@ build verbosity config distPref buildFlags extraArgs =
     setupOptions
     Nothing
     (Cabal.buildCommand progDb)
-    buildCommonFlags
-    (return . mkBuildFlags)
+    (\version -> return . mkBuildFlags version)
     (const extraArgs)
     NotInLibrary
   where
     progDb = defaultProgramDb
-    setupOptions = defaultSetupScriptOptions{useDistPref = distPref}
-
-    mkBuildFlags version = filterBuildFlags version config buildFlags'
-    commonFlags = buildCommonFlags buildFlags
-    buildFlags' =
-      buildFlags
-        { buildCommonFlags =
-            commonFlags
-              { setupVerbosity = toFlag $ verbosityFlags verbosity
-              , setupDistPref = toFlag distPref
-              }
+    setupOptions =
+      defaultSetupScriptOptions
+        { useDistPref = distPref
+        , useWorkingDir = flagToMaybe $ setupWorkingDir $ buildCommonFlags buildFlags
         }
+
+    mkBuildFlags version common =
+      filterBuildFlags version config $
+        buildFlags
+          { buildCommonFlags =
+              (userCommonFlags (buildCommonFlags buildFlags) common)
+                { setupVerbosity = setupVerbosity common
+                }
+          }
 
 -- | Make sure that we don't pass new flags to setup scripts compiled against
 -- old versions of Cabal.
@@ -765,14 +767,13 @@ replAction replFlags extraArgs globalFlags = do
             defaultSetupScriptOptions
               { useCabalVersion = orLaterVersion $ mkVersion [1, 18, 0]
               , useDistPref = distPref
+              , useWorkingDir = flagToMaybe $ setupWorkingDir $ replCommonFlags replFlags
               }
-          commonFlags = replCommonFlags replFlags
-          replFlags' =
+          replFlags' common' =
             replFlags
               { replCommonFlags =
-                  commonFlags
-                    { setupVerbosity = toFlag $ verbosityFlags verbosity
-                    , setupDistPref = toFlag distPref
+                  (userCommonFlags common common')
+                    { setupVerbosity = setupVerbosity common'
                     }
               }
 
@@ -781,8 +782,7 @@ replAction replFlags extraArgs globalFlags = do
         setupOptions
         Nothing
         (Cabal.replCommand progDb)
-        Cabal.replCommonFlags
-        (const (return replFlags'))
+        (\_ -> return . replFlags')
         (const extraArgs)
         NotInLibrary
 
@@ -825,14 +825,26 @@ installAction (configFlags, _, installFlags, _, _, _) _ globalFlags
               fromFlagOrDefault normal (setupVerbosity common)
       config <- loadConfigOrSandboxConfig verb globalFlags
       dist <- findSavedDistPref config (setupDistPref common)
-      let setupOpts = defaultSetupScriptOptions{useDistPref = dist}
+      let setupOpts =
+            defaultSetupScriptOptions
+              { useDistPref = dist
+              , useWorkingDir = flagToMaybe $ setupWorkingDir common
+              }
       setupWrapper
         verb
         setupOpts
         Nothing
         installCommand
-        (const common)
-        (const (return (mempty, mempty, mempty, mempty, mempty, mempty)))
+        ( \_ common' ->
+            return
+              ( mempty{configCommonFlags = userCommonFlags common common'}
+              , mempty
+              , mempty
+              , mempty
+              , mempty
+              , mempty
+              )
+        )
         (const [])
         NotInLibrary
 installAction
@@ -973,11 +985,10 @@ testAction (buildFlags, testFlags) extraArgs globalFlags = do
       globalFlags
       config
 
-  let setupOptions = defaultSetupScriptOptions{useDistPref = distPref}
-      testFlags' =
+  let setupOptions = defaultSetupScriptOptions{useDistPref = distPref, useWorkingDir = mbWorkDir}
+      testFlags' common =
         testFlags
-          { testCommonFlags =
-              (testCommonFlags testFlags){setupDistPref = toFlag distPref}
+          { testCommonFlags = userCommonFlags (testCommonFlags testFlags) common
           }
       mbWorkDir = flagToMaybe $ testWorkingDir testFlags
 
@@ -1005,8 +1016,7 @@ testAction (buildFlags, testFlags) extraArgs globalFlags = do
     setupOptions
     Nothing
     Cabal.testCommand
-    Cabal.testCommonFlags
-    (const (return testFlags'))
+    (\_ -> return . testFlags')
     (const extraArgs')
     NotInLibrary
 
@@ -1095,13 +1105,11 @@ benchmarkAction
         globalFlags
         config
 
-    let setupOptions = defaultSetupScriptOptions{useDistPref = distPref}
-        benchmarkFlags' =
+    let setupOptions = defaultSetupScriptOptions{useDistPref = distPref, useWorkingDir = mbWorkDir}
+        benchmarkFlags' common =
           benchmarkFlags
             { benchmarkCommonFlags =
-                (benchmarkCommonFlags benchmarkFlags)
-                  { setupDistPref = toFlag distPref
-                  }
+                userCommonFlags (benchmarkCommonFlags benchmarkFlags) common
             }
         mbWorkDir = flagToMaybe $ benchmarkWorkingDir benchmarkFlags
 
@@ -1129,8 +1137,7 @@ benchmarkAction
       setupOptions
       Nothing
       Cabal.benchmarkCommand
-      Cabal.benchmarkCommonFlags
-      (const (return benchmarkFlags'))
+      (\_ -> return . benchmarkFlags')
       (const extraArgs')
       NotInLibrary
 
@@ -1155,18 +1162,16 @@ haddockAction haddockFlags extraArgs globalFlags = do
       config
 
   let mbWorkDir = flagToMaybe $ setupWorkingDir common
-      haddockFlags' =
+      haddockFlags' common' =
         defaultHaddockFlags
           <> savedHaddockFlags config'
           <> haddockFlags
-            { haddockCommonFlags =
-                (haddockCommonFlags haddockFlags)
-                  { setupDistPref = toFlag distPref
-                  }
+            { haddockCommonFlags = userCommonFlags common common'
             }
       setupScriptOptions =
         defaultSetupScriptOptions
           { useDistPref = distPref
+          , useWorkingDir = mbWorkDir
           }
 
   setupWrapper
@@ -1174,8 +1179,7 @@ haddockAction haddockFlags extraArgs globalFlags = do
     setupScriptOptions
     Nothing
     haddockCommand
-    haddockCommonFlags
-    (const (return haddockFlags'))
+    (\_ -> return . haddockFlags')
     (const extraArgs)
     NotInLibrary
 
@@ -1200,22 +1204,19 @@ cleanAction cleanFlags extraArgs globalFlags = do
   let setupScriptOptions =
         defaultSetupScriptOptions
           { useDistPref = distPref
+          , useWorkingDir = flagToMaybe $ setupWorkingDir common
           , useWin32CleanHack = True
           }
-      cleanFlags' =
+      cleanFlags' common' =
         cleanFlags
-          { cleanCommonFlags =
-              (cleanCommonFlags cleanFlags)
-                { setupDistPref = toFlag distPref
-                }
+          { cleanCommonFlags = userCommonFlags common common'
           }
   setupWrapper
     verbosity
     setupScriptOptions
     Nothing
     cleanCommand
-    cleanCommonFlags
-    (const (return cleanFlags'))
+    (\_ -> return . cleanFlags')
     (const extraArgs)
     NotInLibrary
 

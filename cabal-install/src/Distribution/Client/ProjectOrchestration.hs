@@ -1176,12 +1176,11 @@ printPlan
       showConfigureFlags :: ElaboratedConfiguredPackage -> String
       showConfigureFlags elab =
         let commonFlags =
-              setupHsCommonFlags
-                verbosity
-                Nothing -- omit working directory
-                (makeSymbolicPath "$builddir")
-                (setupHsConfigureArgs elab)
-                buildSettingKeepTempFiles
+              Setup.defaultCommonSetupFlags
+                { Setup.setupVerbosity = Setup.toFlag $ verbosityFlags verbosity
+                , Setup.setupDistPref = Setup.toFlag $ makeSymbolicPath "$builddir"
+                , Setup.setupKeepTempFiles = Setup.toFlag buildSettingKeepTempFiles
+                }
             fullConfigureFlags =
               runIdentity
                 ( setupHsConfigureFlags
@@ -1190,6 +1189,7 @@ printPlan
                     (ReadyPackage elab)
                     elaboratedShared
                     commonFlags
+                    (setupHsConfigureArgs elab)
                 )
             -- \| Given a default value @x@ for a flag, nub @Flag x@
             -- into @NoFlag@.  This gives us a tidier command line

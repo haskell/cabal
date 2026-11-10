@@ -96,7 +96,7 @@ import Distribution.Types.Component
   )
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo
-  ( LocalBuildInfo
+  ( PersistedBuildInfo
   )
 import Distribution.Verbosity
   ( Verbosity
@@ -134,7 +134,7 @@ hooksVersion =
 
 -- | Tracks the parts of the Cabal API relevant to its binary interface.
 data CabalABI = CabalABI
-  { cabalLocalBuildInfo :: LocalBuildInfo
+  { cabalLocalBuildInfo :: PersistedBuildInfo
   }
   deriving stock (Generic)
 

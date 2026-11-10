@@ -296,7 +296,7 @@ import Distribution.Types.Component
 import Distribution.Types.ComponentLocalBuildInfo
   ( ComponentLocalBuildInfo(..) )
 import Distribution.Types.LocalBuildInfo
-  ( LocalBuildInfo(..), withPrograms )
+  ( LocalBuildInfo(..), localPkgDescr, withPrograms )
 import Distribution.Types.LocalBuildConfig
   ( LocalBuildConfig, PackageBuildDescr )
 import Distribution.Types.TargetInfo

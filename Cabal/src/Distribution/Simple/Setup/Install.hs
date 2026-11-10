@@ -22,7 +22,6 @@ module Distribution.Simple.Setup.Install
       , installDistPref
       , installCabalFilePath
       , installWorkingDir
-      , installTargets
       , ..
       )
   , emptyInstallFlags
@@ -52,6 +51,8 @@ import Distribution.Verbosity
 -- | Flags to @install@: (package db, verbosity)
 data InstallFlags = InstallFlags
   { installCommonFlags :: !CommonSetupFlags
+  , installTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , installPackageDB :: Flag PackageDB
   , installDest :: Flag CopyDest
   , installUseWrapper :: Flag Bool
@@ -65,14 +66,12 @@ pattern InstallCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> InstallFlags
 pattern InstallCommonFlags
   { installVerbosity
   , installDistPref
   , installWorkingDir
   , installCabalFilePath
-  , installTargets
   } <-
   ( installCommonFlags ->
       CommonSetupFlags
@@ -80,7 +79,6 @@ pattern InstallCommonFlags
         , setupDistPref = installDistPref
         , setupWorkingDir = installWorkingDir
         , setupCabalFilePath = installCabalFilePath
-        , setupTargets = installTargets
         }
     )
 
@@ -88,6 +86,7 @@ defaultInstallFlags :: InstallFlags
 defaultInstallFlags =
   InstallFlags
     { installCommonFlags = defaultCommonSetupFlags
+    , installTargets = []
     , installPackageDB = NoFlag
     , installDest = Flag NoCopyDest
     , installUseWrapper = Flag False

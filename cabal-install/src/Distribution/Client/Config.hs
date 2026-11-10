@@ -469,16 +469,15 @@ instance Semigroup SavedConfig where
           , setupWorkingDir = combine setupWorkingDir
           , setupCabalFilePath = combine setupCabalFilePath
           , setupVerbosity = combine setupVerbosity
-          , setupTargets = lastNonEmpty setupTargets
           , setupKeepTempFiles = combine setupKeepTempFiles
           }
         where
-          lastNonEmpty = lastNonEmpty' which
           combine = combine' which
 
       combinedSavedConfigureFlags =
         ConfigFlags
           { configCommonFlags = combinedSavedCommonFlags (configCommonFlags . savedConfigureFlags)
+          , configTargets = lastNonEmpty configTargets
           , configPrograms_ = configPrograms_ . savedConfigureFlags $ b
           , -- TODO: NubListify
             configProgramPaths = lastNonEmpty configProgramPaths
@@ -509,7 +508,6 @@ instance Semigroup SavedConfig where
           , -- Parametrised by (Flag PathTemplate), so safe to use '(<>)'.
             configInstallDirs =
               configInstallDirs (savedConfigureFlags a) <> configInstallDirs (savedConfigureFlags b)
-          , configScratchDir = combine configScratchDir
           , -- TODO: NubListify
             configExtraLibDirs = lastNonEmpty configExtraLibDirs
           , configExtraLibDirsStatic = lastNonEmpty configExtraLibDirsStatic
@@ -614,6 +612,7 @@ instance Semigroup SavedConfig where
       combinedSavedHaddockFlags =
         HaddockFlags
           { haddockCommonFlags = combinedSavedCommonFlags (haddockCommonFlags . savedHaddockFlags)
+          , haddockTargets = lastNonEmpty haddockTargets
           , -- TODO: NubListify
             haddockProgramPaths = lastNonEmpty haddockProgramPaths
           , -- TODO: NubListify
@@ -645,6 +644,7 @@ instance Semigroup SavedConfig where
       combinedSavedTestFlags =
         TestFlags
           { testCommonFlags = combinedSavedCommonFlags (testCommonFlags . savedTestFlags)
+          , testTargets = lastNonEmpty testTargets
           , testHumanLog = combine testHumanLog
           , testMachineLog = combine testMachineLog
           , testShowDetails = combine testShowDetails
@@ -660,6 +660,7 @@ instance Semigroup SavedConfig where
       combinedSavedBenchmarkFlags =
         BenchmarkFlags
           { benchmarkCommonFlags = combinedSavedCommonFlags (benchmarkCommonFlags . savedBenchmarkFlags)
+          , benchmarkTargets = lastNonEmpty benchmarkTargets
           , benchmarkOptions = lastNonEmpty benchmarkOptions
           }
         where

@@ -271,7 +271,6 @@ haddock_setupHooks
         mbWorkDir = flagToMaybe $ haddockWorkingDir flags
         comp = compiler lbi
         platform = hostPlatform lbi
-        config = configFlags lbi
 
         quickJmpFlag = haddockQuickJump flags'
         flags = case haddockTarget of
@@ -289,7 +288,7 @@ haddock_setupHooks
         flag f = fromFlag $ f flags
 
         tmpFileOpts =
-          commonSetupTempFileOptions $ configCommonFlags config
+          commonSetupTempFileOptions $ haddockCommonFlags flags
         htmlTemplate =
           fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $
             flags
@@ -1662,6 +1661,7 @@ haddockToHscolour :: HaddockFlags -> HscolourFlags
 haddockToHscolour flags =
   HscolourFlags
     { hscolourCommonFlags = haddockCommonFlags flags
+    , hscolourTargets = haddockTargets flags
     , hscolourCSS = haddockHscolourCss flags
     , hscolourExecutables = haddockExecutables flags
     , hscolourTestSuites = haddockTestSuites flags

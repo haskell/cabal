@@ -47,6 +47,7 @@ import Distribution.Client.SetupWrapper
   , SetupScriptOptions (..)
   , defaultSetupScriptOptions
   , setupWrapper
+  , userCommonFlags
   )
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import Distribution.Client.Targets
@@ -100,7 +101,6 @@ import Distribution.Simple.Setup
   , ConfigFlags (..)
   , flagToMaybe
   , fromFlagOrDefault
-  , maybeToFlag
   , toFlag
   )
 import Distribution.Simple.Utils as Utils
@@ -132,7 +132,7 @@ import Distribution.Version
   )
 
 import Distribution.Client.Errors
-import Distribution.Verbosity (verbosityFlags, verbosityLevel)
+import Distribution.Verbosity (verbosityLevel)
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags. Currently, it implements no
@@ -203,8 +203,12 @@ configure
           (setupScriptOptions installedPkgIndex Nothing)
           Nothing
           configureCommand
-          configCommonFlags
-          (const (return configFlags))
+          ( \_ common ->
+              return
+                configFlags
+                  { configCommonFlags = userCommonFlags (configCommonFlags configFlags) common
+                  }
+          )
           (const extraArgs)
           NotInLibrary
       Right installPlan0 ->
@@ -241,6 +245,7 @@ configure
           comp
           platform
           progdb
+          (flagToMaybe $ configWorkingDir configFlags)
           ( fromFlagOrDefault
               (useDistPref defaultSetupScriptOptions)
               (setupDistPref $ configCommonFlags configFlags)
@@ -258,6 +263,8 @@ configureSetupScript
   -> Compiler
   -> Platform
   -> ProgramDb
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ the working directory of the package
   -> SymbolicPath Pkg (Dir Dist)
   -> VersionRange
   -> Maybe Lock
@@ -269,6 +276,7 @@ configureSetupScript
   comp
   platform
   progdb
+  mbWorkDir
   distPref
   cabalVersion
   lock
@@ -284,7 +292,7 @@ configureSetupScript
       , useProgramDb = progdb
       , useDistPref = distPref
       , useLoggingHandle = Nothing
-      , useWorkingDir = Nothing
+      , useWorkingDir = mbWorkDir
       , useExtraPathEnv = []
       , useExtraEnvOverrides = []
       , setupCacheLock = lock
@@ -504,21 +512,19 @@ configurePackage
       scriptOptions
       (Just pkg)
       configureCommand
-      configCommonFlags
-      (return . configureFlags)
+      (\version common -> return $ configureFlags common version)
       (const extraArgs)
       NotInLibrary
     where
       gpkg :: PkgDesc.GenericPackageDescription
       gpkg = srcpkgDescription spkg
-      configureFlags :: Version -> ConfigFlags
-      configureFlags =
+      configureFlags :: CommonSetupFlags -> Version -> ConfigFlags
+      configureFlags common =
         filterConfigureFlags
           configFlags
             { configCommonFlags =
-                (configCommonFlags configFlags)
-                  { setupVerbosity = toFlag $ verbosityFlags verbosity
-                  , setupWorkingDir = maybeToFlag $ useWorkingDir scriptOptions
+                (userCommonFlags (configCommonFlags configFlags) common)
+                  { setupVerbosity = setupVerbosity common
                   }
             , configIPID =
                 if isJust (flagToMaybe (configIPID configFlags))

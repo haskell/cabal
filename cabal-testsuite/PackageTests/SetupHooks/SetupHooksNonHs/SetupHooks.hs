@@ -17,7 +17,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.SetupHooks
 import Distribution.Simple.Utils
 import Distribution.Types.LocalBuildInfo
-  ( buildDirPBD )
+  ( setupFlagsBuildDir )
 import Distribution.Types.UnqualComponentName
   ( unUnqualComponentName )
 import Distribution.Utils.Path
@@ -46,7 +46,7 @@ setupHooks =
     }
 
 pcc :: PreConfComponentHook
-pcc (PreConfComponentInputs _lbc pbd _comp) =
+pcc (PreConfComponentInputs { commonFlags = common }) =
   return $
     PreConfComponentOutputs $ ComponentDiff $ CExe $
       emptyExecutable
@@ -70,7 +70,7 @@ pcc (PreConfComponentInputs _lbc pbd _comp) =
               }
         }
   where
-    autogenDir = buildDirPBD pbd </> unsafeMakeSymbolicPath "NonHs/autogen"
+    autogenDir = setupFlagsBuildDir common </> unsafeMakeSymbolicPath "NonHs/autogen"
 
 preBuildRules :: PreBuildComponentInputs -> RulesM ()
 preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = lbi, targetInfo = tgt }) = mdo

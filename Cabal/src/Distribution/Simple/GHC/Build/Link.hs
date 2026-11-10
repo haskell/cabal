@@ -42,7 +42,6 @@ import qualified Distribution.Simple.Program.Ar as Ar
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.Ld as Ld
 import Distribution.Simple.Setup.Common
-import Distribution.Simple.Setup.Config
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Utils
 import Distribution.System
@@ -703,7 +702,7 @@ runReplOrWriteFlags ghcProg verbHandles lbi rflags ghcOpts pkg_name target =
       cname = componentName (targetComponent target)
       comp = compiler lbi
       platform = hostPlatform lbi
-      common = configCommonFlags $ configFlags lbi
+      common = replCommonFlags rflags
       mbWorkDir = mbWorkDirLBI lbi
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       tempFileOptions = commonSetupTempFileOptions common

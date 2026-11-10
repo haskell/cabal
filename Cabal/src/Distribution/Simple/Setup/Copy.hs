@@ -22,7 +22,6 @@ module Distribution.Simple.Setup.Copy
       , copyDistPref
       , copyCabalFilePath
       , copyWorkingDir
-      , copyTargets
       , ..
       )
   , emptyCopyFlags
@@ -51,6 +50,8 @@ import Distribution.Verbosity
 -- | Flags to @copy@: (destdir, copy-prefix (backwards compat), verbosity)
 data CopyFlags = CopyFlags
   { copyCommonFlags :: !CommonSetupFlags
+  , copyTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , copyDest :: Flag CopyDest
   }
   deriving (Show, Generic)
@@ -61,14 +62,12 @@ pattern CopyCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> CopyFlags
 pattern CopyCommonFlags
   { copyVerbosity
   , copyDistPref
   , copyWorkingDir
   , copyCabalFilePath
-  , copyTargets
   } <-
   ( copyCommonFlags ->
       CommonSetupFlags
@@ -76,7 +75,6 @@ pattern CopyCommonFlags
         , setupDistPref = copyDistPref
         , setupWorkingDir = copyWorkingDir
         , setupCabalFilePath = copyCabalFilePath
-        , setupTargets = copyTargets
         }
     )
 
@@ -87,6 +85,7 @@ defaultCopyFlags :: CopyFlags
 defaultCopyFlags =
   CopyFlags
     { copyCommonFlags = defaultCommonSetupFlags
+    , copyTargets = []
     , copyDest = Flag NoCopyDest
     }
 

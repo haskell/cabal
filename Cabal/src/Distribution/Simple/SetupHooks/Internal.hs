@@ -84,7 +84,6 @@ where
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compat.Lens ((.~))
 import Distribution.ModuleName (ModuleName)
 import Distribution.PackageDescription
 import Distribution.Pretty (prettyShow)
@@ -95,12 +94,13 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup
   ( BuildingWhat (..)
+  , buildingWhatCommonFlags
   , buildingWhatDistPref
   , buildingWhatVerbosity
   , buildingWhatWorkingDir
   )
 import Distribution.Simple.Setup.Build (BuildFlags (..))
-import Distribution.Simple.Setup.Config (ConfigFlags (..))
+import Distribution.Simple.Setup.Common (CommonSetupFlags)
 import Distribution.Simple.Setup.Copy (CopyFlags (..))
 import Distribution.Simple.SetupHooks.Errors
 import Distribution.Simple.SetupHooks.Rule
@@ -109,12 +109,15 @@ import Distribution.Simple.Utils
 import Distribution.System (Platform (..))
 import Distribution.Utils.Path
 import Distribution.Utils.Structured
-  ( structuredDecodeOrFailIO
+  ( Structured (..)
+  , structuredDecodeOrFailIO
   , structuredEncodeFile
   )
 
-import qualified Distribution.Types.BuildInfo.Lens as BI (buildInfo)
+import Distribution.Types.ComponentDiff
+import Distribution.Types.ConfigFlags (ComponentConfigFlags, PackageConfigFlags)
 import Distribution.Types.LocalBuildConfig as LBC
+import Distribution.Types.LocalBuildInfo (PersistedBuildInfo, commonFlagsBuildLocation)
 import Distribution.Types.TargetInfo
 import Distribution.Verbosity
 
@@ -122,6 +125,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Coerce (coerce)
 import Data.Either (fromRight)
+import Data.Functor.Compose (Compose (..))
 import qualified Data.Graph as Graph
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import qualified Data.List.NonEmpty as NE
@@ -199,8 +203,16 @@ noSetupHooks =
 type PreConfPackageHook = PreConfPackageInputs -> IO PreConfPackageOutputs
 
 -- | Inputs to the package-wide pre-configure step.
+--
+-- These inputs are the same for every component of the package.
 data PreConfPackageInputs = PreConfPackageInputs
-  { configFlags :: ConfigFlags
+  { commonFlags :: CommonSetupFlags
+  -- ^ The common flags of the package-wide configuration step.
+  --
+  -- Package-wide configure hooks should write their outputs to the dist
+  -- directory in these flags.
+  , packageConfigFlags :: PackageConfigFlags
+  -- ^ The package-level configure flags.
   , localBuildConfig :: LocalBuildConfig
   -- ^ Warning: the 'ProgramDb' in the 'withPrograms' field
   -- will not contain any unconfigured programs.
@@ -240,8 +252,12 @@ noPreConfPackageOutputs (PreConfPackageInputs{localBuildConfig = lbc}) =
 type PostConfPackageHook = PostConfPackageInputs -> IO ()
 
 -- | Inputs to the package-wide post-configure step.
+--
+-- These inputs are the same for every component of the package.
 data PostConfPackageInputs = PostConfPackageInputs
-  { localBuildConfig :: LocalBuildConfig
+  { commonFlags :: CommonSetupFlags
+  -- ^ The common flags of the package-wide configuration step.
+  , localBuildConfig :: LocalBuildConfig
   , packageBuildDescr :: PackageBuildDescr
   }
   deriving (Generic, Show)
@@ -257,6 +273,10 @@ type PreConfComponentHook = PreConfComponentInputs -> IO PreConfComponentOutputs
 data PreConfComponentInputs = PreConfComponentInputs
   { localBuildConfig :: LocalBuildConfig
   , packageBuildDescr :: PackageBuildDescr
+  , commonFlags :: CommonSetupFlags
+  -- ^ The common flags of the per-component configuration step.
+  , componentConfigFlags :: ComponentConfigFlags
+  -- ^ The component-level configure flags.
   , component :: Component
   }
   deriving (Generic, Show)
@@ -351,7 +371,8 @@ instance Semigroup PreConfPkgSemigroup where
   PreConfPkgSemigroup f1 <> PreConfPkgSemigroup f2 =
     PreConfPkgSemigroup $
       \inputs@( PreConfPackageInputs
-                  { configFlags = cfg
+                  { commonFlags = common
+                  , packageConfigFlags = pkgFlags
                   , compiler = comp
                   , platform = plat
                   , localBuildConfig = lbc0
@@ -369,7 +390,8 @@ instance Semigroup PreConfPkgSemigroup where
               } <-
               f2 $
                 PreConfPackageInputs
-                  { configFlags = cfg
+                  { commonFlags = common
+                  , packageConfigFlags = pkgFlags
                   , compiler = comp
                   , platform = plat
                   , localBuildConfig =
@@ -524,30 +546,6 @@ type ExecutableDiff = Executable
 type TestSuiteDiff = TestSuite
 type BenchmarkDiff = Benchmark
 type BuildInfoDiff = BuildInfo
-
--- | A diff to a Cabal 'Component', that gets combined monoidally into
--- an existing 'Component'.
-newtype ComponentDiff = ComponentDiff {componentDiff :: Component}
-  deriving (Semigroup, Show)
-
-emptyComponentDiff :: ComponentName -> ComponentDiff
-emptyComponentDiff name = ComponentDiff $
-  case name of
-    CLibName{} -> CLib emptyLibrary
-    CFLibName{} -> CFLib emptyForeignLib
-    CExeName{} -> CExe emptyExecutable
-    CTestName{} -> CTest emptyTestSuite
-    CBenchName{} -> CBench emptyBenchmark
-
-buildInfoComponentDiff :: ComponentName -> BuildInfo -> ComponentDiff
-buildInfoComponentDiff name bi = ComponentDiff $
-  BI.buildInfo .~ bi $
-    case name of
-      CLibName{} -> CLib emptyLibrary
-      CFLibName{} -> CFLib emptyForeignLib
-      CExeName{} -> CExe emptyExecutable
-      CTestName{} -> CTest emptyTestSuite
-      CBenchName{} -> CBench emptyBenchmark
 
 applyLibraryDiff :: Verbosity -> Library -> LibraryDiff -> IO Library
 applyLibraryDiff verbosity lib diff =
@@ -738,65 +736,25 @@ illegalBuildInfoDiffReasons
            | not $ target_build_depends == targetBuildDepends bi || target_build_depends == targetBuildDepends emptyBuildInfo
            ]
 
--- | Traverse the components of a 'PackageDescription'.
+-- | Compute a diff for each component of a package description, and apply
+-- these diffs.
 --
--- The function must preserve the component type, i.e. map a 'CLib' to a 'CLib',
--- a 'CExe' to a 'CExe', etc.
-traverseComponents
-  :: Applicative m
-  => (Component -> m Component)
-  -> PackageDescription
-  -> m PackageDescription
-traverseComponents f pd =
-  upd_pd
-    <$> traverse f_lib (library pd)
-    <*> traverse f_lib (subLibraries pd)
-    <*> traverse f_flib (foreignLibs pd)
-    <*> traverse f_exe (executables pd)
-    <*> traverse f_test (testSuites pd)
-    <*> traverse f_bench (benchmarks pd)
-  where
-    f_lib lib = \case { CLib lib' -> lib'; c -> mismatch (CLib lib) c } <$> f (CLib lib)
-    f_flib flib = \case { CFLib flib' -> flib'; c -> mismatch (CFLib flib) c } <$> f (CFLib flib)
-    f_exe exe = \case { CExe exe' -> exe'; c -> mismatch (CExe exe) c } <$> f (CExe exe)
-    f_test test = \case { CTest test' -> test'; c -> mismatch (CTest test) c } <$> f (CTest test)
-    f_bench bench = \case { CBench bench' -> bench'; c -> mismatch (CBench bench) c } <$> f (CBench bench)
-
-    upd_pd lib sublibs flibs exes tests benchs =
-      pd
-        { library = lib
-        , subLibraries = sublibs
-        , foreignLibs = flibs
-        , executables = exes
-        , testSuites = tests
-        , benchmarks = benchs
-        }
-
-    -- This is a panic, because we maintain this invariant elsewhere:
-    -- see 'componentDiffError' in 'applyComponentDiff', which catches an
-    -- invalid per-component configure hook.
-    mismatch c1 c2 =
-      error $
-        "Mismatched component types: "
-          ++ showComponentName (componentName c1)
-          ++ " "
-          ++ showComponentName (componentName c2)
-          ++ "."
-{-# INLINEABLE traverseComponents #-}
-
+-- Returns the diffs together with the resulting package description.
 applyComponentDiffs
   :: Verbosity
   -> (Component -> IO (Maybe ComponentDiff))
   -> PackageDescription
-  -> IO PackageDescription
-applyComponentDiffs verbosity f = traverseComponents apply_diff
+  -> IO (Map ComponentName ComponentDiff, PackageDescription)
+applyComponentDiffs verbosity f = getCompose . traverseComponents (Compose . apply_diff)
   where
-    apply_diff :: Component -> IO Component
+    apply_diff :: Component -> IO (Map ComponentName ComponentDiff, Component)
     apply_diff c = do
       mbDiff <- f c
       case mbDiff of
-        Just diff -> applyComponentDiff verbosity c diff
-        Nothing -> return c
+        Just diff -> do
+          c' <- applyComponentDiff verbosity c diff
+          return (Map.singleton (componentName c) diff, c')
+        Nothing -> return (Map.empty, c)
 
 forComponents_ :: Applicative m => PackageDescription -> (Component -> m ()) -> m ()
 forComponents_ pd f = getAp . getConst $ traverseComponents (Const . Ap . f) pd
@@ -1263,9 +1221,6 @@ buildInfoExecutableDiff bi = emptyExecutable{buildInfo = bi}
 --------------------------------------------------------------------------------
 -- Instances for serialisation
 
-deriving newtype instance Binary ComponentDiff
-deriving newtype instance Structured ComponentDiff
-
 instance Binary PreConfPackageInputs
 instance Structured PreConfPackageInputs
 instance Binary PreConfPackageOutputs
@@ -1279,13 +1234,55 @@ instance Structured PreConfComponentInputs
 instance Binary PreConfComponentOutputs
 instance Structured PreConfComponentOutputs
 
-instance Binary PreBuildComponentInputs
-instance Structured PreBuildComponentInputs
+-- | Add back the 'BuildLocation' from 'CommonSetupFlags' to a
+-- 'PersistedBuildInfo' to get a 'LocalBuildInfo'.
+withBuildLocation :: CommonSetupFlags -> PersistedBuildInfo -> LocalBuildInfo
+withBuildLocation common pbi =
+  NewLocalBuildInfo
+    { localBuildLocation = commonFlagsBuildLocation common
+    , persistedBuildInfo = pbi
+    }
 
-instance Binary PostBuildComponentInputs
-instance Structured PostBuildComponentInputs
+instance Binary PreBuildComponentInputs where
+  put (PreBuildComponentInputs{buildingWhat = what, localBuildInfo = lbi, targetInfo = tgt}) =
+    put (what, persistedBuildInfo lbi, tgt)
+  get = do
+    (what, pbi, tgt) <- get
+    return $
+      PreBuildComponentInputs
+        { buildingWhat = what
+        , localBuildInfo = withBuildLocation (buildingWhatCommonFlags what) pbi
+        , targetInfo = tgt
+        }
+instance Structured PreBuildComponentInputs where
+  structure _ = structure (Proxy :: Proxy (BuildingWhat, PersistedBuildInfo, TargetInfo))
 
-instance Binary InstallComponentInputs
-instance Structured InstallComponentInputs
+instance Binary PostBuildComponentInputs where
+  put (PostBuildComponentInputs{buildFlags = flags, localBuildInfo = lbi, targetInfo = tgt}) =
+    put (flags, persistedBuildInfo lbi, tgt)
+  get = do
+    (flags, pbi, tgt) <- get
+    return $
+      PostBuildComponentInputs
+        { buildFlags = flags
+        , localBuildInfo = withBuildLocation (buildCommonFlags flags) pbi
+        , targetInfo = tgt
+        }
+instance Structured PostBuildComponentInputs where
+  structure _ = structure (Proxy :: Proxy (BuildFlags, PersistedBuildInfo, TargetInfo))
+
+instance Binary InstallComponentInputs where
+  put (InstallComponentInputs{copyFlags = flags, localBuildInfo = lbi, targetInfo = tgt}) =
+    put (flags, persistedBuildInfo lbi, tgt)
+  get = do
+    (flags, pbi, tgt) <- get
+    return $
+      InstallComponentInputs
+        { copyFlags = flags
+        , localBuildInfo = withBuildLocation (copyCommonFlags flags) pbi
+        , targetInfo = tgt
+        }
+instance Structured InstallComponentInputs where
+  structure _ = structure (Proxy :: Proxy (CopyFlags, PersistedBuildInfo, TargetInfo))
 
 --------------------------------------------------------------------------------

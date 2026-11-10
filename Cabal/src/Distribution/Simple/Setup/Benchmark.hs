@@ -21,7 +21,6 @@ module Distribution.Simple.Setup.Benchmark
       , benchmarkDistPref
       , benchmarkCabalFilePath
       , benchmarkWorkingDir
-      , benchmarkTargets
       , ..
       )
   , emptyBenchmarkFlags
@@ -48,6 +47,8 @@ import Distribution.Verbosity
 
 data BenchmarkFlags = BenchmarkFlags
   { benchmarkCommonFlags :: !CommonSetupFlags
+  , benchmarkTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , benchmarkOptions :: [PathTemplate]
   }
   deriving (Show, Generic)
@@ -58,14 +59,12 @@ pattern BenchmarkCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> BenchmarkFlags
 pattern BenchmarkCommonFlags
   { benchmarkVerbosity
   , benchmarkDistPref
   , benchmarkWorkingDir
   , benchmarkCabalFilePath
-  , benchmarkTargets
   } <-
   ( benchmarkCommonFlags ->
       CommonSetupFlags
@@ -73,7 +72,6 @@ pattern BenchmarkCommonFlags
         , setupDistPref = benchmarkDistPref
         , setupWorkingDir = benchmarkWorkingDir
         , setupCabalFilePath = benchmarkCabalFilePath
-        , setupTargets = benchmarkTargets
         }
     )
 
@@ -84,6 +82,7 @@ defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags =
   BenchmarkFlags
     { benchmarkCommonFlags = defaultCommonSetupFlags
+    , benchmarkTargets = []
     , benchmarkOptions = []
     }
 

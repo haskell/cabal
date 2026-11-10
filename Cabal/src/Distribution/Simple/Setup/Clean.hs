@@ -21,7 +21,6 @@ module Distribution.Simple.Setup.Clean
       , cleanDistPref
       , cleanCabalFilePath
       , cleanWorkingDir
-      , cleanTargets
       , ..
       )
   , emptyCleanFlags
@@ -46,6 +45,8 @@ import Distribution.Verbosity
 
 data CleanFlags = CleanFlags
   { cleanCommonFlags :: !CommonSetupFlags
+  , cleanTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , cleanSaveConf :: Flag Bool
   }
   deriving (Show, Generic)
@@ -56,14 +57,12 @@ pattern CleanCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> CleanFlags
 pattern CleanCommonFlags
   { cleanVerbosity
   , cleanDistPref
   , cleanWorkingDir
   , cleanCabalFilePath
-  , cleanTargets
   } <-
   ( cleanCommonFlags ->
       CommonSetupFlags
@@ -71,7 +70,6 @@ pattern CleanCommonFlags
         , setupDistPref = cleanDistPref
         , setupWorkingDir = cleanWorkingDir
         , setupCabalFilePath = cleanCabalFilePath
-        , setupTargets = cleanTargets
         }
     )
 
@@ -82,6 +80,7 @@ defaultCleanFlags :: CleanFlags
 defaultCleanFlags =
   CleanFlags
     { cleanCommonFlags = defaultCommonSetupFlags
+    , cleanTargets = []
     , cleanSaveConf = Flag False
     }
 

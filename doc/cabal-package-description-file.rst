@@ -2922,6 +2922,20 @@ for response files. Custom ``Setup.hs`` files that do not use one of these
 main functions are required to implement their own support, such as by using
 ``GHC.ResponseFile.getArgsWithResponseFiles``.
 
+``cabal-install`` invokes custom ``Setup`` scripts in the package directory,
+and does not pass them the ``--working-dir`` flag. This is a courtesy to existing
+``Setup`` scripts which rely on the current working directory being the package
+directory. Authors of custom ``Setup`` scripts are encouraged to avoid relying
+on the current working directory by interpreting paths relative to the passed
+in working directory:
+
+.. code-block:: haskell
+
+    -- Wrong: reads "data/table.txt" relative to the current working directory
+    contents <- readFile "data/table.txt"
+    -- Correct: reads "data/table.txt" relative to the package directory
+    contents <- readFile $ interpretSymbolicPathLBI lbi $ makeRelativePathEx "data/table.txt"
+
 Declaring a ``custom-setup`` stanza also enables the generation of
 ``MIN_VERSION_package_(A,B,C)`` CPP macros for the Setup component.
 
@@ -3247,6 +3261,33 @@ will be passed via environment variables:
  - ``CABAL_FLAG_<flag>`` will be set to either ``0`` or ``1`` depending upon
    whether flag ``<flag>`` is enabled. Note that any any non-alpha-numeric
    characters in the flag name are replaced with ``_``.
+
+The options ``--with-compiler`` and ``--with-hc-pkg`` of the configure step, and
+all the options specified with ``--configure-option=``, are passed on to the
+``configure`` script.
+
+.. warning::
+
+   The ``configure`` script is **not** told where the package will be
+   installed: it is not passed ``--prefix``, ``--bindir``, ``--libdir``,
+   ``--dynlibdir``, ``--datadir``, ``--libexecdir`` or ``--sysconfdir``.
+
+   .. versionchanged:: 3.20
+      Previous versions of Cabal did pass these options.
+
+   The ``configure`` script is run once for the whole package, but a package
+   does not have a single installation location: each of its components
+   (libraries, executables, ...) can be built and installed on its own, in a
+   directory of its own. This is how ``cabal`` installs the components of a
+   package into its store. A script that is run once cannot be given the
+   installation directories of all the components, and giving it those of
+   one particular component would silently produce a configuration which is
+   wrong for the others.
+
+   A ``configure`` script should therefore only discover information about
+   the system. To refer to the files installed by a package, use the
+   ``Paths_``\ *pkgname* module (see :ref:`accessing-data-files`), which is
+   generated separately for each component.
 
 The build information file should have the following structure:
 

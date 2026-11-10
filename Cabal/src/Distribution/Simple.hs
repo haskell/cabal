@@ -120,6 +120,7 @@ import Distribution.Simple.SetupHooks.Internal
   )
 import Distribution.Simple.Test
 import Distribution.Simple.Utils
+import qualified Distribution.Types.ConfigFlags as CF
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Utils.Path
 import Distribution.Verbosity
@@ -128,6 +129,7 @@ import Language.Haskell.Extension
 
 -- Base
 import Data.List (unionBy, (\\))
+import Data.Semigroup (Last (..))
 import System.Directory (removePathForcibly)
 import System.Environment (getArgs, getProgName)
 import System.IO (hPutStr, hPutStrLn)
@@ -359,7 +361,7 @@ defaultMainHelperWithHandles verbHandles hooks args =
     cabalGitInfo'
       | null cabalGitInfo = []
       | otherwise = ' ' : cabalGitInfo
-    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
+    progs = initialProgramDb hooks
     addAction
       :: CommandUI flags
       -> (VerbosityHandles -> GlobalFlags -> UserHooks -> flags -> [String] -> IO res)
@@ -395,6 +397,11 @@ allSuffixHandlers hooks =
     overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
     overridesPP = unionBy (\x y -> fst x == fst y)
 
+-- TODO: each action below stores its positional arguments, the targets of the
+-- command, in the flags of the command, because the hooks of 'UserHooks'
+-- receive these flags but not the arguments. The targets are not flags, and
+-- should be passed to the hooks separately.
+
 configureAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction verbHandles globalFlags hooks flags args = do
   distPref <- findDistPrefOrDefault (setupDistPref $ configCommonFlags flags)
@@ -403,11 +410,11 @@ configureAction verbHandles globalFlags hooks flags args = do
         commonFlags
           { setupDistPref = toFlag distPref
           , setupWorkingDir = globalWorkingDir globalFlags <> setupWorkingDir commonFlags
-          , setupTargets = args
           }
       flags' =
         flags
           { configCommonFlags = commonFlags'
+          , configTargets = args
           }
       mbWorkDir = flagToMaybe $ setupWorkingDir commonFlags'
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonFlags')
@@ -427,13 +434,11 @@ configureAction verbHandles globalFlags hooks flags args = do
   lbi1 <- confHook hooks epkg_descr flags'
 
   -- remember the .cabal filename if we know it
-  -- and all the extra command line args
   let localbuildinfo =
         lbi1
           { pkgDescrFile = mb_pd_file
-          , extraConfigArgs = args
           }
-  writePersistBuildConfig mbWorkDir distPref localbuildinfo
+  writePersistBuildConfig localbuildinfo
 
   let pkg_descr = localPkgDescr localbuildinfo
   postConf hooks args flags' pkg_descr localbuildinfo
@@ -462,23 +467,17 @@ getCommonFlags
   -> GlobalFlags
   -> UserHooks
   -> CommonSetupFlags
-  -> Args
   -> IO (LocalBuildInfo, CommonSetupFlags)
-getCommonFlags verbHandles globalFlags hooks commonFlags args = do
+getCommonFlags verbHandles globalFlags hooks commonFlags = do
   distPref <- findDistPrefOrDefault (setupDistPref commonFlags)
   let verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonFlags)
   lbi <- getBuildConfig globalFlags hooks verbosity distPref
-  let common' = configCommonFlags $ configFlags lbi
   return
     ( lbi
     , commonFlags
         { setupDistPref = toFlag distPref
-        , setupCabalFilePath = setupCabalFilePath common' <> setupCabalFilePath commonFlags
-        , setupWorkingDir =
-            globalWorkingDir globalFlags
-              <> setupWorkingDir common'
-              <> setupWorkingDir commonFlags
-        , setupTargets = args
+        , setupCabalFilePath = maybeToFlag (pkgDescrFile lbi) <> setupCabalFilePath commonFlags
+        , setupWorkingDir = maybeToFlag (mbWorkDirLBI lbi) <> setupWorkingDir commonFlags
         }
     )
 
@@ -486,8 +485,8 @@ buildAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> BuildFlags -> Arg
 buildAction verbHandles globalFlags hooks flags args = do
   let common = buildCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{buildCommonFlags = common'}
+  (lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{buildCommonFlags = common', buildTargets = args}
 
   progs <-
     reconfigurePrograms
@@ -510,8 +509,8 @@ replAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> ReplFlags -> Args 
 replAction verbHandles globalFlags hooks flags args = do
   let common = replCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{replCommonFlags = common'}
+  (lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{replCommonFlags = common', replTargets = args}
   progs <-
     reconfigurePrograms
       verbosity
@@ -526,11 +525,7 @@ replAction verbHandles globalFlags hooks flags args = do
   let pkg_descr0 = localPkgDescr lbi
   sanityCheckHookedBuildInfo verbosity pkg_descr0 pbi
   let pkg_descr = updatePackageDescription pbi pkg_descr0
-      lbi' =
-        lbi
-          { withPrograms = progs
-          , localPkgDescr = pkg_descr
-          }
+      lbi' = (applyHookedBuildInfo pbi lbi){withPrograms = progs}
   replHook hooks pkg_descr lbi' hooks flags' args
   postRepl hooks args flags' pkg_descr lbi'
 
@@ -538,8 +533,8 @@ hscolourAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> HscolourFlags 
 hscolourAction verbHandles globalFlags hooks flags args = do
   let common = hscolourCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{hscolourCommonFlags = common'}
+  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{hscolourCommonFlags = common', hscolourTargets = args}
       distPref = fromFlag $ setupDistPref common'
 
   hookedAction
@@ -556,8 +551,8 @@ haddockAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> HaddockFlags ->
 haddockAction verbHandles globalFlags hooks flags args = do
   let common = haddockCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{haddockCommonFlags = common'}
+  (lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{haddockCommonFlags = common', haddockTargets = args}
 
   progs <-
     reconfigurePrograms
@@ -590,18 +585,16 @@ cleanAction verbHandles globalFlags hooks flags args = do
                 globalWorkingDir globalFlags
                   <> setupWorkingDir common
               Right lbi ->
-                globalWorkingDir globalFlags
-                  <> setupWorkingDir (configCommonFlags $ configFlags lbi)
+                maybeToFlag (mbWorkDirLBI lbi)
                   <> setupWorkingDir common
           , setupCabalFilePath = case elbi of
               Left _ -> setupCabalFilePath common
               Right lbi ->
                 setupCabalFilePath common
-                  <> setupCabalFilePath (configCommonFlags $ configFlags lbi)
-          , setupTargets = args
+                  <> maybeToFlag (pkgDescrFile lbi)
           }
       flags' =
-        flags{cleanCommonFlags = common'}
+        flags{cleanCommonFlags = common', cleanTargets = args}
 
       mbWorkDirFlag = cleanWorkingDir flags'
       mbWorkDir = flagToMaybe mbWorkDirFlag
@@ -628,8 +621,8 @@ copyAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> CopyFlags -> Args 
 copyAction verbHandles globalFlags hooks flags args = do
   let common = copyCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{copyCommonFlags = common'}
+  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{copyCommonFlags = common', copyTargets = args}
       distPref = fromFlag $ setupDistPref common'
   hookedAction
     verbosity
@@ -645,8 +638,8 @@ installAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> InstallFlags ->
 installAction verbHandles globalFlags hooks flags args = do
   let common = installCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{installCommonFlags = common'}
+  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{installCommonFlags = common', installTargets = args}
       distPref = fromFlag $ setupDistPref common'
   hookedAction
     verbosity
@@ -672,8 +665,8 @@ testAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> TestFlags -> Args 
 testAction verbHandles globalFlags hooks flags args = do
   let common = testCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{testCommonFlags = common'}
+  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{testCommonFlags = common', testTargets = args}
       distPref = fromFlag $ setupDistPref common'
   hookedActionWithArgs
     verbosity
@@ -689,8 +682,8 @@ benchAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> BenchmarkFlags ->
 benchAction verbHandles globalFlags hooks flags args = do
   let common = benchmarkCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{benchmarkCommonFlags = common'}
+  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{benchmarkCommonFlags = common', benchmarkTargets = args}
       distPref = fromFlag $ setupDistPref common'
   hookedActionWithArgs
     verbosity
@@ -706,8 +699,8 @@ registerAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> RegisterFlags 
 registerAction verbHandles globalFlags hooks flags args = do
   let common = registerCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{registerCommonFlags = common'}
+  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{registerCommonFlags = common', registerTargets = args}
       distPref = fromFlag $ setupDistPref common'
   hookedAction
     verbosity
@@ -723,8 +716,8 @@ unregisterAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> RegisterFlag
 unregisterAction verbHandles globalFlags hooks flags args = do
   let common = registerCommonFlags flags
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common args
-  let flags' = flags{registerCommonFlags = common'}
+  (_lbi, common') <- getCommonFlags verbHandles globalFlags hooks common
+  let flags' = flags{registerCommonFlags = common', registerTargets = args}
       distPref = fromFlag $ setupDistPref common'
   hookedAction
     verbosity
@@ -803,9 +796,14 @@ hookedActionWithArgs
     let pkg_descr0 = localPkgDescr lbi0
     sanityCheckHookedBuildInfo verbosity pkg_descr0 pbi
     let pkg_descr = updatePackageDescription pbi pkg_descr0
-        lbi = lbi0{localPkgDescr = pkg_descr}
+        lbi = applyHookedBuildInfo pbi lbi0
     cmd_hook hooks args pkg_descr lbi hooks flags
     post_hook hooks args flags pkg_descr lbi
+
+-- | Apply a 'HookedBuildInfo' to the package description of a 'LocalBuildInfo'.
+applyHookedBuildInfo :: HookedBuildInfo -> LocalBuildInfo -> LocalBuildInfo
+applyHookedBuildInfo hbi lbi =
+  lbi{packageLevelPkgDescr = updatePackageDescription hbi (packageLevelPkgDescr lbi)}
 
 sanityCheckHookedBuildInfo
   :: Verbosity -> PackageDescription -> HookedBuildInfo -> IO ()
@@ -822,6 +820,11 @@ sanityCheckHookedBuildInfo verbosity pkg_descr (_, hookExes)
     hookExeNames = ordNub (map fst hookExes)
     nonExistent = hookExeNames \\ pkgExeNames
 sanityCheckHookedBuildInfo _ _ _ = return ()
+
+-- | The programs known at the start of a @configure@ run, none of them
+-- configured.
+initialProgramDb :: UserHooks -> ProgramDb
+initialProgramDb hooks = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
 
 -- | Try to read the 'localBuildInfoFile'
 tryGetBuildConfig
@@ -866,25 +869,19 @@ getBuildConfig globalFlags hooks verbosity distPref = do
           ++ " has been changed. "
           ++ "Re-configuring with most recently used options. "
           ++ "If this fails, please run configure manually.\n"
-      let cFlags = configFlags lbi
-      let cFlags' =
-            cFlags
-              { -- Since the list of unconfigured programs is not serialized,
-                -- restore it to the same value as normally used at the beginning
-                -- of a configure run:
-                configPrograms_ =
-                  fmap
-                    ( restoreProgramDb
-                        (builtinPrograms ++ hookedPrograms hooks)
-                    )
-                    `fmap` configPrograms_ cFlags
-              , configCommonFlags =
-                  (configCommonFlags cFlags)
-                    { -- Use the current, not saved verbosity level:
-                      setupVerbosity = Flag $ verbosityFlags verbosity
-                    }
+      let common =
+            defaultCommonSetupFlags
+              { -- Use the current, not saved verbosity level:
+                setupVerbosity = Flag $ verbosityFlags verbosity
+              , setupWorkingDir = maybeToFlag $ mbWorkDirLBI lbi
+              , setupDistPref = Flag distPref
+              , setupCabalFilePath = maybeToFlag $ pkgDescrFile lbi
               }
-      configureAction (verbosityHandles verbosity) globalFlags hooks cFlags' (extraConfigArgs lbi)
+          cFlags' =
+            (CF.mkConfigFlags common (packageConfigFlags lbi) (componentConfigFlags lbi))
+              { CF.initialPrograms = Just $ Last $ initialProgramDb hooks
+              }
+      configureAction (verbosityHandles verbosity) globalFlags hooks cFlags' (configTargets cFlags')
 
 -- --------------------------------------------------------------------------
 -- Cleaning
@@ -913,7 +910,7 @@ clean verbHandles pkg_descr flags = do
   traverse_ (removePathForcibly . i) (extraTmpFiles pkg_descr)
 
   -- If the user wanted to save the config, write it back
-  traverse_ (writePersistBuildConfig mbWorkDir distPref) maybeConfig
+  traverse_ writePersistBuildConfig maybeConfig
 
 -- --------------------------------------------------------------------------
 -- Default hooks
@@ -993,14 +990,16 @@ autoconfUserHooks =
             mbWorkDir = flagToMaybe $ setupWorkingDir common
         runConfigureScript
           defaultVerbosityHandles
-          flags
+          common
+          (CF.packageFlags flags)
+          (packageConfigureArgs (CF.packageFlags flags))
           (flagAssignment lbi)
           (withPrograms lbi)
           (hostPlatform lbi)
         pbi <- getHookedBuildInfo verbosity mbWorkDir (buildDir lbi)
         sanityCheckHookedBuildInfo verbosity pkg_descr pbi
         let pkg_descr' = updatePackageDescription pbi pkg_descr
-            lbi' = lbi{localPkgDescr = pkg_descr'}
+            lbi' = applyHookedBuildInfo pbi lbi
         postConf simpleUserHooks args flags pkg_descr' lbi'
 
     readHookWithArgs
@@ -1058,16 +1057,25 @@ autoconfSetupHooks =
       -> IO ()
     post_conf_pkg
       ( SetupHooks.PostConfPackageInputs
-          { SetupHooks.localBuildConfig =
+          { SetupHooks.commonFlags = common
+          , SetupHooks.localBuildConfig =
             LBC.LocalBuildConfig{LBC.withPrograms = progs}
           , SetupHooks.packageBuildDescr =
             LBC.PackageBuildDescr
-              { LBC.configFlags = cfg
+              { LBC.packageConfigFlags = pkgFlags
               , LBC.flagAssignment = flags
               , LBC.hostPlatform = plat
               }
           }
-        ) = runConfigureScript defaultVerbosityHandles cfg flags progs plat
+        ) =
+        runConfigureScript
+          defaultVerbosityHandles
+          common
+          pkgFlags
+          (packageConfigureArgs pkgFlags)
+          flags
+          progs
+          plat
 
     pre_conf_comp
       :: SetupHooks.PreConfComponentInputs
@@ -1076,16 +1084,15 @@ autoconfSetupHooks =
       ( SetupHooks.PreConfComponentInputs
           { SetupHooks.packageBuildDescr =
             LBC.PackageBuildDescr
-              { LBC.configFlags = cfg
-              , localPkgDescr = pkg_descr
+              { localPkgDescr = pkg_descr
               }
+          , SetupHooks.commonFlags = common
           , SetupHooks.component = component
           }
         ) = do
-        let verbosity = mkVerbosity defaultVerbosityHandles (fromFlag $ configVerbosity cfg)
-            mbWorkDir = flagToMaybe $ configWorkingDir cfg
-            distPref = configDistPref cfg
-        dist_dir <- findDistPrefOrDefault distPref
+        let verbosity = mkVerbosity defaultVerbosityHandles (fromFlag $ setupVerbosity common)
+            mbWorkDir = flagToMaybe $ setupWorkingDir common
+        dist_dir <- findDistPrefOrDefault (setupDistPref common)
         -- Read the ".buildinfo" file and use that to update
         -- the components (main library + executables only).
         hbi <- getHookedBuildInfo verbosity mbWorkDir (dist_dir </> makeRelativePathEx "build")
@@ -1147,6 +1154,7 @@ defaultInstallHook_setupHooks inst_hooks verbHandles pkg_descr localbuildinfo _ 
         defaultCopyFlags
           { copyDest = installDest flags
           , copyCommonFlags = installCommonFlags flags
+          , copyTargets = installTargets flags
           }
   install_setupHooks inst_hooks verbHandles pkg_descr localbuildinfo copyFlags
   let registerFlags =
@@ -1154,6 +1162,7 @@ defaultInstallHook_setupHooks inst_hooks verbHandles pkg_descr localbuildinfo _ 
           { regInPlace = installInPlace flags
           , regPackageDB = installPackageDB flags
           , registerCommonFlags = installCommonFlags flags
+          , registerTargets = installTargets flags
           }
   when (hasLibs pkg_descr) $
     registerWithHandles verbHandles pkg_descr localbuildinfo registerFlags

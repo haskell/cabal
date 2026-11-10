@@ -17,8 +17,10 @@ module Distribution.Types.LocalBuildConfig
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.ComponentDiff (ComponentDiff)
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.ConfigFlags (ComponentConfigFlags, PackageConfigFlags)
 import Distribution.Types.GivenComponent
 import Distribution.Types.PackageDescription
 import Distribution.Types.UnitId
@@ -42,14 +44,13 @@ import Distribution.Compat.Graph (Graph)
 -- | 'PackageBuildDescr' contains the information Cabal determines after
 -- performing package-wide configuration of a package, before doing any
 -- per-component configuration.
+--
+-- This information is the same for every component of the package.
 data PackageBuildDescr = PackageBuildDescr
-  { configFlags :: ConfigFlags
-  -- ^ Options passed to the configuration step.
-  -- Needed to re-run configuration when .cabal is out of date
+  { packageConfigFlags :: PackageConfigFlags
+  -- ^ The package-level options passed to the configuration step.
   , flagAssignment :: FlagAssignment
   -- ^ The final set of flags which were picked for this package
-  , componentEnabledSpec :: ComponentRequestedSpec
-  -- ^ What components were enabled during configuration, and why.
   , compiler :: Compiler
   -- ^ The compiler we're building with
   , hostPlatform :: Platform
@@ -69,6 +70,16 @@ data PackageBuildDescr = PackageBuildDescr
   -- to it; see 'HookedBuildInfo' for the whole sordid saga.
   -- As much as possible, Cabal library should avoid using
   -- this parameter.
+  }
+  deriving (Generic, Read, Show)
+
+-- | Information about individual components in a package,
+-- determined after the configure step.
+data ComponentBuildDescr = ComponentBuildDescr
+  { componentConfigFlags :: ComponentConfigFlags
+  -- ^ The component-level options passed to the configuration step.
+  , componentEnabledSpec :: ComponentRequestedSpec
+  -- ^ What components were enabled during configuration, and why.
   , installDirTemplates :: InstallDirTemplates
   -- ^ The installation directories for the various different
   -- kinds of files
@@ -80,13 +91,9 @@ data PackageBuildDescr = PackageBuildDescr
   -- the hpc coverage report for testsuites run with @--enable-coverage@.
   -- Notably, this list must exclude indefinite libraries and instantiations
   -- because HPC does not support backpack (Nov. 2023).
-  }
-  deriving (Generic, Read, Show)
-
--- | Information about individual components in a package,
--- determined after the configure step.
-data ComponentBuildDescr = ComponentBuildDescr
-  { componentGraph :: Graph ComponentLocalBuildInfo
+  , componentDiffs :: Map ComponentName ComponentDiff
+  -- ^ Per-component diffs relative to the package-level package description.
+  , componentGraph :: Graph ComponentLocalBuildInfo
   -- ^ All the components to build, ordered by topological
   -- sort, and with their INTERNAL dependencies over the
   -- intrapackage dependency graph.
@@ -129,10 +136,7 @@ data LocalBuildDescr = LocalBuildDescr
 -- | 'LocalBuildConfig' contains options that can be controlled
 -- by the user and serve as inputs to the configuration of a package.
 data LocalBuildConfig = LocalBuildConfig
-  { extraConfigArgs :: [String]
-  -- ^ Extra args on the command line for the configuration step.
-  -- Needed to re-run configuration when .cabal is out of date
-  , withPrograms :: ProgramDb
+  { withPrograms :: ProgramDb
   -- ^ Location and args for all programs
   , withBuildOptions :: BuildOptions
   -- ^ Options to control the build, e.g. whether to

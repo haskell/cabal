@@ -32,11 +32,11 @@ import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
   ( ConfiguredProgram (..)
   )
-import Distribution.Simple.Setup.Config
-  ( configUseResponseFiles
-  )
 import Distribution.Simple.Utils
   ( defaultTempFileOptions
+  )
+import qualified Distribution.Types.ConfigFlags as CF
+  ( configUseResponseFiles
   )
 import Distribution.Utils.Path
 import Distribution.Verbosity
@@ -84,7 +84,7 @@ combineObjectFiles verbosity lbi ldProg target files = do
       ld $ simpleArgs ++ ['@' : atFile]
 
     oldVersionManualOverride =
-      fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
+      fromFlagOrDefault False $ CF.configUseResponseFiles $ packageConfigFlags lbi
     -- Whether ghc's ar supports response files is a good proxy for
     -- whether ghc's ld supports them as well.
     responseArgumentsNotSupported =

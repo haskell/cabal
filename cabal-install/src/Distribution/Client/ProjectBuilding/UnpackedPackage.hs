@@ -42,8 +42,7 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.FileMonitor
 import Distribution.Client.JobControl
 import Distribution.Client.Setup
-  ( CommonSetupFlags
-  , filterBenchmarkFlags
+  ( filterBenchmarkFlags
   , filterBuildFlags
   , filterConfigureFlags
   , filterCopyFlags
@@ -214,7 +213,6 @@ buildAndRegisterUnpackedPackage
           annotateFailure mlogFile ConfigureFailed $
             setup
               configureCommand
-              Cabal.configCommonFlags
               configureFlags
               configureArgs
               (InLibraryArgs $ InLibraryConfigureArgs pkgshared rpkg ipiTVar)
@@ -225,8 +223,7 @@ buildAndRegisterUnpackedPackage
         annotateFailure mlogFile BuildFailed $ do
           setup
             buildCommand
-            Cabal.buildCommonFlags
-            (return . buildFlags)
+            (\v -> return . buildFlags v)
             buildArgs
             (InLibraryArgs $ InLibraryPostConfigureArgs SBuildPhase mbLBI)
 
@@ -237,8 +234,7 @@ buildAndRegisterUnpackedPackage
           annotateFailure mlogFile HaddocksFailed $ do
             setup
               haddockCommand
-              Cabal.haddockCommonFlags
-              (return . haddockFlags)
+              (\v -> return . haddockFlags v)
               haddockArgs
               (InLibraryArgs $ InLibraryPostConfigureArgs SHaddockPhase mbLBI)
 
@@ -254,8 +250,7 @@ buildAndRegisterUnpackedPackage
             annotateFailure mlogFile InstallFailed $
               setup
                 Cabal.copyCommand
-                Cabal.copyCommonFlags
-                (return . copyFlags destdir)
+                (\v -> return . copyFlags destdir v)
                 copyArgs
                 (InLibraryArgs $ InLibraryPostConfigureArgs SCopyPhase mbLBI)
         , runRegister = \pkgDBStack registerOpts ->
@@ -282,8 +277,7 @@ buildAndRegisterUnpackedPackage
           annotateFailure mlogFile TestsFailed $
             setup
               testCommand
-              Cabal.testCommonFlags
-              (return . testFlags)
+              (\v -> return . testFlags v)
               testArgs
               (InLibraryArgs $ InLibraryPostConfigureArgs STestPhase mbLBI)
 
@@ -301,8 +295,7 @@ buildAndRegisterUnpackedPackage
                     annotateFailure mlogFile BenchFailed $
                       setup
                         benchCommand
-                        Cabal.benchmarkCommonFlags
-                        (return . benchFlags)
+                        (\v -> return . benchFlags v)
                         benchArgs
                         (InLibraryArgs $ InLibraryPostConfigureArgs SBenchPhase mbLBI)
 
@@ -313,8 +306,7 @@ buildAndRegisterUnpackedPackage
           annotateFailure mlogFile ReplFailed $
             setupInteractive
               replCommand
-              Cabal.replCommonFlags
-              (return . replFlags)
+              (\v -> return . replFlags v)
               replArgs
               (InLibraryArgs $ InLibraryPostConfigureArgs SReplPhase mbLBI)
 
@@ -365,76 +357,79 @@ buildAndRegisterUnpackedPackage
         | hasValidHaddockTargets pkg = action
         | otherwise = return ()
 
-      mbWorkDir = useWorkingDir scriptOptions
-      commonFlags targets =
-        setupHsCommonFlags verbosity mbWorkDir builddir targets buildSettingKeepTempFiles
-
       configureCommand = Cabal.configureCommand defaultProgramDb
-      configureFlags v =
+      configureFlags v commonFlags =
         flip filterConfigureFlags v
           <$> setupHsConfigureFlags
             (fmap makeSymbolicPath . canonicalizePath)
             plan
             rpkg
             pkgshared
-            (commonFlags $ configureArgs v)
+            commonFlags
+            (configureArgs v)
       configureArgs _ = setupHsConfigureArgs pkg
 
       buildCommand = Cabal.buildCommand defaultProgramDb
-      buildFlags v =
+      buildFlags v commonFlags =
         flip filterBuildFlags v $
           setupHsBuildFlags
             comp_par_strat
             pkg
             pkgshared
-            (commonFlags $ buildArgs v)
+            commonFlags
+            (buildArgs v)
       buildArgs _ = setupHsBuildArgs pkg
 
-      copyFlags destdir v =
+      copyFlags destdir v commonFlags =
         flip filterCopyFlags v $
           setupHsCopyFlags
             pkg
             pkgshared
-            (commonFlags $ buildArgs v)
+            commonFlags
+            (copyArgs v)
             destdir
       -- In theory, we could want to copy less things than those that were
       -- built, but instead, we simply copy the targets that were built.
       copyArgs = buildArgs
 
       testCommand = Cabal.testCommand -- defaultProgramDb
-      testFlags v =
+      testFlags v commonFlags =
         flip filterTestFlags v $
           setupHsTestFlags
             pkg
-            (commonFlags $ testArgs v)
+            commonFlags
+            (testArgs v)
       testArgs _ = setupHsTestArgs pkg
 
       benchCommand = Cabal.benchmarkCommand
-      benchFlags v =
+      benchFlags v commonFlags =
         flip filterBenchmarkFlags v $
           setupHsBenchFlags
             pkg
             pkgshared
-            (commonFlags $ benchArgs v)
+            commonFlags
+            (benchArgs v)
       benchArgs _ = setupHsBenchArgs pkg
 
       replCommand = Cabal.replCommand defaultProgramDb
-      replFlags v =
+      replFlags v commonFlags =
         flip filterReplFlags v $
           setupHsReplFlags
             pkg
             pkgshared
-            (commonFlags $ replArgs v)
+            commonFlags
+            (replArgs v)
       replArgs _ = setupHsReplArgs pkg
 
       haddockCommand = Cabal.haddockCommand
-      haddockFlags v =
+      haddockFlags v commonFlags =
         flip filterHaddockFlags v $
           setupHsHaddockFlags
             pkg
             pkgshared
             buildTimeSettings
-            (commonFlags $ haddockArgs v)
+            commonFlags
+            (haddockArgs v)
       haddockArgs v =
         flip filterHaddockArgs v $
           setupHsHaddockArgs pkg
@@ -449,15 +444,22 @@ buildAndRegisterUnpackedPackage
           builddir
           cacheLock
 
+      -- The common flags of a command are those given by 'setupWrapper',
+      -- which decides the location of the package.
+      withKeepTempFiles
+        :: (Version -> Cabal.CommonSetupFlags -> IO flags)
+        -> (Version -> Cabal.CommonSetupFlags -> IO flags)
+      withKeepTempFiles flags v common =
+        flags v common{Cabal.setupKeepTempFiles = Cabal.toFlag buildSettingKeepTempFiles}
+
       setup
         :: (HasCallStack, RightFlagsForPhase flags setupSpec)
         => CommandUI flags
-        -> (flags -> CommonSetupFlags)
-        -> (Version -> IO flags)
+        -> (Version -> Cabal.CommonSetupFlags -> IO flags)
         -> (Version -> [String])
         -> SetupRunnerArgs setupSpec
         -> IO (SetupRunnerRes setupSpec)
-      setup cmd getCommonFlags flags args wrapperArgs =
+      setup cmd flags args wrapperArgs =
         withLogging $ \mLogFileHandle ->
           setupWrapper
             (setVerbosityHandles mLogFileHandle verbosity)
@@ -470,24 +472,24 @@ buildAndRegisterUnpackedPackage
               }
             (Just (elabPkgDescription pkg))
             cmd
-            getCommonFlags
-            flags
+            (withKeepTempFiles flags)
             args
             wrapperArgs
 
       setupInteractive
         :: RightFlagsForPhase flags setupSpec
         => CommandUI flags
-        -> (flags -> CommonSetupFlags)
-        -> (Version -> IO flags)
+        -> (Version -> Cabal.CommonSetupFlags -> IO flags)
         -> (Version -> [String])
         -> SetupRunnerArgs setupSpec
         -> IO (SetupRunnerRes setupSpec)
-      setupInteractive =
+      setupInteractive cmd flags =
         setupWrapper
           verbosity
           scriptOptions{isInteractive = True}
           (Just (elabPkgDescription pkg))
+          cmd
+          (withKeepTempFiles flags)
 
       generateInstalledPackageInfo :: Maybe Cabal.LocalBuildInfo -> IO InstalledPackageInfo
       generateInstalledPackageInfo mbLBI =
@@ -495,17 +497,17 @@ buildAndRegisterUnpackedPackage
           verbosity
           distTempDirectory
           $ \pkgConfDest -> do
-            let registerFlags v =
+            let registerFlags v commonFlags =
                   flip filterRegisterFlags v $
                     setupHsRegisterFlags
                       pkg
                       pkgshared
-                      (commonFlags [])
+                      commonFlags
+                      []
                       pkgConfDest
             setup
               Cabal.registerCommand
-              Cabal.registerCommonFlags
-              (return . registerFlags)
+              (\v -> return . registerFlags v)
               (const [])
               (InLibraryArgs $ InLibraryPostConfigureArgs SRegisterPhase mbLBI)
 
@@ -705,7 +707,7 @@ buildInplaceUnpackedPackage
           _ -> do
             -- We are skipping reconfiguration, so we recover the
             -- 'LocalBuildInfo' persisted by the previous 'configure'.
-            mbOldLBI <- Cabal.tryGetPersistBuildConfig (Just srcdir) builddir
+            mbOldLBI <- readPersistedLocalBuildInfo (Just srcdir) builddir
             case mbOldLBI of
               -- #11942: the previous 'LocalBuildInfo' was written by an
               -- incompatible Cabal (either an external Setup.hs or a different
@@ -714,17 +716,7 @@ buildInplaceUnpackedPackage
               Left Cabal.ConfigStateFileBadVersion{} -> configure_action
               -- Other errors reflect genuine problems: re-throw them.
               Left err -> throwIO err
-              Right lbi_wo_programs -> do
-                -- Restore info about unconfigured programs, since it is not serialized
-                -- TODO: copied from Distribution.Simple.getBuildConfig.
-                let lbi =
-                      lbi_wo_programs
-                        { Cabal.withPrograms =
-                            restoreProgramDb
-                              builtinPrograms
-                              (Cabal.withPrograms lbi_wo_programs)
-                        }
-                return $ Just lbi
+              Right lbi -> return $ Just lbi
 
       whenRebuild, whenReRegister :: IO () -> IO ()
       whenRebuild action

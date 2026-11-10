@@ -22,7 +22,6 @@ module Distribution.Simple.Setup.Haddock
     , haddockDistPref
     , haddockCabalFilePath
     , haddockWorkingDir
-    , haddockTargets
     , ..
     )
   , emptyHaddockFlags
@@ -89,6 +88,8 @@ instance Parsec HaddockTarget where
 
 data HaddockFlags = HaddockFlags
   { haddockCommonFlags :: !CommonSetupFlags
+  , haddockTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , haddockProgramPaths :: [(String, FilePath)]
   , haddockProgramArgs :: [(String, [String])]
   , haddockHoogle :: Flag Bool
@@ -119,14 +120,12 @@ pattern HaddockCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> HaddockFlags
 pattern HaddockCommonFlags
   { haddockVerbosity
   , haddockDistPref
   , haddockWorkingDir
   , haddockCabalFilePath
-  , haddockTargets
   } <-
   ( haddockCommonFlags ->
       CommonSetupFlags
@@ -134,7 +133,6 @@ pattern HaddockCommonFlags
         , setupDistPref = haddockDistPref
         , setupWorkingDir = haddockWorkingDir
         , setupCabalFilePath = haddockCabalFilePath
-        , setupTargets = haddockTargets
         }
     )
 
@@ -145,6 +143,7 @@ defaultHaddockFlags :: HaddockFlags
 defaultHaddockFlags =
   HaddockFlags
     { haddockCommonFlags = defaultCommonSetupFlags
+    , haddockTargets = []
     , haddockProgramPaths = mempty
     , haddockProgramArgs = []
     , haddockHoogle = Flag False

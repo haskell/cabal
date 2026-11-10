@@ -95,6 +95,10 @@ callHooksExe verb hooksExe hookName input = do
     -- The hooks executable will read input from the input handle, decode it,
     -- run the necessary hook, producing a result which it encodes and writes
     -- to the output handle.
+    --
+    -- NB: the hooks executable runs in the current directory, not in the
+    -- package directory: SetupHooks must interpret the paths of the package
+    -- with respect to the working directory they are given.
     readCreateProcessWithExitCodeCommunicationHandle
       ( \(theyRead, theyWrite) -> P.proc hooksExe [show theyRead, show theyWrite, hookName] )
       ( \ hWeRead -> hGetContents hWeRead )

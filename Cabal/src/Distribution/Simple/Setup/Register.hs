@@ -21,7 +21,6 @@ module Distribution.Simple.Setup.Register
       , registerDistPref
       , registerCabalFilePath
       , registerWorkingDir
-      , registerTargets
       , ..
       )
   , emptyRegisterFlags
@@ -50,6 +49,8 @@ import Distribution.Verbosity
 -- in-place, verbosity)
 data RegisterFlags = RegisterFlags
   { registerCommonFlags :: !CommonSetupFlags
+  , registerTargets :: [String]
+  -- ^ The targets of this invocation, given as positional arguments.
   , regPackageDB :: Flag PackageDB
   , regGenScript :: Flag Bool
   , regGenPkgConf :: Flag (Maybe (SymbolicPath Pkg (Dir PkgConf)))
@@ -64,14 +65,12 @@ pattern RegisterCommonFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
-  -> [String]
   -> RegisterFlags
 pattern RegisterCommonFlags
   { registerVerbosity
   , registerDistPref
   , registerWorkingDir
   , registerCabalFilePath
-  , registerTargets
   } <-
   ( registerCommonFlags ->
       CommonSetupFlags
@@ -79,7 +78,6 @@ pattern RegisterCommonFlags
         , setupDistPref = registerDistPref
         , setupWorkingDir = registerWorkingDir
         , setupCabalFilePath = registerCabalFilePath
-        , setupTargets = registerTargets
         }
     )
 
@@ -87,6 +85,7 @@ defaultRegisterFlags :: RegisterFlags
 defaultRegisterFlags =
   RegisterFlags
     { registerCommonFlags = defaultCommonSetupFlags
+    , registerTargets = []
     , regPackageDB = NoFlag
     , regGenScript = Flag False
     , regGenPkgConf = NoFlag
