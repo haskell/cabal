@@ -1,0 +1,8 @@
+cabal-version: 3.0
+name: current
+version: 1
+
+executable current
+  main-is: Main.hs
+  build-depends: base, remote
+  default-language: Haskell2010
