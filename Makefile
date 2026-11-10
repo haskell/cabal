@@ -80,7 +80,8 @@ RUFF_VERSION := 0.17.3
 RUFF ?= uvx ruff@$(RUFF_VERSION)
 PYTHON_FILES := doc/cabaldomain.py doc/conf.py bootstrap/bootstrap.py
 # Output format for the check targets; CI passes RUFF_OUTPUT=github to get
-# annotations on the pull request.
+# annotations on the pull request. These targets fail on any finding; it is
+# the workflow that downgrades CI findings to warnings.
 RUFF_OUTPUT ?= full
 
 .PHONY: ruff-version-check
