@@ -79,6 +79,9 @@ style-commit: ## Run the code styler on the previous commit.
 RUFF_VERSION := 0.17.3
 RUFF ?= uvx ruff@$(RUFF_VERSION)
 PYTHON_FILES := doc/cabaldomain.py doc/conf.py bootstrap/bootstrap.py
+# Output format for the check targets; CI passes RUFF_OUTPUT=github to get
+# annotations on the pull request.
+RUFF_OUTPUT ?= full
 
 .PHONY: ruff-version-check
 ruff-version-check:
@@ -95,9 +98,16 @@ ruff-version-check:
 style-python: ruff-version-check ## Format and lint the Python files with ruff.
 	@$(RUFF) format $(PYTHON_FILES) && $(RUFF) check --fix $(PYTHON_FILES)
 
+.PHONY: style-python-format-check
+style-python-format-check: ruff-version-check ## Check Python formatting without changing files.
+	@$(RUFF) format --check --output-format $(RUFF_OUTPUT) $(PYTHON_FILES)
+
+.PHONY: style-python-lint-check
+style-python-lint-check: ruff-version-check ## Lint the Python files without changing them.
+	@$(RUFF) check --output-format $(RUFF_OUTPUT) $(PYTHON_FILES)
+
 .PHONY: style-python-check
-style-python-check: ruff-version-check ## Check Python formatting and lint without changing files.
-	@$(RUFF) format --check $(PYTHON_FILES) && $(RUFF) check $(PYTHON_FILES)
+style-python-check: style-python-format-check style-python-lint-check ## Check Python formatting and lint without changing files.
 
 .PHONY: whitespace
 whitespace: ## Run fix-whitespace in check mode.

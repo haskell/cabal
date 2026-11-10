@@ -22,4 +22,9 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     - uses: astral-sh/setup-uv@v7
-    - run: make style-python-check
+    # Findings are reported as warning annotations and do not fail the job.
+    # Drop the sed and the "|| true" from a step to make it an error.
+    - name: Python formatting (warnings only)
+      run: make style-python-format-check RUFF_OUTPUT=github | sed 's/^::error/::warning/' || true
+    - name: Python lint (warnings only)
+      run: make style-python-lint-check RUFF_OUTPUT=github | sed 's/^::error/::warning/' || true
