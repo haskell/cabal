@@ -21,6 +21,7 @@ main = do
           copyDirectoryRecursive v (from </> "src") (to </> "src")
           copyDirectoryRecursive v (from </> "app") (to </> "app")
           copyDirectoryRecursive v (from </> "data") (to </> "data")
+          copyDirectoryRecursive v (from </> "pkgs") (to </> "pkgs")
 
     copyPkg root origSrc
     withReaderT (\e -> e{testRelativeCurrentDir = "orig"}) $
