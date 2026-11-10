@@ -41,6 +41,7 @@ import Distribution.Simple.Utils
 import Distribution.System (Platform)
 import Distribution.Types.BuildType
 import Distribution.Types.ComponentRequestedSpec
+import qualified Distribution.Types.ConfigFlags as CF
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo
 import Distribution.Utils.Path
@@ -144,8 +145,8 @@ configure
     -- compiler or re-resolving the conditionals in the package, as we have done
     -- all of that already.
     --
-    -- To achieve this, we call the Cabal 'configureFinal' function which skips
-    -- these preparatory steps.
+    -- To achieve this, we call the Cabal 'configurePackage' and
+    -- 'configureComponents' functions, which skip these preparatory steps.
     let verbFlags = Cabal.fromFlag $ Cabal.configVerbosity cfg
         verbosity = mkVerbosity verbHandles verbFlags
         mbWorkDir = Cabal.flagToMaybe $ Cabal.configWorkingDir cfg
@@ -171,9 +172,17 @@ configure
     -- TODO: we should implement recompilation checking on the level of
     -- individual components, so that we only re-configure the components that
     -- need reconfiguring (including running their hooks). See #11761.
-    lbc1 <- case preConfPackageHook confHooks of
-      Nothing -> return lbc0
-      Just hk -> Cabal.runPreConfPackageHook cfg compil plat lbc0 hk
+    pkgConfig <-
+      Cabal.configurePackage
+        verbHandles
+        confHooks
+        (Cabal.configCommonFlags cfg)
+        (CF.packageFlags cfg)
+        lbc0
+        pkgDescr
+        flagAssgn
+        compil
+        plat
     let compRequestedSpec = case mbComp of
           Just compName -> OneComponentRequestedSpec compName
           Nothing ->
@@ -191,21 +200,24 @@ configure
       --
       -- See (ProjIPI3) from Note [Per-project InstalledPackageIndex]
       -- in Distribution.Client.ProjectBuilding.
-      Cabal.computePackageInfoFromIndex verbHandles cfg gpkgDescr ipi
+      Cabal.computePackageInfoFromIndex
+        verbHandles
+        (Cabal.configCommonFlags cfg)
+        (CF.componentFlags cfg)
+        gpkgDescr
+        ipi
 
-    -- Post-configure hooks & per-component configure
+    -- Per-component configure
     lbi1 <-
-      Cabal.configureFinal
+      Cabal.configureComponents
         verbHandles
         confHooks
         emptyHookedBuildInfo
-        cfg
-        lbc1
-        (gpkgDescr, pkgDescr)
-        flagAssgn
+        (Cabal.configCommonFlags cfg)
+        (CF.componentFlags cfg)
+        pkgConfig
+        gpkgDescr
         compRequestedSpec
-        compil
-        plat
         pkgInfo
 
     -- Remember the .cabal filename if we know it.

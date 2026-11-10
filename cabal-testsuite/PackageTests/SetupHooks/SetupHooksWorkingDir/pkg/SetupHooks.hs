@@ -1,7 +1,9 @@
+{-# LANGUAGE DisambiguateRecordFields #-}
+
 module SetupHooks ( setupHooks ) where
 
 import Distribution.Simple.Flag ( flagToMaybe )
-import Distribution.Simple.Setup ( CommonSetupFlags (..), ConfigFlags (..) )
+import Distribution.Simple.Setup ( CommonSetupFlags (..) )
 import Distribution.Simple.SetupHooks
 import Distribution.Utils.Path ( getSymbolicPath, interpretSymbolicPath, makeRelativePathEx )
 
@@ -16,8 +18,8 @@ setupHooks =
     }
 
 checkWorkingDir :: PreConfPackageInputs -> IO PreConfPackageOutputs
-checkWorkingDir inputs@PreConfPackageInputs{configFlags = flags} = do
-  let mbWorkDir = flagToMaybe $ setupWorkingDir $ configCommonFlags flags
+checkWorkingDir inputs@PreConfPackageInputs{commonFlags = common} = do
+  let mbWorkDir = flagToMaybe $ setupWorkingDir common
   -- The files of the package are found through the working directory...
   found <- doesFileExist $ interpretSymbolicPath mbWorkDir (makeRelativePathEx "marker.txt")
   unless found $ fail "marker.txt not found through the working directory"

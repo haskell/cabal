@@ -758,10 +758,10 @@ setupWrapper verbosity options mpkg cmd getFlags getExtraArgs wrapperArgs = do
       -- Start from the pre-configured compiler ProgramDb, augmented
       -- with all builtin programs (restored as unconfigured).
       -- This ensures:
-      --   (a) configureAllKnownPrograms inside configureFinal skips
+      --   (a) configureAllKnownPrograms inside configurePackage skips
       --       compiler programs (already configured at project level),
       --   (b) builtin preprocessors like alex and happy are present as
-      --       unconfigured programs, so configureFinal's
+      --       unconfigured programs, so configurePackage's
       --       configureAllKnownPrograms can find them using the
       --       per-package search path (respecting extra-prog-path).
       -- See (1) in Note [Constructing the ProgramDb].
@@ -867,11 +867,11 @@ things:
         (a) The compiler programs (ghc, ghc-pkg, haddock, hsc2hs, ...) that were
             already configured at the project level appear in 'configuredProgs'.
             The 'configureAllKnownPrograms' call inside the Cabal per-package
-            'configureFinal' skips them, saving redundant work.
+            'configurePackage' skips them, saving redundant work.
 
         (b) Builtin preprocessors (e.g. alex, happy) are NOT configured at the
             project level; restoring them here means the call to
-            'configureAllKnownPrograms' in 'configureFinal' can find them using
+            'configureAllKnownPrograms' in 'configurePackage' can find them using
             the per-package search path (including 'extra-prog-path').
 
   (2)

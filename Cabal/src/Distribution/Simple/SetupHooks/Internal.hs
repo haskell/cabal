@@ -101,7 +101,6 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Setup.Build (BuildFlags (..))
 import Distribution.Simple.Setup.Common (CommonSetupFlags)
-import Distribution.Simple.Setup.Config (ConfigFlags (..))
 import Distribution.Simple.Setup.Copy (CopyFlags (..))
 import Distribution.Simple.SetupHooks.Errors
 import Distribution.Simple.SetupHooks.Rule
@@ -116,7 +115,7 @@ import Distribution.Utils.Structured
   )
 
 import Distribution.Types.ComponentDiff
-import Distribution.Types.ConfigFlags (ComponentConfigFlags)
+import Distribution.Types.ConfigFlags (ComponentConfigFlags, PackageConfigFlags)
 import Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo (PersistedBuildInfo, commonFlagsBuildLocation)
 import Distribution.Types.TargetInfo
@@ -204,8 +203,16 @@ noSetupHooks =
 type PreConfPackageHook = PreConfPackageInputs -> IO PreConfPackageOutputs
 
 -- | Inputs to the package-wide pre-configure step.
+--
+-- These inputs are the same for every component of the package.
 data PreConfPackageInputs = PreConfPackageInputs
-  { configFlags :: ConfigFlags
+  { commonFlags :: CommonSetupFlags
+  -- ^ The common flags of the package-wide configuration step.
+  --
+  -- Package-wide configure hooks should write their outputs to the dist
+  -- directory in these flags.
+  , packageConfigFlags :: PackageConfigFlags
+  -- ^ The package-level configure flags.
   , localBuildConfig :: LocalBuildConfig
   -- ^ Warning: the 'ProgramDb' in the 'withPrograms' field
   -- will not contain any unconfigured programs.
@@ -245,6 +252,8 @@ noPreConfPackageOutputs (PreConfPackageInputs{localBuildConfig = lbc}) =
 type PostConfPackageHook = PostConfPackageInputs -> IO ()
 
 -- | Inputs to the package-wide post-configure step.
+--
+-- These inputs are the same for every component of the package.
 data PostConfPackageInputs = PostConfPackageInputs
   { commonFlags :: CommonSetupFlags
   -- ^ The common flags of the package-wide configuration step.
@@ -362,7 +371,8 @@ instance Semigroup PreConfPkgSemigroup where
   PreConfPkgSemigroup f1 <> PreConfPkgSemigroup f2 =
     PreConfPkgSemigroup $
       \inputs@( PreConfPackageInputs
-                  { configFlags = cfg
+                  { commonFlags = common
+                  , packageConfigFlags = pkgFlags
                   , compiler = comp
                   , platform = plat
                   , localBuildConfig = lbc0
@@ -380,7 +390,8 @@ instance Semigroup PreConfPkgSemigroup where
               } <-
               f2 $
                 PreConfPackageInputs
-                  { configFlags = cfg
+                  { commonFlags = common
+                  , packageConfigFlags = pkgFlags
                   , compiler = comp
                   , platform = plat
                   , localBuildConfig =
