@@ -179,9 +179,10 @@ To get set up:
 1. Install `hdb`. It needs GHC 9.14 or later, and the `ghc` on your `PATH` when
    you run `hdb` has to be the version `hdb` was built with.
 
-2. Make sure the `cabal` on your `PATH` supports `cabal repl --with-repl`
-   (cabal-install 3.16 or later). `hdb` uses [hie-bios][hie-bios] to find out
-   how to load the project and hie-bios in turn runs this command.
+2. Make sure the `cabal` on your `PATH` is cabal-install 3.18 or later, which
+   the default project needs because of the custom setup of `cabal-testsuite`.
+   `hdb` uses [hie-bios][hie-bios] to find out how to load the project and
+   hie-bios in turn runs `cabal repl --with-repl`.
 
 There is nothing to configure in this repository. `hdb` loads the default
 project, `cabal.project`, with every component of every package, so breakpoints
