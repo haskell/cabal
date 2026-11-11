@@ -11,6 +11,8 @@ module Distribution.Client.ProjectConfig.FieldGrammar
 import Data.Bool (bool)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGrammar)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
@@ -43,7 +45,7 @@ projectConfigFieldGrammar source knownPrograms = do
   projectConfigLocalPackages <- blurFieldGrammar L.projectConfigLocalPackages (packageConfigFieldGrammar knownPrograms)
   pure ProjectConfig{..}
 
-newtype PackageLocationTokens = PackageLocationTokens {getPackageLocationTokens :: [String]}
+newtype PackageLocationTokens = PackageLocationTokens {getPackageLocationTokens :: [Text]}
 
 instance Semigroup PackageLocationTokens where
   PackageLocationTokens a <> PackageLocationTokens b = PackageLocationTokens (a <> b)
@@ -52,10 +54,10 @@ instance Monoid PackageLocationTokens where
   mempty = PackageLocationTokens mempty
 
 instance Parsec PackageLocationTokens where
-  parsec = PackageLocationTokens <$> parseSep (Proxy :: Proxy FSep) parsePackageLocationTokenQ
+  parsec = PackageLocationTokens . map Text.pack <$> parseSep (Proxy :: Proxy FSep) parsePackageLocationTokenQ
 
 instance Pretty PackageLocationTokens where
-  pretty = prettySep (Proxy :: Proxy FSep) . map (PP.text . renderPackageLocationToken) . getPackageLocationTokens
+  pretty = prettySep (Proxy :: Proxy FSep) . map (PP.text . renderPackageLocationToken . Text.unpack) . getPackageLocationTokens
 
 ignoredLens :: Lens' ProjectConfig PackageLocationTokens
 ignoredLens f s = s <$ f mempty
