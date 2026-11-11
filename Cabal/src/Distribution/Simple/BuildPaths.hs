@@ -22,6 +22,7 @@ module Distribution.Simple.BuildPaths
   , haddockPref
   , autogenPackageModulesDir
   , autogenComponentModulesDir
+  , includeSearchDirs
   , preBuildRulesCacheFile
   , autogenPathsModuleName
   , autogenPackageInfoModuleName
@@ -156,6 +157,44 @@ autogenPackageModulesDir lbi = buildDir lbi </> makeRelativePathEx "global-autog
 autogenComponentModulesDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> SymbolicPath Pkg (Dir Source)
 autogenComponentModulesDir lbi clbi = componentBuildDir lbi clbi </> makeRelativePathEx "autogen"
 
+-- | The directories in which to look for a header file named in @includes@ or
+-- @install-includes@.
+--
+-- Searched directories:
+--
+--  - the package root
+--  - the component build directory (if any)
+--  - the include directories, with relative ones being interpreted relative to:
+--      - the package root,
+--      - the package build directory,
+--      - the component build directory (if any)
+includeSearchDirs
+  :: LocalBuildInfo
+  -> Maybe ComponentLocalBuildInfo
+  -- ^ the component being built (if any)
+  -> [SymbolicPath Pkg (Dir Include)]
+  -- ^ @include-dirs@
+  -> [SymbolicPath Pkg (Dir Include)]
+includeSearchDirs lbi mbClbi incDirs =
+  ordNub $
+    (sameDirectory : incDirs)
+      ++ [ componentRoot </> dir
+         | componentRoot <- maybeToList mbComponentRoot
+         , dir <- sameDirectory : relIncDirs
+         ]
+      ++ [ packageBuildRoot </> dir
+         | dir <- relIncDirs
+         ]
+  where
+    relIncDirs :: [RelativePath Pkg (Dir Include)]
+    relIncDirs = mapMaybe symbolicPathRelative_maybe incDirs
+
+    packageBuildRoot :: SymbolicPath Pkg (Dir Pkg)
+    packageBuildRoot = coerceSymbolicPath (buildDir lbi)
+
+    mbComponentRoot :: Maybe (SymbolicPath Pkg (Dir Pkg))
+    mbComponentRoot = coerceSymbolicPath . componentBuildDir lbi <$> mbClbi
+
 -- | The path to the pre-build rules cache file for a component, used to
 -- compute rule staleness across runs.
 preBuildRulesCacheFile
@@ -249,7 +288,7 @@ getExeSourceFiles
   -> IO [(ModuleName.ModuleName, SymbolicPath Pkg 'File)]
 getExeSourceFiles verbosity lbi exe clbi = do
   moduleFiles <- getSourceFiles verbosity mbWorkDir searchpaths modules
-  srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs bi) (modulePath exe)
+  srcMainPath <- findFileCwd verbosity FindHaskellSourceFile mbWorkDir (hsSourceDirs bi) (modulePath exe)
   return ((ModuleName.main, srcMainPath) : moduleFiles)
   where
     mbWorkDir = mbWorkDirLBI lbi
@@ -269,7 +308,7 @@ getTestSourceFiles
   -> IO [(ModuleName.ModuleName, SymbolicPath Pkg 'File)]
 getTestSourceFiles verbosity lbi test@TestSuite{testInterface = TestSuiteExeV10 _ path} clbi = do
   moduleFiles <- getSourceFiles verbosity mbWorkDir searchpaths modules
-  srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs bi) path
+  srcMainPath <- findFileCwd verbosity FindHaskellSourceFile mbWorkDir (hsSourceDirs bi) path
   return ((ModuleName.main, srcMainPath) : moduleFiles)
   where
     mbWorkDir = mbWorkDirLBI lbi
@@ -290,7 +329,7 @@ getBenchmarkSourceFiles
   -> IO [(ModuleName.ModuleName, SymbolicPath Pkg 'File)]
 getBenchmarkSourceFiles verbosity lbi bench@Benchmark{benchmarkInterface = BenchmarkExeV10 _ path} clbi = do
   moduleFiles <- getSourceFiles verbosity mbWorkDir searchpaths modules
-  srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs bi) path
+  srcMainPath <- findFileCwd verbosity FindHaskellSourceFile mbWorkDir (hsSourceDirs bi) path
   return ((ModuleName.main, srcMainPath) : moduleFiles)
   where
     mbWorkDir = mbWorkDirLBI lbi
