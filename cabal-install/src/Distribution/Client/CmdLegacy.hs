@@ -141,7 +141,7 @@ legacyNote cmd =
       ++ "It is a legacy feature and will be removed in a future release of cabal-install."
       ++ " Please file a bug if you cannot replicate a working v1- use case with the nix-style"
       ++ " commands.\n\n"
-      ++ "For more information, see: https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html"
+      ++ "For more information, see: https://cabal.readthedocs.io/en/latest/nix-local-build.html"
 
 toLegacyCmd :: CommandSpec (globals -> IO action) -> [CommandSpec (globals -> IO action)]
 toLegacyCmd mkSpec = [toLegacy mkSpec]
