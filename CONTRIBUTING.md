@@ -183,47 +183,27 @@ To get set up:
    (cabal-install 3.16 or later). `hdb` uses [hie-bios][hie-bios] to find out
    how to load the project and hie-bios in turn runs this command.
 
+There is nothing to configure in this repository. `hdb` loads the default
+project, `cabal.project`, with every component of every package, so breakpoints
+can be set anywhere in our own code.
+
 [hdb]: https://well-typed.github.io/haskell-debugger/
 [debug-protocol]: https://microsoft.github.io/debug-adapter-protocol/
 [hie-bios]: https://github.com/haskell/hie-bios
 
-### Debugging Project and Cradle
-
-We have a project and cradle for debugging:
-
-* [`cabal.hdb.project`](./cabal.hdb.project) with a subset of packages, leaving
-  out `cabal-testsuite`.
-
-* [`hie-hdb.yaml`](./hie-hdb.yaml) uses this project and lists which components
-  to load.  Breakpoints can only be set in those components. Everything else is
-  a compiled dependency. The cradle is not named `hie.yaml` so that the Haskell
-  Language Server won't pick it up. This means it has to be given explicitly to
-  `hdb`.
-
-> [!WARNING]
-> Do not use `cabal.project`, the default project, for debugging. `hdb` tries to
-> load every component of every package but will fail with:
->
-> ```
-> Failed to get compiler options using hie-bios cradle
-> ```
->
-> This is because `cabal-testsuite` and its custom setup uses an older and
-> incompatible version of `Cabal`.
-
 ### Debugging from the Command Line
 
-Run `hdb` from the root of the repository, giving it the cradle, the file with
-`main` in it and, after `--`, the arguments for `cabal`:
+Run `hdb` from the root of the repository, giving it the file with `main` in it
+and, after `--`, the arguments for `cabal`:
 
 ```
-$ hdb --cradle-file hie-hdb.yaml cabal-install/main/Main.hs -- --version
+$ hdb cabal-install/main/Main.hs -- --version
 ```
 
 Each time it starts, `hdb` loads all of the components as bytecode, more than
-500 modules. Expect this to take a while and a decent chunk of memory. The first
-time, `hie-bios` also builds the dependencies into its own build directory,
-under `~/.cache/hie-bios`, leaving `dist-newstyle` alone.
+600 modules. Expect this to take a minute or two and several gigabytes of
+memory. The first time, `hie-bios` also builds the dependencies into its own
+build directory, under `~/.cache/hie-bios`, leaving `dist-newstyle` alone.
 
 Once loaded, set breakpoints by file and line, with the path relative to the
 root of the repository, and then `run`:
@@ -247,8 +227,7 @@ The `cabal` being debugged runs in the root of the repository. To have it work
 on another project, use `--project-dir`:
 
 ```
-$ hdb --cradle-file hie-hdb.yaml cabal-install/main/Main.hs -- \
-    build all --dry-run --project-dir=/path/to/project
+$ hdb cabal-install/main/Main.hs -- build all --dry-run --project-dir=/path/to/project
 ```
 
 > [!TIP]
@@ -282,23 +261,19 @@ to the arguments for `cabal`:
       "entryFile": "cabal-install/main/Main.hs",
       "entryPoint": "main",
       "entryArgs": ["--version"],
-      "extraGhcArgs": ["-w"],
-      "cradleFile": "hie-hdb.yaml"
+      "extraGhcArgs": ["-w"]
     }
   ]
 }
 ```
 
-The `cradleFile` is relative to the `projectRoot`. The `-w` in `extraGhcArgs`
-keeps the debug console free of the warnings GHC would otherwise repeat each
-time the debugger stops or evaluates an expression.
+The `-w` in `extraGhcArgs` keeps the debug console free of the warnings GHC
+would otherwise repeat each time the debugger stops or evaluates an expression.
 
 ### Debugging a Test Suite
 
-To debug a test suite, add its component to `componentsToLoad` in
-`hie-hdb.yaml`, for example `cabal-install:test:unit-tests`, and give `hdb` the
-file with the `main` of the test suite and the arguments for the test suite.
-Where we would run a test with:
+To debug a test suite, give `hdb` the file with the `main` of the test suite
+and the arguments for the test suite. Where we would run a test with:
 
 ```
 $ cabal run cabal-install:test:unit-tests -- --pattern simpleTest1
@@ -307,7 +282,7 @@ $ cabal run cabal-install:test:unit-tests -- --pattern simpleTest1
 The equivalent for debugging that test is:
 
 ```
-$ hdb --cradle-file hie-hdb.yaml cabal-install/tests/UnitTests.hs -- --pattern simpleTest1
+$ hdb cabal-install/tests/UnitTests.hs -- --pattern simpleTest1
 ```
 
 > [!NOTE]
@@ -326,12 +301,12 @@ $ hdb --cradle-file hie-hdb.yaml cabal-install/tests/UnitTests.hs -- --pattern s
 A test suite runs in the root of the repository, not in the directory of its
 package.  Some tests read or write files relative to the directory of their
 package. To run a test suite from there with the command line debugger, start
-`hdb` in the package directory, giving it the absolute path of the cradle and
-paths relative to the package for the file with `main` and for breakpoints:
+`hdb` in the package directory, with paths relative to the package for the file
+with `main` and for breakpoints:
 
 ```
 $ cd cabal-install
-$ hdb --cradle-file "$(realpath ../hie-hdb.yaml)" tests/UnitTests.hs -- --pattern simpleTest1
+$ hdb tests/UnitTests.hs -- --pattern simpleTest1
 (hdb) break tests/UnitTests.hs 32
 ```
 
