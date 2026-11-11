@@ -457,10 +457,10 @@ parsecDebugInfoLevel = boolParser <|> intParser
     intParser = intToEnum "debug info level" <$> integral
 
 -- | Converts a string to a 'DebugInfoLevel'. The string can be either a boolean
--- or 0-based integer for that enum. Evaluates to the default of 'NoDebugInfo'
--- when there's no string or when the string is "False".  When the string is
--- "True", the level is 'NormalDebugInfo'.  These string comparisons are
--- case-insensitive.
+-- or 0-based integer for that enum. Evaluates to 'NormalDebugInfo' when there's
+-- no string or when the string is "True".  When the string is "False", the
+-- level is 'NoDebugInfo'.  The booleans are case-sensitive, so "true" and
+-- "false" are errors, as is any other string.
 --
 -- >>> [flagToDebugInfoLevel (Just $ show n) | n <- [0 .. 3]]
 -- [NoDebugInfo,MinimalDebugInfo,NormalDebugInfo,MaximalDebugInfo]
