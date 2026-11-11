@@ -605,8 +605,8 @@ data TestFileKind = SingleTest | MultiTest
 -- before the suffix names the test's @.out@ and @.dist@ files.
 testFileKind :: FilePath -> Maybe TestFileKind
 testFileKind f
-  | ".multitest.hs" `isSuffixOf` f = Just MultiTest
-  | ".test.hs" `isSuffixOf` f = Just SingleTest
+  | ".multitest.hs" `isExtensionOf` f = Just MultiTest
+  | ".test.hs" `isExtensionOf` f = Just SingleTest
   | otherwise = Nothing
 
 isTestFile :: FilePath -> Bool
