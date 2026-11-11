@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -46,12 +47,7 @@ projectConfigFieldGrammar source knownPrograms = do
   pure ProjectConfig{..}
 
 newtype PackageLocationTokens = PackageLocationTokens {getPackageLocationTokens :: [String]}
-
-instance Semigroup PackageLocationTokens where
-  PackageLocationTokens a <> PackageLocationTokens b = PackageLocationTokens (a <> b)
-
-instance Monoid PackageLocationTokens where
-  mempty = PackageLocationTokens mempty
+  deriving newtype (Semigroup, Monoid)
 
 instance Parsec PackageLocationTokens where
   parsec = PackageLocationTokens <$> parseSep (Proxy :: Proxy FSep) parsePackageLocationTokenQ
