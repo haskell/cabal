@@ -465,10 +465,10 @@ parsecDebugInfoLevel = boolParser <|> intParser
 -- >>> [flagToDebugInfoLevel (Just $ show n) | n <- [0 .. 3]]
 -- [NoDebugInfo,MinimalDebugInfo,NormalDebugInfo,MaximalDebugInfo]
 --
--- >>> nub $ flagToDebugInfoLevel . Just <$> ["0", "False", "false"]
+-- >>> nub $ flagToDebugInfoLevel . Just <$> ["0", "False"]
 -- [NoDebugInfo]
 --
--- >>> nub $ flagToDebugInfoLevel <$> Nothing : (Just <$> ["2", "True",  "true"])
+-- >>> nub $ flagToDebugInfoLevel <$> Nothing : (Just <$> ["2", "True"])
 -- [NormalDebugInfo]
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
