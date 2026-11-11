@@ -167,6 +167,37 @@ For these test executables, `-p` which applies a regex filter to the test
 names. When running `cabal-install` test suites, one need only use `cabal test` or
 `cabal run <test-target>` in order to test locally.
 
+## Using Haskell Language Server
+
+[Haskell Language Server][hls] (HLS) works on this repository as it is, with
+the default project, `cabal.project`. There is nothing to configure beyond
+having an HLS that matches the `ghc` on your `PATH`, and a `cabal` on your
+`PATH` that is cabal-install 3.18 or later, which the default project needs
+because of the custom setup of `cabal-testsuite`. HLS loads the components for
+the files you open as you open them, using [hie-bios][hie-bios] to ask
+`cabal repl` how to build them.
+
+To check the setup from the command line, run HLS on a file. It loads the file
+the same way as it would in an editor and reports what it found:
+
+```
+$ haskell-language-server-9.14.1 cabal-install/main/Main.hs
+...
+Completed (1 file worked, 0 files failed)
+```
+
+The first load takes a few minutes while hie-bios builds the dependencies into
+its own build directory, under `~/.cache/hie-bios`, leaving `dist-newstyle`
+alone. After that, loading takes about a minute.
+
+> [!WARNING]
+> HLS shares that build directory with the Haskell debugger, and with any other
+> HLS working on the same checkout, and they do not coordinate. Two of them
+> building there at once fail with errors renaming `.o.tmp` files. Wait for one
+> to finish loading before starting the other.
+
+[hls]: https://haskell-language-server.readthedocs.io/
+
 ## Using the Haskell Debugger
 
 We can debug `cabal` with the [Haskell debugger][hdb] to set breakpoints, step
