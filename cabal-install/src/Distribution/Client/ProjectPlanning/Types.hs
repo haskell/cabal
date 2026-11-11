@@ -32,6 +32,7 @@ module Distribution.Client.ProjectPlanning.Types
   , pkgOrderDependencies
   , ElaboratedPlanPackage
   , ElaboratedSharedConfig (..)
+  , ElaboratedPackageSource (..)
   , ElaboratedReadyPackage
   , BuildStyle (..)
   , MemoryOrDisk (..)
@@ -64,6 +65,7 @@ module Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.HashValue (HashValue)
 import Distribution.Client.PackageHash
 import Distribution.Client.TargetSelector
   ( SubComponentTarget (..)
@@ -189,6 +191,8 @@ data ElaboratedSharedConfig = ElaboratedSharedConfig
   -- runghc) and toolchain programs (ar, ld, strip). Once constructed,
   -- only the 'configuredPrograms' are used.
   , pkgConfigReplOptions :: ReplOptions
+  , pkgConfigPackageSources :: Map PackageId ElaboratedPackageSource
+  -- ^ Package-level information shared by all components and instantiations.
   }
   deriving (Show, Generic)
 
@@ -196,6 +200,18 @@ data ElaboratedSharedConfig = ElaboratedSharedConfig
 
 instance Binary ElaboratedSharedConfig
 instance Structured ElaboratedSharedConfig
+
+-- | Source information shared by all components and instantiations of a package.
+data ElaboratedPackageSource = ElaboratedPackageSource
+  { pkgSourceGPkgDescription :: Cabal.GenericPackageDescription
+  -- ^ The generic description the package was solved with, including any
+  -- rewrites made before solving. The in-library configure reads it for
+  -- internal libraries and package checks.
+  }
+  deriving (Show, Generic)
+
+instance Binary ElaboratedPackageSource
+instance Structured ElaboratedPackageSource
 
 data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   { elabUnitId :: UnitId
@@ -221,8 +237,9 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabFlagDefaults :: Cabal.FlagAssignment
   -- ^ The original default flag assignment, used only for reporting.
   , elabPkgDescription :: Cabal.PackageDescription
-  , elabGPkgDescription :: Cabal.GenericPackageDescription
-  -- ^ Original 'GenericPackageDescription' (just used to report errors/warnings)
+  , elabGPkgDescriptionHash :: HashValue
+  -- ^ Fingerprint of the original generic description for config cache invalidation,
+  -- including changes to conditionals that do not affect 'elabPkgDescription'.
   , elabPkgSourceLocation :: PackageLocation (Maybe FilePath)
   -- ^ Where the package comes from, e.g. tarball, local dir etc. This
   --   is not the same as where it may be unpacked to for the build.
