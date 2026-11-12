@@ -1297,7 +1297,7 @@ Object code options
 .. cfg-field:: debug-info: boolean | integer [0 .. 3]
     :cmdline-opts:
         -g[n]
-	--enable-debug-info[=n]
+        --enable-debug-info[=n]
         --disable-debug-info
     :synopsis: Build with debug info enabled.
     :since: 1.22
