@@ -29,6 +29,7 @@ module Distribution.Simple.PreProcess
   , builtinHaskellBootSuffixes
   , PreProcessor (..)
   , PreProcessorInvocation (..)
+  , mkSimplePreProcessor
   , runSimplePreProcessor
   , runUnlit
   , ppCpp
@@ -40,6 +41,7 @@ module Distribution.Simple.PreProcess
   , ppUnlit
   , platformDefines
   , unsorted
+  , LegacyIO (..)
   )
 where
 
@@ -110,6 +112,17 @@ type PreProcessorExtras =
   Maybe (SymbolicPath CWD (Dir Pkg))
   -> SymbolicPath Pkg (Dir Source)
   -> IO [RelativePath Source File]
+
+mkSimplePreProcessor
+  :: (FilePath, FilePath)
+  -> (FilePath, FilePath)
+  -> (FilePath -> FilePath -> Verbosity -> IO ())
+  -> PreProcessorInvocation
+mkSimplePreProcessor (inFileDir, inFileName) (outFileDir, outFileName) simplePP = 
+  PreProcessorCustom . LegacyIO $ \verbosity -> simplePP inFile outFile verbosity
+  where
+    inFile = inFileDir </> inFileName
+    outFile = outFileDir </> outFileName
 
 runSimplePreProcessor
   :: (FilePath -> FilePath -> Verbosity -> IO ())
@@ -435,6 +448,8 @@ runPreProcessorInvocation (PreProcessorViaResponseFile tempFileName prog crossAr
           cwd
           verbosity
     )
+runPreProcessorInvocation (PreProcessorCustom action) _cwd verbosity =
+  runLegacyIO action verbosity
 
 runUnlit :: FilePath -> FilePath -> Verbosity -> IO ()
 runUnlit inFile outFile verbosity = do
@@ -568,15 +583,15 @@ ppHsc2hs bi lbi clbi =
           then
             return $ PreProcessorViaResponseFile
               "hsc2hs-response.txt"
-              gccProg
+              hsc2hsProg
               crossArgs
               pureArgs
-              [hsc2hsProg]
+              [gccProg]
           else
             return $ PreProcessorProgram
-              gccProg
+              hsc2hsProg
               (crossArgs ++ pureArgs)
-              [hsc2hsProg]
+              [gccProg]
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path

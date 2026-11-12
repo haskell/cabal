@@ -37,12 +37,10 @@ main = defaultMainWithHooks
       PreProcessor
         { platformIndependent = True
 #if MIN_VERSION_Cabal(3,17,0)
-        , getPreProcessor = \_ -> pure
-            ( mkSimplePreProcessor $ \inFile outFile verbosity ->
-                do info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)
-                   callProcess progPath [inFile, outFile]
-            , PreProcessorCustom progPath
-            )
+        , getPreProcessor = \_verbosity inFile' outFile' -> do
+            pure . mkSimplePreProcessor inFile' outFile' $ \inFile outFile verbosity -> do
+                info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)
+                callProcess progPath [inFile, outFile]
 #else
         , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
             do info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)

@@ -14,6 +14,7 @@ module Distribution.Simple.PreProcess.Types
   ( Suffix (..)
   , PreProcessor (..)
   , PreProcessorInvocation (..)
+  , LegacyIO (..)
   , builtinHaskellSuffixes
   , builtinHaskellBootSuffixes
   )
@@ -26,6 +27,7 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.Pretty
 import Distribution.Simple.Program.Types (ConfiguredProgram)
 import Distribution.Utils.Path
+import Distribution.Utils.Structured (Structured (..))
 import Distribution.Verbosity
 import qualified Text.PrettyPrint as Disp
 
@@ -96,11 +98,26 @@ data PreProcessor = PreProcessor
       -> IO PreProcessorInvocation
   }
 
--- | Uniquely identifies a specific preprocessor, including the preprocessor
--- itself and any arguments that need to be tracked for monitoring purposes.
+newtype LegacyIO = LegacyIO { runLegacyIO :: Verbosity -> IO () }
+
+instance Eq LegacyIO where
+  _ == _ = False
+
+instance Binary LegacyIO where
+  put _ = put ()
+  get = do
+    () <- get
+    pure . LegacyIO $ \_ ->
+      error "Tried to use a deserialized LegacyIO value."
+
+instance Structured LegacyIO where
+  structure _ = structure (Proxy @())
+
+-- | Defines a specific preprocessor, including the preprocessor itself and any
+-- arguments and dependencies that need to be tracked for monitoring purposes.
 -- This value should change iff the preprocessor itself changes in a way that
--- requires re-running it for a given input file.
--- See Note [Preprocessor monitoring] in Distribution.Simple.PreProcess
+-- requires re-running it for a given input file. See Note [Preprocessor
+-- monitoring] in Distribution.Simple.PreProcess
 data PreProcessorInvocation
   = -- | The Unlit pre-processor. This one is built in, and only changes when
     -- Cabal itself does, so there is no need to track any changes for it, other
@@ -122,6 +139,12 @@ data PreProcessorInvocation
       [String] -- ^ arguments to pass directly
       [String] -- ^ arguments to write into the response file
       [ConfiguredProgram] -- ^ additional programs that the preprocessor depends on
+  | -- | A custom preprocessor implemented as an arbitrary IO action. Because
+    -- IO actions cannot be serialized properly, nor compared for equality, we
+    -- use the 'LegacyIO' newtype, which serializes to nothing, deserializes to
+    -- a runtime error, and always compares unequal to itself.
+    PreProcessorCustom
+      LegacyIO
   deriving (Generic, Eq)
 
 instance Binary PreProcessorInvocation
