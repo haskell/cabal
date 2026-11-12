@@ -797,7 +797,7 @@ Miscellaneous options
 
 .. option:: --disable-library-bytecode
 
-   Do not build bytcode libraries.
+   Do not build bytecode libraries.
 
 
 .. option:: --enable-split-objs
