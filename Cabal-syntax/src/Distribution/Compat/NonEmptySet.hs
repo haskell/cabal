@@ -95,10 +95,17 @@ insert x (NES xs) = NES (Set.insert x xs)
 -- Deletion
 -------------------------------------------------------------------------------
 
+-- | Remove an element, or 'Nothing' if it was the only one.
+--
+-- >>> delete 1 (insert 2 (singleton 1))
+-- Just (fromNonEmpty (2 :| []))
+--
+-- >>> delete 1 (singleton 1)
+-- Nothing
 delete :: Ord a => a -> NonEmptySet a -> Maybe (NonEmptySet a)
 delete x (NES xs)
   | Set.null res = Nothing
-  | otherwise = Just (NES xs)
+  | otherwise = Just (NES res)
   where
     res = Set.delete x xs
 

@@ -806,6 +806,29 @@ checkForUndefinedCustomSetup gpd = do
 -- See https://github.com/haskell/cabal/issues/6281
 --
 
+-- | Rewrite dependencies on internal libraries of a package before
+-- @cabal-version: 3.4@.
+--
+-- Before 3.4 an internal library shadows an outside package of the same
+-- name, but only its main library.  So in a package @pkg@ with an internal
+-- library @foo@, the dependency @foo:{foo, bar}@ becomes @pkg:foo@ for the
+-- shadowed main library and @foo:bar@ for the sub-library @bar@ of the
+-- outside @foo@, whether or not such a package exists.
+--
+-- >>> :{
+-- let Just gpd =
+--       parseGenericPackageDescriptionMaybe . toUTF8BS . unlines $
+--         [ "cabal-version: 3.0"
+--         , "name: pkg"
+--         , "version: 0"
+--         , "library foo"
+--         , "library"
+--         , "  build-depends: foo:{foo, bar}"
+--         ]
+-- :}
+--
+-- >>> maybe [] (map prettyShow . targetBuildDepends . libBuildInfo . condTreeData) (condLibrary gpd)
+-- ["pkg:foo","foo:bar"]
 postProcessInternalDeps :: CabalSpecVersion -> GenericPackageDescription -> GenericPackageDescription
 postProcessInternalDeps specVer gpd
   | specVer >= CabalSpecV3_4 = gpd
