@@ -1,2 +1,7 @@
 # cabal build
+# cabal path
+# cabal act-as-setup
+# cabal format
+# cabal man
+# cabal v1-build
 # cabal --help

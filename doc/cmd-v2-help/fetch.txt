@@ -75,11 +75,7 @@ Flags for fetch:
                                 them if they are to be selected (default:
                                 none).
 
-Global flags:
- -V, --version                # Print version information
- --full-version               # Print full version information with git
-                                revision (if available) and compiler
- --numeric-version            # Print just the version number
+Global flags (must be given before the COMMAND):
  --config-file=FILE           # Set an alternate location for the config file
  --ignore-expiry              # Ignore expiry dates on signed metadata (use
                                 only in exceptional circumstances)
@@ -90,6 +86,3 @@ Global flags:
  --store-dir=DIR              # The location of the build store
  --active-repositories=REPOS  # The active package repositories (set to
                                 ':none' to disable all repositories)
-
-Global flags must be given before the command, e.g.
-`cabal --store-dir=DIR build`.

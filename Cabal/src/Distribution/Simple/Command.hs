@@ -714,7 +714,7 @@ commandsRunWithFallback globalCommand commands defaultCommand args =
           case lookupCommand name of
             [Command _ _ action _] ->
               case action ("--help" : cmdArgs') of
-                CommandHelp help -> pure $ CommandReadyToGo (flags, CommandHelp help)
+                CommandHelp help -> pure $ CommandHelp help
                 CommandList _ -> pure $ CommandList []
                 _ -> pure $ CommandHelp globalHelp
             _ -> do
