@@ -818,8 +818,8 @@ The following settings control the behavior of the dependency solver:
       active-repositories: :none
 
 
-.. cfg-field:: reject-unconstrained-dependencies: all, none
-               --reject-unconstrained-dependencies=[all|none]
+.. cfg-field:: reject-unconstrained-dependencies: eq, all, none
+               --reject-unconstrained-dependencies=[eq|all|none]
    :synopsis: Restrict the solver to packages that have constraints on them.
 
    :default: none
@@ -829,9 +829,23 @@ The following settings control the behavior of the dependency solver:
    aware of in a build plan. If you wish to restrict the build plan to
    a closed set of packages (e.g., from a freeze file), use this flag.
 
-   When set to `all`, all non-local packages that aren't goals must be
-   explicitly constrained. When set to `none`, the solver will
-   consider all packages.
+   When set to ``all``, every non-local package that isn't a goal must have a
+   version constraint whose range is neither every possible version nor no
+   version. A flag constraint does not count, and neither do the version
+   constraints ``-any``, ``>=0``, ``-none`` and ``<0``. Only the range is
+   checked, not which versions of the package exist, so ``>0`` counts even
+   for a package that never had a version ``0``.
+
+   When set to ``eq``, every non-local package that isn't a goal must have a
+   version constraint that allows exactly one version. A constraint counts if
+   its version range normalises to ``==v``, so ``==1``, ``>=1 && <=1`` and
+   ``==1 && >0`` count but ``^>=1``, ``==1 || ==2`` and ``==1 || >1`` do not.
+   Each constraint is checked on its own. The two constraints ``>=1`` and
+   ``<=1`` given separately do not count, even though together they allow only
+   one version. One constraint that counts is enough for a package, and its
+   other constraints still apply.
+
+   When set to ``none``, the solver will consider all packages.
 
 .. _package-configuration-options:
 

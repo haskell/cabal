@@ -246,7 +246,7 @@ Flags for configure:
                               # Allow cabal to install base, ghc-prim,
                                 integer-simple, integer-gmp, and
                                 template-haskell.
- --reject-unconstrained-dependencies=none|all
+ --reject-unconstrained-dependencies=none|all|eq
                               # Require these packages to have constraints on
                                 them if they are to be selected (default:
                                 none).

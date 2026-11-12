@@ -11,7 +11,7 @@ import Data.List (groupBy, isInfixOf)
 
 import Text.Show.Pretty (parseValue, valToStr)
 
-import Test.QuickCheck (Arbitrary (..), Blind (..), Gen, Positive (..), counterexample, elements, frequency, listOf, oneof, shrinkList, shrinkNothing, shuffle, sublistOf, vectorOf, (===), (==>))
+import Test.QuickCheck (Arbitrary (..), Blind (..), Gen, Positive (..), classify, counterexample, elements, forAllShrink, frequency, listOf, oneof, shrinkList, shrinkNothing, shuffle, sublistOf, vectorOf, (.&&.), (===), (==>))
 import Test.QuickCheck.Instances.Cabal ()
 import Test.Tasty (TestTree)
 
@@ -19,8 +19,11 @@ import Distribution.Types.Flag (FlagName)
 import Distribution.Utils.ShortText (ShortText, fromShortText)
 
 import Distribution.Client.Setup (defaultMaxBackjumps)
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 
+import Distribution.Package (packageId)
 import Distribution.Types.LibraryVisibility
+import Distribution.Types.PackageId (PackageIdentifier (..))
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
@@ -194,6 +197,64 @@ tests =
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
                 resultPlan r1 === resultPlan r2
+  , -- This is what freezing a project relies on.
+    testPropertyWithSeed
+      "pinning every package of a plan keeps it solvable with reject-unconstrained-dependencies=eq"
+      $ \test reorderGoals ->
+        let r0 = planned reorderGoals test
+            ids = resultPackages r0
+            rEq = pruned OnlyConstrainedEq reorderGoals (map pin ids) test
+         in counterexample (showResults r0 rEq) $
+              solved r0 && oneVersionEach ids && noneReachedBackjumpLimit [r0, rEq] ==>
+                classify (hasNonGoals test rEq) "plan has packages that are not goals" $
+                  counterexample "not solvable when pinned" (solved rEq)
+                    .&&. counterexample "picked a package that is not in the first plan" (filter (`notElem` ids) (resultPackages rEq) === [])
+  , -- The modes of reject-unconstrained-dependencies only prune the search.
+    -- Every package that eq accepts, all accepts, and none accepts every
+    -- package, so whenever a stricter mode finds a plan, a looser mode finds
+    -- one too. The plans themselves can differ.
+    testPropertyWithSeed
+      "solvable with reject-unconstrained-dependencies=eq => solvable with =all => solvable with =none"
+      $ \test reorderGoals ->
+        let r0 = planned reorderGoals test
+         in forAllShrink (arbitraryLoosePins (resultPackages r0)) (shrinkList shrink) $ \pins ->
+              let rEq = pruned OnlyConstrainedEq reorderGoals pins test
+                  rAll = pruned OnlyConstrainedAll reorderGoals pins test
+                  rNone = pruned OnlyConstrainedNone reorderGoals pins test
+               in counterexample (showResult 1 rEq ++ showResult 2 rAll ++ showResult 3 rNone) $
+                    noneReachedBackjumpLimit [rEq, rAll, rNone] ==>
+                      classify (solved rEq) "solvable with =eq" $
+                        classify (solved rAll && not (solved rEq)) "solvable with =all but not =eq" $
+                          classify (solved rNone && not (solved rAll)) "solvable with =none but not =all" $
+                            (solved rEq `implies` solved rAll)
+                              && (solved rAll `implies` solved rNone)
+  , -- This states what reject-unconstrained-dependencies is for. For =eq it
+    -- uses 'isSpecificVersion' to recognise an equality, not the solver's own
+    -- check.
+    testPropertyWithSeed
+      "reject-unconstrained-dependencies only picks goals and packages with a constraint the mode accepts"
+      $ \test reorderGoals ->
+        let r0 = planned reorderGoals test
+         in forAllShrink (arbitraryLoosePins (resultPackages r0)) (shrinkList shrink) $ \pins ->
+              let rEq = pruned OnlyConstrainedEq reorderGoals pins test
+                  rAll = pruned OnlyConstrainedAll reorderGoals pins test
+                  constraints = testConstraints test ++ pins
+                  equalities =
+                    [ scopeToPackageName scope
+                    | ExVersionConstraint scope vr <- constraints
+                    , isJust (isSpecificVersion vr)
+                    ]
+                  ranges =
+                    [ scopeToPackageName scope
+                    | ExVersionConstraint scope vr <- constraints
+                    , not (isAnyVersion vr || isNoVersion vr)
+                    ]
+                  notAccepted accepted = filter (`notElem` accepted) . nonGoals test
+               in counterexample (showResults rEq rAll) . (solved r0 ==>) $
+                    classify (hasNonGoals test rEq) "=eq plan has packages that are not goals" $
+                      classify (hasNonGoals test rAll) "=all plan has packages that are not goals" $
+                        counterexample "=eq" (notAccepted equalities rEq === [])
+                          .&&. counterexample "=all" (notAccepted ranges rAll === [])
   ]
   where
     noneReachedBackjumpLimit :: [Result] -> Bool
@@ -217,6 +278,9 @@ tests =
     isRight (Right _) = True
     isRight _ = False
 
+    solved :: Result -> Bool
+    solved = isRight . resultPlan
+
 newtype VarOrdering = VarOrdering
   { unVarOrdering :: Variable P.QPN -> Variable P.QPN -> Ordering
   }
@@ -234,7 +298,20 @@ solve
   -> Maybe VarOrdering
   -> SolverTest
   -> Result
-solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goalOrder test =
+solve = solveWith OnlyConstrainedNone
+
+solveWith
+  :: OnlyConstrained
+  -> EnableBackjumping
+  -> FineGrainedConflicts
+  -> ReorderGoals
+  -> CountConflicts
+  -> IndependentGoals
+  -> PreferVersion
+  -> Maybe VarOrdering
+  -> SolverTest
+  -> Result
+solveWith onlyConstrained enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goalOrder test =
   let (lg, result) =
         runProgress $
           exResolve
@@ -254,7 +331,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
             prefOldest
             reorder
             (AllowBootLibInstalls False)
-            OnlyConstrainedNone
+            onlyConstrained
             enableBj
             (SolveExecutables True)
             (unVarOrdering <$> goalOrder)
@@ -273,6 +350,8 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
             -- Force the result so that we check for internal errors when we check
             -- for success or failure. See D.C.Dependency.validateSolverResult.
             force $ either (Left . failure) (Right . extractInstallPlan) result
+        , resultPackages =
+            either (const []) (ordNub . map packageId . SolverInstallPlan.toList) result
         }
 
 -- | How to modify the order of the input targets.
@@ -288,6 +367,9 @@ instance Arbitrary TargetOrder where
 data Result = Result
   { resultLog :: [String]
   , resultPlan :: Either Failure [(ExamplePkgName, ExamplePkgVersion)]
+  , resultPackages :: [PackageIdentifier]
+  -- ^ Every package of the plan, installed packages included. Empty when
+  -- there is no plan.
   }
 
 data Failure = BackjumpLimitReached | OtherFailure
@@ -501,6 +583,75 @@ arbitraryConstraint pkgs = do
     [ ExVersionConstraint anyQualifier <$> arbitraryVersionRange v
     , ExStanzaConstraint anyQualifier <$> sublistOf [TestStanzas, BenchStanzas]
     ]
+
+-- | A plan for all the targets of the test, found without
+-- reject-unconstrained-dependencies. The tests of that setting take their
+-- constraints from the packages of this plan so that the solver has
+-- constrained packages to accept.
+planned :: ReorderGoals -> SolverTest -> Result
+planned = solveFixed OnlyConstrainedNone
+
+-- | Solve for one of the targets with a mode of
+-- reject-unconstrained-dependencies and with extra constraints.
+pruned :: OnlyConstrained -> ReorderGoals -> [ExConstraint] -> SolverTest -> Result
+pruned onlyConstrained reorderGoals extra test =
+  solveFixed
+    onlyConstrained
+    reorderGoals
+    (oneTarget test){testConstraints = testConstraints test ++ extra}
+
+-- | Solve with every setting fixed but the mode of
+-- reject-unconstrained-dependencies and the reordering of goals, so that
+-- 'planned' and 'pruned' only differ in targets, constraints and mode.
+solveFixed :: OnlyConstrained -> ReorderGoals -> SolverTest -> Result
+solveFixed onlyConstrained reorderGoals =
+  solveWith
+    onlyConstrained
+    (EnableBackjumping True)
+    (FineGrainedConflicts True)
+    reorderGoals
+    (CountConflicts True)
+    (IndependentGoals False)
+    PreferInstalledOrLatest
+    Nothing
+
+-- | Keep one target. A 'SolverTest' usually has most of its packages as
+-- targets, which leaves reject-unconstrained-dependencies nothing to reject.
+oneTarget :: SolverTest -> SolverTest
+oneTarget test = test{testTargets = take 1 (testTargets test)}
+
+-- | The packages of the plan that are not the goal of 'oneTarget'.
+nonGoals :: SolverTest -> Result -> [PackageName]
+nonGoals test =
+  filter (`notElem` goals) . map pkgName . resultPackages
+  where
+    goals = map (mkPackageName . unPN) (testTargets (oneTarget test))
+
+hasNonGoals :: SolverTest -> Result -> Bool
+hasNonGoals test = not . null . nonGoals test
+
+-- | Is each package in the plan at one version? A plan can have a package at
+-- two versions, as a setup dependency say, and pinning both leaves no
+-- version.
+oneVersionEach :: [PackageIdentifier] -> Bool
+oneVersionEach ids = names == ordNub names
+  where
+    names = map pkgName ids
+
+-- | Constrain a package to its version, as a freeze file does.
+pin :: PackageIdentifier -> ExConstraint
+pin (PackageIdentifier pn v) =
+  ExVersionConstraint (ScopeAnyQualifier pn) (thisVersion v)
+
+-- | Pin each package, or bound it from below, or leave it unconstrained.
+arbitraryLoosePins :: [PackageIdentifier] -> Gen [ExConstraint]
+arbitraryLoosePins ids =
+  fmap catMaybes . for ids $ \pid@(PackageIdentifier pn v) ->
+    frequency
+      [ (6, pure . Just $ pin pid)
+      , (2, pure . Just $ ExVersionConstraint (ScopeAnyQualifier pn) (orLaterVersion v))
+      , (1, pure Nothing)
+      ]
 
 arbitraryPreference :: [(PN, PV)] -> Gen ExPreference
 arbitraryPreference pkgs = do
