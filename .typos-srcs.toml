@@ -59,3 +59,6 @@ fo = "fo"
 nto = "nto" # nto-qnx operating system
 dows = "dows" # win-dows
 bimap = "bimap"
+
+# Misspellings typos does not know about, with their corrections.
+bytcode = "bytecode"
