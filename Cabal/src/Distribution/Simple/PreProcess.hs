@@ -94,6 +94,8 @@ import System.FilePath
   )
 import System.Info (arch, os)
 
+{-# ANN module "HLint: ignore Use list comprehension" #-}
+
 -- | Just present the modules in the order given; this is the default and it is
 -- appropriate for preprocessors which do not have any sort of dependencies
 -- between modules.
