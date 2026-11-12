@@ -65,7 +65,7 @@ annotateCondTree
 annotateCondTree fs ta (CondNode a bs) =
   let ta' = updateTargetAnnotation a ta
       bs' = map (annotateBranch ta') bs
-      bs'' = crossAnnotateBranches defTrueFlags bs'
+      bs'' = crossAnnotateBranches defTrueFlags bs bs'
    in CondNode ta' bs''
   where
     annotateBranch
@@ -109,25 +109,36 @@ annotateCondTree fs ta (CondNode a bs) =
 
 -- Propagate contextual information in CondTree branches. This is
 -- needed as CondTree is a rosetree and not a binary tree.
+--
+-- Each branch is annotated with what its sibling branches contribute
+-- when realised. Siblings are realised from the original, unannotated
+-- branches: their annotated versions already contain the whole enclosing
+-- target, and adding a copy of it for every sibling made the size of the
+-- annotations (and the time taken by the checks) quadratic in the number of
+-- branches, see #11563.
 crossAnnotateBranches
   :: forall a
    . (Eq a, Monoid a)
   => [PackageFlag] -- `default: true` flags.
+  -> [CondBranch ConfVar a]
+  -- ^ Branches, as they appear in the target.
   -> [CondBranch ConfVar (TargetAnnotation a)]
+  -- ^ The same branches, annotated.
   -> [CondBranch ConfVar (TargetAnnotation a)]
-crossAnnotateBranches fs bs = map crossAnnBranch bs
+crossAnnotateBranches fs bs = zipWith crossAnnBranch bs
   where
     crossAnnBranch
-      :: CondBranch ConfVar (TargetAnnotation a)
+      :: CondBranch ConfVar a
       -> CondBranch ConfVar (TargetAnnotation a)
-    crossAnnBranch wr =
+      -> CondBranch ConfVar (TargetAnnotation a)
+    crossAnnBranch b wr =
       let
-        rs = filter (/= wr) bs
+        rs = filter (/= b) bs
         ts = mapMaybe realiseBranch rs
        in
         updateTargetAnnBranch (mconcat ts) wr
 
-    realiseBranch :: CondBranch ConfVar (TargetAnnotation a) -> Maybe a
+    realiseBranch :: CondBranch ConfVar a -> Maybe a
     realiseBranch b =
       let
         -- We are only interested in True by default package flags.
@@ -135,7 +146,7 @@ crossAnnotateBranches fs bs = map crossAnnBranch bs
         realiseBranchFunction (PackageFlag n) | elem n (map flagName fs) = Right True
         realiseBranchFunction _ = Right False
        in
-        simplifyCondBranch realiseBranchFunction (fmap taTarget b)
+        simplifyCondBranch realiseBranchFunction b
 
     updateTargetAnnBranch
       :: a
