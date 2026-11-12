@@ -61,6 +61,7 @@ module Distribution.Simple.Command
     -- * Option Descriptions
   , OptDescr (..)
   , fmapOptDescr
+  , commandOptionsUsageInfo
   , Description
   , SFlags
   , LFlags
@@ -466,6 +467,11 @@ commandHelp command pname =
        )
   where
     cname = commandName command
+
+-- | Render a table of options (given as 'OptionField's) for inclusion in a
+-- help text, in the same format as the options section of 'commandHelp'.
+commandOptionsUsageInfo :: String -> [OptionField flags] -> String
+commandOptionsUsageInfo header = GetOpt.usageInfo header . concatMap viewAsGetOpt
 
 -- | Default "usage" documentation text for commands.
 usageDefault :: String -> String -> String
