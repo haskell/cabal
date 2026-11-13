@@ -1,0 +1,9 @@
+cabal-version: 3.0
+name: check
+version: 0
+build-type: Simple
+
+library
+  exposed-modules: Check
+  build-depends: base, filepath, process, template-haskell
+  default-language: Haskell2010

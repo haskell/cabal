@@ -14,6 +14,7 @@ module Distribution.Client.ProjectPlanning.Types
   , showElaboratedInstallPlan
   , elabDistDirParams
   , elabExeDependencyPaths
+  , elabProgramSearchDirs
   , elabLibDependencies
   , elabOrderLibDependencies
   , elabExeDependencies
@@ -617,6 +618,17 @@ elabExeDependencyPaths elab =
   case elabPkgOrComp elab of
     ElabPackage pkg -> map snd $ CD.nonSetupDeps (pkgExeDependencyPaths pkg)
     ElabComponent comp -> map snd (compExeDependencyPaths comp)
+
+-- | Construct the search dirs (B) and (E) of Note [Program search paths]
+-- in "Distribution.Simple.Configure":
+--
+--  (B) The directories of the build-tool-depends executables
+--  (E) All @extra-prog-path@ paths.
+elabProgramSearchDirs :: ElaboratedConfiguredPackage -> [FilePath]
+elabProgramSearchDirs elab =
+  ordNub $
+    elabExeDependencyPaths elab
+      ++ elabProgramPathExtra elab
 
 -- | The setup dependencies (the library dependencies of the setup executable;
 -- note that it is not legal for setup scripts to have executable

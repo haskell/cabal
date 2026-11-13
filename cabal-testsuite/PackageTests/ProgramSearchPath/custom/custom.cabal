@@ -1,0 +1,20 @@
+cabal-version: 3.0
+name: custom
+version: 0
+build-type: Custom
+
+flag unique-path
+  description: Disallow duplicate program search paths (Cabal >= 3.19)?
+  default: False
+  manual: True
+
+custom-setup
+  setup-depends: base, Cabal
+
+library
+  exposed-modules: Custom
+  build-depends: base, check, template-haskell
+  build-tool-depends: tool:tool
+  default-language: Haskell2010
+  if flag(unique-path)
+    cpp-options: -DUNIQUE_PATH

@@ -245,6 +245,9 @@ modifyProgramSearchPath f db =
 --
 --  - Logs the added paths in info verbosity.
 --  - Prepends environment variable overrides.
+--
+-- Directories that were already on the search path are moved to the front
+-- rather than duplicated.
 prependProgramSearchPath
   :: Verbosity
   -> [FilePath]
@@ -277,6 +280,8 @@ prependProgramSearchPathNoLogging extraPaths extraEnv db =
 -- | User-specify this path.  Basically override any path information
 --  for this program in the configuration. If it's not a known
 --  program ignore it.
+--
+-- See (O) in Note [Program search paths] in "Distribution.Simple.Configure".
 userSpecifyPath
   :: String
   -- ^ Program name
@@ -416,11 +421,14 @@ configureUnconfiguredProgram
   -> IO (Maybe ConfiguredProgram)
 configureUnconfiguredProgram verbosity prog progdb = do
   let name = programName prog
+  -- See Note [Program search paths] in Distribution.Simple.Configure.
   maybeLocation <- case userSpecifiedPath prog progdb of
     Nothing ->
+      -- (C), (B), (E) and (P)
       programFindLocation prog verbosity (progSearchPath progdb)
         <&> fmap (swap . fmap FoundOnSystem . swap)
     Just path -> do
+      -- (O)
       absolute <- doesExecutableExist path
       if absolute
         then return (Just (UserSpecified path, []))
@@ -433,6 +441,7 @@ configureUnconfiguredProgram verbosity prog progdb = do
     Nothing -> return Nothing
     Just (location, triedLocations) -> do
       version <- programFindVersion prog verbosity (locationPath location)
+      -- See Note [Program search paths] in Distribution.Simple.Configure.
       newPath <- programSearchPathAsPATHVar (progSearchPath progdb)
       let configuredProg =
             ConfiguredProgram
@@ -524,6 +533,7 @@ updatePathProgs verbosity progs progdb =
 -- | See 'updatePathProgDb'.
 updatePathProg :: Verbosity -> ConfiguredProgram -> ProgramDb -> IO ProgramDb
 updatePathProg _verbosity prog progdb = do
+  -- See Note [Program search paths] in Distribution.Simple.Configure.
   newPath <- programSearchPathAsPATHVar (progSearchPath progdb)
   let envOverrides = progOverrideEnv progdb
       progOverrides = programOverrideEnv prog

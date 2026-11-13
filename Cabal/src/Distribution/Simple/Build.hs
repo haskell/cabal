@@ -925,6 +925,8 @@ createInternalPackageDB verbosity lbi distPref = do
 --    directory environment variable for the current package to the current
 --    'progOverrideEnv', so that any programs configured from now on will be
 --    able to invoke these build tools.
+--
+-- See (B) in Note [Program search paths] in "Distribution.Simple.Configure".
 addInternalBuildTools
   :: AbsolutePath (Dir Pkg)
   -> PackageDescription

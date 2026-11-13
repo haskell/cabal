@@ -347,8 +347,9 @@ data SetupScriptOptions = SetupScriptOptions
   , useDistPref :: SymbolicPath Pkg (Dir Dist)
   , useLoggingHandle :: Maybe Handle
   , useWorkingDir :: Maybe (SymbolicPath CWD (Dir Pkg))
-  , useExtraPathEnv :: [FilePath]
-  -- ^ Extra things to add to PATH when invoking the setup script.
+  , useProgramSearchDirs :: [FilePath]
+  -- ^ The program search directories: (B) + (E) from
+  -- Note [Program search paths] in "Distribution.Simple.Configure".
   , useExtraEnvOverrides :: [(String, Maybe FilePath)]
   -- ^ Extra environment variables paired with overrides, where
   --
@@ -411,7 +412,7 @@ defaultSetupScriptOptions =
     , useDistPref = defaultDistPref
     , useLoggingHandle = Nothing
     , useWorkingDir = Nothing
-    , useExtraPathEnv = []
+    , useProgramSearchDirs = []
     , useExtraEnvOverrides = []
     , useWin32CleanHack = False
     , setupCacheLock = Nothing
@@ -535,8 +536,8 @@ chooseSetupMethod verbosity options pkg buildType' mbLibraryMethod =
         compileExternalExe verbosity options pkg buildType' WantSetup
       return (version, ExternalMethod path, options')
 
-runSetupMethod :: WithCallStack (SetupMethod UseGeneralSetup -> SetupRunner UseGeneralSetup)
-runSetupMethod (ExternalMethod path) = externalSetupMethod path
+runSetupMethod :: WithCallStack (Version -> SetupMethod UseGeneralSetup -> SetupRunner UseGeneralSetup)
+runSetupMethod version (ExternalMethod path) = externalSetupMethod version path
 
 -- | Run a configured 'Setup' with specific arguments.
 runSetup
@@ -560,7 +561,31 @@ runSetup verbosity setup args0 setupArgs = do
         ++ "  After:  "
         ++ show args
         ++ "\n"
-  runSetupMethod method verbosity options bt args setupArgs
+  runSetupMethod (setupVersion setup) method verbosity options bt args setupArgs
+
+-- | Given the Cabal version, should we add @--extra-prog-path@ search dirs
+-- to @PATH@?
+--
+-- Cabal 3.19 and later search the @--extra-prog-path@ directories before the
+-- system @PATH@, so these directories don't need to be in @PATH@.
+--
+-- See Note [Program search paths] in "Distribution.Simple.Configure".
+setupProgramSearchDirsInPATH :: Version -> [FilePath] -> [FilePath]
+setupProgramSearchDirsInPATH ver dirs
+  | ver < mkVersion [3, 19] = dirs
+  | otherwise = []
+
+-- | The 'ProgramDb' to use for the package the Setup script belongs to.
+--
+-- See Note [Program search paths] in "Distribution.Simple.Configure".
+setupProgramDb
+  :: Verbosity
+  -> SetupScriptOptions
+  -> [FilePath] -- ^ program search directories
+  -> IO ProgramDb
+setupProgramDb verbosity options searchDirs =
+  prependProgramSearchPath verbosity searchDirs (useExtraEnvOverrides options) $
+    setProgramSearchPath defaultProgramSearchPath (useProgramDb options)
 
 -- | This is a horrible hack to make sure passing fancy verbosity
 -- flags (e.g., @-v'info +callstack'@) doesn't break horribly on
@@ -672,17 +697,12 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
 
       -- Apply per-package user-supplied program args/paths.
       -- See (2)(a) in Note [Constructing the ProgramDb]
-      baseProgDb <-
+      baseProgDb <- setupProgramDb verbosity options []
+      setupProgDb <-
         -- Use 'mkProgramDb' to pass user-supplied per-package
         -- program options (--PROG-options=...).
-        mkProgramDb verbHandles flags
-          (restoreProgramDb builtinPrograms $
-            pkgConfigCompilerProgs elabSharedConfig)
-      setupProgDb <-
-        prependProgramSearchPath verbosity
-          (useExtraPathEnv options)
-          (useExtraEnvOverrides options)
-          baseProgDb
+        mkProgramDb verbHandles flags $
+          restoreProgramDb builtinPrograms baseProgDb
       -- Read the project InstalledPackageIndex to avoid needing to query
       -- @ghc-pkg@ to obtain it.
       -- in Distribution.Client.ProjectBuilding.
@@ -752,14 +772,13 @@ things:
             the per-package search path (including 'extra-prog-path').
 
   (2)
-    (a) When building a package with internal build tools, we must ensure that
-        these build tools are available in PATH, with appropriate environment
-        variable overrides for their data directory. To do this, we call
-        'prependProgramSearchPath'.
+    (a) We replace the program search path of the compiler program database
+        with the program search path of the package.
+        See Note [Program search paths] in Distribution.Simple.Configure.
 
-    (b) Moreover, these programs must be available in the search paths for the
-        compiler itself, in case they are run at compile-time (e.g. with a Template
-        Haskell splice). We achieve this using 'updatePathProgDb'.
+    (b) The build tools of the package may be used at compile time (e.g. with a
+        Template Haskell splice), so we include them in the search paths of the
+        compiler program database: see 'updatePathProgDb'.
 -}
 
 -- ------------------------------------------------------------
@@ -768,14 +787,24 @@ things:
 
 -- ------------------------------------------------------------
 
-invoke :: Verbosity -> FilePath -> [String] -> SetupScriptOptions -> IO ()
-invoke verbosity path args options = do
+invoke
+  :: Verbosity
+  -> Version
+  -- ^ the version of Cabal the Setup uses
+  -> FilePath
+  -> [String]
+  -> SetupScriptOptions
+  -> IO ()
+invoke verbosity version path args options = do
   info verbosity $ unwords (path : args)
   case useLoggingHandle options of
     Nothing -> return ()
     Just logHandle -> info verbosity $ "Redirecting build log to " ++ show logHandle
 
-  progDb <- prependProgramSearchPath verbosity (useExtraPathEnv options) (useExtraEnvOverrides options) (useProgramDb options)
+  -- See 'setupProgramSearchDirsInPATH'.
+  progDb <-
+    setupProgramDb verbosity options $
+      setupProgramSearchDirsInPATH version (useProgramSearchDirs options)
 
   searchpath <-
     programSearchPathAsPATHVar $ getProgramSearchPath progDb
@@ -804,11 +833,12 @@ invoke verbosity path args options = do
 
 -- ------------------------------------------------------------
 
-externalSetupMethod :: WithCallStack (FilePath -> SetupRunner UseGeneralSetup)
-externalSetupMethod path verbosity options _ args NotInLibrary =
+externalSetupMethod :: WithCallStack (Version -> FilePath -> SetupRunner UseGeneralSetup)
+externalSetupMethod version path verbosity options _ args NotInLibrary =
 #ifndef mingw32_HOST_OS
   invoke
     verbosity
+    version
     path
     args
     options
@@ -818,7 +848,7 @@ externalSetupMethod path verbosity options _ args NotInLibrary =
       then invokeWithWin32CleanHack path
       else invoke' path
   where
-    invoke' p = invoke verbosity p args options
+    invoke' p = invoke verbosity version p args options
 
     invokeWithWin32CleanHack origPath = do
       info verbosity $ "Using the Win32 clean hack."
@@ -1170,10 +1200,7 @@ getCachedSetupExecutable
             -- Add the relevant PATH overrides for the package to the
             -- program database.
             setupProgDb
-              <- prependProgramSearchPath verbosity
-                    (useExtraPathEnv options')
-                    (useExtraEnvOverrides options')
-                    (useProgramDb options')
+              <- setupProgramDb verbosity options' (useProgramSearchDirs options')
                    >>= configureAllKnownPrograms verbosity
             Strip.stripExe
               verbosity
