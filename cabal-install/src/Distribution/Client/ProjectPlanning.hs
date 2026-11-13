@@ -1483,6 +1483,7 @@ planPackages
             , pkg <- localPackages
             , let pkgname = pkgSpecifierTarget pkg
             ]
+          . rewriteSourcePackages (compilerFlavor comp)
           $ stdResolverParams
 
       stdResolverParams :: DepResolverParams

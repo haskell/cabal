@@ -1,0 +1,18 @@
+cabal-version:   3.0
+name:            mhs-preprocess
+version:         1.0
+build-type:      Simple
+license:         BSD-3-Clause
+synopsis:        Modules that a preprocessor generates, with MicroHs
+
+library
+    exposed-modules:  Sizes
+    build-depends:    base
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+executable mhs-preprocess
+    main-is:          Main.hs
+    build-depends:    base, mhs-preprocess
+    hs-source-dirs:   app
+    default-language: Haskell2010

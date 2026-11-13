@@ -31,4 +31,4 @@ Examples:
 
 The flags --with-PROG and --PROG-option(s) can be used with the following programs:
   alex ar c2hs cpphs doctest gcc ghc ghc-pkg haddock happy hpc hsc2hs hscolour
-  jhc ld pkg-config runghc strip tar uhc
+  jhc ld mhs pkg-config runghc strip tar uhc

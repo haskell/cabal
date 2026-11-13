@@ -306,6 +306,7 @@ requireCompilerProg :: Verbosity -> Compiler -> IO Program
 requireCompilerProg verbosity compiler =
   case compilerFlavor compiler of
     GHC -> pure ghcProgram
+    MHS -> pure mhsProgram
     flavour ->
       die' verbosity $
         "path: Unsupported compiler flavour: "

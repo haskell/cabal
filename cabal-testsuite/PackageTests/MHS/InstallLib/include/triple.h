@@ -1,0 +1,1 @@
+int triple(int x);

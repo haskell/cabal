@@ -132,6 +132,7 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import qualified Distribution.Simple.GHC as GHC
+import qualified Distribution.Simple.MHS as MHS
 import qualified Distribution.Simple.UHC as UHC
 
 import Control.Exception
@@ -2268,6 +2269,7 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
   case compilerFlavor comp of
     GHC -> GHC.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
     UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
+    MHS -> MHS.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     flv ->
       dieWithException verbosity $ HowToFindInstalledPackages flv
   where
@@ -2321,6 +2323,13 @@ getInstalledPackagesMonitorFiles verbosity comp mbWorkDir packageDBs progdb plat
         mbWorkDir
         platform
         progdb
+        packageDBs
+    MHS ->
+      MHS.getInstalledPackagesMonitorFiles
+        verbosity
+        comp
+        progdb
+        mbWorkDir
         packageDBs
     other -> do
       warn verbosity $
@@ -2700,6 +2709,7 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
     GHC -> GHC.configure verbosity hcPath hcPkg progdb
     UHC -> UHC.configure verbosity hcPath progdb
     GHCJS -> dieWithException verbosity GHCJSNotSupported
+    MHS -> MHS.configure verbosity hcPath progdb
     _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
@@ -2720,6 +2730,7 @@ configCompiler mbFlavor hcPath progdb verbosity = do
           GHC -> GHC.configureCompiler verbosity hcPath progdb
           UHC -> UHC.configure verbosity hcPath progdb
           GHCJS -> dieWithException verbosity GHCJSNotSupported
+          MHS -> MHS.configure verbosity hcPath progdb
           _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 

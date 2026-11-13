@@ -59,6 +59,7 @@ module Distribution.Client.Dependency
   , setSolverVerbosity
   , removeLowerBounds
   , removeUpperBounds
+  , rewriteSourcePackages
   , addDefaultSetupDependencies
   , addSetupCabalMinVersionConstraint
   , addSetupCabalMaxVersionConstraint
@@ -96,7 +97,8 @@ import Distribution.Client.Utils
   )
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compiler
-  ( CompilerInfo (..)
+  ( CompilerFlavor (..)
+  , CompilerInfo (..)
   )
 import Distribution.Package
   ( Package (..)
@@ -112,6 +114,7 @@ import Distribution.PackageDescription.Configuration
   ( finalizePD
   )
 import qualified Distribution.PackageDescription.Configuration as PD
+import qualified Distribution.Simple.MHS as MHS
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Simple.Setup
@@ -504,6 +507,25 @@ nonReinstallablePackages =
   , mkPackageName "integer-simple"
   , mkPackageName "template-haskell"
   ]
+
+-- | Rewrite the descriptions of all the source packages as the compiler needs
+-- them, given which packages the solver can choose from: for MicroHs, as
+-- MicroCabal does. Rewriting them before solving is enough, as cabal-install
+-- configures a package in-library with the description of its plan. See
+-- Note [MicroHs rewrites of packages] in "Distribution.Simple.MHS".
+rewriteSourcePackages :: CompilerFlavor -> DepResolverParams -> DepResolverParams
+rewriteSourcePackages MHS params =
+  params
+    { depResolverSourcePkgIndex =
+        (\srcPkg -> srcPkg{srcpkgDescription = MHS.rewritePackageDescription available (srcpkgDescription srcPkg)})
+          <$> sourcePkgIndex
+    }
+  where
+    sourcePkgIndex = depResolverSourcePkgIndex params
+    available name =
+      not (null (PackageIndex.lookupPackageName sourcePkgIndex name))
+        || not (null (InstalledPackageIndex.lookupPackageName (depResolverInstalledPkgIndex params) name))
+rewriteSourcePackages _ params = params
 
 addSourcePackages
   :: [UnresolvedSourcePackage]
