@@ -93,8 +93,8 @@ import Control.Monad.Trans.Reader (asks, runReaderT, withReaderT)
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Crypto.Hash.SHA256 qualified as SHA256
 import Data.Aeson qualified as JSON
+import Data.ByteString qualified as BS
 import Data.ByteString.Base16 qualified as Base16
-import Data.ByteString.Char8 qualified as C
 import Data.ByteString.Lazy qualified as BSL
 import Data.Char qualified as Char
 import Data.List (isPrefixOf, stripPrefix)
@@ -819,14 +819,14 @@ recordHeader args = do
   env <- getTestEnv
   let mode = testRecordMode env
       str_header = "# " ++ unwords args ++ "\n"
-      rec_header = C.pack str_header
+      rec_header = toUTF8BS str_header
   case mode of
     DoNotRecord -> return ()
     _ -> do
       initWorkDir
       liftIO $ putStr str_header
-      liftIO $ C.appendFile (testWorkDir env </> "test.log") rec_header
-      liftIO $ C.appendFile (testActualFile env) rec_header
+      liftIO $ BS.appendFile (testWorkDir env </> "test.log") rec_header
+      liftIO $ BS.appendFile (testActualFile env) rec_header
 
 ------------------------------------------------------------------------
 
@@ -1064,7 +1064,7 @@ getScriptCacheDirectory :: FilePath -> TestM FilePath
 getScriptCacheDirectory script = do
   cabalDir <- testCabalDir `fmap` getTestEnv
   hashinput <- liftIO $ canonicalizePath script
-  let hash = C.unpack . Base16.encode . C.take 26 . SHA256.hash . C.pack $ hashinput
+  let hash = fromUTF8BS . Base16.encode . BS.take 26 . SHA256.hash . toUTF8BS $ hashinput
   return $ cabalDir </> "script-builds" </> hash
 
 ------------------------------------------------------------------------

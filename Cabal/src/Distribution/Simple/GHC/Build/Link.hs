@@ -8,7 +8,6 @@ import Prelude ()
 
 import Control.Monad
 import Control.Monad.IO.Class
-import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 import Distribution.Backpack
@@ -757,7 +756,7 @@ runReplOrWriteFlags ghcProg verbHandles lbi rflags ghcOpts pkg_name target =
           -- the multi-repl
           extra_opts <- render_extra_opts
           writeFileAtomic (out_dir </> this_unit) $
-            BS.pack $
+            toUTF8LBS $
               escapeArgs $
                 extra_opts
                   ++ renderGhcOptions comp platform (ghcOpts{ghcOptMode = NoFlag})
