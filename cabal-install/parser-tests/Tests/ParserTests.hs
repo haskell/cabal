@@ -31,7 +31,7 @@ import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnviron
 import Distribution.Compat.Prelude
 import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.Parsec (simpleParsec)
-import Distribution.Simple.Compiler (DebugInfoLevel (..), OptimisationLevel (..), PackageDBX (..), ProfDetailLevel (..))
+import Distribution.Simple.Compiler (PackageDBX (..), ProfDetailLevel (..))
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs (InstallDirs (..), toPathTemplate)
 import Distribution.Simple.Setup (DumpBuildInfo (..), HaddockTarget (..), TestShowDetails (..))
@@ -50,7 +50,9 @@ import Distribution.Solver.Types.Settings
   )
 import Distribution.System (OS (..), buildOS)
 import Distribution.Types.CondTree (CondTree (..))
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
 import Distribution.Types.Flag (mkFlagAssignment)
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import Distribution.Types.PackageId (PackageIdentifier (..))
 import Distribution.Types.PackageName
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
