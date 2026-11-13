@@ -1,0 +1,4 @@
+packages: .
+
+optimization: False
+debug-info: True

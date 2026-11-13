@@ -2,6 +2,7 @@ packages: .
 
 build-info: true
 optimization: tRuE
+debug-info: fALSe
 
 package test
   flags: -bar
