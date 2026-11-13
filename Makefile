@@ -5,7 +5,8 @@
 CABALBUILD := cabal build
 CABALRUN   := cabal run
 
-DOCTEST := cabal doctest
+CABAL_DOCTEST := cabal doctest
+REPL_WITH_DOCTEST := cabal repl --with-compiler=doctest --build-depends=QuickCheck --verbose=0 --repl-options='-w -Wdefault -Wno-inconsistent-flags'
 
 # default rules
 
@@ -158,14 +159,41 @@ ghcid-lib: ## Run ghcid for the Cabal library.
 ghcid-cli: ## Run ghcid for the cabal-install executable.
 	ghcid -c 'cabal repl cabal-install'
 
-.PHONY: doctest
-doctest: ## Run doctests.
+# doctests
+
+# To find package directories that might have doctests:
+# $ grep --exclude generics-sop-lens.hs -E "\- >>>" **/*.hs | awk -F/ '{print $1}' | sort -u
+DOCTEST_PACKAGES := \
+  Cabal \
+  Cabal-described \
+  Cabal-syntax \
+  cabal-install \
+  cabal-install-solver \
+  # Can't include cabal-testsuite because of the --keep-temp-files problem
+  # cabal-testsuite
+
+DOCTEST_TARGETS := $(addprefix doctest-, $(DOCTEST_PACKAGES))
+
+doctest-%: ## Run doctests for a specific package.
 	cabal --numeric-version
-	cd Cabal-syntax && $(DOCTEST)
-	cd Cabal-described && $(DOCTEST)
-	cd Cabal && $(DOCTEST)
-	cd cabal-install-solver && $(DOCTEST)
-	cd cabal-install && $(DOCTEST)
+	@echo "Running doctests for $*:" && cd $* && $(CABAL_DOCTEST) $*
+
+doctest-PACKAGENAME: ## Run doctests for a single package (replace PACKAGENAME).
+	@echo 'Please use one of the following targets:'
+	@printf "%s\n" $(DOCTEST_TARGETS)
+
+# TODO: Fix this problem
+# Configuring cabal-testsuite-3...
+# unrecognized 'repl' option `--keep-temp-files'
+# Error: [Cabal-7125]
+# repl failed for cabal-testsuite-3.
+# make: *** [Makefile:172: doctest-cabal-testsuite] Error 1
+doctest-cabal-testsuite: ## Run doctests for a specific package.
+	@echo "Running doctests for cabal-testsuite:" && $(CABAL_DOCTEST) cabal-testsuite
+
+.PHONY: doctest
+doctest: ## Run doctests in all packages.
+doctest: $(DOCTEST_TARGETS)
 
 # If we pin and periodically bump the version of doctest, we get more
 # reproducible testing. Initially we pinned to doctest-0.25.0 to avoid failures
