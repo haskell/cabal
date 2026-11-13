@@ -572,6 +572,9 @@ data GhcOptions = GhcOptions
 
     ghcOptGHCiScripts :: [FilePath]
   -- ^ Extra GHCi startup scripts; the @-ghci-script@ flag
+  , ghcOptGHCiLoadInitialTargets :: Flag Bool
+  -- ^ Whether the initial given targets should be immediately
+  -- loaded on GHCi startup.
   , ------------------------
     -- Redirecting outputs
 
@@ -985,14 +988,17 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
           concat
             [ ["-ghci-script", script] | script <- ghcOptGHCiScripts opts
             ]
+        , concat
+            [ replLoadInitialTargets | compilerSupportsLoadInitialTargets
+            ]
         , ---------------
           -- Inputs
 
           -- Specify the input file(s) first, so that in ghci the `main-is` module is
           -- in scope instead of the first module defined in `other-modules`.
-          map u $ flags ghcOptInputFiles
+          concat [map u $ flags ghcOptInputFiles | not omitHaskellSources]
         , concat [["-x", "hs", u script] | script <- flags ghcOptInputScripts]
-        , [prettyShow modu | modu <- flags ghcOptInputModules]
+        , [prettyShow modu | not omitHaskellSources, modu <- flags ghcOptInputModules]
         , concat [["-o", u out] | out <- flag ghcOptOutputFile]
         , concat [["-dyno", out] | out <- flag ghcOptOutputDynFile]
         , -- unit files
@@ -1011,6 +1017,24 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
     flag flg = flagToList (flg opts)
     flags flg = fromNubListR . flg $ opts
     flagBool flg = fromFlagOrDefault False (flg opts)
+
+    compilerSupportsLoadInitialTargets =
+      case compilerCompatVersion GHC comp of
+        -- GHC 9.14 is the first version which supports `-fload-initial-targets` files.
+        Just version -> version >= mkVersion [9, 14, 1]
+        Nothing -> False
+
+    replLoadInitialTargets =
+      case ghcOptGHCiLoadInitialTargets opts of
+        NoFlag -> []
+        Flag True -> ["-fload-initial-targets"]
+        Flag False -> ["-fno-load-initial-targets"]
+
+    omitHaskellSources =
+      -- If the user requests `--repl-no-load` (i.e. `-fno-load-initial-targets`),
+      -- but the ghc version doesn't support the flag `-fno-load-initial-targets`, then
+      -- we omit Haskell sources such as modules and file targets to emulate the flag.
+      not (flagBool ghcOptGHCiLoadInitialTargets) && not compilerSupportsLoadInitialTargets
 
 verbosityOpts :: VerbosityLevel -> [String]
 verbosityOpts verbosity
