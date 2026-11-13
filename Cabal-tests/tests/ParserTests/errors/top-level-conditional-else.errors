@@ -1,0 +1,2 @@
+VERSION: Just (mkVersion [3,18])
+top-level-conditional-else.cabal:5:1: "else" without preceding "if"
