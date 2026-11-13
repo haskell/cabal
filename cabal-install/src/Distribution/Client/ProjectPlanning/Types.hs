@@ -292,7 +292,10 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabProgramPaths :: Map String FilePath
   , elabProgramArgs :: Map String [String]
   , elabProgramPathExtra :: [FilePath]
-  , elabConfiguredPrograms :: [ConfiguredProgram]
+  , elabConfiguredProgramsHash :: HashValue
+  -- ^ Hash of the configured programs in 'pkgConfigCompilerProgs'. This
+  -- record is the configure cache key, and the hash changes that key whenever
+  -- one of those programs changes, without a copy of them in each component.
   , elabConfigureScriptArgs :: [String]
   , elabExtraLibDirs :: [FilePath]
   , elabExtraLibDirsStatic :: [FilePath]
