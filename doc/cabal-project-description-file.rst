@@ -323,6 +323,18 @@ The :ref:`VCS fields<vcs-fields>` of ``source-repository-package`` are:
 
     Run command in the checked out repository, prior sdisting.
 
+    A git repository at a URL is checked out shallowly: the checkout has the
+    commit that ``tag`` or ``branch`` names, but neither its history nor the
+    repository's tags. If a package needs them, for example to run
+    ``git describe`` while it builds, this command can fetch them:
+
+    ::
+
+        post-checkout-command: git fetch --depth=2147483647 --tags
+
+    Unlike ``git fetch --unshallow``, this also succeeds on later syncs, when
+    the checkout is already complete.
+
 Global options
 --------------
 
