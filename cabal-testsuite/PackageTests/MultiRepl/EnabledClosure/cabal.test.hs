@@ -10,3 +10,6 @@ main = do
 
     assertOutputContains "- pkg-b-0 (interactive)" res
     assertOutputContains "168" res
+    -- Interactive components must not build documentation, even though
+    -- the project enables it (see #12242).
+    assertOutputDoesNotContain "Running Haddock" res
