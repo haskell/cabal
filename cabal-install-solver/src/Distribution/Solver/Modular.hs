@@ -145,7 +145,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
     runSolver :: Bool -> SolverConfig
               -> RetryLog SummarizedMessage SolverFailure (Assignment, RevDepMap)
     runSolver keepLog sc' =
-        displayLogMessages keepLog $
+        displayLogMessages (reposSearched sc') keepLog $
         solve sc' cinfo idx pkgConfigDB pprefs gcs pns
 
     createErrorMsg :: SolverFailure
