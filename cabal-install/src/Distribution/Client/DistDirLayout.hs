@@ -11,6 +11,7 @@ module Distribution.Client.DistDirLayout
   , DistDirParams (..)
   , ProjectFileKey (..)
   , defaultDistDirLayout
+  , relativiseProjectPath
 
     -- * 'ProjectRoot'
   , ProjectRoot (..)
@@ -50,6 +51,7 @@ import Distribution.Simple.Compiler
   , PackageDBX (..)
   )
 import Distribution.Simple.Configure (interpretPackageDbFlags)
+import Distribution.Simple.Utils (shortRelativePath)
 import Distribution.System
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
@@ -337,3 +339,22 @@ mkCabalDirLayout mstoreDir mlogDir = do
   cabalLogsDirectory <-
     maybe defaultLogsDir pure mlogDir
   pure CabalDirLayout{..}
+
+-- | Rewrite an absolute path inside the project, so that it is relative to
+-- the build tree root. Paths outside the project, and paths containing @..@,
+-- are unchanged.
+relativiseProjectPath :: DistDirLayout -> FilePath -> FilePath
+relativiseProjectPath DistDirLayout{distProjectRootDirectory, distDirectory} path
+  | isAbsolute path
+  , -- Appropriately relativizing paths with '..' is trickly, and requires
+    -- going through System.Directory.canonicalizePath. Instead, in the rare
+    -- case this even happens, let's fallback to non-relativization.
+    all (notElem "..") [projectRoot, buildTree, target]
+  , projectRoot `isPrefixOf` buildTree
+  , projectRoot `isPrefixOf` target =
+      shortRelativePath (joinPath buildTree) (joinPath target)
+  | otherwise = path
+  where
+    projectRoot = splitDirectories (normalise distProjectRootDirectory)
+    buildTree = splitDirectories (normalise distDirectory)
+    target = splitDirectories (normalise path)
