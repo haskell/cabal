@@ -2,6 +2,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- Module      :  Distribution.Simple.Haddock
@@ -605,7 +606,7 @@ fromFlags env flags =
           [] -> [Html]
           os -> os
     , argOutputDir = maybe mempty (Dir . getSymbolicPath) . flagToMaybe $ setupDistPref commonFlags
-    , argGhcOptions = mempty{ghcOptExtra = ghcArgs}
+    , argGhcOptions = mempty{ghcOptExtra = map T.pack ghcArgs}
     , argUseUnicode = haddockUseUnicode flags
     }
   where
@@ -631,7 +632,7 @@ fromPackageDescription _haddockTarget pkg_descr =
   mempty
     { argInterfaceFile = Flag $ haddockPath pkg_descr
     , argPackageName = Flag $ packageId pkg_descr
-    , argOutputDir = Dir $ "doc" </> "html"
+    , argOutputDir = Dir $ ("doc" :: String) </> "html"
     , argPrologue =
         Flag $
           ShortText.fromShortText $
@@ -724,7 +725,7 @@ mkHaddockArgs verbosity (tmpObjDir, tmpHiDir, tmpStubDir) lbi clbi htmlTemplate 
         , ghcOptFPic = toFlag True
         , ghcOptHiSuffix = toFlag "dyn_hi"
         , ghcOptObjSuffix = toFlag "dyn_o"
-        , ghcOptExtra = map T.unpack $ hcSharedOptions GHC bi
+        , ghcOptExtra = hcSharedOptions GHC bi
         }
   ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
   opts <-
@@ -1269,7 +1270,9 @@ renderPureArgs version comp platform args =
         . flagToMaybe
         . argTitle
         $ args
-    , [ "--optghc=" ++ opt | let opts = argGhcOptions args, opt <- renderGhcOptions comp platform opts
+    , [ "--optghc=" ++ T.unpack opt
+      | let opts = argGhcOptions args
+      , opt <- renderGhcOptions comp platform opts
       ]
     , maybe [] (\l -> ["-B" ++ l]) $
         flagToMaybe (argGhcLibDir args) -- error if Nothing?

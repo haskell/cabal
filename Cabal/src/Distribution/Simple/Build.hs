@@ -296,7 +296,7 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
     unless (null warns) $
       warn verbosity $
         "Encountered warnings while dumping build-info:\n"
-          ++ unlines warns
+          ++ unlines (map Text.unpack warns)
     LBS.writeFile buildInfoFile buildInfoText
 
   unless shouldDumpBuildInfo $
@@ -638,7 +638,13 @@ generateCode codeGens nm pdesc bi lbi clbi verbosity = do
           (withPrograms lbi)
           ( map interpretSymbolicPathCWD (tgtDir : srcDirs)
               ++ ( "--"
-                    : GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) (GHC.componentGhcOptions verbLevel lbi bi clbi tgtDir)
+                    : map
+                      Text.unpack
+                      ( GHC.renderGhcOptions
+                          (compiler lbi)
+                          (hostPlatform lbi)
+                          (GHC.componentGhcOptions verbLevel lbi bi clbi tgtDir)
+                      )
                  )
           )
 

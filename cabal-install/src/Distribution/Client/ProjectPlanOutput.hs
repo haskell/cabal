@@ -916,7 +916,7 @@ argsEquivalentOfGhcEnvironmentFileGhc
   elaboratedInstallPlan
   postBuildStatus =
     clearPackageDbStackFlag
-      ++ packageDbArgsDb packageDBs
+      ++ map Text.unpack (packageDbArgsDb packageDBs)
       ++ foldMap packageIdFlag packageIds
     where
       projectRootDir = distProjectRootDirectory distDirLayout

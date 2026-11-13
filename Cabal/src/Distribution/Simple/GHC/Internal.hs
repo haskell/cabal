@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- Module      :  Distribution.Simple.GHC.Internal
@@ -53,6 +54,7 @@ import Data.Bool (bool)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.Text (Text)
 import qualified Data.Text as Text
 import Distribution.Backpack
 import Distribution.Compat.Stack
@@ -133,7 +135,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
     compilerDir, base_dir, mingwBinDir :: FilePath
     compilerDir = takeDirectory (programPath ghcProg)
     base_dir = takeDirectory compilerDir
-    mingwBinDir = base_dir </> "mingw" </> "bin"
+    mingwBinDir = base_dir </> ("mingw" :: String) </> "bin"
     isWindows = case buildOS of Windows -> True; _ -> False
     binPrefix = ""
 
@@ -384,7 +386,7 @@ splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
             ghcOptionsSince
               (mkVersion [8, 10])
               (compiler lbi)
-              (optimizationCFlags lbi ++ map Text.unpack (ccOptions bi))
+              (map Text.pack (optimizationCFlags lbi) ++ ccOptions bi)
         }
     setCxxOptions xxx =
       xxx
@@ -396,7 +398,7 @@ splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
             ghcOptionsSince
               (mkVersion [8, 10])
               (compiler lbi)
-              (optimizationCFlags lbi ++ map Text.unpack (cxxOptions bi))
+              (map Text.pack (optimizationCFlags lbi) ++ cxxOptions bi)
         }
     setCcProgram xxx =
       xxx
@@ -413,7 +415,8 @@ splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
           --    the -no-pie check to -pgml, but scoping -pgmc exclusively to C/C++ compilation
           --    protects older GHC versions from this link-time breakage.
           -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgmc
-          ghcOptCcProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
+          ghcOptCcProgram =
+            maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
         }
     setGppProgram xxx =
       xxx
@@ -535,26 +538,26 @@ linkGhcOptions verbosity lbi bi clbi =
         { -- Respect -v0, but don't crank up verbosity on GHC if
           -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
           ghcOptVerbosity = toFlag (min verbosity Normal)
-        , ghcOptCcOptions = map Text.unpack $ ccOptions bi
-        , ghcOptCxxOptions = map Text.unpack $ cxxOptions bi
-        , ghcOptAsmOptions = map Text.unpack $ asmOptions bi
-        , ghcOptLinkOptions = map Text.unpack $ ldOptions bi
-        , ghcOptCppOptions = map Text.unpack $ cppOptions bi
-        , ghcOptJSppOptions = map Text.unpack $ jsppOptions bi
-        , ghcOptExtra = map Text.unpack $ hcOptions GHC bi <> cmmOptions bi
+        , ghcOptCcOptions = ccOptions bi
+        , ghcOptCxxOptions = cxxOptions bi
+        , ghcOptAsmOptions = asmOptions bi
+        , ghcOptLinkOptions = ldOptions bi
+        , ghcOptCppOptions = cppOptions bi
+        , ghcOptJSppOptions = jsppOptions bi
+        , ghcOptExtra = hcOptions GHC bi <> cmmOptions bi
         , ghcOptCabal = toFlag True
         , ghcOptThisUnitId = case clbi of
             LibComponentLocalBuildInfo{componentCompatPackageKey = pk} ->
-              toFlag pk
+              toFlag (Text.pack pk)
             _ | not (unitIdForExes implInfo) -> mempty
             ExeComponentLocalBuildInfo{componentUnitId = uid} ->
-              toFlag (unUnitId uid)
+              toFlag (Text.pack (unUnitId uid))
             TestComponentLocalBuildInfo{componentUnitId = uid} ->
-              toFlag (unUnitId uid)
+              toFlag (Text.pack (unUnitId uid))
             BenchComponentLocalBuildInfo{componentUnitId = uid} ->
-              toFlag (unUnitId uid)
+              toFlag (Text.pack (unUnitId uid))
             FLibComponentLocalBuildInfo{componentUnitId = uid} ->
-              toFlag (unUnitId uid)
+              toFlag (Text.pack (unUnitId uid))
         , ghcOptThisComponentId = case clbi of
             LibComponentLocalBuildInfo
               { componentComponentId = cid
@@ -617,17 +620,21 @@ toGhcOptimisation NormalOptimisation = toFlag GhcNormalOptimisation
 toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
 
 -- | Strip out flags that are not supported in ghci
-filterGhciFlags :: [String] -> [String]
+filterGhciFlags :: [Text] -> [Text]
 filterGhciFlags = filter supported
   where
-    supported ('-' : 'O' : _) = False
-    supported "-debug" = False
-    supported "-threaded" = False
-    supported "-ticky" = False
-    supported "-eventlog" = False
-    supported "-prof" = False
-    supported "-unreg" = False
-    supported _ = True
+    supported flag =
+      not
+        ( "-O" `Text.isPrefixOf` flag
+            || flag
+              `elem` [ "-debug"
+                     , "-threaded"
+                     , "-ticky"
+                     , "-eventlog"
+                     , "-prof"
+                     , "-unreg"
+                     ]
+        )
 
 mkGHCiLibName :: UnitId -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"

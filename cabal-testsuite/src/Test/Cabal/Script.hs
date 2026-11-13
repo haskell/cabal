@@ -14,6 +14,7 @@ module Test.Cabal.Script
 import Test.Cabal.Run
 import Test.Cabal.ScriptEnv0
 
+import Data.Text qualified as Text
 import Distribution.Backpack
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program
@@ -104,7 +105,8 @@ runnerCommand senv mb_cwd _env_overrides script_path args = do
 -- | Compute the GHC flags to invoke 'runghc' with under a 'ScriptEnv'.
 runnerGhcArgs :: ScriptEnv -> Maybe FilePath -> [String]
 runnerGhcArgs senv mb_cwd =
-  renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
+  map Text.unpack $
+    renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
   where
     ghc_options =
       M.mempty

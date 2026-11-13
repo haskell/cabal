@@ -125,15 +125,18 @@ linkOrLoadComponent
       linkerOpts rpaths =
         mempty
           { ghcOptLinkOptions =
-              [ "-static"
-              | withFullyStaticExe lbi
-              ]
-                -- Pass extra `ld-options` given
-                -- through to GHC's linker.
-                ++ maybe
-                  []
-                  programOverrideArgs
-                  (lookupProgram ldProgram (withPrograms lbi))
+              map
+                Text.pack
+                ( [ "-static"
+                  | withFullyStaticExe lbi
+                  ]
+                    -- Pass extra `ld-options` given
+                    -- through to GHC's linker.
+                    ++ maybe
+                      []
+                      programOverrideArgs
+                      (lookupProgram ldProgram (withPrograms lbi))
+                )
           , ghcOptLinkLibs =
               map Text.unpack $
                 if withFullyStaticExe lbi
@@ -144,7 +147,7 @@ linkOrLoadComponent
                 if withFullyStaticExe lbi
                   then cleanedExtraLibDirsStatic
                   else cleanedExtraLibDirs
-          , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks bi
+          , ghcOptLinkFrameworks = toNubListR $ map (Text.pack . getSymbolicPath) $ PD.frameworks bi
           , ghcOptLinkFrameworkDirs = toNubListR $ PD.extraFrameworkDirs bi
           , ghcOptInputFiles = toNubListR extraSourcesObjs
           , ghcOptNoLink = Flag False
@@ -164,7 +167,7 @@ linkOrLoadComponent
               , ghcOptExtra =
                   Internal.filterGhciFlags
                     (ghcOptExtra staticOpts)
-                    <> replOptionsFlags (replReplOptions replFlags)
+                    <> map Text.pack (replOptionsFlags (replReplOptions replFlags))
               }
               -- For a normal compile we do separate invocations of ghc for
               -- compiling as for linking. But for repl we have to do just
@@ -329,7 +332,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
     ghcBaseLinkArgs =
       Internal.linkGhcOptions (verbosityLevel verbosity) lbi libBi clbi
         <> mempty
-          { ghcOptExtra = map Text.unpack $ hcStaticOptions GHC libBi
+          { ghcOptExtra = hcStaticOptions GHC libBi
           , ghcOptNoAutoLinkPackages = toFlag True
           }
 
@@ -346,7 +349,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
         , ghcOptDylibName = mempty
         , ghcOptLinkLibs = map Text.unpack $ extraLibs libBi
         , ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
-        , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
+        , ghcOptLinkFrameworks = toNubListR $ map (Text.pack . getSymbolicPath) $ PD.frameworks libBi
         , ghcOptLinkFrameworkDirs =
             toNubListR $ PD.extraFrameworkDirs libBi
         , ghcOptRPaths = rpaths
@@ -365,7 +368,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
         , ghcOptDylibName = mempty
         , ghcOptLinkLibs = map Text.unpack $ extraLibs libBi
         , ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
-        , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
+        , ghcOptLinkFrameworks = toNubListR $ map (Text.pack . getSymbolicPath) $ PD.frameworks libBi
         , ghcOptLinkFrameworkDirs =
             toNubListR $ PD.extraFrameworkDirs libBi
         , ghcOptRPaths = rpaths
@@ -532,7 +535,8 @@ linkFLib flib bi lbi linkerOpts (way, buildOpts) targetDir runGhcProg = do
             { ghcOptLinkNoHsMain = toFlag True
             , ghcOptShared = toFlag True
             , ghcOptFPic = toFlag True
-            , ghcOptLinkModDefFiles = toNubListR (getSymbolicPath <$> foreignLibModDefFile flib)
+            , ghcOptLinkModDefFiles =
+                toNubListR (getSymbolicPath <$> foreignLibModDefFile flib)
             }
       ForeignLibNativeStatic ->
         -- this should be caught by buildFLib
@@ -760,7 +764,9 @@ runReplOrWriteFlags ghcProg verbHandles lbi rflags ghcOpts pkg_name target =
             BS.pack $
               escapeArgs $
                 extra_opts
-                  ++ renderGhcOptions comp platform (ghcOpts{ghcOptMode = NoFlag})
+                  ++ map
+                    Text.unpack
+                    (renderGhcOptions comp platform (ghcOpts{ghcOptMode = NoFlag}))
                   ++ programOverrideArgs ghcProg
 
 replNoLoad :: Ord a => ReplOptions -> NubListR a -> NubListR a
