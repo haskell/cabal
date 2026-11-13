@@ -144,13 +144,6 @@ function _cabal_targets ()
 
     for Completion in "$@"; do
 
-        [ "$Completion" == new-build   ] && _cabal_list_targets              && break
-        [ "$Completion" == new-repl    ] && _cabal_list_targets              && break
-        [ "$Completion" == new-run     ] && _cabal_list_targets "executable" && break
-        [ "$Completion" == new-test    ] && _cabal_list_targets "test-suite" && break
-        [ "$Completion" == new-bench   ] && _cabal_list_targets "benchmark"  && break
-        [ "$Completion" == new-haddock ] && _cabal_list_targets              && break
-
         [ "$Completion" == new-install ] && _cabal_list_targets "executable" && break
         # ^ Only complete for local packages (not all 1000s of remote packages).
 
