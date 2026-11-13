@@ -3,14 +3,24 @@ module Main
     ( main
     ) where
 
+
+
+
+
+
+
+
+
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (void)
+import Control.Monad                               (void, unless)
+import Control.Arrow                               ((&&&))
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
+import Distribution.Fields.Parser                  (readFieldsConcrete', formatError)
 import Distribution.PackageDescription
   ( GenericPackageDescription
   , packageDescription
@@ -27,6 +37,7 @@ import Distribution.PackageDescription.Parsec      (parseGenericPackageDescripti
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
+import Distribution.Fields.Field
 import Distribution.Fields.ParseResult
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
@@ -50,6 +61,7 @@ tests :: TestTree
 tests = testGroup "parsec tests"
     [ regressionTests
     , warningTests
+    , commentTests
     , errorTests
     , ipiTests
     ]
@@ -100,6 +112,51 @@ warningTest wt fp = testCase (show wt) $ do
   where
     isRight (Right _) = True
     isRight _         = False
+
+
+-------------------------------------------------------------------------------
+-- comment
+-------------------------------------------------------------------------------
+
+-- Verify that comments are parsed correctly
+commentTests :: TestTree
+commentTests = testGroup "comments"
+    [
+#ifdef MIN_VERSION_tree_diff
+    -- Manually verify that comments are in strictly increasing order.
+      commentTest False "layout-nosections-before.cabal"
+    , commentTest False "layout-nosections-after.cabal"
+    , commentTest False "layout-nosections-mixed.cabal"
+    , commentTest False "layout-many-sections.cabal"
+    , commentTest False "layout-interleaved-in-section.cabal"
+    , commentTest False "layout-fieldline-is-flag.cabal"
+
+    -- Taken from regression, has a lot of comments
+    , commentTest True "hasktorch.cabal"
+#endif
+    ]
+
+#ifdef MIN_VERSION_tree_diff
+-- | Assert the comment structure of a given cabal file.
+commentTest :: Bool -> FilePath -> TestTree
+commentTest extract fname = ediffGolden goldenTest fname exprFile $ do
+  contents <- BS.readFile input
+  case readFieldsConcrete' contents of
+    Left perr -> fail $ formatError contents perr
+    Right (res, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure $ if extract then toExpr (extractComments res) else toExpr res
+  where
+    input = "tests" </> "ParserTests" </> "comments" </> fname
+    exprFile = replaceExtension input "expr"
+
+-- Extract comments to reduce the golden file's size and make it easier to verify.
+extractComments :: (Foldable f) => [f (WithComments ann)] -> ([Comment ann], [Comment ann])
+extractComments = mconcat . map extractCommentsStep
+
+extractCommentsStep :: (Foldable f) => f (WithComments ann) -> ([Comment ann], [Comment ann])
+extractCommentsStep f = foldMap (priorComments &&& followingComments) f
+#endif
 
 -------------------------------------------------------------------------------
 -- Errors
