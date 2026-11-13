@@ -1,0 +1,24 @@
+cabal-version: 3.0
+name: DataDirEnvOnce
+version: 0
+build-type: Simple
+
+common c
+  build-depends: base
+  default-language: Haskell2010
+
+library
+  import: c
+  exposed-modules: A
+
+library b
+  import: c
+  visibility: public
+  hs-source-dirs: b
+  exposed-modules: B
+
+library c
+  import: c
+  visibility: public
+  hs-source-dirs: c
+  exposed-modules: C
