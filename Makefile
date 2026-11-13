@@ -111,10 +111,10 @@ spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16 3.23 3.25 3.26 3.28
 
 $(SPDX_LICENSE_HS) : templates/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-spdx -- templates/SPDX.LicenseId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/licenses-%.json) $(SPDX_LICENSE_HS)
+	cabal run --project-dir=cabal-dev-scripts gen-spdx -- templates/SPDX.LicenseId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/licenses-%.json) $(SPDX_LICENSE_HS)
 
 $(SPDX_EXCEPTION_HS) : templates/SPDX.LicenseExceptionId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDXExc.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-spdx-exc -- templates/SPDX.LicenseExceptionId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/exceptions-%.json) $(SPDX_EXCEPTION_HS)
+	cabal run --project-dir=cabal-dev-scripts gen-spdx-exc -- templates/SPDX.LicenseExceptionId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/exceptions-%.json) $(SPDX_EXCEPTION_HS)
 
 # source generation: templates
 
@@ -128,10 +128,10 @@ TEMPLATE_PATHS:=Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs
 templates : $(TEMPLATE_MACROS) $(TEMPLATE_PATHS)
 
 $(TEMPLATE_MACROS) : templates/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-cabal-macros -- $< $@
+	cabal run --project-dir=cabal-dev-scripts gen-cabal-macros -- $< $@
 
 $(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPathsModule.hs
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-paths-module -- $< $@
+	cabal run --project-dir=cabal-dev-scripts gen-paths-module -- $< $@
 
 # generated docs
 # Use cabal build before cabal run to avoid output of the build on stdout when running
@@ -146,7 +146,7 @@ doc/buildinfo-fields-reference.rst : \
 
 .PHONY: analyse-imports
 analyse-imports :
-	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project analyse-imports --
+	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal run --project-dir=cabal-dev-scripts analyse-imports --
 
 # ghcid
 
@@ -243,7 +243,7 @@ validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
 
 .docker/validate-%.dockerfile : .docker/validate.dockerfile.zinza cabal-dev-scripts/src/GenValidateDockerfile.hs
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-validate-dockerfile -- $* $< $@
+	cabal run --project-dir=cabal-dev-scripts gen-validate-dockerfile -- $* $< $@
 
 # This is good idea anyway
 # and we have a test relying on this limit being sufficiently small

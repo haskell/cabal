@@ -6,7 +6,6 @@ We have these projects, all in the root:
 $ tree -P '*.project' --prune -L 1
 .
 ├── cabal.bootstrap.project
-├── cabal.meta.project
 ├── cabal.project
 ├── cabal.release.project
 ├── cabal.validate-libonly.project
@@ -82,12 +81,10 @@ package group.
 | validate         | ✓    |       |       |         |
 | validate.libonly |      | ✓     | ✓     |         |
 
-The `meta` project is a one-liner:
-
-```
-$ cat cabal.meta.project
-packages: cabal-dev-scripts
-```
+The development scripts in `cabal-dev-scripts` are not part of any of these
+projects. They build as their own implicit project, against released libraries
+from Hackage, with `cabal run --project-dir=cabal-dev-scripts`; see the
+`Makefile`.
 
 ## Extra Config
 
