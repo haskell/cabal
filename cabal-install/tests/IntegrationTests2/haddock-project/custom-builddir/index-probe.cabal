@@ -1,0 +1,15 @@
+cabal-version: 3.0
+name: index-probe
+version: 0.1
+build-type: Simple
+
+library
+  exposed-modules: MainModule
+  build-depends: base
+  default-language: Haskell2010
+
+library helper
+  visibility: public
+  exposed-modules: HelperModule
+  build-depends: base
+  default-language: Haskell2010
