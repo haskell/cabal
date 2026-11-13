@@ -1,0 +1,36 @@
+name: SPDX license list update check
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spdx-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare against upstream SPDX license list
+        run: |
+          set -euo pipefail
+
+          latest=$(curl -fsSL https://api.github.com/repos/spdx/license-list-data/tags \
+            | python3 -c 'import sys,json,re; print(max((t["name"] for t in json.load(sys.stdin)), key=lambda n: [int(x) for x in re.findall(r"[0-9]+", n)]))' \
+            | sed 's/^v//; s/\.0$//')
+
+          ours=$(ls license-list-data/licenses-*.json \
+            | sed -E 's/.*licenses-([0-9]+\.[0-9]+)\.json/\1/' \
+            | sort -V | tail -1)
+
+          echo "upstream=$latest  ours=$ours"
+
+          if [ "$(printf '%s\n%s\n' "$ours" "$latest" | sort -V | tail -1)" != "$ours" ]; then
+            echo "::error::SPDX license list $latest released but we only ship $ours."
+            echo "Fix: add license-list-data/{licenses,exceptions}-$latest.json,"
+            echo "     add $latest to SPDX_LICENSE_VERSIONS in Makefile, run 'make -B spdx'."
+            exit 1
+          fi
