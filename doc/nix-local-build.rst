@@ -267,8 +267,8 @@ this folder (the most important two are first):
 ``compiler`` (binary)
     The configuration of the compiler being used to build the project.
 ``improved-plan`` (binary)
-    Like ``solver-plan``, but with all non-inplace packages improved
-    into pre-existing copies from the store.
+    Which non-inplace packages of the plan have pre-existing copies in the
+    store.
 ``plan.json`` (JSON)
     A JSON serialization of the computed install plan intended
     for integrating ``cabal`` with external tooling.
