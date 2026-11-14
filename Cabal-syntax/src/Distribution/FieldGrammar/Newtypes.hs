@@ -140,6 +140,12 @@ newtype List sep b a = List {_getList :: [a]}
 --
 -- >>> :t alaList' FSep Token
 -- alaList' FSep Token :: [Text] -> List FSep Token Text
+--
+-- >>> _getList <$> (eitherParsec "foo bar foo" :: Either String (List FSep Token Text))
+-- Right ["foo","bar","foo"]
+--
+-- >>> _getList <$> (eitherParsec "xL{4,IE-,eK<}fE?e" :: Either String (List FSep Token Text))
+-- Right ["xL{4","IE-","eK<}fE?e"]
 alaList :: sep -> [a] -> List sep (Identity a) a
 alaList _ = List
 

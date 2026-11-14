@@ -435,9 +435,11 @@ flagToOptimisationLevel (Just s)
 -- levels.  For compilers that do not the level is just capped to the
 -- level they do support.
 data DebugInfoLevel
-  = NoDebugInfo
+  = -- | The default and disabled level. Disabled by @--disable-debug-info@ or @debug-info: False@.
+    NoDebugInfo
   | MinimalDebugInfo
-  | NormalDebugInfo
+  | -- | The enabled level when enabled by @--enable-debug-info@ or @debug-info: True@.
+    NormalDebugInfo
   | MaximalDebugInfo
   deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
@@ -454,6 +456,20 @@ parsecDebugInfoLevel = boolParser <|> intParser
     boolParser = bool NoDebugInfo NormalDebugInfo <$> parsec
     intParser = intToEnum "debug info level" <$> integral
 
+-- | Converts a string to a 'DebugInfoLevel'. The string can be either a boolean
+-- or 0-based integer for that enum. Evaluates to 'NormalDebugInfo' when there's
+-- no string or when the string is "True".  When the string is "False", the
+-- level is 'NoDebugInfo'.  The booleans are case-sensitive, so "true" and
+-- "false" are errors, as is any other string.
+--
+-- >>> [flagToDebugInfoLevel (Just $ show n) | n <- [0 .. 3]]
+-- [NoDebugInfo,MinimalDebugInfo,NormalDebugInfo,MaximalDebugInfo]
+--
+-- >>> nub $ flagToDebugInfoLevel . Just <$> ["0", "False"]
+-- [NoDebugInfo]
+--
+-- >>> nub $ flagToDebugInfoLevel <$> Nothing : (Just <$> ["2", "True"])
+-- [NormalDebugInfo]
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
 flagToDebugInfoLevel (Just s)
