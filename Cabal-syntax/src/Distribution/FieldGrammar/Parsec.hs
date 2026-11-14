@@ -77,7 +77,6 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import qualified Distribution.Utils.ShortText as ShortText
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Error as P
 
@@ -277,10 +276,10 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls) = case fls of
         [] -> pure mempty
-        [FieldLine _ bs] -> pure (ShortText.unsafeFromUTF8BS bs)
+        [FieldLine _ bs] -> pure (T.decodeUtf8Lenient bs)
         _
-          | v >= freeTextIgnoreDotlineVers -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
-          | otherwise -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
+          | v >= freeTextIgnoreDotlineVers -> pure (T.pack $ fieldlinesToFreeText3 pos fls)
+          | otherwise -> pure (T.pack $ fieldlinesToFreeText fls)
 
   monoidalFieldAla
     :: forall s proxy a b

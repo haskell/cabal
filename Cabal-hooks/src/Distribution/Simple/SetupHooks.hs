@@ -76,7 +76,7 @@ module Distribution.Simple.SetupHooks
     -- $rulesAPI
   , RulesM
     -- | Rule names (use @OverloadedStrings@ or 'Data.String.fromString')
-  , ShortText
+  , Text
   , registerRule
   , registerRule_
 
@@ -308,8 +308,6 @@ import Distribution.Utils.Path
   , getSymbolicPath, sameDirectory, moduleNameSymbolicPath
   , FileLike(..), PathLike(..)
   )
-import Distribution.Utils.ShortText
-  ( ShortText )
 import Distribution.Verbosity
   ( Verbosity
   , VerbosityFlags, VerbosityHandles
@@ -332,6 +330,7 @@ import Data.Traversable
   ( for )
 import Data.Map.Strict as Map
   ( insertLookupWithKey )
+import Data.Text (Text)
 
 --------------------------------------------------------------------------------
 -- Haddocks for the SetupHooks API
@@ -697,7 +696,7 @@ corresponding smart constructor instead.
 
 -- | Register a rule. Returns an identifier for that rule.
 registerRule
-  :: ShortText -- ^ user-given rule name;
+  :: Text      -- ^ user-given rule name;
                -- these should be unique on a per-package level
   -> Rule      -- ^ the rule to register
   -> RulesM RuleId
@@ -721,7 +720,7 @@ registerRule nm !newRule = RulesT $ do
 -- depend on any outputs of this rule. Use 'registerRule' to retain the
 -- 'RuleId' instead.
 registerRule_
-  :: ShortText -- ^ user-given rule name;
+  :: Text      -- ^ user-given rule name;
                -- these should be unique on a per-package level
   -> Rule      -- ^ the rule to register
   -> RulesT IO ()

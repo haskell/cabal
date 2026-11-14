@@ -11,7 +11,6 @@ module Distribution.Types.UnitId
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Utils.ShortText
 import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
@@ -20,6 +19,8 @@ import Distribution.Pretty
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Text.PrettyPrint (text)
 
 -- | A unit identifier identifies a (possibly instantiated)
@@ -58,7 +59,7 @@ import Text.PrettyPrint (text)
 -- representation of a UnitId to pass, e.g., as a @-package-id@
 -- flag, use the 'display' function, which will work on all
 -- versions of Cabal.
-newtype UnitId = UnitId ShortText
+newtype UnitId = UnitId Text
   deriving (Generic, Read, Show, Eq, Ord, Data, NFData)
 
 instance Binary UnitId
@@ -84,10 +85,10 @@ instance Parsec UnitId where
 -- | If you need backwards compatibility, consider using 'display'
 -- instead, which is supported by all versions of Cabal.
 unUnitId :: UnitId -> String
-unUnitId (UnitId s) = fromShortText s
+unUnitId (UnitId s) = Text.unpack s
 
 mkUnitId :: String -> UnitId
-mkUnitId = UnitId . toShortText
+mkUnitId = UnitId . Text.pack
 
 -- | 'mkUnitId'
 --

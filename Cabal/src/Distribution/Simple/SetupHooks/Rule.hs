@@ -90,9 +90,6 @@ import Distribution.Utils.Path
   , getSymbolicPath
   , (</>)
   )
-import Distribution.Utils.ShortText
-  ( ShortText
-  )
 import Distribution.Utils.Structured
   ( Structure (..)
   , Structured (..)
@@ -119,6 +116,7 @@ import qualified Data.Map.Strict as Map
   )
 
 import qualified Data.Kind as Hs
+import Data.Text (Text)
 import Data.Type.Bool
   ( If
   )
@@ -183,7 +181,7 @@ a separate executable which can be invoked in the manner described above.
 -- | A unique identifier for a t'Rule'.
 data RuleId = RuleId
   { ruleNameSpace :: !RulesNameSpace
-  , ruleName :: !ShortText
+  , ruleName :: !Text
   }
   deriving stock (Show, Eq, Ord, Generic)
   deriving anyclass (Binary, Structured)

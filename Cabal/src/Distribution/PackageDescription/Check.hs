@@ -46,7 +46,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Data.List (group)
-import qualified Data.List as L
 import Data.Text (Text)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
@@ -87,8 +86,6 @@ import qualified System.FilePath.Windows as FilePath.Windows (isValid)
 
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-import qualified Distribution.Utils.ShortText as ShortText
-import qualified Distribution.Utils.String as String
 
 import qualified Distribution.Compat.Lens as L
 import qualified Distribution.Types.BuildInfo.Lens as L
@@ -453,20 +450,20 @@ checkPackageDescription
       maintainer_
       (PackageDistSuspicious MissingFieldMaintainer)
     checkP
-      (ShortText.null synopsis_ && not (ShortText.null description_))
+      (Text.null synopsis_ && not (Text.null description_))
       (PackageDistSuspicious MissingFieldSynopsis)
     checkP
-      (ShortText.null description_ && not (ShortText.null synopsis_))
+      (Text.null description_ && not (Text.null synopsis_))
       (PackageDistSuspicious MissingFieldDescription)
     checkP
-      (all ShortText.null [synopsis_, description_])
+      (all Text.null [synopsis_, description_])
       (PackageDistInexcusable MissingFieldSynOrDesc)
     checkP
-      (ShortText.length synopsis_ > 80)
+      (Text.length synopsis_ > 80)
       (PackageDistSuspicious SynopsisTooLong)
     checkP
-      ( not (ShortText.null description_)
-          && ShortText.length description_ <= ShortText.length synopsis_
+      ( not (Text.null description_)
+          && Text.length description_ <= Text.length synopsis_
       )
       (PackageDistSuspicious ShortDesc)
 
@@ -559,10 +556,10 @@ checkPackageDescription
     where
       checkNull
         :: Monad m
-        => ShortText.ShortText
+        => Text
         -> PackageCheck
         -> CheckM m ()
-      checkNull st c = checkP (ShortText.null st) c
+      checkNull st c = checkP (Text.null st) c
 
       checkTestedWith
         :: Monad m
@@ -591,7 +588,7 @@ checkPackageDescription
           )
 
 -- | Issue a warning if the text contains any "dotlines".
-checkDotline :: Monad m => String -> ShortText.ShortText -> CheckM m ()
+checkDotline :: Monad m => String -> Text -> CheckM m ()
 checkDotline fieldName fieldVal = do
   checkSpecVerGte
     freeTextIgnoreDotlineVers
@@ -599,9 +596,8 @@ checkDotline fieldName fieldVal = do
     (PackageDistSuspiciousWarn $ FreeTextDotline fieldName)
   where
     hasDotline =
-      L.any ((== ".") . String.trim)
-        . L.lines
-        . ShortText.fromShortText
+      any ((== Text.singleton '.') . Text.strip)
+        . Text.lines
 
 checkSetupBuildInfo :: Monad m => Maybe SetupBuildInfo -> CheckM m ()
 checkSetupBuildInfo Nothing = return ()

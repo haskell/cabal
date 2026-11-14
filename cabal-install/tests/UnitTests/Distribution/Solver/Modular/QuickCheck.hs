@@ -8,7 +8,8 @@ import Prelude ()
 import Control.Arrow ((&&&))
 import Data.Either (lefts)
 import Data.List (groupBy, isInfixOf)
-
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Text.Show.Pretty (parseValue, valToStr)
 
 import Test.QuickCheck (Arbitrary (..), Blind (..), Gen, Positive (..), counterexample, elements, frequency, listOf, oneof, shrinkList, shrinkNothing, shuffle, sublistOf, vectorOf, (===), (==>))
@@ -16,7 +17,6 @@ import Test.QuickCheck.Instances.Cabal ()
 import Test.Tasty (TestTree)
 
 import Distribution.Types.Flag (FlagName)
-import Distribution.Utils.ShortText (ShortText, fromShortText)
 
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
@@ -631,10 +631,10 @@ instance ArbitraryOrd P.Namespace
 instance ArbitraryOrd OptionalStanza
 instance ArbitraryOrd FlagName
 instance ArbitraryOrd PackageName
-instance ArbitraryOrd ShortText where
+instance ArbitraryOrd Text where
   arbitraryCompare = do
     strc <- arbitraryCompare
-    pure $ \l r -> strc (fromShortText l) (fromShortText r)
+    pure $ \l r -> strc (Text.unpack l) (Text.unpack r)
 
 deriving instance Generic (Variable pn)
 deriving instance Generic (P.Qualified a)
