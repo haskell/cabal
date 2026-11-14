@@ -470,6 +470,9 @@ rebuildTargets
         where
           isRemote :: PackageLocation a -> Bool
           isRemote (RemoteTarballPackage _ _) = True
+          -- A file+noindex repository is a local directory; nothing is
+          -- downloaded from it.
+          isRemote (RepoTarballPackage RepoLocalNoIndex{} _ _) = False
           isRemote (RepoTarballPackage{}) = True
           isRemote (RemoteSourceRepoPackage _ _) = True
           isRemote _ = False

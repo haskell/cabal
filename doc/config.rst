@@ -189,6 +189,8 @@ scope of ``cabal`` proper.
 More information about the security infrastructure can be found at
 https://github.com/haskell/hackage-security.
 
+.. _local-no-index-repositories:
+
 Local no-index repositories
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -207,6 +209,16 @@ corresponding ``package-name-version.cabal`` files as new revisions.
 .. note::
    On Windows systems, the URL must start directly with the absolute path as in
    ``url: file+noindex:C:/absolute/path/to/directory``.
+
+In a ``cabal.project`` file (or a file it imports) the path may also be
+relative, as in ``url: file+noindex:vendor``; it is then resolved against the
+project root, so the repository can be kept in the project's source tree. The
+:ref:`cabal vendor <cabal-vendor>` command creates such a repository from a
+project's dependencies. Relative paths in the global configuration file are
+resolved against the current working directory, which is not recommended.
+
+Packages from a local no-index repository are read from disk, not downloaded,
+so building with :cfg-field:`offline` works with them.
 
 For example, if ``/absolute/path/to/directory`` looks like
 ::
@@ -229,9 +241,10 @@ then the cache will be stored inside the :cfg-field:`remote-repo-cache` director
 The part of the path will be used to determine the cache key part.
 
 .. note::
-    ``cabal-install`` creates a ``.cache`` file, and will aggressively use
-    its contents if it exists. Therefore if you change the contents of
-    the directory, remember to wipe the cache too.
+    ``cabal-install`` creates a ``noindex.cache`` file, and will aggressively
+    use its contents if it exists. Therefore if you change the contents of
+    the directory, remember to wipe the cache too, or run ``cabal update``,
+    which rebuilds it.
 
 .. note::
     The URI scheme ``file:`` is interpreted as a remote repository,

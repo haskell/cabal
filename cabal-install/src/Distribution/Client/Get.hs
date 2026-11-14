@@ -20,6 +20,7 @@ module Distribution.Client.Get
     -- | Mainly exported for testing purposes
   , clonePackagesFromSourceRepo
   , ClonePackageException (..)
+  , unpackPackage
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (get)
