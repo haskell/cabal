@@ -1,0 +1,7 @@
+# cabal build
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project: Unrecognized field 'project-file-parser' on line 2
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - project-file-parser-0 (lib) (first run)
