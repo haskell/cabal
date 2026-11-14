@@ -174,6 +174,7 @@ import Control.Concurrent.STM (TVar, readTVarIO)
 import qualified Data.ByteString.Lazy as BS
 import Data.Kind (Type, Constraint)
 import qualified Data.Map.Lazy as Map
+import qualified Data.Text as Text
 import Data.Type.Equality  ( type (==) )
 import Data.Type.Bool      ( If )
 import System.Directory (doesFileExist)
@@ -1347,7 +1348,7 @@ compileSetupX
           , "package"
           , prettyShow pkgId ++ "."
           ]
-      let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
+      let ghcCmdLine = map Text.unpack (renderGhcOptions compiler platform ghcOptions)
       when (useVersionMacros options') $
         rewriteFileEx verbosity (i cppMacrosFile) $
           generatePackageVersionMacros (pkgVersion pkgId) (map snd selectedDeps)
