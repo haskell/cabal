@@ -111,7 +111,7 @@ import Control.Exception qualified as E
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Reader
-import Data.ByteString.Char8 qualified as C
+import Data.ByteString qualified as BS
 import Data.List
 import Data.Maybe
 import Data.Monoid (mempty)
@@ -625,7 +625,14 @@ getSourceFiles = do
         (Just $ testSourceDir env)
         (testEnvironment env)
         (programPath configured_prog)
-        ["ls-files", "--cached", "--modified"]
+        -- Filepaths with UTF-8 are quoted without "core.quotePath=false" and not
+        -- usable for `copyFile`.
+        [ "-c"
+        , "core.quotePath=false"
+        , "ls-files"
+        , "--cached"
+        , "--modified"
+        ]
         Nothing
   recordLog r
   _ <- requireSuccess r
@@ -637,16 +644,16 @@ recordLog res = do
   let mode = testRecordMode env
   initWorkDir
   liftIO $
-    C.appendFile
+    BS.appendFile
       (testWorkDir env </> "test.log")
-      ( C.pack $
+      ( toUTF8BS $
           "+ "
             ++ resultCommand res
             ++ "\n"
             ++ resultOutput res
             ++ "\n\n"
       )
-  liftIO . C.appendFile (testActualFile env) . C.pack $
+  liftIO . BS.appendFile (testActualFile env) . toUTF8BS $
     case mode of
       RecordAll -> unlines (lines (resultOutput res))
       RecordMarked -> getMarkedOutput (resultOutput res)

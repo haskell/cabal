@@ -15,12 +15,12 @@ module Test.Cabal.CheckArMetadata (checkMetadata) where
 import Test.Cabal.Prelude
 
 import Data.ByteString qualified as BS
-import Data.ByteString.Char8 qualified as BS8
 import Data.Char (isSpace)
 import System.IO
 
 import Distribution.Package (getHSLibraryName)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, localUnitId)
+import Distribution.Utils.Generic (fromUTF8BS)
 
 -- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata
 checkMetadata :: LocalBuildInfo -> FilePath -> IO ()
@@ -73,7 +73,7 @@ checkMetadata lbi dir = withBinaryFile path ReadMode $ \h ->
               $ "Metadata has changed"
 
             let size = BS.take 10 $ BS.drop 48 header
-            objSize <- case reads (BS8.unpack size) of
+            objSize <- case reads (fromUTF8BS size) of
               [(n, s)] | all isSpace s -> return n
               _ -> checkError (atOffset "Bad file size in header")
 
