@@ -207,30 +207,28 @@ data BuildFailureReason
 -- | The running 'InstalledPackageIndex' of the whole project, read from the
 -- package dbs the first time a package is configured. See
 -- Note [Per-project InstalledPackageIndex] in "Distribution.Client.ProjectBuilding".
-data ProjectInstalledIndex
-  = ProjectInstalledIndex
-      (IO InstalledPackageIndex)
-      -- ^ The bulk read of every package db the plan touches, run at most once.
-      (MVar (Maybe InstalledPackageIndex))
-      -- ^ 'Nothing' until the first 'readProjectInstalledIndex'.
+--
+-- Holds the bulk read of every package db the plan touches until it has run,
+-- then the index it produced.
+newtype ProjectInstalledIndex
+  = ProjectInstalledIndex (MVar (Either (IO InstalledPackageIndex) InstalledPackageIndex))
 
 -- | Make an index that runs the given read on first use.
 newProjectInstalledIndex :: IO InstalledPackageIndex -> IO ProjectInstalledIndex
-newProjectInstalledIndex load = ProjectInstalledIndex load <$> newMVar Nothing
+newProjectInstalledIndex load = ProjectInstalledIndex <$> newMVar (Left load)
 
--- | Read the index, loading it first if no one has yet. Concurrent first
--- readers wait for the one load rather than each running their own.
+-- | Read the index, loading it first if no one has yet.
 readProjectInstalledIndex :: ProjectInstalledIndex -> IO InstalledPackageIndex
-readProjectInstalledIndex (ProjectInstalledIndex load var) =
+readProjectInstalledIndex (ProjectInstalledIndex var) =
   modifyMVar var $ \case
-    Just ipi -> return (Just ipi, ipi)
-    Nothing -> do
+    Right ipi -> return (Right ipi, ipi)
+    Left load -> do
       ipi <- load
-      return (Just ipi, ipi)
+      return (Right ipi, ipi)
 
 -- | Record a library that was just registered. Before the first read this is
 -- a no-op: the registration went to one of the package dbs that the read
 -- covers, so the index will pick it up then.
 insertProjectInstalledIndex :: InstalledPackageInfo -> ProjectInstalledIndex -> IO ()
-insertProjectInstalledIndex ipkg (ProjectInstalledIndex _ var) =
+insertProjectInstalledIndex ipkg (ProjectInstalledIndex var) =
   modifyMVar_ var (return . fmap (PackageIndex.insert ipkg))
