@@ -2,13 +2,14 @@ module UnitTests.Distribution.Simple.Compiler
   ( tests
   ) where
 
-import Control.Exception qualified as C
 import Data.List (isInfixOf)
 import Data.Map (fromList)
 import Distribution.Compiler
 import Distribution.Package
 import Distribution.Parsec (eitherParsec)
 import Distribution.Simple.Compiler
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import Distribution.Version
 import Language.Haskell.Extension
 import Test.Tasty
@@ -17,57 +18,9 @@ import Text.Read (readMaybe)
 
 tests :: [TestTree]
 tests =
-  [ testGroup "flagToDebugInfoLevel" flagToDebugInfoLevelTests
-  , testGroup "flagToOptimisationLevel" flagToOptimisationLevelTests
-  , testGroup "DebugInfoLevel Parsec" debugInfoLevelParsecTests
+  [ testGroup "DebugInfoLevel Parsec" debugInfoLevelParsecTests
   , testGroup "OptimisationLevel Parsec" optimisationLevelParsecTests
   , testGroup "Show/Read instance" showReadTests
-  ]
-
-flagToDebugInfoLevelTests :: [TestTree]
-flagToDebugInfoLevelTests =
-  [ testCase "defaults to NormalDebugInfo" $
-      flagToDebugInfoLevel Nothing @?= NormalDebugInfo
-  , testCase "--enable-debug-info=True" $
-      flagToDebugInfoLevel (Just "True") @?= NormalDebugInfo
-  , testCase "--enable-debug-info=False" $
-      flagToDebugInfoLevel (Just "False") @?= NoDebugInfo
-  , testCase "--enable-debug-info=0" $
-      flagToDebugInfoLevel (Just "0") @?= NoDebugInfo
-  , testCase "--enable-debug-info=1" $
-      flagToDebugInfoLevel (Just "1") @?= MinimalDebugInfo
-  , testCase "--enable-debug-info=2" $
-      flagToDebugInfoLevel (Just "2") @?= NormalDebugInfo
-  , testCase "--enable-debug-info=3" $
-      flagToDebugInfoLevel (Just "3") @?= MaximalDebugInfo
-  , testCase "--enable-debug-info=4 is out of range" $
-      assertError "expected an error for out-of-range debug info level" $
-        flagToDebugInfoLevel (Just "4")
-  , testCase "--enable-debug-info=foo is unparsable" $
-      assertError "expected an error for unparsable debug info level" $
-        flagToDebugInfoLevel (Just "foo")
-  ]
-
-flagToOptimisationLevelTests :: [TestTree]
-flagToOptimisationLevelTests =
-  [ testCase "defaults to NormalOptimisation" $
-      flagToOptimisationLevel Nothing @?= NormalOptimisation
-  , testCase "--enable-optimization=True" $
-      flagToOptimisationLevel (Just "True") @?= NormalOptimisation
-  , testCase "--enable-optimization=False" $
-      flagToOptimisationLevel (Just "False") @?= NoOptimisation
-  , testCase "--enable-optimization=0" $
-      flagToOptimisationLevel (Just "0") @?= NoOptimisation
-  , testCase "--enable-optimization=1" $
-      flagToOptimisationLevel (Just "1") @?= NormalOptimisation
-  , testCase "--enable-optimization=2" $
-      flagToOptimisationLevel (Just "2") @?= MaximumOptimisation
-  , testCase "--enable-optimization=3 is out of range" $
-      assertError "expected an error for out-of-range optimisation level" $
-        flagToOptimisationLevel (Just "3")
-  , testCase "--enable-optimization=foo is unparsable" $
-      assertError "expected an error for unparsable optimisation level" $
-        flagToOptimisationLevel (Just "foo")
   ]
 
 debugInfoLevelParsecTests :: [TestTree]
@@ -152,9 +105,3 @@ showReadTests =
         ([] :: [(Compiler, String)])
         (readsPrec 11 (show (testCompiler (Just wiredInUnitIds))))
   ]
-
-assertError :: String -> a -> Assertion
-assertError msg x =
-  C.catch
-    (C.evaluate x >> assertFailure msg)
-    (\(C.ErrorCall _) -> return ())

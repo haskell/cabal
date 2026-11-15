@@ -49,7 +49,7 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import GHC.IO.Encoding (TextEncoding)
-import Language.Haskell.Extension
+import Language.Haskell.Extension (Extension, Language)
 
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
@@ -57,6 +57,7 @@ import Data.Monoid (All (..), Any (..), Endo (..))
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as Text
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
 import qualified System.Process as Process
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]

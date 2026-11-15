@@ -9,9 +9,9 @@ import Distribution.Client.NixStyleOptions
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectFlags
 import Distribution.Client.Setup
-import Distribution.Simple
 import Distribution.Simple.Flag
 import Distribution.Simple.Utils (removeFileForcibly)
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import Distribution.Verbosity
 import System.Directory
 import System.FilePath
