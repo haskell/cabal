@@ -127,7 +127,6 @@ import Distribution.Types.MissingDependencyReason (MissingDependencyReason (..))
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Utils.LogProgress
 import Distribution.Utils.NubList
-import Distribution.Utils.String (trim)
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -147,7 +146,9 @@ import Data.List
   )
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map as Map
+import Data.Text (Text)
 import qualified Data.Text as Text
+import qualified Data.Text.Encoding as Text
 import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Parsec
   ( simpleParsec
@@ -1104,7 +1105,7 @@ configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform pa
             --
             -- 2. `build-tool-depends` that aren't from the current package.
             let externBuildToolDeps =
-                  [ LegacyExeDependency (unUnqualComponentName eName) versionRange
+                  [ LegacyExeDependency (unUnqualComponentNameST eName) versionRange
                   | buildTool@(ExeDependency _ eName versionRange) <-
                       getAllToolDependencies pkg_descr0 bi
                   , not $ isInternal pkg_descr0 buildTool
@@ -1842,7 +1843,7 @@ finalizePackageDescription2
         "Flags chosen: "
           ++ intercalate
             ", "
-            [ unFlagName fn ++ "=" ++ prettyShow value
+            [ Text.unpack (unFlagName fn) ++ "=" ++ prettyShow value
             | (fn, value) <- unFlagAssignment flags
             ]
 
@@ -2473,7 +2474,7 @@ configureRequiredProgram
   verbosity
   progdb
   (LegacyExeDependency progName verRange) =
-    case lookupProgramByName progName progdb of
+    case lookupProgramByName (Text.unpack progName) progdb of
       Just prog ->
         -- If the program has already been configured, use it
         -- (as long as the version is compatible).
@@ -2497,7 +2498,7 @@ configureRequiredProgram
                       BadVersionDb (programId prog) version verRange loc
       Nothing ->
         -- Otherwise, try to configure it as a 'simpleProgram' automatically
-        case lookupKnownProgram progName progdb of
+        case lookupKnownProgram (Text.unpack progName) progdb of
           Nothing ->
             -- There's a bit of a story behind this line.  In old versions
             -- of Cabal, there were only internal build-tools dependencies.  So the
@@ -2533,7 +2534,7 @@ configureRequiredProgram
             -- would also be incompatible with future work to support
             -- external executable dependencies: we definitely cannot
             -- assume they will be preinitialized in the 'ProgramDb'.
-            configureProgram verbosity (simpleProgram progName) progdb
+            configureProgram verbosity (simpleProgram (Text.unpack progName)) progdb
           Just prog
             -- requireProgramVersion always requires the program have a version
             -- but if the user says "build-depends: foo" ie no version constraint
@@ -2581,17 +2582,18 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
   where
     allpkgs = concatMap pkgconfigDepends (enabledBuildInfos pkg_descr enabled)
     pkgconfig =
-      getDbProgramOutput
-        (modifyVerbosityFlags lessVerbose verbosity)
-        pkgConfigProgram
-        progdb
+      fmap Text.pack
+        . getDbProgramOutput
+          (modifyVerbosityFlags lessVerbose verbosity)
+          pkgConfigProgram
+          progdb
 
     requirePkg dep@(PkgconfigDependency pkgn range) = do
       version <-
-        pkgconfig ["--modversion", pkg]
+        pkgconfig ["--modversion", Text.unpack pkg]
           `catchIO` (\_ -> dieWithException verbosity $ PkgConfigNotFound pkg versionRequirement)
           `catchExit` (\_ -> dieWithException verbosity $ PkgConfigNotFound pkg versionRequirement)
-      let v = PkgconfigVersion (toUTF8BS $ trim version)
+      let v = PkgconfigVersion (Text.encodeUtf8 $ Text.strip version)
       if not (withinPkgconfigVersionRange v range)
         then dieWithException verbosity $ BadVersion pkg versionRequirement v
         else info verbosity (depSatisfied v)
@@ -2636,7 +2638,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
       ccflags <- pkgconfig ("--cflags" : pkgs)
       ldflags <- pkgconfig ("--libs" : pkgs)
       ldflags_static <- pkgconfig ("--libs" : "--static" : pkgs)
-      return (ccLdOptionsBuildInfo (words ccflags) (words ldflags) (words ldflags_static))
+      return (ccLdOptionsBuildInfo (Text.words ccflags) (Text.words ldflags) (Text.words ldflags_static))
 
 -- | Makes a 'BuildInfo' from C compiler and linker flags.
 --
@@ -2648,21 +2650,21 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
 -- > ldflags <- getDbProgramOutput verbosity prog progdb ["--libs"]
 -- > ldflags_static <- getDbProgramOutput verbosity prog progdb ["--libs", "--static"]
 -- > return (ccldOptionsBuildInfo (words ccflags) (words ldflags) (words ldflags_static))
-ccLdOptionsBuildInfo :: [String] -> [String] -> [String] -> BuildInfo
+ccLdOptionsBuildInfo :: [Text] -> [Text] -> [Text] -> BuildInfo
 ccLdOptionsBuildInfo cflags ldflags ldflags_static =
-  let (includeDirs', cflags') = partition ("-I" `isPrefixOf`) cflags
-      (extraLibs', ldflags') = partition ("-l" `isPrefixOf`) ldflags
-      (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
-      extraLibsStatic' = filter ("-l" `isPrefixOf`) ldflags_static
-      extraLibDirsStatic' = filter ("-L" `isPrefixOf`) ldflags_static
+  let (includeDirs', cflags') = partition (Text.pack "-I" `Text.isPrefixOf`) cflags
+      (extraLibs', ldflags') = partition (Text.pack "-l" `Text.isPrefixOf`) ldflags
+      (extraLibDirs', ldflags'') = partition (Text.pack "-L" `Text.isPrefixOf`) ldflags'
+      extraLibsStatic' = filter (Text.pack "-l" `Text.isPrefixOf`) ldflags_static
+      extraLibDirsStatic' = filter (Text.pack "-L" `Text.isPrefixOf`) ldflags_static
    in mempty
-        { includeDirs = map (makeSymbolicPath . drop 2) includeDirs'
-        , extraLibs = map (Text.pack . drop 2) extraLibs'
-        , extraLibDirs = map (makeSymbolicPath . drop 2) extraLibDirs'
-        , extraLibsStatic = map (Text.pack . drop 2) extraLibsStatic'
-        , extraLibDirsStatic = map (makeSymbolicPath . drop 2) extraLibDirsStatic'
-        , ccOptions = map Text.pack cflags'
-        , ldOptions = map Text.pack ldflags''
+        { includeDirs = map (makeSymbolicPath . Text.unpack . Text.drop 2) includeDirs'
+        , extraLibs = map (Text.drop 2) extraLibs'
+        , extraLibDirs = map (makeSymbolicPath . Text.unpack . Text.drop 2) extraLibDirs'
+        , extraLibsStatic = map (Text.drop 2) extraLibsStatic'
+        , extraLibDirsStatic = map (makeSymbolicPath . Text.unpack . Text.drop 2) extraLibDirsStatic'
+        , ccOptions = cflags'
+        , ldOptions = ldflags''
         }
 
 -- -----------------------------------------------------------------------------
@@ -2750,7 +2752,7 @@ checkForeignDeps :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 checkForeignDeps pkg lbi verbosity =
   ifBuildsWith
     allHeaders
-    (commonCcArgs ++ makeLdArgs (map Text.unpack allLibs)) -- I'm feeling lucky
+    (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
     (return ())
     ( do
         missingLibs <- findMissingLibs
@@ -2823,9 +2825,9 @@ checkForeignDeps pkg lbi verbosity =
     findMissingLibs =
       ifBuildsWith
         []
-        (makeLdArgs $ map Text.unpack allLibs)
+        (makeLdArgs allLibs)
         (return [])
-        (filterM (fmap not . libExists . Text.unpack) allLibs)
+        (filterM (fmap not . libExists) allLibs)
 
     libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
@@ -2892,7 +2894,7 @@ checkForeignDeps pkg lbi verbosity =
                 ]
            ]
     -- TODO: do we also need dependent packages' ld options?
-    makeLdArgs libs = ["-l" ++ lib | lib <- libs] ++ commonLdArgs
+    makeLdArgs libs = ["-l" ++ Text.unpack lib | lib <- libs] ++ commonLdArgs
 
     makeProgram hdrs =
       unlines $

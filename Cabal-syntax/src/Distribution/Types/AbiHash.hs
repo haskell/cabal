@@ -2,6 +2,7 @@ module Distribution.Types.AbiHash
   ( AbiHash
   , unAbiHash
   , mkAbiHash
+  , mkAbiHashText
   ) where
 
 import Distribution.Compat.Prelude
@@ -26,11 +27,11 @@ import Text.PrettyPrint (text)
 newtype AbiHash = AbiHash Text
   deriving (Eq, Show, Read, Generic)
 
--- | Convert 'AbiHash' to 'String'
+-- | Convert 'AbiHash' to 'Text'
 --
 -- @since 2.0.0.2
-unAbiHash :: AbiHash -> String
-unAbiHash (AbiHash h) = Text.unpack h
+unAbiHash :: AbiHash -> Text
+unAbiHash (AbiHash h) = h
 
 -- | Construct a 'AbiHash' from a 'String'
 --
@@ -43,6 +44,9 @@ unAbiHash (AbiHash h) = Text.unpack h
 mkAbiHash :: String -> AbiHash
 mkAbiHash = AbiHash . Text.pack
 
+mkAbiHashText :: Text -> AbiHash
+mkAbiHashText = AbiHash
+
 -- | 'mkAbiHash'
 --
 -- @since 2.0.0.2
@@ -54,7 +58,7 @@ instance Structured AbiHash
 instance NFData AbiHash
 
 instance Pretty AbiHash where
-  pretty = text . unAbiHash
+  pretty = text . Text.unpack . unAbiHash
 
 instance Parsec AbiHash where
   parsec = fmap mkAbiHash (P.munch isAlphaNum)

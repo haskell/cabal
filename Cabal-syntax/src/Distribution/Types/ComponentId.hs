@@ -2,6 +2,7 @@ module Distribution.Types.ComponentId
   ( ComponentId
   , unComponentId
   , mkComponentId
+  , mkComponentIdText
   ) where
 
 import Distribution.Compat.Prelude
@@ -42,11 +43,14 @@ newtype ComponentId = ComponentId Text
 mkComponentId :: String -> ComponentId
 mkComponentId = ComponentId . Text.pack
 
--- | Convert 'ComponentId' to 'String'
+mkComponentIdText :: Text -> ComponentId
+mkComponentIdText = ComponentId
+
+-- | Convert 'ComponentId' to 'Text'
 --
 -- @since 2.0.0.2
-unComponentId :: ComponentId -> String
-unComponentId (ComponentId s) = Text.unpack s
+unComponentId :: ComponentId -> Text
+unComponentId (ComponentId s) = s
 
 -- | 'mkComponentId'
 --
@@ -58,7 +62,7 @@ instance Binary ComponentId
 instance Structured ComponentId
 
 instance Pretty ComponentId where
-  pretty = text . unComponentId
+  pretty = text . Text.unpack . unComponentId
 
 instance Parsec ComponentId where
   parsec = mkComponentId `fmap` P.munch1 abi_char

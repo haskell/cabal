@@ -382,8 +382,8 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
 -- Ultimately if\/when this project-based approach becomes the default then we
 -- can redefine the parsers directly for the new types.
 data LegacyProjectConfig = LegacyProjectConfig
-  { legacyPackages :: [String]
-  , legacyPackagesOptional :: [String]
+  { legacyPackages :: [Text]
+  , legacyPackagesOptional :: [Text]
   , legacyPackagesRepo :: [SourceRepoList]
   , legacyPackagesNamed :: [PackageVersionConstraint]
   , legacySharedConfig :: LegacySharedConfig
@@ -593,8 +593,8 @@ convertLegacyProjectConfig
     , legacySpecificConfig
     } =
     ProjectConfig
-      { projectPackages = map Text.pack legacyPackages
-      , projectPackagesOptional = map Text.pack legacyPackagesOptional
+      { projectPackages = legacyPackages
+      , projectPackagesOptional = legacyPackagesOptional
       , projectPackagesRepo = legacyPackagesRepo
       , projectPackagesNamed = legacyPackagesNamed
       , projectConfigBuildOnly = configBuildOnly
@@ -856,7 +856,7 @@ convertLegacyBuildOnlyFlags
       GlobalFlags
         { globalCacheDir = projectConfigCacheDir
         , globalLogsDir = projectConfigLogsDir
-        , globalHttpTransport = (fmap Text.pack -> projectConfigHttpTransport)
+        , globalHttpTransport = projectConfigHttpTransport
         , globalIgnoreExpiry = projectConfigIgnoreExpiry
         } = globalFlags
 
@@ -899,8 +899,8 @@ convertToLegacyProjectConfig
     , projectConfigSpecificPackage
     } =
     LegacyProjectConfig
-      { legacyPackages = map Text.unpack projectPackages
-      , legacyPackagesOptional = map Text.unpack projectPackagesOptional
+      { legacyPackages = projectPackages
+      , legacyPackagesOptional = projectPackagesOptional
       , legacyPackagesRepo = projectPackagesRepo
       , legacyPackagesNamed = projectPackagesNamed
       , legacySharedConfig = convertToLegacySharedConfig projectConfig
@@ -950,7 +950,7 @@ convertToLegacySharedConfig
           , globalActiveRepos = projectConfigActiveRepos
           , globalLogsDir = projectConfigLogsDir
           , globalIgnoreExpiry = projectConfigIgnoreExpiry
-          , globalHttpTransport = fmap Text.unpack projectConfigHttpTransport
+          , globalHttpTransport = projectConfigHttpTransport
           , globalStoreDir = projectConfigStoreDir
           , globalProgPathExtra = projectConfigProgPathExtra
           }
@@ -1273,14 +1273,14 @@ legacyProjectConfigFieldDescrs constraintSrc =
       "packages"
       (Disp.text . renderPackageLocationToken)
       parsePackageLocationTokenQ
-      legacyPackages
-      (\v flags -> flags{legacyPackages = v})
+      (map Text.unpack . legacyPackages)
+      (\v flags -> flags{legacyPackages = map Text.pack v})
   , newLineListField
       "optional-packages"
       (Disp.text . renderPackageLocationToken)
       parsePackageLocationTokenQ
-      legacyPackagesOptional
-      (\v flags -> flags{legacyPackagesOptional = v})
+      (map Text.unpack . legacyPackagesOptional)
+      (\v flags -> flags{legacyPackagesOptional = map Text.pack v})
   , commaNewLineListFieldParsec
       "extra-packages"
       pretty

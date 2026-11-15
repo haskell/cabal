@@ -83,7 +83,7 @@ ipiFieldGrammar =
     -- Basic fields
     <@> optionalFieldDef "id" L.installedUnitId (mkUnitId "")
     <@> optionalFieldDefAla "instantiated-with" InstWith L.instantiatedWith []
-    <@> (T.pack <$> optionalFieldDefAla "key" CompatPackageKey (L.compatPackageKey . fromTextLens) mempty)
+    <@> optionalFieldDefAla "key" CompatPackageKey L.compatPackageKey mempty
     <@> optionalFieldDefAla "license" SpecLicenseLenient L.license (Left SPDX.NONE)
     <@> freeTextFieldDef "copyright" L.copyright
     <@> freeTextFieldDef "maintainer" L.maintainer
@@ -112,7 +112,7 @@ ipiFieldGrammar =
     <@> monoidalFieldAla "extra-libraries-static" (alaList' FSep Token) L.extraLibrariesStatic
     <@> monoidalFieldAla "extra-ghci-libraries" (alaList' FSep Token) L.extraGHCiLibraries
     <@> monoidalFieldAla "include-dirs" (alaList' FSep FilePathNT) L.includeDirs
-    <@> (map T.pack <$> monoidalFieldAla "includes" (alaList' FSep FilePathNT) (L.includes . fromTextsLens))
+    <@> monoidalFieldAla "includes" (alaList' FSep FilePathNT) L.includes
     <@> monoidalFieldAla "depends" (alaList FSep) L.depends
     <@> monoidalFieldAla "abi-depends" (alaList FSep) L.abiDepends
     <@> monoidalFieldAla "cc-options" (alaList' FSep Token) L.ccOptions
@@ -203,13 +203,13 @@ instance Parsec ExposedModules where
 instance Pretty ExposedModules where
   pretty = showExposedModules . getExposedModules
 
-newtype CompatPackageKey = CompatPackageKey {getCompatPackageKey :: String}
+newtype CompatPackageKey = CompatPackageKey {getCompatPackageKey :: Text}
 
 instance Pretty CompatPackageKey where
-  pretty = Disp.text . getCompatPackageKey
+  pretty = Disp.text . T.unpack . getCompatPackageKey
 
 instance Parsec CompatPackageKey where
-  parsec = CompatPackageKey <$> P.munch1 uid_char
+  parsec = CompatPackageKey . T.pack <$> P.munch1 uid_char
     where
       uid_char c = Char.isAlphaNum c || c `elem` ("-_.=[],:<>+" :: String)
 
@@ -320,11 +320,3 @@ basicFieldGrammar = do
             else _basicLibVisibility'
       , ..
       }
-
-fromTextLens :: Lens' Text String
-fromTextLens f = fmap T.pack . f . T.unpack
-{-# INLINE fromTextLens #-}
-
-fromTextsLens :: Lens' [Text] [String]
-fromTextsLens f = fmap (map T.pack) . f . map T.unpack
-{-# INLINE fromTextsLens #-}

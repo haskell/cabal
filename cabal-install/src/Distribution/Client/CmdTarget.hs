@@ -10,6 +10,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 import Distribution.Client.CmdBuild (selectComponentTarget, selectPackageTargets)
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.InstallPlan
@@ -214,7 +215,7 @@ printTargetForms verbosity targetStrings targets elaboratedPlan =
 
     targetForm ct x =
       let pkgId@PackageIdentifier{pkgName = n} = elabPkgSourceId x
-       in render $ pretty n Pretty.<> colon Pretty.<> text (showComponentTarget pkgId ct)
+       in render $ pretty n Pretty.<> colon Pretty.<> text (Text.unpack (showComponentTarget pkgId ct))
 
     targetForms =
       sort $

@@ -145,7 +145,7 @@ configureComponentLocalBuildInfos
                 ,
                   ( DefiniteUnitId
                       ( unsafeMkDefUnitId
-                          (mkUnitId (unComponentId (ann_id aid)))
+                          (mkUnitIdText (unComponentId (ann_id aid)))
                       )
                   , emptyModuleShape
                   )

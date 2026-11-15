@@ -61,6 +61,7 @@ import qualified Distribution.Types.SetupBuildInfo.Lens as L
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import qualified Data.Text as Text
 import qualified Distribution.Compat.NonEmptySet as NES
 
 -- | Writes a .cabal file from a generic package description
@@ -210,7 +211,7 @@ ppConfVar (PackageFlag name) = text "flag" <<>> parens (ppFlagName name)
 ppConfVar (Impl c v) = text "impl" <<>> parens (pretty c <+> pretty v)
 
 ppFlagName :: FlagName -> Doc
-ppFlagName = text . unFlagName
+ppFlagName = text . Text.unpack . unFlagName
 
 ppIfCondition :: Condition ConfVar -> [PrettyField ()] -> PrettyField ()
 ppIfCondition c = PrettySection () "if" [ppCondition c]

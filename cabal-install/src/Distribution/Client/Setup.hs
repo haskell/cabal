@@ -242,6 +242,7 @@ import Data.Functor (($>))
 import Data.List
   ( deleteFirstsBy
   )
+import qualified Data.Text as Text
 import System.FilePath
   ( (</>)
   )
@@ -527,7 +528,7 @@ globalCommand commands =
           "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
           globalHttpTransport
           (\v flags -> flags{globalHttpTransport = v})
-          (reqArgFlag "HttpTransport")
+          (reqArg "HttpTransport" (succeedReadE $ Flag . Text.pack) (flagToList . fmap Text.unpack))
       , option
           []
           ["store-dir", "storedir"]

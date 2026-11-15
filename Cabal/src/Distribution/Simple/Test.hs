@@ -109,7 +109,7 @@ test args verbHandles pkg_descr lbi0 flags = do
                 { testSuiteName = PD.testName suite
                 , testLogs =
                     TestLog
-                      { testName = unUnqualComponentName $ PD.testName suite
+                      { testName = unUnqualComponentNameST $ PD.testName suite
                       , testOptionsReturned = []
                       , testResult =
                           Error $

@@ -99,7 +99,7 @@ import Distribution.Pretty
 import Prelude ()
 
 import Distribution.Compiler
-import Distribution.Package (PackageName, mkPackageName, unPackageName)
+import Distribution.Package (PackageName, mkPackageNameST, unPackageNameST)
 import Distribution.Simple.Utils
 import Distribution.Types.UnitId (UnitId, mkUnitId, unUnitId)
 import Distribution.Utils.Path
@@ -168,7 +168,7 @@ instance Show Compiler where
 
       showsWiredInUnitId pn uid =
         showString "(mkPackageName "
-          . shows (unPackageName pn)
+          . shows (unPackageNameST pn)
           . showString ",mkUnitId "
           . shows (unUnitId uid)
           . showChar ')'
@@ -224,7 +224,7 @@ instance Read Compiler where
           readWiredInUnitId = do
             Read.Punc "(" <- Read.lexP
             Read.Ident "mkPackageName" <- Read.lexP
-            pn <- mkPackageName <$> Read.readPrec
+            pn <- mkPackageNameST <$> Read.readPrec
             Read.Punc "," <- Read.lexP
             Read.Ident "mkUnitId" <- Read.lexP
             uid <- mkUnitId <$> Read.readPrec

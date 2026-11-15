@@ -30,6 +30,8 @@ import Distribution.TestSuite
 import Distribution.Types.UnqualComponentName
 import Distribution.Verbosity
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Prelude (foldl1)
 
 -- | Logs all test results for a package, broken down first by test suite and
@@ -62,7 +64,7 @@ data TestSuiteLog = TestSuiteLog
 
 data TestLogs
   = TestLog
-      { testName :: String
+      { testName :: Text
       , testOptionsReturned :: Options
       , testResult :: Result
       }
@@ -116,7 +118,7 @@ testSuiteLogPath
   :: PathTemplate
   -> PD.PackageDescription
   -> LBI.LocalBuildInfo
-  -> String
+  -> Text
   -- ^ test suite name
   -> TestLogs
   -- ^ test suite results
@@ -130,7 +132,7 @@ testSuiteLogPath template pkg_descr lbi test_name result =
         (LBI.localUnitId lbi)
         (compilerInfo $ LBI.compiler lbi)
         (LBI.hostPlatform lbi)
-        ++ [ (TestSuiteNameVar, toPathTemplate test_name)
+        ++ [ (TestSuiteNameVar, toPathTemplate $ Text.unpack test_name)
            , (TestSuiteResultVar, toPathTemplate $ resultString result)
            ]
 
@@ -168,7 +170,7 @@ summarizeTest verbosity details t =
   when shouldPrint $
     notice verbosity $
       "Test case "
-        ++ testName t
+        ++ Text.unpack (testName t)
         ++ ": "
         ++ show (testResult t)
   where
@@ -186,5 +188,5 @@ summarizeSuiteFinish testLog =
   where
     resStr = map toUpper (resultString $ testLogs testLog)
 
-summarizeSuiteStart :: String -> String
-summarizeSuiteStart n = "Test suite " ++ n ++ ": RUNNING...\n"
+summarizeSuiteStart :: Text -> String
+summarizeSuiteStart n = "Test suite " ++ Text.unpack n ++ ": RUNNING...\n"

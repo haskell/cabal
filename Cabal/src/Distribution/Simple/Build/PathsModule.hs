@@ -30,6 +30,7 @@ import Distribution.Simple.Utils (shortRelativePath)
 import Distribution.System
 import Distribution.Version
 
+import qualified Data.Text as Text
 import qualified Distribution.Simple.Build.PathsModule.Z as Z
 
 -- ------------------------------------------------------------
@@ -151,7 +152,7 @@ pkgPathEnvVar pkg_descr var =
   showPkgName (packageName pkg_descr) ++ "_" ++ var
 
 showPkgName :: PackageName -> String
-showPkgName = map fixchar . unPackageName
+showPkgName = Text.unpack . Text.map fixchar . unPackageNameST
 
 fixchar :: Char -> Char
 fixchar '-' = '_'

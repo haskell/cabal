@@ -19,13 +19,14 @@ module Distribution.TestSuite
   , testGroup
   ) where
 
+import Data.Text (Text)
 import Distribution.Compat.Prelude
 import Prelude ()
 
 data TestInstance = TestInstance
   { run :: IO Progress
   -- ^ Perform the test.
-  , name :: String
+  , name :: Text
   -- ^ A name for the test, unique within a
   -- test suite.
   , tags :: [String]

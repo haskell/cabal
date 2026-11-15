@@ -63,7 +63,8 @@ module Distribution.Simple.BuildPaths
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.List (stripPrefix)
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.Compiler
 import Distribution.ModuleName as ModuleName
 import Distribution.Package
@@ -236,15 +237,15 @@ haddockPath pkg_descr = prettyShow (packageName pkg_descr) <.> "haddock"
 -- main library.
 --
 -- Used by `haddock-project` and `Distribution.Simple.Haddock`.
-haddockPackageLibraryName :: PackageDescription -> Library -> String
+haddockPackageLibraryName :: PackageDescription -> Library -> Text
 haddockPackageLibraryName pkg_descr lib =
   haddockPackageLibraryName' (packageName pkg_descr) (libName lib)
 
-haddockPackageLibraryName' :: PackageName -> LibraryName -> String
+haddockPackageLibraryName' :: PackageName -> LibraryName -> Text
 haddockPackageLibraryName' pkg_name lib_name =
-  case lib_name of
+  Text.pack $ case lib_name of
     LSubLibName sublib_name ->
-      prettyShow pkg_name ++ ":" ++ prettyShow sublib_name
+      prettyShow pkg_name <> ":" <> prettyShow sublib_name
     LMainLibName -> prettyShow pkg_name
 
 -- | A name of a (sub)library used by haddock.
@@ -417,45 +418,45 @@ benchmarkBuildDir lbi bm =
 
 -- | Create a library name for a static library from a given name.
 -- Prepends @lib@ and appends the static library extension (@.a@).
-mkGenericStaticLibName :: String -> String
-mkGenericStaticLibName lib = "lib" ++ lib <.> "a"
+mkGenericStaticLibName :: Text -> Text
+mkGenericStaticLibName lib = Text.pack "lib" <> lib <> Text.pack ".a"
 
-mkLibName :: UnitId -> String
+mkLibName :: UnitId -> Text
 mkLibName lib = mkGenericStaticLibName (getHSLibraryName lib)
 
-mkProfLibName :: UnitId -> String
-mkProfLibName lib = mkGenericStaticLibName (getHSLibraryName lib ++ "_p")
+mkProfLibName :: UnitId -> Text
+mkProfLibName lib = mkGenericStaticLibName (getHSLibraryName lib <> Text.pack "_p")
 
 -- | Create a library name for a shared library from a given name.
 -- Prepends @lib@ and appends the @-\<compilerFlavour\>\<compilerVersion\>@
 -- as well as the shared library extension.
-mkGenericSharedLibName :: Platform -> CompilerId -> String -> String
+mkGenericSharedLibName :: Platform -> CompilerId -> Text -> Text
 mkGenericSharedLibName platform (CompilerId compilerFlavor compilerVersion) lib =
-  mconcat ["lib", lib, "-", comp <.> dllExtension platform]
+  mconcat [Text.pack "lib", lib, Text.pack "-", Text.pack comp, Text.singleton '.', Text.pack (dllExtension platform)]
   where
     comp = prettyShow compilerFlavor ++ prettyShow compilerVersion
 
 -- Implement proper name mangling for dynamical shared objects
 -- @libHS\<packagename\>-\<compilerFlavour\>\<compilerVersion\>@
 -- e.g. @libHSbase-2.1-ghc6.6.1.so@
-mkSharedLibName :: Platform -> CompilerId -> UnitId -> String
+mkSharedLibName :: Platform -> CompilerId -> UnitId -> Text
 mkSharedLibName platform comp lib =
   mkGenericSharedLibName platform comp (getHSLibraryName lib)
 
-mkProfSharedLibName :: Platform -> CompilerId -> UnitId -> String
+mkProfSharedLibName :: Platform -> CompilerId -> UnitId -> Text
 mkProfSharedLibName platform comp lib =
-  mkGenericSharedLibName platform comp (getHSLibraryName lib ++ "_p")
+  mkGenericSharedLibName platform comp (getHSLibraryName lib <> Text.pack "_p")
 
 -- Static libs are named the same as shared libraries, only with
 -- a different extension.
-mkStaticLibName :: Platform -> CompilerId -> UnitId -> String
+mkStaticLibName :: Platform -> CompilerId -> UnitId -> Text
 mkStaticLibName platform (CompilerId compilerFlavor compilerVersion) lib =
-  "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> staticLibExtension platform
+  mconcat [Text.pack "lib", getHSLibraryName lib, Text.pack "-", Text.pack comp, Text.singleton '.', Text.pack (staticLibExtension platform)]
   where
     comp = prettyShow compilerFlavor ++ prettyShow compilerVersion
 
-mkBytecodeLibName :: CompilerId -> UnitId -> String
-mkBytecodeLibName _comp lib = getHSLibraryName lib <.> ".bytecodelib"
+mkBytecodeLibName :: CompilerId -> UnitId -> Text
+mkBytecodeLibName _comp lib = getHSLibraryName lib <> Text.pack ".bytecodelib"
 
 -- | Create a library name for a bundled shared library from a given name.
 -- This matches the naming convention for shared libraries as implemented in
@@ -466,14 +467,14 @@ mkBytecodeLibName _comp lib = getHSLibraryName lib <.> ".bytecodelib"
 -- Otherwise the given name should be prefixed with 'C', then this strips the
 -- 'C', prepends 'lib' and appends the shared library extension e.g.:
 --     "Cffi" -> "libffi.so"
-mkGenericSharedBundledLibName :: Platform -> CompilerId -> String -> String
+mkGenericSharedBundledLibName :: Platform -> CompilerId -> Text -> Text
 mkGenericSharedBundledLibName platform comp lib
-  | "HS" `isPrefixOf` lib =
+  | Text.pack "HS" `Text.isPrefixOf` lib =
       mkGenericSharedLibName platform comp lib
-  | Just lib' <- stripPrefix "C" lib =
-      "lib" ++ lib' <.> dllExtension platform
+  | Just ('C', lib') <- Text.uncons lib =
+      mconcat [Text.pack "lib", lib', Text.singleton '.', Text.pack (dllExtension platform)]
   | otherwise =
-      error ("Don't understand library name " ++ lib)
+      error ("Don't understand library name " ++ Text.unpack lib)
 
 -- ------------------------------------------------------------
 

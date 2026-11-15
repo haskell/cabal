@@ -12,6 +12,7 @@ module Distribution.ModuleName
   , fromString
   , fromComponents
   , components
+  , componentsText
   , toFilePath
   , main
 
@@ -36,8 +37,8 @@ import qualified Text.PrettyPrint as Disp
 newtype ModuleName = ModuleName Text
   deriving (Eq, Generic, Ord, Read, Show, Data)
 
-unModuleName :: ModuleName -> String
-unModuleName (ModuleName s) = Text.unpack s
+unModuleName :: ModuleName -> Text
+unModuleName (ModuleName s) = s
 
 instance Binary ModuleName
 instance Structured ModuleName
@@ -46,7 +47,7 @@ instance NFData ModuleName where
   rnf (ModuleName ms) = rnf ms
 
 instance Pretty ModuleName where
-  pretty = Disp.text . unModuleName
+  pretty = Disp.text . Text.unpack . unModuleName
 
 instance Parsec ModuleName where
   parsec = parsecModuleName
@@ -95,8 +96,8 @@ instance IsString ModuleName where
 
 -- | Construct a 'ModuleName' from valid module components, i.e. parts
 -- separated by dots.
-fromComponents :: [String] -> ModuleName
-fromComponents comps = fromString (intercalate "." comps)
+fromComponents :: [Text] -> ModuleName
+fromComponents comps = ModuleName (Text.intercalate (Text.singleton '.') comps)
 {-# DEPRECATED fromComponents "Exists for cabal-install only" #-}
 
 -- | The module name @Main@.
@@ -107,18 +108,17 @@ main = ModuleName (fromString "Main")
 --
 -- > components (fromString "A.B.C") = ["A", "B", "C"]
 components :: ModuleName -> [String]
-components mn = split (unModuleName mn)
-  where
-    split cs = case break (== '.') cs of
-      (chunk, []) -> [chunk]
-      (chunk, _ : rest) -> chunk : split rest
+components = map Text.unpack . componentsText
+
+componentsText :: ModuleName -> [Text]
+componentsText mn = Text.split (== '.') (unModuleName mn)
 
 -- | Convert a module name to a file path, but without any file extension.
 -- For example:
 --
 -- > toFilePath (fromString "A.B.C") = "A/B/C"
 toFilePath :: ModuleName -> FilePath
-toFilePath = map f . unModuleName
+toFilePath = Text.unpack . Text.map f . unModuleName
   where
     f '.' = pathSeparator
     f c = c

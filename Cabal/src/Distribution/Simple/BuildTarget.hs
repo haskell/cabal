@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- |
 -- Module      :  Distribution.Client.BuildTargets
@@ -60,6 +61,8 @@ import Control.Monad (msum)
 import Data.List (groupBy, stripPrefix)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
+import Data.Text (Text)
+import qualified Data.Text as Text
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath as FilePath
   ( dropExtension
@@ -91,7 +94,7 @@ data UserBuildTarget
     -- > cabal build foo
     -- > cabal build Data.Foo
     -- > cabal build Data/Foo.hs  Data/Foo.hsc
-    UserBuildTargetSingle String
+    UserBuildTargetSingle Text
   | -- | A target specified by a qualifier and name. This could be a component
     -- name qualified by the component namespace kind, or a module or file
     -- qualified by the component name.
@@ -99,13 +102,13 @@ data UserBuildTarget
     -- > cabal build lib:foo exe:foo
     -- > cabal build foo:Data.Foo
     -- > cabal build foo:Data/Foo.hs
-    UserBuildTargetDouble String String
+    UserBuildTargetDouble Text Text
   | -- | A fully qualified target, either a module or file qualified by a
     -- component name with the component namespace kind.
     --
     -- > cabal build lib:foo:Data/Foo.hs exe:foo:Data/Foo.hs
     -- > cabal build lib:foo:Data.Foo exe:foo:Data.Foo
-    UserBuildTargetTriple String String String
+    UserBuildTargetTriple Text Text Text
   deriving (Show, Eq, Ord)
 
 -- ------------------------------------------------------------
@@ -152,7 +155,7 @@ readBuildTargets verbosity pkg targetStrs = do
 
 checkTargetExistsAsFile :: UserBuildTarget -> IO (UserBuildTarget, Bool)
 checkTargetExistsAsFile t = do
-  fexists <- existsAsFile (fileComponentOfTarget t)
+  fexists <- existsAsFile (Text.unpack (fileComponentOfTarget t))
   return (t, fexists)
   where
     existsAsFile f = do
@@ -219,9 +222,9 @@ readUserBuildTarget targetstr =
       -- read one, two, or three tokens, where last could be "hs-string"
       ts <- tokens
       return $ case ts of
-        (a, Nothing) -> UserBuildTargetSingle a
-        (a, Just (b, Nothing)) -> UserBuildTargetDouble a b
-        (a, Just (b, Just c)) -> UserBuildTargetTriple a b c
+        (a, Nothing) -> UserBuildTargetSingle (Text.pack a)
+        (a, Just (b, Nothing)) -> UserBuildTargetDouble (Text.pack a) (Text.pack b)
+        (a, Just (b, Just c)) -> UserBuildTargetTriple (Text.pack a) (Text.pack b) (Text.pack c)
 
     tokens :: CabalParsing m => m (String, Maybe (String, Maybe String))
     tokens =
@@ -248,8 +251,8 @@ reportUserBuildTargetProblems verbosity problems = do
       dieWithException verbosity $
         UnrecognisedBuildTarget target
 
-showUserBuildTarget :: UserBuildTarget -> String
-showUserBuildTarget = intercalate ":" . getComponents
+showUserBuildTarget :: UserBuildTarget -> Text
+showUserBuildTarget = Text.intercalate (Text.singleton ':') . getComponents
   where
     getComponents (UserBuildTargetSingle s1) = [s1]
     getComponents (UserBuildTargetDouble s1 s2) = [s1, s2]
@@ -257,13 +260,13 @@ showUserBuildTarget = intercalate ":" . getComponents
 
 -- | Unless you use 'QL1', this function is PARTIAL;
 -- use 'showBuildTarget' instead.
-showBuildTarget' :: QualLevel -> PackageId -> BuildTarget -> String
+showBuildTarget' :: QualLevel -> PackageId -> BuildTarget -> Text
 showBuildTarget' ql pkgid bt =
   showUserBuildTarget (renderBuildTarget ql bt pkgid)
 
 -- | Unambiguously render a 'BuildTarget', so that it can
 -- be parsed in all situations.
-showBuildTarget :: PackageId -> BuildTarget -> String
+showBuildTarget :: PackageId -> BuildTarget -> Text
 showBuildTarget pkgid t =
   showBuildTarget' (qlBuildTarget t) pkgid t
   where
@@ -330,9 +333,9 @@ resolveBuildTarget pkg userTarget fexists =
 
 data BuildTargetProblem
   = -- |  [expected thing] (actually got)
-    BuildTargetExpected UserBuildTarget [String] String
+    BuildTargetExpected UserBuildTarget [Text] Text
   | -- | [(no such thing,  actually got)]
-    BuildTargetNoSuch UserBuildTarget [(String, String)]
+    BuildTargetNoSuch UserBuildTarget [(Text, Text)]
   | BuildTargetAmbiguous UserBuildTarget [(UserBuildTarget, BuildTarget)]
   deriving (Show)
 
@@ -376,16 +379,16 @@ renderBuildTarget ql target pkgid =
     QL3 -> UserBuildTargetTriple s1 s2 s3 where (s1, s2, s3) = triple target
   where
     single (BuildTargetComponent cn) = dispCName cn
-    single (BuildTargetModule _ m) = prettyShow m
-    single (BuildTargetFile _ f) = f
+    single (BuildTargetModule _ m) = Text.pack $ prettyShow m
+    single (BuildTargetFile _ f) = Text.pack f
 
     double (BuildTargetComponent cn) = (dispKind cn, dispCName cn)
-    double (BuildTargetModule cn m) = (dispCName cn, prettyShow m)
-    double (BuildTargetFile cn f) = (dispCName cn, f)
+    double (BuildTargetModule cn m) = (dispCName cn, Text.pack $ prettyShow m)
+    double (BuildTargetFile cn f) = (dispCName cn, Text.pack f)
 
     triple (BuildTargetComponent _) = error "triple BuildTargetComponent"
-    triple (BuildTargetModule cn m) = (dispKind cn, dispCName cn, prettyShow m)
-    triple (BuildTargetFile cn f) = (dispKind cn, dispCName cn, f)
+    triple (BuildTargetModule cn m) = (dispKind cn, dispCName cn, Text.pack $ prettyShow m)
+    triple (BuildTargetFile cn f) = (dispKind cn, dispCName cn, Text.pack f)
 
     dispCName = componentStringName pkgid
     dispKind = showComponentKindShort . componentKind
@@ -442,7 +445,7 @@ matchBuildTarget pkg = \utarget fexists ->
   where
     cinfo = pkgComponentInfo pkg
 
-matchBuildTarget1 :: [ComponentInfo] -> String -> Bool -> Match BuildTarget
+matchBuildTarget1 :: [ComponentInfo] -> Text -> Bool -> Match BuildTarget
 matchBuildTarget1 cinfo str1 fexists =
   matchComponent1 cinfo str1
     `matchPlusShadowing` matchModule1 cinfo str1
@@ -450,8 +453,8 @@ matchBuildTarget1 cinfo str1 fexists =
 
 matchBuildTarget2
   :: [ComponentInfo]
-  -> String
-  -> String
+  -> Text
+  -> Text
   -> Bool
   -> Match BuildTarget
 matchBuildTarget2 cinfo str1 str2 fexists =
@@ -461,9 +464,9 @@ matchBuildTarget2 cinfo str1 str2 fexists =
 
 matchBuildTarget3
   :: [ComponentInfo]
-  -> String
-  -> String
-  -> String
+  -> Text
+  -> Text
+  -> Text
   -> Bool
   -> Match BuildTarget
 matchBuildTarget3 cinfo str1 str2 str3 fexists =
@@ -483,7 +486,7 @@ data ComponentInfo = ComponentInfo
   , cinfoJsFiles :: [FilePath]
   }
 
-type ComponentStringName = String
+type ComponentStringName = Text
 
 pkgComponentInfo :: PackageDescription -> [ComponentInfo]
 pkgComponentInfo pkg =
@@ -504,12 +507,13 @@ pkgComponentInfo pkg =
   ]
 
 componentStringName :: Package pkg => pkg -> ComponentName -> ComponentStringName
-componentStringName pkg (CLibName LMainLibName) = prettyShow (packageName pkg)
-componentStringName _ (CLibName (LSubLibName name)) = unUnqualComponentName name
-componentStringName _ (CFLibName name) = unUnqualComponentName name
-componentStringName _ (CExeName name) = unUnqualComponentName name
-componentStringName _ (CTestName name) = unUnqualComponentName name
-componentStringName _ (CBenchName name) = unUnqualComponentName name
+componentStringName pkg = \case
+  CLibName LMainLibName -> Text.pack $ prettyShow (packageName pkg)
+  CLibName (LSubLibName name) -> unUnqualComponentNameST name
+  CFLibName name -> unUnqualComponentNameST name
+  CExeName name -> unUnqualComponentNameST name
+  CTestName name -> unUnqualComponentNameST name
+  CBenchName name -> unUnqualComponentNameST name
 
 componentModules :: Component -> [ModuleName]
 -- TODO: Use of 'explicitLibModules' here is a bit wrong:
@@ -572,42 +576,44 @@ componentKind (CBenchName _) = BenchKind
 cinfoKind :: ComponentInfo -> ComponentKind
 cinfoKind = componentKind . cinfoName
 
-matchComponentKind :: String -> Match ComponentKind
+matchComponentKind :: Text -> Match ComponentKind
 matchComponentKind s
-  | s `elem` ["lib", "library"] = return' LibKind
-  | s `elem` ["flib", "foreign-lib", "foreign-library"] = return' FLibKind
-  | s `elem` ["exe", "executable"] = return' ExeKind
-  | s `elem` ["tst", "test", "test-suite"] = return' TestKind
-  | s `elem` ["bench", "benchmark"] = return' BenchKind
+  | s `elem` map Text.pack ["lib", "library"] = return' LibKind
+  | s `elem` map Text.pack ["flib", "foreign-lib", "foreign-library"] = return' FLibKind
+  | s `elem` map Text.pack ["exe", "executable"] = return' ExeKind
+  | s `elem` map Text.pack ["tst", "test", "test-suite"] = return' TestKind
+  | s `elem` map Text.pack ["bench", "benchmark"] = return' BenchKind
   | otherwise = matchErrorExpected "component kind" s
   where
     return' ck = increaseConfidence >> return ck
 
-showComponentKind :: ComponentKind -> String
-showComponentKind LibKind = "library"
-showComponentKind FLibKind = "foreign-library"
-showComponentKind ExeKind = "executable"
-showComponentKind TestKind = "test-suite"
-showComponentKind BenchKind = "benchmark"
+showComponentKind :: ComponentKind -> Text
+showComponentKind k = Text.pack $ case k of
+  LibKind -> "library"
+  FLibKind -> "foreign-library"
+  ExeKind -> "executable"
+  TestKind -> "test-suite"
+  BenchKind -> "benchmark"
 
-showComponentKindShort :: ComponentKind -> String
-showComponentKindShort LibKind = "lib"
-showComponentKindShort FLibKind = "flib"
-showComponentKindShort ExeKind = "exe"
-showComponentKindShort TestKind = "test"
-showComponentKindShort BenchKind = "bench"
+showComponentKindShort :: ComponentKind -> Text
+showComponentKindShort k = Text.pack $ case k of
+  LibKind -> "lib"
+  FLibKind -> "flib"
+  ExeKind -> "exe"
+  TestKind -> "test"
+  BenchKind -> "bench"
 
 ------------------------------
 -- Matching component targets
 --
 
-matchComponent1 :: [ComponentInfo] -> String -> Match BuildTarget
+matchComponent1 :: [ComponentInfo] -> Text -> Match BuildTarget
 matchComponent1 cs str1 = do
   guardComponentName str1
   c <- matchComponentName cs str1
   return (BuildTargetComponent (cinfoName c))
 
-matchComponent2 :: [ComponentInfo] -> String -> String -> Match BuildTarget
+matchComponent2 :: [ComponentInfo] -> Text -> Text -> Match BuildTarget
 matchComponent2 cs str1 str2 = do
   ckind <- matchComponentKind str1
   guardComponentName str2
@@ -616,10 +622,10 @@ matchComponent2 cs str1 str2 = do
 
 -- utils:
 
-guardComponentName :: String -> Match ()
+guardComponentName :: Text -> Match ()
 guardComponentName s
-  | all validComponentChar s
-      && not (null s) =
+  | Text.all validComponentChar s
+      && not (Text.null s) =
       increaseConfidence
   | otherwise = matchErrorExpected "component name" s
   where
@@ -630,25 +636,25 @@ guardComponentName s
         || c == '-'
         || c == '\''
 
-matchComponentName :: [ComponentInfo] -> String -> Match ComponentInfo
+matchComponentName :: [ComponentInfo] -> Text -> Match ComponentInfo
 matchComponentName cs str =
   orNoSuchThing "component" str $
     increaseConfidenceFor $
       matchInexactly
-        caseFold
+        Text.toCaseFold
         [(cinfoStrName c, c) | c <- cs]
         str
 
 matchComponentKindAndName
   :: [ComponentInfo]
   -> ComponentKind
-  -> String
+  -> Text
   -> Match ComponentInfo
 matchComponentKindAndName cs ckind str =
-  orNoSuchThing (showComponentKind ckind ++ " component") str $
+  orNoSuchThing (Text.unpack (showComponentKind ckind) <> " component") str $
     increaseConfidenceFor $
       matchInexactly
-        (second caseFold)
+        (second Text.toCaseFold)
         [((cinfoKind c, cinfoStrName c), c) | c <- cs]
         (ckind, str)
 
@@ -656,7 +662,7 @@ matchComponentKindAndName cs ckind str =
 -- Matching module targets
 --
 
-matchModule1 :: [ComponentInfo] -> String -> Match BuildTarget
+matchModule1 :: [ComponentInfo] -> Text -> Match BuildTarget
 matchModule1 cs str1 = do
   guardModuleName str1
   nubMatchErrors $ do
@@ -665,7 +671,7 @@ matchModule1 cs str1 = do
     m <- matchModuleName ms str1
     return (BuildTargetModule (cinfoName c) m)
 
-matchModule2 :: [ComponentInfo] -> String -> String -> Match BuildTarget
+matchModule2 :: [ComponentInfo] -> Text -> Text -> Match BuildTarget
 matchModule2 cs str1 str2 = do
   guardComponentName str1
   guardModuleName str2
@@ -676,9 +682,9 @@ matchModule2 cs str1 str2 = do
 
 matchModule3
   :: [ComponentInfo]
-  -> String
-  -> String
-  -> String
+  -> Text
+  -> Text
+  -> Text
   -> Match BuildTarget
 matchModule3 cs str1 str2 str3 = do
   ckind <- matchComponentKind str1
@@ -691,22 +697,22 @@ matchModule3 cs str1 str2 str3 = do
 
 -- utils:
 
-guardModuleName :: String -> Match ()
+guardModuleName :: Text -> Match ()
 guardModuleName s
-  | all validModuleChar s
-      && not (null s) =
+  | Text.all validModuleChar s
+      && not (Text.null s) =
       increaseConfidence
   | otherwise = matchErrorExpected "module name" s
   where
     validModuleChar c = isAlphaNum c || c == '.' || c == '_' || c == '\''
 
-matchModuleName :: [ModuleName] -> String -> Match ModuleName
+matchModuleName :: [ModuleName] -> Text -> Match ModuleName
 matchModuleName ms str =
   orNoSuchThing "module" str $
     increaseConfidenceFor $
       matchInexactly
-        caseFold
-        [ (prettyShow m, m)
+        Text.toCaseFold
+        [ (Text.pack $ prettyShow m, m)
         | m <- ms
         ]
         str
@@ -715,37 +721,37 @@ matchModuleName ms str =
 -- Matching file targets
 --
 
-matchFile1 :: [ComponentInfo] -> String -> Bool -> Match BuildTarget
+matchFile1 :: [ComponentInfo] -> Text -> Bool -> Match BuildTarget
 matchFile1 cs str1 exists =
   nubMatchErrors $ do
     c <- tryEach cs
-    filepath <- matchComponentFile c str1 exists
+    filepath <- matchComponentFile c (Text.unpack str1) exists
     return (BuildTargetFile (cinfoName c) filepath)
 
-matchFile2 :: [ComponentInfo] -> String -> String -> Bool -> Match BuildTarget
+matchFile2 :: [ComponentInfo] -> Text -> Text -> Bool -> Match BuildTarget
 matchFile2 cs str1 str2 exists = do
   guardComponentName str1
   c <- matchComponentName cs str1
-  filepath <- matchComponentFile c str2 exists
+  filepath <- matchComponentFile c (Text.unpack str2) exists
   return (BuildTargetFile (cinfoName c) filepath)
 
 matchFile3
   :: [ComponentInfo]
-  -> String
-  -> String
-  -> String
+  -> Text
+  -> Text
+  -> Text
   -> Bool
   -> Match BuildTarget
 matchFile3 cs str1 str2 str3 exists = do
   ckind <- matchComponentKind str1
   guardComponentName str2
   c <- matchComponentKindAndName cs ckind str2
-  filepath <- matchComponentFile c str3 exists
+  filepath <- matchComponentFile c (Text.unpack str3) exists
   return (BuildTargetFile (cinfoName c) filepath)
 
-matchComponentFile :: ComponentInfo -> String -> Bool -> Match FilePath
+matchComponentFile :: ComponentInfo -> FilePath -> Bool -> Match FilePath
 matchComponentFile c str fexists =
-  expecting "file" str $
+  expecting "file" (Text.pack str) $
     matchPlus
       (matchFileExists str fexists)
       ( matchPlusShadowing
@@ -775,15 +781,15 @@ matchFileExists :: FilePath -> Bool -> Match a
 matchFileExists _ False = mzero
 matchFileExists fname True = do
   increaseConfidence
-  matchErrorNoSuch "file" fname
+  matchErrorNoSuch "file" (Text.pack fname)
 
-matchModuleFileUnrooted :: [ModuleName] -> String -> Match FilePath
+matchModuleFileUnrooted :: [ModuleName] -> FilePath -> Match FilePath
 matchModuleFileUnrooted ms str = do
   let filepath = normalise str
   _ <- matchModuleFileStem ms filepath
   return filepath
 
-matchModuleFileRooted :: [FilePath] -> [ModuleName] -> String -> Match FilePath
+matchModuleFileRooted :: [FilePath] -> [ModuleName] -> FilePath -> Match FilePath
 matchModuleFileRooted dirs ms str = nubMatches $ do
   let filepath = normalise str
   filepath' <- matchDirectoryPrefix dirs filepath
@@ -845,8 +851,8 @@ data Match a
 type Confidence = Int
 
 data MatchError
-  = MatchErrorExpected String String
-  | MatchErrorNoSuch String String
+  = MatchErrorExpected Text Text
+  | MatchErrorNoSuch Text Text
   deriving (Show, Eq)
 
 -- | @since 3.18
@@ -920,15 +926,15 @@ forceInexact m = m
 -- Various match primitives
 --
 
-matchErrorExpected, matchErrorNoSuch :: String -> String -> Match a
-matchErrorExpected thing got = NoMatch 0 [MatchErrorExpected thing got]
-matchErrorNoSuch thing got = NoMatch 0 [MatchErrorNoSuch thing got]
+matchErrorExpected, matchErrorNoSuch :: String -> Text -> Match a
+matchErrorExpected thing got = NoMatch 0 [MatchErrorExpected (Text.pack thing) got]
+matchErrorNoSuch thing got = NoMatch 0 [MatchErrorNoSuch (Text.pack thing) got]
 
-expecting :: String -> String -> Match a -> Match a
+expecting :: String -> Text -> Match a -> Match a
 expecting thing got (NoMatch 0 _) = matchErrorExpected thing got
 expecting _ _ m = m
 
-orNoSuchThing :: String -> String -> Match a -> Match a
+orNoSuchThing :: String -> Text -> Match a -> Match a
 orNoSuchThing thing got (NoMatch 0 _) = matchErrorNoSuch thing got
 orNoSuchThing _ _ m = m
 

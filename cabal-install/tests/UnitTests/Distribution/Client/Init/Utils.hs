@@ -12,6 +12,7 @@ import Distribution.Client.Init.Types
 
 import qualified Distribution.SPDX as SPDX
 
+import qualified Data.Text as Text
 import Distribution.CabalSpecVersion
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Pretty
@@ -79,7 +80,7 @@ mkLicense lid = SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing)
 
 mangleBaseDep :: a -> (a -> [Dependency]) -> [Dependency]
 mangleBaseDep target f =
-  [ if unPackageName x == "base"
+  [ if unPackageNameST x == Text.pack "base"
     then Dependency x anyVersion z
     else dep
   | dep@(Dependency x _ z) <- f target

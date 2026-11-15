@@ -96,7 +96,7 @@ instance FromJSON ConfiguredGlobal where
   parseJSON invalid = typeMismatch "ConfiguredGlobal" invalid
 
 instance FromJSON PackageName where
-  parseJSON (String t) = return (mkPackageName (Text.unpack t))
+  parseJSON (String t) = return (mkPackageNameST t)
   parseJSON invalid = typeMismatch "PackageName" invalid
 
 instance FromJSON Version where

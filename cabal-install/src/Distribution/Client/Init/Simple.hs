@@ -13,6 +13,7 @@ module Distribution.Client.Init.Simple
 
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.FlagExtractors
 import Distribution.Client.Init.Types
@@ -21,7 +22,7 @@ import Distribution.Client.Types.SourcePackageDb (SourcePackageDb (..))
 import Distribution.Simple.Flag (flagElim, fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Simple.PackageIndex
 import Distribution.Types.Dependency
-import Distribution.Types.PackageName (unPackageName)
+import Distribution.Types.PackageName (unPackageNameST)
 import Distribution.Verbosity
 
 createProject
@@ -191,7 +192,7 @@ genSimpleTestTarget flags = go =<< initializeTestSuitePrompt flags
 addBaseDepToFlags :: Interactive m => InstalledPackageIndex -> InitFlags -> m InitFlags
 addBaseDepToFlags pkgIx initFlags = case dependencies initFlags of
   Flag as
-    | any ((==) "base" . unPackageName . depPkgName) as -> return initFlags
+    | any ((==) (Text.pack "base") . unPackageNameST . depPkgName) as -> return initFlags
     | otherwise -> do
         based <- dependenciesPrompt pkgIx initFlags
         return $

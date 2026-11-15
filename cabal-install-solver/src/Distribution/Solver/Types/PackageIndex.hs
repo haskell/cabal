@@ -50,17 +50,16 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude hiding (lookup)
 
 import qualified Data.Map as Map
-import Data.List (isInfixOf)
 import qualified Data.List.NonEmpty as NE
+import Data.Text (Text)
+import qualified Data.Text as Text
 
 import Distribution.Client.Utils.Assertion ( expensiveAssert )
 import Distribution.Package
-         ( PackageName, unPackageName, PackageIdentifier(..)
+         ( PackageName, unPackageNameST, PackageIdentifier(..)
          , Package(..), packageName, packageVersion )
 import Distribution.Version
          ( VersionRange, withinRange )
-import Distribution.Simple.Utils
-         ( lowercase )
 
 import qualified Prelude (foldr1)
 
@@ -329,13 +328,13 @@ lookupDependency index name versionRange =
 -- it is a non-empty list of non-empty lists.
 --
 searchByName :: PackageIndex pkg
-             -> String -> [(PackageName, [pkg])]
+             -> Text -> [(PackageName, [pkg])]
 searchByName (PackageIndex m) name =
     [ pkgs
     | pkgs@(pname,_) <- Map.toList m
-    , lowercase (unPackageName pname) == lname ]
+    , Text.toLower (unPackageNameST pname) == lname ]
   where
-    lname = lowercase name
+    lname = Text.toLower name
 
 data SearchResult a = None | Unambiguous a | Ambiguous [a]
 
@@ -344,15 +343,15 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 -- That is, all packages that contain the given string in their name.
 --
 searchByNameSubstring :: PackageIndex pkg
-                      -> String -> [(PackageName, [pkg])]
+                      -> Text -> [(PackageName, [pkg])]
 searchByNameSubstring index searchterm =
-    searchWithPredicate index (\n -> lsearchterm `isInfixOf` lowercase n)
-  where lsearchterm = lowercase searchterm
+    searchWithPredicate index (\n -> lsearchterm `Text.isInfixOf` Text.toLower n)
+  where lsearchterm = Text.toLower searchterm
 
 searchWithPredicate :: PackageIndex pkg
-                    -> (String -> Bool) -> [(PackageName, [pkg])]
+                    -> (Text -> Bool) -> [(PackageName, [pkg])]
 searchWithPredicate (PackageIndex m) predicate =
     [ pkgs
     | pkgs@(pname, _) <- Map.toList m
-    , predicate (unPackageName pname)
+    , predicate (unPackageNameST pname)
     ]

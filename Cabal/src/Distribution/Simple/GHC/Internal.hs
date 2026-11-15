@@ -548,16 +548,16 @@ linkGhcOptions verbosity lbi bi clbi =
         , ghcOptCabal = toFlag True
         , ghcOptThisUnitId = case clbi of
             LibComponentLocalBuildInfo{componentCompatPackageKey = pk} ->
-              toFlag (Text.pack pk)
+              toFlag pk
             _ | not (unitIdForExes implInfo) -> mempty
             ExeComponentLocalBuildInfo{componentUnitId = uid} ->
-              toFlag (Text.pack (unUnitId uid))
+              toFlag (unUnitId uid)
             TestComponentLocalBuildInfo{componentUnitId = uid} ->
-              toFlag (Text.pack (unUnitId uid))
+              toFlag (unUnitId uid)
             BenchComponentLocalBuildInfo{componentUnitId = uid} ->
-              toFlag (Text.pack (unUnitId uid))
+              toFlag (unUnitId uid)
             FLibComponentLocalBuildInfo{componentUnitId = uid} ->
-              toFlag (Text.pack (unUnitId uid))
+              toFlag (unUnitId uid)
         , ghcOptThisComponentId = case clbi of
             LibComponentLocalBuildInfo
               { componentComponentId = cid
@@ -636,11 +636,11 @@ filterGhciFlags = filter supported
                      ]
         )
 
-mkGHCiLibName :: UnitId -> String
-mkGHCiLibName lib = getHSLibraryName lib <.> "o"
+mkGHCiLibName :: UnitId -> Text
+mkGHCiLibName lib = getHSLibraryName lib <> Text.pack ".o"
 
-mkGHCiProfLibName :: UnitId -> String
-mkGHCiProfLibName lib = getHSLibraryName lib <.> "p_o"
+mkGHCiProfLibName :: UnitId -> Text
+mkGHCiProfLibName lib = getHSLibraryName lib <> Text.pack ".p_o"
 
 ghcLookupProperty :: String -> Compiler -> Bool
 ghcLookupProperty prop comp =

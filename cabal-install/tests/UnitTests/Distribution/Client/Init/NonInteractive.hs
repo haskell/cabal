@@ -11,6 +11,7 @@ import Test.Tasty.HUnit
 import UnitTests.Distribution.Client.Init.Utils
 
 import qualified Data.List.NonEmpty as NEL
+import qualified Data.Text as Text
 import qualified Distribution.SPDX as SPDX
 
 #if !MIN_VERSION_base(4,20,0)
@@ -1308,7 +1309,7 @@ nonInteractiveTests pkgIx srcDb comp =
                 "base version bounds is correct"
                 ( fmap
                     ( flip foldl' anyVersion $ \a (Dependency n v _) ->
-                        if unPackageName n == "base" && baseVersion comp /= anyVersion
+                        if unPackageNameST n == Text.pack "base" && baseVersion comp /= anyVersion
                           then v
                           else a
                     )
