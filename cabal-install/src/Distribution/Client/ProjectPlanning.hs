@@ -236,6 +236,8 @@ import qualified Data.Text as Text
 import Data.Traversable (mapAccumM)
 import Distribution.Client.Errors
 import Distribution.Solver.Types.ProjectConfigPath
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel (..))
+import Distribution.Types.OptimisationLevel (OptimisationLevel (..))
 import GHC.Stack (HasCallStack)
 import System.Directory (getCurrentDirectory)
 import System.FilePath

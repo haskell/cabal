@@ -17,20 +17,22 @@ import Distribution.Compiler                       (CompilerFlavor, CompilerId, 
 import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.PackageDescription
-import Distribution.Simple.Compiler                (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
+import Distribution.Simple.Compiler                (ProfDetailLevel)
 import Distribution.Simple.InstallDirs
-import Distribution.Simple.InstallDirs.Internal
+import Distribution.Simple.InstallDirs.Internal    (PathComponent)
 import Distribution.Simple.Setup                   (HaddockTarget, TestShowDetails)
-import Distribution.System
+import Distribution.System                         (OS, Arch)
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.ComponentId              (ComponentId)
 import Distribution.Types.DumpBuildInfo            (DumpBuildInfo)
-import Distribution.Types.PackageVersionConstraint
+import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint)
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
 import Distribution.Utils.NubList                  (NubList)
 import Distribution.Utils.Path                     (SymbolicPathX)
-import Distribution.Verbosity
-import Distribution.Verbosity.Internal
+import Distribution.Verbosity                      (VerbosityLevel, VerbosityFlags)
+import Distribution.Verbosity.Internal             (VerbosityFlag)
+import Distribution.Types.DebugInfoLevel           (DebugInfoLevel)
+import Distribution.Types.OptimisationLevel        (OptimisationLevel)
 
 import qualified Distribution.Compat.NonEmptySet as NES
 

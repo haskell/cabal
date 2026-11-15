@@ -2,6 +2,12 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StaticPointers #-}
+{-# LANGUAGE CPP #-}
+
+-- Disable optimisations to work around GHC bug #16981 (fixed with GHC 10.0)
+#if __GLASGOW_HASKELL__ < 1000
+{-# OPTIONS_GHC -O0 #-}
+#endif
 
 {-# OPTIONS_GHC -Wall #-}
 

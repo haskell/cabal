@@ -128,6 +128,8 @@ import Distribution.System
 import qualified Data.Map as Map
 import Distribution.Compat.Graph (Graph)
 import qualified Distribution.Compat.Graph as Graph
+import Distribution.Types.DebugInfoLevel (DebugInfoLevel)
+import Distribution.Types.OptimisationLevel (OptimisationLevel)
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
