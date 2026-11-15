@@ -499,8 +499,9 @@ configuring individual packages.
     InstalledPackageInfo into the index, so that subsequent packages that
     depend on it have it available, without needing to re-query @ghc-pkg@.
 
-    Before the first read the insert is a no-op: the library was registered
-    into one of the DBs the read covers, so the read will include it.
+    A library registered before the first read is inserted into the index
+    the read produces. The read includes it anyway, since it was registered
+    into one of the DBs the read covers, and inserting it again is harmless.
 
   (ProjIPI3)
     Before configuring a package, we read the running InstalledPackageIndex

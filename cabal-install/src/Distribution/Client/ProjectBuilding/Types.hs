@@ -41,6 +41,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 
 import Control.Concurrent.MVar (MVar, modifyMVar, modifyMVar_, newMVar)
+import Data.Bifunctor (bimap)
 
 ------------------------------------------------------------------------------
 -- Pre-build status: result of the dry run
@@ -226,9 +227,10 @@ readProjectInstalledIndex (ProjectInstalledIndex var) =
       ipi <- load
       return (Right ipi, ipi)
 
--- | Record a library that was just registered. Before the first read this is
--- a no-op: the registration went to one of the package dbs that the read
--- covers, so the index will pick it up then.
+-- | Record a library that was just registered, in the index if it has been
+-- read, otherwise in the result of the read when it runs.
 insertProjectInstalledIndex :: InstalledPackageInfo -> ProjectInstalledIndex -> IO ()
 insertProjectInstalledIndex ipkg (ProjectInstalledIndex var) =
-  modifyMVar_ var (return . fmap (PackageIndex.insert ipkg))
+  modifyMVar_ var (return . bimap (fmap insert) insert)
+  where
+    insert = PackageIndex.insert ipkg
