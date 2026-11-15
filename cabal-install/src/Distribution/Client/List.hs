@@ -153,8 +153,8 @@ getPkgList verbosity packageDBs repoCtxt mcompprogdb listFlags pats = do
       pkgsInfoMatching
         :: [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
       pkgsInfoMatching =
-        let matchingInstalled = maybe [] (matchingPackages InstalledPackageIndex.searchWithPredicate regexps) installedPkgIndex
-            matchingSource = matchingPackages (\idx n -> concatMap snd (PackageIndex.searchWithPredicate idx n)) regexps sourcePkgIndex
+        let matchingInstalled = maybe [] (matchingPackages (\idx n -> InstalledPackageIndex.searchWithPredicate idx (n . Text.unpack)) regexps) installedPkgIndex
+            matchingSource = matchingPackages (\idx n -> concatMap snd (PackageIndex.searchWithPredicate idx (n . Text.unpack))) regexps sourcePkgIndex
          in mergePackages matchingInstalled matchingSource
 
       pkgsInfo
@@ -512,7 +512,7 @@ showPackageDetailedInfo pkginfo =
     orNotSpecified = altText null "[ Not specified ]"
 
     commaSep f = Disp.fsep . Disp.punctuate (Disp.char ',') . map f
-    dispFlag = text . unFlagName . flagName
+    dispFlag = text . Text.unpack . unFlagName . flagName
     dispYesNo True = text "Yes"
     dispYesNo False = text "No"
 

@@ -16,6 +16,8 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (groupBy)
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.Client.IndexUtils.Timestamp
 import qualified Distribution.Client.Types.Repo as Repo
 import qualified Distribution.Client.Types.RepoName as RepoName
@@ -89,8 +91,8 @@ data CabalInstallException
   | PlanPackages String
   | NoSupportForRunCommand
   | RunPhaseReached
-  | UnknownExecutable String UnitId
-  | MultipleMatchingExecutables String [String]
+  | UnknownExecutable Text UnitId
+  | MultipleMatchingExecutables Text [String]
   | CmdRunReportTargetProblems String
   | CleanAction [String]
   | ReportCannotPruneDependencies String
@@ -137,8 +139,8 @@ data CabalInstallException
   | WGetServerError FilePath String
   | Couldn'tEstablishHttpConnection
   | StatusParseFail URI String
-  | TryUpgradeToHttps [String]
-  | UnknownHttpTransportSpecified String [String]
+  | TryUpgradeToHttps [Text]
+  | UnknownHttpTransportSpecified Text [Text]
   | CmdHaddockReportTargetProblems [String]
   | FailedExtractingScriptBlock String
   | FreezeAction [String]
@@ -162,11 +164,11 @@ data CabalInstallException
   | PackageDotCabalFileNotFound FilePath
   | PkgConfParsedFailed String
   | BrokenException String
-  | WithoutProject String [String]
+  | WithoutProject Text [String]
   | PackagesAlreadyExistInEnvfile FilePath [String]
   | ConfigTests
   | ConfigBenchmarks
-  | UnknownPackage String [String]
+  | UnknownPackage Text [String]
   | InstallUnitExes String
   | SelectComponentTargetError String
   | SdistActionException [String]
@@ -444,12 +446,12 @@ exceptionMessageCabalInstall e = case e of
       ++ "phase has been reached. This is a bug."
   UnknownExecutable exeName selectedUnitId ->
     "Unknown executable "
-      ++ exeName
+      ++ Text.unpack exeName
       ++ " in package "
       ++ prettyShow selectedUnitId
   MultipleMatchingExecutables exeName elabUnitId ->
     "Multiple matching executables found matching "
-      ++ exeName
+      ++ Text.unpack exeName
       ++ ":\n"
       ++ unlines elabUnitId
   CmdRunReportTargetProblems renderProb -> renderProb
@@ -629,7 +631,7 @@ exceptionMessageCabalInstall e = case e of
     "The builtin HTTP implementation does not support HTTPS, but using "
       ++ "HTTPS for authenticated uploads is recommended. "
       ++ "The transport implementations with HTTPS support are "
-      ++ intercalate ", " str
+      ++ intercalate ", " (map Text.unpack str)
       ++ "but they require the corresponding external program to be "
       ++ "available. You can either make one available or use plain HTTP by "
       ++ "using the global flag --http-transport=plain-http (or putting the "
@@ -638,11 +640,11 @@ exceptionMessageCabalInstall e = case e of
       ++ "intercepted, but it is not as secure as using HTTPS."
   UnknownHttpTransportSpecified name str ->
     "Unknown HTTP transport specified: "
-      ++ name
+      ++ Text.unpack name
       ++ ". The supported transports are "
       ++ intercalate
         ", "
-        str
+        (map Text.unpack str)
   CmdHaddockReportTargetProblems str -> unlines str
   FailedExtractingScriptBlock eStr -> "Failed extracting script block: " ++ eStr
   FreezeAction extraArgs ->
@@ -811,7 +813,7 @@ exceptionMessageCabalInstall e = case e of
   WithoutProject str1 str2 ->
     concat $
       [ "Unknown package \""
-      , str1
+      , Text.unpack str1
       , "\". "
       ]
         ++ str2
@@ -829,7 +831,7 @@ exceptionMessageCabalInstall e = case e of
   UnknownPackage hn name ->
     concat
       [ "Unknown package \""
-      , hn
+      , Text.unpack hn
       , "\". "
       , "Did you mean any of the following?\n"
       , unlines name

@@ -2,6 +2,7 @@ module Distribution.Types.PkgconfigName
   ( PkgconfigName
   , unPkgconfigName
   , mkPkgconfigName
+  , mkPkgconfigNameText
   ) where
 
 import Distribution.Compat.Prelude
@@ -23,11 +24,11 @@ import qualified Text.PrettyPrint as Disp
 newtype PkgconfigName = PkgconfigName Text
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
--- | Convert 'PkgconfigName' to 'String'
+-- | Convert 'PkgconfigName' to 'Text'
 --
 -- @since 2.0.0.2
-unPkgconfigName :: PkgconfigName -> String
-unPkgconfigName (PkgconfigName s) = Text.unpack s
+unPkgconfigName :: PkgconfigName -> Text
+unPkgconfigName (PkgconfigName s) = s
 
 -- | Construct a 'PkgconfigName' from a 'String'
 --
@@ -39,6 +40,9 @@ unPkgconfigName (PkgconfigName s) = Text.unpack s
 -- @since 2.0.0.2
 mkPkgconfigName :: String -> PkgconfigName
 mkPkgconfigName = PkgconfigName . Text.pack
+
+mkPkgconfigNameText :: Text -> PkgconfigName
+mkPkgconfigNameText = PkgconfigName
 
 -- | 'mkPkgconfigName'
 --
@@ -53,7 +57,7 @@ instance Structured PkgconfigName
 -- "gtk+-2.0" is a valid pkg-config package _name_.  It then has a package
 -- version number like 2.10.13
 instance Pretty PkgconfigName where
-  pretty = Disp.text . unPkgconfigName
+  pretty = Disp.text . Text.unpack . unPkgconfigName
 
 instance Parsec PkgconfigName where
   parsec = mkPkgconfigName <$> P.munch1 isNameChar

@@ -8,6 +8,7 @@ where
 
 -- base
 import Data.List (isInfixOf)
+import qualified Data.Text as Text
 
 import qualified Distribution.Version as V
 
@@ -1731,7 +1732,7 @@ testCyclicDependencyErrorMessages name =
 
     -- Solve for pkg-D and pkg-E last.
     goals :: [ExampleVar]
-    goals = [P QualNone ("pkg-" ++ [c]) | c <- ['A' .. 'E']]
+    goals = [P QualNone (Text.snoc (Text.pack "pkg-") c) | c <- ['A' .. 'E']]
 
 -- | Check that the solver can backtrack after encountering the SIR (issue #2843)
 --

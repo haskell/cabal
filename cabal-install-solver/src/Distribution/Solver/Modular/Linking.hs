@@ -15,6 +15,7 @@ import Control.Monad.Trans (lift)
 import Data.Map ((!))
 import qualified Data.Map         as M
 import qualified Data.Set         as S
+import qualified Data.Text        as Text
 import qualified Data.Traversable as T
 
 import Distribution.Client.Utils.Assertion
@@ -381,7 +382,7 @@ verifyFlag' (FN pn fn) lg = do
     if allEqual (catMaybes vals) -- We ignore not-yet assigned flags
       then return ()
       else conflict ( CS.fromList (map F flags) `CS.union` lgConflictSet lg
-                    , "flag \"" ++ unFlagName fn ++ "\" incompatible"
+                    , "flag \"" ++ Text.unpack (unFlagName fn) ++ "\" incompatible"
                     )
 
 -- | Verify that all packages in the link group agree on stanza assignments

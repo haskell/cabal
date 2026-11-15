@@ -489,7 +489,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.installedComponentId_ = componentComponentId clbi
     , IPI.instantiatedWith = expectLibraryComponent (maybeComponentInstantiatedWith clbi)
     , IPI.sourceLibName = libName lib
-    , IPI.compatPackageKey = expectLibraryComponent (fmap T.pack (maybeComponentCompatPackageKey clbi))
+    , IPI.compatPackageKey = expectLibraryComponent (maybeComponentCompatPackageKey clbi)
     , -- If GHC >= 8.4 we register with SDPX, otherwise with legacy license
       IPI.license =
         if ghc84
@@ -522,13 +522,13 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
         [bytecodelibdir installDirs | hasLibrary && withBytecodeLib lbi]
     , IPI.dataDir = datadir installDirs
     , IPI.hsLibraries =
-        [T.pack (getHSLibraryName (componentUnitId clbi)) | hasLibrary]
+        [getHSLibraryName (componentUnitId clbi) | hasLibrary]
           ++ extraBundledLibs bi
     , IPI.extraLibraries = extraLibs bi
     , IPI.extraLibrariesStatic = extraLibsStatic bi
     , IPI.extraGHCiLibraries = extraGHCiLibs bi
     , IPI.includeDirs = absinc ++ adjustRelIncDirs relinc
-    , IPI.includes = map (T.pack . getSymbolicPath) $ includes bi
+    , IPI.includes = map getSymbolicPath $ includes bi
     , IPI.depends = depends
     , IPI.abiDepends = [] -- due to #5465
     , IPI.ccOptions = [] -- Note. NOT ccOptions bi!

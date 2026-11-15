@@ -15,6 +15,7 @@ import Prelude ()
 import qualified Data.Map as M
 import qualified Data.List as L
 import qualified Data.Set as S
+import qualified Data.Text as Text
 import Distribution.Verbosity
 
 import Distribution.Compiler (CompilerInfo)
@@ -269,5 +270,5 @@ _removeGR = trav go
    dummy =
        DependencyGoal $
        DependencyReason
-           (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
+           (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageNameST $ Text.singleton '$'))
            M.empty S.empty

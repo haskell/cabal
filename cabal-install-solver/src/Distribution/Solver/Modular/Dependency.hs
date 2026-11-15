@@ -41,6 +41,7 @@ module Distribution.Solver.Modular.Dependency (
 import Prelude ()
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Data.Text as Text
 import Distribution.Solver.Compat.Prelude hiding (pi)
 
 import Language.Haskell.Extension (Extension(..), Language(..))
@@ -148,7 +149,7 @@ showDependencyReason :: DependencyReason QPN -> String
 showDependencyReason (DependencyReason qpn flags stanzas) =
     unwords $
         showQPN qpn
-      : map (uncurry showFlagValue) (M.toList flags)
+      : map (Text.unpack . uncurry showFlagValue) (M.toList flags)
      ++ map (`showSBool` True) (S.toList stanzas)
 
 -- | Options for goal qualification (used in 'qualifyDeps')
@@ -222,7 +223,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool
-    qBase dep = qoBaseShim && unPackageName dep == "base"
+    qBase dep = qoBaseShim && unPackageNameST dep == Text.pack "base"
 
     -- Should we qualify this goal with the 'Setup' package path?
     qSetup :: Component -> Bool

@@ -141,6 +141,7 @@ executable test-runtime-deps
     , exceptions
     , filepath
     , process
+    , text
     , time
     , transformers
   main-is: static/Main.hs

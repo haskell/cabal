@@ -31,6 +31,8 @@ import Distribution.Utils.Generic (isAscii)
 import Distribution.Version
 
 import Control.Monad
+import Data.Text (Text)
+import qualified Data.Text as Text
 
 -- Type of FilePath.
 data PathKind
@@ -44,10 +46,10 @@ data PathKind
 -- in Cabal-syntax.
 type CabalField = String
 
-checkCustomField :: Monad m => (String, String) -> CheckM m ()
+checkCustomField :: Monad m => (Text, Text) -> CheckM m ()
 checkCustomField (n, _) =
   checkP
-    (any (not . isAscii) n)
+    (Text.any (not . isAscii) n)
     (PackageDistInexcusable $ NonASCIICustomField [n])
 
 -- ------------------------------------------------------------
@@ -119,20 +121,20 @@ partitionDeps ads ns ds = do
 checkPVP
   :: Monad m
   => (Dependency -> Bool)
-  -> (String -> PackageCheck) -- Warn message depends on name
+  -> (Text -> PackageCheck) -- Warn message depends on name
   -- (e.g. "base", "Cabal").
   -> [Dependency]
   -> CheckM m ()
 checkPVP p ckf ds = do
   let ods = filter p ds
-  mapM_ (tellP . ckf . unPackageName . depPkgName) ods
+  mapM_ (tellP . ckf . unPackageNameST . depPkgName) ods
 
 -- PVP dependency check for a list of dependencies. Some code duplication
 -- is sadly needed to provide more ergonimic error messages.
 checkPVPs
   :: Monad m
   => (Dependency -> Bool)
-  -> ( [String]
+  -> ( [Text]
        -> PackageCheck -- Grouped error message, depends on a
        -- set of names.
      )
@@ -143,7 +145,7 @@ checkPVPs p cf ds
   | otherwise = tellP (cf ns)
   where
     ods = filter p ds
-    ns = map (unPackageName . depPkgName) ods
+    ns = map (unPackageNameST . depPkgName) ods
 
 checkDependencyVersionRange :: (VersionRange -> Bool) -> Dependency -> Bool
 checkDependencyVersionRange p (Dependency _ ver _) = p ver

@@ -41,6 +41,7 @@ import Distribution.Verbosity
 
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Text as Text
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -97,7 +98,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
 
     -- Run test executable
     let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
-        tixFile = i $ tixFilePath distPref way testName'
+        tixFile = i $ tixFilePath distPref way $ Text.unpack testName'
 
     shellEnv <-
       getFullEnvironment
@@ -151,7 +152,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
               (fromFlag $ testHumanLog flags)
               pkg_descr
               lbi
-              (unUnqualComponentName $ testSuiteName l)
+              (unUnqualComponentNameST $ testSuiteName l)
               (testLogs l)
     -- Generate TestSuiteLog from executable exit code and a machine-
     -- readable test log
@@ -203,7 +204,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   where
     i = LBI.interpretSymbolicPathLBI lbi
     common = testCommonFlags flags
-    testName' = unUnqualComponentName $ PD.testName suite
+    testName' = unUnqualComponentNameST $ PD.testName suite
 
     testLogDir = distPref </> makeRelativePathEx "test"
     openCabalTemp = do
@@ -284,7 +285,7 @@ stubMain tests = do
       _ ->
         return $
           TestLog
-            { testName = "Cabal test suite exception"
+            { testName = Text.pack "Cabal test suite exception"
             , testOptionsReturned = []
             , testResult = Error $ show e
             }
@@ -309,7 +310,7 @@ stubRunTests tests = do
         finish (Finished result) =
           return
             TestLog
-              { testName = name t
+              { testName = Text.pack $ name t
               , testOptionsReturned = defaultOptions t
               , testResult = result
               }

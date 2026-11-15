@@ -29,6 +29,7 @@ import Distribution.Client.Compat.Prelude hiding (empty, head, readFile, writeFi
 import Prelude hiding (readFile, writeFile)
 
 import qualified Data.Set as Set (member)
+import qualified Data.Text as Text
 
 import Distribution.CabalSpecVersion (showCabalSpecVersion)
 import Distribution.Client.Init.Defaults
@@ -62,7 +63,7 @@ import System.FilePath ((<.>), (</>))
 
 writeProject :: Interactive m => ProjectSettings -> m ()
 writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
-  | null pkgName = do
+  | Text.null pkgName = do
       message opts T.Error "no package name given, so no .cabal file can be generated\n"
   | otherwise = do
       -- clear prompt history a bit"
@@ -100,7 +101,7 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
       -- clear out last line for presentation.
       T.putStrLn ""
   where
-    pkgName = unPackageName $ _optPkgName opts
+    pkgName = unPackageNameST $ _optPkgName opts
 
 prepareLibTarget
   :: Interactive m

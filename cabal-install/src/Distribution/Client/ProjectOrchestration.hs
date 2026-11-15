@@ -277,7 +277,7 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
     configureTransport
       verbosity
       (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
-      (fmap Text.unpack . flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
+      (flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
 
   (projectConfig, localPackages) <-
     rebuildProjectConfig
@@ -1168,7 +1168,7 @@ printPlan
             "("
               ++ intercalate
                 ", "
-                [ showComponentTarget (packageId elab) t
+                [ Text.unpack $ showComponentTarget (packageId elab) t
                 | t <- elabBuildTargets elab
                 ]
               ++ ")"

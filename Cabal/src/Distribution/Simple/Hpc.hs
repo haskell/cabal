@@ -48,6 +48,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity (Verbosity ())
 import Distribution.Version (anyVersion)
 
+import qualified Data.Text as Text
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 
 -- -------------------------------------------------------------------------
@@ -134,7 +135,7 @@ markupPackage
   -> [TestSuite]
   -> IO ()
 markupPackage verbosity HPCMarkupInfo{pathsToLibsArtifacts, libsModulesToInclude} lbi testDistPref pkg_descr suites = do
-  let tixFiles = map (tixFilePath testDistPref way) testNames
+  let tixFiles = map (tixFilePath testDistPref way . Text.unpack) testNames
       mbWorkDir = mbWorkDirLBI lbi
       i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
   tixFilesExist <- traverse (doesFileExist . i) tixFiles
@@ -180,5 +181,5 @@ markupPackage verbosity HPCMarkupInfo{pathsToLibsArtifacts, libsModulesToInclude
         </> "hpc_index.html"
   where
     way = guessWay lbi
-    testNames = fmap (unUnqualComponentName . testName) suites
+    testNames = fmap (unUnqualComponentNameST . testName) suites
     mixDirs = map ((`mixDir` way) . coerceSymbolicPath) pathsToLibsArtifacts

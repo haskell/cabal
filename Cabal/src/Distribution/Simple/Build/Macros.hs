@@ -37,6 +37,7 @@ import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Version
 
+import qualified Data.Text as Text
 import qualified Distribution.Simple.Build.Macros.Z as Z
 
 -- | The contents of the @cabal_macros.h@ for the given configured package.
@@ -59,11 +60,11 @@ generateCabalMacrosHeader pkg_descr lbi clbi =
           ]
       , Z.zPackageKey = case clbi of
           LibComponentLocalBuildInfo{componentCompatPackageKey = compatPackageKey} -> compatPackageKey
-          _ -> ""
-      , Z.zComponentId = prettyShow (componentComponentId clbi)
+          _ -> mempty
+      , Z.zComponentId = Text.pack (prettyShow (componentComponentId clbi))
       , Z.zPackageVersion = pkgVersion (package pkg_descr)
-      , Z.zNotNull = not . null
-      , Z.zManglePkgName = map fixchar . unPackageName
+      , Z.zNotNull = not . Text.null
+      , Z.zManglePkgName = Text.map fixchar . unPackageNameST
       , Z.zMangleStr = map fixchar
       }
   where
@@ -82,11 +83,11 @@ generatePackageVersionMacros ver pkgids =
     Z.Z
       { Z.zPackages = map mkZPackage pkgids
       , Z.zTools = []
-      , Z.zPackageKey = ""
-      , Z.zComponentId = ""
+      , Z.zPackageKey = mempty
+      , Z.zComponentId = mempty
       , Z.zPackageVersion = ver
-      , Z.zNotNull = not . null
-      , Z.zManglePkgName = map fixchar . unPackageName
+      , Z.zNotNull = not . Text.null
+      , Z.zManglePkgName = Text.map fixchar . unPackageNameST
       , Z.zMangleStr = map fixchar
       }
 

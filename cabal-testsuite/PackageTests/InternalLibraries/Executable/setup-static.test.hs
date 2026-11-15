@@ -1,8 +1,7 @@
-{-# LANGUAGE CPP #-}
-
 import Test.Cabal.Prelude
 import Control.Monad.IO.Class
 import Control.Monad
+import qualified Data.Text as Text
 import Distribution.System (buildPlatform)
 import Distribution.Package
 import Distribution.Simple.Configure
@@ -13,10 +12,7 @@ import Distribution.Simple.Compiler
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.UnqualComponentName
-#if MIN_VERSION_Cabal(3,11,0)
 import Distribution.Utils.Path (makeSymbolicPath)
-#endif
-
 import System.Directory
 
 -- Internal libraries used by a statically linked executable:
@@ -34,9 +30,7 @@ main = setupAndCabalTest $ do
             dist_dir <- fmap testDistDir getTestEnv
             lbi <- liftIO $
                      getPersistBuildConfig
-#if MIN_VERSION_Cabal(3,11,0)
                      Nothing $ makeSymbolicPath
-#endif
                      dist_dir
             let pkg_descr = localPkgDescr lbi
                 compiler_id = compilerId (compiler lbi)
@@ -48,16 +42,16 @@ main = setupAndCabalTest $ do
             assertBool "interface files should be installed"
                 =<< liftIO (doesFileExist (dir </> "Foo.hi"))
             assertBool "static library should be installed"
-                =<< liftIO (doesFileExist (dir </> mkLibName uid))
+                =<< liftIO (doesFileExist (dir </> Text.unpack (mkLibName uid)))
             if is_dynamic
               then
                 assertBool "dynamic library MUST be installed"
-                    =<< liftIO (doesFileExist (dyndir </> mkSharedLibName
-                                               buildPlatform compiler_id uid))
+                    =<< liftIO (doesFileExist (dyndir </> Text.unpack (mkSharedLibName
+                                               buildPlatform compiler_id uid)))
               else
                 assertBool "dynamic library should be installed"
-                    =<< liftIO (doesFileExist (dyndir </> mkSharedLibName
-                                               buildPlatform compiler_id uid))
+                    =<< liftIO (doesFileExist (dyndir </> Text.unpack (mkSharedLibName
+                                               buildPlatform compiler_id uid)))
             fails $ ghcPkg "describe" ["foo"]
             -- clean away the dist directory so that we catch accidental
             -- dependence on the inplace files

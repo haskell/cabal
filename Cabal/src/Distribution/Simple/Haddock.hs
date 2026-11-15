@@ -36,6 +36,8 @@ import qualified Distribution.Simple.GHC as GHC
 -- local
 
 import Data.Semigroup (All (..), Any (..))
+import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
 import Distribution.Backpack (OpenModule)
 import Distribution.Backpack.DescribeUnitId
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -83,10 +85,11 @@ import Distribution.Version
 
 import Data.Bool (bool)
 import Data.Either (lefts, rights)
+import Data.Text (Text)
 import qualified Data.Text as T
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (isAbsolute, joinPath, normalise, splitDirectories)
-import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
+import System.IO (hClose, hSetEncoding, utf8)
 
 -- ------------------------------------------------------------------------------
 -- Types
@@ -98,7 +101,7 @@ data HaddockArgs = HaddockArgs
   -- ^ Path to the interface file, relative to argOutputDir, required.
   , argPackageName :: Flag PackageIdentifier
   -- ^ Package name, required.
-  , argComponentName :: Flag String
+  , argComponentName :: Flag Text
   -- ^ Optional name used to construct haddock's `--package-name` option for
   -- various components (tests suites, sublibriaries, etc).
   , argHideModules :: (All, [ModuleName.ModuleName])
@@ -130,9 +133,9 @@ data HaddockArgs = HaddockArgs
   -- ^ [(Interface file, URL to the HTML docs and hyperlinked-source for links)].
   , argOutputDir :: Directory
   -- ^ Where to generate the documentation.
-  , argTitle :: Flag String
+  , argTitle :: Flag Text
   -- ^ Page title, required.
-  , argPrologue :: Flag String
+  , argPrologue :: Flag Text
   -- ^ Prologue text, required for 'haddock', ignored by 'haddocks'.
   , argPrologueFile :: Flag FilePath
   -- ^ Prologue file name, ignored by 'haddock', optional for 'haddocks'.
@@ -634,18 +637,17 @@ fromPackageDescription _haddockTarget pkg_descr =
     , argOutputDir = Dir $ ("doc" :: String) </> "html"
     , argPrologue =
         Flag $
-          T.unpack $
-            if T.null desc
-              then synopsis pkg_descr
-              else desc
-    , argTitle = Flag $ showPkg <> subtitle
+          if T.null desc
+            then synopsis pkg_descr
+            else desc
+    , argTitle = Flag $ T.pack showPkg <> subtitle
     }
   where
     desc = description pkg_descr
     showPkg = prettyShow (packageId pkg_descr)
     subtitle
-      | T.null (synopsis pkg_descr) = ""
-      | otherwise = ": " ++ T.unpack (synopsis pkg_descr)
+      | T.null (synopsis pkg_descr) = mempty
+      | otherwise = T.pack ": " <> synopsis pkg_descr
 
 componentGhcOptions
   :: VerbosityLevel
@@ -829,7 +831,7 @@ fromExecutable verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarge
             }
   return
     args'
-      { argTitle = Flag $ unUnqualComponentName $ exeName exe
+      { argTitle = Flag $ unUnqualComponentNameST $ exeName exe
       , -- we need to accommodate `argOutputDir`
         argBaseUrl = case argBaseUrl args' of
           Flag url -> Flag $ ".." </> url
@@ -878,8 +880,8 @@ fromTest verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget pkg_
             }
   return
     args'
-      { argTitle = Flag $ prettyShow (packageName pkg_descr)
-      , argComponentName = Flag $ prettyShow (packageName pkg_descr) ++ ":" ++ unUnqualComponentName (testName test)
+      { argTitle = Flag $ Text.pack (prettyShow (packageName pkg_descr))
+      , argComponentName = Flag $ Text.pack (prettyShow (packageName pkg_descr)) <> Text.cons ':' (unUnqualComponentNameST (testName test))
       , -- we need to accommodate `argOutputDir`
         argBaseUrl = case argBaseUrl args' of
           Flag url -> Flag $ ".." </> url
@@ -928,8 +930,8 @@ fromBenchmark verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget
             }
   return
     args'
-      { argTitle = Flag $ prettyShow (packageName pkg_descr)
-      , argComponentName = Flag $ prettyShow (packageName pkg_descr) ++ ":" ++ unUnqualComponentName (benchmarkName bench)
+      { argTitle = Flag $ Text.pack (prettyShow (packageName pkg_descr))
+      , argComponentName = Flag $ Text.pack (prettyShow (packageName pkg_descr)) <> Text.cons ':' (unUnqualComponentNameST (benchmarkName bench))
       , -- we need to accommodate `argOutputDir`
         argBaseUrl = case argBaseUrl args' of
           Flag url -> Flag $ ".." </> url
@@ -978,7 +980,7 @@ fromForeignLib verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarge
             }
   return
     args'
-      { argTitle = Flag $ unUnqualComponentName $ foreignLibName flib
+      { argTitle = Flag $ unUnqualComponentNameST $ foreignLibName flib
       , -- we need to accommodate `argOutputDir`
         argBaseUrl = case argBaseUrl args' of
           Flag url -> Flag $ ".." </> url
@@ -1153,7 +1155,7 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
       withTempFileEx tmpFileOpts "haddock-prologue.txt" $
         \prologueFileName h -> do
           when haddockSupportsUTF8 (hSetEncoding h utf8)
-          hPutStrLn h prologueText
+          Text.hPutStrLn h prologueText
           hClose h
           withPrologueArgs ["--prologue=" ++ u prologueFileName]
     (NoFlag, NoFlag) ->
@@ -1208,7 +1210,7 @@ renderPureArgs version comp platform args =
             ( \pkg ->
                 [ "--package-name="
                     ++ case argComponentName args of
-                      Flag name -> name
+                      Flag name -> Text.unpack name
                       _ -> prettyShow (pkgName pkg)
                 , "--package-version=" ++ prettyShow (pkgVersion pkg)
                 ]
@@ -1265,6 +1267,7 @@ renderPureArgs version comp platform args =
               id
               (++ " (internal documentation)")
               (getAny $ argIgnoreExports args)
+            . Text.unpack
         )
         . flagToMaybe
         . argTitle
@@ -1657,7 +1660,7 @@ hscolour'
         where
           outFile m =
             i outputDir
-              </> intercalate "-" (ModuleName.components m)
+              </> Text.unpack (Text.intercalate (Text.singleton '-') (ModuleName.componentsText m))
                 <.> "html"
 
 haddockToHscolour :: HaddockFlags -> HscolourFlags

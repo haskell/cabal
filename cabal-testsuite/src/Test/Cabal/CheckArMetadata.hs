@@ -16,6 +16,7 @@ import Test.Cabal.Prelude
 
 import Data.ByteString qualified as BS
 import Data.Char (isSpace)
+import Data.Text qualified as Text
 import System.IO
 
 import Distribution.Package (getHSLibraryName)
@@ -27,7 +28,7 @@ checkMetadata :: LocalBuildInfo -> FilePath -> IO ()
 checkMetadata lbi dir = withBinaryFile path ReadMode $ \h ->
   hFileSize h >>= checkArchive h
   where
-    path = dir </> "lib" ++ getHSLibraryName (localUnitId lbi) ++ ".a"
+    path = dir </> "lib" ++ Text.unpack (getHSLibraryName (localUnitId lbi)) ++ ".a"
 
     checkError msg =
       assertFailure

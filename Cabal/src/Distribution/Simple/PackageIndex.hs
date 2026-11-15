@@ -112,6 +112,8 @@ import qualified Data.Array as Array
 import qualified Data.Graph as Graph
 import Data.List as List (deleteBy, deleteFirstsBy, groupBy)
 import qualified Data.List.NonEmpty as NE
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Data.Tree as Tree
 import Distribution.Compat.Stack
 
@@ -570,37 +572,37 @@ matchingDependencies versionRange versions =
 -- have an ambiguous result, and we get back all the versions of all the
 -- packages. The list of ambiguous results is split by exact package name. So
 -- it is a non-empty list of non-empty lists.
-searchByName :: PackageIndex a -> String -> SearchResult [a]
+searchByName :: PackageIndex a -> Text -> SearchResult [a]
 searchByName index name =
   -- Don't match internal packages
-  case [ pkgs | pkgs@((pname, LMainLibName), _) <- Map.toList (packageIdIndex index), lowercase (unPackageName pname) == lname
+  case [ pkgs | pkgs@((pname, LMainLibName), _) <- Map.toList (packageIdIndex index), Text.toLower (unPackageNameST pname) == lname
        ] of
     [] -> None
     [(_, pvers)] -> Unambiguous (concat (Map.elems pvers))
-    pkgss -> case find ((mkPackageName name ==) . fst . fst) pkgss of
+    pkgss -> case find ((mkPackageNameST name ==) . fst . fst) pkgss of
       Just (_, pvers) -> Unambiguous (concat (Map.elems pvers))
       Nothing -> Ambiguous (map (concat . Map.elems . snd) pkgss)
   where
-    lname = lowercase name
+    lname = Text.toLower name
 
 data SearchResult a = None | Unambiguous a | Ambiguous [a]
 
 -- | Does a case-insensitive substring search by package name.
 --
 -- That is, all packages that contain the given string in their name.
-searchByNameSubstring :: PackageIndex a -> String -> [a]
+searchByNameSubstring :: PackageIndex a -> Text -> [a]
 searchByNameSubstring index searchterm =
-  searchWithPredicate index (\n -> lsearchterm `isInfixOf` lowercase n)
+  searchWithPredicate index (\n -> lsearchterm `Text.isInfixOf` Text.toLower n)
   where
-    lsearchterm = lowercase searchterm
+    lsearchterm = Text.toLower searchterm
 
 -- | @since 3.4.0.0
-searchWithPredicate :: PackageIndex a -> (String -> Bool) -> [a]
+searchWithPredicate :: PackageIndex a -> (Text -> Bool) -> [a]
 searchWithPredicate index predicate =
   [ pkg
   | -- Don't match internal packages
   ((pname, LMainLibName), pvers) <- Map.toList (packageIdIndex index)
-  , predicate (unPackageName pname)
+  , predicate (unPackageNameST pname)
   , pkgs <- Map.elems pvers
   , pkg <- pkgs
   ]

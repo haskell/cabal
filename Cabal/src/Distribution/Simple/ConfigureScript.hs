@@ -43,6 +43,8 @@ import Distribution.Compat.GetShortPathName (getShortPathName)
 
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map as Map
+import Data.Text (Text)
+import qualified Data.Text as Text
 
 runConfigureScript
   :: VerbosityHandles
@@ -119,15 +121,15 @@ runConfigureScript verbHandles cfg flags programDb hp = do
   let
     -- Convert a flag name to name of environment variable to represent its
     -- value for the configure script.
-    flagEnvVar :: FlagName -> String
-    flagEnvVar flag = "CABAL_FLAG_" ++ map f (unFlagName flag)
+    flagEnvVar :: FlagName -> Text
+    flagEnvVar flag = Text.pack "CABAL_FLAG_" <> Text.map f (unFlagName flag)
       where
         f c
           | isAlphaNum c = c
           | otherwise = '_'
     -- A map from such env vars to every flag name and value where the name
     -- name maps to that that env var.
-    cabalFlagMap :: Map String (NonEmpty (FlagName, Bool))
+    cabalFlagMap :: Map Text (NonEmpty (FlagName, Bool))
     cabalFlagMap =
       Map.fromListWith
         (<>)
@@ -135,24 +137,24 @@ runConfigureScript verbHandles cfg flags programDb hp = do
         | (flag, bool) <- unFlagAssignment flags
         ]
   -- A map from env vars to flag names to the single flag we will go with
-  cabalFlagMapDeconflicted :: Map String (FlagName, Bool) <-
+  cabalFlagMapDeconflicted :: Map Text (FlagName, Bool) <-
     flip Map.traverseWithKey cabalFlagMap $ \envVar -> \case
       -- No conflict: no problem
       singleFlag :| [] -> pure singleFlag
       -- Conflict: warn and discard all but first
       collidingFlags@(firstFlag :| _ : _) -> do
-        let quote s = "'" ++ s ++ "'"
+        let quote s = Text.cons '\'' $ Text.snoc s '\''
             toName = quote . unFlagName . fst
-            renderedList = intercalate ", " $ NonEmpty.toList $ toName <$> collidingFlags
+            renderedList = Text.intercalate (Text.pack ", ") $ NonEmpty.toList $ toName <$> collidingFlags
         warn verbosity $
           unwords
             [ "Flags"
-            , renderedList
+            , Text.unpack renderedList
             , "all map to the same environment variable"
-            , quote envVar
+            , Text.unpack $ quote envVar
             , "causing a collision."
             , "The value first flag"
-            , toName firstFlag
+            , Text.unpack $ toName firstFlag
             , "will be used."
             ]
         pure firstFlag
@@ -163,8 +165,8 @@ runConfigureScript verbHandles cfg flags programDb hp = do
         , let val = if bool then "1" else "0"
         ]
           ++ [
-               ( "CABAL_FLAGS"
-               , Just $ unwords [showFlagValue fv | fv <- unFlagAssignment flags]
+               ( Text.pack "CABAL_FLAGS"
+               , Just $ Text.unpack $ Text.unwords [showFlagValue fv | fv <- unFlagAssignment flags]
                )
              ]
   let extraPath = fromNubList $ configProgramPathExtra cfg
@@ -176,9 +178,9 @@ runConfigureScript verbHandles cfg flags programDb hp = do
           ((intercalate spSep extraPath ++ spSep) ++)
           $ lookup "PATH" env
       overEnv =
-        ("CFLAGS", Just (mkFlagsEnv ccFlags "CFLAGS"))
-          : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
-          ++ [("PATH", Just pathEnv) | not (null extraPath)]
+        (Text.pack "CFLAGS", Just (mkFlagsEnv ccFlags "CFLAGS"))
+          : [(Text.pack "CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
+          ++ [(Text.pack "PATH", Just pathEnv) | not (null extraPath)]
           ++ cabalFlagEnv
       maybeHostFlag = ["--host=" ++ show (pretty hp) | hp /= buildPlatform]
       args' =
@@ -197,7 +199,7 @@ runConfigureScript verbHandles cfg flags programDb hp = do
       let build_in = interpretSymbolicPath mbWorkDir build_dir
       createDirectoryIfMissing True build_in
       runProgramInvocation verbosity $
-        (programInvocation (sh{programOverrideEnv = overEnv}) args')
+        (programInvocation (sh{programOverrideEnv = map (first Text.unpack) overEnv}) args')
           { progInvokeCwd = Just build_in
           }
     Nothing -> dieWithException verbosity NotFoundMsg

@@ -1,6 +1,7 @@
 -- | Tests for detecting space leaks in the dependency solver.
 module UnitTests.Distribution.Solver.Modular.MemoryUsage (tests) where
 
+import qualified Data.Text as Text
 import Test.Tasty (TestTree)
 
 import UnitTests.Distribution.Solver.Modular.DSL
@@ -24,7 +25,7 @@ basicTest :: String -> SolverTest
 basicTest name =
   disableBackjumping $
     disableFineGrainedConflicts $
-      mkTest pkgs name ["target"] anySolverFailure
+      mkTest pkgs name [Text.pack "target"] anySolverFailure
   where
     n :: Int
     n = 18
@@ -32,7 +33,7 @@ basicTest name =
     pkgs :: ExampleDb
     pkgs =
       map Right $
-        [exAv "target" 1 [ExAny $ pkgName 1]]
+        [exAv (Text.pack "target") 1 [ExAny $ pkgName 1]]
           ++ [ exAv (pkgName i) v [ExRange (pkgName $ i + 1) 2 4]
              | i <- [1 .. n]
              , v <- [2, 3]
@@ -40,7 +41,7 @@ basicTest name =
           ++ [exAv (pkgName $ n + 1) 1 []]
 
     pkgName :: Int -> ExamplePkgName
-    pkgName x = "pkg-" ++ show x
+    pkgName x = Text.pack $ "pkg-" ++ show x
 
 -- | This test is similar to 'basicTest', except that it has one package with n
 -- flags, flag-1 through flag-n. The solver assigns flags in order, so it
@@ -51,7 +52,7 @@ flagsTest name =
   disableBackjumping $
     disableFineGrainedConflicts $
       goalOrder orderedFlags $
-        mkTest pkgs name ["pkg"] anySolverFailure
+        mkTest pkgs name [Text.pack "pkg"] anySolverFailure
   where
     n :: Int
     n = 16
@@ -59,14 +60,14 @@ flagsTest name =
     pkgs :: ExampleDb
     pkgs =
       [ Right $
-          exAv "pkg" 1 $
-            [exFlagged (numberedFlag n) [ExAny "unknown1"] [ExAny "unknown2"]]
+          exAv (Text.pack "pkg") 1 $
+            [exFlagged (numberedFlag n) [ExAny $ Text.pack "unknown1"] [ExAny $ Text.pack "unknown2"]]
               -- The remaining flags have no effect:
               ++ [exFlagged (numberedFlag i) [] [] | i <- [1 .. n - 1]]
       ]
 
     orderedFlags :: [ExampleVar]
-    orderedFlags = [F QualNone "pkg" (numberedFlag i) | i <- [1 .. n]]
+    orderedFlags = [F QualNone (Text.pack "pkg") (numberedFlag i) | i <- [1 .. n]]
 
 -- | Test for a space leak caused by sharing of search trees under packages with
 -- link choices (issue #2899).
@@ -88,7 +89,7 @@ issue2899 name =
   disableBackjumping $
     disableFineGrainedConflicts $
       goalOrder goals $
-        mkTest pkgs name ["target"] anySolverFailure
+        mkTest pkgs name [Text.pack "target"] anySolverFailure
   where
     n :: Int
     n = 16
@@ -96,8 +97,8 @@ issue2899 name =
     pkgs :: ExampleDb
     pkgs =
       map Right $
-        [ exAv "target" 1 [ExAny "setup-dep"] `withSetupDeps` [ExAny "setup-dep"]
-        , exAv "setup-dep" 1 [ExAny $ pkgName 1]
+        [ exAv (Text.pack "target") 1 [ExAny $ Text.pack "setup-dep"] `withSetupDeps` [ExAny $ Text.pack "setup-dep"]
+        , exAv (Text.pack "setup-dep") 1 [ExAny $ pkgName 1]
         ]
           ++ [ exAv (pkgName i) v [ExAny $ pkgName (i + 1)]
              | i <- [1 .. n]
@@ -105,10 +106,10 @@ issue2899 name =
              ]
 
     pkgName :: Int -> ExamplePkgName
-    pkgName x = "pkg-" ++ show x
+    pkgName x = Text.pack $ "pkg-" ++ show x
 
     goals :: [ExampleVar]
-    goals = [P QualNone "setup-dep", P (QualSetup "target") "setup-dep"]
+    goals = [P QualNone $ Text.pack "setup-dep", P (QualSetup $ Text.pack "target") $ Text.pack "setup-dep"]
 
 -- | Test for an issue related to lifting dependencies out of conditionals when
 -- converting a PackageDescription to the solver's internal representation.
@@ -151,7 +152,7 @@ issue2899 name =
 -- build-tool dependencies.
 duplicateDependencies :: String -> SolverTest
 duplicateDependencies name =
-  mkTest pkgs name ["A"] $ solverSuccess [("A", 1), ("B", 1)]
+  mkTest pkgs name [Text.pack "A"] $ solverSuccess [(Text.pack "A", 1), (Text.pack "B", 1)]
   where
     copies, depth :: Int
     copies = 50
@@ -159,8 +160,8 @@ duplicateDependencies name =
 
     pkgs :: ExampleDb
     pkgs =
-      [ Right $ exAv "A" 1 (dependencyTree 1)
-      , Right $ exAv "B" 1 [] `withExe` exExe "exe" []
+      [ Right $ exAv (Text.pack "A") 1 (dependencyTree 1)
+      , Right $ exAv (Text.pack "B") 1 [] `withExe` exExe (Text.pack "exe") []
       ]
 
     dependencyTree :: Int -> [ExampleDependency]
@@ -174,8 +175,8 @@ duplicateDependencies name =
           ]
       where
         buildDepends =
-          replicate copies (ExFix "B" 1)
-            ++ replicate copies (ExBuildToolFix "B" "exe" 1)
+          replicate copies (ExFix (Text.pack "B") 1)
+            ++ replicate copies (ExBuildToolFix (Text.pack "B") (Text.pack "exe") 1)
 
 -- | This test is similar to duplicateDependencies, except that every dependency
 -- on B is replaced by a conditional that contains B in both branches. It tests
@@ -184,7 +185,7 @@ duplicateDependencies name =
 -- are lifted out of conditionals.
 duplicateFlaggedDependencies :: String -> SolverTest
 duplicateFlaggedDependencies name =
-  mkTest pkgs name ["A"] $ solverSuccess [("A", 1), ("B", 1)]
+  mkTest pkgs name [Text.pack "A"] $ solverSuccess [(Text.pack "A", 1), (Text.pack "B", 1)]
   where
     copies, depth :: Int
     copies = 15
@@ -192,8 +193,8 @@ duplicateFlaggedDependencies name =
 
     pkgs :: ExampleDb
     pkgs =
-      [ Right $ exAv "A" 1 (dependencyTree 1)
-      , Right $ exAv "B" 1 [] `withExe` exExe "exe" []
+      [ Right $ exAv (Text.pack "A") 1 (dependencyTree 1)
+      , Right $ exAv (Text.pack "B") 1 [] `withExe` exExe (Text.pack "exe") []
       ]
 
     dependencyTree :: Int -> [ExampleDependency]
@@ -209,10 +210,10 @@ duplicateFlaggedDependencies name =
         flaggedDeps = zipWith ($) (replicate copies flaggedDep) [0 :: Int ..]
         flaggedDep m =
           exFlagged
-            (numberedFlag n ++ "-" ++ show m)
+            (numberedFlag n <> Text.cons '-' (Text.pack (show m)))
             buildDepends
             buildDepends
-        buildDepends = [ExFix "B" 1, ExBuildToolFix "B" "exe" 1]
+        buildDepends = [ExFix (Text.pack "B") 1, ExBuildToolFix (Text.pack "B") (Text.pack "exe") 1]
 
 numberedFlag :: Int -> ExampleFlagName
-numberedFlag n = "flag-" ++ show n
+numberedFlag n = Text.pack $ "flag-" ++ show n

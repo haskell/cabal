@@ -329,7 +329,7 @@ hackProjectConfigShared config =
         -- "pkgname -any" as either any version or disabled flag "any".
         let ambiguous (UserConstraint _ (PackagePropertyFlags flags), _) =
               (not . null)
-                [ () | (name, False) <- unFlagAssignment flags, "any" `isPrefixOf` unFlagName name
+                [ () | (name, False) <- unFlagAssignment flags, Text.pack "any" `Text.isPrefixOf` unFlagName name
                 ]
             ambiguous _ = False
          in filter (not . ambiguous) (projectConfigConstraints config)

@@ -895,11 +895,11 @@ preprocessExtras verbosity comp lbi = case comp of
     -- if a user has a test suite named foobar and puts their C file in
     -- foobar/foo.c, this test will incorrectly exclude it.  But I
     -- didn't want to break BC...
-    not_sub p = and [not (pre `isPrefixOf` p) | pre <- component_dirs]
+    not_sub p = and [not (pre `T.isPrefixOf` T.pack p) | pre <- component_dirs]
     component_dirs = component_names (localPkgDescr lbi)
     -- TODO: libify me
     component_names pkg_descr =
-      fmap unUnqualComponentName $
+      fmap unUnqualComponentNameST $
         mapMaybe (libraryNameString . libName) (subLibraries pkg_descr)
           ++ map exeName (executables pkg_descr)
           ++ map testName (testSuites pkg_descr)

@@ -2,14 +2,16 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Simple.Build.Macros.Z (render, Z(..), ZPackage (..), ZTool (..)) where
 import Distribution.ZinzaPrelude
+import Data.Text (Text)
+import qualified Data.Text as T
 data Z
     = Z {zPackages :: [ZPackage],
          zTools :: [ZTool],
-         zPackageKey :: String,
-         zComponentId :: String,
+         zPackageKey :: Text,
+         zComponentId :: Text,
          zPackageVersion :: Version,
-         zNotNull :: (String -> Bool),
-         zManglePkgName :: (PackageName -> String),
+         zNotNull :: (Text -> Bool),
+         zManglePkgName :: (PackageName -> Text),
          zMangleStr :: (String -> String)}
     deriving Generic
 data ZPackage
@@ -37,21 +39,21 @@ render z_root = execWriter $ do
     tell (prettyShow (zpkgVersion z_var0_pkg))
     tell " */\n"
     tell "#ifndef VERSION_"
-    tell (zManglePkgName z_root (zpkgName z_var0_pkg))
+    tell (T.unpack (zManglePkgName z_root (zpkgName z_var0_pkg)))
     tell "\n"
     tell "#define VERSION_"
-    tell (zManglePkgName z_root (zpkgName z_var0_pkg))
+    tell (T.unpack (zManglePkgName z_root (zpkgName z_var0_pkg)))
     tell " \""
     tell (prettyShow (zpkgVersion z_var0_pkg))
     tell "\"\n"
     tell "#endif /* VERSION_"
-    tell (zManglePkgName z_root (zpkgName z_var0_pkg))
+    tell (T.unpack (zManglePkgName z_root (zpkgName z_var0_pkg)))
     tell " */\n"
     tell "#ifndef MIN_VERSION_"
-    tell (zManglePkgName z_root (zpkgName z_var0_pkg))
+    tell (T.unpack (zManglePkgName z_root (zpkgName z_var0_pkg)))
     tell "\n"
     tell "#define MIN_VERSION_"
-    tell (zManglePkgName z_root (zpkgName z_var0_pkg))
+    tell (T.unpack (zManglePkgName z_root (zpkgName z_var0_pkg)))
     tell "(major1,major2,minor) (\\\n"
     tell "  (major1) <  "
     tell (zpkgX z_var0_pkg)
@@ -69,7 +71,7 @@ render z_root = execWriter $ do
     tell (zpkgZ z_var0_pkg)
     tell ")\n"
     tell "#endif /* MIN_VERSION_"
-    tell (zManglePkgName z_root (zpkgName z_var0_pkg))
+    tell (T.unpack (zManglePkgName z_root (zpkgName z_var0_pkg)))
     tell " */\n"
   tell "\n"
   forM_ (zTools z_root) $ \z_var1_tool -> do
@@ -118,7 +120,7 @@ render z_root = execWriter $ do
   then do
     tell "#ifndef CURRENT_PACKAGE_KEY\n"
     tell "#define CURRENT_PACKAGE_KEY \""
-    tell (zPackageKey z_root)
+    tell (T.unpack (zPackageKey z_root))
     tell "\"\n"
     tell "#endif /* CURRENT_packageKey */\n"
     return ()
@@ -128,7 +130,7 @@ render z_root = execWriter $ do
   then do
     tell "#ifndef CURRENT_COMPONENT_ID\n"
     tell "#define CURRENT_COMPONENT_ID \""
-    tell (zComponentId z_root)
+    tell (T.unpack (zComponentId z_root))
     tell "\"\n"
     tell "#endif /* CURRENT_COMPONENT_ID */\n"
     return ()

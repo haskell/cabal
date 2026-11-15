@@ -113,6 +113,7 @@ import Distribution.Package
   , PackageName
   , mkPackageName
   , unPackageName
+  , unPackageNameST
   )
 import Distribution.Simple.BuildPaths
   ( exeExtension
@@ -680,7 +681,7 @@ withoutProject verbosity globalConfig targetStrings = do
 
   for_ (concatMap woPackageNames tss) $ \name -> do
     when (null (lookupPackageName packageIndex name)) $ do
-      let xs = searchByName packageIndex (unPackageName name)
+      let xs = searchByName packageIndex (unPackageNameST name)
       let emptyIf True _ = []
           emptyIf False zs = zs
           str2 =
@@ -689,7 +690,7 @@ withoutProject verbosity globalConfig targetStrings = do
               [ "Did you mean any of the following?\n"
               , unlines (("- " ++) . unPackageName . fst <$> xs)
               ]
-      dieWithException verbosity $ WithoutProject (unPackageName name) str2
+      dieWithException verbosity $ WithoutProject (unPackageNameST name) str2
 
   let
     packageSpecifiers :: [PackageSpecifier UnresolvedSourcePackage]
@@ -849,10 +850,10 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
       -- report incorrect case for known package.
       for_ errs' $ \case
         TargetNotInProject hn ->
-          case searchByName (packageIndex pkgDb) (unPackageName hn) of
+          case searchByName (packageIndex pkgDb) (unPackageNameST hn) of
             [] -> return ()
             xs ->
-              dieWithException verbosity $ UnknownPackage (unPackageName hn) (("- " ++) . unPackageName . fst <$> xs)
+              dieWithException verbosity $ UnknownPackage (unPackageNameST hn) (("- " ++) . unPackageName . fst <$> xs)
         _ -> return ()
 
       unless (null errs') $ reportBuildTargetProblems verbosity errs'

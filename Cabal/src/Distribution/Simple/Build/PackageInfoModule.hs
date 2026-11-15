@@ -22,11 +22,12 @@ import Distribution.Package
   ( PackageName
   , packageName
   , packageVersion
-  , unPackageName
+  , unPackageNameST
   )
 import Distribution.Types.PackageDescription (PackageDescription (..))
 import Distribution.Types.Version (versionNumbers)
 
+import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Distribution.Simple.Build.PackageInfoModule.Z as Z
 
@@ -41,14 +42,14 @@ generatePackageInfoModule pkg_descr =
   Z.render
     Z.Z
       { Z.zPackageName = showPkgName $ packageName pkg_descr
-      , Z.zVersionDigits = show $ versionNumbers $ packageVersion pkg_descr
-      , Z.zSynopsis = Text.unpack $ synopsis pkg_descr
-      , Z.zCopyright = Text.unpack $ copyright pkg_descr
-      , Z.zHomepage = Text.unpack $ homepage pkg_descr
+      , Z.zVersionDigits = Text.pack $ show $ versionNumbers $ packageVersion pkg_descr
+      , Z.zSynopsis = synopsis pkg_descr
+      , Z.zCopyright = copyright pkg_descr
+      , Z.zHomepage = homepage pkg_descr
       }
 
-showPkgName :: PackageName -> String
-showPkgName = map fixchar . unPackageName
+showPkgName :: PackageName -> Text
+showPkgName = Text.map fixchar . unPackageNameST
 
 fixchar :: Char -> Char
 fixchar '-' = '_'
