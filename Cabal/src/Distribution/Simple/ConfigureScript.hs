@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
@@ -35,9 +34,7 @@ import Distribution.Verbosity
 -- Base
 import System.Directory (createDirectoryIfMissing, doesFileExist, makeAbsolute)
 import qualified System.FilePath as FilePath
-#ifdef mingw32_HOST_OS
-import System.FilePath    (normalise, splitDrive)
-#endif
+
 import Distribution.Compat.Environment (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
@@ -87,16 +84,20 @@ runConfigureScript verbHandles cfg flags programDb hp = do
         return (Just cxxProgShort, Just cxxFlags)
       Nothing -> return (Nothing, Nothing)
 
-  let configureFile' = toUnix configureFile
+  -- sh resolves this directory itself (see 'runConfigureFromDir'), but it
+  -- must reach sh with '/' separators: MSYS drops the leading '\\' of a UNC
+  -- path when it parses its command line. On POSIX this changes nothing.
+  let pkgDir = map toSlash (FilePath.takeDirectory configureFile)
+      toSlash c = if FilePath.isPathSeparator c then '/' else c
+      configureFile' = pkgDir ++ "/configure"
   -- autoconf is fussy about filenames, and has a set of forbidden
   -- characters that can't appear in the build directory, etc:
   -- https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions
   --
   -- This has caused hard-to-debug failures in the past (#5368), so we
   -- detect some cases early and warn with a clear message. Windows's
-  -- use of backslashes is problematic here, so we'll switch to
-  -- slashes, but we do still want to fail on backslashes in POSIX
-  -- paths.
+  -- backslashes have become slashes above, but we do still want to fail
+  -- on backslashes in POSIX paths.
   --
   -- TODO: We don't check for colons, tildes or leading dashes. We
   -- also should check the builddir's path, destdir, and all other
@@ -182,8 +183,8 @@ runConfigureScript verbHandles cfg flags programDb hp = do
           ++ cabalFlagEnv
       maybeHostFlag = ["--host=" ++ show (pretty hp) | hp /= buildPlatform]
       args' =
-        configureFile'
-          : args
+        ["-c", runConfigureFromDir, pkgDir]
+          ++ args
           ++ ["CC=" ++ ccProgShort]
           ++ ["CXX=" ++ cxxProgShort | Just cxxProgShort <- [mcxxProgShort]]
           ++ maybeHostFlag
@@ -205,18 +206,20 @@ runConfigureScript verbHandles cfg flags programDb hp = do
     args = configureArgs backwardsCompatHack cfg
     backwardsCompatHack = False
 
--- | Convert Windows path to Unix ones
-toUnix :: String -> String
-#ifdef mingw32_HOST_OS
-toUnix s = let tmp = normalise s
-               (l, rest) = case splitDrive tmp of
-                             ([],  x) -> ("/"      , x)
-                             (h:_, x) -> ('/':h:"/", x)
-               parts = FilePath.splitDirectories rest
-           in  l ++ intercalate "/" parts
-#else
-toUnix s = s
-#endif
+-- | A @sh -c@ script that runs @configure@ from the directory given as @$0@,
+-- passing on the remaining arguments.
+--
+-- On Windows only the shell knows how its paths map to Windows ones, so the
+-- shell, not Cabal, turns the directory into its own form (on MSYS,
+-- @C:/src/pkg@ becomes @/c/src/pkg@). @configure@ then sees a @$0@, and
+-- derives a @$srcdir@, with no colon in it. Autoconf splits the directories
+-- it searches for @config.guess@ and @config.sub@ on @$PATH_SEPARATOR@, which
+-- is @:@ under MSYS, so a @C:/...@ @$srcdir@ fails there.
+--
+-- Clearing @CDPATH@ stops @cd@ printing the directory it changes to.
+runConfigureFromDir :: String
+runConfigureFromDir =
+  "d=$(CDPATH= cd \"$0\" && pwd) || exit 1; exec sh \"$d/configure\" \"$@\""
 
 badAutoconfCharacters :: [(Char, String)]
 badAutoconfCharacters =
