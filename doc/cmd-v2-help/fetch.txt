@@ -13,18 +13,13 @@ Flags for fetch:
  --no-dependencies            # Ignore dependencies
  --dry-run                    # Do not install anything, only print what would
                                 be installed.
- --enable-tests               # Enable dependency checking and compilation for
+ --[enable|disable]-tests     # Toggle dependency checking and compilation for
                                 test suites listed in the package description
                                 file.
- --disable-tests              # Disable dependency checking and compilation
-                                for test suites listed in the package
-                                description file.
- --enable-benchmarks          # Enable dependency checking and compilation for
+ --[enable|disable]-benchmarks
+                              # Toggle dependency checking and compilation for
                                 benchmarks listed in the package description
                                 file.
- --disable-benchmarks         # Disable dependency checking and compilation
-                                for benchmarks listed in the package
-                                description file.
  --solver=SOLVER              # Select dependency solver to use (default:
                                 modular). Choices: modular.
  --max-backjumps=NUM          # Maximum number of backjumps allowed while
