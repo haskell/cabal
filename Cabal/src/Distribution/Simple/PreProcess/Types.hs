@@ -93,12 +93,14 @@ data PreProcessor = PreProcessor
   -- @since 3.8.1.0
   , getPreProcessor
       :: Verbosity
-      -> (FilePath, FilePath) -- ^ input
-      -> (FilePath, FilePath) -- ^ output
+      -> (FilePath, FilePath)
+      -- \^ input
+      -> (FilePath, FilePath)
+      -- \^ output
       -> IO PreProcessorInvocation
   }
 
-newtype LegacyIO = LegacyIO { runLegacyIO :: Verbosity -> IO () }
+newtype LegacyIO = LegacyIO {runLegacyIO :: Verbosity -> IO ()}
 
 instance Eq LegacyIO where
   _ == _ = False
@@ -123,22 +125,32 @@ data PreProcessorInvocation
     -- Cabal itself does, so there is no need to track any changes for it, other
     -- than the input and output files.
     PreProcessorUnlit
-      FilePath -- ^ input file
-      FilePath -- ^ output file
+      FilePath
+      -- ^ input file
+      FilePath
+      -- ^ output file
   | -- | A preprocessor that runs some program, identified uniquely by the
     -- configured program and its arguments.
     PreProcessorProgram
-      ConfiguredProgram -- ^ the main program to run
-      [String] -- ^ arguments to pass to the main program
-      [ConfiguredProgram] -- ^ additional programs that the preprocessor depends on
+      ConfiguredProgram
+      -- ^ the main program to run
+      [String]
+      -- ^ arguments to pass to the main program
+      [ConfiguredProgram]
+      -- ^ additional programs that the preprocessor depends on
   | -- | A preprocessor that depends on a response file (a temporary file
     -- available for the duration of the invocation).
     PreProcessorViaResponseFile
-      FilePath -- ^ filename pattern for the response file
-      ConfiguredProgram -- ^ the main program to run
-      [String] -- ^ arguments to pass directly
-      [String] -- ^ arguments to write into the response file
-      [ConfiguredProgram] -- ^ additional programs that the preprocessor depends on
+      FilePath
+      -- ^ filename pattern for the response file
+      ConfiguredProgram
+      -- ^ the main program to run
+      [String]
+      -- ^ arguments to pass directly
+      [String]
+      -- ^ arguments to write into the response file
+      [ConfiguredProgram]
+      -- ^ additional programs that the preprocessor depends on
   | -- | A custom preprocessor implemented as an arbitrary IO action. Because
     -- IO actions cannot be serialized properly, nor compared for equality, we
     -- use the 'LegacyIO' newtype, which serializes to nothing, deserializes to

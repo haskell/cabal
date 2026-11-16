@@ -74,6 +74,7 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import qualified Data.Text as T
+
 -- @mtl@ versions before 2.3.0 re-exported @Control.Monad@ from
 -- @Control.Monad.Writer@ (see https://github.com/haskell/mtl/blob/master/docs/Mtl-2.3.x-Migration.md),
 -- triggering a redundant import warning here; from @mtl-2.3.0@ onwards, this
@@ -120,7 +121,7 @@ mkSimplePreProcessor
   -> (FilePath, FilePath)
   -> (FilePath -> FilePath -> Verbosity -> IO ())
   -> PreProcessorInvocation
-mkSimplePreProcessor (inFileDir, inFileName) (outFileDir, outFileName) simplePP = 
+mkSimplePreProcessor (inFileDir, inFileName) (outFileDir, outFileName) simplePP =
   PreProcessorCustom . LegacyIO $ \verbosity -> simplePP inFile outFile verbosity
   where
     inFile = inFileDir </> inFileName
@@ -429,10 +430,11 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
               then [monitorFileHashed inBoot, monitorFileExistence outBoot]
               else [monitorNonExistentFile inBoot]
 
-runPreProcessorInvocation :: PreProcessorInvocation
-                          -> Maybe (SymbolicPath CWD (Dir to))
-                          -> Verbosity
-                          -> IO ()
+runPreProcessorInvocation
+  :: PreProcessorInvocation
+  -> Maybe (SymbolicPath CWD (Dir to))
+  -> Verbosity
+  -> IO ()
 runPreProcessorInvocation (PreProcessorUnlit inFile outFile) _cwd verbosity =
   runUnlit inFile outFile verbosity
 runPreProcessorInvocation (PreProcessorProgram prog args _) cwd verbosity =
@@ -504,16 +506,17 @@ ppGhcCpp extraArgs _bi lbi clbi =
         let inFile = inFileDir </> inFileName
             outFile = outFileDir </> outFileName
         let args :: [String]
-            args = ["-E", "-cpp"]
-                    -- This is a bit of an ugly hack. We're going to
-                    -- unlit the file ourselves later on if appropriate,
-                    -- so we need GHC not to unlit it now or it'll get
-                    -- double-unlitted. In the future we might switch to
-                    -- using cpphs --unlit instead.
-                    ++ ["-x", "hs"]
-                    ++ ["-optP-include", "-optP" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
-                    ++ ["-o", outFile, inFile]
-                    ++ extraArgs
+            args =
+              ["-E", "-cpp"]
+                -- This is a bit of an ugly hack. We're going to
+                -- unlit the file ourselves later on if appropriate,
+                -- so we need GHC not to unlit it now or it'll get
+                -- double-unlitted. In the future we might switch to
+                -- using cpphs --unlit instead.
+                ++ ["-x", "hs"]
+                ++ ["-optP-include", "-optP" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
+                ++ ["-o", outFile, inFile]
+                ++ extraArgs
         return $ PreProcessorProgram prog args []
     }
   where
@@ -543,12 +546,13 @@ ppCpphs extraArgs _bi lbi clbi =
         let inFile = inFileDir </> inFileName
             outFile = outFileDir </> outFileName
         let args :: [String]
-            args = ("-O" ++ outFile)
-                   : inFile
-                   : "--noline"
-                   : "--strip"
-                   : ["--include=" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName) | cpphsVersion >= mkVersion [1, 6]]
-                   ++ extraArgs
+            args =
+              ("-O" ++ outFile)
+                : inFile
+                : "--noline"
+                : "--strip"
+                : ["--include=" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName) | cpphsVersion >= mkVersion [1, 6]]
+                ++ extraArgs
         return $ PreProcessorProgram cpphsProg args []
     }
   where
@@ -583,17 +587,19 @@ ppHsc2hs bi lbi clbi =
             pureArgs = genPureArgs hsc2hsVersion gccProg inFile outFile
         if hsc2hsSupportsResponseFiles
           then
-            return $ PreProcessorViaResponseFile
-              "hsc2hs-response.txt"
-              hsc2hsProg
-              crossArgs
-              pureArgs
-              [gccProg]
+            return $
+              PreProcessorViaResponseFile
+                "hsc2hs-response.txt"
+                hsc2hsProg
+                crossArgs
+                pureArgs
+                [gccProg]
           else
-            return $ PreProcessorProgram
-              hsc2hsProg
-              (crossArgs ++ pureArgs)
-              [gccProg]
+            return $
+              PreProcessorProgram
+                hsc2hsProg
+                (crossArgs ++ pureArgs)
+                [gccProg]
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
@@ -766,36 +772,37 @@ ppC2hs bi lbi clbi =
         progVersion <- getProgVersion verbosity
         let (gccProg, c2hsProg, _) = progVersion
             args :: [String]
-            args = ["--cpp=" ++ programPath gccProg, "--cppopts=-E"]
-                   ++ ["--cppopts=" ++ opt | opt <- getCppOptions bi lbi]
-                   ++ ["--cppopts=-include" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
-                   ++ ["--include=" ++ outBaseDir]
-                   -- Options from dependent packages
-                   ++ [ "--cppopts=" ++ opt
-                      | pkg <- pkgs
-                      , opt <-
-                         ["-I" ++ opt | opt <- Installed.includeDirs pkg]
-                           ++ [ opt | opt@('-' : c : _) <- map T.unpack $ Installed.ccOptions pkg,
-                              -- c2hs uses the C ABI
-                              -- We assume that there are only C sources
-                              -- and C++ functions are exported via a C
-                              -- interface and wrapped in a C source file.
-                              -- Therefore we do not supply C++ flags
-                              -- because there will not be C++ sources.
-                              --
-                              --
-                              -- DO NOT add Installed.cxxOptions unless this changes!
-                              c `elem` "DIU"
-                              ]
-                      ]
-                   -- TODO: install .chi files for packages, so we can --include
-                   -- those dirs here, for the dependencies
+            args =
+              ["--cpp=" ++ programPath gccProg, "--cppopts=-E"]
+                ++ ["--cppopts=" ++ opt | opt <- getCppOptions bi lbi]
+                ++ ["--cppopts=-include" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
+                ++ ["--include=" ++ outBaseDir]
+                -- Options from dependent packages
+                ++ [ "--cppopts=" ++ opt
+                   | pkg <- pkgs
+                   , opt <-
+                      ["-I" ++ opt | opt <- Installed.includeDirs pkg]
+                        ++ [ opt | opt@('-' : c : _) <- map T.unpack $ Installed.ccOptions pkg,
+                           -- c2hs uses the C ABI
+                           -- We assume that there are only C sources
+                           -- and C++ functions are exported via a C
+                           -- interface and wrapped in a C source file.
+                           -- Therefore we do not supply C++ flags
+                           -- because there will not be C++ sources.
+                           --
+                           --
+                           -- DO NOT add Installed.cxxOptions unless this changes!
+                           c `elem` "DIU"
+                           ]
+                   ]
+                -- TODO: install .chi files for packages, so we can --include
+                -- those dirs here, for the dependencies
 
-                   -- input and output files
-                   ++ [ "--output-dir=" ++ outBaseDir
-                      , "--output=" ++ outRelativeFile
-                      , inBaseDir </> inRelativeFile
-                      ]
+                -- input and output files
+                ++ [ "--output-dir=" ++ outBaseDir
+                   , "--output=" ++ outRelativeFile
+                   , inBaseDir </> inRelativeFile
+                   ]
         return $ PreProcessorProgram c2hsProg args [gccProg]
     }
   where
