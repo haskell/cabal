@@ -23,7 +23,6 @@ import qualified UnitTests.Distribution.Utils.Generic
 import qualified UnitTests.Distribution.Utils.Json
 import qualified UnitTests.Distribution.Utils.NubList
 import qualified UnitTests.Distribution.Utils.Path
-import qualified UnitTests.Distribution.Utils.ShortText
 import qualified UnitTests.Distribution.Utils.Structured
 import qualified UnitTests.Distribution.Version (versionTests)
 import qualified UnitTests.Distribution.PkgconfigVersion (pkgconfigVersionTests)
@@ -62,8 +61,6 @@ tests =
         UnitTests.Distribution.Utils.Path.tests
     , testGroup "Distribution.PackageDescription.Check"
         UnitTests.Distribution.PackageDescription.Check.tests
-    , testGroup "Distribution.Utils.ShortText"
-        UnitTests.Distribution.Utils.ShortText.tests
     , testGroup "Distribution.System"
         UnitTests.Distribution.System.tests
     , testGroup "Distribution.Types.GenericPackageDescription"

@@ -9,11 +9,13 @@ module Distribution.Types.UnqualComponentName
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Utils.ShortText
 
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
+
+import Data.Text (Text)
+import qualified Data.Text as Text
 
 -- | An unqualified component name, for any kind of component.
 --
@@ -22,7 +24,7 @@ import Distribution.Types.PackageName
 -- later uniquely identifiers a component and its closure.
 --
 -- @since 2.0.0.2
-newtype UnqualComponentName = UnqualComponentName ShortText
+newtype UnqualComponentName = UnqualComponentName Text
   deriving
     ( Generic
     , Read
@@ -38,10 +40,10 @@ newtype UnqualComponentName = UnqualComponentName ShortText
 --
 -- @since 2.0.0.2
 unUnqualComponentName :: UnqualComponentName -> String
-unUnqualComponentName (UnqualComponentName s) = fromShortText s
+unUnqualComponentName (UnqualComponentName s) = Text.unpack s
 
 -- | @since 3.4.0.0
-unUnqualComponentNameST :: UnqualComponentName -> ShortText
+unUnqualComponentNameST :: UnqualComponentName -> Text
 unUnqualComponentNameST (UnqualComponentName s) = s
 
 -- | Construct a 'UnqualComponentName' from a 'String'
@@ -53,7 +55,7 @@ unUnqualComponentNameST (UnqualComponentName s) = s
 --
 -- @since 2.0.0.2
 mkUnqualComponentName :: String -> UnqualComponentName
-mkUnqualComponentName = UnqualComponentName . toShortText
+mkUnqualComponentName = UnqualComponentName . Text.pack
 
 -- | 'mkUnqualComponentName'
 --

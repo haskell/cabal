@@ -77,7 +77,6 @@ import Distribution.Utils.Path hiding
   ( Dir
   )
 import qualified Distribution.Utils.Path as Path
-import qualified Distribution.Utils.ShortText as ShortText
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -634,18 +633,18 @@ fromPackageDescription _haddockTarget pkg_descr =
     , argOutputDir = Dir $ "doc" </> "html"
     , argPrologue =
         Flag $
-          ShortText.fromShortText $
-            if ShortText.null desc
+          T.unpack $
+            if T.null desc
               then synopsis pkg_descr
               else desc
-    , argTitle = Flag $ showPkg ++ subtitle
+    , argTitle = Flag $ showPkg <> subtitle
     }
   where
     desc = description pkg_descr
     showPkg = prettyShow (packageId pkg_descr)
     subtitle
-      | ShortText.null (synopsis pkg_descr) = ""
-      | otherwise = ": " ++ ShortText.fromShortText (synopsis pkg_descr)
+      | T.null (synopsis pkg_descr) = ""
+      | otherwise = ": " ++ T.unpack (synopsis pkg_descr)
 
 componentGhcOptions
   :: VerbosityLevel

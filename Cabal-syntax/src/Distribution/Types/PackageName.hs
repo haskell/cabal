@@ -7,9 +7,10 @@ module Distribution.Types.PackageName
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Utils.ShortText
 import Prelude ()
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.Parsec
 import Distribution.Pretty
 import qualified Text.PrettyPrint as Disp
@@ -22,18 +23,18 @@ import qualified Text.PrettyPrint as Disp
 -- This type is opaque since @Cabal-2.0@
 --
 -- @since 2.0.0.2
-newtype PackageName = PackageName ShortText
+newtype PackageName = PackageName Text
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
 -- | Convert 'PackageName' to 'String'
 unPackageName :: PackageName -> String
-unPackageName (PackageName s) = fromShortText s
+unPackageName (PackageName s) = Text.unpack s
 
 -- | @since 3.4.0.0
-unPackageNameST :: PackageName -> ShortText
+unPackageNameST :: PackageName -> Text
 unPackageNameST (PackageName s) = s
 
--- | Construct a 'PackageName' from a 'String'
+-- | Construct a 'PackageName' from a 'Text'
 --
 -- 'mkPackageName' is the inverse to 'unPackageName'
 --
@@ -42,15 +43,15 @@ unPackageNameST (PackageName s) = s
 --
 -- @since 2.0.0.2
 mkPackageName :: String -> PackageName
-mkPackageName = PackageName . toShortText
+mkPackageName = PackageName . Text.pack
 
--- | Construct a 'PackageName' from a 'ShortText'
+-- | Construct a 'PackageName' from a 'Text'
 --
 -- Note: No validations are performed to ensure that the resulting
 -- 'PackageName' is valid
 --
 -- @since 3.4.0.0
-mkPackageNameST :: ShortText -> PackageName
+mkPackageNameST :: Text -> PackageName
 mkPackageNameST = PackageName
 
 -- | 'mkPackageName'

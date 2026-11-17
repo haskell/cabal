@@ -16,6 +16,8 @@ import qualified Data.List.NonEmpty as NE
   ( NonEmpty(..) )
 import Data.Maybe
   ( catMaybes )
+import Data.String
+  ( fromString )
 import Data.Traversable
   ( for )
 
@@ -38,8 +40,6 @@ import Distribution.Types.Component
 import Distribution.Types.LocalBuildInfo
   ( withPrograms )
 import Distribution.Utils.Path
-import Distribution.Utils.ShortText
-  ( toShortText )
 import Distribution.Verbosity
 
 -- filepath
@@ -140,7 +140,7 @@ preBuildRules
               Location
                 outputBaseLoc
                 ( unsafeCoerceSymbolicPath $ replaceExtensionSymbolicPath inputRelPath "hs" )
-        registerRule_ ( toShortText $ show md ) $
+        registerRule_ ( fromString $ show md ) $
           staticRule ( ppCmd customPp inputLoc outputLoc ) [] ( outputLoc NE.:| [] )
 
 ppModule :: ( VerbosityFlags, Maybe (SymbolicPath CWD (Dir Pkg)), ConfiguredProgram, Location, Location ) -> IO ()

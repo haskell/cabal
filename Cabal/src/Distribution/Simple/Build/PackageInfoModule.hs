@@ -26,8 +26,8 @@ import Distribution.Package
   )
 import Distribution.Types.PackageDescription (PackageDescription (..))
 import Distribution.Types.Version (versionNumbers)
-import Distribution.Utils.ShortText (fromShortText)
 
+import qualified Data.Text as Text
 import qualified Distribution.Simple.Build.PackageInfoModule.Z as Z
 
 -- ------------------------------------------------------------
@@ -42,9 +42,9 @@ generatePackageInfoModule pkg_descr =
     Z.Z
       { Z.zPackageName = showPkgName $ packageName pkg_descr
       , Z.zVersionDigits = show $ versionNumbers $ packageVersion pkg_descr
-      , Z.zSynopsis = fromShortText $ synopsis pkg_descr
-      , Z.zCopyright = fromShortText $ copyright pkg_descr
-      , Z.zHomepage = fromShortText $ homepage pkg_descr
+      , Z.zSynopsis = Text.unpack $ synopsis pkg_descr
+      , Z.zCopyright = Text.unpack $ copyright pkg_descr
+      , Z.zHomepage = Text.unpack $ homepage pkg_descr
       }
 
 showPkgName :: PackageName -> String
