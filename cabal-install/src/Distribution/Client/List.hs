@@ -100,6 +100,7 @@ import qualified Data.Map as Map
 import Data.Maybe
   ( fromJust
   )
+import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Tree as Tree
 import System.Directory
@@ -122,8 +123,6 @@ import Text.PrettyPrint
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.Client.Errors
-import Distribution.Utils.ShortText (ShortText)
-import qualified Distribution.Utils.ShortText as ShortText
 import qualified Text.Regex.Base as Regex
 import qualified Text.Regex.Posix.String as Regex
 
@@ -383,15 +382,15 @@ data PackageDisplayInfo = PackageDisplayInfo
   , installedVersions :: [Version]
   , sourceVersions :: [Version]
   , preferredVersions :: VersionRange
-  , homepage :: ShortText
-  , bugReports :: ShortText
+  , homepage :: Text
+  , bugReports :: Text
   , sourceRepo :: String -- TODO
-  , synopsis :: ShortText
-  , description :: ShortText
-  , category :: ShortText
+  , synopsis :: Text
+  , description :: Text
+  , category :: Text
   , license :: Either SPDX.License License
-  , author :: ShortText
-  , maintainer :: ShortText
+  , author :: Text
+  , maintainer :: Text
   , dependencies :: [ExtDependency]
   , flags :: [PackageFlag]
   , hasLib :: Bool
@@ -438,8 +437,8 @@ showPackageSummaryInfo pkginfo =
       $+$ text ""
   where
     maybeShowST l s f
-      | ShortText.null l = Disp.empty
-      | otherwise = text s <+> f (ShortText.fromShortText l)
+      | Text.null l = Disp.empty
+      | otherwise = text s <+> f (Text.unpack l)
 
 showPackageDetailedInfo :: PackageDisplayInfo -> String
 showPackageDetailedInfo pkginfo =
@@ -497,7 +496,7 @@ showPackageDetailedInfo pkginfo =
         label = text fname Disp.<> char ':' Disp.<> padding
         padding = text (replicate (13 - length fname) ' ')
 
-    entryST fname field = entry fname (ShortText.fromShortText . field)
+    entryST fname field = entry fname (Text.unpack . field)
 
     normal = Nothing
     hide = Just Nothing

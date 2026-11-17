@@ -5,12 +5,13 @@ module Distribution.Types.ComponentId
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Utils.ShortText
 import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Distribution.Compat.CharParsing as P
 import Text.PrettyPrint (text)
 
@@ -27,7 +28,7 @@ import Text.PrettyPrint (text)
 -- This type is opaque since @Cabal-2.0@
 --
 -- @since 2.0.0.2
-newtype ComponentId = ComponentId ShortText
+newtype ComponentId = ComponentId Text
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
 -- | Construct a 'ComponentId' from a 'String'
@@ -39,13 +40,13 @@ newtype ComponentId = ComponentId ShortText
 --
 -- @since 2.0.0.2
 mkComponentId :: String -> ComponentId
-mkComponentId = ComponentId . toShortText
+mkComponentId = ComponentId . Text.pack
 
 -- | Convert 'ComponentId' to 'String'
 --
 -- @since 2.0.0.2
 unComponentId :: ComponentId -> String
-unComponentId (ComponentId s) = fromShortText s
+unComponentId (ComponentId s) = Text.unpack s
 
 -- | 'mkComponentId'
 --

@@ -55,6 +55,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Control.Monad ((<=<))
+import Data.Text (Text)
 
 -- lens
 
@@ -83,7 +84,6 @@ import Distribution.Compiler
 import Distribution.License
 import Distribution.Package
 import Distribution.Utils.Path
-import Distribution.Utils.ShortText
 import Distribution.Version
 
 import qualified Distribution.SPDX as SPDX
@@ -104,20 +104,20 @@ data PackageDescription = PackageDescription
   , package :: PackageIdentifier
   , licenseRaw :: Either SPDX.License License
   , licenseFiles :: [RelativePath Pkg File]
-  , copyright :: !ShortText
-  , maintainer :: !ShortText
-  , author :: !ShortText
-  , stability :: !ShortText
+  , copyright :: !Text
+  , maintainer :: !Text
+  , author :: !Text
+  , stability :: !Text
   , testedWith :: [(CompilerFlavor, VersionRange)]
-  , homepage :: !ShortText
-  , pkgUrl :: !ShortText
-  , bugReports :: !ShortText
+  , homepage :: !Text
+  , pkgUrl :: !Text
+  , bugReports :: !Text
   , sourceRepos :: [SourceRepo]
-  , synopsis :: !ShortText
+  , synopsis :: !Text
   -- ^ A one-line summary of this package
-  , description :: !ShortText
+  , description :: !Text
   -- ^ A more verbose description of this package
-  , category :: !ShortText
+  , category :: !Text
   , customFieldsPD :: [(String, String)]
   -- ^ Custom fields starting
   --  with x-, stored in a

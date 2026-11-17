@@ -24,19 +24,20 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
 import System.FilePath (pathSeparator)
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
 import qualified Text.PrettyPrint as Disp
 
 -- | A valid Haskell module name.
-newtype ModuleName = ModuleName ShortText
+newtype ModuleName = ModuleName Text
   deriving (Eq, Generic, Ord, Read, Show, Data)
 
 unModuleName :: ModuleName -> String
-unModuleName (ModuleName s) = fromShortText s
+unModuleName (ModuleName s) = Text.unpack s
 
 instance Binary ModuleName
 instance Structured ModuleName
@@ -90,7 +91,7 @@ validModuleComponent (c : cs) = isUpper c && all validModuleChar cs
 -- an error if it is used with a string that is not a valid module name. If you
 -- are parsing user input then use 'Distribution.Text.simpleParse' instead.
 instance IsString ModuleName where
-  fromString = ModuleName . toShortText
+  fromString = ModuleName . Text.pack
 
 -- | Construct a 'ModuleName' from valid module components, i.e. parts
 -- separated by dots.

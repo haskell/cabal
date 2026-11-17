@@ -32,9 +32,9 @@ import Distribution.Types.SourceRepo (SourceRepo)
 import Distribution.Types.TestSuite (TestSuite, testModules)
 import Distribution.Types.TestSuite.Lens (testBuildInfo, testName)
 import Distribution.Utils.Path
-import Distribution.Utils.ShortText (ShortText)
 import Distribution.Version (VersionRange)
 
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.PackageDescription as T
@@ -51,19 +51,19 @@ licenseFiles :: Lens' PackageDescription [RelativePath Pkg File]
 licenseFiles f s = fmap (\x -> s{T.licenseFiles = x}) (f (T.licenseFiles s))
 {-# INLINE licenseFiles #-}
 
-copyright :: Lens' PackageDescription ShortText
+copyright :: Lens' PackageDescription Text
 copyright f s = fmap (\x -> s{T.copyright = x}) (f (T.copyright s))
 {-# INLINE copyright #-}
 
-maintainer :: Lens' PackageDescription ShortText
+maintainer :: Lens' PackageDescription Text
 maintainer f s = fmap (\x -> s{T.maintainer = x}) (f (T.maintainer s))
 {-# INLINE maintainer #-}
 
-author :: Lens' PackageDescription ShortText
+author :: Lens' PackageDescription Text
 author f s = fmap (\x -> s{T.author = x}) (f (T.author s))
 {-# INLINE author #-}
 
-stability :: Lens' PackageDescription ShortText
+stability :: Lens' PackageDescription Text
 stability f s = fmap (\x -> s{T.stability = x}) (f (T.stability s))
 {-# INLINE stability #-}
 
@@ -71,15 +71,15 @@ testedWith :: Lens' PackageDescription [(CompilerFlavor, VersionRange)]
 testedWith f s = fmap (\x -> s{T.testedWith = x}) (f (T.testedWith s))
 {-# INLINE testedWith #-}
 
-homepage :: Lens' PackageDescription ShortText
+homepage :: Lens' PackageDescription Text
 homepage f s = fmap (\x -> s{T.homepage = x}) (f (T.homepage s))
 {-# INLINE homepage #-}
 
-pkgUrl :: Lens' PackageDescription ShortText
+pkgUrl :: Lens' PackageDescription Text
 pkgUrl f s = fmap (\x -> s{T.pkgUrl = x}) (f (T.pkgUrl s))
 {-# INLINE pkgUrl #-}
 
-bugReports :: Lens' PackageDescription ShortText
+bugReports :: Lens' PackageDescription Text
 bugReports f s = fmap (\x -> s{T.bugReports = x}) (f (T.bugReports s))
 {-# INLINE bugReports #-}
 
@@ -87,15 +87,15 @@ sourceRepos :: Lens' PackageDescription [SourceRepo]
 sourceRepos f s = fmap (\x -> s{T.sourceRepos = x}) (f (T.sourceRepos s))
 {-# INLINE sourceRepos #-}
 
-synopsis :: Lens' PackageDescription ShortText
+synopsis :: Lens' PackageDescription Text
 synopsis f s = fmap (\x -> s{T.synopsis = x}) (f (T.synopsis s))
 {-# INLINE synopsis #-}
 
-description :: Lens' PackageDescription ShortText
+description :: Lens' PackageDescription Text
 description f s = fmap (\x -> s{T.description = x}) (f (T.description s))
 {-# INLINE description #-}
 
-category :: Lens' PackageDescription ShortText
+category :: Lens' PackageDescription Text
 category f s = fmap (\x -> s{T.category = x}) (f (T.category s))
 {-# INLINE category #-}
 

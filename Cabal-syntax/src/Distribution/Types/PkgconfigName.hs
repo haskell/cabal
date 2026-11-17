@@ -5,12 +5,13 @@ module Distribution.Types.PkgconfigName
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Utils.ShortText
 import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -19,14 +20,14 @@ import qualified Text.PrettyPrint as Disp
 -- This is parsed as any valid argument to the pkg-config utility.
 --
 -- @since 2.0.0.2
-newtype PkgconfigName = PkgconfigName ShortText
+newtype PkgconfigName = PkgconfigName Text
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
 -- | Convert 'PkgconfigName' to 'String'
 --
 -- @since 2.0.0.2
 unPkgconfigName :: PkgconfigName -> String
-unPkgconfigName (PkgconfigName s) = fromShortText s
+unPkgconfigName (PkgconfigName s) = Text.unpack s
 
 -- | Construct a 'PkgconfigName' from a 'String'
 --
@@ -37,7 +38,7 @@ unPkgconfigName (PkgconfigName s) = fromShortText s
 --
 -- @since 2.0.0.2
 mkPkgconfigName :: String -> PkgconfigName
-mkPkgconfigName = PkgconfigName . toShortText
+mkPkgconfigName = PkgconfigName . Text.pack
 
 -- | 'mkPkgconfigName'
 --

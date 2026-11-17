@@ -17,10 +17,10 @@ import Distribution.Simple.LocalBuildInfo (componentBuildInfo, mbWorkDirLBI)
 import Distribution.Simple.SetupHooks
 import Distribution.Simple.Utils
 import Distribution.Utils.Path
-import Distribution.Utils.ShortText (toShortText)
 import Distribution.Verbosity
 
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.String (fromString)
 import Data.Traversable (for)
 import GHC.Generics
 import System.FilePath
@@ -104,7 +104,7 @@ preBuildRules PreBuildComponentInputs{..} = do
               , ..
               }
 
-    registerRule ("myPP " <> toShortText (getSymbolicPath relPath)) $
+    registerRule ("myPP " <> fromString (getSymbolicPath relPath)) $
       staticRule
         action
         [FileDependency ppFile]

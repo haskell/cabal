@@ -5,13 +5,14 @@ module Distribution.Types.AbiHash
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Utils.ShortText
 import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Text.PrettyPrint (text)
 
 -- | ABI Hashes
@@ -22,14 +23,14 @@ import Text.PrettyPrint (text)
 -- This type is opaque since @Cabal-2.0@
 --
 -- @since 2.0.0.2
-newtype AbiHash = AbiHash ShortText
+newtype AbiHash = AbiHash Text
   deriving (Eq, Show, Read, Generic)
 
 -- | Convert 'AbiHash' to 'String'
 --
 -- @since 2.0.0.2
 unAbiHash :: AbiHash -> String
-unAbiHash (AbiHash h) = fromShortText h
+unAbiHash (AbiHash h) = Text.unpack h
 
 -- | Construct a 'AbiHash' from a 'String'
 --
@@ -40,7 +41,7 @@ unAbiHash (AbiHash h) = fromShortText h
 --
 -- @since 2.0.0.2
 mkAbiHash :: String -> AbiHash
-mkAbiHash = AbiHash . toShortText
+mkAbiHash = AbiHash . Text.pack
 
 -- | 'mkAbiHash'
 --

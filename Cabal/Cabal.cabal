@@ -319,7 +319,6 @@ library
     Distribution.Utils.Generic,
     Distribution.Utils.MD5,
     Distribution.Utils.Path,
-    Distribution.Utils.ShortText,
     Distribution.Utils.String,
     Distribution.Utils.Structured,
     Distribution.Version,

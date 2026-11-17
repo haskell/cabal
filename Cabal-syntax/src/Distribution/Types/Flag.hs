@@ -31,13 +31,14 @@ module Distribution.Types.Flag
 
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (lowercase)
-import Distribution.Utils.ShortText
 import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Data.Map as Map
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -75,7 +76,7 @@ emptyFlag name =
 -- This type is opaque since @Cabal-2.0@
 --
 -- @since 2.0.0.2
-newtype FlagName = FlagName ShortText
+newtype FlagName = FlagName Text
   deriving (Eq, Generic, Ord, Show, Read, Data, NFData)
 
 -- | Construct a 'FlagName' from a 'String'
@@ -87,7 +88,7 @@ newtype FlagName = FlagName ShortText
 --
 -- @since 2.0.0.2
 mkFlagName :: String -> FlagName
-mkFlagName = FlagName . toShortText
+mkFlagName = FlagName . Text.pack
 
 -- | 'mkFlagName'
 --
@@ -99,7 +100,7 @@ instance IsString FlagName where
 --
 -- @since 2.0.0.2
 unFlagName :: FlagName -> String
-unFlagName (FlagName s) = fromShortText s
+unFlagName (FlagName s) = Text.unpack s
 
 instance Binary FlagName
 instance Structured FlagName
