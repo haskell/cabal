@@ -219,7 +219,6 @@ import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import qualified Distribution.Simple.Setup as Cabal
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 
-import qualified Distribution.Compat.Binary as Binary
 import qualified Distribution.Compat.Graph as Graph
 
 import Control.Exception (assert)
