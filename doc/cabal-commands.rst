@@ -389,7 +389,7 @@ cabal init
 
 .. option:: -i, --interactive
 
-    Enable interactive mode. This will prompt the user for inputs to help create the a minimal project.
+    Enable interactive mode. This will prompt the user for inputs to help create a minimal project.
 
 .. option:: -n, --non-interactive
 
