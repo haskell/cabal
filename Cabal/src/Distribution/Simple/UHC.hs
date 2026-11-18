@@ -59,9 +59,9 @@ configure
   :: Verbosity
   -> Maybe FilePath
   -> ProgramDb
-  -> IO (Compiler, Maybe Platform, ProgramDb)
+  -> IO (Compiler, ConfiguredProgram, Maybe Platform, ProgramDb)
 configure verbosity hcPath progdb = do
-  (_uhcProg, uhcVersion, progdb') <-
+  (uhcProg, uhcVersion, progdb') <-
     requireProgramVersion
       verbosity
       uhcProgram
@@ -79,7 +79,7 @@ configure verbosity hcPath progdb = do
           , compilerWiredInUnitIds = Nothing
           }
       compPlatform = Nothing
-  return (comp, compPlatform, progdb')
+  return (comp, uhcProg, compPlatform, progdb')
 
 uhcLanguages :: [(Language, CompilerFlag)]
 uhcLanguages = [(Haskell98, "")]

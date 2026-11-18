@@ -282,16 +282,17 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
     -- object merging as @ghc --merge-objs@, which uses the merge tool GHC was
     -- configured with; with older GHCs we have to run @ld -r@ ourselves.
     combineObjectFiles :: SymbolicPath Pkg File -> [SymbolicPath Pkg File] -> IO ()
-    combineObjectFiles target files
-      | Just ghcProg <- lookupProgram ghcProgram (withPrograms lbi)
-      , ghcSupports GhcMergeObjs ghcProg =
+    combineObjectFiles target files = do
+      ghcProg <- compilerProgramToRun verbosity (compilerPrograms lbi) (withPrograms lbi)
+      if ghcSupports GhcMergeObjs ghcProg
+        then
           runGhcProg
             mempty
               { ghcOptMode = toFlag GhcModeMergeObjs
               , ghcOptInputFiles = toNubListR files
               , ghcOptOutputFile = toFlag target
               }
-      | otherwise = do
+        else do
           (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
           Ld.combineObjectFiles verbosity lbi ldProg target files
 

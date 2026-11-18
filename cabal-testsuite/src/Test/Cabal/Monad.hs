@@ -412,12 +412,14 @@ runTestM mode m =
             -- Optimal strategy for us is to lazily configure them, so
             -- we don't pay for things we don't need.  A bit difficult
             -- to do in the current design.
-            configCompilerEx
-              (Just (compilerFlavor (runnerCompiler senv)))
-              (Just ghc_path)
-              Nothing
-              program_db1
-              verbosity
+            (comp, _, platform, program_db2) <-
+              configCompilerEx
+                (Just (compilerFlavor (runnerCompiler senv)))
+                (Just ghc_path)
+                Nothing
+                program_db1
+                verbosity
+            return (comp, platform, program_db2)
 
         (configuredGhcProg, _) <- requireProgram verbosity ghcProgram program_db2
 

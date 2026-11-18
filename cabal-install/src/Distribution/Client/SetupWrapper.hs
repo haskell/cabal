@@ -1050,7 +1050,7 @@ configureCompiler verbosity options' = do
   (comp, progdb) <- case useCompiler options' of
     Just comp -> return (comp, useProgramDb options')
     Nothing -> do
-      (comp, _, progdb) <-
+      (comp, _, _, progdb) <-
         configCompilerEx
           (Just GHC)
           Nothing

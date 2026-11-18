@@ -442,7 +442,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
         $ configProgDb
 
   -- progDb is a program database with compiler tools configured properly
-  (compiler@Compiler{compilerId = CompilerId compilerFlavor compilerVersion}, platform, progDb) <-
+  (compiler@Compiler{compilerId = CompilerId compilerFlavor compilerVersion}, _, platform, progDb) <-
     configCompilerEx hcFlavor hcPath hcPkg preProgDb verbosity
 
   let
