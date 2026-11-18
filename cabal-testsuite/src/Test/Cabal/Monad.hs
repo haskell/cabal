@@ -368,7 +368,8 @@ runTestM mode m =
     withTestDir'
       verbosity
       (defaultTempFileOptions{optKeepTempFiles = argKeepTmpFiles (testCommonArgs args)})
-      "cabal-testsuite"
+      -- Use a space to catch anything that might fail with a space in a directory
+      "cabal testsuite"
       $ \tmp_dir -> do
         let dist_dir = testArgDistDir args
             (script_dir0, script_filename) = splitFileName (testArgScriptPath args)
