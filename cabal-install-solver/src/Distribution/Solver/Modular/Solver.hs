@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 #ifdef DEBUG_TRACETREE
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -11,6 +12,7 @@ module Distribution.Solver.Modular.Solver
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
+import Data.Function ((&))
 
 import qualified Data.Map as M
 import qualified Data.List as L
@@ -141,15 +143,17 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
-                       (case onlyConstrained sc of
-                          OnlyConstrainedAll ->
-                            P.onlyConstrained (`S.member` versionConstrainedOrGoals)
-                          OnlyConstrainedNone ->
-                            id)
+                       (let oc = onlyConstrained sc in oc & \case
+                          OnlyConstrainedEq -> P.onlyConstrained oc (`S.member` versionEqOrGoals)
+                          OnlyConstrainedAll -> P.onlyConstrained oc (`S.member` versionConstrainedOrGoals)
+                          OnlyConstrainedNone -> id)
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
     versionConstrained = filterVersion isVersionConstrained userConstraints
     versionConstrainedOrGoals = versionConstrained `S.union` userGoals
+
+    versionEq = filterVersion isThisVersion userConstraints
+    versionEqOrGoals = versionEq `S.union` userGoals
 
     -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
     -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
@@ -166,6 +170,16 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     goalChoiceHeuristics
       | asBool (reorderGoals sc) = P.preferReallyEasyGoalChoices
       | otherwise                = id {- P.firstGoal -}
+
+-- | Is this a version constraint that normalises to an equality, @== v@?
+--
+-- Each constraint is checked on its own. Two constraints on the same package
+-- that only together allow one version, such as @>=1@ and @<=1@, are not an
+-- equality.
+isThisVersion :: LabeledPackageConstraint -> Bool
+isThisVersion (LabeledPackageConstraint (PackageConstraint _ constraint) _)
+  | PackagePropertyVersion (projectVersionRange . normalise -> ThisVersionF _) <- constraint = True
+  | otherwise = False
 
 -- | Keep package names of constraints that satisfy the predicate.
 filterVersion :: (LabeledPackageConstraint -> Bool) -> M.Map PN [LabeledPackageConstraint] -> Set PN

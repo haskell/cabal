@@ -1,0 +1,10 @@
+cabal-version: 2.2
+name: b
+version: 0
+
+library
+  build-tool-depends:
+    some-exe:some-exe -any
+  build-depends:
+    some-lib,
+    other-lib
