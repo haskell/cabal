@@ -419,7 +419,7 @@ ppGhcCpp extraArgs _bi lbi clbi =
     { platformIndependent = False
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
-        (prog, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
+        prog <- compilerProgramToRun verbosity (compilerPrograms lbi) (withPrograms lbi)
         runProgramCwd verbosity (mbWorkDirLBI lbi) prog $
           ["-E", "-cpp"]
             -- This is a bit of an ugly hack. We're going to

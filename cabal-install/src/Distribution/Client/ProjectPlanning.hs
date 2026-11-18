@@ -401,7 +401,7 @@ rebuildProjectConfig
           let fetchCompiler = do
                 -- have to create the cache directory before configuring the compiler
                 liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
-                (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (snd (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
+                (compiler, _, Platform arch os, _) <- configureCompiler verbosity distDirLayout (snd (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
                 pure (os, arch, compiler)
 
           (projectConfig, compiler) <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
@@ -531,7 +531,7 @@ configureCompiler
   :: Verbosity
   -> DistDirLayout
   -> ProjectConfig
-  -> Rebuild (Compiler, Platform, ProgramDb)
+  -> Rebuild (Compiler, CompilerPrograms, Platform, ProgramDb)
 configureCompiler
   verbosity
   DistDirLayout
@@ -565,7 +565,7 @@ configureCompiler
 
     progsearchpath <- liftIO getSystemSearchPath
 
-    (hc, plat, hcProgDb) <-
+    (hc, hcProg, plat, hcProgDb) <-
       rerunIfChanged
         verbosity
         fileMonitorCompiler
@@ -585,7 +585,7 @@ configureCompiler
             let globalPaths :: IO ProgramDb = addPaths projectConfigProgPathExtra defaultProgramDb
             let localPaths :: ProgramDb -> IO ProgramDb = addPaths packageConfigProgramPathExtra
             (globalPaths >>= localPaths) <&> userPaths
-          result@(_, _, progdb') <-
+          result@(_, _, _, progdb') <-
             liftIO $
               Cabal.configCompiler
                 hcFlavor
@@ -609,12 +609,13 @@ configureCompiler
     --     (e.g. hsc2hs, haddock, ar, ld...).
     --
     -- See Note [Caching the result of configuring the compiler]
-    finalProgDb <-
+    (hcProgs, finalProgDb) <-
       liftIO $ do
-        progDb <-
+        (hcProgs, progDb) <-
           Cabal.configCompilerProgDb
             verbosity
             hc
+            hcProg
             (clearUnconfiguredPrograms hcProgDb)
             hcPkg
         -- Re-apply the user-supplied program locations: 'configCompilerProgDb'
@@ -622,8 +623,8 @@ configureCompiler
         -- locations) and re-adds the toolchain programs (gcc, ar, ld, ...)
         -- without them. Without this, @--with-gcc@ and the @program-locations@
         -- section would have no effect (see #11881).
-        return $ userPaths progDb
-    return (hc, plat, finalProgDb)
+        return (hcProgs, userPaths progDb)
+    return (hc, hcProgs, plat, finalProgDb)
     where
       hcFlavor = flagToMaybe projectConfigHcFlavor
       hcPath = flagToMaybe projectConfigHcPath
@@ -779,7 +780,7 @@ rebuildInstallPlan
       --
       phaseConfigureCompiler
         :: ProjectConfig
-        -> Rebuild (Compiler, Platform, ProgramDb)
+        -> Rebuild (Compiler, CompilerPrograms, Platform, ProgramDb)
       phaseConfigureCompiler = configureCompiler verbosity distDirLayout
 
       -- Configuring other programs.
@@ -796,9 +797,9 @@ rebuildInstallPlan
       --
       phaseConfigurePrograms
         :: ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> (Compiler, CompilerPrograms, Platform, ProgramDb)
         -> Rebuild ()
-      phaseConfigurePrograms projectConfig (_, _, compilerProgDb) = do
+      phaseConfigurePrograms projectConfig (_, _, _, compilerProgDb) = do
         -- Users are allowed to specify program locations independently for
         -- each package (e.g. to use a particular version of a pre-processor
         -- for some packages). However they cannot do this for the compiler
@@ -819,7 +820,7 @@ rebuildInstallPlan
       --
       phaseRunSolver
         :: ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> (Compiler, CompilerPrograms, Platform, ProgramDb)
         -> [PackageSpecifier UnresolvedSourcePackage]
         -> InstalledPackageIndex
         -> Rebuild (SolverInstallPlan, Maybe PkgConfigDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
@@ -831,7 +832,7 @@ rebuildInstallPlan
           , projectConfigLocalPackages
           , projectConfigSpecificPackage
           }
-        (compiler, platform, progdb)
+        (compiler, _, platform, progdb)
         localPackages
         installedPackages =
           rerunIfChanged
@@ -919,7 +920,7 @@ rebuildInstallPlan
       phaseElaboratePlan
         :: HasCallStack
         => ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> (Compiler, CompilerPrograms, Platform, ProgramDb)
         -> Maybe PkgConfigDb
         -> SolverInstallPlan
         -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
@@ -935,7 +936,7 @@ rebuildInstallPlan
           , projectConfigSpecificPackage
           , projectConfigBuildOnly
           }
-        (compiler, platform, compilerProgDb)
+        (compiler, compilerProgs, platform, compilerProgDb)
         pkgConfigDB
         solverPlan
         localPackages = do
@@ -959,6 +960,7 @@ rebuildInstallPlan
                 verbosity
                 platform
                 compiler
+                compilerProgs
                 configuredCompilerProgDb
                 pkgConfigDB
                 distDirLayout
@@ -1673,6 +1675,8 @@ elaborateInstallPlan
   => Verbosity
   -> Platform
   -> Compiler
+  -> CompilerPrograms
+  -- ^ The compiler's programs, as configured together with the 'Compiler'
   -> ProgramDb
   -- ^ __Configured__ compiler program database (ghc, ghc-pkg, haddock, ld, etc)
   -> Maybe PkgConfigDb
@@ -1691,6 +1695,7 @@ elaborateInstallPlan
   verbosity
   platform
   compiler
+  compilerProgs
   compilerProgDb
   pkgConfigDB
   distDirLayout@DistDirLayout{..}
@@ -1712,6 +1717,7 @@ elaborateInstallPlan
         ElaboratedSharedConfig
           { pkgConfigPlatform = platform
           , pkgConfigCompiler = compiler
+          , pkgConfigCompilerPrograms = compilerProgs
           , pkgConfigCompilerProgs = compilerProgDb
           , pkgConfigReplOptions = mempty
           , pkgConfigPackageSources =
