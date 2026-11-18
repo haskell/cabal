@@ -99,6 +99,7 @@ import Data.ByteString.Lazy qualified as BSL
 import Data.Char qualified as Char
 import Data.List (isPrefixOf, stripPrefix)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Network.URI (escapeURIString, isAllowedInURI)
 import Network.Wait (waitTcpVerbose)
 import System.Directory
 import System.Environment
@@ -688,12 +689,13 @@ withRepoNoUpdate repo_dir m = do
   -- TODO: libify this
   let package_cache = testCabalDir env </> "packages"
   liftIO $
-    appendFile (testUserCabalConfigFile env) $
-      unlines
-        [ "repository test-local-repo"
-        , "  url: " ++ repoUri env
-        , "remote-repo-cache: " ++ package_cache
-        ]
+    BSL.appendFile (testUserCabalConfigFile env) $
+      toUTF8LBS $
+        unlines
+          [ "repository test-local-repo"
+          , "  url: " ++ repoUri env
+          , "remote-repo-cache: " ++ package_cache
+          ]
   liftIO $ print $ testUserCabalConfigFile env
   liftIO $ print =<< readFile (testUserCabalConfigFile env)
 
@@ -714,7 +716,7 @@ withRepoNoUpdate repo_dir m = do
                   )
               else ("//" ++)
            )
-          (testRepoDir env)
+          (escapeURIString isAllowedInURI $ testRepoDir env)
 
 -- | Given a directory (relative to the 'testCurrentDir') containing
 -- a series of directories representing packages, generate an
