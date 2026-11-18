@@ -37,6 +37,7 @@ module Distribution.Fields.Parser
 import Control.Applicative (liftA2)
 #endif
 import qualified Data.ByteString.Char8 as B8
+import Data.Either (fromRight)
 import Data.Functor.Identity
 import qualified Distribution.Compat.Lens as L
 import Distribution.Compat.Prelude
@@ -270,13 +271,11 @@ inLexerMode (LexerMode mode) p =
 
 -- Top level of a file using cabal syntax
 --
-cabalStyleFile :: Parser [Field (WithComments Position)]
+cabalStyleFile :: Parser (Either [Comment Position] [Field (WithComments Position)])
 cabalStyleFile = do
   es <- elements zeroIndentLevel
   eof
-  case es of
-    Left _ -> pure [] -- We discard the comments here, because it is not a valid cabal file
-    Right es' -> pure es'
+  pure es
 
 -- | Collect in annotation one or more comments after a parser succeeds
 commentsAfter :: Parser (FieldLine Position) -> Parser (FieldLine (WithComments Position))
@@ -547,27 +546,33 @@ fieldInlineOrBraces name =
 -- >>> readFields' "\xc2\xa0 foo: bar"
 -- Right ([Field (Name (Position 1 3) "foo") [FieldLine (Position 1 8) "bar"]],[LexWarning LexWarningNBSP (Position 1 1)])
 readFields :: B8.ByteString -> Either ParseError [Field Position]
-readFields = (Bi.second . map . fmap) unComments . readFieldsConcrete
+readFields = Bi.second ((map . fmap) unComments . fromRight mempty) . readFieldsConcrete
 
 -- | Like 'readFields' but also return lexer warnings.
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
-readFields' = (Bi.second . Bi.first . map . fmap) unComments . readFieldsConcrete'
+readFields' = (Bi.second . Bi.first) ((map . fmap) unComments . fromRight mempty) . readFieldsConcrete'
 
 -- | @since 3.18.2
---   Read fields from 'ByteString' with concrete annotation.
-readFieldsConcrete :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
+--   Read fields or comments from 'ByteString' with concrete annotation.
+readFieldsConcrete :: B8.ByteString -> Either ParseError (Either [Comment Position] [Field (WithComments Position)])
 readFieldsConcrete = fmap fst . readFieldsConcrete'
 
 -- | @since 3.18.2
---   Read fields from 'ByteString' with concrete annotation with lexer warnings.
-readFieldsConcrete' :: B8.ByteString -> Either ParseError ([Field (WithComments Position)], [LexWarning])
+--   Read fields or comments from 'ByteString' with concrete annotation with lexer warnings.
+readFieldsConcrete'
+  :: B8.ByteString
+  -> Either
+      ParseError
+      ( Either [Comment Position] [Field (WithComments Position)]
+      , [LexWarning]
+      )
 readFieldsConcrete' s = do
   parse parser "the input" lexSt
   where
     parser = do
       fields <- cabalStyleFile
       ws <- getLexerWarnings -- lexer accumulates warnings in reverse (consing them to the list)
-      pure (fields, reverse ws ++ checkIndentation fields [])
+      pure (fields, reverse ws ++ checkIndentation (fromRight [] fields) [])
 
     lexSt = mkLexState' (mkLexState s)
 
