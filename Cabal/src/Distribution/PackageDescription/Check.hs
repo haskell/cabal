@@ -38,6 +38,7 @@ module Distribution.PackageDescription.Check
     -- ** Checking package contents
   , checkPackageFiles
   , checkPackageFilesGPD
+  , checkPackageContentFiles
   , checkPackageContent
   , CheckPackageContentOps (..)
   ) where
@@ -169,16 +170,8 @@ checkPackageFilesGPD
   -> FilePath -- Package root.
   -> IO [PackageCheck]
 checkPackageFilesGPD verbosity gpd root =
-  checkPackagePrim False (Just checkFilesIO) (Just checkPreIO) gpd
+  checkPackagePrim False (Just (checkFilesIO root)) (Just checkPreIO) gpd
   where
-    checkFilesIO =
-      CheckPackageContentOps
-        { doesFileExist = System.doesFileExist . relative
-        , doesDirectoryExist = System.doesDirectoryExist . relative
-        , listDirectory = System.Directory.listDirectory . relative
-        , getFileContents = BS.readFile . relative
-        }
-
     checkPreIO =
       CheckPreDistributionOps
         { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (Just . specVersion $ packageDescription gpd) (root </> fp) g
@@ -199,6 +192,28 @@ checkPackageFiles
   -> IO [PackageCheck]
 checkPackageFiles verbosity pd oot =
   checkPackageFilesGPD verbosity (pd2gpd pd) oot
+
+-- | Like 'checkPackageFiles', but without the pre-distribution checks, which
+-- look in the work tree for problems that only matter when distributing the
+-- package, such as globs that match no files. Those checks only produce
+-- 'PackageDistSuspiciousWarn's, and they expand every glob in the package
+-- description, which can be slow.
+checkPackageContentFiles
+  :: PackageDescription
+  -> FilePath -- Package root.
+  -> IO [PackageCheck]
+checkPackageContentFiles pd root =
+  checkPackageContent (checkFilesIO root) (pd2gpd pd)
+
+-- | 'CheckPackageContentOps' for a package unpacked at the given filepath.
+checkFilesIO :: FilePath -> CheckPackageContentOps IO
+checkFilesIO root =
+  CheckPackageContentOps
+    { doesFileExist = System.doesFileExist . (root </>)
+    , doesDirectoryExist = System.doesDirectoryExist . (root </>)
+    , listDirectory = System.Directory.listDirectory . (root </>)
+    , getFileContents = BS.readFile . (root </>)
+    }
 
 -- ------------------------------------------------------------
 -- Package description
