@@ -1706,6 +1706,8 @@ elaborateInstallPlan
     x <- elaboratedInstallPlan
     return (x, elaboratedSharedConfig)
     where
+      configuredProgramsHash = hashValue (Binary.encode (configuredPrograms compilerProgDb))
+
       elaboratedSharedConfig =
         ElaboratedSharedConfig
           { pkgConfigPlatform = platform
@@ -2470,7 +2472,7 @@ elaborateInstallPlan
                   (getMapMappend $ perPkgOption pkgid packageConfigProgramArgs)
 
             elabProgramPathExtra = fromNubList $ perPkgOption pkgid packageConfigProgramPathExtra
-            elabConfiguredPrograms = configuredPrograms compilerProgDb
+            elabConfiguredProgramsHash = configuredProgramsHash
             elabConfigureScriptArgs = Text.unpack <$> perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
             elabExtraLibDirsStatic = perPkgOptionList pkgid packageConfigExtraLibDirsStatic
