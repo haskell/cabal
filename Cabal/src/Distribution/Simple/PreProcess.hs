@@ -69,7 +69,7 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import Data.Char (isAscii)
-import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
+import Data.IORef (IORef, atomicModifyIORef', atomicWriteIORef, newIORef, readIORef)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
@@ -470,7 +470,7 @@ newSourceDirCache = SourceDirCache <$> newIORef Map.empty
 -- | Forget all cached listings. This must be called whenever files may have
 -- been created, e.g. after running a preprocessor.
 clearSourceDirCache :: SourceDirCache -> IO ()
-clearSourceDirCache (SourceDirCache ref) = writeIORef ref Map.empty
+clearSourceDirCache (SourceDirCache ref) = atomicWriteIORef ref Map.empty
 
 -- | Equivalent to 'doesFileExist', but avoids the system call when the
 -- cached directory listing shows that the file does not exist.
@@ -501,7 +501,7 @@ cachedDoesFileExist (SourceDirCache ref) path
                 Left e
                   | isDoesNotExistError e -> Just Set.empty
                   | otherwise -> Nothing
-          modifyIORef' ref (Map.insert dir listing)
+          atomicModifyIORef' ref (\cache' -> (Map.insert dir listing cache', ()))
           return listing
 
 -- | Like 'findFileCwdWithExtension'', but uses the 'SourceDirCache' if one
