@@ -3,14 +3,6 @@ module Main
     ( main
     ) where
 
-
-
-
-
-
-
-
-
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
@@ -45,6 +37,7 @@ import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>))
 import Distribution.Parsec.Source
 
+import qualified Data.Bifunctor as Bi
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
@@ -151,11 +144,17 @@ commentTest extract fname = ediffGolden goldenTest fname exprFile $ do
     exprFile = replaceExtension input "expr"
 
 -- Extract comments to reduce the golden file's size and make it easier to verify.
-extractComments :: (Foldable f) => [f (WithComments ann)] -> ([Comment ann], [Comment ann])
-extractComments = mconcat . map extractCommentsStep
+extractComments :: (Foldable f) => Either [Comment ann] [f (WithComments ann)] -> ([Comment ann], [Comment ann])
+extractComments = mconcat . collapseEither . Bi.bimap onlyCommentsAreLeadingComments (map extractCommentsStep)
+  where
+    onlyCommentsAreLeadingComments = map $ (,[]) . (:[])
 
 extractCommentsStep :: (Foldable f) => f (WithComments ann) -> ([Comment ann], [Comment ann])
 extractCommentsStep f = foldMap (priorComments &&& followingComments) f
+
+collapseEither :: Either a a -> a
+collapseEither (Left x) = x
+collapseEither (Right x) = x
 #endif
 
 -------------------------------------------------------------------------------
