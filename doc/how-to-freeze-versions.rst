@@ -515,8 +515,8 @@ without the other, so a freeze file can be cut down to its index state:
 
     index-state: hackage.haskell.org 2026-05-31T23:08:56Z
 
-A ``cabal.project.freeze`` file with only this line, committed to source
-control, sits between not freezing and a full freeze:
+A ``cabal.project.freeze`` file with only this line [#index-state-only]_,
+committed to source control, sits between not freezing and a full freeze:
 
 - Each compiler version and platform gets its own solver run against the same
   snapshot of the repository. A full freeze records one solver run, so its
@@ -553,6 +553,10 @@ There are costs:
     freeze``, which writes an ``index-state`` line to the freeze file. Moving
     the timestamp in the project then has no effect until that line is deleted
     from the freeze file.
+
+.. [#index-state-only] PostgREST does this. Its `cabal.project.freeze
+   <https://github.com/PostgREST/postgrest/blob/c5065e8ebd1563783213c55bf43f5efd8f2746d2/cabal.project.freeze#L1>`_
+   has an index state and nothing else.
 
 .. _version-exceptions:
 
