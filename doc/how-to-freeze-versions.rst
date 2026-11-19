@@ -227,6 +227,47 @@ be prefixed with ``--`` to comment it out.
 Capped repository versions
 --------------------------
 
+A package repository's index is a log. Each published package version and each
+package description revision is added to the end of it with a timestamp. The
+:cfg-field:`index-state` field sets a cutoff time for a repository. When
+``cabal`` reads the index it drops the entries after that time, before the
+solver runs. The solver cannot pick a version or a revision it was never
+shown.
+
+The repository only changes when an entry is added, so a cutoff time doesn't
+have to match the time of an entry. Any time from the last entry before the
+cutoff up to the next entry selects the same state of the repository. Given a
+cutoff of midnight, ``cabal freeze`` writes the time of the last entry before
+it:
+
+.. code-block:: console
+
+    $ cabal freeze --index-state=2026-06-01T00:00:00Z
+    $ grep index-state cabal.project.freeze
+    index-state: hackage.haskell.org 2026-05-31T23:08:56Z
+
+Unlike a version constraint, an index state says nothing about any one package.
+The solver works with the repository as it stood at the cutoff time. That is
+every version published by then, each with its latest revision as of then. A
+version published before the cutoff is not always one the solver can pick. A
+revision made before the cutoff may have ruled it out, for instance by changing
+a dependency to ``base <0``. Newer versions and revisions arrive only when the
+timestamp is moved forward.
+
+.. Todo::
+
+    Deprecations may deserve their own section.
+
+    Deprecated versions reach ``cabal`` as ``preferred-versions`` entries in
+    the repository's index, so an index state also fixes which versions are
+    deprecated.
+
+    TODO: Find out if the solver can still pick a deprecated version.
+
+An index state can be set in a project file, in a freeze file or with the
+``--index-state`` command line option. See :ref:`freezing only the index state
+<freeze-index-state-only>` for keeping it in a freeze file.
+
 .. _frozen-versions:
 
 Frozen versions
@@ -439,6 +480,71 @@ versions are frozen.
     exit [[ "$NEW_FREEZE_SUM" == "$OLD_FREEZE_SUM" ]]
 
 .. [#add-new-dep] By adding a dependency to one of the packages in the project.
+
+.. _freeze-index-state-only:
+
+Freezing only the index state
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``cabal freeze`` writes three fields to the freeze file:
+
+.. code-block:: cabal
+
+    active-repositories: hackage.haskell.org:merge
+    constraints: any.base ==4.22.0.0,
+                 any.ghc-internal ==9.1401.0,
+                 any.ghc-prim ==0.13.1,
+                 any.rts ==1.0.3,
+                 any.split ==0.2.5
+    index-state: hackage.haskell.org 2026-05-31T23:08:56Z
+
+These fields pin different things. The ``constraints`` pin versions and flags.
+The ``index-state`` pins what the solver can see in the repository, including
+package description revisions, which constraints cannot pin. Each can be used
+without the other, so a freeze file can be cut down to its index state:
+
+.. code-block:: cabal
+
+    index-state: hackage.haskell.org 2026-05-31T23:08:56Z
+
+A ``cabal.project.freeze`` file with only this line, committed to source
+control, sits between not freezing and a full freeze:
+
+- Each compiler version and platform gets its own solver run against the same
+  snapshot of the repository. A full freeze records one solver run, so its
+  constraints can get in the way of another compiler version or operating
+  system.
+
+- The repository doesn't change between solver runs, so the same ``cabal``,
+  compiler, platform and flags pick the same versions.
+
+- Updating is a one-line change. Newer versions and revisions arrive only when
+  the timestamp is moved forward.
+
+There are costs:
+
+- The file doesn't show which versions the solver picked.
+
+- Running ``cabal freeze`` writes the ``constraints`` and
+  ``active-repositories`` fields back, making it a full freeze again. Change
+  the timestamp by hand instead.
+
+- The file name suggests that versions are pinned when they aren't.
+
+.. Tip::
+
+    A freeze file is project configuration, so anything in it can go in
+    ``cabal.project`` instead. When the index state is all that is pinned,
+    ``cabal.project`` is the better place for it. ``cabal freeze`` doesn't
+    overwrite that file.
+
+.. Warning::
+
+    If a project and its freeze file both set an index state for a repository,
+    the one in the freeze file is used. This matters after running ``cabal
+    freeze``, which writes an ``index-state`` line to the freeze file. Moving
+    the timestamp in the project then has no effect until that line is deleted
+    from the freeze file.
 
 .. _version-exceptions:
 
