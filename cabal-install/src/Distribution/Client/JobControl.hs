@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 -----------------------------------------------------------------------------
@@ -45,7 +46,11 @@ import Control.Concurrent (forkIO, forkIOWithUnmask, threadDelay)
 import Control.Concurrent.MVar
 import Control.Concurrent.STM (STM, TVar, atomically, modifyTVar', newTVarIO, readTVar)
 import Control.Concurrent.STM.TChan
+#if MIN_VERSION_semaphore_compat(2,0,0)
+import Control.Exception (bracket, bracket_, finally, mask_, try)
+#else
 import Control.Exception (bracket, bracket_, mask_, try)
+#endif
 import Control.Monad (forever, replicateM_)
 import Distribution.Client.Compat.Semaphore
 import Distribution.Client.Utils (numberOfProcessors)
@@ -183,6 +188,39 @@ newSemaphoreJobControl _ n
   | n < 1 || n > 1000 =
       error $ "newParallelJobControl: not a sensible number of jobs: " ++ show n
 newSemaphoreJobControl verbosity maxJobLimit = do
+#if MIN_VERSION_semaphore_compat(2,0,0)
+  mbServer <- freshSemaphore "cabal_semaphore" maxJobLimit
+  case mbServer of
+    Left err -> do
+      warn verbosity $
+        "Failed to create semaphore: "
+          ++ show err
+          ++ "; falling back to -j"
+          ++ show maxJobLimit
+          ++ "."
+      newParallelJobControl maxJobLimit
+    Right server -> do
+      let sem = serverClientSemaphore server
+      info verbosity $
+        "Created semaphore called "
+          ++ semaphoreIdentifier (clientSemaphoreName sem)
+          ++ " with "
+          ++ show maxJobLimit
+          ++ " slots."
+      outqVar <- newTChanIO
+      inqVar <- newTChanIO
+      countVar <- newTVarIO 0
+      void (forkIO (worker sem inqVar outqVar))
+      return
+        JobControl
+          { spawnJob = spawn inqVar countVar
+          , collectJob = collect outqVar countVar
+          , remainingJobs = remaining countVar
+          , cancelJobs = cancel inqVar countVar
+          , cleanupJobControl = destroyServerSemaphore server
+          , jobControlSemaphore = Just (clientSemaphoreName sem)
+          }
+#else
   sem <- freshSemaphore "cabal_semaphore" maxJobLimit
   info verbosity $
     "Created semaphore called "
@@ -203,8 +241,13 @@ newSemaphoreJobControl verbosity maxJobLimit = do
       , cleanupJobControl = destroySemaphore sem
       , jobControlSemaphore = Just (semaphoreName sem)
       }
+#endif
   where
+#if MIN_VERSION_semaphore_compat(2,0,0)
+    worker :: ClientSemaphore -> TChan (IO a) -> TChan (Either SomeException a) -> IO ()
+#else
     worker :: Semaphore -> TChan (IO a) -> TChan (Either SomeException a) -> IO ()
+#endif
     worker sem inqVar outqVar =
       forever $ do
         job <- atomically $ readTChan inqVar
@@ -213,10 +256,18 @@ newSemaphoreJobControl verbosity maxJobLimit = do
         -- async exception is thrown between the semaphore being taken and the
         -- thread being spawned.
         mask_ $ do
+#if MIN_VERSION_semaphore_compat(2,0,0)
+          tok <- waitOnSemaphore sem
+#else
           waitOnSemaphore sem
+#endif
           void $ forkIOWithUnmask $ \unmask -> do
+#if MIN_VERSION_semaphore_compat(2,0,0)
+            res <- try (unmask job) `finally` releaseSemaphoreToken tok
+#else
             res <- try (unmask job)
             releaseSemaphore sem 1
+#endif
             atomically $ writeTChan outqVar res
         -- Try to give GHC enough time to compute the module graph and then
         -- request some additional capabilities if it can make use of them. The
@@ -292,7 +343,9 @@ newJobControlFromParStrat verbosity mcompiler parStrat numJobsCap = case parStra
     case mcompiler of
       Just compiler
         | jsemSupported compiler ->
-            newSemaphoreJobControl verbosity (capJobs n)
+            do
+              warn verbosity "Semaphore version mismatch (Cabal does not report semaphore version); not using -jsem, GHC will be invoked without semaphore-based parallelism."
+              newParallelJobControl (capJobs n)
         | otherwise ->
             do
               warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
