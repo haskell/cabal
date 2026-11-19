@@ -57,7 +57,6 @@ import Distribution.Simple.LocalBuildInfo
 
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.PackageIndex as Index
-import qualified Distribution.Simple.UHC as UHC
 
 import Distribution.Backpack.DescribeUnitId
 import Distribution.Compat.Graph (IsNode (nodeKey))
@@ -252,15 +251,12 @@ registerAll verbHandles pkg lbi regFlags ipis =
               (IPI.showInstalledPackageInfo installedPkgInfo)
 
     writeRegisterScript =
-      case compilerFlavor (compiler lbi) of
-        UHC -> notice verbosity "Registration scripts not needed for uhc"
-        _ ->
-          withHcPkg
-            verbosity
-            "Registration scripts are not implemented for this compiler"
-            (compiler lbi)
-            (withPrograms lbi)
-            (writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs)
+      withHcPkg
+        verbosity
+        "Registration scripts are not implemented for this compiler"
+        (compiler lbi)
+        (withPrograms lbi)
+        (writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs)
 
 generateRegistrationInfo
   :: Verbosity
@@ -376,7 +372,6 @@ createPackageDB
 createPackageDB verbosity comp progdb dbPath =
   case compilerFlavor comp of
     GHC -> HcPkg.init (GHC.hcPkgInfo progdb) verbosity dbPath
-    UHC -> return ()
     _ -> dieWithException verbosity CreatePackageDB
 
 doesPackageDBExist :: FilePath -> IO Bool
@@ -437,7 +432,6 @@ registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo regi
     _
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported
-    UHC -> UHC.registerPackage verbosity mbWorkDir comp progdb packageDbs installedPkgInfo
     _ -> dieWithException verbosity RegisteringNotImplemented
 
 writeHcPkgRegisterScript
@@ -756,7 +750,5 @@ unregScriptFileName = case buildOS of
   _ -> "unregister.sh"
 
 internalPackageDBPath :: LocalBuildInfo -> SymbolicPath Pkg (Dir Dist) -> SymbolicPath Pkg (Dir PkgDB)
-internalPackageDBPath lbi distPref =
-  case compilerFlavor (compiler lbi) of
-    UHC -> UHC.inplacePackageDbPath lbi
-    _ -> distPref </> makeRelativePathEx "package.conf.inplace"
+internalPackageDBPath _lbi distPref =
+  distPref </> makeRelativePathEx "package.conf.inplace"

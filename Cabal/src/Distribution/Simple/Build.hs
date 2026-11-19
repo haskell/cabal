@@ -70,7 +70,6 @@ import Distribution.Backpack.DescribeUnitId
 import Distribution.Package
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.PackageIndex as Index
-import qualified Distribution.Simple.UHC as UHC
 
 import Distribution.Simple.Build.Macros (generateCabalMacrosHeader)
 import Distribution.Simple.Build.PackageInfoModule (generatePackageInfoModule)
@@ -310,7 +309,6 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
     -- which program we need.
     flavorToProgram :: CompilerFlavor -> Maybe Program
     flavorToProgram GHC = Just ghcProgram
-    flavorToProgram UHC = Just uhcProgram
     flavorToProgram JHC = Just jhcProgram
     flavorToProgram _ = Nothing
 
@@ -972,7 +970,6 @@ buildLib verbHandles flags numJobs pkg_descr lbi lib clbi =
   let verbosity = mkVerbosity verbHandles $ fromFlag $ buildVerbosity flags
    in case compilerFlavor (compiler lbi) of
         GHC -> GHC.buildLib verbHandles flags numJobs pkg_descr lbi lib clbi
-        UHC -> UHC.buildLib verbosity pkg_descr lbi lib clbi
         _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 -- | Build a foreign library
@@ -1003,7 +1000,6 @@ buildExe
 buildExe verbosity numJobs pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
     GHC -> GHC.buildExe verbosity numJobs pkg_descr lbi exe clbi
-    UHC -> UHC.buildExe verbosity pkg_descr lbi exe clbi
     _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 replLib
