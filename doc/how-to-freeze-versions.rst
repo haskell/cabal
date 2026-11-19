@@ -268,6 +268,14 @@ An index state can be set in a project file, in a freeze file or with the
 ``--index-state`` command line option. See :ref:`freezing only the index state
 <freeze-index-state-only>` for keeping it in a freeze file.
 
+.. Note::
+
+    An index state only applies to secure repositories, such as Hackage. For a
+    local no-index repository (``file+noindex``) or a remote repository that
+    isn't secure, ``cabal`` warns that the index state is ignored and uses the
+    whole repository. See :ref:`repository specification
+    <repository-specification>` for these kinds of repository.
+
 .. _frozen-versions:
 
 Frozen versions
