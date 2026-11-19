@@ -271,22 +271,61 @@ An index state can be set in a project file, in a freeze file or with the
 Deprecated versions
 ^^^^^^^^^^^^^^^^^^^
 
-A package's maintainers can deprecate some of its versions on Hackage.
-Deprecations reach ``cabal`` as ``preferred-versions`` entries in the
-repository's index.
+A package's maintainers can deprecate some of its versions on Hackage. A
+deprecation is not a revision. It does not change any package description. It
+is a separate ``preferred-versions`` entry for the package in the repository's
+index, holding a version range that leaves out the deprecated versions. With
+versions ``9.4.0`` and ``9.8.0`` deprecated, the entry for ``megaparsec`` on
+Hackage is:
 
-A deprecation is a preference, not a constraint. The solver picks a version
-that is not deprecated when it can. It still picks a deprecated version when
-every version within the constraints is deprecated. With ``foo-1.0`` and ``foo-2.0`` in a repository and ``foo-2.0``
-deprecated:
+.. code-block:: text
+
+    megaparsec <9.4.0 || >9.4.0 && <9.8.0 || >9.8.0
+
+The same entry is used when maintainers prefer a range of versions without
+deprecating any one version. The entry for ``hspec`` on Hackage is:
+
+.. code-block:: text
+
+    hspec >=2.0
+
+Either way, the range is a preference, not a constraint. The solver picks a
+version inside the range when it can, ahead of a newer version outside it. If
+no version inside the range satisfies the constraints, it picks one from
+outside.
+
+A :ref:`local no-index repository <local-no-index-repositories>` can have a
+``preferred-versions`` file too, beside its ``.tar.gz`` files. It is a text file with one line for each package, a
+package name and a version range in the same syntax as a ``build-depends``
+field. With ``foo-1.0`` and ``foo-2.0`` in such a repository and ``foo-2.0``
+left out of the range:
 
 .. code-block:: console
 
+    $ tree repo
+    repo
+    ├── foo-1.0.tar.gz
+    ├── foo-2.0.tar.gz
+    ├── noindex.cache
+    └── preferred-versions
+
+``noindex.cache`` is written by ``cabal update``, which must be run after
+changing ``preferred-versions``.
+
+.. code-block:: console
+
+    $ cat repo/preferred-versions
+    foo <2
+
     $ cabal build --dry-run
+    In order, the following would be built (use -v for more details):
      - foo-1.0 (lib) (requires build)
+     - proj-0 (lib) (first run)
 
     $ cabal build --dry-run --constraint='foo ==2.0'
+    In order, the following would be built (use -v for more details):
      - foo-2.0 (lib) (requires build)
+     - proj-0 (lib) (first run)
 
 A freeze file pins each dependency with a constraint like ``any.foo ==2.0``.
 As with the ``--constraint`` option above, that leaves the solver no other

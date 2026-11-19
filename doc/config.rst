@@ -189,6 +189,8 @@ scope of ``cabal`` proper.
 More information about the security infrastructure can be found at
 https://github.com/haskell/hackage-security.
 
+.. _local-no-index-repositories:
+
 Local no-index repositories
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
