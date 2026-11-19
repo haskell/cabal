@@ -359,6 +359,34 @@ final say in the setting of any fields that have override semantics.
         +             any.ghc-prim ==0.13.0,
                       any.rts ==1.0.2
 
+.. _local-and-freeze-files:
+
+Project ``.local`` and ``.freeze`` files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There is always a project. When there is no ``cabal.project`` file, ``cabal``
+uses a default project. Either way, ``cabal`` reads the project's ``.local``
+and ``.freeze`` files if they exist.
+
+These files are found by name, in the same directory as the project file:
+
+- For ``cabal.project``, they are ``cabal.project.local`` and
+  ``cabal.project.freeze``.
+
+- For ``foo.project``, they are ``foo.project.local`` and
+  ``foo.project.freeze``.
+
+- For the default project, they are ``cabal.project.local`` and
+  ``cabal.project.freeze`` in the package's directory.
+
+A ``.local`` or ``.freeze`` file in any other directory is not read, nor is one
+named for another project. With ``--project-file=foo.project``, a
+``cabal.project.local`` file in the same directory is not read.
+
+If the :ref:`project-file<cmdoption-project-file>` option names a file that
+does not exist, ``cabal`` stops with an error. It does not fall back to the
+default project.
+
 Do you need to freeze?
 ^^^^^^^^^^^^^^^^^^^^^^
 
