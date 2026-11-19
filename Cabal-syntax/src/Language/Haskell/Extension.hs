@@ -94,7 +94,7 @@ classifyLanguage = \str -> case lookup str langTable of
 
 -- * also add it to the Distribution.Simple.X.compilerExtensions lists
 
---   (where X is each compiler: GHC, UHC)
+--   (where X is each compiler: GHC)
 --
 
 -- | This represents language extensions beyond a base 'Language' definition

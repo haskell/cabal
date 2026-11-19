@@ -132,7 +132,6 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.UHC as UHC
 
 import Control.Exception
   ( try
@@ -1138,7 +1137,6 @@ configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform pa
   defaultDirs :: InstallDirTemplates <-
     defaultInstallDirs'
       use_external_internal_deps
-      (compilerFlavor comp)
       (fromFlagOrDefault True (configUserInstall cfg))
       (hasLibs pkg_descr2)
   let
@@ -2267,7 +2265,6 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
   packageDBs' <- filterM packageDBExists packageDBs
   case compilerFlavor comp of
     GHC -> GHC.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
-    UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     flv ->
       dieWithException verbosity $ HowToFindInstalledPackages flv
   where
@@ -2698,7 +2695,6 @@ configCompilerEx Nothing _ _ _ verbosity = dieWithException verbosity UnknownCom
 configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
   (comp, maybePlatform, programDb) <- case hcFlavor of
     GHC -> GHC.configure verbosity hcPath hcPkg progdb
-    UHC -> UHC.configure verbosity hcPath progdb
     GHCJS -> dieWithException verbosity GHCJSNotSupported
     _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
@@ -2718,7 +2714,6 @@ configCompiler mbFlavor hcPath progdb verbosity = do
       Just hcFlavor ->
         case hcFlavor of
           GHC -> GHC.configureCompiler verbosity hcPath progdb
-          UHC -> UHC.configure verbosity hcPath progdb
           GHCJS -> dieWithException verbosity GHCJSNotSupported
           _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)

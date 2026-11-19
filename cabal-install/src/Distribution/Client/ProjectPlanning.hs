@@ -948,7 +948,7 @@ rebuildInstallPlan
               (packageLocationsSignature solverPlan)
               $ getPackageSourceHashes verbosity withRepoCtx solverPlan
 
-          defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
+          defaultInstallDirs <- liftIO userInstallDirTemplates
           let installDirs = fmap Cabal.fromFlag $ fmap Flag defaultInstallDirs <> projectConfigInstallDirs projectConfigShared
           -- Configure the compiler ProgramDb now (once for the entire project),
           -- to avoid repeatedly doing this once per package.
@@ -4046,12 +4046,9 @@ setupHsScriptOptions
 -- | To be used for the input for elaborateInstallPlan.
 --
 -- TODO: [code cleanup] make InstallDirs.defaultInstallDirs pure.
-userInstallDirTemplates
-  :: Compiler
-  -> IO InstallDirs.InstallDirTemplates
-userInstallDirTemplates compiler = do
+userInstallDirTemplates :: IO InstallDirs.InstallDirTemplates
+userInstallDirTemplates =
   InstallDirs.defaultInstallDirs
-    (compilerFlavor compiler)
     True -- user install
     False -- unused
 

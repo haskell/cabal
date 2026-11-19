@@ -16,7 +16,6 @@ Flags for configure:
  --cabal-file=PATH            # use this Cabal file
  --keep-temp-files            # Keep temporary files.
  --ghc                        # Compile with GHC
- --uhc                        # Compile with UHC
  -w PATH or -wPATH, --with-compiler=PATH
                               # Give the path to a particular compiler
  --with-hc-pkg=PATH           # Give the path to the package tool
@@ -171,4 +170,4 @@ Flags for configure:
 
 The flags --with-PROG and --PROG-option(s) can be used with the following programs:
   alex ar c2hs cpphs doctest gcc ghc ghc-pkg haddock happy hpc hsc2hs hscolour
-  jhc ld pkg-config runghc strip tar uhc
+  jhc ld pkg-config runghc strip tar

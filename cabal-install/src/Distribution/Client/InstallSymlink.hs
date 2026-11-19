@@ -35,9 +35,6 @@ import Distribution.Client.Types
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.SourcePackage
 
-import Distribution.Compiler
-  ( CompilerId (..)
-  )
 import Distribution.Package
   ( Package (packageId)
   , PackageIdentifier
@@ -53,7 +50,6 @@ import Distribution.PackageDescription.Configuration
   )
 import Distribution.Simple.Compiler
   ( Compiler
-  , CompilerInfo (..)
   , compilerInfo
   )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -216,7 +212,6 @@ symlinkBinaries
       pkgBinDir pkg ipid = do
         defaultDirs <-
           InstallDirs.defaultInstallDirs
-            compilerFlavor
             (fromFlagOrDefault defaultUserInstall (configUserInstall configFlags))
             (PackageDescription.hasLibs pkg)
         let templateDirs =
@@ -249,7 +244,6 @@ symlinkBinaries
       prefixTemplate = fromFlagTemplate (configProgPrefix configFlags)
       suffixTemplate = fromFlagTemplate (configProgSuffix configFlags)
       cinfo = compilerInfo comp
-      (CompilerId compilerFlavor _) = compilerInfoId cinfo
 
 -- | A record needed to either check if a symlink is possible or to create a
 -- symlink. Also used if copying instead of symlinking.
