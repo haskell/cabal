@@ -442,7 +442,7 @@ preprocessFileWith mbDirCache mbWorkDir searchLoc buildLoc forSDist baseFile ver
 --    out. Case-insensitive matching of non-ASCII names depends on the file
 --    system (Unicode case folding and normalisation differ between file
 --    systems), so names containing non-ASCII characters are not looked up in
---    the cache, and directories containing such names are not cached.
+--    the cache, and are left out of the cached listings.
 --
 --  * If a directory cannot be listed for any reason other than not existing,
 --    we fall back to 'doesFileExist'.
@@ -495,9 +495,7 @@ cachedDoesFileExist (SourceDirCache ref) path
         Nothing -> do
           result <- tryIO (listDirectory dir)
           let listing = case result of
-                Right names
-                  | all (all isAscii) names -> Just (Set.fromList (map foldName names))
-                  | otherwise -> Nothing
+                Right names -> Just (Set.fromList (map foldName (filter (all isAscii) names)))
                 Left e
                   | isDoesNotExistError e -> Just Set.empty
                   | otherwise -> Nothing
