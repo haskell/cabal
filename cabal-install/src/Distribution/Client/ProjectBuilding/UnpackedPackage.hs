@@ -104,7 +104,7 @@ import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, c
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
-import System.Semaphore (SemaphoreName (..))
+import System.Semaphore
 
 import Web.Browser (openBrowser)
 
@@ -252,7 +252,12 @@ buildAndRegisterUnpackedPackage
       uid = installedUnitId rpkg
 
       comp_par_strat = case maybe_semaphore of
+
+#if MIN_VERSION_semaphore_compat(2,0,0)
+        Just sem_name -> Cabal.toFlag (semaphoreIdentifier sem_name)
+#else
         Just sem_name -> Cabal.toFlag (getSemaphoreName sem_name)
+#endif
         _ -> Cabal.NoFlag
 
       whenTest action

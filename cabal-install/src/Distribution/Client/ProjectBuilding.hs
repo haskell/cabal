@@ -361,7 +361,9 @@ rebuildTargets
           NumJobs n -> newParallelJobControl (fromMaybe numberOfProcessors n)
           UseSem n ->
             if jsemSupported compiler
-              then newSemaphoreJobControl verbosity n
+              then do
+                warn verbosity "Semaphore version mismatch (Cabal does not report semaphore version); not using -jsem, GHC will be invoked without semaphore-based parallelism."
+                newParallelJobControl n
               else do
                 warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
                 newParallelJobControl n
