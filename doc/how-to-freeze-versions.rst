@@ -629,10 +629,6 @@ Environment Limitation
     A good many packages have platform-specific dependencies and will vary their
     dependencies based on the operating system.
 
-Index State Limitation
-    The index state of the local package index will also change the list of
-    possible dependencies available to the solver.
-
 Revision Limitation
     A version constraint cannot include a package revision, neither by revision
     number nor hash. These constraints do not have sufficient granularity to
