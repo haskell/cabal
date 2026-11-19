@@ -109,15 +109,19 @@ packages of these directories have no registration file: they are described by
 what 'mhs -L<pkgfile>' reports about them, with <name>-<version> as their unit
 id. A directory given as SpecificPackageDB may hold such packages too.
 
-The base of mhs is versioned like mhs itself (base-0.16.9.0, say), and it
+The base of mhs is versioned like mhs itself (base-0.17.1.0, say), and it
 bundles the modules of packages that are separate on Hackage: bytestring,
 text, deepseq, stm, directory, process, hashable and integer-logarithms.
-Packages from Hackage depend on base-4.x and on those packages by name, so
-Cabal describes the base of mhs the way MicroCabal does: as base at a GHC-era
-version, and the bundled packages as installed packages of their own that
-depend on base and have no package file, so that base.pkg is what gets
-loaded. See 'compatPackages'. The unit id of base stays <name>-<version> as
-mhs knows it, which is also the name of its package file.
+Packages from Hackage depend on base-4.x and on those packages by name. Since
+0.17.1.0, the installer of mhs says so in registration files next to the
+packages it installs: base at a GHC-era version, with the modules it does not
+bundle, and the bundled packages as packages of their own that depend on base
+and have no package file, so that base.pkg is what gets loaded. Cabal reads
+them like any other registration. The unit id and the key of base stay
+<name>-<version> as mhs knows it, which is also the name of its package file.
+An older mhs has no such registrations: its base is described from its
+package file, at the version of mhs, which packages from Hackage do not
+accept, so Cabal warns about it.
 -}
 
 {- Note [MicroHs rewrites of packages]
@@ -367,15 +371,12 @@ userPackageDbDir comp = do
 readPackageDbDir :: Verbosity -> ProgramDb -> FilePath -> IO [InstalledPackageInfo]
 readPackageDbDir verbosity progdb dir = do
   raw <- traverse (readRegistrationFile verbosity) =<< filesWithExtension ".conf" dir
-  let registeredPkgFiles = map mhsPackageFileName raw
-      -- A base that Cabal registered, built from the sources of MicroHs, is
-      -- the base of mhs as much as the one that comes with it.
-      registered = concatMap withCompat raw
+  let registeredPkgFiles = concatMap packageFileNames raw
   pkgFiles <- filesWithExtension ".pkg" (dir </> "packages")
   unregistered <-
     traverse (describePackageFile verbosity progdb) $
       [pkgFile | pkgFile <- pkgFiles, takeFileName pkgFile `notElem` registeredPkgFiles]
-  return (registered ++ concat unregistered)
+  return (raw ++ concat unregistered)
 
 -- | The paths of the files with the given extension in a directory, if the
 -- directory exists.
@@ -412,7 +413,8 @@ readRegistrationFile verbosity file = do
 -- > other-modules:
 -- >   ...
 --
--- The base of mhs is described as several packages, see 'compatPackages'.
+-- A base without a registration is that of an mhs older than 0.17.1.0, see
+-- Note [MicroHs package databases].
 describePackageFile :: Verbosity -> ProgramDb -> FilePath -> IO [InstalledPackageInfo]
 describePackageFile verbosity progdb pkgFile = do
   output <- getDbProgramOutput verbosity mhsProgram progdb ["-L" ++ pkgFile]
@@ -439,7 +441,13 @@ describePackageFile verbosity progdb pkgFile = do
                   , IPI.libraryDirs = [takeDirectory pkgFile]
                   , IPI.ldOptions = field "linker opts"
                   }
-          return (withCompat pkg)
+          when (pname == mkPackageName "base" && libname == LMainLibName) $
+            warn verbosity $
+              "The base of mhs in "
+                ++ pkgFile
+                ++ " has no registration, so packages that depend on base-4.x, or on the packages"
+                ++ " that base bundles, will not be found. mhs writes one since 0.17.1.0."
+          return [pkg]
     _ -> do
       warn verbosity $
         "Ignoring the MicroHs package file " ++ pkgFile ++ ", which mhs cannot describe."
@@ -461,68 +469,6 @@ parseFields = go . lines
     isIndented (c : _) = isSpace c
     isIndented [] = False
 
--- | The version at which the base of mhs is presented, and the packages of
--- Hackage whose modules it bundles, with the version at which each is
--- presented and the modules (given by prefix) that are theirs.
---
--- The versions are those that MicroCabal uses for the same purpose; in its
--- words, "the version numbers are totally fake; they are from GHC". They say
--- which API the modules roughly implement. The exception is hashable, which
--- MicroCabal has at 1.0.0.0, "very rudimentary": the Data.Hashable of mhs has
--- the API of the 1.4 series (Data.Hashable.Lifted, Hashable1 with an Eq1
--- superclass), and the packages that depend on hashable require at least that
--- (unordered-containers 1.4, these 1.4.4), which MicroCabal can ignore, as it
--- does not check bounds, but Cabal cannot.
-baseCompatVersion :: Version
-baseCompatVersion = mkVersion [4, 19, 1, 0]
-
-bundledPackages :: [(String, [Int], [String])]
-bundledPackages =
-  [ ("bytestring", [0, 12, 1, 0], ["Data.ByteString"])
-  , ("deepseq", [1, 4, 4, 0], ["Control.DeepSeq"])
-  , ("directory", [1, 3, 8, 1], ["System.Directory"])
-  , ("hashable", [1, 4, 7, 0], ["Data.Hashable"])
-  , ("integer-logarithms", [1, 0, 4], ["Math.NumberTheory"])
-  , ("process", [1, 6, 18, 0], ["System.Process"])
-  , ("stm", [2, 5, 3, 0], ["Control.Concurrent.STM", "Control.Monad.STM"])
-  , ("text", [2, 1, 1], ["Data.Text"])
-  ]
-
--- | The packages that an installed package is presented as: the base of mhs
--- as 'compatPackages', any other package as itself.
-withCompat :: InstalledPackageInfo -> [InstalledPackageInfo]
-withCompat ipi
-  | pkgName (IPI.sourcePackageId ipi) == mkPackageName "base" && IPI.sourceLibName ipi == LMainLibName = compatPackages ipi
-  | otherwise = [ipi]
-
--- | Present the base of mhs the way packages from Hackage expect it: at
--- 'baseCompatVersion', and with the 'bundledPackages' as installed packages
--- of their own, which depend on base and have no package file of their own.
--- See Note [MicroHs package databases].
-compatPackages :: InstalledPackageInfo -> [InstalledPackageInfo]
-compatPackages base =
-  base
-    { IPI.sourcePackageId = PackageIdentifier (packageName base) baseCompatVersion
-    , IPI.exposedModules = [m | m <- IPI.exposedModules base, not (any (bundles m) prefixesOf)]
-    }
-    : [ emptyInstalledPackageInfo
-        { IPI.sourcePackageId = pkgId
-        , IPI.installedUnitId = mkUnitId (prettyShow pkgId)
-        , IPI.installedComponentId_ = mkComponentId (prettyShow pkgId)
-        , IPI.exposed = True
-        , IPI.exposedModules = [m | m <- IPI.exposedModules base, bundles m prefixes]
-        , IPI.depends = [IPI.installedUnitId base]
-        }
-      | (name, version, prefixes) <- bundledPackages
-      , let pkgId = PackageIdentifier (mkPackageName name) (mkVersion version)
-      ]
-  where
-    prefixesOf = [prefixes | (_, _, prefixes) <- bundledPackages]
-    bundles (ExposedModule m _) prefixes =
-      any (\root -> moduleName == root || (root ++ ".") `isPrefixOf` moduleName) prefixes
-      where
-        moduleName = prettyShow m
-
 -- | The name under which mhs knows a library: @<name>-<version>@, with the
 -- munged name of the library, so that the sub-libraries of a package get
 -- distinct names.
@@ -534,32 +480,34 @@ mhsPackageId pkgId libname = prettyShow (computeCompatPackageId pkgId libname)
 mhsPackageFileName :: InstalledPackageInfo -> FilePath
 mhsPackageFileName ipi = mhsPackageId (IPI.sourcePackageId ipi) (IPI.sourceLibName ipi) <.> "pkg"
 
--- | The package file of a library, in one of its library directories: named
--- after its unit id for a package that comes with mhs, see
--- 'describePackageFile', and after its munged package id for a library built
--- by Cabal, see 'buildLib', as it was built: the compat package key of its
--- registration, which is the name and version Cabal built it at, even when
--- it is presented at another version, see 'compatPackages'. A library
--- without library directories has no
--- package file: it has no modules, or mhs provides it as part of base, see
--- 'compatPackages'. A library without modules is registered with its
--- extra-lib-dirs as its library directories, where its package file is not:
--- its linker options are taken from its registration instead, see 'runMhs'.
+-- | The package file of a library, in one of its library directories, see
+-- 'packageFileNames'. A library without library directories has no package
+-- file: it has no modules, or mhs provides it as part of base. A library
+-- without modules is registered with its extra-lib-dirs as its library
+-- directories, where its package file is not: its linker options are taken
+-- from its registration instead, see 'runMhs'.
 packageFile :: Verbosity -> InstalledPackageInfo -> IO (Maybe FilePath)
 packageFile verbosity ipi
   | null dirs = return Nothing
   | otherwise = do
-      mbFile <- findFirstFile id [dir </> file | dir <- dirs, file <- files]
+      mbFile <- findFirstFile id [dir </> file | dir <- dirs, file <- packageFileNames ipi]
       when (isNothing mbFile && not (null (IPI.exposedModules ipi) && null (IPI.hiddenModules ipi))) $
         dieWithException verbosity $
           MhsPackageFileNotFound (IPI.installedUnitId ipi) dirs
       return mbFile
   where
     dirs = IPI.libraryDirs ipi
-    files =
-      ordNub $
-        [unUnitId (IPI.installedUnitId ipi) <.> "pkg", mhsPackageFileName ipi]
-          ++ [IPI.compatPackageKey ipi <.> "pkg" | not (null (IPI.compatPackageKey ipi))]
+
+-- | The names that the package file of a library may have: its unit id for a
+-- package that comes with mhs, see 'describePackageFile', its key, which is
+-- the name of the package file of the base that mhs registers, and its munged
+-- package id, which is what Cabal names the package file of a library it
+-- builds, see 'buildLib'.
+packageFileNames :: InstalledPackageInfo -> [FilePath]
+packageFileNames ipi =
+  ordNub $
+    [unUnitId (IPI.installedUnitId ipi) <.> "pkg", mhsPackageFileName ipi]
+      ++ [IPI.compatPackageKey ipi <.> "pkg" | not (null (IPI.compatPackageKey ipi))]
 
 -- -----------------------------------------------------------------------------
 -- Building

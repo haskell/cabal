@@ -205,20 +205,24 @@ jobs:
 
       # The tests of cabal-testsuite/PackageTests/MHS build packages with
       # MicroHs, and are skipped where it is not installed. It builds from
-      # source in about a minute, with a C compiler and nothing else.
+      # source in about a minute, with a C compiler and nothing else. Cabal
+      # needs the registrations of base that mhs writes since 0.17.1.0, which
+      # is not released yet: this is a commit after augustss/MicroHs#577.
       - name: Restore MicroHs
         if: runner.os == 'Linux' && matrix.ghc == env.GHC_FOR_RELEASE
         id: microhs
         uses: actions/cache@v6
         with:
           path: ~/.mcabal
-          key: microhs-${{ steps.get-osver.outputs.osver }}-v0.16.9.0
+          key: microhs-${{ steps.get-osver.outputs.osver }}-29c206d99bf4e75dcd783c7233e1309ed8bdc50d
 
       - name: Install MicroHs
         if: runner.os == 'Linux' && matrix.ghc == env.GHC_FOR_RELEASE
         run: |
           if [ "${{ steps.microhs.outputs.cache-hit }}" != true ]; then
-            git clone --quiet --depth 1 --branch v0.16.9.0 https://github.com/augustss/MicroHs "$RUNNER_TEMP/microhs"
+            git init --quiet "$RUNNER_TEMP/microhs"
+            git -C "$RUNNER_TEMP/microhs" fetch --quiet --depth 1 https://github.com/augustss/MicroHs 29c206d99bf4e75dcd783c7233e1309ed8bdc50d
+            git -C "$RUNNER_TEMP/microhs" checkout --quiet FETCH_HEAD
             make -C "$RUNNER_TEMP/microhs" minstall
           fi
           echo "$HOME/.mcabal/bin" >> "$GITHUB_PATH"
