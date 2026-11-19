@@ -442,7 +442,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
         $ configProgDb
 
   -- progDb is a program database with compiler tools configured properly
-  (compiler@Compiler{compilerId = CompilerId compilerFlavor compilerVersion}, _, platform, progDb) <-
+  (compiler@Compiler{compilerId = CompilerId compilerFlavor compilerVersion}, hcProgs, platform, progDb) <-
     configCompilerEx hcFlavor hcPath hcPkg preProgDb verbosity
 
   let
@@ -452,7 +452,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   (usedExistingPkgEnvFile, existingEnvEntries) <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
   packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
-  installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
+  installedIndex <- getInstalledPackages verbosity compiler packageDbs hcProgs progDb
 
   let
     (envSpecs, nonGlobalEnvEntries) =

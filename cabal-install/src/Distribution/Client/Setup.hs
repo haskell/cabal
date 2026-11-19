@@ -183,7 +183,7 @@ import Distribution.Simple.InstallDirs
   , fromPathTemplate
   , toPathTemplate
   )
-import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
+import Distribution.Simple.Program (CompilerPrograms, ProgramDb, defaultProgramDb)
 import Distribution.Simple.Setup
   ( BenchmarkFlags (benchmarkCommonFlags)
   , BooleanFlag (..)
@@ -887,7 +887,7 @@ configPackageDB' cfg =
     userInstall = Cabal.fromFlagOrDefault True (configUserInstall cfg)
 
 -- | Configure the compiler, but reduce verbosity during this step.
-configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
+configCompilerAux' :: ConfigFlags -> IO (Compiler, CompilerPrograms, Platform, ProgramDb)
 configCompilerAux' configFlags = do
   let commonFlags = configCommonFlags configFlags
   configCompilerAuxEx

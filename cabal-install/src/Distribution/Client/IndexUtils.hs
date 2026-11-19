@@ -87,7 +87,8 @@ import qualified Distribution.Simple.Configure as Configure
   )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
-  ( ProgramDb
+  ( CompilerPrograms
+  , ProgramDb
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
@@ -159,10 +160,11 @@ getInstalledPackages
   :: Verbosity
   -> Compiler
   -> PackageDBStackCWD
+  -> CompilerPrograms
   -> ProgramDb
   -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp packageDbs progdb =
-  Configure.getInstalledPackages verbosity' comp Nothing (coercePackageDBStack packageDbs) progdb
+getInstalledPackages verbosity comp packageDbs hcProgs progdb =
+  Configure.getInstalledPackages verbosity' comp Nothing (coercePackageDBStack packageDbs) hcProgs progdb
   where
     verbosity' = modifyVerbosityFlags lessVerbose verbosity
 

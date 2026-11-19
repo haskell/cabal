@@ -44,7 +44,7 @@ import Distribution.Simple.Configure
   , maybeGetPersistBuildConfig
   )
 import qualified Distribution.Simple.LocalBuildInfo as LocalBuildInfo
-import Distribution.Simple.Program (ProgramDb)
+import Distribution.Simple.Program (CompilerPrograms, ProgramDb)
 import Distribution.Simple.Setup
   ( Flag
   , flagToMaybe
@@ -133,7 +133,7 @@ findSavedDistPref config flagDistPref = do
 -- cannot be read.
 getPersistOrConfigCompiler
   :: ConfigFlags
-  -> IO (Compiler, Platform, ProgramDb)
+  -> IO (Compiler, CompilerPrograms, Platform, ProgramDb)
 getPersistOrConfigCompiler configFlags = do
   let common = configCommonFlags configFlags
   distPref <- findDistPrefOrDefault (setupDistPref common)
@@ -143,6 +143,7 @@ getPersistOrConfigCompiler configFlags = do
     Just lbi ->
       return
         ( LocalBuildInfo.compiler lbi
+        , LocalBuildInfo.compilerPrograms lbi
         , LocalBuildInfo.hostPlatform lbi
         , LocalBuildInfo.withPrograms lbi
         )

@@ -63,7 +63,8 @@ import Distribution.Package
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
-  ( ProgramDb
+  ( CompilerPrograms
+  , ProgramDb
   )
 import Distribution.Simple.Setup
   ( flagToMaybe
@@ -98,6 +99,7 @@ freeze
   -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> ProgramDb
   -> GlobalFlags
@@ -108,6 +110,7 @@ freeze
   packageDBs
   repoCtxt
   comp
+  hcProgs
   platform
   progdb
   globalFlags
@@ -118,6 +121,7 @@ freeze
         packageDBs
         repoCtxt
         comp
+        hcProgs
         platform
         progdb
         globalFlags
@@ -146,6 +150,7 @@ getFreezePkgs
   -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> ProgramDb
   -> GlobalFlags
@@ -156,11 +161,12 @@ getFreezePkgs
   packageDBs
   repoCtxt
   comp
+  hcProgs
   platform
   progdb
   _
   freezeFlags = do
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs hcProgs progdb
     sourcePkgDb <- getSourcePackages verbosity repoCtxt
     pkgConfigDb <- readPkgConfigDb verbosity progdb
 

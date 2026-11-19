@@ -13,6 +13,7 @@ module Distribution.Simple.Program.Compiler
   , mkCompilerPrograms
   , compilerPath
   , compilerPkgPath
+  , compilerSupports
   , compilerProgramToRun
   , compilerPkgProgramToRun
   ) where
@@ -21,6 +22,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Simple.Program.Db (ProgramDb, lookupProgramByName)
+import Distribution.Simple.Program.GHC (GhcFeature, ghcSupports)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils (warn)
 import Distribution.Verbosity (Verbosity)
@@ -44,6 +46,11 @@ compilerPath (CompilerPrograms hc _) = programPath hc
 -- | The path of the compiler's package tool, if it has one.
 compilerPkgPath :: CompilerPrograms -> Maybe FilePath
 compilerPkgPath (CompilerPrograms _ hcPkg) = programPath <$> hcPkg
+
+-- | Whether the compiler supports a GHC feature, as detected when it was
+-- configured. See 'ghcSupports'.
+compilerSupports :: GhcFeature -> CompilerPrograms -> Bool
+compilerSupports feature (CompilerPrograms hc _) = ghcSupports feature hc
 
 -- | The compiler, ready to run with the arguments and environment that the
 -- 'ProgramDb' adds to it. See 'programToRun'.

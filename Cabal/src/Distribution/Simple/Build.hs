@@ -433,14 +433,15 @@ repl_setupHooks
 -- | Start an interpreter without loading any package files.
 startInterpreter
   :: Verbosity
+  -> CompilerPrograms
   -> ProgramDb
   -> Compiler
   -> Platform
   -> PackageDBStack
   -> IO ()
-startInterpreter verbosity programDb comp platform packageDBs =
+startInterpreter verbosity hcProgs programDb comp platform packageDBs =
   case compilerFlavor comp of
-    GHC -> GHC.startInterpreter verbosity programDb comp platform packageDBs
+    GHC -> GHC.startInterpreter verbosity hcProgs programDb comp platform packageDBs
     _ -> dieWithException verbosity REPLNotSupported
 
 buildComponent
@@ -499,6 +500,7 @@ buildComponent
       registerPackage
         verbosity
         (compiler lbi)
+        (compilerPrograms lbi)
         (withPrograms lbi)
         (mbWorkDirLBI lbi)
         (withPackageDB lbi)
@@ -576,6 +578,7 @@ buildComponent
               registerPackage
                 verbosity
                 (compiler lbi)
+                (compilerPrograms lbi)
                 (withPrograms lbi)
                 (flagToMaybe $ buildWorkingDir flags)
                 (withPackageDB lbi)
@@ -908,7 +911,7 @@ createInternalPackageDB
 createInternalPackageDB verbosity lbi distPref = do
   existsAlready <- doesPackageDBExist dbPath
   when existsAlready $ deletePackageDB dbPath
-  createPackageDB verbosity (compiler lbi) (withPrograms lbi) dbPath
+  createPackageDB verbosity (compiler lbi) (compilerPrograms lbi) (withPrograms lbi) dbPath
   return (SpecificPackageDB dbRelPath)
   where
     dbRelPath = internalPackageDBPath lbi distPref

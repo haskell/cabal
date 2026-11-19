@@ -832,7 +832,7 @@ rebuildInstallPlan
           , projectConfigLocalPackages
           , projectConfigSpecificPackage
           }
-        (compiler, _, platform, progdb)
+        (compiler, hcProgs, platform, progdb)
         localPackages
         installedPackages =
           rerunIfChanged
@@ -850,6 +850,7 @@ rebuildInstallPlan
                 getInstalledPackages
                   verbosity
                   compiler
+                  hcProgs
                   progdb
                   platform
                   corePackageDbs
@@ -1102,11 +1103,12 @@ programDbSignature progdb =
 getInstalledPackages
   :: Verbosity
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> Platform
   -> PackageDBStackCWD
   -> Rebuild InstalledPackageIndex
-getInstalledPackages verbosity compiler progdb platform packagedbs = do
+getInstalledPackages verbosity compiler hcProgs progdb platform packagedbs = do
   monitorFiles . map monitorFileOrDirectory
     =<< liftIO
       ( IndexUtils.getInstalledPackagesMonitorFiles
@@ -1114,6 +1116,7 @@ getInstalledPackages verbosity compiler progdb platform packagedbs = do
           compiler
           Nothing -- use ambient working directory
           (coercePackageDBStack packagedbs)
+          hcProgs
           progdb
           platform
       )
@@ -1122,6 +1125,7 @@ getInstalledPackages verbosity compiler progdb platform packagedbs = do
       verbosity
       compiler
       packagedbs
+      hcProgs
       progdb
 
 {-
@@ -2426,7 +2430,7 @@ elaborateInstallPlan
             okProfDyn = profilingDynamicSupportedOrUnknown compiler
             profExe = perPkgOptionFlag False pkgid packageConfigProf
 
-            elabBuildOptions = Cabal.adjustBuildOptions compiler compilerProgDb elabBuildOptionsRaw
+            elabBuildOptions = Cabal.adjustBuildOptions compiler compilerProgs compilerProgDb elabBuildOptionsRaw
 
             ( elabProfExeDetail
               , elabProfLibDetail
@@ -4012,7 +4016,7 @@ setupHsScriptOptions
           if PD.buildType elabPkgDescription == PD.Hooks
             then Nothing
             else Just cliVersion
-      , useCompiler = Just pkgConfigCompiler
+      , useCompiler = Just (pkgConfigCompiler, pkgConfigCompilerPrograms)
       , usePlatform = Just pkgConfigPlatform
       , usePackageDB = elabSetupPackageDBStack
       , usePackageIndex = Nothing

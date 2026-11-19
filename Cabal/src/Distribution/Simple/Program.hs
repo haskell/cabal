@@ -106,6 +106,7 @@ module Distribution.Simple.Program
   , CompilerPrograms
   , compilerPath
   , compilerPkgPath
+  , compilerSupports
   , compilerProgramToRun
   , compilerPkgProgramToRun
 

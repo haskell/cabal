@@ -114,11 +114,12 @@ getInstalledPackages
   -> Compiler
   -> Maybe (SymbolicPath CWD (Dir from))
   -> PackageDBStackX (SymbolicPath from (Dir PkgDB))
+  -> CompilerPrograms
   -> ProgramDb
   -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
+getInstalledPackages verbosity comp mbWorkDir packagedbs hcProgs progdb = do
   let compilerid = compilerId comp
-  systemPkgDir <- getGlobalPackageDir verbosity progdb
+  systemPkgDir <- getGlobalPackageDir verbosity hcProgs progdb
   userPkgDir <- getUserPackageDir
   let pkgDirs = ordNub (concatMap (packageDbPaths userPkgDir systemPkgDir mbWorkDir) packagedbs)
   -- putStrLn $ "pkgdirs: " ++ show pkgDirs
@@ -134,14 +135,10 @@ getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
   -- putStrLn $ "installed pkgs: " ++ show iPkgs
   return (fromList iPkgs)
 
-getGlobalPackageDir :: Verbosity -> ProgramDb -> IO FilePath
-getGlobalPackageDir verbosity progdb = do
-  output <-
-    getDbProgramOutput
-      verbosity
-      uhcProgram
-      progdb
-      ["--meta-pkgdir-system"]
+getGlobalPackageDir :: Verbosity -> CompilerPrograms -> ProgramDb -> IO FilePath
+getGlobalPackageDir verbosity hcProgs progdb = do
+  uhcProg <- compilerProgramToRun verbosity hcProgs progdb
+  output <- getProgramOutput verbosity uhcProg ["--meta-pkgdir-system"]
   -- we need to trim because pkgdir contains an extra newline at the end
   let pkgdir = trimEnd output
   return pkgdir
@@ -211,9 +208,10 @@ buildLib
   -> ComponentLocalBuildInfo
   -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi = do
-  systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
+  systemPkgDir <- getGlobalPackageDir verbosity (compilerPrograms lbi) (withPrograms lbi)
   userPkgDir <- getUserPackageDir
-  let runUhcProg = runDbProgramCwd verbosity (mbWorkDirLBI lbi) uhcProgram (withPrograms lbi)
+  uhcProg <- compilerProgramToRun verbosity (compilerPrograms lbi) (withPrograms lbi)
+  let runUhcProg = runProgramCwd verbosity (mbWorkDirLBI lbi) uhcProg
   let uhcArgs =
         -- set package name
         ["--pkg-build=" ++ prettyShow (packageId pkg_descr)]
@@ -243,11 +241,12 @@ buildExe
   -> ComponentLocalBuildInfo
   -> IO ()
 buildExe verbosity _pkg_descr lbi exe clbi = do
-  systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
+  systemPkgDir <- getGlobalPackageDir verbosity (compilerPrograms lbi) (withPrograms lbi)
   userPkgDir <- getUserPackageDir
   let mbWorkDir = mbWorkDirLBI lbi
   srcMainPath <- findFileCwd verbosity FindHaskellSourceFile mbWorkDir (hsSourceDirs $ buildInfo exe) (modulePath exe)
-  let runUhcProg = runDbProgramCwd verbosity (mbWorkDirLBI lbi) uhcProgram (withPrograms lbi)
+  uhcProg <- compilerProgramToRun verbosity (compilerPrograms lbi) (withPrograms lbi)
+  let runUhcProg = runProgramCwd verbosity (mbWorkDirLBI lbi) uhcProg
       u = interpretSymbolicPathCWD
       uhcArgs =
         -- common flags lib/exe
@@ -351,13 +350,14 @@ registerPackage
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir from))
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> PackageDBStackS from
   -> InstalledPackageInfo
   -> IO ()
-registerPackage verbosity mbWorkDir comp progdb packageDbs installedPkgInfo = do
+registerPackage verbosity mbWorkDir comp hcProgs progdb packageDbs installedPkgInfo = do
   dbdir <- case registrationPackageDB packageDbs of
-    GlobalPackageDB -> getGlobalPackageDir verbosity progdb
+    GlobalPackageDB -> getGlobalPackageDir verbosity hcProgs progdb
     UserPackageDB -> getUserPackageDir
     SpecificPackageDB dir -> return (interpretSymbolicPath mbWorkDir dir)
   let pkgdir = dbdir </> uhcPackageDir (prettyShow pkgid) (prettyShow compilerid)

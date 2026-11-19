@@ -46,7 +46,8 @@ import Distribution.Package
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
-  ( ProgramDb
+  ( CompilerPrograms
+  , ProgramDb
   )
 import Distribution.Simple.Setup
   ( fromFlag
@@ -88,19 +89,21 @@ fetch
   -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> ProgramDb
   -> GlobalFlags
   -> FetchFlags
   -> [UserTarget]
   -> IO ()
-fetch verbosity _ _ _ _ _ _ _ [] =
+fetch verbosity _ _ _ _ _ _ _ _ [] =
   notice verbosity "No packages requested. Nothing to do."
 fetch
   verbosity
   packageDBs
   repoCtxt
   comp
+  hcProgs
   platform
   progdb
   _
@@ -108,7 +111,7 @@ fetch
   userTargets = do
     traverse_ (checkTarget verbosity) userTargets
 
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs hcProgs progdb
     sourcePkgDb <- getSourcePackages verbosity repoCtxt
     pkgConfigDb <- readPkgConfigDb verbosity progdb
 

@@ -593,7 +593,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let configFlags' = savedConfigureFlags config <> configFlags
       configExFlags' = savedConfigureExFlags config <> configExFlags
       globalFlags' = savedGlobalFlags config <> globalFlags
-  (comp, platform, progdb) <- configCompilerAuxEx (verbosityHandles verbosity) configFlags'
+  (comp, hcProgs, platform, progdb) <- configCompilerAuxEx (verbosityHandles verbosity) configFlags'
 
   writeConfigFlags verbosity distPref (configFlags', configExFlags')
 
@@ -610,6 +610,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
       (interpretPackageDBStack Nothing packageDBs)
       repoContext
       comp
+      hcProgs
       platform
       progdb
       configFlags'
@@ -790,7 +791,7 @@ replAction replFlags extraArgs globalFlags = do
     -- using the sandbox package DB).
     onNoPkgDesc = do
       let configFlags = savedConfigureFlags config
-      (comp, platform, programDb) <- configCompilerAux' configFlags
+      (comp, hcProgs, platform, programDb) <- configCompilerAux' configFlags
       programDb' <-
         reconfigurePrograms
           verbosity
@@ -800,6 +801,7 @@ replAction replFlags extraArgs globalFlags = do
 
       startInterpreter
         verbosity
+        hcProgs
         programDb'
         comp
         platform
@@ -904,7 +906,7 @@ installAction
                       }
                 }
           globalFlags' = savedGlobalFlags config <> globalFlags
-      (comp, platform, progdb) <- configCompilerAux' configFlags'
+      (comp, hcProgs, platform, progdb) <- configCompilerAux' configFlags'
 
       -- TODO: Redesign ProgramDB API to prevent such problems as #2241 in the
       -- future.
@@ -916,6 +918,7 @@ installAction
           (interpretPackageDBStack Nothing (configPackageDB' configFlags'))
           repoContext
           comp
+          hcProgs
           platform
           progdb'
           globalFlags'
@@ -1237,8 +1240,8 @@ listAction listFlags extraArgs globalFlags = do
   compProgdb <-
     if listNeedsCompiler listFlags
       then do
-        (comp, _, progdb) <- configCompilerAux' configFlags
-        return (Just (comp, progdb))
+        (comp, hcProgs, _, progdb) <- configCompilerAux' configFlags
+        return (Just (comp, hcProgs, progdb))
       else return Nothing
   withRepoContext verbosity globalFlags' $ \repoContext ->
     List.list
@@ -1264,13 +1267,14 @@ infoAction infoFlags extraArgs globalFlags = do
                 <> infoPackageDBs infoFlags
           }
       globalFlags' = savedGlobalFlags config <> globalFlags
-  (comp, _, progdb) <- configCompilerAuxEx defaultVerbosityHandles configFlags
+  (comp, hcProgs, _, progdb) <- configCompilerAuxEx defaultVerbosityHandles configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->
     List.info
       verbosity
       (interpretPackageDBStack Nothing (configPackageDB' configFlags))
       repoContext
       comp
+      hcProgs
       progdb
       globalFlags'
       infoFlags
@@ -1285,13 +1289,14 @@ fetchAction fetchFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags)
   let configFlags = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config <> globalFlags
-  (comp, platform, progdb) <- configCompilerAux' configFlags
+  (comp, hcProgs, platform, progdb) <- configCompilerAux' configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->
     fetch
       verbosity
       (interpretPackageDBStack Nothing (configPackageDB' configFlags))
       repoContext
       comp
+      hcProgs
       platform
       progdb
       globalFlags'
@@ -1306,7 +1311,7 @@ freezeAction freezeFlags _extraArgs globalFlags = do
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   let configFlags = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config <> globalFlags
-  (comp, platform, progdb) <- configCompilerAux' configFlags
+  (comp, hcProgs, platform, progdb) <- configCompilerAux' configFlags
 
   withRepoContext verbosity globalFlags' $ \repoContext ->
     freeze
@@ -1314,6 +1319,7 @@ freezeAction freezeFlags _extraArgs globalFlags = do
       (interpretPackageDBStack Nothing (configPackageDB' configFlags))
       repoContext
       comp
+      hcProgs
       platform
       progdb
       globalFlags'
@@ -1327,7 +1333,7 @@ genBoundsAction freezeFlags _extraArgs globalFlags = do
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   let configFlags = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config <> globalFlags
-  (comp, platform, progdb) <- configCompilerAux' configFlags
+  (comp, hcProgs, platform, progdb) <- configCompilerAux' configFlags
 
   withRepoContext verbosity globalFlags' $ \repoContext ->
     genBounds
@@ -1335,6 +1341,7 @@ genBoundsAction freezeFlags _extraArgs globalFlags = do
       (interpretPackageDBStack Nothing (configPackageDB' configFlags))
       repoContext
       comp
+      hcProgs
       platform
       progdb
       globalFlags'
@@ -1533,7 +1540,7 @@ initAction initFlags extraArgs globalFlags = do
           initFlags' = savedInitFlags confFlags <> initFlags
           globalFlags' = savedGlobalFlags confFlags <> globalFlags
 
-      (comp, _, progdb) <- configCompilerAux' confFlags'
+      (comp, hcProgs, _, progdb) <- configCompilerAux' confFlags'
 
       withRepoContext verbosity globalFlags' $ \repoContext ->
         initCmd
@@ -1541,6 +1548,7 @@ initAction initFlags extraArgs globalFlags = do
           (interpretPackageDBStack Nothing (configPackageDB' confFlags'))
           repoContext
           comp
+          hcProgs
           progdb
           initFlags'
 
