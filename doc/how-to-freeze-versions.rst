@@ -261,10 +261,11 @@ An index state can be set in a project file, in a freeze file or with the
 .. Note::
 
     An index state only applies to secure repositories, such as Hackage. For a
-    local no-index repository (``file+noindex``) or a remote repository that
-    isn't secure, ``cabal`` warns that the index state is ignored and uses the
-    whole repository. See :ref:`repository specification
-    <repository-specification>` for these kinds of repository.
+    :ref:`local no-index repository <local-no-index-repositories>`
+    (``file+noindex``) or a remote repository that isn't secure, ``cabal``
+    warns that the index state is ignored and uses the whole repository. See
+    :ref:`repository specification <repository-specification>` for the other
+    kinds of repository.
 
 .. _deprecated-versions:
 
