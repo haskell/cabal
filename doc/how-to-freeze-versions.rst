@@ -254,16 +254,6 @@ revision made before the cutoff may have ruled it out, for instance by changing
 a dependency to ``base <0``. Newer versions and revisions arrive only when the
 timestamp is moved forward.
 
-.. Todo::
-
-    Deprecations may deserve their own section.
-
-    Deprecated versions reach ``cabal`` as ``preferred-versions`` entries in
-    the repository's index, so an index state also fixes which versions are
-    deprecated.
-
-    TODO: Find out if the solver can still pick a deprecated version.
-
 An index state can be set in a project file, in a freeze file or with the
 ``--index-state`` command line option. See :ref:`freezing only the index state
 <freeze-index-state-only>` for keeping it in a freeze file.
@@ -275,6 +265,36 @@ An index state can be set in a project file, in a freeze file or with the
     isn't secure, ``cabal`` warns that the index state is ignored and uses the
     whole repository. See :ref:`repository specification
     <repository-specification>` for these kinds of repository.
+
+.. _deprecated-versions:
+
+Deprecated versions
+^^^^^^^^^^^^^^^^^^^
+
+A package's maintainers can deprecate some of its versions on Hackage.
+Deprecations reach ``cabal`` as ``preferred-versions`` entries in the
+repository's index.
+
+A deprecation is a preference, not a constraint. The solver picks a version
+that is not deprecated when it can. It still picks a deprecated version when
+every version within the constraints is deprecated. With ``foo-1.0`` and ``foo-2.0`` in a repository and ``foo-2.0``
+deprecated:
+
+.. code-block:: console
+
+    $ cabal build --dry-run
+     - foo-1.0 (lib) (requires build)
+
+    $ cabal build --dry-run --constraint='foo ==2.0'
+     - foo-2.0 (lib) (requires build)
+
+A freeze file pins each dependency with a constraint like ``any.foo ==2.0``.
+As with the ``--constraint`` option above, that leaves the solver no other
+choice, so a frozen version is still picked after it is deprecated.
+
+Deprecations are entries in the index like any other, so an index state also
+fixes which versions are deprecated. A deprecation made after the cutoff time
+is not applied.
 
 .. _frozen-versions:
 
@@ -295,18 +315,6 @@ an implicit project import, the same way the project ``.local`` file is.  The
 order of imports of ``.local`` and ``.freeze`` files is important.  The
 ``.local`` file is imported last, after the ``.freeze`` file, giving the user a
 final say in the setting of any fields that have override semantics.
-
-.. Todo::
-
-    The ``cabal.project.local`` is loaded even when ``cabal.project`` does not
-    exist.
-
-    TODO: Find out if this is the case for the default project only?
-
-    TODO: Find out if the behavior for ``cabal.project.freeze`` matches.
-
-    TODO: Confirm that the ``.local`` file has to be in the same directory as
-    its project file.
 
 .. Tip::
     Use a ``.project`` extension for any project and a ``.config`` extension for
