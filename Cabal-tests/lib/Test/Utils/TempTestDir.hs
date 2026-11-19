@@ -19,6 +19,7 @@ import System.Directory
 import System.FilePath ((</>))
 import System.IO.Error
 import qualified System.Info (os)
+import Distribution.System
 
 -- | Much like 'withTemporaryDirectory' but with a number of hacks to make
 -- sure on windows that we can clean up the directory at the end.
@@ -53,22 +54,20 @@ withTestDir' verbosity tempFileOpts template action = do
     )
     action
 
+-- | Check whether the system uses an encoding that supports unicode characters.
+--
+-- We ignore windows for now, as well, mostly for simplicity.
 supportsUnicodeCharacters :: MonadIO m => m Bool
 supportsUnicodeCharacters = do
   enc <- liftIO Encoding.getFileSystemEncoding
   pure $
-    Encoding.textEncodingName enc
-      `elem` map
-        Encoding.textEncodingName
-        [ Encoding.utf8
-        , Encoding.utf8_bom
-        , Encoding.utf16
-        , Encoding.utf16le
-        , Encoding.utf16be
-        , Encoding.utf32
-        , Encoding.utf32le
-        , Encoding.utf32be
-        ]
+    buildOS /= Windows
+      && Encoding.textEncodingName enc
+        `elem` map
+          Encoding.textEncodingName
+          [ Encoding.utf8
+          , Encoding.utf8_bom
+          ]
 
 -- | On Windows, file locks held by programs we run (in this case VCSs)
 -- are not always released prior to completing process termination!
