@@ -721,7 +721,8 @@ The following settings control the behavior of the dependency solver:
     bare ``--allow-older`` is equivalent to ``--allow-older=all``.
 
 
-.. cfg-field:: index-state: HEAD, unix-timestamp, ISO8601 UTC timestamp.
+.. cfg-field:: index-state: [reponame] state, ...
+               --index-state=STATE
    :synopsis: Use source package index state as it existed at a previous time.
    :since: 2.0
 
@@ -732,21 +733,54 @@ The following settings control the behavior of the dependency solver:
    combination with freeze-files in order to also freeze the state the
    package index was in at the time the install-plan was frozen.
 
+   A state is normally an ISO8601 UTC timestamp. It can also be a UNIX
+   timestamp prefixed with ``@`` or ``HEAD``.
+
    ::
 
-      -- UNIX timestamp format example
-      index-state: @1474739268
-
-      -- ISO8601 UTC timestamp format example
-      -- This format is used by 'cabal configure'
-      -- for storing `--index-state` values.
+      -- Commands 'configure' and 'freeze' write index state in ISO8601 timestamp format.
       index-state: 2016-09-24T17:47:48Z
 
-      -- Specify different index-states per package repository
-      -- Supported since 3.4
+      -- A UNIX timestamp is prefixed with '@'.
+      index-state: @1474739268
+
+      -- HEAD is the latest state of the index and is the default.
+      index-state: HEAD
+
+   A state is scoped to a repository by writing the repository name before it.
+   An unscoped state has no name before it and is for all repositories. When
+   every state given is scoped, any repository not named is read at ``HEAD``.
+   Scoping a state to a repository is supported since 3.4.
+
+   ::
+
+      -- Each state is scoped to a repository.
       index-state:
         , hackage.haskell.org 2020-05-06T22:33:27Z
         , head.hackage 2020-04-29T04:11:05Z
+
+   The two forms can be combined, as an unscoped state followed by scoped ones.
+
+   ::
+
+      -- Every repository is read as it was on 6 May 2020, except head.hackage.
+      index-state:
+        , 2020-05-06T22:33:27Z
+        , head.hackage HEAD
+
+   .. warning::
+
+      A scoped state is lost if an unscoped state comes after it.
+
+   .. note::
+
+      An index state only applies to secure repositories, such as Hackage. For
+      other :ref:`kinds of repository <repository-specification>`, ``cabal``
+      warns that the index state is ignored.
+
+   The command line variant of this field is ``--index-state=STATE``, taking
+   the same values. A value with more than one part needs quoting, for example
+   ``--index-state="2020-05-06T22:33:27Z, head.hackage HEAD"``.
 
 .. cfg-field:: active-repositories: reponame1, reponame2
 

@@ -467,6 +467,8 @@ The ``cabal get`` command supports the following options:
     (default).
     This determines which package versions are available as well as which
     ``.cabal`` file revision is selected (unless ``--pristine`` is used).
+    A state can also be given for a named repository. See
+    :cfg-field:`index-state` for the full syntax.
 
 .. option:: --pristine
 
