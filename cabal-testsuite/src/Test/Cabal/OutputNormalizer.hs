@@ -12,10 +12,10 @@ import Distribution.Text
 import Distribution.Version
 
 import Data.Array ((!))
+import Data.Foldable qualified as F
+import System.FilePath (dropTrailingPathSeparator)
 import Text.Regex.Base
 import Text.Regex.TDFA
-
-import Data.Foldable qualified as F
 
 normalizeOutput :: NormalizerEnv -> String -> String
 normalizeOutput nenv =
@@ -48,8 +48,9 @@ normalizeOutput nenv =
     -- tmp/src-[0-9]+ is tmp\src-[0-9]+ in Windows
     . (if buildOS == Windows then resub (posixRegexEscape "tmp\\src-" ++ "[0-9]+") "<TMPDIR>" else id)
     . resub (posixRegexEscape "tmp/src-" ++ "[0-9]+") "<TMPDIR>"
-    . resub (posixRegexEscape (normalizerTmpDir nenv) ++ sameDir) "<ROOT>/"
-    . resub (posixRegexEscape (normalizerCanonicalTmpDir nenv) ++ sameDir) "<ROOT>/"
+    . resub (posixRegexEscape (dropTrailingPathSeparator $ normalizerTestStoreDir nenv) ++ sameDir) "<CABAL_STORE>/"
+    . resub (posixRegexEscape (dropTrailingPathSeparator $ normalizerTmpDir nenv) ++ sameDir) "<ROOT>/"
+    . resub (posixRegexEscape (dropTrailingPathSeparator $ normalizerCanonicalTmpDir nenv) ++ sameDir) "<ROOT>/"
     -- Munge away C:\ prefix on filenames (Windows). We convert C:\ to \.
     . (if buildOS == Windows then resub "([A-Z]):\\\\" "\\\\" else id)
     . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
@@ -101,7 +102,7 @@ normalizeOutput nenv =
       "CallStack \\(from HasCallStack\\):[A-Za-z0-9 \\.,:;'\n/_-]*"
       "CallStack (from HasCallStack): <SNIPPED>\n"
   where
-    sameDir = "(\\.((\\\\)+|\\/))*"
+    sameDir = "(\\/|\\\\)?(\\.((\\\\)+|\\/))*"
     packageIdRegex pid =
       resub
         (posixRegexEscape (display pid) ++ "(-[A-Za-z0-9.-]+)?")
@@ -179,6 +180,7 @@ data NormalizerEnv = NormalizerEnv
   , normalizerPlatform :: Platform
   , normalizerCabalVersion :: Version
   , normalizerCabalInstallVersion :: Maybe Version
+  , normalizerTestStoreDir :: FilePath
   }
 
 posixSpecialChars :: [Char]

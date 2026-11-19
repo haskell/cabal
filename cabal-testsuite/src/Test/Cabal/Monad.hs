@@ -103,7 +103,7 @@ import Distribution.Text
 
 import Distribution.Verbosity
 import Distribution.Version
-import Test.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir')
+import Test.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir, withTestDir')
 
 import Control.Applicative
 import Control.Concurrent.Async
@@ -365,144 +365,152 @@ python3Program = simpleProgram "python3"
 runTestM :: String -> TestM () -> IO ()
 runTestM mode m =
   execParser (info testArgParser Data.Monoid.mempty) >>= \args ->
-    withTestDir'
-      verbosity
-      (defaultTempFileOptions{optKeepTempFiles = argKeepTmpFiles (testCommonArgs args)})
-      -- Use a space to catch anything that might fail with a space in a directory
-      "cabal-testsuite"
-      $ \tmp_dir -> do
-        let dist_dir = testArgDistDir args
-            (script_dir0, script_filename) = splitFileName (testArgScriptPath args)
+    withCabalTempDirs args $ \tmp_dir tmp_cabal_store_dir -> do
+      let dist_dir = testArgDistDir args
+          (script_dir0, script_filename) = splitFileName (testArgScriptPath args)
 
-            stripped =
-              stripExtension ".test.hs" script_filename
-                <|> stripExtension ".multitest.hs" script_filename
-            script_base = fromMaybe (dropExtensions script_filename) stripped
+          stripped =
+            stripExtension ".test.hs" script_filename
+              <|> stripExtension ".multitest.hs" script_filename
+          script_base = fromMaybe (dropExtensions script_filename) stripped
 
-        -- Canonicalize this so that it is stable across working directory changes
-        script_dir <- canonicalizePath script_dir0
-        senv <- mkScriptEnv verbosity
-        -- Add test suite specific programs
-        let program_db0 =
-              addKnownPrograms
-                ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram, python3Program] ++ builtinPrograms)
-                (runnerProgramDb senv)
-        -- Reconfigure according to user flags
-        let cargs = testCommonArgs args
+      -- Canonicalize this so that it is stable across working directory changes
+      script_dir <- canonicalizePath script_dir0
+      senv <- mkScriptEnv verbosity
+      -- Add test suite specific programs
+      let program_db0 =
+            addKnownPrograms
+              ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram, python3Program] ++ builtinPrograms)
+              (runnerProgramDb senv)
+      -- Reconfigure according to user flags
+      let cargs = testCommonArgs args
 
-        -- Reconfigure GHC
-        (comp, platform, program_db2) <- case argGhcPath cargs of
-          Nothing -> return (runnerCompiler senv, runnerPlatform senv, program_db0)
-          Just ghc_path -> do
-            -- All the things that get updated paths from
-            -- configCompilerEx.  The point is to make sure
-            -- we reconfigure these when we need them.
-            let program_db1 =
-                  unconfigureProgram "ghc"
-                    . unconfigureProgram "ghc-pkg"
-                    . unconfigureProgram "hsc2hs"
-                    . unconfigureProgram "haddock"
-                    . unconfigureProgram "hpc"
-                    . unconfigureProgram "runghc"
-                    . unconfigureProgram "gcc"
-                    . unconfigureProgram "ld"
-                    . unconfigureProgram "ar"
-                    . unconfigureProgram "strip"
-                    $ program_db0
-            -- TODO: this actually leaves a pile of things unconfigured.
-            -- Optimal strategy for us is to lazily configure them, so
-            -- we don't pay for things we don't need.  A bit difficult
-            -- to do in the current design.
-            configCompilerEx
-              (Just (compilerFlavor (runnerCompiler senv)))
-              (Just ghc_path)
-              Nothing
-              program_db1
-              verbosity
-
-        (configuredGhcProg, _) <- requireProgram verbosity ghcProgram program_db2
-
-        program_db3 <-
-          reconfigurePrograms
+      -- Reconfigure GHC
+      (comp, platform, program_db2) <- case argGhcPath cargs of
+        Nothing -> return (runnerCompiler senv, runnerPlatform senv, program_db0)
+        Just ghc_path -> do
+          -- All the things that get updated paths from
+          -- configCompilerEx.  The point is to make sure
+          -- we reconfigure these when we need them.
+          let program_db1 =
+                unconfigureProgram "ghc"
+                  . unconfigureProgram "ghc-pkg"
+                  . unconfigureProgram "hsc2hs"
+                  . unconfigureProgram "haddock"
+                  . unconfigureProgram "hpc"
+                  . unconfigureProgram "runghc"
+                  . unconfigureProgram "gcc"
+                  . unconfigureProgram "ld"
+                  . unconfigureProgram "ar"
+                  . unconfigureProgram "strip"
+                  $ program_db0
+          -- TODO: this actually leaves a pile of things unconfigured.
+          -- Optimal strategy for us is to lazily configure them, so
+          -- we don't pay for things we don't need.  A bit difficult
+          -- to do in the current design.
+          configCompilerEx
+            (Just (compilerFlavor (runnerCompiler senv)))
+            (Just ghc_path)
+            Nothing
+            program_db1
             verbosity
-            ( [("cabal", p) | p <- maybeToList (argCabalInstallPath cargs)]
-                ++ [ ("hackage-repo-tool", p)
-                   | p <- maybeToList (argHackageRepoToolPath cargs)
-                   ]
-                ++ [("haddock", p) | p <- maybeToList (argHaddockPath cargs)]
-            )
-            [] -- --prog-options not supported ATM
-            program_db2
-        -- configCompilerEx only marks some programs as known, so to pick
-        -- them up we must configure them
-        program_db <- configureAllKnownPrograms verbosity program_db3
 
-        let db_stack = [GlobalPackageDB]
-            env =
-              TestEnv
-                { testSourceDir = script_dir
-                , testTmpDir = tmp_dir
-                , testSubName = script_base
-                , testMode = mode
-                , testProgramDb = program_db
-                , testPlatform = platform
-                , testCompiler = comp
-                , testCompilerPath = programPath configuredGhcProg
-                , testPackageDBStack = db_stack
-                , testVerbosityFlags = verbosityFlags verbosity
-                , testMtimeChangeDelay = 10000
-                , testScriptEnv = senv
-                , testSetupPath = dist_dir </> "build" </> "setup" </> "setup"
-                , testPackageDbPath = case testArgPackageDb args of [] -> Nothing; xs -> Just xs
-                , testSkipSetupTests = argSkipSetupTests (testCommonArgs args)
-                , testHaveCabalShared = runnerWithSharedLib senv
-                , testEnvironment =
-                    -- Use UTF-8 output on all platforms.
-                    [ ("LC_ALL", Just "en_US.UTF-8")
-                    , -- Hermetic builds (knot-tied)
-                      ("HOME", Just (testHomeDir env))
-                    , -- Set CABAL_DIR in addition to HOME, since HOME has no
-                      -- effect on Windows.
-                      ("CABAL_DIR", Just (testCabalDir env))
-                    , ("CABAL_CONFIG", Just (testUserCabalConfigFile env))
-                    , -- Set `TMPDIR` so that temporary files aren't created in the global `TMPDIR`.
-                      ("TMPDIR", Just (testSystemTmpDir env))
-                    , -- Windows uses `TMP` for the `TMPDIR`.
-                      ("TMP", Just (testSystemTmpDir env))
-                    ]
-                , testShouldFail = False
-                , testRelativeCurrentDir = "."
-                , testHavePackageDb = False
-                , testHaveRepo = False
-                , testCabalInstallAsSetup = False
-                , testCabalProjectFile = Nothing
-                , testPlan = Nothing
-                , testRecordDefaultMode = DoNotRecord
-                , testRecordUserMode = Nothing
-                , testMaybeStoreDir = Nothing
-                }
-        runReaderT cleanup env
-        join $
-          E.catch
-            ( runReaderT
-                ( do
-                    withSourceCopy m
-                    check_expect (argAccept (testCommonArgs args)) Nothing
-                )
-                env
-            )
-            ( \(e :: TestCode) -> do
-                -- A test that resulted in unexpected success should check its output
-                -- because maybe it is the output the one that makes it fail!
-                case isTestCodeUnexpectedSuccess e of
-                  Just t -> runReaderT (check_expect (argAccept (testCommonArgs args)) (Just (t, False))) env
-                  Nothing ->
-                    -- A test that is reported flaky but passed might fail because of the output
-                    case isTestCodeFlaky e of
-                      Flaky True t -> runReaderT (check_expect (argAccept (testCommonArgs args)) (Just (t, True))) env
-                      _ -> E.throwIO e
-            )
+      (configuredGhcProg, _) <- requireProgram verbosity ghcProgram program_db2
+
+      program_db3 <-
+        reconfigurePrograms
+          verbosity
+          ( [("cabal", p) | p <- maybeToList (argCabalInstallPath cargs)]
+              ++ [ ("hackage-repo-tool", p)
+                 | p <- maybeToList (argHackageRepoToolPath cargs)
+                 ]
+              ++ [("haddock", p) | p <- maybeToList (argHaddockPath cargs)]
+          )
+          [] -- --prog-options not supported ATM
+          program_db2
+      -- configCompilerEx only marks some programs as known, so to pick
+      -- them up we must configure them
+      program_db <- configureAllKnownPrograms verbosity program_db3
+
+      let db_stack = [GlobalPackageDB]
+          env =
+            TestEnv
+              { testSourceDir = script_dir
+              , testTmpDir = tmp_dir
+              , testSubName = script_base
+              , testMode = mode
+              , testProgramDb = program_db
+              , testPlatform = platform
+              , testCompiler = comp
+              , testCompilerPath = programPath configuredGhcProg
+              , testPackageDBStack = db_stack
+              , testVerbosityFlags = verbosityFlags verbosity
+              , testMtimeChangeDelay = 10000
+              , testScriptEnv = senv
+              , testSetupPath = dist_dir </> "build" </> "setup" </> "setup"
+              , testPackageDbPath = case testArgPackageDb args of [] -> Nothing; xs -> Just xs
+              , testSkipSetupTests = argSkipSetupTests (testCommonArgs args)
+              , testHaveCabalShared = runnerWithSharedLib senv
+              , testEnvironment =
+                  -- Use UTF-8 output on all platforms.
+                  [ ("LC_ALL", Just "en_US.UTF-8")
+                  , -- Hermetic builds (knot-tied)
+                    ("HOME", Just (testHomeDir env))
+                  , -- Set CABAL_DIR in addition to HOME, since HOME has no
+                    -- effect on Windows.
+                    ("CABAL_DIR", Just (testCabalDir env))
+                  , ("CABAL_CONFIG", Just (testUserCabalConfigFile env))
+                  , -- Set `TMPDIR` so that temporary files aren't created in the global `TMPDIR`.
+                    ("TMPDIR", Just (testSystemTmpDir env))
+                  , -- Windows uses `TMP` for the `TMPDIR`.
+                    ("TMP", Just (testSystemTmpDir env))
+                  ]
+              , testShouldFail = False
+              , testRelativeCurrentDir = "."
+              , testHavePackageDb = False
+              , testHaveRepo = False
+              , testCabalInstallAsSetup = False
+              , testCabalProjectFile = Nothing
+              , testPlan = Nothing
+              , testRecordDefaultMode = DoNotRecord
+              , testRecordUserMode = Nothing
+              , testMaybeStoreDir = Nothing
+              , testGeneratedStoreDir = tmp_cabal_store_dir
+              }
+      runReaderT cleanup env
+      join $
+        E.catch
+          ( runReaderT
+              ( do
+                  withSourceCopy m
+                  check_expect (argAccept (testCommonArgs args)) Nothing
+              )
+              env
+          )
+          ( \(e :: TestCode) -> do
+              -- A test that resulted in unexpected success should check its output
+              -- because maybe it is the output the one that makes it fail!
+              case isTestCodeUnexpectedSuccess e of
+                Just t -> runReaderT (check_expect (argAccept (testCommonArgs args)) (Just (t, False))) env
+                Nothing ->
+                  -- A test that is reported flaky but passed might fail because of the output
+                  case isTestCodeFlaky e of
+                    Flaky True t -> runReaderT (check_expect (argAccept (testCommonArgs args)) (Just (t, True))) env
+                    _ -> E.throwIO e
+          )
   where
+    withCabalTempDirs args act =
+      withTestDir'
+        verbosity
+        (defaultTempFileOptions{optKeepTempFiles = argKeepTmpFiles (testCommonArgs args)})
+        -- Use a space to catch anything that might fail with a space in a directory
+        "cabal-testsuite"
+        $ \tmp_dir -> do
+          withTestDir
+            (mkVerbosity defaultVerbosityHandles normal)
+            "cabal-test-store"
+            $ \tmp_cabal_store_dir -> act tmp_dir tmp_cabal_store_dir
+
     verbosity = mkVerbosity defaultVerbosityHandles normal
     -- TODO: make this configurable by the test-suite driver
 
@@ -784,6 +792,8 @@ mkNormalizerEnv = do
           cabalVersionLibrary
       , normalizerCabalInstallVersion =
           cabalVersionM
+      , normalizerTestStoreDir =
+          testGeneratedStoreDir env
       }
 
 cabalVersionLibrary :: Version
@@ -905,6 +915,8 @@ data TestEnv = TestEnv
   -- ^ User explicitly set record mode.  Not implemented ATM.
   , testMaybeStoreDir :: Maybe FilePath
   -- ^ Path to the storedir used by the test, if not the default
+  , testGeneratedStoreDir :: FilePath
+  -- ^ A shorter, generated storedir that tests can opt into.
   }
   deriving (Show)
 
