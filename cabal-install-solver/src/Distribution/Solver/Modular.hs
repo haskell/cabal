@@ -20,7 +20,7 @@ import qualified Data.Set as S
 import Distribution.Compat.Graph
          ( IsNode(..) )
 import Distribution.Compiler
-         ( CompilerInfo(..) )
+         ( CompilerFlavor(GHC), CompilerId(..), CompilerInfo(..) )
 import Distribution.Pretty ( prettyShow )
 import Distribution.Solver.Modular.Assignment
          ( Assignment, toCPs )
@@ -58,7 +58,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
     ( LabeledPackageConstraint(..), unlabelPackageConstraint )
 import Distribution.Solver.Types.PackageConstraint
-    ( PackageConstraint(..), scopeToPackageName )
+    ( PackageConstraint(..), PackageProperty(..), scopeToPackageName )
 import Distribution.Solver.Types.PackagePath ( QPN, Qualified(..) )
 import Distribution.Solver.Types.PackagePreferences
     ( PackagePreferences )
@@ -203,13 +203,24 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
         [] -> ""
         names ->
           let one = length names == 1
-              pkgs = listNames (map prettyShow names)
+              pkgs = renderListCommaAnd (map prettyShow names)
+              CompilerId flavour _ = compilerInfoId cinfo
+              -- With GHC before 9.14, cabal-install falls back to a fixed list
+              -- of packages it won't reinstall. From GHC 9.14 on, GHC reports
+              -- the units that really can't be reinstalled (ghc and
+              -- ghc-internal), so packages like base can be reinstalled.
+              onlyBefore914 =
+                flavour == GHC
+                  && isNothing (compilerInfoWiredInUnitIds cinfo)
+                  && all ((`notElem` ["ghc", "ghc-internal"]) . prettyShow) names
            in "\nNote: "
                 ++ pkgs
                 ++ (if one then " comes" else " come")
                 ++ " with the compiler ("
                 ++ prettyShow (compilerInfoId cinfo)
-                ++ ") and can't be reinstalled, so only the "
+                ++ ") and can't be reinstalled"
+                ++ (if onlyBefore914 then " with GHC versions before 9.14" else "")
+                ++ ", so only the "
                 ++ (if one then "version" else "versions")
                 ++ " that the compiler provides can be used. To use a different "
                 ++ (if one then "version" else "versions")
@@ -221,21 +232,30 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
 
     -- Packages that the solver is only allowed to use as installed, because
     -- they come with the compiler, and that do have an installed instance.
-    -- Without one the problem is a missing package (e.g. because of the
-    -- package databases in use), which a different compiler wouldn't fix.
+    -- Version constraints from the same source (like base >= 4.22 with
+    -- GHC >= 9.14) don't count, since other versions can be installed then.
+    -- Without an installed instance the problem is a missing package (e.g.
+    -- because of the package databases in use), which a different compiler
+    -- wouldn't fix.
     nonReinstallable :: S.Set PN
     nonReinstallable =
-      M.keysSet (M.filterWithKey (\pn lpcs -> any fromNonReinstallable lpcs && isInstalled pn) gcs)
+      M.keysSet (M.filterWithKey (\pn lpcs -> any pinsToInstalled lpcs && isInstalled pn) gcs)
       where
-        fromNonReinstallable (LabeledPackageConstraint _ ConstraintSourceNonReinstallablePackage) = True
-        fromNonReinstallable _ = False
+        pinsToInstalled (LabeledPackageConstraint (PackageConstraint _ prop) ConstraintSourceNonReinstallablePackage) =
+          case prop of
+            PackagePropertyInstalled -> True
+            PackagePropertyInstalledSpecificUnitId _ -> True
+            _ -> False
+        pinsToInstalled _ = False
         isInstalled pn = any (\(I _ loc) -> loc /= InRepo) (maybe [] M.keys (M.lookup pn idx))
 
-    listNames :: [String] -> String
-    listNames [] = ""
-    listNames [x] = x
-    listNames [x, y] = x ++ " and " ++ y
-    listNames (x : xs) = x ++ ", " ++ listNames xs
+    -- A copy of renderListCommaAnd from Distribution.Client.CmdErrorMessages,
+    -- which the solver can't import because cabal-install depends on it.
+    renderListCommaAnd :: [String] -> String
+    renderListCommaAnd [] = ""
+    renderListCommaAnd [x] = x
+    renderListCommaAnd [x, x'] = x ++ " and " ++ x'
+    renderListCommaAnd (x : xs) = x ++ ", " ++ renderListCommaAnd xs
 
     rerunSolverForErrorMsg :: ConflictSet -> String
     rerunSolverForErrorMsg cs =

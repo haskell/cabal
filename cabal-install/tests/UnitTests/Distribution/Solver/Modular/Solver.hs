@@ -214,13 +214,19 @@ tests =
       , runTest $
           mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
             solverFailure (isInfixOf "rejecting: ghc-2 (constraint from non-reinstallable package requires installed instance)")
-      , -- #7993: point out that the installed package comes with the compiler
+      , -- #7993: point out that the installed package comes with the compiler,
+        -- and that newer GHCs can reinstall base
         runTest $
           mkTest dbBaseInstalled "Explain that base comes with the compiler" ["A"] $
-            solverFailure (isInfixOf "Note: base comes with the compiler (")
-      , runTest $
+            solverFailure $ \msg ->
+              "Note: base comes with the compiler (" `isInfixOf` msg
+                && "can't be reinstalled with GHC versions before 9.14" `isInfixOf` msg
+      , -- ghc can't be reinstalled with any GHC version
+        runTest $
           mkTest dbNonupgrade "Explain that ghc comes with the compiler" ["A"] $
-            solverFailure (isInfixOf "Note: ghc comes with the compiler (")
+            solverFailure $ \msg ->
+              "Note: ghc comes with the compiler (" `isInfixOf` msg
+                && not ("before 9.14" `isInfixOf` msg)
       , -- but not when there is no installed instance, as a different
         -- compiler is not the fix then
         runTest $
@@ -260,6 +266,18 @@ tests =
           wiredInUnitIds $
             mkTest dbBaseOld "Refuse to install very old base" ["base"] $
               solverFailure (isInfixOf "rejecting: base-1 (constraint from non-reinstallable package requires >=4.22)")
+      , -- #7993: base can be reinstalled here, so the compiler isn't the
+        -- reason for the failure and there should be no note about it
+        runTest $
+          wiredInUnitIds $
+            mkTest dbBaseInstalled "No compiler note when base can be reinstalled" ["A"] $
+              solverFailure (not . isInfixOf "Note:")
+      , runTest $
+          wiredInUnitIds $
+            mkTest dbNonupgrade "Explain that the wired-in ghc comes with the compiler" ["A"] $
+              solverFailure $ \msg ->
+                "Note: ghc comes with the compiler (" `isInfixOf` msg
+                  && not ("before 9.14" `isInfixOf` msg)
       ]
   , -- reject-unconstrained-dependencies=all requires all non-goals to be
     -- version constrained. Goals don't need constraints and flag constraints
