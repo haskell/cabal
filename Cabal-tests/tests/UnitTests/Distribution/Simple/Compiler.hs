@@ -26,8 +26,8 @@ tests =
 
 flagToDebugInfoLevelTests :: [TestTree]
 flagToDebugInfoLevelTests =
-  [ testCase "defaults to NormalDebugInfo" $
-      flagToDebugInfoLevel Nothing @?= NormalDebugInfo
+  [ testCase "defaults to NoDebugInfo" $
+      flagToDebugInfoLevel Nothing @?= NoDebugInfo
   , testCase "--enable-debug-info=True" $
       flagToDebugInfoLevel (Just "True") @?= NormalDebugInfo
   , testCase "--enable-debug-info=False" $
