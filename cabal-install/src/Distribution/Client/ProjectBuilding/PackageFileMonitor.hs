@@ -20,11 +20,13 @@ import Distribution.Client.Types hiding
   )
 
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.Simple.Compiler (PackageDBX (..))
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   )
 import Distribution.Simple.Utils (removeFileForcibly)
 
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 -----------------------------
@@ -44,6 +46,7 @@ data PackageFileMonitor = PackageFileMonitor
   { pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage ()
   , pkgFileMonitorBuild :: FileMonitor (Set ComponentName) BuildResultMisc
   , pkgFileMonitorReg :: FileMonitor () (Maybe InstalledPackageInfo)
+  , pkgFileMonitorDistDirLayout :: DistDirLayout
   }
 
 -- | This is all the components of the 'BuildResult' other than the
@@ -60,7 +63,7 @@ newPackageFileMonitor
   -> PackageFileMonitor
 newPackageFileMonitor
   shared
-  DistDirLayout{distPackageCacheFile}
+  distDirLayout@DistDirLayout{distPackageCacheFile}
   dparams =
     PackageFileMonitor
       { pkgFileMonitorConfig =
@@ -78,7 +81,49 @@ newPackageFileMonitor
             }
       , pkgFileMonitorReg =
           newFileMonitor (distPackageCacheFile dparams "registration")
+      , pkgFileMonitorDistDirLayout = distDirLayout
       }
+
+-- | Rewrite the absolute paths in an 'ElaboratedConfiguredPackage' so that they become relative
+-- to the build tree root.
+relativiseElabConfigPaths
+  :: DistDirLayout
+  -> ElaboratedConfiguredPackage
+  -> ElaboratedConfiguredPackage
+relativiseElabConfigPaths distDirLayout elab =
+  elab
+    { elabPkgSourceLocation = relocatablePackageLocation (elabPkgSourceLocation elab)
+    , elabPackageDbs = map (fmap relocatableDB) (elabPackageDbs elab)
+    , elabSetupPackageDBStack = map relocatableDB (elabSetupPackageDBStack elab)
+    , elabBuildPackageDBStack = map relocatableDB (elabBuildPackageDBStack elab)
+    , elabRegisterPackageDBStack = map relocatableDB (elabRegisterPackageDBStack elab)
+    , elabInplaceSetupPackageDBStack = map relocatableDB (elabInplaceSetupPackageDBStack elab)
+    , elabInplaceBuildPackageDBStack = map relocatableDB (elabInplaceBuildPackageDBStack elab)
+    , elabInplaceRegisterPackageDBStack = map relocatableDB (elabInplaceRegisterPackageDBStack elab)
+    , elabInstallDirs = fmap relocatablePath (elabInstallDirs elab)
+    , elabExtraLibDirs = map relocatablePath (elabExtraLibDirs elab)
+    , elabExtraLibDirsStatic = map relocatablePath (elabExtraLibDirsStatic elab)
+    , elabExtraFrameworkDirs = map relocatablePath (elabExtraFrameworkDirs elab)
+    , elabExtraIncludeDirs = map relocatablePath (elabExtraIncludeDirs elab)
+    , elabProgramPaths = Map.map relocatablePath (elabProgramPaths elab)
+    , elabProgramPathExtra = map relocatablePath (elabProgramPathExtra elab)
+    , elabHaddockCss = fmap relocatablePath (elabHaddockCss elab)
+    , elabHaddockHscolourCss = fmap relocatablePath (elabHaddockHscolourCss elab)
+    , elabHaddockOutputDir = fmap relocatablePath (elabHaddockOutputDir elab)
+    , elabTestWrapper = fmap relocatablePath (elabTestWrapper elab)
+    }
+  where
+    relocatablePath :: FilePath -> FilePath
+    relocatablePath = relativiseProjectPath distDirLayout
+
+    relocatableDB :: PackageDBX FilePath -> PackageDBX FilePath
+    relocatableDB (SpecificPackageDB fp) = SpecificPackageDB (relocatablePath fp)
+    relocatableDB db = db
+
+    relocatablePackageLocation :: PackageLocation (Maybe FilePath) -> PackageLocation (Maybe FilePath)
+    relocatablePackageLocation (LocalUnpackedPackage fp) = LocalUnpackedPackage (relocatablePath fp)
+    relocatablePackageLocation (LocalTarballPackage fp) = LocalTarballPackage (relocatablePath fp)
+    relocatablePackageLocation loc = loc
 
 -- | Helper function for 'checkPackageFileMonitorChanged',
 -- 'updatePackageConfigFileMonitor' and 'updatePackageBuildFileMonitor'.
@@ -147,7 +192,7 @@ checkPackageFileMonitorChanged
       checkFileMonitorChanged
         pkgFileMonitorConfig
         srcdir
-        pkgconfig
+        (relativiseElabConfigPaths pkgFileMonitorDistDirLayout pkgconfig)
     case configChanged of
       MonitorChanged monitorReason ->
         return (Left (BuildStatusConfigure $ void monitorReason))
@@ -215,7 +260,7 @@ updatePackageConfigFileMonitor
   -> ElaboratedConfiguredPackage
   -> IO ()
 updatePackageConfigFileMonitor
-  PackageFileMonitor{pkgFileMonitorConfig}
+  PackageFileMonitor{pkgFileMonitorConfig, pkgFileMonitorDistDirLayout}
   srcdir
   pkg =
     updateFileMonitor
@@ -223,7 +268,7 @@ updatePackageConfigFileMonitor
       srcdir
       Nothing
       []
-      pkgconfig
+      (relativiseElabConfigPaths pkgFileMonitorDistDirLayout pkgconfig)
       ()
     where
       (pkgconfig, _buildComponents) = packageFileMonitorKeyValues pkg

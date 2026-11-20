@@ -120,6 +120,9 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     plat :: Platform
     plat@(Platform arch os) = pkgConfigPlatform elaboratedSharedConfig
 
+    relocatablePath :: FilePath -> FilePath
+    relocatablePath = relativiseProjectPath distDirLayout
+
     installPlanToJ :: ElaboratedInstallPlan -> [J.Value]
     installPlanToJ = map planPackageToJ . InstallPlan.toList
 
@@ -182,7 +185,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
              ]
           ++ ( case elabBuildStyle elab of
                 BuildInplaceOnly{} ->
-                  ["dist-dir" J..= J.String dist_dir] ++ [buildInfoFileLocation]
+                  ["dist-dir" J..= J.String (relocatablePath dist_dir)] ++ [buildInfoFileLocation]
                 BuildAndInstall ->
                   -- TODO: install dirs?
                   []
@@ -224,7 +227,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           | setupCliVersion (elabSetupScriptCliVersion elab) < mkVersion [3, 7, 0, 0] =
               "build-info" J..= J.Null
           | otherwise =
-              "build-info" J..= J.String (getSymbolicPath $ buildInfoPref $ makeSymbolicPath dist_dir)
+              "build-info" J..= J.String (relocatablePath $ getSymbolicPath $ buildInfoPref $ makeSymbolicPath dist_dir)
 
         packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
         packageLocationToJ pkgloc =
@@ -232,12 +235,12 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             LocalUnpackedPackage local ->
               J.object
                 [ "type" J..= J.String "local"
-                , "path" J..= J.String local
+                , "path" J..= J.String (relocatablePath local)
                 ]
             LocalTarballPackage local ->
               J.object
                 [ "type" J..= J.String "local-tar"
-                , "path" J..= J.String local
+                , "path" J..= J.String (relocatablePath local)
                 ]
             RemoteTarballPackage uri _ ->
               J.object
@@ -311,7 +314,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           where
             bin =
               if isInplaceBuildStyle (elabBuildStyle elab)
-                then dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
+                then relocatablePath $ dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
                 else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
 
         flib_file' :: Pretty a => a -> [J.Pair]
@@ -320,7 +323,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           where
             bin =
               if isInplaceBuildStyle (elabBuildStyle elab)
-                then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
+                then relocatablePath $ dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
                 else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
 
     comp2str :: ComponentDeps.Component -> String
