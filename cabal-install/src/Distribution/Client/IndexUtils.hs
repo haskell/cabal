@@ -246,7 +246,7 @@ warnOnConflictingIndexStates
 warnOnConflictingIndexStates verbosity repoCtxt candidates =
   -- Resolving the values means reading the index cache, so only do that if
   -- the values given are not all the same.
-  when (length (nub (map snd candidates)) > 1) $
+  when (notAllEqual (map snd candidates)) $
     for_ (repoContextRepos repoCtxt) $ \repo -> case repo of
       RepoSecure{} -> do
         cache <- readIndexCache verbosity (RepoIndex repoCtxt repo)
@@ -260,7 +260,7 @@ warnOnConflictingIndexStates verbosity repoCtxt candidates =
             describeRequested (IndexStateTime ts) = prettyShow ts
         -- Different values may still resolve to the same entry in the index,
         -- that is not worth a warning.
-        when (length (nub [entry | (_, _, entry) <- resolved]) > 1) $
+        when (notAllEqual [entry | (_, _, entry) <- resolved]) $
           warn verbosity $
             unlines $
               ( "Several index-state values were given and they resolve to different entries of the '"
@@ -271,6 +271,11 @@ warnOnConflictingIndexStates verbosity repoCtxt candidates =
                   | (source, requested, entry) <- resolved
                   ]
       _ -> pure ()
+
+-- | Whether the elements are not all equal.
+notAllEqual :: Eq a => [a] -> Bool
+notAllEqual [] = False
+notAllEqual (x : xs) = any (/= x) xs
 
 -- | Read a repository index from disk, from the local files specified by
 -- a list of 'Repo's.

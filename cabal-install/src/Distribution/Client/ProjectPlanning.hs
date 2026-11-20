@@ -124,7 +124,7 @@ import Distribution.Client.PackageHash
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Import (docProjectConfigFiles)
 import Distribution.Client.ProjectConfig.Legacy
-import Distribution.Client.ProjectConfig.Types (IndexStateSource (..), defaultProjectFileParser)
+import Distribution.Client.ProjectConfig.Types (defaultProjectFileParser)
 import Distribution.Client.ProjectPlanOutput
 import Distribution.Client.ProjectPlanning.SetupPolicy
   ( NonSetupLibDepSolverPlanPackage (..)
