@@ -803,8 +803,36 @@ The following settings control the behavior of the dependency solver:
       A scoped timestamp is lost if an unscoped timestamp comes after it.
 
       The field does not accumulate. When ``index-state`` is given more than
-      once, in one file or across the project, its ``.local`` and ``.freeze``
-      files and the command line, the last one replaces the others whole.
+      once, the one read last replaces the others whole. ``cabal`` reads its
+      global configuration, then the project from top to bottom, with each
+      import read at the line it is on, then the ``.freeze`` file, then the
+      ``.local`` file and then the command line.
+
+   The ``.local`` file is read after the ``.freeze`` file, and ``cabal
+   configure`` writes to the ``.local`` file, so configuring with an index
+   state overrides the one in the freeze file. Here a project is frozen as of
+   January and then configured for June. Freezing again shows that June's
+   timestamp was the one used.
+
+   .. code-block:: console
+
+      $ cabal freeze --index-state=2026-01-01T00:00:00Z
+      $ grep index-state cabal.project.freeze
+      index-state: hackage.haskell.org 2025-12-31T19:18:00Z
+
+      $ cabal configure --index-state=2026-06-01T00:00:00Z
+      $ grep index-state cabal.project.local
+      index-state: 2026-06-01T00:00:00Z
+
+      $ cabal freeze
+      $ grep index-state cabal.project.freeze
+      index-state: hackage.haskell.org 2026-05-31T23:08:56Z
+
+   .. warning::
+
+      An ``index-state`` left over in ``cabal.project.local`` from an earlier
+      ``cabal configure`` keeps overriding the freeze file. Remove that line,
+      or the file, when it is no longer wanted.
 
    .. note::
 
