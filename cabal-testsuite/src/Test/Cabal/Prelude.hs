@@ -1323,6 +1323,36 @@ getOpenFilesLimit = liftIO $ do
         _                                     -> return Nothing
 #endif
 
+-- | Run a test action with a given limit on open files. The test's own
+-- process and the processes the action starts run under the limit.
+-- The previous limit is restored however the action finishes.
+--
+-- This is for lowering the limit. It fails the test if the given limit is
+-- higher than the limit the test was started with.
+--
+-- It also fails the test on Windows, which has no such limit to lower. Skip
+-- the test there.
+withOpenFilesLimit :: Integer -> TestM a -> TestM a
+#ifdef mingw32_HOST_OS
+withOpenFilesLimit _ _ =
+    assertFailure "withOpenFilesLimit: Windows has no limit on open files to lower"
+#else
+withOpenFilesLimit limit act = do
+    limits@ResourceLimits { softLimit } <- liftIO $ getResourceLimit ResourceOpenFiles
+    case softLimit of
+        ResourceLimit n | n >= 0 && n < limit ->
+            assertFailure $
+                "withOpenFilesLimit: asked for a limit of " ++ show limit
+                    ++ " open files but the limit is already lower, at " ++ show n
+                    ++ ". This would raise the limit and it is only for lowering it."
+        _ -> return ()
+    let setLimits = liftIO . setResourceLimit ResourceOpenFiles
+    bracket_
+        (setLimits limits { softLimit = ResourceLimit limit })
+        (setLimits limits)
+        act
+#endif
+
 -- | If you want to use a Custom setup with new-build, it needs to
 -- be 1.20 or later.  Ordinarily, Cabal can go off and build a
 -- sufficiently recent Cabal if necessary, but in our test suite,
