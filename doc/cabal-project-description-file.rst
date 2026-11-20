@@ -124,7 +124,7 @@ expects to find one) package in the current directory:
 The following top-level options specify what the local packages of a
 project are:
 
-.. cfg-field:: packages: package location list (space or comma separated)
+.. cfg-field:: packages: package location list (separated by spaces or commas)
     :synopsis: Project packages.
 
     :default: empty
@@ -154,7 +154,7 @@ project are:
     ``cabal.project`` file. The field is appendable which means there would be
     no way to drop the default value if it was included.
 
-.. cfg-field:: optional-packages: package location list (space or comma-separated)
+.. cfg-field:: optional-packages: package location list (separated by spaces or commas)
     :synopsis: Optional project packages.
 
     :default: empty
@@ -168,7 +168,7 @@ project are:
 
     There is no command line variant of this field.
 
-.. cfg-field:: extra-packages: package list with version bounds (comma separated)
+.. cfg-field:: extra-packages: packages with version bounds (comma-separated list)
     :synopsis: Adds external packages as local
 
     Specifies a list of external packages from Hackage, which
@@ -486,7 +486,7 @@ Environment options
 
     Specifies the name of the directory of the global package store.
 
-.. cfg-field:: package-dbs: package DB stack (comma separated)
+.. cfg-field:: package-dbs: package DBs (comma-separated stack)
                --package-db=[clear, global, user, PATH]
     :synopsis: PackageDB stack manipulation
     :since: 3.7
@@ -551,7 +551,7 @@ Solver options
 
 The following settings control the behavior of the dependency solver:
 
-.. cfg-field:: constraints: CONSTRAINT (comma separated list)
+.. cfg-field:: constraints: CONSTRAINT (comma-separated list)
                -c CONSTRAINT or -cCONSTRAINT, --constraint=CONSTRAINT
                --constraint="pkg >= 2.0", -c "pkg >= 2.0"
     :synopsis: Extra dependencies constraints.
@@ -588,7 +588,7 @@ The following settings control the behavior of the dependency solver:
     :option:`runhaskell Setup.hs configure --constraint`
     command line option.
 
-.. cfg-field:: preferences: CONSTRAINT (comma separated list)
+.. cfg-field:: preferences: CONSTRAINT (comma-separated list)
                --preference=CONSTRAINT
                --preference="pkg >= 2.0"
     :synopsis: Preferred dependency versions.
@@ -614,7 +614,7 @@ The following settings control the behavior of the dependency solver:
     ``--preference="pkg >= 2.0"``; to specify multiple preferences, pass
     the flag multiple times.
 
-.. cfg-field:: allow-newer: none, all or list of scoped package names (space or comma separated)
+.. cfg-field:: allow-newer: none, all or list of scoped package names (separated by spaces or commas)
                --allow-newer, --allow-newer=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependencies upper bound constraints.
 
@@ -707,7 +707,7 @@ The following settings control the behavior of the dependency solver:
     The command line variant of this field is e.g. ``--allow-newer=bar``. A
     bare ``--allow-newer`` is equivalent to ``--allow-newer=all``.
 
-.. cfg-field:: allow-older: none, all, list of scoped package names (space or comma separated)
+.. cfg-field:: allow-older: none, all, list of scoped package names (separated by spaces or commas)
                --allow-older, --allow-older=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependency lower bound constraints.
     :since: 2.0
@@ -1038,7 +1038,7 @@ feature was added.
 
 .. cfg-section:: None
 
-.. cfg-field:: flags: list of +flagname or -flagname (space separated)
+.. cfg-field:: flags: +flagname or -flagname (space-separated list)
                -f FLAGS or -fFLAGS, --flags=FLAGS
                --flags="+foo -bar", -ffoo, -f-bar
     :synopsis: Enable or disable package flags.
@@ -1145,7 +1145,7 @@ feature was added.
     equivalent to ``-O``). There are also long-form variants
     ``--enable-optimization`` and ``--disable-optimization``.
 
-.. cfg-field:: configure-options: OPT (space separated list)
+.. cfg-field:: configure-options: OPT (space-separated list)
                --configure-option=OPT
     :synopsis: Options to pass to configure script.
 
@@ -1203,7 +1203,7 @@ feature was added.
     ``--disable-benchmarks``.
 
 .. _cmdoption-extra-prog-path:
-.. cfg-field:: extra-prog-path: PATH (newline or comma separated list)
+.. cfg-field:: extra-prog-path: PATH (list separated by newlines or commas)
                --extra-prog-path=PATH
     :synopsis: Add directories to program search path.
     :since: 1.18
@@ -1489,7 +1489,7 @@ Static linking options
 Foreign function interface options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. cfg-field:: extra-include-dirs: directories (comma or newline separated list)
+.. cfg-field:: extra-include-dirs: directories (list separated by commas or newlines)
                --extra-include-dirs=DIR
     :synopsis: Adds C header search path.
 
@@ -1509,7 +1509,7 @@ Foreign function interface options
     The command line variant of this flag is
     ``--extra-include-dirs=DIR``, which can be specified multiple times.
 
-.. cfg-field:: extra-lib-dirs: directories (comma or newline separated list)
+.. cfg-field:: extra-lib-dirs: directories (list separated by commas or newlines)
                --extra-lib-dirs=DIR
     :synopsis: Adds library search directory.
 
@@ -1518,7 +1518,7 @@ Foreign function interface options
     The command line variant of this flag is ``--extra-lib-dirs=DIR``,
     which can be specified multiple times.
 
-.. cfg-field:: extra-framework-dirs: directories (comma or newline separated list)
+.. cfg-field:: extra-framework-dirs: directories (list separated by commas or newlines)
                --extra-framework-dirs=DIR
     :synopsis: Adds framework search directory (OS X only).
 
