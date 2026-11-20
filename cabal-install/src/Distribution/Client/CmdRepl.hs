@@ -582,6 +582,7 @@ targetedRepl
                 , ghcOptUnitFiles = map (dir </>) unit_files_ordered
                 , ghcOptNumJobs = Flag (convertParStrat (buildSettingNumJobs (buildSettings ctx)))
                 , ghcOptPackageDBs = [GlobalPackageDB]
+                , ghcOptGHCiLoadInitialTargets = fmap not (replOptionsNoLoad replOpts')
                 }
 
         -- run ghc --interactive with
