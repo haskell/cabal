@@ -760,7 +760,10 @@ The following settings control the behavior of the dependency solver:
       $ grep index-state cabal.project.freeze
       index-state: hackage.haskell.org 2026-05-31T23:08:56Z
 
-   A time can also be given as a UNIX timestamp.
+   An ISO8601 timestamp has to be written in full, as
+   ``YYYY-MM-DDThh:mm:ssZ``. A date on its own, a time without seconds and a
+   time with a UTC offset are all rejected. A time can also be given as a UNIX
+   timestamp.
 
    ::
 
