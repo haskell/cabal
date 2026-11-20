@@ -736,15 +736,22 @@ The following settings control the behavior of the dependency solver:
 
    .. code-block:: text
 
+      2026-06-18T19:19:46Z megaparsec/9.8.0/package.json
       2026-06-18T19:19:46Z megaparsec/9.8.0/megaparsec.cabal
       2026-06-19T08:16:51Z megaparsec/9.8.0/megaparsec.cabal
+      2026-06-23T16:03:40Z megaparsec/9.8.1/package.json
       2026-06-23T16:03:40Z megaparsec/9.8.1/megaparsec.cabal
       2026-06-23T16:04:47Z megaparsec/preferred-versions
+
+   A new version adds two entries, its package description and a
+   ``package.json`` with the size and hashes of its source archive. A revision
+   adds a package description only. The source archives themselves are not in
+   the index.
 
    The value is a timestamp or ``HEAD``, which stands for a time later than
    every entry. ``cabal`` cuts the log off at that time, and the solver sees
    nothing added after it. With a timestamp of ``2026-06-19T00:00:00Z`` it
-   sees only the first of these entries.
+   sees ``megaparsec-9.8.0`` without its revision.
 
    The ``configure`` and ``freeze`` commands both write an index state, as an
    ISO8601 UTC timestamp. ``cabal configure`` writes the timestamp it was
