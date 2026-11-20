@@ -11,8 +11,7 @@ Failed to build example-1.0-inplace.
 # cabal v2-haddock
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - example-1.0 (lib) (configuration changed)
-Configuring library for example-1.0...
+ - example-1.0 (lib) (first run)
 Preprocessing library for example-1.0...
 Running Haddock on library for example-1.0...
 Error: [Cabal-7125]

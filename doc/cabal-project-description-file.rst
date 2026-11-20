@@ -1837,11 +1837,17 @@ running ``setup haddock``.
                --haddock-hyperlink-source
     :synopsis: Generate hyperlinked source code for documentation
 
-    :default: False
+    :default: True when documentation is enabled; False otherwise
 
-    Generated hyperlinked source code using `HsColour`_, and have
-    Haddock documentation link to it.
+    Generate hyperlinked source code and have Haddock documentation link to it.
     This is equivalent to running ``haddock`` with the ``--hyperlinked-source`` flag.
+    Set this to ``False`` to disable hyperlinked source even when
+    :cfg-field:`documentation` is enabled.
+
+    When documentation and hyperlinked source are enabled, normal GHC builds
+    also produce extended interface (``.hie``) files on GHC 8.8 and later.
+    Haddock can reuse these files to avoid recompiling modules when generating
+    hyperlinked source.
 
 .. cfg-field:: haddock-hscolour-css: PATH
                --haddock-hscolour-css=PATH
@@ -1869,6 +1875,18 @@ running ``setup haddock``.
 
     Generate haddock documentation into this directory instead of the default
     location next to other build products.
+
+    The documentation of a package is placed in a subdirectory named after the
+    package, and that of its sublibraries and other components in
+    subdirectories of it, named after the component. Dependencies whose
+    documentation is found at its location in this directory, for example
+    because they are documented into the same directory, are linked to there,
+    instead of to their installed documentation, with relative links, so that
+    the directory can be moved or served. Next to the Haddock interface of each
+    library, for example ``DIR/<package>/<package>.haddock``, a file with the
+    ``.unit-id`` extension records the unit it was generated for; documentation
+    generated for another unit, such as an earlier version of the dependency, is
+    not linked to.
 
     This flag is provided as a technology preview and is subject to change in the
     next releases.

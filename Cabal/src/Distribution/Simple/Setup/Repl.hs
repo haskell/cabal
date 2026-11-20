@@ -91,6 +91,7 @@ data ReplFlags = ReplFlags
   { replCommonFlags :: !CommonSetupFlags
   , replProgramPaths :: [(String, FilePath)]
   , replProgramArgs :: [(String, [String])]
+  , replProgramPrependArgs :: [(String, [String])]
   , replReload :: Flag Bool
   , replReplOptions :: ReplOptions
   }
@@ -106,6 +107,7 @@ defaultReplFlags =
     { replCommonFlags = defaultCommonSetupFlags
     , replProgramPaths = mempty
     , replProgramArgs = []
+    , replProgramPrependArgs = []
     , replReload = Flag False
     , replReplOptions = mempty
     }
@@ -180,6 +182,11 @@ replCommand progDb =
               showOrParseArgs
               replProgramArgs
               (\v flags -> flags{replProgramArgs = v})
+            ++ programDbPrependOption
+              progDb
+              showOrParseArgs
+              replProgramPrependArgs
+              (\v flags -> flags{replProgramPrependArgs = v})
             ++ case showOrParseArgs of
               ParseArgs ->
                 [ option

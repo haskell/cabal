@@ -16,6 +16,7 @@ module Distribution.Simple.BuildPaths
   , buildInfoPref
   , haddockDirName
   , haddockLibraryDirPath
+  , haddockLibraryDirPath'
   , haddockTestDirPath
   , haddockBenchmarkDirPath
   , hscolourPref
@@ -32,6 +33,8 @@ module Distribution.Simple.BuildPaths
   , haddockPackageLibraryName'
   , haddockLibraryName
   , haddockLibraryPath
+  , haddockLibraryPath'
+  , haddockLibraryUnitIdPath'
   , mkGenericStaticLibName
   , mkLibName
   , mkProfLibName
@@ -102,7 +105,7 @@ buildInfoPref distPref = distPref </> makeRelativePathEx "build-info.json"
 -- should be stored. It does not include the @<dist>/doc/html@ prefix.
 --
 -- It is also used by `haddock-project` when constructing its output directory.
-haddockDirName :: HaddockTarget -> PackageDescription -> FilePath
+haddockDirName :: Package pkg => HaddockTarget -> pkg -> FilePath
 haddockDirName ForDevelopment = prettyShow . packageName
 haddockDirName ForHackage = (++ "-docs") . prettyShow . packageId
 
@@ -117,10 +120,20 @@ haddockLibraryDirPath
   -> Library
   -> FilePath
 haddockLibraryDirPath haddockTarget pkg_descr lib =
-  case libName lib of
+  haddockLibraryDirPath' haddockTarget (packageId pkg_descr) (libName lib)
+
+-- | Like 'haddockLibraryDirPath', for a library given by its package
+-- identifier and library name, e.g. those of an installed package.
+haddockLibraryDirPath'
+  :: HaddockTarget
+  -> PackageIdentifier
+  -> LibraryName
+  -> FilePath
+haddockLibraryDirPath' haddockTarget pkgid lib_name =
+  case lib_name of
     LSubLibName sublib_name ->
-      haddockDirName haddockTarget pkg_descr </> prettyShow sublib_name
-    _ -> haddockDirName haddockTarget pkg_descr
+      haddockDirName haddockTarget pkgid </> prettyShow sublib_name
+    LMainLibName -> haddockDirName haddockTarget pkgid
 
 haddockTestDirPath
   :: HaddockTarget
@@ -250,13 +263,34 @@ haddockPackageLibraryName' pkg_name lib_name =
 -- | A name of a (sub)library used by haddock.
 haddockLibraryName :: PackageDescription -> Library -> String
 haddockLibraryName pkg_descr lib =
-  case libName lib of
+  haddockLibraryName' (packageName pkg_descr) (libName lib)
+
+haddockLibraryName' :: PackageName -> LibraryName -> String
+haddockLibraryName' pkg_name lib_name =
+  case lib_name of
     LSubLibName sublib_name -> prettyShow sublib_name
-    LMainLibName -> prettyShow (packageName pkg_descr)
+    LMainLibName -> prettyShow pkg_name
 
 -- | File path of the ".haddock" file.
 haddockLibraryPath :: PackageDescription -> Library -> FilePath
-haddockLibraryPath pkg_descr lib = haddockLibraryName pkg_descr lib <.> "haddock"
+haddockLibraryPath pkg_descr lib =
+  haddockLibraryPath' (packageName pkg_descr) (libName lib)
+
+-- | Like 'haddockLibraryPath', for a library given by its package and library
+-- name, e.g. those of an installed package.
+haddockLibraryPath' :: PackageName -> LibraryName -> FilePath
+haddockLibraryPath' pkg_name lib_name =
+  haddockLibraryName' pkg_name lib_name <.> "haddock"
+
+-- | The file recording the unit that the documentation of a library in a
+-- Haddock output directory was generated for, relative to that directory. It
+-- is next to the interface of the library, see 'haddockLibraryDirPath'' and
+-- 'haddockLibraryPath''. Component names contain no dots, so it does not clash
+-- with the directory of a sublibrary.
+haddockLibraryUnitIdPath' :: HaddockTarget -> PackageIdentifier -> LibraryName -> FilePath
+haddockLibraryUnitIdPath' haddockTarget pkgid lib_name =
+  haddockLibraryDirPath' haddockTarget pkgid lib_name
+    </> (haddockLibraryPath' (pkgName pkgid) lib_name ++ ".unit-id")
 
 -- -----------------------------------------------------------------------------
 -- Source File helper

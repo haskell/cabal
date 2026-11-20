@@ -1233,7 +1233,9 @@ printPlan
             BuildReasonFilesChanged
               mreason -> showMonitorChangedReason mreason
             BuildReasonExtraTargets _ -> "additional components to build"
+            BuildReasonDocumentation -> "documentation artifacts required"
             BuildReasonEphemeralTargets -> "ephemeral targets"
+            BuildReasonHaddockSettingsChanged -> "haddock settings changed"
         BuildStatusUpToDate{} -> "up to date" -- doesn't happen
       showMonitorChangedReason :: MonitorChangedReason a -> String
       showMonitorChangedReason (MonitoredFileChanged file) =

@@ -68,6 +68,7 @@ module Distribution.Client.ProjectPlanning
 
     -- * Utils required for building
   , pkgHasEphemeralBuildTargets
+  , hasValidHaddockTargets
   , elabBuildTargetWholeComponents
   , configureCompiler
 
@@ -98,6 +99,8 @@ module Distribution.Client.ProjectPlanning
   ) where
 
 import Distribution.Client.Compat.Prelude
+import Distribution.Compat.Lens ((^.))
+import Distribution.Types.PackageDescription.Lens (componentModules)
 import Text.PrettyPrint
   ( colon
   , comma
@@ -2342,11 +2345,23 @@ elaborateInstallPlan
             elabBuildHaddocks =
               perPkgOptionFlag False pkgid packageConfigDocumentation
 
-            -- `documentation: true` should imply `-haddock` for GHC
+            -- These are invocation defaults, not part of setup-config. Keep
+            -- their provenance so explicit user arguments remain in the
+            -- configuration key and retain precedence over these defaults.
+            elabHaddockProgramArgs =
+              ["-haddock" | elabBuildHaddocks]
+                ++ [ "-fwrite-ide-info"
+                   | elabBuildHaddocks
+                   , elabHaddockLinkedSource
+                   , compilerVersion compiler >= mkVersion [8, 8]
+                   ]
+
+            -- Older custom Setups cannot accept invocation-only defaults.
+            -- Persist them there, retaining the corresponding reconfiguration.
             addHaddockIfDocumentationEnabled :: ConfiguredProgram -> ConfiguredProgram
             addHaddockIfDocumentationEnabled cp@ConfiguredProgram{..} =
-              if programId == "ghc" && elabBuildHaddocks
-                then cp{programOverrideArgs = "-haddock" : programOverrideArgs}
+              if programId == "ghc" && setupCliVersion elabSetupScriptCliVersion < mkVersion [3, 19]
+                then cp{programOverrideArgs = elabHaddockProgramArgs ++ programOverrideArgs}
                 else cp
 
             elabPkgSourceLocation = srcloc
@@ -2491,7 +2506,7 @@ elaborateInstallPlan
             elabHaddockBenchmarks = perPkgOptionFlag False pkgid packageConfigHaddockBenchmarks
             elabHaddockInternal = perPkgOptionFlag False pkgid packageConfigHaddockInternal
             elabHaddockCss = perPkgOptionMaybe pkgid packageConfigHaddockCss
-            elabHaddockLinkedSource = perPkgOptionFlag False pkgid packageConfigHaddockLinkedSource
+            elabHaddockLinkedSource = perPkgOptionFlag elabBuildHaddocks pkgid packageConfigHaddockLinkedSource
             elabHaddockQuickJump = perPkgOptionFlag False pkgid packageConfigHaddockQuickJump
             elabHaddockHscolourCss = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
             elabHaddockContents = perPkgOptionMaybe pkgid packageConfigHaddockContents
@@ -3366,6 +3381,33 @@ nubComponentTargets =
 
 -- TODO: when that changes, adjust this test, e.g.
 -- \| pkgSetupScriptCliVersion >= Version [x,y] []
+
+-- | Whether the selected components will actually run Haddock. The docs
+-- monitor must use the same predicate as the execution phase.
+hasValidHaddockTargets :: ElaboratedConfiguredPackage -> Bool
+hasValidHaddockTargets ElaboratedConfiguredPackage{..}
+  | not elabBuildHaddocks = False
+  | otherwise = any componentHasHaddocks targets
+  where
+    targets :: [ComponentTarget]
+    targets =
+      elabBuildTargets
+        ++ elabTestTargets
+        ++ elabBenchTargets
+        ++ elabReplTarget
+        ++ elabHaddockTargets
+
+    componentHasHaddocks :: ComponentTarget -> Bool
+    componentHasHaddocks (ComponentTarget name _) =
+      case name of
+        CLibName LMainLibName -> hasHaddocks
+        CLibName (LSubLibName _) -> elabHaddockInternal && hasHaddocks
+        CFLibName _ -> elabHaddockForeignLibs && hasHaddocks
+        CExeName _ -> elabHaddockExecutables && hasHaddocks
+        CTestName _ -> elabHaddockTestSuites && hasHaddocks
+        CBenchName _ -> elabHaddockBenchmarks && hasHaddocks
+      where
+        hasHaddocks = not (null (elabPkgDescription ^. componentModules name))
 
 pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
 pkgHasEphemeralBuildTargets elab =
@@ -4321,6 +4363,7 @@ setupHsBuildFlags par_strat elab _ common =
     { buildCommonFlags = common
     , buildProgramPaths = mempty -- unused, set at configure time
     , buildProgramArgs = mempty -- unused, set at configure time
+    , buildProgramPrependArgs = setupHsHaddockProgramArgs elab
     , buildNumJobs = mempty -- TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
     , buildUseSemaphore =
         if setupCliVersion (elabSetupScriptCliVersion elab) >= mkVersion [3, 11, 0, 0]
@@ -4328,6 +4371,28 @@ setupHsBuildFlags par_strat elab _ common =
             par_strat
           else mempty
     }
+
+-- | Supply defaults without repeating or overriding the configured arguments.
+-- The fallback for older Setup versions is handled during elaboration.
+setupHsHaddockProgramArgs :: ElaboratedConfiguredPackage -> [(String, [String])]
+setupHsHaddockProgramArgs elab = setupHsGhcPrependArgs elab (elabHaddockProgramArgs elab)
+
+-- | Of the documentation defaults chosen during elaboration, a repl only gets
+-- @-haddock@, which @:doc@ needs: with @-fwrite-ide-info@, GHCi would write
+-- over the HIE files of the build. ('elabBuildHaddocks' is unset for a repl
+-- target, which is not documented itself.)
+setupHsReplProgramArgs :: ElaboratedConfiguredPackage -> [(String, [String])]
+setupHsReplProgramArgs elab =
+  setupHsGhcPrependArgs elab (filter (== "-haddock") (elabHaddockProgramArgs elab))
+
+-- | GHC arguments for @--ghc-prepend-option@, which Setup versions older than
+-- 3.19 do not know.
+setupHsGhcPrependArgs :: ElaboratedConfiguredPackage -> [String] -> [(String, [String])]
+setupHsGhcPrependArgs elab args
+  | setupCliVersion (elabSetupScriptCliVersion elab) >= mkVersion [3, 19]
+  , not (null args) =
+      [("ghc", args)]
+  | otherwise = []
 
 setupHsBuildArgs :: ElaboratedConfiguredPackage -> [String]
 setupHsBuildArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage _})
@@ -4380,11 +4445,12 @@ setupHsReplFlags
   -> ElaboratedSharedConfig
   -> Cabal.CommonSetupFlags
   -> Cabal.ReplFlags
-setupHsReplFlags _ sharedConfig common =
+setupHsReplFlags elab sharedConfig common =
   Cabal.ReplFlags
     { replCommonFlags = common
     , replProgramPaths = mempty -- unused, set at configure time
     , replProgramArgs = mempty -- unused, set at configure time
+    , replProgramPrependArgs = setupHsReplProgramArgs elab
     , replReload = mempty -- only used as callback from repl
     , replReplOptions = pkgConfigReplOptions sharedConfig -- runtime override for repl flags
     }
@@ -4434,7 +4500,7 @@ setupHsHaddockFlags
   -> Cabal.CommonSetupFlags
   -> Cabal.HaddockFlags
 setupHsHaddockFlags
-  (ElaboratedConfiguredPackage{..})
+  elab@(ElaboratedConfiguredPackage{..})
   (ElaboratedSharedConfig{..})
   _buildTimeSettings
   common =
@@ -4450,6 +4516,7 @@ setupHsHaddockFlags
                 )
               ]
       , haddockProgramArgs = mempty -- unused, set at configure time
+      , haddockProgramPrependArgs = setupHsHaddockProgramArgs elab
       , haddockHoogle = toFlag elabHaddockHoogle
       , haddockHtml = toFlag elabHaddockHtml
       , haddockHtmlLocation = maybeToFlag elabHaddockHtmlLocation
@@ -4603,7 +4670,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
     , pkgHashStripLibs = stripLibs
     , pkgHashStripExes = stripExes
     , pkgHashDebugInfo = withDebugInfo
-    , pkgHashProgramArgs = elabProgramArgs
+    , pkgHashProgramArgs = foldr insertHaddockProgramArgs elabProgramArgs (setupHsHaddockProgramArgs pkg)
     , pkgHashExtraLibDirs = elabExtraLibDirs
     , pkgHashExtraLibDirsStatic = elabExtraLibDirsStatic
     , pkgHashExtraFrameworkDirs = elabExtraFrameworkDirs
@@ -4633,6 +4700,15 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
   where
     ElaboratedConfiguredPackage{..} = normaliseConfiguredPackage shared pkg
     LBC.BuildOptions{..} = elabBuildOptions
+
+    -- Hash the documentation flags that Setup 3.19 and later get for each
+    -- invocation where older Setups have them among the configured
+    -- arguments, right after -hide-all-packages, so that the hash does not
+    -- depend on the Setup version.
+    insertHaddockProgramArgs (prog, args) =
+      Map.alter (Just . afterHideAllPackages args . fromMaybe []) prog
+    afterHideAllPackages args ("-hide-all-packages" : rest) = "-hide-all-packages" : args ++ rest
+    afterHideAllPackages args rest = args ++ rest
 
 -- | Given the 'InstalledPackageIndex' for a nix-style package store, and an
 -- 'ElaboratedInstallPlan', replace configured source packages by installed

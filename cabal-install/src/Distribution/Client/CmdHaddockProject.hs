@@ -13,23 +13,30 @@ import Prelude ()
 import qualified Distribution.Client.CmdBuild as CmdBuild
 import qualified Distribution.Client.CmdHaddock as CmdHaddock
 
+import qualified Data.Map as Map
 import Distribution.Client.DistDirLayout
   ( CabalDirLayout (..)
   , StoreDirLayout (..)
-  , distBuildDirectory
   )
 import Distribution.Client.InstallPlan (foldPlanPackage)
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.NixStyleOptions as NixStyleOptions
+import Distribution.Client.ProjectConfig.Types
+  ( MapLast (..)
+  , MapMappend (..)
+  , PackageConfig (..)
+  , ProjectConfig (..)
+  )
 import Distribution.Client.ProjectOrchestration
-  ( AvailableTarget (..)
-  , AvailableTargetStatus (..)
-  , CurrentCommand (..)
+  ( CurrentCommand (..)
   , ProjectBaseContext (..)
   , ProjectBuildContext (..)
-  , TargetSelector (..)
+  , commandLineFlagsToProjectConfig
+  , printPlan
   , pruneInstallPlanToTargets
   , resolveTargetsFromSolver
+  , runProjectBuildPhase
+  , runProjectPostBuildPhase
   , runProjectPreBuildPhase
   , selectComponentTargetBasic
   )
@@ -39,9 +46,7 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig (..)
   , TargetAction (..)
   )
-import Distribution.Client.ProjectPlanning.Types
-  ( elabDistDirParams
-  )
+import Distribution.Client.ProjectPlanning.Types (elabComponentName)
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)
@@ -50,10 +55,9 @@ import Distribution.Client.ScriptUtils
   )
 import Distribution.Client.Setup
   ( CommonSetupFlags (setupVerbosity)
-  , ConfigFlags (..)
   , GlobalFlags (..)
   )
-import Distribution.Client.TargetProblem (TargetProblem (..))
+import qualified Distribution.Compat.Graph as Graph
 
 import Distribution.Simple.BuildPaths
   ( haddockBenchmarkDirPath
@@ -72,7 +76,7 @@ import Distribution.Simple.Flag
   , pattern Flag
   , pattern NoFlag
   )
-import Distribution.Simple.Haddock (createHaddockIndex)
+import Distribution.Simple.Haddock (createHaddockIndex, recordHaddockOutputDirUnitId)
 import Distribution.Simple.InstallDirs
   ( toPathTemplate
   )
@@ -99,6 +103,7 @@ import Distribution.Simple.Utils
   , info
   , warn
   )
+import Distribution.Types.ComponentName (ComponentName (CLibName))
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (..))
 import Distribution.Types.PackageDescription (PackageDescription (benchmarks, subLibraries, testSuites))
 import Distribution.Types.PackageId (pkgName)
@@ -113,16 +118,48 @@ import Distribution.Verbosity as Verbosity
   )
 
 import Distribution.Client.Errors
-import System.Directory (doesDirectoryExist, doesFileExist)
-import System.FilePath (normalise, takeDirectory, (</>))
+import System.Directory (doesDirectoryExist, doesFileExist, makeAbsolute)
+import System.FilePath (takeDirectory, (</>))
 
 haddockProjectAction :: HaddockProjectFlags -> [String] -> GlobalFlags -> IO ()
-haddockProjectAction flags _extraArgs globalFlags = do
+haddockProjectAction flags extraArgs globalFlags = do
+  haddockProjectHscolourCss <- traverse makeAbsolute (haddockProjectHscolourCss flags)
+  haddockProjectResourcesDir <- traverse makeAbsolute (haddockProjectResourcesDir flags)
+  haddockProjectDir <- traverse makeAbsolute (haddockProjectDir flags)
+  haddockProjectAction'
+    flags
+      { haddockProjectHscolourCss
+      , haddockProjectResourcesDir
+      , haddockProjectDir
+      }
+    extraArgs
+    globalFlags
+
+haddockProjectAction' :: HaddockProjectFlags -> [String] -> GlobalFlags -> IO ()
+haddockProjectAction' flags _extraArgs globalFlags = do
   -- create destination directory if it does not exist
-  let outputDir = normalise $ fromFlag (haddockProjectDir flags)
+  let outputDir = fromFlag (haddockProjectDir flags)
   createDirectoryIfMissingVerbose verbosity True outputDir
 
   warn verbosity "haddock-project command is experimental, it might break in the future"
+
+  -- Resolve CLI paths before Setup changes the working directory.
+  absoluteCss <- traverse makeAbsolute (haddockCss haddockFlags)
+  let projectHaddockFlags =
+        haddockFlags
+          { haddockCss = absoluteCss
+          , -- Document local packages directly into the destination folder,
+            -- with the same layout, so that they link to the haddocks there,
+            -- and the documentation of the build in `dist-newstyle` is left
+            -- as it is.
+            haddockOutputDir = Flag outputDir
+          }
+      localOverrides =
+        projectConfigLocalPackages $
+          commandLineFlagsToProjectConfig
+            globalFlags
+            (buildFlags{NixStyleOptions.haddockFlags = projectHaddockFlags})
+            mempty
 
   --
   -- Construct the build plan and infer the list of packages which haddocks
@@ -133,35 +170,93 @@ haddockProjectAction flags _extraArgs globalFlags = do
     verbosity
     RejectNoTargets
     Nothing
-    (commandDefaultFlags CmdBuild.buildCommand)
+    buildFlags
     ["all"]
     globalFlags
     HaddockCommand
     $ \targetCtx ctx targetSelectors -> do
-      baseCtx <- case targetCtx of
+      initialCtx <- case targetCtx of
         ProjectContext -> return ctx
         GlobalContext -> return ctx
         ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
-      let distLayout = distDirLayout baseCtx
-          cabalLayout = cabalDirLayout baseCtx
+      let config = projectConfig initialCtx
+          -- Inject documentation: True only when not already set (in local or
+          -- global package config), so that projects with documentation: True
+          -- in cabal.project don't see a solver-plan change when switching
+          -- between build and haddock-project. When documentation: True is
+          -- set globally, cabal build also passes -haddock to GHC, so
+          -- haddock-project requires no recompilations either.
+          docOverride
+            | fromFlagOrDefault False (packageConfigDocumentation (projectConfigLocalPackages config)) = mempty
+            | fromFlagOrDefault False (packageConfigDocumentation (projectConfigAllPackages config)) = mempty
+            | otherwise = mempty{packageConfigDocumentation = Flag True}
+          -- Documentation enabled only by docOverride gives GHC the flags that
+          -- let Haddock reuse the compilation artifacts, but the build does not
+          -- run Haddock for it: haddock-project documents the local packages
+          -- into its output directory, so documentation in their build
+          -- directories would be generated for nothing.
+          withoutBuildDocumentation plan
+            | packageConfigDocumentation docOverride /= Flag True = plan
+            | otherwise =
+                InstallPlan.new (InstallPlan.planIndepGoals plan)
+                  . Graph.fromDistinctList
+                  . map withoutHaddock
+                  . InstallPlan.toList
+                  $ plan
+            where
+              withoutHaddock (InstallPlan.Configured pkg)
+                | elabLocalToProject pkg && not (ownDocumentation pkg) =
+                    InstallPlan.Configured pkg{elabBuildHaddocks = False}
+              withoutHaddock pkg = pkg
+              ownDocumentation pkg =
+                fromFlagOrDefault False . packageConfigDocumentation $
+                  Map.findWithDefault mempty (pkgName (elabPkgSourceId pkg)) (getMapMappend (projectConfigSpecificPackage config))
+          -- Build context for Plan 1 (the compilation phase): do NOT apply
+          -- haddock output settings (haddockHtml, haddockLinkedSource, etc.)
+          -- from localOverrides.  Those settings flow into haddockDocSettings
+          -- and are written to pkgFileMonitorDocs; if they differ from a
+          -- regular 'cabal build', the next build triggers a spurious
+          -- BuildReasonEphemeralTargets rebuild.  Only cliProgramConfig (tool
+          -- paths/args that affect the build) and docOverride (documentation:
+          -- True so -haddock is passed to GHC) belong here.
+          buildBaseCtx =
+            initialCtx
+              { projectConfig =
+                  config
+                    { projectConfigLocalPackages =
+                        projectConfigLocalPackages config <> cliProgramConfig <> docOverride
+                    }
+              }
+          -- Haddock context for Plan 2: includes the full haddock output
+          -- settings so haddockActionWithContext generates the right output.
+          baseCtx =
+            initialCtx
+              { projectConfig =
+                  config
+                    { projectConfigLocalPackages =
+                        projectConfigLocalPackages config <> localOverrides <> cliProgramConfig <> docOverride
+                    }
+              }
+          cabalLayout = cabalDirLayout buildBaseCtx
       buildCtx <-
-        runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+        runProjectPreBuildPhase verbosity buildBaseCtx $ \elaboratedPlan -> do
           -- Interpret the targets on the command line as build targets
           -- (as opposed to say repl or haddock targets).
           targets <-
             either reportTargetProblems return $
               resolveTargetsFromSolver
-                selectPackageTargets
+                CmdBuild.selectPackageTargets
                 selectComponentTargetBasic
                 elaboratedPlan
                 Nothing
                 targetSelectors
 
           let elaboratedPlan' =
-                pruneInstallPlanToTargets
-                  TargetActionBuild
-                  targets
-                  elaboratedPlan
+                withoutBuildDocumentation $
+                  pruneInstallPlanToTargets
+                    TargetActionBuild
+                    targets
+                    elaboratedPlan
           return (elaboratedPlan', targets)
 
       let elaboratedPlan :: ElaboratedInstallPlan
@@ -197,26 +292,17 @@ haddockProjectAction flags _extraArgs globalFlags = do
       -- Issue #8958.
       --
 
-      when localStyle $
-        CmdBuild.buildAction
-          (commandDefaultFlags CmdBuild.buildCommand)
-          ["all"]
-          globalFlags
+      when localStyle $ do
+        printPlan verbosity buildBaseCtx buildCtx
+        buildOutcomes <- runProjectBuildPhase verbosity buildBaseCtx buildCtx
+        runProjectPostBuildPhase verbosity buildBaseCtx buildCtx buildOutcomes
 
       --
-      -- Build haddocks of each components
+      -- Copy haddocks of dependencies to the destination folder, where the
+      -- haddocks of local packages will link to them
       --
 
-      CmdHaddock.haddockAction
-        nixFlags
-        ["all"]
-        globalFlags
-
-      --
-      -- Copy haddocks to the destination folder
-      --
-
-      packageInfos <- fmap (nub . concat) $
+      dependencyInfos <-
         for pkgs $
           \case
             Left package | localStyle -> do
@@ -228,14 +314,72 @@ haddockProjectAction flags _extraArgs globalFlags = do
                 case a of
                   True -> do
                     copyDirectoryRecursive verbosity docDir destDir
+                    recordHaddockOutputDirUnitId
+                      verbosity
+                      outputDir
+                      ForDevelopment
+                      (sourcePackageId package)
+                      (sourceLibName package)
+                      (installedUnitId package)
                     return $ Just $ Right (packageName, interfacePath, Hidden)
                   False -> return Nothing
-            Left _ -> return []
-            Right package ->
-              case elabLocalToProject package of
-                True -> do
-                  let distDirParams = elabDistDirParams sharedConfig' package
-                      pkg_descr = elabPkgDescription package
+            Right package
+              | localStyle && not (elabLocalToProject package) -> do
+                  let pkg_descr = elabPkgDescription package
+                      unitId = unUnitId (elabUnitId package)
+                      packageDir =
+                        storePackageDirectory
+                          (cabalStoreDirLayout cabalLayout)
+                          (pkgConfigCompiler sharedConfig')
+                          (elabUnitId package)
+                      -- TODO: use `InstallDirTemplates`
+                      docDir = packageDir </> "share" </> "doc" </> "html"
+                      destDir = outputDir </> haddockDirName ForDevelopment pkg_descr
+                      interfacePath = destDir </> haddockPath pkg_descr
+                  a <- doesDirectoryExist docDir
+                  case a of
+                    True -> do
+                      copyDirectoryRecursive verbosity docDir destDir
+                      for_ [lib | Just (CLibName lib) <- [elabComponentName package]] $ \lib ->
+                        recordHaddockOutputDirUnitId
+                          verbosity
+                          outputDir
+                          ForDevelopment
+                          (elabPkgSourceId package)
+                          lib
+                          (elabUnitId package)
+                      -- non local packages will be hidden in haddock's
+                      -- generated contents page
+                      return [Right (unitId, interfacePath, Hidden)]
+                    False -> do
+                      return [Left unitId]
+            _ -> return []
+
+      --
+      -- Build haddocks of each components
+      --
+
+      -- All program arguments are supplied via cliProgramConfig already;
+      -- non-idempotent options (e.g. -fplugin-opt) would otherwise be passed
+      -- to GHC twice.
+      let haddockFlags' = projectHaddockFlags{haddockProgramArgs = []}
+      CmdHaddock.haddockActionWithContext
+        verbosity
+        haddockFlags'
+        baseCtx
+        targetSelectors
+
+      --
+      -- Collect the haddocks of local packages, built in the destination
+      -- folder
+      --
+
+      localInfos <-
+        for pkgs $
+          \case
+            Right package
+              | elabLocalToProject package -> do
+                  let pkg_descr = elabPkgDescription package
 
                       packageName = pkgName $ elabPkgSourceId package
                       unitId = elabUnitId package
@@ -243,17 +387,9 @@ haddockProjectAction flags _extraArgs globalFlags = do
                       destDir = outputDir </> packageDir
                       interfacePath = destDir </> haddockPath pkg_descr
 
-                      buildDir = distBuildDirectory distLayout distDirParams
-                      docDir =
-                        buildDir
-                          </> "doc"
-                          </> "html"
-                          </> packageDir
-
-                  a <- doesDirectoryExist docDir
+                  a <- doesDirectoryExist destDir
                   if a
                     then do
-                      copyDirectoryRecursive verbosity docDir destDir
                       let infos :: [(String, FilePath, Visibility)]
                           infos =
                             (unPackageName packageName, interfacePath, Visible)
@@ -300,30 +436,10 @@ haddockProjectAction flags _extraArgs globalFlags = do
                             ++ " not found in the store"
                         )
                       return []
-                False
-                  | not localStyle ->
-                      return []
-                False -> do
-                  let pkg_descr = elabPkgDescription package
-                      unitId = unUnitId (elabUnitId package)
-                      packageDir =
-                        storePackageDirectory
-                          (cabalStoreDirLayout cabalLayout)
-                          (pkgConfigCompiler sharedConfig')
-                          (elabUnitId package)
-                      -- TODO: use `InstallDirTemplates`
-                      docDir = packageDir </> "share" </> "doc" </> "html"
-                      destDir = outputDir </> haddockDirName ForDevelopment pkg_descr
-                      interfacePath = destDir </> haddockPath pkg_descr
-                  a <- doesDirectoryExist docDir
-                  case a of
-                    True -> do
-                      copyDirectoryRecursive verbosity docDir destDir
-                      -- non local packages will be hidden in haddock's
-                      -- generated contents page
-                      return [Right (unitId, interfacePath, Hidden)]
-                    False -> do
-                      return [Left unitId]
+            _ -> return []
+
+      -- In the order of the plan.
+      let packageInfos = nub (concat (zipWith (++) dependencyInfos localInfos))
 
       --
       -- generate index, content, etc.
@@ -362,6 +478,17 @@ haddockProjectAction flags _extraArgs globalFlags = do
   where
     -- build all packages with appropriate haddock flags
     commonFlags = haddockProjectCommonFlags flags
+
+    -- CLI program paths/args injected into the project config so they affect
+    -- both the build and haddock phases and invalidate the configuration cache.
+    cliProgramConfig :: PackageConfig
+    cliProgramConfig =
+      mempty
+        { packageConfigProgramPaths =
+            MapLast (Map.fromList (haddockProjectProgramPaths flags))
+        , packageConfigProgramArgs =
+            MapMappend (Map.fromListWith (flip (++)) (haddockProjectProgramArgs flags))
+        }
 
     verbosity =
       mkVerbosity defaultVerbosityHandles $
@@ -403,20 +530,13 @@ haddockProjectAction flags _extraArgs globalFlags = do
               else NoFlag
         , haddockResourcesDir = haddockProjectResourcesDir flags
         , haddockUseUnicode = haddockProjectUseUnicode flags
-        -- NOTE: we don't pass `haddockOutputDir`. If we do, we'll need to
-        -- make sure `InstalledPackageInfo` contains the right path to
-        -- haddock interfaces.  Instead we build documentation inside
-        -- `dist-newstyle` directory and copy it to the output directory.
         }
 
-    nixFlags =
-      (commandDefaultFlags CmdHaddock.haddockCommand)
-        { NixStyleOptions.haddockFlags = haddockFlags
-        , NixStyleOptions.configFlags =
-            (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
-              { configCommonFlags = commonFlags
-              }
-        }
+    -- Discover the project without adding documentation options to dependencies.
+    buildFlags =
+      NixStyleOptions.updNixStyleCommonSetupFlags
+        (const commonFlags)
+        (commandDefaultFlags CmdBuild.buildCommand)
 
     -- Build a self contained directory which contains haddocks of all
     -- transitive dependencies; or depend on `--haddocks-html-location` to
@@ -429,22 +549,6 @@ haddockProjectAction flags _extraArgs globalFlags = do
     reportTargetProblems :: Show x => [x] -> IO a
     reportTargetProblems =
       dieWithException verbosity . CmdHaddockReportTargetProblems . map show
-
-    -- TODO: this is just a sketch
-    selectPackageTargets
-      :: TargetSelector
-      -> [AvailableTarget k]
-      -> Either (TargetProblem ()) [k]
-    selectPackageTargets _ ts =
-      Right $
-        mapMaybe
-          ( \t -> case availableTargetStatus t of
-              TargetBuildable k _
-                | availableTargetLocalToProject t ->
-                    Just k
-              _ -> Nothing
-          )
-          ts
 
     matchingPackages
       :: ElaboratedInstallPlan

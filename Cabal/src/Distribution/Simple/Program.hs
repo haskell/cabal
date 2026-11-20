@@ -87,6 +87,7 @@ module Distribution.Simple.Program
   , userMaybeSpecifyPath
   , userSpecifyArgs
   , userSpecifyArgss
+  , prependProgramArgs
   , userSpecifiedArgs
   , lookupProgram
   , lookupProgramVersion

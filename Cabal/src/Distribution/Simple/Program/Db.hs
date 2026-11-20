@@ -41,6 +41,7 @@ module Distribution.Simple.Program.Db
   , userMaybeSpecifyPath
   , userSpecifyArgs
   , userSpecifyArgss
+  , prependProgramArgs
   , userSpecifiedArgs
   , lookupProgram
   , lookupProgramByName
@@ -321,6 +322,18 @@ userSpecifyArgs name args' =
                       ++ args'
                 }
       )
+
+-- | Prepend invocation-only defaults to a program's override arguments.
+-- Unlike 'userSpecifyArgss', these must not override explicitly configured
+-- options. Process from the right to preserve the order of repeated options.
+prependProgramArgs :: [(String, [ProgArg])] -> ProgramDb -> ProgramDb
+prependProgramArgs argss db = foldr prepend db argss
+  where
+    prepend (name, args') =
+      updateUnconfiguredProgs
+        (Map.adjust (\(prog, path, args) -> (prog, path, args' ++ args)) name)
+        . updateConfiguredProgs
+          (Map.adjust (\prog -> prog{programOverrideArgs = args' ++ programOverrideArgs prog}) name)
 
 -- | Like 'userSpecifyPath' but for a list of progs and their paths.
 userSpecifyPaths

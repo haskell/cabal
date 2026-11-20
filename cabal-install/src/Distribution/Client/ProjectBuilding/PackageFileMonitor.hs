@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.ProjectBuilding.PackageFileMonitor where
@@ -20,9 +21,11 @@ import Distribution.Client.Types hiding
   )
 
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.Simple.InstallDirs (PathTemplate)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   )
+import Distribution.Simple.Setup (HaddockTarget (ForDevelopment))
 import Distribution.Simple.Utils (removeFileForcibly)
 
 import qualified Data.Set as Set
@@ -30,6 +33,63 @@ import qualified Data.Set as Set
 -----------------------------
 -- Package change detection
 --
+
+-- | Documentation output settings that, when changed, require Haddock to be
+-- re-run. These are tracked separately from the package configuration key so
+-- that changing them does not trigger a full package reconfiguration.
+data HaddockDocSettings = HaddockDocSettings
+  { hdsBuildHaddocks :: Bool
+  , hdsHoogle :: Bool
+  , hdsHtml :: Bool
+  , hdsHtmlLocation :: Maybe String
+  , hdsForeignLibs :: Bool
+  , hdsForHackage :: HaddockTarget
+  , hdsExecutables :: Bool
+  , hdsTestSuites :: Bool
+  , hdsBenchmarks :: Bool
+  , hdsInternal :: Bool
+  , hdsCss :: Maybe FilePath
+  , hdsLinkedSource :: Bool
+  , hdsQuickJump :: Bool
+  , hdsHscolourCss :: Maybe FilePath
+  , hdsContents :: Maybe PathTemplate
+  , hdsIndex :: Maybe PathTemplate
+  , hdsBaseUrl :: Maybe String
+  , hdsResourcesDir :: Maybe String
+  , hdsOutputDir :: Maybe FilePath
+  , hdsUseUnicode :: Bool
+  }
+  deriving (Eq, Generic)
+
+instance Binary HaddockDocSettings
+instance Structured HaddockDocSettings
+
+haddockDocSettings :: ElaboratedConfiguredPackage -> HaddockDocSettings
+haddockDocSettings elab =
+  HaddockDocSettings
+    { hdsBuildHaddocks = elabBuildHaddocks elab
+    , hdsHoogle = elabHaddockHoogle elab
+    , -- Haddock defaults to HTML when neither output format is selected.
+      -- haddock-project requests HTML explicitly; these are the same output.
+      hdsHtml = elabHaddockHtml elab || not (elabHaddockHoogle elab)
+    , hdsHtmlLocation = elabHaddockHtmlLocation elab
+    , hdsForeignLibs = elabHaddockForeignLibs elab
+    , hdsForHackage = elabHaddockForHackage elab
+    , hdsExecutables = elabHaddockExecutables elab
+    , hdsTestSuites = elabHaddockTestSuites elab
+    , hdsBenchmarks = elabHaddockBenchmarks elab
+    , hdsInternal = elabHaddockInternal elab
+    , hdsCss = elabHaddockCss elab
+    , hdsLinkedSource = elabHaddockLinkedSource elab
+    , hdsQuickJump = elabHaddockQuickJump elab
+    , hdsHscolourCss = elabHaddockHscolourCss elab
+    , hdsContents = elabHaddockContents elab
+    , hdsIndex = elabHaddockIndex elab
+    , hdsBaseUrl = elabHaddockBaseUrl elab
+    , hdsResourcesDir = elabHaddockResourcesDir elab
+    , hdsOutputDir = elabHaddockOutputDir elab
+    , hdsUseUnicode = elabHaddockUseUnicode elab
+    }
 
 -- | As part of the dry run for local unpacked packages we have to check if the
 -- package config or files have changed. That is the purpose of
@@ -42,8 +102,9 @@ import qualified Data.Set as Set
 -- and 'updatePackageBuildFileMonitor'.
 data PackageFileMonitor = PackageFileMonitor
   { pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage ()
-  , pkgFileMonitorBuild :: FileMonitor (Set ComponentName) BuildResultMisc
+  , pkgFileMonitorBuild :: FileMonitor (Set ComponentName, Set String) BuildResultMisc
   , pkgFileMonitorReg :: FileMonitor () (Maybe InstalledPackageInfo)
+  , pkgFileMonitorDocs :: FileMonitor HaddockDocSettings ()
   }
 
 -- | This is all the components of the 'BuildResult' other than the
@@ -72,12 +133,19 @@ newPackageFileMonitor
       , pkgFileMonitorBuild =
           FileMonitor
             { fileMonitorCacheFile = distPackageCacheFile dparams "build"
-            , fileMonitorKeyValid = \componentsToBuild componentsAlreadyBuilt ->
+            , fileMonitorKeyValid = \(componentsToBuild, artifactsRequired) (componentsAlreadyBuilt, artifactsBuilt) ->
                 componentsToBuild `Set.isSubsetOf` componentsAlreadyBuilt
+                  && artifactsRequired `Set.isSubsetOf` artifactsBuilt
             , fileMonitorCheckIfOnlyValueChanged = True
             }
       , pkgFileMonitorReg =
           newFileMonitor (distPackageCacheFile dparams "registration")
+      , pkgFileMonitorDocs =
+          FileMonitor
+            { fileMonitorCacheFile = distPackageCacheFile dparams "docs-config"
+            , fileMonitorKeyValid = (==)
+            , fileMonitorCheckIfOnlyValueChanged = False
+            }
       }
 
 -- | Helper function for 'checkPackageFileMonitorChanged',
@@ -99,8 +167,14 @@ packageFileMonitorKeyValues elab =
     -- the specific targets that we're going to build.
     --
 
-    -- Additionally we null out the parts that don't affect the configure step because they're simply
-    -- about how tests or benchmarks are run
+    -- Also clear options passed when running Haddock, tests, or benchmarks.
+    -- In particular, Haddock output options must not force reconfiguration
+    -- when switching between a normal build and haddock-project. Compiler
+    -- and program settings remain part of the key.
+    --
+    -- Automatic documentation arguments are supplied at invocation time and
+    -- tracked by the build monitor. User arguments (including explicit
+    -- -haddock and -fwrite-ide-info) must remain in the configuration key.
 
     -- TODO there may be more things to null here too, in the future.
 
@@ -113,6 +187,26 @@ packageFileMonitorKeyValues elab =
         , elabReplTarget = []
         , elabHaddockTargets = []
         , elabBuildHaddocks = False
+        , elabHaddockProgramArgs = []
+        , elabHaddockHoogle = False
+        , elabHaddockHtml = False
+        , elabHaddockHtmlLocation = Nothing
+        , elabHaddockForeignLibs = False
+        , elabHaddockForHackage = ForDevelopment
+        , elabHaddockExecutables = False
+        , elabHaddockTestSuites = False
+        , elabHaddockBenchmarks = False
+        , elabHaddockInternal = False
+        , elabHaddockCss = Nothing
+        , elabHaddockLinkedSource = False
+        , elabHaddockQuickJump = False
+        , elabHaddockHscolourCss = Nothing
+        , elabHaddockContents = Nothing
+        , elabHaddockIndex = Nothing
+        , elabHaddockBaseUrl = Nothing
+        , elabHaddockResourcesDir = Nothing
+        , elabHaddockOutputDir = Nothing
+        , elabHaddockUseUnicode = False
         , elabTestMachineLog = Nothing
         , elabTestHumanLog = Nothing
         , elabTestShowDetails = Nothing
@@ -164,7 +258,7 @@ checkPackageFileMonitorChanged
               checkFileMonitorChanged
                 pkgFileMonitorBuild
                 srcdir
-                buildComponents
+                (buildComponents, buildArtifacts)
             regChanged <-
               checkFileMonitorChanged
                 pkgFileMonitorReg
@@ -172,10 +266,12 @@ checkPackageFileMonitorChanged
                 ()
             let mreg = changedToMaybe regChanged
             case (buildChanged, regChanged) of
-              (MonitorChanged (MonitoredValueChanged prevBuildComponents), _) ->
+              (MonitorChanged (MonitoredValueChanged (prevBuildComponents, prevBuildArtifacts)), _) ->
                 return (Left (BuildStatusBuild mreg buildReason))
                 where
-                  buildReason = BuildReasonExtraTargets prevBuildComponents
+                  buildReason
+                    | buildArtifacts `Set.isSubsetOf` prevBuildArtifacts = BuildReasonExtraTargets prevBuildComponents
+                    | otherwise = BuildReasonDocumentation
               (MonitorChanged monitorReason, _) ->
                 return (Left (BuildStatusBuild mreg buildReason))
                 where
@@ -192,19 +288,30 @@ checkPackageFileMonitorChanged
                     return (Left (BuildStatusBuild mreg buildReason))
                 where
                   buildReason = BuildReasonEphemeralTargets
-              (MonitorUnchanged buildResult _, MonitorUnchanged _ _) ->
-                return $
-                  Right
-                    BuildResult
-                      { buildResultDocs = docsResult
-                      , buildResultTests = testsResult
-                      , buildResultLogFile = Nothing
-                      , buildResultBenchmark = Nothing
-                      }
+              (MonitorUnchanged buildResult _, MonitorUnchanged _ _) -> do
+                docsChanged <-
+                  if hasValidHaddockTargets pkg
+                    then checkFileMonitorChanged pkgFileMonitorDocs srcdir (haddockDocSettings pkg)
+                    else return (MonitorUnchanged () [])
+                case docsChanged of
+                  MonitorChanged _ ->
+                    return (Left (BuildStatusBuild mreg buildReason))
+                    where
+                      buildReason = BuildReasonHaddockSettingsChanged
+                  MonitorUnchanged _ _ ->
+                    return $
+                      Right
+                        BuildResult
+                          { buildResultDocs = docsResult
+                          , buildResultTests = testsResult
+                          , buildResultLogFile = Nothing
+                          , buildResultBenchmark = Nothing
+                          }
                 where
                   (docsResult, testsResult) = buildResult
     where
       (pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
+      buildArtifacts = Set.fromList (elabHaddockProgramArgs pkg)
       changedToMaybe :: MonitorChanged a b -> Maybe b
       changedToMaybe (MonitorChanged _) = Nothing
       changedToMaybe (MonitorUnchanged x _) = Just x
@@ -245,12 +352,15 @@ updatePackageBuildFileMonitor
   pkgBuildStatus
   monitors
   buildResult =
+    -- Called only for the compilation phase, including compilation required
+    -- by ephemeral commands. Never leave an old successful build cache valid
+    -- after replacing its artifacts.
     updateFileMonitor
       pkgFileMonitorBuild
       srcdir
       (Just timestamp)
       monitors
-      buildComponents'
+      (buildComponents', Set.fromList (elabHaddockProgramArgs pkg))
       buildResult
     where
       (_pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
@@ -267,6 +377,24 @@ updatePackageBuildFileMonitor
           BuildStatusBuild _ (BuildReasonExtraTargets prevBuildComponents) ->
             buildComponents `Set.union` prevBuildComponents
           _ -> buildComponents
+
+-- | Remember the persistent documentation configuration after Haddock succeeds.
+-- Ephemeral commands can supply their own output settings (e.g. the index URLs
+-- used by haddock-project); these must not replace the settings remembered for
+-- normal builds. Explicit Haddock targets run unconditionally anyway.
+updatePackageDocsFileMonitor :: PackageFileMonitor -> FilePath -> ElaboratedConfiguredPackage -> IO ()
+updatePackageDocsFileMonitor PackageFileMonitor{pkgFileMonitorDocs} srcdir pkg =
+  unless (pkgHasEphemeralBuildTargets pkg) $
+    -- TODO: monitor the files that only Haddock reads, e.g. the
+    -- extra-doc-files and those reported by the Haddock phase (which are
+    -- discarded by 'withoutBuildMonitor'). Only the documentation settings
+    -- are monitored, so changing such a file does not regenerate the
+    -- documentation of a build with documentation enabled.
+    updateFileMonitor pkgFileMonitorDocs srcdir Nothing [] (haddockDocSettings pkg) ()
+
+invalidatePackageBuildFileMonitor :: PackageFileMonitor -> IO ()
+invalidatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild} =
+  removeFileForcibly (fileMonitorCacheFile pkgFileMonitorBuild)
 
 updatePackageRegFileMonitor
   :: PackageFileMonitor

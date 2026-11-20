@@ -1,0 +1,9 @@
+cabal-version: 3.0
+name: haddock-probe-plugin
+version: 0.1
+build-type: Simple
+
+library
+  exposed-modules: HaddockProbePlugin
+  build-depends: base, ghc
+  default-language: Haskell2010

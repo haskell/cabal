@@ -5,6 +5,9 @@ module UnitTests.Distribution.Simple.Command
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
 import Distribution.Simple.Setup (optionVerbosity)
+import qualified Distribution.Simple.Setup as Setup
+import Distribution.Simple.Program
+import Distribution.Simple.Program.Types (simpleConfiguredProgram)
 import qualified Distribution.Verbosity as Verbosity
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -41,4 +44,33 @@ argumentTests =
 tests :: [TestTree]
 tests =
   [ testGroup "option argument tests" argumentTests
+  , testCase "build invocation defaults preserve argument order and overrides" $
+      checkInvocationDefaults (Setup.buildCommand defaultProgramDb) Setup.buildProgramPrependArgs
+  , testCase "Haddock invocation defaults preserve argument order and overrides" $
+      checkInvocationDefaults Setup.haddockCommand Setup.haddockProgramPrependArgs
+  , testCase "repl invocation defaults preserve argument order and overrides" $
+      checkInvocationDefaults (Setup.replCommand defaultProgramDb) Setup.replProgramPrependArgs
   ]
+
+checkInvocationDefaults :: CommandUI flags -> (flags -> [(String, [String])]) -> Assertion
+checkInvocationDefaults command getArgs = do
+    let options = ["--ghc-prepend-option=-haddock", "--ghc-prepend-option=-fwrite-ide-info"]
+        explicitArgs = ["-fno-write-ide-info", "-fplugin-opt=Example:once"]
+        ghc = (simpleConfiguredProgram "ghc" (UserSpecified "ghc"))
+            { programOverrideArgs = explicitArgs }
+        configured = updateProgram ghc defaultProgramDb
+    case commandParseArgs command False options of
+      CommandReadyToGo (setFlags, []) -> do
+        let flags = setFlags (commandDefaultFlags command)
+            defaults = getArgs flags
+            invocation = prependProgramArgs defaults configured
+        assertEqual "defaults survive CLI serialization" options (commandShowOptions command flags `filterDefaults` options)
+        case lookupProgram ghcProgram invocation of
+          Just prog -> assertEqual "defaults precede user arguments without duplication"
+            (["-haddock", "-fwrite-ide-info"] ++ explicitArgs) (programOverrideArgs prog)
+          Nothing -> assertFailure "lost configured GHC"
+        assertEqual "persisted arguments unchanged" (Just explicitArgs)
+            (programOverrideArgs <$> lookupProgram ghcProgram configured)
+      _ -> assertFailure "could not parse invocation defaults"
+  where
+    filterDefaults actual expected = filter (`elem` expected) actual
