@@ -808,31 +808,27 @@ The following settings control the behavior of the dependency solver:
       import read at the line it is on, then the ``.freeze`` file, then the
       ``.local`` file and then the command line.
 
-   The ``.local`` file is read after the ``.freeze`` file, and ``cabal
-   configure`` writes to the ``.local`` file, so configuring with an index
-   state overrides the one in the freeze file. Here a project is frozen as of
-   January and then configured for June. Freezing again shows that June's
-   timestamp was the one used.
+   ``cabal configure`` writes to the ``.local`` file, which is read after the
+   ``.freeze`` file. Here the freeze file was updated by someone else and
+   pulled from version control, while the ``.local`` file still has an index
+   state from a ``cabal configure`` a year ago. The build uses the older one.
 
    .. code-block:: console
 
-      $ cabal freeze --index-state=2026-01-01T00:00:00Z
-      $ grep index-state cabal.project.freeze
-      index-state: hackage.haskell.org 2025-12-31T19:18:00Z
+      $ grep index-state cabal.project.freeze cabal.project.local
+      cabal.project.freeze:index-state: hackage.haskell.org 2026-06-15T10:43:26Z
+      cabal.project.local:index-state: 2025-06-15T12:00:00Z
 
-      $ cabal configure --index-state=2026-06-01T00:00:00Z
-      $ grep index-state cabal.project.local
-      index-state: 2026-06-01T00:00:00Z
-
-      $ cabal freeze
-      $ grep index-state cabal.project.freeze
-      index-state: hackage.haskell.org 2026-05-31T23:08:56Z
+      $ cabal build --dry-run -v2 | grep -A1 'historical state'
+      Using historical state as of 2025-06-15T12:00:00Z as explicitly requested (via
+      command line / project configuration)
 
    .. warning::
 
       An ``index-state`` left over in ``cabal.project.local`` from an earlier
-      ``cabal configure`` keeps overriding the freeze file. Remove that line,
-      or the file, when it is no longer wanted.
+      ``cabal configure`` keeps overriding the freeze file. A plain ``cabal
+      freeze`` also takes its index state from that line. Remove the line, or
+      the file, when it is no longer wanted.
 
    .. note::
 
