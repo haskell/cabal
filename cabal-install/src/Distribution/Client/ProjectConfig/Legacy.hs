@@ -342,7 +342,12 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         <$> parseLegacyProjectConfigFields sourceConfigPath xs
 
     addProvenance :: ProjectConfigPath -> ProjectConfig -> ProjectConfig
-    addProvenance sourcePath x = x{projectConfigProvenance = Set.singleton $ Explicit sourcePath}
+    addProvenance sourcePath x =
+      x
+        { projectConfigProvenance = Set.singleton $ Explicit sourcePath
+        , projectConfigShared =
+            withIndexStateSource (IndexStateFromProjectFile sourcePath) (projectConfigShared x)
+        }
 
     adaptParseError :: Show e => ParseUtils.LineNo -> Either e a -> ParseResult a
     adaptParseError _ (Right x) = pure x
@@ -443,13 +448,14 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags{..} clientInstallFlags
           testFlags
           benchmarkFlags
     , projectConfigShared =
-        convertLegacyAllPackageFlags
-          globalFlags
-          configFlags
-          configExFlags
-          installFlags
-          projectFlags
-          NoFlag
+        withIndexStateSource IndexStateFromCommandLine $
+          convertLegacyAllPackageFlags
+            globalFlags
+            configFlags
+            configExFlags
+            installFlags
+            projectFlags
+            NoFlag
     , projectConfigLocalPackages = localConfig
     , projectConfigAllPackages = allConfig
     }
@@ -688,6 +694,10 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       } = commonFlags
 
     projectConfigDistDir = fmap getSymbolicPath projectConfigAbsoluteDistDir
+
+    -- Filled in by the callers that know where the flags came from, see
+    -- 'withIndexStateSource'.
+    projectConfigIndexStateSources = mempty
 
     ConfigExFlags
       { configCabalVersion = projectConfigCabalVersion

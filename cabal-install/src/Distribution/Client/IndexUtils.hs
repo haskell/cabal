@@ -22,6 +22,8 @@ module Distribution.Client.IndexUtils
   , getSourcePackagesMonitorFiles
   , TotalIndexState
   , getSourcePackagesAtIndexState
+  , getSourcePackagesAtIndexStateFrom
+  , warnOnConflictingIndexStates
   , ActiveRepos
   , filterSkippedActiveRepos
   , applyStrategy
@@ -226,6 +228,50 @@ filterCache (IndexStateTime ts0) cache0 = (cache, IndexStateInfo{..})
     isiMaxTime = maximumTimestamp (map cacheEntryTimestamp ents)
     ents = filter ((<= ts0) . cacheEntryTimestamp) (cacheEntries cache0)
 
+-- | Warn when @index-state@ values that were set in more than one place (a
+-- project file, an imported file, @cabal.project.freeze@, the command line, ...)
+-- resolve to different entries of a package index.
+--
+-- Only the last value is used, which is easy to miss, so this says which
+-- values were given and which index entry each of them resolves to.
+--
+-- The candidates are a description of where each value was set paired with
+-- the value, in the order they were merged, so the last one is the one that
+-- wins.
+warnOnConflictingIndexStates
+  :: Verbosity
+  -> RepoContext
+  -> [(String, TotalIndexState)]
+  -> IO ()
+warnOnConflictingIndexStates verbosity repoCtxt candidates =
+  -- Resolving the values means reading the index cache, so only do that if
+  -- the values given are not all the same.
+  when (length (nub (map snd candidates)) > 1) $
+    for_ (repoContextRepos repoCtxt) $ \repo -> case repo of
+      RepoSecure{} -> do
+        cache <- readIndexCache verbosity (RepoIndex repoCtxt repo)
+        let rname = repoName repo
+            resolve (source, totalState) =
+              let requested = lookupIndexState rname totalState
+                  (_, isi) = filterCache requested cache
+               in (source, requested, isiMaxTime isi)
+            resolved = map resolve candidates
+            describeRequested IndexStateHead = "HEAD"
+            describeRequested (IndexStateTime ts) = prettyShow ts
+        -- Different values may still resolve to the same entry in the index,
+        -- that is not worth a warning.
+        when (length (nub [entry | (_, _, entry) <- resolved]) > 1) $
+          warn verbosity $
+            unlines $
+              ( "Several index-state values were given and they resolve to different entries of the '"
+                  ++ unRepoName rname
+                  ++ "' package index. The last one wins:"
+              )
+                : [ "  - " ++ source ++ ": " ++ describeRequested requested ++ " (index entry " ++ prettyShow entry ++ ")"
+                  | (source, requested, entry) <- resolved
+                  ]
+      _ -> pure ()
+
 -- | Read a repository index from disk, from the local files specified by
 -- a list of 'Repo's.
 --
@@ -251,7 +297,20 @@ getSourcePackagesAtIndexState
   -> Maybe TotalIndexState
   -> Maybe ActiveRepos
   -> IO (SourcePackageDb, TotalIndexState, ActiveRepos)
-getSourcePackagesAtIndexState verbosity repoCtxt _ _
+getSourcePackagesAtIndexState verbosity repoCtxt =
+  getSourcePackagesAtIndexStateFrom verbosity repoCtxt Nothing
+
+-- | Like 'getSourcePackagesAtIndexState', but also takes a description of
+-- where the requested @index-state@ was set (e.g. a project file or the
+-- command line), which is mentioned in the verbose output.
+getSourcePackagesAtIndexStateFrom
+  :: Verbosity
+  -> RepoContext
+  -> Maybe String
+  -> Maybe TotalIndexState
+  -> Maybe ActiveRepos
+  -> IO (SourcePackageDb, TotalIndexState, ActiveRepos)
+getSourcePackagesAtIndexStateFrom verbosity repoCtxt _ _ _
   | null (repoContextRepos repoCtxt) = do
       -- In the test suite, we routinely don't have any remote package
       -- servers, so don't bleat about it
@@ -266,7 +325,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt _ _
         , headTotalIndexState
         , ActiveRepos []
         )
-getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
+getSourcePackagesAtIndexStateFrom verbosity repoCtxt mb_idxStateSource mb_idxState mb_activeRepos = do
   let describeState IndexStateHead = "most recent state"
       describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
 
@@ -282,7 +341,9 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
         info verbosity $
           "Using "
             ++ describeState idxState
-            ++ " as explicitly requested (via command line / project configuration)"
+            ++ " as explicitly requested ("
+            ++ maybe "via command line / project configuration" ("from " ++) mb_idxStateSource
+            ++ ")"
         return idxState
       Nothing -> do
         mb_idxState' <- readIndexTimestamp verbosity (RepoIndex repoCtxt r)
