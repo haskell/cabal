@@ -799,6 +799,10 @@ The following settings control the behavior of the dependency solver:
 
       A scoped timestamp is lost if an unscoped timestamp comes after it.
 
+      The field does not accumulate. When ``index-state`` is given more than
+      once, in one file or across the project, its ``.local`` and ``.freeze``
+      files and the command line, the last one replaces the others whole.
+
    .. note::
 
       An index state only applies to secure repositories, such as Hackage. For
