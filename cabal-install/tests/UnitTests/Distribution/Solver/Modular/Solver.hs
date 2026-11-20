@@ -214,6 +214,18 @@ tests =
       , runTest $
           mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
             solverFailure (isInfixOf "rejecting: ghc-2 (constraint from non-reinstallable package requires installed instance)")
+      , -- #7993: point out that the installed package comes with the compiler
+        runTest $
+          mkTest dbBaseInstalled "Explain that base comes with the compiler" ["A"] $
+            solverFailure (isInfixOf "Note: base comes with the compiler (")
+      , runTest $
+          mkTest dbNonupgrade "Explain that ghc comes with the compiler" ["A"] $
+            solverFailure (isInfixOf "Note: ghc comes with the compiler (")
+      , -- but not when there is no installed instance, as a different
+        -- compiler is not the fix then
+        runTest $
+          mkTest dbBase "No compiler note without an installed base" ["base"] $
+            solverFailure (not . isInfixOf "Note:")
       , runTest $
           allowBootLibInstalls $
             mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
@@ -1516,6 +1528,14 @@ db11s2 =
 
 dbBaseOld :: ExampleDb
 dbBaseOld = [Right $ exAv "base" 1 []]
+
+-- | A package needing a different version of base than the installed one.
+dbBaseInstalled :: ExampleDb
+dbBaseInstalled =
+  [ Left $ exInst "base" 1 "base-1" []
+  , Right $ exAv "base" 2 []
+  , Right $ exAv "A" 1 [ExFix "base" 2]
+  ]
 
 dbBase :: ExampleDb
 dbBase =

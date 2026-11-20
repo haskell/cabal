@@ -16,10 +16,12 @@ import Distribution.Solver.Compat.Prelude
 
 import qualified Data.Map as M
 import Data.Set (isSubsetOf)
+import qualified Data.Set as S
 import Distribution.Compat.Graph
          ( IsNode(..) )
 import Distribution.Compiler
-         ( CompilerInfo )
+         ( CompilerInfo(..) )
+import Distribution.Pretty ( prettyShow )
 import Distribution.Solver.Modular.Assignment
          ( Assignment, toCPs )
 import Distribution.Solver.Modular.ConfiguredConversion
@@ -39,7 +41,7 @@ import Distribution.Solver.Modular.IndexConversion
 import Distribution.Solver.Modular.Log
          ( SolverFailure(..), displayLogMessages )
 import Distribution.Solver.Modular.Package
-         ( PN )
+         ( I(..), Loc(..), PN )
 import Distribution.Solver.Modular.RetryLog
     ( RetryLog,
       toProgress,
@@ -51,11 +53,13 @@ import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), PruneAfterFirstSuccess(..), solve )
 import Distribution.Solver.Types.DependencyResolver
     ( DependencyResolver )
+import Distribution.Solver.Types.ConstraintSource
+    ( ConstraintSource(..) )
 import Distribution.Solver.Types.LabeledPackageConstraint
-    ( LabeledPackageConstraint, unlabelPackageConstraint )
+    ( LabeledPackageConstraint(..), unlabelPackageConstraint )
 import Distribution.Solver.Types.PackageConstraint
     ( PackageConstraint(..), scopeToPackageName )
-import Distribution.Solver.Types.PackagePath ( QPN )
+import Distribution.Solver.Types.PackagePath ( QPN, Qualified(..) )
 import Distribution.Solver.Types.PackagePreferences
     ( PackagePreferences )
 import Distribution.Solver.Types.PkgConfigDb
@@ -162,6 +166,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
                       fromProgress $ Fail $
                           rerunSolverForErrorMsg cs'
                        ++ finalErrorMsg sc (ExhaustiveSearch cs' cm')
+                       ++ nonReinstallableNote cs'
                   BackjumpLimitReached ->
                       fromProgress $ Fail $
                           "Reached backjump limit while trying to minimize the "
@@ -169,8 +174,9 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
                        ++ "Original error message:\n"
                        ++ rerunSolverForErrorMsg cs
                        ++ finalErrorMsg sc failure
+                       ++ nonReinstallableNote cs
       else fromProgress $ Fail $
-           rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
+           rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure ++ nonReinstallableNote cs
     createErrorMsg failure@BackjumpLimitReached     =
         continueWith
              (mkStringMsg $ "Backjump limit reached. Rerunning dependency solver to generate "
@@ -180,13 +186,56 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
             \case
                ExhaustiveSearch cs _ ->
                    fromProgress $ Fail $
-                   rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
+                   rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure ++ nonReinstallableNote cs
                BackjumpLimitReached  ->
                    -- This case is possible when the number of goals involved in
                    -- conflicts is greater than the backjump limit.
                    fromProgress $ Fail $ finalErrorMsg sc failure
                     ++ "Failed to generate a summarized dependency solver "
                     ++ "log due to low backjump limit."
+
+    -- When the conflict involves packages that come with the compiler and
+    -- can't be reinstalled, such as base, it isn't obvious from the solver
+    -- log that a different compiler would let other versions be used (#7993).
+    nonReinstallableNote :: ConflictSet -> String
+    nonReinstallableNote cs =
+      case S.toList (S.fromList [pn | P (Q _ pn) <- CS.toList cs, pn `S.member` nonReinstallable]) of
+        [] -> ""
+        names ->
+          let one = length names == 1
+              pkgs = listNames (map prettyShow names)
+           in "\nNote: "
+                ++ pkgs
+                ++ (if one then " comes" else " come")
+                ++ " with the compiler ("
+                ++ prettyShow (compilerInfoId cinfo)
+                ++ ") and can't be reinstalled, so only the "
+                ++ (if one then "version" else "versions")
+                ++ " that the compiler provides can be used. To use a different "
+                ++ (if one then "version" else "versions")
+                ++ ", build with a different compiler (see --with-compiler), "
+                ++ "or relax the version bounds on "
+                ++ pkgs
+                ++ " in the packages that depend on "
+                ++ (if one then "it." else "them.")
+
+    -- Packages that the solver is only allowed to use as installed, because
+    -- they come with the compiler, and that do have an installed instance.
+    -- Without one the problem is a missing package (e.g. because of the
+    -- package databases in use), which a different compiler wouldn't fix.
+    nonReinstallable :: S.Set PN
+    nonReinstallable =
+      M.keysSet (M.filterWithKey (\pn lpcs -> any fromNonReinstallable lpcs && isInstalled pn) gcs)
+      where
+        fromNonReinstallable (LabeledPackageConstraint _ ConstraintSourceNonReinstallablePackage) = True
+        fromNonReinstallable _ = False
+        isInstalled pn = any (\(I _ loc) -> loc /= InRepo) (maybe [] M.keys (M.lookup pn idx))
+
+    listNames :: [String] -> String
+    listNames [] = ""
+    listNames [x] = x
+    listNames [x, y] = x ++ " and " ++ y
+    listNames (x : xs) = x ++ ", " ++ listNames xs
 
     rerunSolverForErrorMsg :: ConflictSet -> String
     rerunSolverForErrorMsg cs =
