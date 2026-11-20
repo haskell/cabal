@@ -76,11 +76,7 @@ import Control.Concurrent
 import Control.Exception
   ( throw
   )
-import Control.Monad
-  ( forM
-  , forM_
-  , mapM
-  )
+import Control.Monad (forM_, mapM)
 import qualified Data.Set as Set
 import qualified GHC.IO.Exception as GHC
 import System.Directory
@@ -93,6 +89,7 @@ import System.Directory
 import System.FilePath
   ( (</>)
   )
+import System.IO (readFile')
 import System.IO.Error
   ( ioeGetErrorType
   , isPermissionError
@@ -213,15 +210,18 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
   cacheDir <- defaultScriptBuildsDir
   existsCD <- doesDirectoryExist cacheDir
   caches <- if existsCD then listDirectory cacheDir else return []
-  paths <- fmap concat . forM caches $ \cache -> do
-    let locFile = cacheDir </> cache </> "scriptlocation"
-    exists <- doesFileExist locFile
-    if exists then pure . (,) (cacheDir </> cache) <$> readFile locFile else return []
-  forM_ paths $ \(cache, script) -> do
-    exists <- doesFileExist script
-    when (not exists || script `Set.member` toClean) $ do
-      info verbosity ("Deleting cache (" ++ cache ++ ") for script (" ++ script ++ ")")
-      removePathForcibly cache
+  forM_ caches $ \cache -> do
+    let cachePath = cacheDir </> cache
+        locFile = cachePath </> "scriptlocation"
+    hasLocFile <- doesFileExist locFile
+    when hasLocFile $ do
+      -- Read strictly so that the file is closed before the next one is
+      -- opened. There can be more caches than the limit on open files.
+      script <- readFile' locFile
+      exists <- doesFileExist script
+      when (not exists || script `Set.member` toClean) $ do
+        info verbosity ("Deleting cache (" ++ cachePath ++ ") for script (" ++ script ++ ")")
+        removePathForcibly cachePath
 
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
