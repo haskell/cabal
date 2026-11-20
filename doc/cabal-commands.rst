@@ -459,15 +459,15 @@ The ``cabal get`` command supports the following options:
     instead of downloading the tarball. Only works if the
     package specifies a ``source-repository``.
 
-.. option:: --index-state=STATE
+.. option:: --index-state=TIMESTAMP
 
     Pin your request to a specific Hackage index state. Available
-    ``STATE`` formats: Unix timestamps (e.g. ``@1474732068``),
-    ISO8601 UTC timestamps (e.g. ``2016-09-24T17:47:48Z``), or ``HEAD``
-    (default).
+    ``TIMESTAMP`` formats: ISO8601 UTC timestamps written in full (e.g.
+    ``2016-09-24T17:47:48Z``), Unix timestamps (e.g. ``@1474732068``), or
+    ``HEAD`` (default).
     This determines which package versions are available as well as which
     ``.cabal`` file revision is selected (unless ``--pristine`` is used).
-    A state can also be given for a named repository. See
+    A timestamp can also be scoped to a repository. See
     :cfg-field:`index-state` for the full syntax.
 
 .. option:: --pristine

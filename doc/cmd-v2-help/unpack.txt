@@ -16,14 +16,18 @@ Flags for unpack:
  -s[[head|this|...]], --source-repository[=[head|this|...]]
                               # Copy the package's source repository (ie git
                                 clone, darcs get, etc as appropriate).
- --index-state=STATE          # Use source package index state as it existed
-                                at a previous time. Accepts unix-timestamps
-                                (e.g. '@1474732068'), ISO8601 UTC timestamps
-                                (e.g. '2016-09-24T17:47:48Z'), or 'HEAD'
-                                (default: 'HEAD'). This determines which
-                                package versions are available as well as
-                                .cabal file revision is selected (unless
-                                --pristine is used).
+ --index-state=TIMESTAMP      # Use source package index state as it existed
+                                at a previous time. Accepts ISO8601 UTC
+                                timestamps written in full (e.g.
+                                '2016-09-24T17:47:48Z'), unix timestamps (e.g.
+                                '@1474732068'), or 'HEAD' (default: 'HEAD'). A
+                                timestamp can be scoped to a repository by
+                                writing the repository name before it (e.g.
+                                'hackage.haskell.org 2016-09-24T17:47:48Z').
+                                This determines which package versions are
+                                available as well as which .cabal file
+                                revision is selected (unless --pristine is
+                                used).
  --only-package-description   # Unpack only the package description file.
  --package-description-only   # A synonym for --only-package-description.
  --pristine                   # Unpack the original pristine tarball, rather
