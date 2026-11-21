@@ -73,7 +73,8 @@ tests mtimeChange =
               unit_syncRepos_git fileUri NotShared ["tag-two", "tag-two"]
           , testCase "syncSourceRepos, not shallow, distinct tags" $
               unit_syncRepos_git id Shared ["tag-one", "tag-two"]
-          , testCase "cloneSourceRepo at a tag leaves the cloned branch alone" $
+          , testCase
+              "cloneSourceRepo at a tag leaves the cloned branch alone"
               unit_cloneRepo_git_keepsBranch
           ]
     , --
