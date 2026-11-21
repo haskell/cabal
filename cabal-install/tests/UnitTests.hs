@@ -11,6 +11,7 @@ import qualified UnitTests.Distribution.Client.Glob
 import qualified UnitTests.Distribution.Client.HttpUtils
 import qualified UnitTests.Distribution.Client.IndexUtils
 import qualified UnitTests.Distribution.Client.IndexUtils.ActiveRepos
+import qualified UnitTests.Distribution.Client.IndexUtils.IndexState
 import qualified UnitTests.Distribution.Client.IndexUtils.Timestamp
 import qualified UnitTests.Distribution.Client.Init
 import qualified UnitTests.Distribution.Client.InstallPlan
@@ -61,6 +62,9 @@ main = do
       , testGroup
           "UnitTests.Distribution.Client.IndexUtils.ActiveRepos"
           UnitTests.Distribution.Client.IndexUtils.ActiveRepos.tests
+      , testGroup
+          "UnitTests.Distribution.Client.IndexUtils.IndexState"
+          UnitTests.Distribution.Client.IndexUtils.IndexState.tests
       , testGroup
           "UnitTests.Distribution.Client.IndexUtils.Timestamp"
           UnitTests.Distribution.Client.IndexUtils.Timestamp.tests
