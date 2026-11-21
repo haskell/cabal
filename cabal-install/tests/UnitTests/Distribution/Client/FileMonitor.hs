@@ -29,7 +29,7 @@ tests :: Int -> [TestTree]
 tests mtimeChange =
   [ testGroup
       "Structured hashes"
-      [ testCase "MonitorStateFile" $ structureHash (Proxy :: Proxy MonitorStateFile) @?= Fingerprint 0xe1339b9dcfdfe19d 0x9135a5f30da7ca82
+      [ testCase "MonitorStateFile" $ structureHash (Proxy :: Proxy MonitorStateFile) @?= Fingerprint 0xa59aef6ef379a79d 0x8bf09c76619f849b
       , testCase "MonitorStateGlob" $ structureHash (Proxy :: Proxy MonitorStateGlob) @?= Fingerprint fingerprintStateGlob1 fingerprintStateGlob2
       , testCase "MonitorStateFileSet" $ structureHash (Proxy :: Proxy MonitorStateFileSet) @?= Fingerprint fingerprintStateFileSet1 fingerprintStateFileSet2
       ]
@@ -95,10 +95,10 @@ tests mtimeChange =
       Windows -> expectFailBecause msg
       _ -> id
     fingerprintStateGlob1, fingerprintStateGlob2, fingerprintStateFileSet1, fingerprintStateFileSet2 :: Word64
-    fingerprintStateGlob1 = 0x5d9efec2b93d22a1
-    fingerprintStateGlob2 = 0xfdbc86351866a191
-    fingerprintStateFileSet1 = 0x4cee0a3a23697bb1
-    fingerprintStateFileSet2 = 0x96039d15c3241985
+    fingerprintStateGlob1 = 0x78b8eb1c375fa89b
+    fingerprintStateGlob2 = 0x187667f3ecb0f0f0
+    fingerprintStateFileSet1 = 0x5581570e8dd9f4a9
+    fingerprintStateFileSet2 = 0xe87b585c65efa625
 
 -- Check the file system behaves the way we expect it to
 
