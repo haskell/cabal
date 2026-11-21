@@ -197,14 +197,18 @@ testProjectConfigShared = do
     projectConfigRemoteRepos = mempty -- tested below in testRemoteRepos
     projectConfigLocalNoIndexRepos = mempty -- tested below in testLocalNoIndexRepos
     projectConfigActiveRepos = Flag (ActiveRepos [ActiveRepo (RepoName "hackage.haskell.org") CombineStrategyMerge, ActiveRepo (RepoName "my-repository") CombineStrategyOverride])
-    projectConfigIndexState =
+    indexState =
       let
         hackageState = IndexStateTime $ fromJust $ simpleParsec "2020-05-06T22:33:27Z"
         indexState' = insertIndexState (RepoName "hackage.haskell.org") hackageState headTotalIndexState
         headHackageState = IndexStateTime $ fromJust $ simpleParsec "2020-04-29T04:11:05Z"
         indexState'' = insertIndexState (RepoName "head.hackage") headHackageState indexState'
        in
-        toFlag indexState''
+        indexState''
+    projectConfigIndexState = toFlag indexState
+    -- The project file the index-state was read from is recorded with it.
+    projectConfigIndexStateSources =
+      [(IndexStateFromProjectFile (ProjectConfigPath $ "cabal.project" :| []), indexState)]
     projectConfigStoreDir = toFlag "a/store/dir/path" -- cli only
     projectConfigConstraints =
       let

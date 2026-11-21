@@ -601,6 +601,9 @@ instance Arbitrary ProjectConfigShared where
     projectConfigLocalNoIndexRepos <- arbitrary
     projectConfigActiveRepos <- arbitrary
     projectConfigIndexState <- arbitrary
+    -- Only filled in when reading a configuration from a file or the command
+    -- line, so not part of what the round trips here preserve.
+    let projectConfigIndexStateSources = mempty
     projectConfigStoreDir <- arbitraryFlag arbitraryShortToken
     projectConfigConstraints <- arbitraryConstraints
     projectConfigPreferences <- shortListOf 2 arbitrary
@@ -648,6 +651,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigLocalNoIndexRepos
         <*> shrinker projectConfigActiveRepos
         <*> shrinker projectConfigIndexState
+        <*> pure projectConfigIndexStateSources
         <*> shrinker projectConfigStoreDir
         <*> shrinkerPP preShrink_Constraints postShrink_Constraints projectConfigConstraints
         <*> shrinker projectConfigPreferences

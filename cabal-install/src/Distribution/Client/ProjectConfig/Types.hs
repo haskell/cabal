@@ -10,6 +10,8 @@ module Distribution.Client.ProjectConfig.Types
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
+  , IndexStateSource (..)
+  , withIndexStateSource
   , PackageConfig (..)
   , ProjectFileParser (..)
   , defaultProjectFileParser
@@ -99,6 +101,7 @@ import Distribution.Version
 
 import qualified Data.Map as Map
 import Data.Text (Text)
+import Distribution.Simple.Flag (flagToMaybe)
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 import Distribution.Types.ParStrat
 import Distribution.Verbosity (VerbosityFlags)
@@ -214,6 +217,11 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigLocalNoIndexRepos :: NubList LocalRepo
   , projectConfigActiveRepos :: Flag ActiveRepos
   , projectConfigIndexState :: Flag TotalIndexState
+  , projectConfigIndexStateSources :: [(IndexStateSource, TotalIndexState)]
+  -- ^ Every @index-state@ that was set, together with where it came from,
+  -- in the order the configurations were merged. The last one wins (it is
+  -- the one in 'projectConfigIndexState'). Kept so that we can warn when
+  -- they disagree.
   , projectConfigStoreDir :: Flag FilePath
   , -- solver configuration
     projectConfigConstraints :: [(UserConstraint, ConstraintSource)]
@@ -275,6 +283,25 @@ data ProjectConfigProvenance
     -- | The configuration was explicitly read from the specified 'ProjectConfigPath'.
     Explicit ProjectConfigPath
   deriving (Eq, Ord, Show, Generic)
+
+-- | Where an @index-state@ value was set.
+data IndexStateSource
+  = -- | Given with @--index-state@ on the command line.
+    IndexStateFromCommandLine
+  | -- | Set in a project configuration file, possibly one that is imported.
+    IndexStateFromProjectFile ProjectConfigPath
+  deriving (Eq, Show, Generic)
+
+-- | Record where the @index-state@ in this configuration (if there is one)
+-- was set. Call this on the configuration read from a single source.
+withIndexStateSource :: IndexStateSource -> ProjectConfigShared -> ProjectConfigShared
+withIndexStateSource source shared =
+  shared
+    { projectConfigIndexStateSources =
+        [ (source, indexState)
+        | Just indexState <- [flagToMaybe (projectConfigIndexState shared)]
+        ]
+    }
 
 -- | Project configuration that is specific to each package, that is where we
 -- can in principle have different values for different packages in the same
@@ -355,6 +382,7 @@ instance Binary ProjectConfig
 instance Binary ProjectConfigBuildOnly
 instance Binary ProjectConfigShared
 instance Binary ProjectConfigProvenance
+instance Binary IndexStateSource
 instance Binary PackageConfig
 instance Binary ProjectFileParser
 
@@ -362,6 +390,7 @@ instance Structured ProjectConfig
 instance Structured ProjectConfigBuildOnly
 instance Structured ProjectConfigShared
 instance Structured ProjectConfigProvenance
+instance Structured IndexStateSource
 instance Structured PackageConfig
 instance Structured ProjectFileParser
 
@@ -371,6 +400,7 @@ instance NFData ProjectConfigToParse where
 instance NFData ProjectConfig
 instance NFData ProjectConfigBuildOnly
 instance NFData ProjectConfigShared
+instance NFData IndexStateSource
 
 instance NFData ProjectConfigProvenance where
   rnf Implicit = ()
@@ -445,6 +475,7 @@ data SolverSettings = SolverSettings
   , solverSettingAllowBootLibInstalls :: AllowBootLibInstalls
   , solverSettingOnlyConstrained :: OnlyConstrained
   , solverSettingIndexState :: Maybe TotalIndexState
+  , solverSettingIndexStateSources :: [(IndexStateSource, TotalIndexState)]
   , solverSettingActiveRepos :: Maybe ActiveRepos
   , solverSettingIndependentGoals :: IndependentGoals
   , solverSettingPreferVersion :: PreferVersion

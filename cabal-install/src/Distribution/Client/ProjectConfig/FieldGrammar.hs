@@ -13,7 +13,7 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
 import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGrammar)
 import qualified Distribution.Client.ProjectConfig.Lens as L
-import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
+import Distribution.Client.ProjectConfig.Types (IndexStateSource (..), PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..), withIndexStateSource)
 import Distribution.Client.Utils.Parsec
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
@@ -66,47 +66,50 @@ projectConfigBuildOnlyFieldGrammar = do
   pure ProjectConfigBuildOnly{..}
 
 projectConfigSharedFieldGrammar :: ProjectConfigPath -> ParsecFieldGrammar' ProjectConfigShared
-projectConfigSharedFieldGrammar source = do
-  projectConfigDistDir <- optionalFieldDefAla "builddir" (alaFlag FilePathNT) L.projectConfigDistDir mempty
-  let projectConfigConfigFile = mempty
-  projectConfigProjectDir <- optionalFieldDefAla "project-dir" (alaFlag FilePathNT) L.projectConfigProjectDir mempty
-  projectConfigProjectFile <- optionalFieldDefAla "project-file" (alaFlag FilePathNT) L.projectConfigProjectFile mempty
-  let projectConfigProjectFileParser = mempty -- You can't set the parser type in the project file.
-  projectConfigIgnoreProject <- optionalFieldDef "ignore-project" L.projectConfigIgnoreProject mempty
-  projectConfigHcFlavor <- optionalFieldDef "compiler" L.projectConfigHcFlavor mempty
-  projectConfigHcPath <- optionalFieldDefAla "with-compiler" (alaFlag FilePathNT) L.projectConfigHcPath mempty
-  projectConfigHcPkg <- optionalFieldDefAla "with-hc-pkg" (alaFlag FilePathNT) L.projectConfigHcPkg mempty
-  projectConfigHaddockIndex <- optionalFieldDef "doc-index-file" L.projectConfigHaddockIndex mempty
-  projectConfigInstallDirs <- blurFieldGrammar L.projectConfigInstallDirs installDirsGrammar
-  projectConfigPackageDBs <- monoidalFieldAla "package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigPackageDBs
-  let projectConfigRemoteRepos = mempty
-      projectConfigLocalNoIndexRepos = mempty
-  projectConfigActiveRepos <- monoidalField "active-repositories" L.projectConfigActiveRepos
-  projectConfigIndexState <- monoidalField "index-state" L.projectConfigIndexState
-  projectConfigStoreDir <- optionalFieldDefAla "store-dir" (alaFlag FilePathNT) L.projectConfigStoreDir mempty
-  projectConfigConstraints <-
-    monoidalFieldAla "constraints" (alaList' FSep ProjectConstraints) L.projectConfigConstraints
-      ^^^ (fmap . fmap) (\(userConstraint, _) -> (userConstraint, ConstraintSourceProjectConfig source))
-  projectConfigPreferences <- monoidalFieldAla "preferences" formatPackageVersionConstraints L.projectConfigPreferences
-  projectConfigCabalVersion <- optionalFieldDef "cabal-lib-version" L.projectConfigCabalVersion mempty
-  projectConfigSolver <- optionalFieldDef "solver" L.projectConfigSolver mempty
-  projectConfigAllowOlder <- monoidalFieldAla "allow-older" AllowOlderNT L.projectConfigAllowOlder
-  projectConfigAllowNewer <- monoidalFieldAla "allow-newer" AllowNewerNT L.projectConfigAllowNewer
-  projectConfigWriteGhcEnvironmentFilesPolicy <- optionalFieldDef "write-ghc-environment-files" L.projectConfigWriteGhcEnvironmentFilesPolicy mempty
-  projectConfigMaxBackjumps <- optionalFieldDefAla "max-backjumps" (alaFlag MaxBackjumps) L.projectConfigMaxBackjumps mempty
-  projectConfigReorderGoals <- optionalFieldDef "reorder-goals" L.projectConfigReorderGoals mempty
-  projectConfigCountConflicts <- optionalFieldDef "count-conflicts" L.projectConfigCountConflicts mempty
-  projectConfigFineGrainedConflicts <- optionalFieldDef "fine-grained-conflicts" L.projectConfigFineGrainedConflicts mempty
-  projectConfigMinimizeConflictSet <- optionalFieldDef "minimize-conflict-set" L.projectConfigMinimizeConflictSet mempty
-  projectConfigStrongFlags <- optionalFieldDef "strong-flags" L.projectConfigStrongFlags mempty
-  projectConfigAllowBootLibInstalls <- optionalFieldDef "allow-boot-library-installs" L.projectConfigAllowBootLibInstalls mempty
-  projectConfigOnlyConstrained <- optionalFieldDef "reject-unconstrained-dependencies" L.projectConfigOnlyConstrained mempty
-  projectConfigPerComponent <- optionalFieldDef "per-component" L.projectConfigPerComponent mempty
-  projectConfigIndependentGoals <- optionalFieldDef "independent-goals" L.projectConfigIndependentGoals mempty
-  projectConfigPreferVersion <- packageConfigPreferVersion
-  projectConfigProgPathExtra <- monoidalFieldAla "extra-prog-path-shared-only" (alaNubList' FSep FilePathNT) L.projectConfigProgPathExtra
-  projectConfigMultiRepl <- optionalFieldDef "multi-repl" L.projectConfigMultiRepl mempty
-  pure ProjectConfigShared{..}
+projectConfigSharedFieldGrammar source =
+  withIndexStateSource (IndexStateFromProjectFile source) <$> do
+    projectConfigDistDir <- optionalFieldDefAla "builddir" (alaFlag FilePathNT) L.projectConfigDistDir mempty
+    let projectConfigConfigFile = mempty
+    projectConfigProjectDir <- optionalFieldDefAla "project-dir" (alaFlag FilePathNT) L.projectConfigProjectDir mempty
+    projectConfigProjectFile <- optionalFieldDefAla "project-file" (alaFlag FilePathNT) L.projectConfigProjectFile mempty
+    let projectConfigProjectFileParser = mempty -- You can't set the parser type in the project file.
+    projectConfigIgnoreProject <- optionalFieldDef "ignore-project" L.projectConfigIgnoreProject mempty
+    projectConfigHcFlavor <- optionalFieldDef "compiler" L.projectConfigHcFlavor mempty
+    projectConfigHcPath <- optionalFieldDefAla "with-compiler" (alaFlag FilePathNT) L.projectConfigHcPath mempty
+    projectConfigHcPkg <- optionalFieldDefAla "with-hc-pkg" (alaFlag FilePathNT) L.projectConfigHcPkg mempty
+    projectConfigHaddockIndex <- optionalFieldDef "doc-index-file" L.projectConfigHaddockIndex mempty
+    projectConfigInstallDirs <- blurFieldGrammar L.projectConfigInstallDirs installDirsGrammar
+    projectConfigPackageDBs <- monoidalFieldAla "package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigPackageDBs
+    let projectConfigRemoteRepos = mempty
+        projectConfigLocalNoIndexRepos = mempty
+    projectConfigActiveRepos <- monoidalField "active-repositories" L.projectConfigActiveRepos
+    projectConfigIndexState <- monoidalField "index-state" L.projectConfigIndexState
+    -- filled in by withIndexStateSource, which knows where the field was read from
+    let projectConfigIndexStateSources = mempty
+    projectConfigStoreDir <- optionalFieldDefAla "store-dir" (alaFlag FilePathNT) L.projectConfigStoreDir mempty
+    projectConfigConstraints <-
+      monoidalFieldAla "constraints" (alaList' FSep ProjectConstraints) L.projectConfigConstraints
+        ^^^ (fmap . fmap) (\(userConstraint, _) -> (userConstraint, ConstraintSourceProjectConfig source))
+    projectConfigPreferences <- monoidalFieldAla "preferences" formatPackageVersionConstraints L.projectConfigPreferences
+    projectConfigCabalVersion <- optionalFieldDef "cabal-lib-version" L.projectConfigCabalVersion mempty
+    projectConfigSolver <- optionalFieldDef "solver" L.projectConfigSolver mempty
+    projectConfigAllowOlder <- monoidalFieldAla "allow-older" AllowOlderNT L.projectConfigAllowOlder
+    projectConfigAllowNewer <- monoidalFieldAla "allow-newer" AllowNewerNT L.projectConfigAllowNewer
+    projectConfigWriteGhcEnvironmentFilesPolicy <- optionalFieldDef "write-ghc-environment-files" L.projectConfigWriteGhcEnvironmentFilesPolicy mempty
+    projectConfigMaxBackjumps <- optionalFieldDefAla "max-backjumps" (alaFlag MaxBackjumps) L.projectConfigMaxBackjumps mempty
+    projectConfigReorderGoals <- optionalFieldDef "reorder-goals" L.projectConfigReorderGoals mempty
+    projectConfigCountConflicts <- optionalFieldDef "count-conflicts" L.projectConfigCountConflicts mempty
+    projectConfigFineGrainedConflicts <- optionalFieldDef "fine-grained-conflicts" L.projectConfigFineGrainedConflicts mempty
+    projectConfigMinimizeConflictSet <- optionalFieldDef "minimize-conflict-set" L.projectConfigMinimizeConflictSet mempty
+    projectConfigStrongFlags <- optionalFieldDef "strong-flags" L.projectConfigStrongFlags mempty
+    projectConfigAllowBootLibInstalls <- optionalFieldDef "allow-boot-library-installs" L.projectConfigAllowBootLibInstalls mempty
+    projectConfigOnlyConstrained <- optionalFieldDef "reject-unconstrained-dependencies" L.projectConfigOnlyConstrained mempty
+    projectConfigPerComponent <- optionalFieldDef "per-component" L.projectConfigPerComponent mempty
+    projectConfigIndependentGoals <- optionalFieldDef "independent-goals" L.projectConfigIndependentGoals mempty
+    projectConfigPreferVersion <- packageConfigPreferVersion
+    projectConfigProgPathExtra <- monoidalFieldAla "extra-prog-path-shared-only" (alaNubList' FSep FilePathNT) L.projectConfigProgPathExtra
+    projectConfigMultiRepl <- optionalFieldDef "multi-repl" L.projectConfigMultiRepl mempty
+    pure ProjectConfigShared{..}
 
 packageConfigFieldGrammar :: [String] -> ParsecFieldGrammar' PackageConfig
 packageConfigFieldGrammar knownPrograms = do
