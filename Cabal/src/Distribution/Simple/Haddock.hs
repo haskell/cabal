@@ -446,6 +446,7 @@ haddock_setupHooks
             registerPackage
               verbosity
               (compiler lbi')
+              (compilerPrograms lbi')
               (withPrograms lbi')
               mbWorkDir
               (withPackageDB lbi')

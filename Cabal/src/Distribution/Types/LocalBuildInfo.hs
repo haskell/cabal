@@ -12,6 +12,7 @@ module Distribution.Types.LocalBuildInfo
       , extraConfigArgs
       , installDirTemplates
       , compiler
+      , compilerPrograms
       , hostPlatform
       , pkgDescrFile
       , componentGraph
@@ -152,6 +153,7 @@ pattern LocalBuildInfo
   -> [String]
   -> InstallDirTemplates
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> Maybe (SymbolicPath Pkg File)
   -> Graph ComponentLocalBuildInfo
@@ -193,6 +195,7 @@ pattern LocalBuildInfo
   , extraConfigArgs
   , installDirTemplates
   , compiler
+  , compilerPrograms
   , hostPlatform
   , pkgDescrFile
   , componentGraph
@@ -236,6 +239,7 @@ pattern LocalBuildInfo
             , flagAssignment
             , componentEnabledSpec
             , compiler
+            , compilerPrograms
             , hostPlatform
             , localPkgDescr
             , installDirTemplates

@@ -102,6 +102,14 @@ module Distribution.Simple.Program
   , getDbProgramOutput
   , getDbProgramOutputCwd
 
+    -- * The configured compiler
+  , CompilerPrograms
+  , compilerPath
+  , compilerPkgPath
+  , compilerSupports
+  , compilerProgramToRun
+  , compilerPkgProgramToRun
+
     -- * Programs that Cabal knows about
   , ghcProgram
   , ghcPkgProgram
@@ -131,6 +139,7 @@ import Prelude ()
 
 import Distribution.Simple.Errors
 import Distribution.Simple.Program.Builtin
+import Distribution.Simple.Program.Compiler
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Run

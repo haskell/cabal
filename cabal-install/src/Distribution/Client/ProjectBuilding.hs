@@ -344,6 +344,7 @@ rebuildTargets
   installPlan
   sharedPackageConfig@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
+    , pkgConfigCompilerPrograms = hcProgs
     , pkgConfigCompilerProgs = progdb
     }
   pkgsBuildStatus
@@ -365,7 +366,7 @@ rebuildTargets
 
         createDirectoryIfMissingVerbose verbosity True distBuildRootDirectory
         createDirectoryIfMissingVerbose verbosity True distTempDirectory
-        traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
+        traverse_ (createPackageDBIfMissing verbosity compiler hcProgs progdb) packageDBsToUse
 
         -- Populate the running InstalledPackageIndex by doing a single
         -- bulk read at startup. This allows us to obtain the
@@ -377,7 +378,7 @@ rebuildTargets
           -- PackageDBs, so we handle that case explicitly first.
           if null packageDBsToUse
             then return mempty
-            else IndexUtils.getInstalledPackages verbosity compiler packageDBsToUse progdb
+            else IndexUtils.getInstalledPackages verbosity compiler packageDBsToUse hcProgs progdb
         ipiTVar <- newTVarIO initialIPI
 
         -- Concurrency control: create the job controller and concurrency limits
@@ -562,12 +563,14 @@ runDeferredBenchmarks keepGoing installPlan buildOutcomes
 createPackageDBIfMissing
   :: Verbosity
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> PackageDBCWD
   -> IO ()
 createPackageDBIfMissing
   verbosity
   compiler
+  hcProgs
   progdb
   (SpecificPackageDB dbPath) = do
     -- If it already exists, skip locking.
@@ -579,8 +582,8 @@ createPackageDBIfMissing
         -- while we were waiting.
         exists' <- Cabal.doesPackageDBExist dbPath
         unless exists' $
-          Cabal.createPackageDB verbosity compiler progdb dbPath
-createPackageDBIfMissing _ _ _ _ = return ()
+          Cabal.createPackageDB verbosity compiler hcProgs progdb dbPath
+createPackageDBIfMissing _ _ _ _ _ = return ()
 
 -- | Hold an exclusive cross-process lock while initialising a package DB.
 withPackageDBLock :: Verbosity -> FilePath -> IO a -> IO a

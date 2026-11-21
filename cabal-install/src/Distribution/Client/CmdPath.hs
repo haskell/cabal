@@ -245,7 +245,7 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
     if not $ fromFlagOrDefault False (pathCompiler pathFlags)
       then pure Nothing
       else do
-        (compiler, _, progDb) <-
+        (compiler, _, _, progDb) <-
           runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
             configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
         compilerProg <- requireCompilerProg verbosity compiler

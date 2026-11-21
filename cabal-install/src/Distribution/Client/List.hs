@@ -36,7 +36,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
-import Distribution.Simple.Program (ProgramDb)
+import Distribution.Simple.Program (CompilerPrograms, ProgramDb)
 import Distribution.Simple.Setup (fromFlag, fromFlagOrDefault)
 import Distribution.Simple.Utils
   ( dieWithException
@@ -131,13 +131,13 @@ getPkgList
   :: Verbosity
   -> PackageDBStackCWD
   -> RepoContext
-  -> Maybe (Compiler, ProgramDb)
+  -> Maybe (Compiler, CompilerPrograms, ProgramDb)
   -> ListFlags
   -> [String]
   -> IO [PackageDisplayInfo]
 getPkgList verbosity packageDBs repoCtxt mcompprogdb listFlags pats = do
-  installedPkgIndex <- for mcompprogdb $ \(comp, progdb) ->
-    getInstalledPackages verbosity comp packageDBs progdb
+  installedPkgIndex <- for mcompprogdb $ \(comp, hcProgs, progdb) ->
+    getInstalledPackages verbosity comp packageDBs hcProgs progdb
   sourcePkgDb <- getSourcePackages verbosity repoCtxt
 
   regexps <- for pats $ \pat -> do
@@ -201,7 +201,7 @@ list
   :: Verbosity
   -> PackageDBStackCWD
   -> RepoContext
-  -> Maybe (Compiler, ProgramDb)
+  -> Maybe (Compiler, CompilerPrograms, ProgramDb)
   -> ListFlags
   -> [String]
   -> IO ()
@@ -238,23 +238,25 @@ info
   -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> GlobalFlags
   -> InfoFlags
   -> [UserTarget]
   -> IO ()
-info verbosity _ _ _ _ _ _ [] =
+info verbosity _ _ _ _ _ _ _ [] =
   notice verbosity "No packages requested. Nothing to do."
 info
   verbosity
   packageDBs
   repoCtxt
   comp
+  hcProgs
   progdb
   _
   _listFlags
   userTargets = do
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs hcProgs progdb
     sourcePkgDb <- getSourcePackages verbosity repoCtxt
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name =

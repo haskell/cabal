@@ -185,6 +185,10 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
 data ElaboratedSharedConfig = ElaboratedSharedConfig
   { pkgConfigPlatform :: Platform
   , pkgConfigCompiler :: Compiler -- TODO: [code cleanup] replace with CompilerInfo
+  , pkgConfigCompilerPrograms :: CompilerPrograms
+  -- ^ The compiler's executable and package tool, as configured together with
+  -- 'pkgConfigCompiler'. See Note [Compiler, compiler program and ProgramDb]
+  -- in "Distribution.Types.LocalBuildConfig".
   , pkgConfigCompilerProgs :: ProgramDb
   -- ^ All known programs configured once for the project: the compiler
   -- (e.g. ghc & ghc-pkg) plus associated tools (hsc2hs, haddock, hpc,

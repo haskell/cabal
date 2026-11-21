@@ -94,7 +94,7 @@ import Distribution.Simple.PackageIndex as PackageIndex
   ( InstalledPackageIndex
   , lookupPackageName
   )
-import Distribution.Simple.Program (ProgramDb)
+import Distribution.Simple.Program (CompilerPrograms, ProgramDb)
 import Distribution.Simple.Setup
   ( CommonSetupFlags (..)
   , ConfigFlags (..)
@@ -148,6 +148,7 @@ configure
   -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> ProgramDb
   -> ConfigFlags
@@ -159,12 +160,13 @@ configure
   packageDBs
   repoCtxt
   comp
+  hcProgs
   platform
   progdb
   configFlags
   configExFlags
   extraArgs = do
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs hcProgs progdb
     sourcePkgDb <- getSourcePackages verbosity repoCtxt
     pkgConfigDb <- readPkgConfigDb verbosity progdb
 
@@ -239,6 +241,7 @@ configure
         configureSetupScript
           packageDBs
           comp
+          hcProgs
           platform
           progdb
           ( fromFlagOrDefault
@@ -256,6 +259,7 @@ configure
 configureSetupScript
   :: PackageDBStackCWD
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> ProgramDb
   -> SymbolicPath Pkg (Dir Dist)
@@ -267,6 +271,7 @@ configureSetupScript
 configureSetupScript
   packageDBs
   comp
+  hcProgs
   platform
   progdb
   distPref
@@ -277,7 +282,7 @@ configureSetupScript
     SetupScriptOptions
       { useCabalVersion = cabalVersion
       , useCabalSpecVersion = Nothing
-      , useCompiler = Just comp
+      , useCompiler = Just (comp, hcProgs)
       , usePlatform = Just platform
       , usePackageDB = packageDBs'
       , usePackageIndex = index'

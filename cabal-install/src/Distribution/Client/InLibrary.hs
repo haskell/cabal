@@ -34,6 +34,7 @@ import Distribution.Simple.Install (install_setupHooks)
 import Distribution.Simple.LocalBuildInfo (mbWorkDirLBI)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PreProcess as Cabal
+import Distribution.Simple.Program.Compiler (CompilerPrograms)
 import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.Setup as Cabal
@@ -63,6 +64,7 @@ import System.Directory (canonicalizePath)
 data LibraryConfigureInputs = LibraryConfigureInputs
   { verbosityHandles :: VerbosityHandles
   , compiler :: Compiler
+  , compilerPrograms :: CompilerPrograms
   , platform :: Platform
   , buildType :: BuildType
   , compRequested :: Maybe PD.ComponentName
@@ -93,6 +95,7 @@ libraryConfigureInputsFromElabPackage
   ElaboratedSharedConfig
     { pkgConfigPlatform = plat
     , pkgConfigCompiler = compil
+    , pkgConfigCompilerPrograms = compilProgs
     , pkgConfigPackageSources = sources
     }
   (ReadyPackage pkg)
@@ -101,6 +104,7 @@ libraryConfigureInputsFromElabPackage
     LibraryConfigureInputs
       { verbosityHandles = verbHandles
       , compiler = compil
+      , compilerPrograms = compilProgs
       , platform = plat
       , buildType =
           -- NB: don't get the build-type from 'pkgDescr',
@@ -148,6 +152,7 @@ configure
     { verbosityHandles = verbHandles
     , platform = plat
     , compiler = compil
+    , compilerPrograms = compilProgs
     , buildType = bt
     , compRequested = mbComp
     , localBuildConfig = lbc0
@@ -229,6 +234,7 @@ configure
         flagAssgn
         compRequestedSpec
         compil
+        compilProgs
         plat
         packageDBs'
         pkgInfo

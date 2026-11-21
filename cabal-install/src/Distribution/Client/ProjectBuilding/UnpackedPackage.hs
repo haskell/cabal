@@ -198,6 +198,7 @@ buildAndRegisterUnpackedPackage
   cacheLock
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
+    , pkgConfigCompilerPrograms = hcProgs
     , pkgConfigCompilerProgs = progdb
     }
   plan
@@ -266,6 +267,7 @@ buildAndRegisterUnpackedPackage
                 Cabal.registerPackage
                   verbosity
                   compiler
+                  hcProgs
                   progdb
                   Nothing
                   (coercePackageDBStack pkgDBStack)
