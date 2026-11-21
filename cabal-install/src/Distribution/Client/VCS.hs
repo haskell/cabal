@@ -462,8 +462,11 @@ vcsGit =
       -> [ProgramInvocation]
     vcsCloneRepo verbosity prog repo srcuri destdir =
       [programInvocation prog cloneArgs]
-        -- And if there's a tag, we have to do that in a second step:
-        ++ [git (resetArgs (Text.unpack tag)) | tag <- maybeToList (srpTag repo)]
+        -- And if there's a tag, we have to check it out in a second step. We
+        -- detach HEAD at the tag rather than resetting, since a reset would
+        -- move the branch we just cloned to the tag, so that it no longer
+        -- matches the remote (#10278).
+        ++ [git (checkoutArgs (Text.unpack tag)) | tag <- maybeToList (srpTag repo)]
         ++ [ whenGitModulesExists $ git $ ["submodule", "sync", "--recursive"] ++ verboseArg
            , whenGitModulesExists $ git $ ["submodule", "update", "--init", "--force", "--recursive"] ++ verboseArg
            ]
@@ -483,7 +486,7 @@ vcsGit =
         branchArgs = case srpBranch repo of
           Just b -> ["--branch", Text.unpack b]
           Nothing -> []
-        resetArgs tag = "reset" : verboseArg ++ ["--hard", tag, "--"]
+        checkoutArgs tag = "checkout" : verboseArg ++ ["--detach", tag]
         verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
     -- Note: No --depth=1 for vcsCloneRepo since that is used for `cabal get -s`,
