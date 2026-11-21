@@ -68,11 +68,11 @@ tests mtimeChange =
           , testProperty "cloneSourceRepo" prop_cloneRepo_git
           , testProperty "syncSourceRepos" prop_syncRepos_git
           , testCase "syncSourceRepos, shallow, distinct tags" $
-              unit_syncRepos_git fileUri NotShared ["tag-one", "tag-two"]
+              unit_syncRepos_git fileUri NotShared OnlyThePinnedCommit ["tag-one", "tag-two"]
           , testCase "syncSourceRepos, shallow, repeated tag" $
-              unit_syncRepos_git fileUri NotShared ["tag-two", "tag-two"]
+              unit_syncRepos_git fileUri NotShared OnlyThePinnedCommit ["tag-two", "tag-two"]
           , testCase "syncSourceRepos, not shallow, distinct tags" $
-              unit_syncRepos_git id Shared ["tag-one", "tag-two"]
+              unit_syncRepos_git id Shared UpToThePinnedCommit ["tag-one", "tag-two"]
           ]
     , --
       ignoreTestBecause "for the moment they're not yet working" $
@@ -426,6 +426,10 @@ checkSyncRepos
 data ObjectSharing = Shared | NotShared
   deriving (Eq, Show)
 
+-- | How much history each checkout is expected to have.
+data History = OnlyThePinnedCommit | UpToThePinnedCommit
+  deriving (Eq, Show)
+
 -- | Sync several checkouts of one repository, as a @cabal.project@ with more
 -- than one @source-repository-package@ stanza for the same location does.
 --
@@ -435,15 +439,18 @@ data ObjectSharing = Shared | NotShared
 -- git honours @--depth@ and the checkouts are shallow, and git rejects a
 -- shallow repository as the argument of @git clone --reference@ (#12296); for
 -- a plain local path git ignores @--depth@, so the first checkout is a
--- complete repository and can be shared.
+-- complete repository and can be shared. A shallow checkout has only the
+-- commit that its tag names; a complete one also has that commit's history.
 unit_syncRepos_git
   :: (FilePath -> String)
   -- ^ How to spell the repository location.
   -> ObjectSharing
   -- ^ What that spelling implies for the later checkouts.
+  -> History
+  -- ^ What it implies for the history of every checkout.
   -> [TagName]
   -> IO ()
-unit_syncRepos_git mkLocation expectedSharing tags =
+unit_syncRepos_git mkLocation expectedSharing expectedHistory tags =
   testSetup vcsGit vcsTestDriverGit recipe $
     \VCSTestDriver{vcsVCS, vcsRepoRoot, vcsIgnoreFiles} tmpdir repoState -> do
       let destPaths = [tmpdir </> ("dest" ++ show i) | i <- [1 :: Int ..]]
@@ -473,14 +480,35 @@ unit_syncRepos_git mkLocation expectedSharing tags =
             (if borrows then Shared else NotShared)
         | dest <- drop 1 (map snd syncTargets)
         ]
+      let commitsIn dir rev =
+            length . lines
+              <$> getProgramInvocationOutput
+                verbosity
+                (programInvocation (vcsProgram vcsVCS) ["rev-list", rev])
+                  { progInvokeCwd = Just dir
+                  }
+      sequence_
+        [ do
+          expected <- case expectedHistory of
+            OnlyThePinnedCommit -> pure 1
+            UpToThePinnedCommit -> commitsIn vcsRepoRoot tag
+          actual <- commitsIn dest "HEAD"
+          assertEqual ("commits in " ++ dest) expected actual
+        | (tag, dest) <- syncTargets
+        ]
   where
     verbosity = mkVerbosity defaultVerbosityHandles silent
 
+    -- tag-one has history of its own, which a shallow checkout of it lacks.
     recipe :: RepoRecipe 'SubmodulesNotSupported
     recipe =
       WithoutBranchingSupport $
         NonBranchingRepoRecipe
-          [ TaggedCommits "tag-one" [Commit [Left (FileUpdate ("file" </> "A") "one")]]
+          [ TaggedCommits
+              "tag-one"
+              [ Commit [Left (FileUpdate ("file" </> "A") "zero")]
+              , Commit [Left (FileUpdate ("file" </> "A") "one")]
+              ]
           , TaggedCommits "tag-two" [Commit [Left (FileUpdate ("file" </> "B") "two")]]
           ]
 
