@@ -227,15 +227,25 @@ toComponentLocalBuildInfos
     -- we don't actually know what the full set of 'UnitId's we need
     -- are.
     let
-      -- TODO: This is actually a bit questionable performance-wise,
-      -- since we will pay for the ALL installed packages even if
-      -- they are not related to what we are building.  This was true
-      -- in the old configure code.
+      -- Only the installed packages reachable from the components can be in
+      -- the closure below, so we look those up rather than building a graph
+      -- of every installed package (#12546). Installed packages with the
+      -- same 'UnitId' as a component are skipped, as 'Graph.unionRight'
+      -- would replace them.
+      internal_keys = Set.fromList (map nodeKey graph)
+      reachable_installed = go Map.empty (concatMap nodeNeighbors graph)
+        where
+          go seen [] = Map.elems seen
+          go seen (uid : uids)
+            | uid `Set.member` internal_keys || uid `Map.member` seen = go seen uids
+            | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid =
+                go (Map.insert uid pkg seen) (nodeNeighbors pkg ++ uids)
+            | otherwise = go seen uids
       external_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
       external_graph =
         Graph.fromDistinctList
           . map Left
-          $ PackageIndex.allPackages installedPackageSet
+          $ reachable_installed
       internal_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
       internal_graph =
         Graph.fromDistinctList
