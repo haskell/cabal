@@ -81,8 +81,10 @@ module Distribution.Simple
   ) where
 
 import Control.Exception (try)
+import Data.Bifunctor (bimap, first)
+import qualified Data.Text as T
 
-import Distribution.Compat.Prelude
+import Distribution.Compat.Prelude hiding (first)
 import Distribution.Compat.ResponseFile (expandResponse)
 import Prelude ()
 
@@ -492,8 +494,8 @@ buildAction verbHandles globalFlags hooks flags args = do
   progs <-
     reconfigurePrograms
       verbosity
-      (buildProgramPaths flags')
-      (buildProgramArgs flags')
+      (map (first T.unpack) (buildProgramPaths flags'))
+      (map (bimap T.unpack (map T.unpack)) (buildProgramArgs flags'))
       (withPrograms lbi)
 
   hookedAction
@@ -515,8 +517,8 @@ replAction verbHandles globalFlags hooks flags args = do
   progs <-
     reconfigurePrograms
       verbosity
-      (replProgramPaths flags')
-      (replProgramArgs flags')
+      (map (first T.unpack) (replProgramPaths flags'))
+      (map (bimap T.unpack (map T.unpack)) (replProgramArgs flags'))
       (withPrograms lbi)
 
   -- As far as I can tell, the only reason this doesn't use
@@ -562,8 +564,8 @@ haddockAction verbHandles globalFlags hooks flags args = do
   progs <-
     reconfigurePrograms
       verbosity
-      (haddockProgramPaths flags')
-      (haddockProgramArgs flags')
+      (map (first T.unpack) (haddockProgramPaths flags'))
+      (map (bimap T.unpack (map T.unpack)) (haddockProgramArgs flags'))
       (withPrograms lbi)
 
   hookedAction

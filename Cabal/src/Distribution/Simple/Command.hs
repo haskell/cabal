@@ -52,6 +52,7 @@ module Distribution.Simple.Command
 
     -- ** Constructing Option Fields
   , option
+  , optionText
   , multiOption
 
     -- ** Liftings & Projections
@@ -71,6 +72,7 @@ module Distribution.Simple.Command
   , MkOptDescr
   , reqArg
   , reqArg'
+  , reqArgText'
   , optArg
   , optArg'
   , noArg
@@ -86,6 +88,8 @@ import Prelude ()
 import qualified Data.Array as Array
 import Data.Either (rights)
 import qualified Data.List as List
+import Data.Text (Text)
+import qualified Data.Text as T
 import Distribution.Compat.Lens (ALens', (#~), (^#))
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.ReadE
@@ -191,6 +195,17 @@ option _ _ _ _ _ _ =
     "Distribution.command.option: "
       ++ "An OptionField must have at least one LFlag"
 
+-- | Like 'option', accepting text for long flags and the help description.
+optionText
+  :: SFlags
+  -> [Text]
+  -> Text
+  -> get
+  -> set
+  -> MkOptDescr get set a
+  -> OptionField a
+optionText sf lf description = option sf (map T.unpack lf) (T.unpack description)
+
 -- | Create an option taking several OptDescrs.
 --   You will have to give the flags and description individually to the
 --   OptDescr constructor.
@@ -262,6 +277,16 @@ reqArg'
   -> MkOptDescr (a -> b) (b -> a -> a) a
 reqArg' ad mkflag showflag =
   reqArg ad (succeedReadE mkflag) showflag
+
+-- | Like 'reqArg'', with a text placeholder, parser, and renderer.
+reqArgText'
+  :: Monoid b
+  => Text
+  -> (Text -> b)
+  -> (b -> [Text])
+  -> MkOptDescr (a -> b) (b -> a -> a) a
+reqArgText' ad mkflag showflag =
+  reqArg' (T.unpack ad) (mkflag . T.pack) (map T.unpack . showflag)
 
 -- | (String -> a) variant of "optArg"
 optArg'

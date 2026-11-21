@@ -37,6 +37,7 @@ module Distribution.Simple.Setup.Haddock
   , haddockProjectOptions
   ) where
 
+import Data.Text (Text)
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
@@ -89,11 +90,11 @@ instance Parsec HaddockTarget where
 
 data HaddockFlags = HaddockFlags
   { haddockCommonFlags :: !CommonSetupFlags
-  , haddockProgramPaths :: [(String, FilePath)]
-  , haddockProgramArgs :: [(String, [String])]
+  , haddockProgramPaths :: [(Text, FilePath)]
+  , haddockProgramArgs :: [(Text, [Text])]
   , haddockHoogle :: Flag Bool
   , haddockHtml :: Flag Bool
-  , haddockHtmlLocation :: Flag String
+  , haddockHtmlLocation :: Flag FilePath
   , haddockForHackage :: Flag HaddockTarget
   , haddockExecutables :: Flag Bool
   , haddockTestSuites :: Flag Bool
@@ -106,8 +107,8 @@ data HaddockFlags = HaddockFlags
   , haddockHscolourCss :: Flag FilePath
   , haddockContents :: Flag PathTemplate
   , haddockIndex :: Flag PathTemplate
-  , haddockBaseUrl :: Flag String
-  , haddockResourcesDir :: Flag String
+  , haddockBaseUrl :: Flag FilePath
+  , haddockResourcesDir :: Flag FilePath
   , haddockOutputDir :: Flag FilePath
   , haddockUseUnicode :: Flag Bool
   }
@@ -194,7 +195,7 @@ haddockCommand =
             progDb
             showOrParseArgs
             haddockProgramArgs
-            (\v fs -> fs{haddockProgramArgs = v})
+            (\v flags -> flags{haddockProgramArgs = v})
           ++ programDbOptions
             progDb
             ParseArgs
@@ -402,20 +403,20 @@ data HaddockProjectFlags = HaddockProjectFlags
   -- * `--gen-contents`
   -- * `--hyperlinked-source`
   , -- options passed to @haddock@ via 'createHaddockIndex'
-    haddockProjectDir :: Flag String
+    haddockProjectDir :: Flag FilePath
   -- ^ output directory of combined haddocks, the default is './haddocks'
-  , haddockProjectPrologue :: Flag String
+  , haddockProjectPrologue :: Flag FilePath
   , haddockProjectInterfaces :: Flag [(FilePath, Maybe FilePath, Maybe FilePath, Visibility)]
   -- ^ 'haddocksInterfaces' is inferred by the 'haddocksAction'; currently not
   -- exposed to the user.
   , -- options passed to @haddock@ via 'HaddockFlags' when building
     -- documentation
 
-    haddockProjectProgramPaths :: [(String, FilePath)]
-  , haddockProjectProgramArgs :: [(String, [String])]
+    haddockProjectProgramPaths :: [(Text, FilePath)]
+  , haddockProjectProgramArgs :: [(Text, [Text])]
   , haddockProjectHoogle :: Flag Bool
   , -- haddockHtml is not supported
-    haddockProjectHtmlLocation :: Flag String
+    haddockProjectHtmlLocation :: Flag FilePath
   , -- haddockForHackage is not supported
     haddockProjectExecutables :: Flag Bool
   , haddockProjectTestSuites :: Flag Bool
@@ -428,7 +429,7 @@ data HaddockProjectFlags = HaddockProjectFlags
     -- haddockIndex is not supported, a fixed value is provided
     -- haddockDistPerf is not supported, note: it changes location of the haddocks
     -- haddockBaseUrl is not supported, a fixed value is provided
-    haddockProjectResourcesDir :: Flag String
+    haddockProjectResourcesDir :: Flag FilePath
   , haddockProjectUseUnicode :: Flag Bool
   }
   deriving (Show, Generic)
