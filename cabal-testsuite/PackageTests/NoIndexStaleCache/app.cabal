@@ -1,0 +1,9 @@
+cabal-version: 3.0
+name: app
+version: 0.1
+build-type: Simple
+
+library
+  exposed-modules: App
+  build-depends: base, greet
+  default-language: Haskell2010
