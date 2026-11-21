@@ -33,7 +33,7 @@ import System.Random
 
 import Test.Tasty
 import Test.Tasty.ExpectedFailure
-import Test.Tasty.HUnit (assertEqual, testCase)
+import Test.Tasty.HUnit (assertBool, assertEqual, testCase)
 import Test.Tasty.QuickCheck
 import UnitTests.Distribution.Client.ArbitraryInstances
 
@@ -73,6 +73,8 @@ tests mtimeChange =
               unit_syncRepos_git fileUri NotShared ["tag-two", "tag-two"]
           , testCase "syncSourceRepos, not shallow, distinct tags" $
               unit_syncRepos_git id Shared ["tag-one", "tag-two"]
+          , testCase "cloneSourceRepo at a tag leaves the cloned branch alone" $
+              unit_cloneRepo_git_keepsBranch
           ]
     , --
       ignoreTestBecause "for the moment they're not yet working" $
@@ -473,6 +475,48 @@ unit_syncRepos_git mkLocation expectedSharing tags =
             (if borrows then Shared else NotShared)
         | dest <- drop 1 (map snd syncTargets)
         ]
+  where
+    verbosity = mkVerbosity defaultVerbosityHandles silent
+
+    recipe :: RepoRecipe 'SubmodulesNotSupported
+    recipe =
+      WithoutBranchingSupport $
+        NonBranchingRepoRecipe
+          [ TaggedCommits "tag-one" [Commit [Left (FileUpdate ("file" </> "A") "one")]]
+          , TaggedCommits "tag-two" [Commit [Left (FileUpdate ("file" </> "B") "two")]]
+          ]
+
+-- | Cloning at a tag (as @cabal get -s@ does) used to @git reset --hard@ the
+-- cloned branch to the tag, so the branch no longer matched the remote
+-- (#10278). The tag should be checked out without moving the branch.
+unit_cloneRepo_git_keepsBranch :: IO ()
+unit_cloneRepo_git_keepsBranch =
+  testSetup vcsGit vcsTestDriverGit recipe $
+    \VCSTestDriver{vcsVCS, vcsRepoRoot, vcsIgnoreFiles} tmpdir repoState -> do
+      let dest = tmpdir </> "dest"
+          repo =
+            SourceRepositoryPackage
+              { srpType = vcsRepoType vcsVCS
+              , srpLocation = Text.pack vcsRepoRoot
+              , srpTag = Just (Text.pack "tag-one")
+              , srpBranch = Nothing
+              , srpSubdir = []
+              , srpCommand = []
+              }
+          git dir args =
+            getProgramInvocationOutput
+              verbosity
+              (simpleProgramInvocation "git" args){progInvokeCwd = Just dir}
+          branchTips dir = lines <$> git dir ["for-each-ref", "--format=%(objectname)", "refs/heads/"]
+      cloneSourceRepo verbosity vcsVCS repo dest
+      -- The working tree is at the tag...
+      checkExpectedWorkingState vcsIgnoreFiles dest (allTags repoState Map.! "tag-one")
+      -- ...but the cloned branch still points where it does in the source.
+      sourceTips <- branchTips vcsRepoRoot
+      clonedTips <- branchTips dest
+      assertEqual "cloned branch" sourceTips clonedTips
+      tagOne <- git vcsRepoRoot ["rev-parse", "tag-one^{commit}"]
+      assertBool "the branch is ahead of the tag" (lines tagOne /= clonedTips)
   where
     verbosity = mkVerbosity defaultVerbosityHandles silent
 
