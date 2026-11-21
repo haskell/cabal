@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -- | Types for the "Distribution.Client.ProjectBuilding"
 --
 -- Moved out to avoid module cycles.
@@ -18,6 +20,12 @@ module Distribution.Client.ProjectBuilding.Types
   , DeferredBenchmark (..)
   , BuildFailure (..)
   , BuildFailureReason (..)
+
+    -- * Per-project installed package index
+  , ProjectInstalledIndex
+  , newProjectInstalledIndex
+  , readProjectInstalledIndex
+  , insertProjectInstalledIndex
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -29,6 +37,11 @@ import Distribution.Client.Types (DocsResult, TestsResult)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package (PackageId, UnitId)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
+
+import Control.Concurrent.MVar (MVar, modifyMVar, modifyMVar_, newMVar)
+import Data.Bifunctor (bimap)
 
 ------------------------------------------------------------------------------
 -- Pre-build status: result of the dry run
@@ -187,3 +200,37 @@ data BuildFailureReason
   | BenchFailed SomeException
   | InstallFailed SomeException
   deriving (Show)
+
+------------------------------------------------------------------------------
+-- Per-project installed package index
+--
+
+-- | The running 'InstalledPackageIndex' of the whole project, read from the
+-- package dbs the first time a package is configured. See
+-- Note [Per-project InstalledPackageIndex] in "Distribution.Client.ProjectBuilding".
+--
+-- Holds the bulk read of every package db the plan touches until it has run,
+-- then the index it produced.
+newtype ProjectInstalledIndex
+  = ProjectInstalledIndex (MVar (Either (IO InstalledPackageIndex) InstalledPackageIndex))
+
+-- | Make an index that runs the given read on first use.
+newProjectInstalledIndex :: IO InstalledPackageIndex -> IO ProjectInstalledIndex
+newProjectInstalledIndex load = ProjectInstalledIndex <$> newMVar (Left load)
+
+-- | Read the index, loading it first if no one has yet.
+readProjectInstalledIndex :: ProjectInstalledIndex -> IO InstalledPackageIndex
+readProjectInstalledIndex (ProjectInstalledIndex var) =
+  modifyMVar var $ \case
+    Right ipi -> return (Right ipi, ipi)
+    Left load -> do
+      ipi <- load
+      return (Right ipi, ipi)
+
+-- | Record a library that was just registered, in the index if it has been
+-- read, otherwise in the result of the read when it runs.
+insertProjectInstalledIndex :: InstalledPackageInfo -> ProjectInstalledIndex -> IO ()
+insertProjectInstalledIndex ipkg (ProjectInstalledIndex var) =
+  modifyMVar_ var (return . bimap (fmap insert) insert)
+  where
+    insert = PackageIndex.insert ipkg
