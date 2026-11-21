@@ -1,0 +1,15 @@
+cabal-version:   3.0
+name:            mhs-installlib
+version:         1.0
+build-type:      Simple
+license:         BSD-3-Clause
+synopsis:        A library to install for mhs
+
+library
+    exposed-modules:  Triple
+    c-sources:        cbits/triple.c
+    include-dirs:     include
+    install-includes: triple.h
+    build-depends:    base
+    hs-source-dirs:   src
+    default-language: Haskell2010
