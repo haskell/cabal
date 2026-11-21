@@ -12,16 +12,15 @@ You can contribute by triaging issues, which may include reproducing bug reports
 
 ## Building Cabal for hacking
 
-If you use the `cabal` executable from the latest version of the
-[cabal-install](https://hackage.haskell.org/package/cabal-install) package
-published on Hackage, it is sufficient to run:
+To build the default project, run the following using a `cabal` executable
+installed from version `cabal-install-3.18` or later:
 
 ```
 $ cabal build cabal
 ```
 
-If you have trouble building the testsuite for this initial build, try building
-with the release project that excludes this testsuite:
+With the release project that doesn't include `cabal-testsuite`, you can use
+`cabal` from earlier versions of `cabal-install`.
 
 ```
 $ cabal build cabal --project-file=cabal.release.project
