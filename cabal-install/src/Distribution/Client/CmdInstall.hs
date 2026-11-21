@@ -168,6 +168,7 @@ import Distribution.Simple.Utils
   , notice
   , ordNub
   , safeHead
+  , toUTF8LBS
   , warn
   , withTempDirectory
   , wrapText
@@ -216,7 +217,6 @@ import Distribution.Verbosity
   , normal
   )
 
-import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import Data.Ord
@@ -1005,7 +1005,7 @@ installLibraries
                 ++ entriesForLibraryComponents (targetsMap buildCtx)
           contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
         createDirectoryIfMissing True (takeDirectory envFile)
-        writeFileAtomic envFile (BS.pack contents')
+        writeFileAtomic envFile (toUTF8LBS contents')
         when showWarning $
           warn verbosity $
             "The libraries were installed by creating a global GHC environment file at:\n"

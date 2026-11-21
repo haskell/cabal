@@ -21,13 +21,17 @@ module Distribution.Client.Types.Repo
     -- * Windows
   , asPosixPath
   , normaliseFileNoIndexURI
+
+    -- * Utils
+  , urlEncode
+  , urlDecode
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Data.Text (Text)
-import Network.URI (URI (..), nullURI, parseAbsoluteURI, uriToString)
+import Network.URI (URI (..), escapeURIString, isAllowedInURI, nullURI, parseAbsoluteURI, unEscapeString, uriToString)
 
 import Distribution.Simple.Utils (toUTF8BS)
 import Distribution.System (OS (Windows))
@@ -250,10 +254,13 @@ repoName (RepoSecure r _) = remoteRepoName r
 -- system.
 normaliseFileNoIndexURI :: OS -> URI -> URI
 normaliseFileNoIndexURI os uri@(URI scheme _auth path query fragment)
-  | "file+noindex:" <- scheme
-  , Windows <- os =
-      URI scheme Nothing (asPosixPath path) query fragment
+  | "file+noindex:" <- scheme = URI scheme Nothing posix_path query fragment
   | otherwise = uri
+  where
+    posix_path =
+      if os == Windows
+        then asPosixPath path
+        else path
 
 -- | Convert a path to POSIX-style.
 asPosixPath :: FilePath -> FilePath
@@ -261,3 +268,13 @@ asPosixPath p =
   -- We don't use 'isPathSeparator' because @Windows.isPathSeparator
   -- Posix.pathSeparator == True@.
   [if x == Windows.pathSeparator then Posix.pathSeparator else x | x <- p]
+
+-- | Given a file path, url encode and escape invalid characters.
+-- To be used before using this file path to construct an 'URI'.
+urlEncode :: FilePath -> FilePath
+urlEncode = escapeURIString isAllowedInURI
+
+-- | Given a file path, url decode and unescape invalid characters.
+-- To be used when the URI is a file path, for example to construct values of 'Repo'.
+urlDecode :: FilePath -> FilePath
+urlDecode = unEscapeString
