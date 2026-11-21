@@ -30,7 +30,8 @@ Welcome to the Cabal User Guide
    cabal-package-description-file
    cabal-project-description-file
    version-control-fields
-   cabal-config-and-commands
+   config
+   cabal-commands
    external-commands
    setup-commands
    file-format-changelog
