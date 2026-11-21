@@ -68,15 +68,21 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 
+import Data.Char (isAscii)
+import Data.IORef (IORef, atomicModifyIORef', atomicWriteIORef, newIORef, readIORef)
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Data.Text as T
-import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath
   ( normalise
   , replaceExtension
   , splitExtension
   , takeDirectory
   , takeExtensions
+  , takeFileName
   )
+import System.IO.Error (isDoesNotExistError)
 import System.Info (arch, os)
 
 -- | Just present the modules in the order given; this is the default and it is
@@ -152,6 +158,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
       (packageId pd)
       (componentLocalName clbi)
       (Nothing :: Maybe [(ModuleName, Module)])
+    -- See Note [Source directory listing cache]
+    dirCache <- newSourceDirCache
     case comp of
       (CLib lib@Library{libBuildInfo = bi}) -> do
         let dirs =
@@ -160,7 +168,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (allLibModules lib clbi)
         for_ (map moduleNameSymbolicPath mods) $
-          pre dirs (componentBuildDir lbi clbi) hndlrs
+          pre dirCache dirs (componentBuildDir lbi clbi) hndlrs
       (CFLib flib@ForeignLib{foreignLibBuildInfo = bi}) -> do
         let flibDir = flibBuildDir lbi flib
             dirs =
@@ -171,7 +179,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (foreignLibModules flib)
         for_ (map moduleNameSymbolicPath mods) $
-          pre dirs flibDir hndlrs
+          pre dirCache dirs flibDir hndlrs
       (CExe exe@Executable{buildInfo = bi}) -> do
         let exeDir = exeBuildDir lbi exe
             dirs =
@@ -182,24 +190,24 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (otherModules bi)
         for_ (map moduleNameSymbolicPath mods) $
-          pre dirs exeDir hndlrs
-        pre (hsSourceDirs bi) exeDir (localHandlers bi) $
+          pre dirCache dirs exeDir hndlrs
+        pre dirCache (hsSourceDirs bi) exeDir (localHandlers bi) $
           dropExtensionsSymbolicPath (modulePath exe)
       CTest test@TestSuite{} -> do
         let testDir = testBuildDir lbi test
         case testInterface test of
           TestSuiteExeV10 _ f ->
-            preProcessTest test f testDir
+            preProcessTest dirCache test f testDir
           TestSuiteLibV09 _ _ -> do
             writeSimpleTestStub test (i testDir)
-            preProcessTest test (makeRelativePathEx $ stubFilePath test) testDir
+            preProcessTest dirCache test (makeRelativePathEx $ stubFilePath test) testDir
           TestSuiteUnsupported tt ->
             dieWithException verbosity $ NoSupportForPreProcessingTest tt
       CBench bm@Benchmark{} -> do
         let benchDir = benchmarkBuildDir lbi bm
         case benchmarkInterface bm of
           BenchmarkExeV10 _ f ->
-            preProcessBench bm f benchDir
+            preProcessBench dirCache bm f benchDir
           BenchmarkUnsupported tt ->
             dieWithException verbosity $ NoSupportForPreProcessingBenchmark tt
   where
@@ -210,24 +218,27 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
     localHandlers bi = [(ext, h bi lbi clbi) | (ext, h) <- handlers]
     mbWorkDir = mbWorkDirLBI lbi
     i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
-    pre dirs dir lhndlrs fp =
-      preprocessFile mbWorkDir dirs dir isSrcDist fp verbosity builtinSuffixes lhndlrs True
-    preProcessTest test =
+    pre dirCache dirs dir lhndlrs fp =
+      preprocessFileWith (Just dirCache) mbWorkDir dirs dir isSrcDist fp verbosity builtinSuffixes lhndlrs True
+    preProcessTest dirCache test =
       preProcessComponent
+        dirCache
         (testBuildInfo test)
         (testModules test)
-    preProcessBench bm =
+    preProcessBench dirCache bm =
       preProcessComponent
+        dirCache
         (benchmarkBuildInfo bm)
         (benchmarkModules bm)
 
     preProcessComponent
-      :: BuildInfo
+      :: SourceDirCache
+      -> BuildInfo
       -> [ModuleName]
       -> RelativePath Source File
       -> SymbolicPath Pkg (Dir Build)
       -> IO ()
-    preProcessComponent bi modules exePath outputDir = do
+    preProcessComponent dirCache bi modules exePath outputDir = do
       let biHandlers = localHandlers bi
           sourceDirs =
             hsSourceDirs bi
@@ -235,7 +246,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
                  , autogenPackageModulesDir lbi
                  ]
       sequence_
-        [ preprocessFile
+        [ preprocessFileWith
+          (Just dirCache)
           mbWorkDir
           sourceDirs
           outputDir
@@ -248,7 +260,9 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
         | modu <- modules
         ]
       -- Note we don't fail on missing in this case, because the main file
-      -- may be generated later (i.e. by a test code generator)
+      -- may be generated later (i.e. by a test code generator).
+      -- This search path includes the build directory, so it must not use
+      -- the source directory cache.
       preprocessFile
         mbWorkDir
         (coerceSymbolicPath outputDir : hsSourceDirs bi)
@@ -286,10 +300,28 @@ preprocessFile
   -> Bool
   -- ^ fail on missing file
   -> IO ()
-preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers failOnMissing = do
+preprocessFile = preprocessFileWith Nothing
+
+-- | Like 'preprocessFile', but can use a 'SourceDirCache' for lookups in
+-- the source directories. A cache must only be supplied when the build
+-- directory is not among the source directories.
+-- See Note [Source directory listing cache].
+preprocessFileWith
+  :: Maybe SourceDirCache
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> [SymbolicPath Pkg (Dir Source)]
+  -> SymbolicPath Pkg (Dir Build)
+  -> Bool
+  -> RelativePath Source File
+  -> Verbosity
+  -> [Suffix]
+  -> [(Suffix, PreProcessor)]
+  -> Bool
+  -> IO ()
+preprocessFileWith mbDirCache mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers failOnMissing = do
   -- look for files in the various source dirs with this module name
   -- and a file extension of a known preprocessor
-  psrcFiles <- findFileCwdWithExtension' mbWorkDir (map fst handlers) searchLoc baseFile
+  psrcFiles <- findSourceFileWithExtension' mbDirCache mbWorkDir (map fst handlers) searchLoc baseFile
   case psrcFiles of
     -- no preprocessor file exists, look for an ordinary source file
     -- just to make sure one actually exists at all for this module.
@@ -301,8 +333,15 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
     -- any corresponding "real" source file. This lets custom Setup.hs
     -- files generate source modules directly into the build dir without
     -- the rest of the build system being aware of it (somewhat dodgy)
+    --
+    -- Only the existence of such a file matters here, so the order in which
+    -- the locations are searched does not change the result. The source dirs
+    -- are searched first because that is where the file usually is.
     Nothing -> do
-      bsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes (buildAsSrcLoc : searchLoc) baseFile
+      srcFile <- findSourceFileWithExtension' mbDirCache mbWorkDir builtinSuffixes searchLoc baseFile
+      bsrcFiles <- case srcFile of
+        Just _ -> return (Just ())
+        Nothing -> void <$> findFileCwdWithExtension mbWorkDir builtinSuffixes [buildAsSrcLoc] baseFile
       case (bsrcFiles, failOnMissing) of
         (Nothing, True) ->
           dieWithException verbosity $
@@ -344,6 +383,10 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
             pp
             (psrcLoc, getSymbolicPath psrcRelFile)
             (buildLoc, srcStem <.> "hs")
+          -- The preprocessor may have created files, so cached directory
+          -- listings may be out of date.
+          -- See Note [Source directory listing cache]
+          for_ mbDirCache clearSourceDirCache
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
@@ -377,6 +420,112 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
           outBoot = replaceExtension outFile "hs-boot"
         exists <- doesFileExist inBoot
         when exists $ copyFileVerbose verbosity inBoot outBoot
+
+-- Note [Source directory listing cache]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- For every module, 'preprocessFile' looks for a file with each known
+-- preprocessor suffix in each source directory, and then for a plain
+-- Haskell source file. For packages with many modules this means a very
+-- large number of failed 'doesFileExist' calls (see #10489).
+--
+-- To avoid them, 'preprocessComponent' keeps a cache of directory listings
+-- ('SourceDirCache'), and "does this file exist?" is answered from the
+-- listing when the file is certainly absent. The cache must not change which
+-- files are found, so:
+--
+--  * The listing is only ever used to rule files out. When a name does
+--    appear in it, we still call 'doesFileExist', so a positive answer is
+--    exactly the same as before.
+--
+--  * Names are compared case-insensitively, so that a file that
+--    'doesFileExist' finds on a case-insensitive file system is never ruled
+--    out. Case-insensitive matching of non-ASCII names depends on the file
+--    system (Unicode case folding and normalisation differ between file
+--    systems), so names containing non-ASCII characters are not looked up in
+--    the cache, and are left out of the cached listings.
+--
+--  * If a directory cannot be listed for any reason other than not existing,
+--    we fall back to 'doesFileExist'.
+--
+--  * A listing is only valid while the directory does not change. During
+--    preprocessing, files are created by running preprocessors (which may be
+--    custom ones, writing anywhere), so the whole cache is cleared whenever a
+--    preprocessor has been run. Preprocessors run rarely compared to the
+--    number of lookups, and are much more expensive than listing a directory.
+--
+--  * In addition, the cache is only used for the source directories, never
+--    for the build directory, where preprocessor outputs are looked up to
+--    decide whether to re-run a preprocessor. #11810 is an example of how
+--    finding a stale file there can cause preprocessors not to be re-run.
+
+-- | Cached listings of source directories. The key is the directory path,
+-- the value the case-folded names it contains, or 'Nothing' if it is not
+-- cached (see Note [Source directory listing cache]).
+newtype SourceDirCache = SourceDirCache (IORef (Map.Map FilePath (Maybe (Set.Set String))))
+
+-- | Create an empty 'SourceDirCache'.
+newSourceDirCache :: IO SourceDirCache
+newSourceDirCache = SourceDirCache <$> newIORef Map.empty
+
+-- | Forget all cached listings. This must be called whenever files may have
+-- been created, e.g. after running a preprocessor.
+clearSourceDirCache :: SourceDirCache -> IO ()
+clearSourceDirCache (SourceDirCache ref) = atomicWriteIORef ref Map.empty
+
+-- | Equivalent to 'doesFileExist', but avoids the system call when the
+-- cached directory listing shows that the file does not exist.
+-- See Note [Source directory listing cache].
+cachedDoesFileExist :: SourceDirCache -> FilePath -> IO Bool
+cachedDoesFileExist (SourceDirCache ref) path
+  | not (all isAscii name) = doesFileExist path
+  | otherwise = do
+      listing <- getListing
+      case listing of
+        Just names
+          | Set.notMember (foldName name) names -> return False
+        _ -> doesFileExist path
+  where
+    dir = takeDirectory path
+    name = takeFileName path
+    foldName = map toLower
+    getListing = do
+      cache <- readIORef ref
+      case Map.lookup dir cache of
+        Just listing -> return listing
+        Nothing -> do
+          result <- tryIO (listDirectory dir)
+          let listing = case result of
+                Right names -> Just (Set.fromList (map foldName (filter (all isAscii) names)))
+                Left e
+                  | isDoesNotExistError e -> Just Set.empty
+                  | otherwise -> Nothing
+          atomicModifyIORef' ref (\cache' -> (Map.insert dir listing cache', ()))
+          return listing
+
+-- | Like 'findFileCwdWithExtension'', but uses the 'SourceDirCache' if one
+-- is given.
+findSourceFileWithExtension'
+  :: Maybe SourceDirCache
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> [Suffix]
+  -> [SymbolicPath Pkg (Dir Source)]
+  -> RelativePath Source File
+  -> IO (Maybe (SymbolicPath Pkg (Dir Source), RelativePath Source File))
+findSourceFileWithExtension' Nothing mbWorkDir extensions searchPath baseName =
+  findFileCwdWithExtension' mbWorkDir extensions searchPath baseName
+findSourceFileWithExtension' (Just dirCache) mbWorkDir extensions searchPath baseName =
+  findFirst
+    [ (path, baseName <.> ext)
+    | path <- ordNub searchPath
+    , Suffix ext <- ordNub extensions
+    ]
+  where
+    findFirst [] = return Nothing
+    findFirst (x@(base, file) : xs) = do
+      exists <- cachedDoesFileExist dirCache (interpretSymbolicPath mbWorkDir (base </> file))
+      if exists
+        then return (Just x)
+        else findFirst xs
 
 -- ------------------------------------------------------------
 
