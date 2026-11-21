@@ -13,7 +13,8 @@
 module Distribution.Simple.PreProcess.Types
   ( Suffix (..)
   , PreProcessor (..)
-  , PreProcessCommand
+  , PreProcessorInvocation (..)
+  , LegacyIO (..)
   , builtinHaskellSuffixes
   , builtinHaskellBootSuffixes
   )
@@ -24,12 +25,14 @@ import Prelude ()
 
 import Distribution.ModuleName (ModuleName)
 import Distribution.Pretty
+import Distribution.Simple.Program.Types (ConfiguredProgram)
 import Distribution.Utils.Path
+import Distribution.Utils.Structured (Structured (..))
 import Distribution.Verbosity
 import qualified Text.PrettyPrint as Disp
 
 -- | The interface to a preprocessor, which may be implemented using an
---  external program, but need not be.  The arguments are the name of
+--  external program, but need not be. The arguments are the name of
 --  the input file, the name of the output file and a verbosity level.
 --  Here is a simple example that merely prepends a comment to the given
 --  source file:
@@ -39,11 +42,14 @@ import qualified Text.PrettyPrint as Disp
 --  >   PreProcessor {
 --  >     platformIndependent = True,
 --  >     ppOrdering = \_ _ -> return,
---  >     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
---  >       do info verbosity (inFile++" has been preprocessed to "++outFile)
---  >          stuff <- readFile inFile
---  >          writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
---  >          return ()
+--  >     getPreProcessor = \_ -> do
+--  >       let runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+--  >               do info verbosity (inFile++" has been preprocessed to "++outFile)
+--  >                  stuff <- readFile inFile
+--  >                  writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
+--  >                  return ()
+--  >           ppKey = PreProcessorBuiltin
+--  >       return (runPreProcessor, ppKey)
 --
 --  We split the input and output file names into a base directory and the
 --  rest of the file name. The input base dir is the path in the list of search
@@ -85,22 +91,76 @@ data PreProcessor = PreProcessor
   -- well-behaved and not reorder modules it doesn't have dominion over!
   --
   -- @since 3.8.1.0
-  , runPreProcessor
-      :: PreProcessCommand
+  , getPreProcessor
+      :: Verbosity
+      -> (FilePath, FilePath)
+      -- \^ input
+      -> (FilePath, FilePath)
+      -- \^ output
+      -> IO PreProcessorInvocation
   }
 
--- | A command to run a given preprocessor on a single source file.
---
--- The input and output file paths are passed in as arguments, as it is
--- the build system and not the package author which chooses the location of
--- source files.
-type PreProcessCommand =
-  (FilePath, FilePath)
-  -- ^ Location of the source file relative to a base dir
-  -> (FilePath, FilePath)
-  -- ^ Output file name, relative to an output base dir
-  -> Verbosity
-  -> IO () -- Should exit if the preprocessor fails
+newtype LegacyIO = LegacyIO {runLegacyIO :: Verbosity -> IO ()}
+
+instance Eq LegacyIO where
+  _ == _ = False
+
+instance Binary LegacyIO where
+  put _ = put ()
+  get = do
+    () <- get
+    pure . LegacyIO $ \_ ->
+      error "Tried to use a deserialized LegacyIO value."
+
+instance Structured LegacyIO where
+  structure _ = structure (Proxy @())
+
+-- | Defines a specific preprocessor, including the preprocessor itself and any
+-- arguments and dependencies that need to be tracked for monitoring purposes.
+-- This value should change iff the preprocessor itself changes in a way that
+-- requires re-running it for a given input file. See Note [Preprocessor
+-- monitoring] in Distribution.Simple.PreProcess
+data PreProcessorInvocation
+  = -- | The Unlit pre-processor. This one is built in, and only changes when
+    -- Cabal itself does, so there is no need to track any changes for it, other
+    -- than the input and output files.
+    PreProcessorUnlit
+      FilePath
+      -- ^ input file
+      FilePath
+      -- ^ output file
+  | -- | A preprocessor that runs some program, identified uniquely by the
+    -- configured program and its arguments.
+    PreProcessorProgram
+      ConfiguredProgram
+      -- ^ the main program to run
+      [String]
+      -- ^ arguments to pass to the main program
+      [ConfiguredProgram]
+      -- ^ additional programs that the preprocessor depends on
+  | -- | A preprocessor that depends on a response file (a temporary file
+    -- available for the duration of the invocation).
+    PreProcessorViaResponseFile
+      FilePath
+      -- ^ filename pattern for the response file
+      ConfiguredProgram
+      -- ^ the main program to run
+      [String]
+      -- ^ arguments to pass directly
+      [String]
+      -- ^ arguments to write into the response file
+      [ConfiguredProgram]
+      -- ^ additional programs that the preprocessor depends on
+  | -- | A custom preprocessor implemented as an arbitrary IO action. Because
+    -- IO actions cannot be serialized properly, nor compared for equality, we
+    -- use the 'LegacyIO' newtype, which serializes to nothing, deserializes to
+    -- a runtime error, and always compares unequal to itself.
+    PreProcessorCustom
+      LegacyIO
+  deriving (Generic, Eq)
+
+instance Binary PreProcessorInvocation
+instance Structured PreProcessorInvocation
 
 -- | A suffix (or file extension).
 --
