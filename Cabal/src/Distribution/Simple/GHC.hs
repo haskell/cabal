@@ -83,7 +83,6 @@ import Prelude ()
 import Control.Arrow ((***))
 import Control.Monad (forM_)
 import qualified Data.Map as Map
-import Data.Maybe (fromJust)
 import qualified Data.Text as Text
 import Distribution.CabalSpecVersion
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -107,6 +106,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PreProcess.Types
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Builtin (runghcProgram)
+import Distribution.Simple.Program.Compiler (mkCompilerPrograms)
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Strip as Strip
@@ -160,19 +160,22 @@ configure
   -> Maybe FilePath
   -- ^ user-specified @ghc-pkg@ path (optional)
   -> ProgramDb
-  -> IO (Compiler, Maybe Platform, ProgramDb)
+  -> IO (Compiler, CompilerPrograms, Maybe Platform, ProgramDb)
+  -- ^ the compiler, the configured @ghc@ and @ghc-pkg@ programs, the target
+  -- platform and the program database
 configure verbosity hcPath hcPkgPath conf0 = do
-  (comp, compPlatform, progdb1) <- configureCompiler verbosity hcPath conf0
-  compProgDb <- compilerProgramDb verbosity comp progdb1 hcPkgPath
-  return (comp, compPlatform, compProgDb)
+  (comp, ghcProg, compPlatform, progdb1) <- configureCompiler verbosity hcPath conf0
+  (ghcPkgProg, compProgDb) <- compilerProgramDb verbosity comp ghcProg progdb1 hcPkgPath
+  return (comp, mkCompilerPrograms ghcProg (Just ghcPkgProg), compPlatform, compProgDb)
 
--- | Configure GHC.
+-- | Configure GHC. Also returns the configured @ghc@ program, which is in the
+-- returned 'ProgramDb' too.
 configureCompiler
   :: Verbosity
   -> Maybe FilePath
   -- ^ user-specified @ghc@ path (optional)
   -> ProgramDb
-  -> IO (Compiler, Maybe Platform, ProgramDb)
+  -> IO (Compiler, ConfiguredProgram, Maybe Platform, ProgramDb)
 configureCompiler verbosity hcPath conf0 = do
   (ghcProg, ghcVersion, progdb1) <-
     requireProgramVersion
@@ -264,7 +267,7 @@ configureCompiler verbosity hcPath conf0 = do
           , compilerWiredInUnitIds = wiredInUnitIds
           }
       compPlatform = Internal.targetPlatform ghcInfo
-  return (comp, compPlatform, progdb1)
+  return (comp, ghcProg, compPlatform, progdb1)
 
 -- | Given a configured @ghc@ program, configure auxiliary programs such
 -- as @ghc-pkg@ or @haddock@, as well as toolchain programs such as @ar@, @ld@,
@@ -272,14 +275,19 @@ configureCompiler verbosity hcPath conf0 = do
 --
 --  - the location of the @ghc@ executable,
 --  - toolchain information in the GHC settings file.
+--
+-- Also returns the configured @ghc-pkg@ program, which is in the returned
+-- 'ProgramDb' too.
 compilerProgramDb
   :: Verbosity
   -> Compiler
+  -> ConfiguredProgram
+  -- ^ the configured @ghc@ program
   -> ProgramDb
   -> Maybe FilePath
   -- ^ user-specified @ghc-pkg@ path (optional)
-  -> IO ProgramDb
-compilerProgramDb verbosity comp progdb1 hcPkgPath = do
+  -> IO (ConfiguredProgram, ProgramDb)
+compilerProgramDb verbosity comp ghcProg progdb1 hcPkgPath = do
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =
         hsc2hsProgram
@@ -314,7 +322,6 @@ compilerProgramDb verbosity comp progdb1 hcPkgPath = do
                     ghcPkgProgram'
                     progdb1
 
-      ghcProg = fromJust $ lookupProgram ghcProgram progdb1
       ghcVersion = compilerVersion comp
 
       -- configure gcc, ld, ar etc... based on the paths stored
@@ -340,7 +347,7 @@ compilerProgramDb verbosity comp progdb1 hcPkgPath = do
     dieWithException verbosity $
       VersionMismatchGHC (programPath ghcProg) ghcVersion (programPath ghcPkgProg) ghcPkgVersion
 
-  return progdb4
+  return (ghcPkgProg, progdb4)
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
@@ -480,24 +487,26 @@ getPackageDBContents
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir from))
   -> PackageDBX (SymbolicPath from (Dir PkgDB))
+  -> CompilerPrograms
   -> ProgramDb
   -> IO InstalledPackageIndex
-getPackageDBContents verbosity mbWorkDir packagedb progdb = do
-  pkgss <- getInstalledPackages' verbosity mbWorkDir [packagedb] progdb
-  toPackageIndex verbosity pkgss progdb
+getPackageDBContents verbosity mbWorkDir packagedb hcProgs progdb = do
+  pkgss <- getInstalledPackages' verbosity mbWorkDir [packagedb] hcProgs progdb
+  toPackageIndex verbosity pkgss hcProgs progdb
 
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir from))
   -> PackageDBStackX (SymbolicPath from (Dir PkgDB))
+  -> CompilerPrograms
   -> ProgramDb
   -> IO InstalledPackageIndex
-getInstalledPackages verbosity mbWorkDir packagedbs progdb = do
+getInstalledPackages verbosity mbWorkDir packagedbs hcProgs progdb = do
   checkPackageDbEnvVar verbosity
   checkPackageDbStack verbosity packagedbs
-  pkgss <- getInstalledPackages' verbosity mbWorkDir packagedbs progdb
-  index <- toPackageIndex verbosity pkgss progdb
+  pkgss <- getInstalledPackages' verbosity mbWorkDir packagedbs hcProgs progdb
+  index <- toPackageIndex verbosity pkgss hcProgs progdb
   return $! hackRtsPackage index
   where
     hackRtsPackage index =
@@ -513,20 +522,20 @@ getInstalledPackages verbosity mbWorkDir packagedbs progdb = do
 toPackageIndex
   :: Verbosity
   -> [(PackageDBX a, [InstalledPackageInfo])]
+  -> CompilerPrograms
   -> ProgramDb
   -> IO InstalledPackageIndex
-toPackageIndex verbosity pkgss progdb = do
+toPackageIndex verbosity pkgss hcProgs progdb = do
   -- On Windows, various fields have $topdir/foo rather than full
   -- paths. We need to substitute the right value in so that when
   -- we, for example, call gcc, we have proper paths to give it.
+  ghcProg <- compilerProgramToRun verbosity hcProgs progdb
   topDir <- getLibDir' verbosity ghcProg
   let indices =
         [ PackageIndex.fromList (map (Internal.substTopDir topDir) pkgs)
         | (_, pkgs) <- pkgss
         ]
   return $! mconcat indices
-  where
-    ghcProg = fromMaybe (error "GHC.toPackageIndex: no ghc program") $ lookupProgram ghcProgram progdb
 
 -- | Return the 'FilePath' to the GHC application data directory.
 --
@@ -536,12 +545,8 @@ getGhcAppDir = getAppUserDataDirectory "ghc"
 
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
-  dropWhileEndLE isSpace
-    `fmap` getDbProgramOutput
-      verbosity
-      ghcProgram
-      (withPrograms lbi)
-      ["--print-libdir"]
+  getLibDir' verbosity
+    =<< compilerProgramToRun verbosity (compilerPrograms lbi) (withPrograms lbi)
 
 getLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 getLibDir' verbosity ghcProg =
@@ -588,12 +593,14 @@ getInstalledPackages'
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir from))
   -> [PackageDBX (SymbolicPath from (Dir PkgDB))]
+  -> CompilerPrograms
   -> ProgramDb
   -> IO [(PackageDBX (SymbolicPath from (Dir PkgDB)), [InstalledPackageInfo])]
-getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
+getInstalledPackages' verbosity mbWorkDir packagedbs hcProgs progdb = do
+  hcPkg <- hcPkgInfo verbosity hcProgs progdb
   sequenceA
     [ do
-      pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity mbWorkDir packagedb
+      pkgs <- HcPkg.dump hcPkg verbosity mbWorkDir packagedb
       return (packagedb, pkgs)
     | packagedb <- packagedbs
     ]
@@ -603,18 +610,20 @@ getInstalledPackagesMonitorFiles
    . Verbosity
   -> Maybe (SymbolicPath CWD (Dir from))
   -> Platform
+  -> CompilerPrograms
   -> ProgramDb
   -> [PackageDBS from]
   -> IO [FilePath]
-getInstalledPackagesMonitorFiles verbosity mbWorkDir platform progdb =
-  traverse getPackageDBPath
+getInstalledPackagesMonitorFiles verbosity mbWorkDir platform hcProgs progdb dbs = do
+  ghcProg <- compilerProgramToRun verbosity hcProgs progdb
+  traverse (getPackageDBPath ghcProg) dbs
   where
-    getPackageDBPath :: PackageDBS from -> IO FilePath
-    getPackageDBPath GlobalPackageDB =
+    getPackageDBPath :: ConfiguredProgram -> PackageDBS from -> IO FilePath
+    getPackageDBPath ghcProg GlobalPackageDB =
       selectMonitorFile =<< getGlobalPackageDB verbosity ghcProg
-    getPackageDBPath UserPackageDB =
+    getPackageDBPath ghcProg UserPackageDB =
       selectMonitorFile =<< getUserPackageDB verbosity ghcProg platform
-    getPackageDBPath (SpecificPackageDB path) = selectMonitorFile (interpretSymbolicPath mbWorkDir path)
+    getPackageDBPath _ (SpecificPackageDB path) = selectMonitorFile (interpretSymbolicPath mbWorkDir path)
 
     -- GHC has old style file dbs, and new style directory dbs.
     -- Note that for dir style dbs, we only need to monitor the cache file, not
@@ -629,8 +638,6 @@ getInstalledPackagesMonitorFiles verbosity mbWorkDir platform progdb =
       if isFileStyle
         then return path
         else return (path </> "package.cache")
-
-    ghcProg = fromMaybe (error "GHC.toPackageIndex: no ghc program") $ lookupProgram ghcProgram progdb
 
 -- -----------------------------------------------------------------------------
 -- Building a library
@@ -672,19 +679,20 @@ replLib verbHandles flags numJobs pkg lbi lib clbi =
 -- | Start a REPL without loading any source files.
 startInterpreter
   :: Verbosity
+  -> CompilerPrograms
   -> ProgramDb
   -> Compiler
   -> Platform
   -> PackageDBStack
   -> IO ()
-startInterpreter verbosity progdb comp platform packageDBs = do
+startInterpreter verbosity hcProgs progdb comp platform packageDBs = do
   let replOpts =
         mempty
           { ghcOptMode = toFlag GhcModeInteractive
           , ghcOptPackageDBs = packageDBs
           }
   checkPackageDbStack verbosity packageDBs
-  (ghcProg, _) <- requireProgram verbosity ghcProgram progdb
+  ghcProg <- compilerProgramToRun verbosity hcProgs progdb
   -- This doesn't pass source file arguments to GHC, so we don't have to worry
   -- about using a response file here.
   runGHC verbosity ghcProg comp platform Nothing replOpts
@@ -835,7 +843,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
             (DynWay : _) -> sharedArgs
             _ -> error "libAbiHash: Can't find an enabled library way"
 
-  (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
+  ghcProg <- compilerProgramToRun verbosity (compilerPrograms lbi) (withPrograms lbi)
 
   hash <-
     getProgramInvocationOutput
@@ -1106,21 +1114,26 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
 -- -----------------------------------------------------------------------------
 -- Registering
 
-hcPkgInfo :: ProgramDb -> HcPkg.ConfiguredProgram
-hcPkgInfo progdb =
-  fromMaybe (error "GHC.hcPkgInfo: no ghc program") $ lookupProgram ghcPkgProgram progdb
+-- | The @ghc-pkg@ configured together with the compiler, ready to run with
+-- the arguments and environment from the 'ProgramDb'.
+hcPkgInfo :: Verbosity -> CompilerPrograms -> ProgramDb -> IO HcPkg.ConfiguredProgram
+hcPkgInfo verbosity hcProgs progdb =
+  fromMaybe (error "GHC.hcPkgInfo: the compiler was configured without ghc-pkg")
+    <$> compilerPkgProgramToRun verbosity hcProgs progdb
 
 registerPackage
   :: Verbosity
+  -> CompilerPrograms
   -> ProgramDb
   -> Maybe (SymbolicPath CWD (Dir from))
   -> PackageDBStackS from
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
   -> IO ()
-registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions =
+registerPackage verbosity hcProgs progdb mbWorkDir packageDbs installedPkgInfo registerOptions = do
+  hcPkg <- hcPkgInfo verbosity hcProgs progdb
   HcPkg.register
-    (hcPkgInfo progdb)
+    hcPkg
     verbosity
     mbWorkDir
     packageDbs
@@ -1130,9 +1143,9 @@ registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerO
 pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO (SymbolicPath CWD (Dir Pkg))
 pkgRoot verbosity lbi = fmap makeSymbolicPath . pkgRoot'
   where
-    pkgRoot' GlobalPackageDB =
-      let ghcProg = fromMaybe (error "GHC.pkgRoot: no ghc program") $ lookupProgram ghcProgram (withPrograms lbi)
-       in fmap takeDirectory (getGlobalPackageDB verbosity ghcProg)
+    pkgRoot' GlobalPackageDB = do
+      ghcProg <- compilerProgramToRun verbosity (compilerPrograms lbi) (withPrograms lbi)
+      takeDirectory <$> getGlobalPackageDB verbosity ghcProg
     pkgRoot' UserPackageDB = do
       appDir <- getGhcAppDir
       let ver = compilerVersion (compiler lbi)

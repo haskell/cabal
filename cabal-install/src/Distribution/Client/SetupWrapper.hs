@@ -82,6 +82,7 @@ import Distribution.Simple.Program.Find
   )
 import Distribution.Simple.Program.Run
   ( getEffectiveEnvironment
+  , programInvocationCwd
   )
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Types.ModuleRenaming (defaultRenaming)
@@ -340,7 +341,7 @@ data SetupScriptOptions = SetupScriptOptions
   -- This is similar to 'useCabalVersion' but instead of probing the system
   -- for a version of the /Cabal library/ you just say exactly which version
   -- of the /spec/ we will use.
-  , useCompiler :: Maybe Compiler
+  , useCompiler :: Maybe (Compiler, CompilerPrograms)
   , usePlatform :: Maybe Platform
   , usePackageDB :: PackageDBStackCWD
   , usePackageIndex :: Maybe InstalledPackageIndex
@@ -1045,27 +1046,28 @@ hooksExeScript =
 configureCompiler
   :: Verbosity
   -> SetupScriptOptions
-  -> IO (Compiler, ProgramDb, SetupScriptOptions)
+  -> IO (Compiler, CompilerPrograms, ProgramDb, SetupScriptOptions)
 configureCompiler verbosity options' = do
-  (comp, progdb) <- case useCompiler options' of
-    Just comp -> return (comp, useProgramDb options')
+  (comp, hcProgs, progdb) <- case useCompiler options' of
+    Just (comp, hcProgs) -> return (comp, hcProgs, useProgramDb options')
     Nothing -> do
-      (comp, _, progdb) <-
+      (comp, hcProgs, _, progdb) <-
         configCompilerEx
           (Just GHC)
           Nothing
           Nothing
           (useProgramDb options')
           verbosity
-      return (comp, progdb)
+      return (comp, hcProgs, progdb)
   -- Whenever we need to call configureCompiler, we also need to access the
   -- package index, so let's cache it in SetupScriptOptions.
-  index <- maybeGetInstalledPackages verbosity options' comp progdb
+  index <- maybeGetInstalledPackages verbosity options' comp hcProgs progdb
   return
     ( comp
+    , hcProgs
     , progdb
     , options'
-        { useCompiler = Just comp
+        { useCompiler = Just (comp, hcProgs)
         , usePackageIndex = Just index
         , useProgramDb = progdb
         }
@@ -1075,9 +1077,10 @@ maybeGetInstalledPackages
   :: Verbosity
   -> SetupScriptOptions
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> IO InstalledPackageIndex
-maybeGetInstalledPackages verbosity options' comp progdb =
+maybeGetInstalledPackages verbosity options' comp hcProgs progdb =
   case usePackageIndex options' of
     Just index -> return index
     Nothing ->
@@ -1085,6 +1088,7 @@ maybeGetInstalledPackages verbosity options' comp progdb =
         verbosity
         comp
         (usePackageDB options')
+        hcProgs
         progdb
 
 -- | Path to the setup exe cache directory and path to the cached setup
@@ -1116,7 +1120,7 @@ cachedSetupDirAndProg platform bt options' cabalLibVersion = do
     cabalVersionString = "Cabal-" ++ prettyShow cabalLibVersion
     compilerVersionString =
       prettyShow $
-        maybe buildCompilerId compilerId $
+        maybe buildCompilerId (compilerId . fst) $
           useCompiler options'
     platformString = prettyShow platform
 
@@ -1275,7 +1279,7 @@ compileSetupX
     let outOfDate = setupXHsNewer || cabalVersionNewer
     when (outOfDate || forceCompile) $ do
       debug verbosity $ what ++ " executable needs to be updated, compiling..."
-      (compiler, progdb, options'') <- configureCompiler verbosity options'
+      (compiler, hcProgs, progdb, options'') <- configureCompiler verbosity options'
       pkgDbs <- traverse (traverse (makeRelativeToDirS mbWorkDir)) (coercePackageDBStack (usePackageDB options''))
       let cabalPkgid = PackageIdentifier (mkPackageName "Cabal") cabalLibVersion
           cabalDep =
@@ -1352,18 +1356,15 @@ compileSetupX
       when (useVersionMacros options') $
         rewriteFileEx verbosity (i cppMacrosFile) $
           generatePackageVersionMacros (pkgVersion pkgId) (map snd selectedDeps)
+      ghcProg <- compilerProgramToRun verbosity hcProgs progdb
       case useLoggingHandle options' of
-        Nothing -> runDbProgramCwd verbosity mbWorkDir ghcProgram progdb ghcCmdLine
+        Nothing -> runProgramCwd verbosity mbWorkDir ghcProg ghcCmdLine
         -- If build logging is enabled, redirect compiler output to
         -- the log file.
         Just logHandle -> do
           output <-
-            getDbProgramOutputCwd
-              verbosity
-              mbWorkDir
-              ghcProgram
-              progdb
-              ghcCmdLine
+            getProgramInvocationOutput verbosity $
+              programInvocationCwd mbWorkDir ghcProg ghcCmdLine
           hPutStr logHandle output
     return $ i outPath
   where
@@ -1453,9 +1454,9 @@ v1CabalLibVersionToUse verbosity options pkgId bt wantedExe = do
 
     installedVersion :: IO (Version, Maybe ComponentId, SetupScriptOptions)
     installedVersion = do
-      (comp, progdb, options') <- configureCompiler verbosity options
+      (comp, hcProgs, progdb, options') <- configureCompiler verbosity options
       (version, mipkgid, options'') <-
-        installedCabalVersion verbosity pkgId bt options' comp progdb
+        installedCabalVersion verbosity pkgId bt options' comp hcProgs progdb
       updateSetupScript verbosity options version bt
       writeSetupVersionFile version
       return (version, mipkgid, options'')
@@ -1470,18 +1471,19 @@ installedCabalVersion
   -> BuildType
   -> SetupScriptOptions
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> IO
       ( Version
       , Maybe InstalledPackageId
       , SetupScriptOptions
       )
-installedCabalVersion _verbosity pkgId bt options' _ _
+installedCabalVersion _verbosity pkgId bt options' _ _ _
   | packageName pkgId == mkPackageName "Cabal"
       && bt == Custom =
       return (packageVersion pkgId, Nothing, options')
-installedCabalVersion verbosity pkgId _bt options' compiler progdb = do
-  index <- maybeGetInstalledPackages verbosity options' compiler progdb
+installedCabalVersion verbosity pkgId _bt options' compiler hcProgs progdb = do
+  index <- maybeGetInstalledPackages verbosity options' compiler hcProgs progdb
   let cabalDepName = mkPackageName "Cabal"
       cabalDepVersion = useCabalVersion options'
       options'' = options'{usePackageIndex = Just index}

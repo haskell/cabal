@@ -205,6 +205,7 @@ registerAll verbHandles pkg lbi regFlags ipis =
               registerPackage
                 verbosity
                 (compiler lbi)
+                (compilerPrograms lbi)
                 (withPrograms lbi)
                 (mbWorkDirLBI lbi)
                 packageDbs
@@ -259,6 +260,7 @@ registerAll verbHandles pkg lbi regFlags ipis =
             verbosity
             "Registration scripts are not implemented for this compiler"
             (compiler lbi)
+            (compilerPrograms lbi)
             (withPrograms lbi)
             (writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs)
 
@@ -362,20 +364,23 @@ relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
         )
     _ -> dieWithException verbosity RelocRegistrationInfo
 
-initPackageDB :: Verbosity -> Compiler -> ProgramDb -> FilePath -> IO ()
-initPackageDB verbosity comp progdb dbPath =
-  createPackageDB verbosity comp progdb dbPath
+initPackageDB :: Verbosity -> Compiler -> CompilerPrograms -> ProgramDb -> FilePath -> IO ()
+initPackageDB verbosity comp hcProgs progdb dbPath =
+  createPackageDB verbosity comp hcProgs progdb dbPath
 
 -- | Create an empty package DB at the specified location.
 createPackageDB
   :: Verbosity
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> FilePath
   -> IO ()
-createPackageDB verbosity comp progdb dbPath =
+createPackageDB verbosity comp hcProgs progdb dbPath =
   case compilerFlavor comp of
-    GHC -> HcPkg.init (GHC.hcPkgInfo progdb) verbosity dbPath
+    GHC -> do
+      hcPkg <- GHC.hcPkgInfo verbosity hcProgs progdb
+      HcPkg.init hcPkg verbosity dbPath
     UHC -> return ()
     _ -> dieWithException verbosity CreatePackageDB
 
@@ -397,16 +402,18 @@ deletePackageDB =
 invokeHcPkg
   :: Verbosity
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> [String]
   -> IO ()
-invokeHcPkg verbosity comp progdb mbWorkDir dbStack extraArgs =
+invokeHcPkg verbosity comp hcProgs progdb mbWorkDir dbStack extraArgs =
   withHcPkg
     verbosity
     "invokeHcPkg"
     comp
+    hcProgs
     progdb
     (\hpi -> HcPkg.invoke hpi verbosity mbWorkDir dbStack extraArgs)
 
@@ -414,30 +421,32 @@ withHcPkg
   :: Verbosity
   -> String
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> (HcPkg.ConfiguredProgram -> IO a)
   -> IO a
-withHcPkg verbosity name comp progdb f =
+withHcPkg verbosity name comp hcProgs progdb f =
   case compilerFlavor comp of
-    GHC -> f (GHC.hcPkgInfo progdb)
+    GHC -> f =<< GHC.hcPkgInfo verbosity hcProgs progdb
     _ -> dieWithException verbosity $ WithHcPkg name
 
 registerPackage
   :: Verbosity
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> Maybe (SymbolicPath CWD (Dir from))
   -> PackageDBStackS from
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
   -> IO ()
-registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo registerOptions =
+registerPackage verbosity comp hcProgs progdb mbWorkDir packageDbs installedPkgInfo registerOptions =
   case compilerFlavor comp of
-    GHC -> GHC.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
+    GHC -> GHC.registerPackage verbosity hcProgs progdb mbWorkDir packageDbs installedPkgInfo registerOptions
     _
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported
-    UHC -> UHC.registerPackage verbosity mbWorkDir comp progdb packageDbs installedPkgInfo
+    UHC -> UHC.registerPackage verbosity mbWorkDir comp hcProgs progdb packageDbs installedPkgInfo
     _ -> dieWithException verbosity RegisteringNotImplemented
 
 writeHcPkgRegisterScript
@@ -747,6 +756,7 @@ unregisterWithHandles verbHandles pkg lbi regFlags = do
     verbosity
     "unregistering is only implemented for GHC"
     (compiler lbi)
+    (compilerPrograms lbi)
     (withPrograms lbi)
     unreg
 

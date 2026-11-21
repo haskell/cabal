@@ -23,7 +23,7 @@ import qualified Distribution.Client.Init.Simple as Simple
 import Distribution.Client.Init.Types
 import Distribution.Client.Setup (RepoContext)
 import Distribution.Simple.Compiler
-import Distribution.Simple.Program (ProgramDb)
+import Distribution.Simple.Program (CompilerPrograms, ProgramDb)
 import Distribution.Simple.Setup
 import Distribution.Verbosity
 import System.IO (BufferMode (NoBuffering), hSetBuffering, stdout)
@@ -34,11 +34,12 @@ initCmd
   -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> InitFlags
   -> IO ()
-initCmd v packageDBs repoCtxt comp progdb initFlags = do
-  installedPkgIndex <- getInstalledPackages v comp packageDBs progdb
+initCmd v packageDBs repoCtxt comp hcProgs progdb initFlags = do
+  installedPkgIndex <- getInstalledPackages v comp packageDBs hcProgs progdb
   sourcePkgDb <- getSourcePackages v repoCtxt
   hSetBuffering stdout NoBuffering
   runPromptIO (writeProject =<< createProject v installedPkgIndex sourcePkgDb initFlags)

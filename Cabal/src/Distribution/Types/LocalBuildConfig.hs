@@ -32,6 +32,7 @@ import Distribution.Simple.InstallDirs hiding
   , substPathTemplate
   )
 import Distribution.Simple.PackageIndex
+import Distribution.Simple.Program.Compiler (CompilerPrograms)
 import Distribution.Simple.Program.Db (ProgramDb)
 import Distribution.Simple.Setup.Config
 import Distribution.System
@@ -52,6 +53,9 @@ data PackageBuildDescr = PackageBuildDescr
   -- ^ What components were enabled during configuration, and why.
   , compiler :: Compiler
   -- ^ The compiler we're building with
+  , compilerPrograms :: CompilerPrograms
+  -- ^ The compiler's executable and package tool, as configured together
+  -- with 'compiler'. See Note [Compiler, compiler program and ProgramDb].
   , hostPlatform :: Platform
   -- ^ The platform we're building for
   , pkgDescrFile :: Maybe (SymbolicPath Pkg File)
@@ -82,6 +86,30 @@ data PackageBuildDescr = PackageBuildDescr
   -- because HPC does not support backpack (Nov. 2023).
   }
   deriving (Generic, Read, Show)
+
+-- Note [Compiler, compiler program and ProgramDb]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- Configuring the compiler produces three values, and each answers a
+-- different question.
+--
+-- 'compiler' ('Compiler') says which compiler this is: its flavour, version,
+-- ABI, and the languages and extensions it supports. It does not say where
+-- the compiler's executable is.
+--
+-- 'compilerPrograms' ('CompilerPrograms') says which executables were found
+-- when the compiler was configured: the compiler's and its package tool's.
+-- They do not change after configuring. 'compilerPath' gives their paths.
+--
+-- 'withPrograms' ('ProgramDb') says how to run the compiler and every other
+-- program, including any per-package arguments and environment.
+--
+-- To run the compiler, use 'compilerProgramToRun', which combines the two:
+-- the configured executable with the arguments and environment from the
+-- 'ProgramDb'. 'CompilerPrograms' is abstract so that the configured program
+-- cannot be run without them. Do not look the compiler up in the 'ProgramDb'
+-- instead: every lookup there returns a 'Maybe', even for the compiler, and
+-- 'requireProgram' configures a program it does not find by searching for
+-- it, usually on PATH, which can find a different executable.
 
 -- | Information about individual components in a package,
 -- determined after the configure step.

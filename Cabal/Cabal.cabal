@@ -140,6 +140,7 @@ library
     Distribution.Simple.Program
     Distribution.Simple.Program.Ar
     Distribution.Simple.Program.Builtin
+    Distribution.Simple.Program.Compiler
     Distribution.Simple.Program.Db
     Distribution.Simple.Program.Find
     Distribution.Simple.Program.GHC

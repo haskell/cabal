@@ -189,7 +189,7 @@ import Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.Program (ProgramDb)
+import Distribution.Simple.Program (CompilerPrograms, ProgramDb)
 import Distribution.Simple.Register (defaultRegisterOptions, registerPackage)
 import Distribution.Simple.Setup
   ( BenchmarkFlags (..)
@@ -303,6 +303,7 @@ install
   -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> ProgramDb
   -> GlobalFlags
@@ -319,6 +320,7 @@ install
   packageDBs
   repos
   comp
+  hcProgs
   platform
   progdb
   globalFlags
@@ -359,6 +361,7 @@ install
         ( packageDBs
         , repos
         , comp
+        , hcProgs
         , platform
         , progdb
         , globalFlags
@@ -394,6 +397,7 @@ type InstallArgs =
   ( PackageDBStackCWD
   , RepoContext
   , Compiler
+  , CompilerPrograms
   , Platform
   , ProgramDb
   , GlobalFlags
@@ -416,6 +420,7 @@ makeInstallContext
   ( packageDBs
     , repoCtxt
     , comp
+    , hcProgs
     , _
     , progdb
     , _
@@ -429,7 +434,7 @@ makeInstallContext
   mUserTargets = do
     let idxState = flagToMaybe (installIndexState installFlags)
 
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs hcProgs progdb
     (sourcePkgDb, _, _) <- getSourcePackagesAtIndexState verbosity repoCtxt idxState Nothing
     pkgConfigDb <- readPkgConfigDb verbosity progdb
 
@@ -481,6 +486,7 @@ makeInstallPlan
   ( _
     , _
     , comp
+    , _
     , platform
     , _
     , _
@@ -521,7 +527,7 @@ processInstallPlan
   -> IO ()
 processInstallPlan
   verbosity
-  args@(_, _, _, _, _, _, configFlags, _, installFlags, _, _, _)
+  args@(_, _, _, _, _, _, _, configFlags, _, installFlags, _, _, _)
   ( installedPkgIndex
     , sourcePkgDb
     , _
@@ -1026,6 +1032,7 @@ reportPlanningFailure
   ( _
     , _
     , comp
+    , _
     , platform
     , _
     , _
@@ -1125,6 +1132,7 @@ postInstallActions
   ( packageDBs
     , _
     , comp
+    , hcProgs
     , platform
     , progdb
     , globalFlags
@@ -1158,6 +1166,7 @@ postInstallActions
       verbosity
       packageDBs
       comp
+      hcProgs
       platform
       progdb
       configFlags
@@ -1220,6 +1229,7 @@ regenerateHaddockIndex
   :: Verbosity
   -> [PackageDBCWD]
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> ProgramDb
   -> ConfigFlags
@@ -1230,6 +1240,7 @@ regenerateHaddockIndex
   verbosity
   packageDBs
   comp
+  hcProgs
   platform
   progdb
   configFlags
@@ -1248,7 +1259,7 @@ regenerateHaddockIndex
           "Updating documentation index " ++ indexFile
 
         -- TODO: might be nice if the install plan gave us the new InstalledPackageInfo
-        installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
+        installedPkgIndex <- getInstalledPackages verbosity comp packageDBs hcProgs progdb
         Haddock.regenerateHaddockIndex verbosity installedPkgIndex progdb indexFile
     | otherwise = return ()
     where
@@ -1416,6 +1427,7 @@ performInstallations
   ( packageDBs
     , repoCtxt
     , comp
+    , hcProgs
     , platform
     , progdb
     , globalFlags
@@ -1466,6 +1478,7 @@ performInstallations
                   haddockFlags
                   testFlags
                   comp
+                  hcProgs
                   progdb
                   platform
                   pkg
@@ -1488,6 +1501,7 @@ performInstallations
         configureSetupScript
           packageDBs
           comp
+          hcProgs
           platform
           progdb
           distPref
@@ -1812,6 +1826,7 @@ installUnpackedPackage
   -> HaddockFlags
   -> TestFlags
   -> Compiler
+  -> CompilerPrograms
   -> ProgramDb
   -> Platform
   -> PackageDescription
@@ -1832,6 +1847,7 @@ installUnpackedPackage
   haddockFlags
   testFlags
   comp
+  hcProgs
   progdb
   platform
   pkg
@@ -1963,6 +1979,7 @@ installUnpackedPackage
                 registerPackage
                   verbosity
                   comp
+                  hcProgs
                   progdb
                   mbWorkDir
                   packageDBs

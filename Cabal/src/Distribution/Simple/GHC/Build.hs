@@ -15,8 +15,7 @@ import Distribution.Simple.GHC.Build.Link
 import Distribution.Simple.GHC.Build.Modules
 import Distribution.Simple.GHC.Build.Utils (compilerBuildWay, isHaskell, withDynFLib)
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Program.Builtin (ghcProgram)
-import Distribution.Simple.Program.Db (requireProgram)
+import Distribution.Simple.Program.Compiler (compilerProgramToRun)
 import Distribution.Simple.Utils
 
 import Distribution.Types.ComponentLocalBuildInfo
@@ -115,7 +114,7 @@ build numJobs verbHandles pkg_descr pbci = do
   -- instead of passing the path to object file -- that's something else we
   -- can now fix after the refactor lands.
 
-  (ghcProg, _) <- liftIO $ requireProgram verbosity ghcProgram (withPrograms lbi)
+  ghcProg <- liftIO $ compilerProgramToRun verbosity (compilerPrograms lbi) (withPrograms lbi)
 
   -- Ways which are wanted from configuration flags
   let wantedWays@(wantedLibWays, wantedFLibWay, wantedExeWay) = buildWays lbi

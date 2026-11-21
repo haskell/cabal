@@ -28,12 +28,12 @@ tests = do
       initFlags' = savedInitFlags confFlags <> emptyFlags
       globalFlags' = savedGlobalFlags confFlags <> defaultGlobalFlags
 
-  (comp, _, progdb) <- configCompilerAux' confFlags'
+  (comp, hcProgs, _, progdb) <- configCompilerAux' confFlags'
 
   withRepoContext v globalFlags' $ \repoCtx -> do
     let pkgDb = configPackageDB' confFlags'
 
-    pkgIx <- getInstalledPackages v comp (interpretPackageDBStack Nothing pkgDb) progdb
+    pkgIx <- getInstalledPackages v comp (interpretPackageDBStack Nothing pkgDb) hcProgs progdb
     srcDb <- getSourcePackages v repoCtx
 
     return

@@ -113,6 +113,10 @@ import Data.Bool (bool)
 import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
 
+-- | Which compiler this is: its flavour, version, ABI and what it supports.
+-- It does not record where the compiler's executable is; see
+-- Note [Compiler, compiler program and ProgramDb] in
+-- "Distribution.Types.LocalBuildConfig".
 data Compiler = Compiler
   { compilerId :: CompilerId
   -- ^ Compiler flavour and version.

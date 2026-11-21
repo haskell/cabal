@@ -46,7 +46,8 @@ import Distribution.Simple.PackageDescription
   ( readGenericPackageDescription
   )
 import Distribution.Simple.Program
-  ( ProgramDb
+  ( CompilerPrograms
+  , ProgramDb
   )
 import Distribution.Simple.Utils
   ( notice
@@ -117,12 +118,13 @@ genBounds
   -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> ProgramDb
   -> GlobalFlags
   -> FreezeFlags
   -> IO ()
-genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeFlags = do
+genBounds verbosity packageDBs repoCtxt comp hcProgs platform progdb globalFlags freezeFlags = do
   let cinfo = compilerInfo comp
 
   path <- relativeSymbolicPath <$> tryFindPackageDesc verbosity Nothing
@@ -152,6 +154,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
           packageDBs
           repoCtxt
           comp
+          hcProgs
           platform
           progdb
           globalFlags
