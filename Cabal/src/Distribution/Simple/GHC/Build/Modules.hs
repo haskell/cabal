@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Distribution.Simple.GHC.Build.Modules
   ( buildHaskellModules
@@ -185,12 +186,13 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
           , ghcOptInputModules = toNubListR inputModules
           , ghcOptInputFiles = toNubListR hsMains
           , ghcOptInputScripts = toNubListR scriptMains
-          , ghcOptExtra = map Text.unpack $ buildWayExtraHcOptions way GHC bi
-          , ghcOptHiSuffix = needsWaySuffixFlag (buildWayInterfaceExtension way) "hi"
-          , ghcOptObjSuffix = needsWaySuffixFlag (buildWayObjectExtension "o" way) "o"
+          , ghcOptExtra = buildWayExtraHcOptions way GHC bi
+          , ghcOptHiSuffix = needsWaySuffixFlag (Text.pack (buildWayInterfaceExtension way)) "hi"
+          , ghcOptObjSuffix = needsWaySuffixFlag (Text.pack (buildWayObjectExtension "o" way)) "o"
           , ghcOptHPCDir = hpcdir (buildWayHpcWay way) -- maybe this should not be passed for vanilla?
           }
       where
+        needsWaySuffixFlag :: Text -> Text -> Flag Text
         needsWaySuffixFlag x y = if x == y then NoFlag else toFlag x
 
     -- Bytecode objects are attached to an existing native way; see
@@ -239,8 +241,8 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
     dynTooOpts =
       (baseOpts StaticWay)
         { ghcOptDynLinkMode = toFlag GhcStaticAndDynamic -- use -dynamic-too
-        , ghcOptDynHiSuffix = toFlag (buildWayInterfaceExtension DynWay)
-        , ghcOptDynObjSuffix = toFlag (buildWayObjectExtension "o" DynWay)
+        , ghcOptDynHiSuffix = toFlag (Text.pack (buildWayInterfaceExtension DynWay))
+        , ghcOptDynObjSuffix = toFlag (Text.pack (buildWayObjectExtension "o" DynWay))
         , ghcOptHPCDir = hpcdir Hpc.Dyn
         , ghcOptObjectMode = bytecodeToo withBytecode
         -- Should we pass hcSharedOpts in the -dynamic-too ghc invocation?
@@ -257,8 +259,8 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
             Internal.profDetailLevelFlag
               (if isLib then True else False)
               ((if isLib then withProfLibDetail else withProfExeDetail) lbi)
-        , ghcOptDynHiSuffix = toFlag (buildWayInterfaceExtension ProfDynWay)
-        , ghcOptDynObjSuffix = toFlag (buildWayObjectExtension "o" ProfDynWay)
+        , ghcOptDynHiSuffix = toFlag (Text.pack (buildWayInterfaceExtension ProfDynWay))
+        , ghcOptDynObjSuffix = toFlag (Text.pack (buildWayObjectExtension "o" ProfDynWay))
         , ghcOptHPCDir = hpcdir Hpc.ProfDyn
         -- Should we pass hcSharedOpts in the -dynamic-too ghc invocation?
         -- (Note that `baseOtps StaticWay = hcStaticOptions`, not hcSharedOpts)
