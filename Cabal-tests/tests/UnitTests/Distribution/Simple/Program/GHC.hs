@@ -73,7 +73,7 @@ tests = testGroup "Distribution.Simple.Program.GHC"
     ]
 
 -- | Render 'GhcOptions' as GHC arguments for a GHC of the given version.
-renderWith :: Version -> GhcOptions -> [String]
+renderWith :: Version -> GhcOptions -> [Text]
 renderWith ver =
     renderGhcOptions
       (Compiler

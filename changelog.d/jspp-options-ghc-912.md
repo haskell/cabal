@@ -8,4 +8,5 @@ significance:
 The `jspp-options` field is rendered as `ghc -optJSP<opt>`, but that flag only
 exists since GHC 9.10.2. Passing it to an older GHC made the invocation fail, so
 a package using `jspp-options` could not be built at all with GHC < 9.10.2. The
-options are now omitted when the compiler is older than 9.10.2.
+options are now omitted when the compiler is older than 9.10.2 or its version
+is unknown, and a warning is emitted when that happens.
