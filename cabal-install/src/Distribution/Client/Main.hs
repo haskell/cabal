@@ -139,6 +139,7 @@ import qualified Distribution.Client.CmdSdist as CmdSdist
 import qualified Distribution.Client.CmdTarget as CmdTarget
 import qualified Distribution.Client.CmdTest as CmdTest
 import qualified Distribution.Client.CmdUpdate as CmdUpdate
+import qualified Distribution.Client.CmdVendor as CmdVendor
 
 import Distribution.Client.Check as Check (check)
 import Distribution.Client.Configure (configure, writeConfigFlags)
@@ -494,6 +495,7 @@ mainWorker args = do
           , newCmd CmdTarget.targetCommand CmdTarget.targetAction
           , newCmd CmdGenBounds.genBoundsCommand CmdGenBounds.genBoundsAction
           , newCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
+          , newCmd CmdVendor.vendorCommand CmdVendor.vendorAction
           , legacyCmd configureExCommand configureAction
           , legacyCmd genBoundsCommand genBoundsAction
           , legacyCmd buildCommand buildAction

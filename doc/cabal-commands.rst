@@ -37,6 +37,7 @@ Commands
       outdated               Check for outdated dependencies.
       path                   Query for simple project information.
       target                 Target a subset of all targets.
+      vendor                 Vendor dependencies into a local repository.
 
      [project building and installing]
       build                  Compile targets within the project.
@@ -573,6 +574,163 @@ For end-user executables, it is recommended that you distribute the
 users see a consistent set of dependencies. For libraries, this is not
 recommended: users often need to build against different versions of
 libraries than what you developed against.
+
+.. note::
+   :ref:`cabal vendor <cabal-vendor>` can be used instead of a freeze file.
+   A freeze file records the versions, flags and index state the solver picked
+   and leaves fetching the packages to each build. ``cabal vendor`` copies the
+   chosen sources themselves, with their ``.cabal`` revisions, into a directory
+   that can be committed with the project and built from without network
+   access.
+
+.. _cabal-vendor:
+
+cabal vendor
+^^^^^^^^^^^^
+
+::
+
+    cabal vendor [PACKAGES] [FLAGS]
+
+``cabal vendor`` copies the source tarballs of the project's dependencies into
+a directory laid out as a :ref:`local no-index repository
+<local-no-index-repositories>`, so that the project can be built without
+network access, for example when packaging it for a distribution or in a
+sandboxed build. Tarballs not already in the download cache are downloaded
+first. The dependencies are the ones the solver picks for the current project
+configuration, including build tools and setup dependencies.
+
+The directory defaults to ``vendor`` in the project root. For every dependency
+it contains ``<package>-<version>.tar.gz`` and, for packages from a package
+repository, the ``.cabal`` file from the package index as
+``<package>-<version>.cabal``, which carries any revision. Dependencies from
+``source-repository-package`` stanzas are vendored as source distributions of
+their checkouts, which lets the stanza be removed afterwards. Local packages
+of the project are not vendored, and packages given as remote or local
+tarballs in ``packages:`` are skipped with a warning since their ``packages:``
+entry would still be used.
+
+The command then prints the stanza to add to the project file to build from
+the vendored packages:
+
+.. code-block:: text
+
+    $ cabal vendor
+    Vendored 12 packages into vendor
+
+    To build using the vendored packages, add the following to the project file
+    (the 'url' line must stay indented under 'repository'):
+
+    repository vendored
+      url: file+noindex:vendor
+
+    active-repositories: vendored
+
+    If the directory is committed with the project, keep cabal's index cache out
+    of version control, for example by adding this line to .gitignore:
+
+    vendor/noindex.cache
+
+The path is relative to the project root (see :ref:`local-no-index-repositories`),
+so the ``vendor`` directory can be committed together with the project. With
+``active-repositories`` naming only the vendored repository, the solver sees
+exactly the vendored versions and no other repository is consulted, and
+``cabal build --offline`` accepts packages from it since nothing is
+downloaded for them.
+
+.. note::
+
+    If the directory falls out of step with the plan, cabal reports the mismatch
+    rather than fetching anything:
+
+    - A dependency missing from the directory is missing from the repository,
+      since the index is built from the files present. With
+      ``active-repositories: vendored`` the solver reports it as an unknown
+      package. With ``:rest, vendored:override`` the solver takes it from another
+      repository instead, and ``--offline`` then refuses to download it as it
+      would any other package.
+    - A ``url:`` naming a directory that does not exist is reported with a warning
+      when the repository index is constructed, and the repository is then empty.
+
+.. warning::
+
+    After the vendor directory changes other than by ``cabal vendor``, for
+    example by pulling or checking out a commit with different vendored
+    packages, delete the ``noindex.cache`` file inside it before building, or
+    run ``cabal vendor`` again with the same arguments.
+
+    cabal reads the directory once, keeps what it found in that file, and does
+    not notice later changes. With a stale cache, cabal can fail to find a
+    package that is in the directory or fail to read one that is no longer
+    there, and the reports in the note above do not apply. ``cabal vendor``
+    removes the file before it reads the directory and again when it has
+    finished, so both it and the next command see the directory as it is.
+    ``cabal update`` also rebuilds the file, but it contacts every other
+    configured repository as well.
+
+    Keep ``noindex.cache`` out of version control, for example by adding
+    ``vendor/noindex.cache`` to ``.gitignore``. See
+    :ref:`local-no-index-repositories`.
+
+Package names can be given to vendor only some of the dependencies, for
+instance to pin a few packages to exact sources while the rest still come from
+Hackage. The printed stanza then keeps the other repositories active and makes
+the vendored one override them for the packages it contains:
+
+.. code-block:: text
+
+    $ cabal vendor aeson
+    Vendored 1 of 12 dependencies into vendor
+    ...
+    active-repositories: :rest, vendored:override
+
+Running ``cabal vendor`` again writes the dependencies of the current plan to
+the directory (overwriting files of the same name), removes its index cache
+and leaves other files alone, so partial runs accumulate; ``--prune`` removes
+the package files that the current plan does not need. Note that once
+``active-repositories`` names only the vendored repository, the plan is solved
+from that repository, so ``cabal vendor`` has nothing new to add; to pick up
+newer versions from the other repositories, re-enable them for that run with
+``cabal --active-repositories=:rest vendor``.
+
+The ``cabal vendor`` command supports the following options:
+
+.. option:: -o, --output-directory=PATH
+
+    Directory to vendor the packages into. Defaults to ``vendor`` in the
+    project root.
+
+.. option:: --dry-run
+
+    Only print the packages that would be vendored (and, with ``--prune``,
+    the files that would be removed); download nothing and write nothing.
+
+.. option:: --prune
+
+    After vendoring, remove ``<package>-<version>.tar.gz`` and
+    ``<package>-<version>.cabal`` files for packages that are not
+    dependencies in the current plan, such as older versions left behind
+    by a refresh. Files that are not package files, such as
+    ``preferred-versions``, are never touched. Pruning goes by the whole
+    plan even when package names are given, so a partial run with
+    ``--prune`` keeps the other dependencies' files. A directory shared by
+    several configurations (say ``tests: True`` and ``tests: False``) is
+    pruned to the one the command runs with.
+
+.. option:: --unpack
+
+    Also unpack the named packages into ``src/`` under the vendor directory,
+    with the ``.cabal`` file from the package index applied, and print the
+    ``packages:``
+    line that makes them local packages of the project. A local package
+    takes precedence over the vendored tarball of the same name, so this is
+    the way to try a change in a dependency; remove the ``packages:`` entry
+    to go back to the vendored one. Package names are required. A package
+    directory that already exists is left alone, since it may hold edits.
+
+Besides these, the command accepts the project and solver flags shared by the
+other project commands, such as ``--project-file``, ``--constraint`` and
+``--index-state``, which determine the plan that is vendored.
 
 .. _cabal-gen-bounds:
 

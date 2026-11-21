@@ -465,6 +465,9 @@ Environment options
     :default: ``False``
 
     If ``True``, Cabal refuses to download packages from remote repositories.
+    Packages from a :ref:`local no-index repository
+    <local-no-index-repositories>` are read from disk rather than downloaded, so
+    they are not affected.
 
     The command line variant of this field is ``--offline``.
 
@@ -747,6 +750,21 @@ The following settings control the behavior of the dependency solver:
       index-state:
         , hackage.haskell.org 2020-05-06T22:33:27Z
         , head.hackage 2020-04-29T04:11:05Z
+
+.. cfg-field:: repository: reponame
+
+    :synopsis: Define a package repository
+
+    A ``repository`` stanza in the project file defines a package repository
+    in the same way as in the :ref:`global configuration file <config-file-discovery>`;
+    see :ref:`repository-specification` for the fields and :ref:`local-no-index-repositories`
+    for repositories that are plain directories of package tarballs. In a
+    project file the path of a ``file+noindex:`` repository may be relative,
+    as in ``url: file+noindex:vendor``. Like the paths in
+    :cfg-field:`packages`, a relative path is resolved against the project
+    root, whichever project file or import it is in. The
+    :ref:`cabal vendor <cabal-vendor>` command writes such a repository from a
+    project's dependencies.
 
 .. cfg-field:: active-repositories: reponame1, reponame2
 

@@ -95,7 +95,8 @@ CABAL_COMMANDS := \
 	unpack \
 	update \
 	upload \
-	user-config
+	user-config \
+	vendor
 
 CABAL_HIDDEN_COMMANDS := \
 	act-as-setup \
