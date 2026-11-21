@@ -83,9 +83,11 @@ type ProgArg = String
 --
 -- The default to use is @[ProgSearchPathDefault]@ but you can add extra dirs
 -- either before, after or instead of the default, e.g. here we add an extra
--- dir to search after the usual ones.
+-- dir to search before the usual ones.
 --
--- > ['ProgramSearchPathDefault', 'ProgramSearchPathDir' dir]
+-- > ['ProgramSearchPathDir' dir, 'ProgramSearchPathDefault']
+--
+-- See Note [Program search paths] in "Distribution.Simple.Configure".
 --
 -- We also use this path to set the environment when running child processes.
 --

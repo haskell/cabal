@@ -1,0 +1,10 @@
+cabal-version: 3.0
+name: configure
+version: 0
+build-type: Configure
+
+library
+  exposed-modules: Configure
+  build-depends: base
+  build-tool-depends: tool:tool
+  default-language: Haskell2010
