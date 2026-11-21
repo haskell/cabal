@@ -84,6 +84,7 @@ import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
 import Distribution.Client.Types
 
 import Data.Foldable (fold)
+import Data.Text (Text)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
@@ -142,13 +143,13 @@ import Distribution.Types.UnitId (UnitId)
     optional.
 -------------------------------------------------------------------------------}
 
-type ExamplePkgName = String
+type ExamplePkgName = Text
 type ExamplePkgVersion = Int
-type ExamplePkgHash = String -- for example "installed" packages
-type ExampleFlagName = String
-type ExampleSubLibName = String
-type ExampleTestName = String
-type ExampleExeName = String
+type ExamplePkgHash = Text -- for example "installed" packages
+type ExampleFlagName = Text
+type ExampleSubLibName = Text
+type ExampleTestName = Text
+type ExampleExeName = Text
 type ExampleVersionRange = C.VersionRange
 
 data Dependencies = Dependencies
@@ -326,7 +327,7 @@ withSubLibraries :: ExampleAvailable -> [ExSubLib] -> ExampleAvailable
 withSubLibraries ex libs =
   let subLibCDs =
         CD.fromList
-          [ (CD.ComponentSubLib $ C.mkUnqualComponentName name, deps)
+          [ (CD.ComponentSubLib $ C.mkUnqualComponentNameText name, deps)
           | ExSubLib name deps <- libs
           ]
    in ex{exAvDeps = exAvDeps ex <> subLibCDs}
@@ -344,7 +345,7 @@ withTests :: ExampleAvailable -> [ExTest] -> ExampleAvailable
 withTests ex tests =
   let testCDs =
         CD.fromList
-          [ (CD.ComponentTest $ C.mkUnqualComponentName name, deps)
+          [ (CD.ComponentTest $ C.mkUnqualComponentNameText name, deps)
           | ExTest name deps <- tests
           ]
    in ex{exAvDeps = exAvDeps ex <> testCDs}
@@ -356,7 +357,7 @@ withExes :: ExampleAvailable -> [ExExe] -> ExampleAvailable
 withExes ex exes =
   let exeCDs =
         CD.fromList
-          [ (CD.ComponentExe $ C.mkUnqualComponentName name, deps)
+          [ (CD.ComponentExe $ C.mkUnqualComponentNameText name, deps)
           | ExExe name deps <- exes
           ]
    in ex{exAvDeps = exAvDeps ex <> exeCDs}
@@ -632,7 +633,7 @@ exAvSrcPkg ex =
               { C.otherExtensions = exts
               , C.defaultLanguage = mlang
               , C.buildToolDepends =
-                  [ C.ExeDependency (C.mkPackageName p) (C.mkUnqualComponentName e) vr
+                  [ C.ExeDependency (C.mkPackageNameST p) (C.mkUnqualComponentNameText e) vr
                   | (p, e, vr) <- buildTools
                   ]
               , C.buildTools =
@@ -642,7 +643,7 @@ exAvSrcPkg ex =
               , C.pkgconfigDepends =
                   [ C.PkgconfigDependency n' v'
                   | (n, v) <- pcpkgs
-                  , let n' = C.mkPkgconfigName n
+                  , let n' = C.mkPkgconfigNameText n
                   , let v' = C.PcThisVersion (mkSimplePkgconfigVersion v)
                   ]
               , C.buildable = depsIsBuildable deps
@@ -653,7 +654,7 @@ exAvSrcPkg ex =
             }
 
     mkDirect :: (ExamplePkgName, C.LibraryName, C.VersionRange) -> C.Dependency
-    mkDirect (dep, name, vr) = C.Dependency (C.mkPackageName dep) vr (NonEmptySet.singleton name)
+    mkDirect (dep, name, vr) = C.Dependency (C.mkPackageNameST dep) vr (NonEmptySet.singleton name)
 
     mkFlagged
       :: forall a
@@ -663,7 +664,7 @@ exAvSrcPkg ex =
       -> DependencyComponent a
     mkFlagged mkComponent (f, a, b) =
       C.CondBranch
-        (C.Var (C.PackageFlag (C.mkFlagName f)))
+        (C.Var (C.PackageFlag (C.mkFlagNameText f)))
         (mkCondTree mkComponent a)
         (Just (mkCondTree mkComponent b))
 
@@ -690,10 +691,10 @@ exAvSrcPkg ex =
        in ((p, C.LMainLibName, mkVersionRange v1 v2) : directDeps, flaggedDeps)
     splitDeps (ExSubLibAny p lib : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-       in ((p, C.LSubLibName (C.mkUnqualComponentName lib), C.anyVersion) : directDeps, flaggedDeps)
+       in ((p, C.LSubLibName (C.mkUnqualComponentNameText lib), C.anyVersion) : directDeps, flaggedDeps)
     splitDeps (ExSubLibFix p lib v : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-       in ((p, C.LSubLibName (C.mkUnqualComponentName lib), C.thisVersion $ mkSimpleVersion v) : directDeps, flaggedDeps)
+       in ((p, C.LSubLibName (C.mkUnqualComponentNameText lib), C.thisVersion $ mkSimpleVersion v) : directDeps, flaggedDeps)
     splitDeps (ExFlagged f a b : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
        in (directDeps, (f, a, b) : flaggedDeps)
@@ -732,7 +733,7 @@ mkVersionRange v1 v2 =
 mkFlag :: ExFlag -> C.PackageFlag
 mkFlag flag =
   C.MkPackageFlag
-    { C.flagName = C.mkFlagName $ exFlagName flag
+    { C.flagName = C.mkFlagNameText $ exFlagName flag
     , C.flagDescription = ""
     , C.flagDefault = exFlagDefault flag
     , C.flagManual =
@@ -744,7 +745,7 @@ mkFlag flag =
 mkDefaultFlag :: ExampleFlagName -> C.PackageFlag
 mkDefaultFlag flag =
   C.MkPackageFlag
-    { C.flagName = C.mkFlagName flag
+    { C.flagName = C.mkFlagNameText flag
     , C.flagDescription = ""
     , C.flagDefault = True
     , C.flagManual = False
@@ -753,22 +754,22 @@ mkDefaultFlag flag =
 exAvPkgId :: ExampleAvailable -> C.PackageIdentifier
 exAvPkgId ex =
   C.PackageIdentifier
-    { pkgName = C.mkPackageName (exAvName ex)
+    { pkgName = C.mkPackageNameST (exAvName ex)
     , pkgVersion = C.mkVersion [exAvVersion ex]
     }
 
 exInstInfo :: ExampleInstalled -> IPI.InstalledPackageInfo
 exInstInfo ex =
   IPI.emptyInstalledPackageInfo
-    { IPI.installedUnitId = C.mkUnitId (exInstHash ex)
+    { IPI.installedUnitId = C.mkUnitIdText (exInstHash ex)
     , IPI.sourcePackageId = exInstPkgId ex
-    , IPI.depends = map C.mkUnitId (exInstBuildAgainst ex)
+    , IPI.depends = map C.mkUnitIdText (exInstBuildAgainst ex)
     }
 
 exInstPkgId :: ExampleInstalled -> C.PackageIdentifier
 exInstPkgId ex =
   C.PackageIdentifier
-    { pkgName = C.mkPackageName (exInstName ex)
+    { pkgName = C.mkPackageNameST (exInstName ex)
     , pkgVersion = C.mkVersion [exInstVersion ex]
     }
 
@@ -849,12 +850,12 @@ exResolve
             fmap
               ( \p ->
                   PackageConstraint
-                    (scopeToplevel (C.mkPackageName p))
+                    (scopeToplevel (C.mkPackageNameST p))
                     (PackagePropertyStanzas [TestStanzas])
               )
               (exDbPkgs db)
         | otherwise = []
-      targets' = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
+      targets' = fmap (\p -> NamedPackage (C.mkPackageNameST p) []) targets
       params =
         addConstraints (fmap toConstraint constraints)
           $ addConstraints (fmap toLpc enableTests)
@@ -882,26 +883,26 @@ exResolve
       toConstraint (ExVersionConstraint scope v) =
         toLpc $ PackageConstraint scope (PackagePropertyVersion v)
       toConstraint (ExFlagConstraint scope fn b) =
-        toLpc $ PackageConstraint scope (PackagePropertyFlags (C.mkFlagAssignment [(C.mkFlagName fn, b)]))
+        toLpc $ PackageConstraint scope (PackagePropertyFlags (C.mkFlagAssignment [(C.mkFlagNameText fn, b)]))
       toConstraint (ExStanzaConstraint scope stanzas) =
         toLpc $ PackageConstraint scope (PackagePropertyStanzas stanzas)
 
-      toPref (ExPkgPref n v) = PackageVersionPreference (C.mkPackageName n) v
-      toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
+      toPref (ExPkgPref n v) = PackageVersionPreference (C.mkPackageNameST n) v
+      toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageNameST n) stanzas
 
 extractInstallPlan
   :: CI.SolverInstallPlan.SolverInstallPlan
   -> [(ExamplePkgName, ExamplePkgVersion)]
 extractInstallPlan = mapMaybe confPkg . CI.SolverInstallPlan.toList
   where
-    confPkg :: CI.SolverInstallPlan.SolverPlanPackage -> Maybe (String, Int)
+    confPkg :: CI.SolverInstallPlan.SolverPlanPackage -> Maybe (Text, Int)
     confPkg (CI.SolverInstallPlan.Configured pkg) = srcPkg pkg
     confPkg _ = Nothing
 
-    srcPkg :: SolverPackage UnresolvedPkgLoc -> Maybe (String, Int)
+    srcPkg :: SolverPackage UnresolvedPkgLoc -> Maybe (Text, Int)
     srcPkg cpkg =
       let C.PackageIdentifier pn ver = C.packageId (solverPkgSource cpkg)
-       in (C.unPackageName pn,) <$> safeHead (C.versionNumbers ver)
+       in (C.unPackageNameST pn,) <$> safeHead (C.versionNumbers ver)
 
 {-------------------------------------------------------------------------------
   Auxiliary

@@ -6,6 +6,7 @@ module Distribution.Types.Flag
     -- * Flag name
   , FlagName
   , mkFlagName
+  , mkFlagNameText
   , unFlagName
 
     -- * Flag assignment
@@ -49,7 +50,7 @@ import qualified Text.PrettyPrint as Disp
 --   a target against its dependencies, or in fact whatever you can think of.
 data PackageFlag = MkPackageFlag
   { flagName :: FlagName
-  , flagDescription :: String
+  , flagDescription :: Text
   , flagDefault :: Bool
   , flagManual :: Bool
   }
@@ -64,14 +65,14 @@ emptyFlag :: FlagName -> PackageFlag
 emptyFlag name =
   MkPackageFlag
     { flagName = name
-    , flagDescription = ""
+    , flagDescription = mempty
     , flagDefault = True
     , flagManual = False
     }
 
 -- | A 'FlagName' is the name of a user-defined configuration flag
 --
--- Use 'mkFlagName' and 'unFlagName' to convert from/to a 'String'.
+-- Use 'mkFlagName' and 'unFlagName' to convert from/to a 'Text'.
 --
 -- This type is opaque since @Cabal-2.0@
 --
@@ -90,23 +91,26 @@ newtype FlagName = FlagName Text
 mkFlagName :: String -> FlagName
 mkFlagName = FlagName . Text.pack
 
+mkFlagNameText :: Text -> FlagName
+mkFlagNameText = FlagName
+
 -- | 'mkFlagName'
 --
 -- @since 2.0.0.2
 instance IsString FlagName where
   fromString = mkFlagName
 
--- | Convert 'FlagName' to 'String'
+-- | Convert 'FlagName' to 'Text'
 --
 -- @since 2.0.0.2
-unFlagName :: FlagName -> String
-unFlagName (FlagName s) = Text.unpack s
+unFlagName :: FlagName -> Text
+unFlagName (FlagName s) = s
 
 instance Binary FlagName
 instance Structured FlagName
 
 instance Pretty FlagName where
-  pretty = Disp.text . unFlagName
+  pretty = Disp.text . Text.unpack . unFlagName
 
 instance Parsec FlagName where
   -- Note:  we don't check that FlagName doesn't have leading dash,
@@ -237,9 +241,9 @@ instance Show FlagAssignment where
   showsPrec p (FlagAssignment xs) = showsPrec p xs
 
 -- | String representation of a flag-value pair.
-showFlagValue :: (FlagName, Bool) -> String
-showFlagValue (f, True) = '+' : unFlagName f
-showFlagValue (f, False) = '-' : unFlagName f
+showFlagValue :: (FlagName, Bool) -> Text
+showFlagValue (f, True) = Text.cons '+' (unFlagName f)
+showFlagValue (f, False) = Text.cons '-' (unFlagName f)
 
 -- | @since 3.4.0.0
 instance Pretty FlagAssignment where
@@ -279,7 +283,7 @@ instance Parsec FlagAssignment where
 
 -- | Pretty-prints a flag assignment.
 dispFlagAssignment :: FlagAssignment -> Disp.Doc
-dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignment
+dispFlagAssignment = Disp.hsep . map (Disp.text . Text.unpack . showFlagValue) . unFlagAssignment
 
 -- | Parses a flag assignment.
 parsecFlagAssignment :: CabalParsing m => m FlagAssignment
@@ -338,18 +342,18 @@ showFlagAssignment = prettyShow . dispFlagAssignment
 -- | We need this as far as we support custom setups older than 2.2.0.0
 --
 -- @since 3.4.0.0
-legacyShowFlagAssignment :: FlagAssignment -> String
+legacyShowFlagAssignment :: FlagAssignment -> Text
 legacyShowFlagAssignment =
-  prettyShow . Disp.hsep . map Disp.text . legacyShowFlagAssignment'
+  Text.pack . prettyShow . Disp.hsep . map (Disp.text . Text.unpack) . legacyShowFlagAssignment'
 
 -- | @since 3.4.0.0
-legacyShowFlagAssignment' :: FlagAssignment -> [String]
+legacyShowFlagAssignment' :: FlagAssignment -> [Text]
 legacyShowFlagAssignment' = map legacyShowFlagValue . unFlagAssignment
 
 -- | @since 3.4.0.0
-legacyShowFlagValue :: (FlagName, Bool) -> String
+legacyShowFlagValue :: (FlagName, Bool) -> Text
 legacyShowFlagValue (f, True) = unFlagName f
-legacyShowFlagValue (f, False) = '-' : unFlagName f
+legacyShowFlagValue (f, False) = Text.cons '-' (unFlagName f)
 
 -- |
 -- We need this as far as we support custom setups older than 2.2.0.0

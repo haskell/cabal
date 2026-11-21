@@ -2,6 +2,7 @@ module Distribution.Types.UnitId
   ( UnitId
   , unUnitId
   , mkUnitId
+  , mkUnitIdText
   , DefUnitId
   , unsafeMkDefUnitId
   , unDefUnitId
@@ -68,7 +69,7 @@ instance Structured UnitId
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.
 instance Pretty UnitId where
-  pretty = text . unUnitId
+  pretty = text . Text.unpack . unUnitId
 
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.
@@ -84,11 +85,14 @@ instance Parsec UnitId where
 
 -- | If you need backwards compatibility, consider using 'display'
 -- instead, which is supported by all versions of Cabal.
-unUnitId :: UnitId -> String
-unUnitId (UnitId s) = Text.unpack s
+unUnitId :: UnitId -> Text
+unUnitId (UnitId s) = s
 
 mkUnitId :: String -> UnitId
 mkUnitId = UnitId . Text.pack
+
+mkUnitIdText :: Text -> UnitId
+mkUnitIdText = UnitId
 
 -- | 'mkUnitId'
 --
@@ -99,7 +103,7 @@ instance IsString UnitId where
 -- | Create a unit identity with no associated hash directly
 -- from a 'ComponentId'.
 newSimpleUnitId :: ComponentId -> UnitId
-newSimpleUnitId = mkUnitId . unComponentId
+newSimpleUnitId = mkUnitIdText . unComponentId
 
 -- | Make an old-style UnitId from a package identifier.
 -- Assumed to be for the public library
@@ -107,8 +111,8 @@ mkLegacyUnitId :: PackageId -> UnitId
 mkLegacyUnitId = newSimpleUnitId . mkComponentId . prettyShow
 
 -- | Returns library name prefixed with HS, suitable for filenames
-getHSLibraryName :: UnitId -> String
-getHSLibraryName uid = "HS" ++ prettyShow uid
+getHSLibraryName :: UnitId -> Text
+getHSLibraryName uid = Text.pack "HS" <> Text.pack (prettyShow uid)
 
 -- | A 'UnitId' for a definite package.  The 'DefUnitId' invariant says
 -- that a 'UnitId' identified this way is definite; i.e., it has no

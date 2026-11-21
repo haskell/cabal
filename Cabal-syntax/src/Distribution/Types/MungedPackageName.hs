@@ -13,6 +13,8 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -72,7 +74,7 @@ instance Pretty MungedPackageName where
   -- First handle the cases where we can just use the original 'PackageName'.
   -- This is for the PRIMARY library, and it is non-Backpack, or the
   -- indefinite package for us.
-  pretty = Disp.text . encodeCompatPackageName'
+  pretty = Disp.text . Text.unpack . encodeCompatPackageName'
 
 -- |
 --
@@ -96,7 +98,7 @@ instance Parsec MungedPackageName where
 -- >>> decodeCompatPackageName "z-servant-z-lackey"
 -- MungedPackageName (PackageName "servant") (LSubLibName (UnqualComponentName "lackey"))
 decodeCompatPackageName :: PackageName -> MungedPackageName
-decodeCompatPackageName = decodeCompatPackageName' . unPackageName
+decodeCompatPackageName = decodeCompatPackageName' . unPackageNameST
 
 -- | Intended for internal use only
 --
@@ -106,37 +108,37 @@ decodeCompatPackageName = decodeCompatPackageName' . unPackageName
 -- This is used in @cabal-install@ in the Solver.
 -- May become obsolete as solver moves to per-component solving.
 encodeCompatPackageName :: MungedPackageName -> PackageName
-encodeCompatPackageName = mkPackageName . encodeCompatPackageName'
+encodeCompatPackageName = mkPackageNameST . encodeCompatPackageName'
 
-decodeCompatPackageName' :: String -> MungedPackageName
+decodeCompatPackageName' :: Text -> MungedPackageName
 decodeCompatPackageName' m =
-  case m of
+  case Text.unpack m of
     'z' : '-' : rest
       | Right [pn, cn] <- explicitEitherParsec parseZDashCode rest ->
-          MungedPackageName (mkPackageName pn) (LSubLibName (mkUnqualComponentName cn))
-    s -> MungedPackageName (mkPackageName s) LMainLibName
+          MungedPackageName (mkPackageNameST pn) (LSubLibName (mkUnqualComponentNameText cn))
+    _ -> MungedPackageName (mkPackageNameST m) LMainLibName
 
-encodeCompatPackageName' :: MungedPackageName -> String
-encodeCompatPackageName' (MungedPackageName pn LMainLibName) = unPackageName pn
+encodeCompatPackageName' :: MungedPackageName -> Text
+encodeCompatPackageName' (MungedPackageName pn LMainLibName) = unPackageNameST pn
 encodeCompatPackageName' (MungedPackageName pn (LSubLibName uqn)) =
-  "z-"
-    ++ zdashcode (unPackageName pn)
-    ++ "-z-"
-    ++ zdashcode (unUnqualComponentName uqn)
+  Text.pack "z-"
+    <> zdashcode (unPackageNameST pn)
+    <> Text.pack "-z-"
+    <> zdashcode (unUnqualComponentNameST uqn)
 
-zdashcode :: String -> String
-zdashcode s = go s (Nothing :: Maybe Int) []
+zdashcode :: Text -> Text
+zdashcode s = go (Text.unpack s) (Nothing :: Maybe Int) []
   where
-    go [] _ r = reverse r
+    go [] _ r = Text.pack $ reverse r
     go ('-' : z) (Just n) r | n > 0 = go z (Just 0) ('-' : 'z' : r)
     go ('-' : z) _ r = go z (Just 0) ('-' : r)
     go ('z' : z) (Just n) r = go z (Just (n + 1)) ('z' : r)
     go (c : z) _ r = go z Nothing (c : r)
 
-parseZDashCode :: CabalParsing m => m [String]
+parseZDashCode :: CabalParsing m => m [Text]
 parseZDashCode = do
   ns <- toList <$> P.sepByNonEmpty (some (P.satisfy (/= '-'))) (P.char '-')
-  return (go ns)
+  return (map Text.pack $ go ns)
   where
     go ns = case break (== "z") ns of
       (_, []) -> [paste ns]

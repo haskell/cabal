@@ -436,7 +436,7 @@ test-suite mem-use-tests
     , containers
     , tasty >= 1.2.3 && <1.6
     , tasty-hunit >= 0.10
-
+    , text
 
 -- Integration tests that use the cabal-install code directly
 -- but still build whole projects

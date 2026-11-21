@@ -57,8 +57,6 @@ import Prelude ()
 import Control.Monad ((<=<))
 import Data.Text (Text)
 
--- lens
-
 import Distribution.Types.Benchmark
 import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.Executable
@@ -118,7 +116,7 @@ data PackageDescription = PackageDescription
   , description :: !Text
   -- ^ A more verbose description of this package
   , category :: !Text
-  , customFieldsPD :: [(String, String)]
+  , customFieldsPD :: [(Text, Text)]
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.

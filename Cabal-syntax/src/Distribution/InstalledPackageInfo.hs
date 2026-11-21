@@ -58,6 +58,7 @@ import Distribution.Utils.Generic (toUTF8BS)
 import Data.ByteString (ByteString)
 
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 import qualified Distribution.Fields as P
 import qualified Text.PrettyPrint as Disp
 
@@ -65,10 +66,11 @@ import Distribution.Types.InstalledPackageInfo
 import Distribution.Types.InstalledPackageInfo.FieldGrammar
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
-installedComponentId ipi =
-  case unComponentId (installedComponentId_ ipi) of
-    "" -> mkComponentId (unUnitId (installedUnitId ipi))
-    _ -> installedComponentId_ ipi
+installedComponentId ipi
+  | Text.null (unComponentId (installedComponentId_ ipi)) =
+      mkComponentIdText (unUnitId (installedUnitId ipi))
+  | otherwise =
+      installedComponentId_ ipi
 
 -- | Get the indefinite unit identity representing this package.
 -- This IS NOT guaranteed to give you a substitution; for

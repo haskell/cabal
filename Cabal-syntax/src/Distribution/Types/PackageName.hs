@@ -67,7 +67,7 @@ instance Pretty PackageName where
   pretty = Disp.text . unPackageName
 
 instance Parsec PackageName where
-  parsec = mkPackageName <$> parsecUnqualComponentName
+  parsec = mkPackageNameST <$> parsecUnqualComponentName
 
 instance NFData PackageName where
   rnf (PackageName pkg) = rnf pkg

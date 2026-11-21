@@ -4286,7 +4286,7 @@ setupHsConfigureArgs
   -> [String]
 setupHsConfigureArgs (ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage _}) = []
 setupHsConfigureArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent comp}) =
-  [showComponentTarget (packageId elab) (ComponentTarget cname WholeComponent)]
+  [Text.unpack $ showComponentTarget (packageId elab) (ComponentTarget cname WholeComponent)]
   where
     cname =
       fromMaybe
@@ -4333,7 +4333,7 @@ setupHsBuildArgs :: ElaboratedConfiguredPackage -> [String]
 setupHsBuildArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage _})
   -- Fix for #3335, don't pass build arguments if it's not supported
   | setupCliVersion (elabSetupScriptCliVersion elab) >= mkVersion [1, 17] =
-      map (showComponentTarget (packageId elab)) (elabBuildTargets elab)
+      map (Text.unpack . showComponentTarget (packageId elab)) (elabBuildTargets elab)
   | otherwise =
       []
 setupHsBuildArgs (ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _}) =
@@ -4391,7 +4391,7 @@ setupHsReplFlags _ sharedConfig common =
 
 setupHsReplArgs :: ElaboratedConfiguredPackage -> [String]
 setupHsReplArgs elab =
-  map (\t -> showComponentTarget (packageId elab) t) (elabReplTarget elab)
+  map (Text.unpack . showComponentTarget (packageId elab)) (elabReplTarget elab)
 
 setupHsCopyFlags
   :: ElaboratedConfiguredPackage
@@ -4474,7 +4474,7 @@ setupHsHaddockFlags
 setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
 setupHsHaddockArgs elab =
-  map (showComponentTarget (packageId elab)) (elabHaddockTargets elab)
+  map (Text.unpack . showComponentTarget (packageId elab)) (elabHaddockTargets elab)
 
 ------------------------------------------------------------------------------
 

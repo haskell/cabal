@@ -18,6 +18,8 @@ module Distribution.Simple.Errors
   , exceptionMessage
   ) where
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.Compat.Prelude
 import Distribution.Compiler
 import Distribution.InstalledPackageInfo
@@ -90,9 +92,9 @@ data CabalException
   | FailedParsing String
   | NotFoundMsg
   | UnrecognisedBuildTarget [String]
-  | ReportBuildTargetProblems [(String, [String], String)]
-  | UnknownBuildTarget [(String, [(String, String)])]
-  | AmbiguousBuildTarget [(String, [(String, String)])]
+  | ReportBuildTargetProblems [(Text, [Text], Text)]
+  | UnknownBuildTarget [(Text, [(Text, Text)])]
+  | AmbiguousBuildTarget [(Text, [(Text, String)])]
   | CheckBuildTargets String
   | VersionMismatchGHC FilePath Version FilePath Version
   | CheckPackageDbStack
@@ -129,8 +131,8 @@ data CabalException
   | ReportFailedDependencies [FailedDependency] String
   | NoPackageDatabaseSpecified
   | HowToFindInstalledPackages CompilerFlavor
-  | PkgConfigNotFound String String
-  | BadVersion String String PkgconfigVersion
+  | PkgConfigNotFound Text String
+  | BadVersion Text String PkgconfigVersion
   | UnknownCompilerException
   | GHCJSNotSupported
   | NoWorkingGcc
@@ -414,23 +416,23 @@ exceptionMessage e = case e of
   ReportBuildTargetProblems targets ->
     unlines
       [ "Unrecognised build target '"
-        ++ target
+        ++ Text.unpack target
         ++ "'.\n"
         ++ "Expected a "
-        ++ intercalate " or " expected
+        ++ Text.unpack (Text.intercalate (Text.pack " or ") expected)
         ++ ", rather than '"
-        ++ got
+        ++ Text.unpack got
         ++ "'."
       | (target, expected, got) <- targets
       ]
   UnknownBuildTarget targets ->
     unlines
       [ "Unknown build target '"
-        ++ target
+        ++ Text.unpack target
         ++ "'.\nThere is no "
         ++ intercalate
           " or "
-          [ mungeThing thing ++ " '" ++ got ++ "'"
+          [ mungeThing (Text.unpack thing) ++ " '" ++ Text.unpack got ++ "'"
           | (thing, got) <- nosuch
           ]
         ++ "."
@@ -442,11 +444,11 @@ exceptionMessage e = case e of
   AmbiguousBuildTarget targets ->
     unlines
       [ "Ambiguous build target '"
-        ++ target
+        ++ Text.unpack target
         ++ "'. It could be:\n "
         ++ unlines
           [ "   "
-            ++ ut
+            ++ Text.unpack ut
             ++ " ("
             ++ bt
             ++ ")"
@@ -589,13 +591,13 @@ exceptionMessage e = case e of
       ++ prettyShow flv
   PkgConfigNotFound pkg versionReq ->
     "The pkg-config package '"
-      ++ pkg
+      ++ Text.unpack pkg
       ++ "'"
       ++ versionReq
       ++ " is required but it could not be found."
   BadVersion pkg versionReq v ->
     "The pkg-config package '"
-      ++ pkg
+      ++ Text.unpack pkg
       ++ "'"
       ++ versionReq
       ++ " is required but the version installed on the"

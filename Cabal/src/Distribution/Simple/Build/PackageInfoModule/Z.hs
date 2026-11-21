@@ -1,13 +1,15 @@
 module Distribution.Simple.Build.PackageInfoModule.Z (render, Z (..)) where
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.ZinzaPrelude (Generic, execWriter, tell)
 
 data Z = Z
-  { zPackageName :: String
-  , zVersionDigits :: String
-  , zSynopsis :: String
-  , zCopyright :: String
-  , zHomepage :: String
+  { zPackageName :: Text
+  , zVersionDigits :: Text
+  , zSynopsis :: Text
+  , zCopyright :: Text
+  , zHomepage :: Text
   }
   deriving (Generic)
 
@@ -18,7 +20,7 @@ render z_root = execWriter $ do
   tell "\n"
   tell "{-|\n"
   tell "Module      : PackageInfo_"
-  tell (zPackageName z_root)
+  tell (Text.unpack $ zPackageName z_root)
   tell "\n"
   tell "Description : Contents of some of the package's Cabal file's fields.\n"
   tell "\n"
@@ -33,7 +35,7 @@ render z_root = execWriter $ do
   tell "-}\n"
   tell "\n"
   tell "module PackageInfo_"
-  tell (zPackageName z_root)
+  tell (Text.unpack $ zPackageName z_root)
   tell " (\n"
   tell "    name,\n"
   tell "    version,\n"
@@ -54,7 +56,7 @@ render z_root = execWriter $ do
   tell "-- |The content of the @version@ field of the package's Cabal file.\n"
   tell "version :: Version\n"
   tell "version = Version "
-  tell (zVersionDigits z_root)
+  tell (Text.unpack $ zVersionDigits z_root)
   tell " []\n"
   tell "\n"
   tell "-- |The content of the @synopsis@ field of the package's Cabal file.\n"

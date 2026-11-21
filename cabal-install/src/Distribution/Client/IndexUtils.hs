@@ -72,6 +72,7 @@ import Distribution.Package
   , PackageId
   , PackageIdentifier (..)
   , mkPackageName
+  , mkPackageNameST
   , packageName
   , packageVersion
   )
@@ -127,6 +128,7 @@ import Data.Either
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text.Encoding as Text
 import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils
   ( byteStringToFilePath
@@ -1462,7 +1464,7 @@ read00IndexCacheEntry = \line ->
   where
     parseName str
       | BSS.all (\c -> isAlphaNum c || c == '-') str =
-          Just (mkPackageName (BSS.unpack str))
+          Just (mkPackageNameST (Text.decodeUtf8 str))
       | otherwise = Nothing
 
     parseVer str vs =

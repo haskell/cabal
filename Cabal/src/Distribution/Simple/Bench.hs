@@ -39,6 +39,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 import Distribution.Verbosity
 
+import qualified Data.Text as Text
 import System.Directory (doesFileExist)
 
 -- | Perform the \"@.\/setup bench@\" action.
@@ -78,7 +79,7 @@ bench args verbHandles pkg_descr lbi flags = do
                 }
         case PD.benchmarkInterface bm of
           PD.BenchmarkExeV10 _ _ -> do
-            let cmd = i $ LBI.buildDir lbiForBench </> makeRelativePathEx (name </> name <.> exeExtension (LBI.hostPlatform lbi))
+            let cmd = i $ LBI.buildDir lbiForBench </> makeRelativePathEx (name' </> name' <.> exeExtension (LBI.hostPlatform lbi))
                 options =
                   map (benchOption pkg_descr lbiForBench bm) $
                     benchmarkOptions flags
@@ -114,12 +115,13 @@ bench args verbHandles pkg_descr lbi flags = do
             notice verbosity $
               "No support for running "
                 ++ "benchmark "
-                ++ name
+                ++ name'
                 ++ " of type: "
                 ++ prettyShow (PD.benchmarkType bm)
             exitFailure
         where
-          name = unUnqualComponentName $ PD.benchmarkName bm
+          name = unUnqualComponentNameST $ PD.benchmarkName bm
+          name' = Text.unpack name
 
   unless (PD.hasBenchmarks pkg_descr) $ do
     notice verbosity "Package has no benchmarks."
@@ -148,10 +150,10 @@ bench args verbHandles pkg_descr lbi flags = do
   let allOk = totalBenchmarks == length (filter (== ExitSuccess) exitcodes)
   unless allOk exitFailure
   where
-    startMessage name = "Benchmark " ++ name ++ ": RUNNING...\n"
+    startMessage name = "Benchmark " ++ Text.unpack name ++ ": RUNNING...\n"
     finishMessage name exitcode =
       "Benchmark "
-        ++ name
+        ++ Text.unpack name
         ++ ": "
         ++ ( case exitcode of
               ExitSuccess -> "FINISH"

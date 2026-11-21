@@ -168,7 +168,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           "pkg-revision" J..= J.Number (elaboratedPackageToRevision elab)
         , "flags"
             J..= J.object
-              [ PD.unFlagName fn J..= v
+              [ Text.unpack (PD.unFlagName fn) J..= v
               | (fn, v) <- PD.unFlagAssignment (elabFlagAssignment elab)
               ]
         , "style" J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
@@ -277,7 +277,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         elaboratedPackageToRevision :: ElaboratedConfiguredPackage -> Double
         elaboratedPackageToRevision =
           fromMaybe 0
-            . (readMaybe <=< lookup "x-revision")
+            . (readMaybe . Text.unpack <=< lookup (Text.pack "x-revision"))
             . PD.customFieldsPD
             . elabPkgDescription
 

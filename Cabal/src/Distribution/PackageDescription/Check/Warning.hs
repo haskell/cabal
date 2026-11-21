@@ -51,6 +51,8 @@ import Language.Haskell.Extension (Extension)
 import qualified Data.Either as Either
 import qualified Data.List as List
 import qualified Data.Set as Set
+import Data.Text (Text)
+import qualified Data.Text as Text
 
 -- ------------------------------------------------------------
 -- Check types and explanations
@@ -239,7 +241,7 @@ data CheckExplanation
   | CVDefaultExtensions
   | CVExtensionsDeprecated
   | CVSources
-  | CVExtraDynamic [[String]]
+  | CVExtraDynamic [[Text]]
   | CVVirtualModules
   | CVSourceRepository
   | CVExtensions CabalSpecVersion [Extension]
@@ -255,13 +257,13 @@ data CheckExplanation
   | UnknownArch [String]
   | UnknownCompiler [String]
   | BaseNoUpperBounds
-  | MissingUpperBounds CEType [String]
-  | LEUpperBounds CEType [String]
-  | TrailingZeroUpperBounds CEType [String]
-  | GTLowerBounds CEType [String]
-  | SuspiciousFlagName [String]
+  | MissingUpperBounds CEType [Text]
+  | LEUpperBounds CEType [Text]
+  | TrailingZeroUpperBounds CEType [Text]
+  | GTLowerBounds CEType [Text]
+  | SuspiciousFlagName [Text]
   | DeclaredUsedFlags (Set.Set FlagName) (Set.Set FlagName)
-  | NonASCIICustomField [String]
+  | NonASCIICustomField [Text]
   | RebindableClashPaths
   | RebindableClashPackageInfo
   | WErrorUnneeded String
@@ -269,7 +271,7 @@ data CheckExplanation
   | FDeferTypeErrorsUnneeded String
   | DynamicUnneeded String
   | ProfilingUnneeded String
-  | UpperBoundSetup String
+  | UpperBoundSetup Text
   | DuplicateModule String [ModuleName]
   | PotentialDupModule String [ModuleName]
   | BOMStart FilePath
@@ -1234,7 +1236,7 @@ ppExplanation CVSources =
 ppExplanation (CVExtraDynamic flavs) =
   "The use of 'extra-dynamic-library-flavours' requires the package "
     ++ " to specify at least 'cabal-version: 3.0'. The flavours are: "
-    ++ commaSep (concat flavs)
+    ++ commaSep (map Text.unpack (concat flavs))
 ppExplanation CVVirtualModules =
   "The use of 'virtual-modules' requires the package "
     ++ " to specify at least 'cabal-version: 2.2'."
@@ -1333,32 +1335,32 @@ ppExplanation (MissingUpperBounds ct names) =
     ++ ppCET ct
     ++ ", "
     ++ "these packages miss upper bounds:"
-    ++ listSep names
+    ++ listSep (map Text.unpack names)
     ++ "Please add them. There is more information at https://pvp.haskell.org/"
 ppExplanation (LEUpperBounds ct names) =
   "On "
     ++ ppCET ct
     ++ ", "
     ++ "these packages have less than or equals (<=) upper bounds:"
-    ++ listSep names
+    ++ listSep (map Text.unpack names)
     ++ "Please use less than (<) for upper bounds."
 ppExplanation (TrailingZeroUpperBounds ct names) =
   "On "
     ++ ppCET ct
     ++ ", "
     ++ "these packages have upper bounds with trailing zeros:"
-    ++ listSep names
+    ++ listSep (map Text.unpack names)
     ++ "Please avoid trailing zeros for upper bounds."
 ppExplanation (GTLowerBounds ct names) =
   "On "
     ++ ppCET ct
     ++ ", "
     ++ "these packages have greater than (>) lower bounds:"
-    ++ listSep names
+    ++ listSep (map Text.unpack names)
     ++ "Please use greater than or equals (>=) for lower bounds."
 ppExplanation (SuspiciousFlagName invalidFlagNames) =
   "Suspicious flag names: "
-    ++ unwords invalidFlagNames
+    ++ Text.unpack (Text.unwords invalidFlagNames)
     ++ ". "
     ++ "To avoid ambiguity in command line interfaces, a flag shouldn't "
     ++ "start with a dash. Also for better compatibility, flag names "
@@ -1371,10 +1373,10 @@ ppExplanation (DeclaredUsedFlags declared used) =
     ++ ". "
   where
     s :: Set.Set FlagName -> String
-    s = commaSep . map unFlagName . Set.toList
+    s = commaSep . map (Text.unpack . unFlagName) . Set.toList
 ppExplanation (NonASCIICustomField nonAsciiXFields) =
   "Non ascii custom fields: "
-    ++ unwords nonAsciiXFields
+    ++ Text.unpack (Text.unwords nonAsciiXFields)
     ++ ". "
     ++ "For better compatibility, custom field names "
     ++ "shouldn't contain non-ascii characters."
@@ -1428,11 +1430,11 @@ ppExplanation (ProfilingUnneeded fieldName) =
       ++ "which puts cost centres only on exported functions."
 ppExplanation (UpperBoundSetup nm) =
   "The dependency 'setup-depends: '"
-    ++ nm
+    ++ Text.unpack nm
     ++ "' does not specify an "
     ++ "upper bound on the version number. Each major release of the "
     ++ "'"
-    ++ nm
+    ++ Text.unpack nm
     ++ "' package changes the API in various ways and most "
     ++ "packages will need some changes to compile with it. If you are "
     ++ "not sure what upper bound to use then use the next major "

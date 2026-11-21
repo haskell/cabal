@@ -82,12 +82,12 @@ main2 meta plan = do
         let P.PkgId pkgname@(P.PkgName tpkgname) ver@(P.Ver verdigits) = P.uPId unit
 
         let cpkgname :: C.PackageName
-            cpkgname = C.mkPackageName (T.unpack tpkgname)
+            cpkgname = C.mkPackageNameST tpkgname
 
         let cversion :: C.Version
             cversion = C.mkVersion verdigits
 
-        let flags = [ (if fval then "+" else "-") ++ T.unpack fname
+        let flags = [ T.cons (if fval then '+' else '-') fname
                         | (P.FlagName fname, fval) <- Map.toList (P.uFlags unit)
                         ]
         let relInfo = Map.lookup cpkgname meta >>= \pkgInfo -> Map.lookup cversion $ I.piVersions pkgInfo

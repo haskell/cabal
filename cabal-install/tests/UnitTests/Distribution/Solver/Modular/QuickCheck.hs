@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module UnitTests.Distribution.Solver.Modular.QuickCheck (tests) where
@@ -296,11 +297,11 @@ data Failure = BackjumpLimitReached | OtherFailure
 instance NFData Failure
 
 -- | Package name.
-newtype PN = PN {unPN :: String}
+newtype PN = PN {unPN :: Text}
   deriving (Eq, Ord, Show)
 
 instance Arbitrary PN where
-  arbitrary = PN <$> elements ("base" : [[pn] | pn <- ['A' .. 'G']])
+  arbitrary = PN . Text.pack <$> elements ("base" : [[pn] | pn <- ['A' .. 'G']])
 
 -- | Package version.
 newtype PV = PV {unPV :: Int}
@@ -395,7 +396,7 @@ arbitraryExInst pn v pkgs = do
   pkgHash <- vectorOf 10 $ elements $ ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9']
   numDeps <- min 3 <$> arbitrary
   deps <- randomSubset numDeps pkgs
-  return $ ExInst (unPN pn) (unPV v) pkgHash (map exInstHash deps)
+  return $ ExInst (unPN pn) (unPV v) (Text.pack pkgHash) (map exInstHash deps)
 
 arbitraryComponentDeps :: PN -> TestDb -> Gen (ComponentDeps Dependencies)
 arbitraryComponentDeps _ (TestDb []) = return $ CD.fromLibraryDeps (dependencies [])
@@ -413,7 +414,7 @@ arbitraryComponentDeps pn db = do
         CD.fromLibraryDeps (dependencies []) <> cds
   where
     isValid :: Component -> Bool
-    isValid (ComponentSubLib name) = name /= mkUnqualComponentName (unPN pn)
+    isValid (ComponentSubLib name) = name /= mkUnqualComponentNameText (unPN pn)
     isValid _ = True
 
     dedupComponentNames =
@@ -469,7 +470,7 @@ arbitraryExDep db@(TestDb pkgs) level =
           <*> arbitraryDeps db
       other =
         -- Package checks require dependencies on "base" to have bounds.
-        let notBase = filter ((/= PN "base") . getName) pkgs
+        let notBase = filter ((/= PN (Text.pack "base")) . getName) pkgs
          in [ExAny . unPN <$> elements (map getName notBase) | not (null notBase)]
               ++ [
                    -- existing version
@@ -490,13 +491,13 @@ arbitraryDeps db =
     , (20, dependencies <$> smallListOf (arbitraryExDep db NonSetupDep))
     ]
 
-arbitraryFlagName :: Gen String
-arbitraryFlagName = (: []) <$> elements ['A' .. 'E']
+arbitraryFlagName :: Gen Text
+arbitraryFlagName = Text.singleton <$> elements ['A' .. 'E']
 
 arbitraryConstraint :: [(PN, PV)] -> Gen ExConstraint
 arbitraryConstraint pkgs = do
   (PN pn, v) <- elements pkgs
-  let anyQualifier = ScopeAnyQualifier (mkPackageName pn)
+  let anyQualifier = ScopeAnyQualifier (mkPackageNameST pn)
   oneof
     [ ExVersionConstraint anyQualifier <$> arbitraryVersionRange v
     , ExStanzaConstraint anyQualifier <$> sublistOf [TestStanzas, BenchStanzas]
@@ -560,7 +561,7 @@ instance Arbitrary Component where
 -- internal libraries.
 arbitraryUQN :: Gen UnqualComponentName
 arbitraryUQN =
-  mkUnqualComponentName . (\c -> "component-" ++ [c]) <$> elements "ABC"
+  mkUnqualComponentNameText . Text.snoc (Text.pack "component-") <$> elements "ABC"
 
 instance Arbitrary ExampleInstalled where
   arbitrary = error "arbitrary not implemented: ExampleInstalled"
@@ -584,7 +585,7 @@ instance Arbitrary ExampleDependency where
   arbitrary = error "arbitrary not implemented: ExampleDependency"
 
   shrink (ExAny _) = []
-  shrink (ExFix "base" _) = [] -- preserve bounds on base
+  shrink (ExFix (Text.unpack -> "base") _) = [] -- preserve bounds on base
   shrink (ExFix pn _) = [ExAny pn]
   shrink (ExFlagged flag th el) =
     depsExampleDependencies th

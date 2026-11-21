@@ -19,6 +19,7 @@ import Data.List (unzip4)
 import Data.Maybe (isJust, catMaybes)
 import Data.String (fromString)
 import Data.Function ((&))
+import qualified Data.Text as Text
 import Data.Time (NominalDiffTime, diffUTCTime, getCurrentTime)
 import qualified Data.Vector.Unboxed as V
 import Options.Applicative
@@ -39,7 +40,7 @@ import Text.Printf (printf)
 
 import qualified Data.Map.Strict as Map
 
-import Distribution.Package (PackageName, mkPackageName, unPackageName)
+import Distribution.Package (PackageName, mkPackageName, mkPackageNameST, unPackageName, unPackageNameST)
 import Distribution.Utils.Generic (ordNub)
 
 data Args = Args {
@@ -91,7 +92,7 @@ hackageBenchmarkMain = do
   let -- The maximum length of the heading and package names.
       nameColumnWidth :: Int
       nameColumnWidth =
-          maximum $ map length $ "package" : map unPackageName pkgs
+          maximum $ map Text.length $ Text.pack "package" : map unPackageNameST pkgs
 
   -- create cabal runners
   runCabal1 <- runCabal argTimeoutSeconds CabalUnderTest1 argCabal1 argCabal1Flags
@@ -109,7 +110,7 @@ hackageBenchmarkMain = do
     let printTrial msgType result1 result2 time1 time2 =
             putStrLn $
             printf "%-16s %-*s %-14s %-14s %10.3fs %10.3fs"
-                   msgType nameColumnWidth (unPackageName pkg)
+                   msgType nameColumnWidth (unPackageNameST pkg)
                    (show result1) (show result2)
                    (diffTimeToDouble time1) (diffTimeToDouble time2)
 
@@ -122,7 +123,7 @@ hackageBenchmarkMain = do
          if argPrintTrials
          then printTrial "trial (skipping)" r1 r2 t1 t2
          else putStrLn $ printf "%-*s (first run times were too similar)"
-                                nameColumnWidth (unPackageName pkg)
+                                nameColumnWidth (unPackageNameST pkg)
       return Nothing
     else do
       when argPrintTrials $ printTrial "trial" r1 r2 t1 t2
@@ -148,11 +149,11 @@ hackageBenchmarkMain = do
           || isSignificantTimeDifference argPValue ts1 ts2
       then putStrLn $
            printf "%-*s %-14s %-14s %10.3fs %10.3fs %10.3fs %10.3fs %10.3f"
-                  nameColumnWidth (unPackageName pkg)
+                  nameColumnWidth (unPackageNameST pkg)
                   (show result1) (show result2) mean1 mean2 stddev1 stddev2 speedup
       else when (argPrintTrials || argPrintSkippedPackages) $
            putStrLn $
-           printf "%-*s (not significant, speedup = %10.3f)" nameColumnWidth (unPackageName pkg) speedup
+           printf "%-*s (not significant, speedup = %10.3f)" nameColumnWidth (unPackageNameST pkg) speedup
 
       -- return speedup value
       return (Just speedup)
@@ -391,7 +392,7 @@ argParser = do
         <> value []
         <> metavar "FLAGS"
         <> help "Extra flags for the second cabal executable")
-  argPackages <- option (map mkPackageName . words <$> str)
+  argPackages <- option (map mkPackageNameST . Text.words <$> str)
          ( long "packages"
         <> value []
         <> metavar "PACKAGES"

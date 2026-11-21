@@ -126,6 +126,8 @@ import Distribution.Simple.Setup.Config
 import Distribution.System
 
 import qualified Data.Map as Map
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.Compat.Graph (Graph)
 import qualified Distribution.Compat.Graph as Graph
 
@@ -344,12 +346,12 @@ localUnitId lbi =
 -- | Extract the compatibility package key from the public library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake package key based
 -- on the package ID.
-localCompatPackageKey :: LocalBuildInfo -> String
+localCompatPackageKey :: LocalBuildInfo -> Text
 localCompatPackageKey lbi =
   case componentNameCLBIs lbi (CLibName LMainLibName) of
     [LibComponentLocalBuildInfo{componentCompatPackageKey = pk}] ->
       pk
-    _ -> prettyShow (localPackage lbi)
+    _ -> Text.pack (prettyShow (localPackage lbi))
 
 -- | Convenience function to generate a default 'TargetInfo' from a
 -- 'ComponentLocalBuildInfo'.  The idea is to call this once, and then

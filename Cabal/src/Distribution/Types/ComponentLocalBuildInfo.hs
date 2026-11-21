@@ -21,6 +21,7 @@ import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnitId
 
+import Data.Text (Text)
 import qualified Distribution.InstalledPackageInfo as Installed
 
 -- | The first five fields are common across all algebraic variants.
@@ -60,7 +61,7 @@ data ComponentLocalBuildInfo
       -- coincide with 'componentPackageDeps' because it ALSO records
       -- 'build-tool' dependencies on executables.  Maybe one day
       -- @cabal-install@ will also handle these correctly too!
-      , componentCompatPackageKey :: String
+      , componentCompatPackageKey :: Text
       -- ^ Compatibility "package key" that we pass to older versions of GHC.
       , componentCompatPackageName :: MungedPackageName
       -- ^ Compatibility "package name" that we register this component as.
@@ -127,7 +128,7 @@ maybeComponentInstantiatedWith
   LibComponentLocalBuildInfo{componentInstantiatedWith = insts} = Just insts
 maybeComponentInstantiatedWith _ = Nothing
 
-maybeComponentCompatPackageKey :: ComponentLocalBuildInfo -> Maybe String
+maybeComponentCompatPackageKey :: ComponentLocalBuildInfo -> Maybe Text
 maybeComponentCompatPackageKey
   LibComponentLocalBuildInfo{componentCompatPackageKey = key} = Just key
 maybeComponentCompatPackageKey _ = Nothing

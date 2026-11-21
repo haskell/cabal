@@ -68,6 +68,7 @@ executable gen-cabal-macros
     , Cabal
     , syb               ^>=0.7.1
     , template-haskell
+    , text
     , zinza             ^>=0.2
 
 executable gen-paths-module

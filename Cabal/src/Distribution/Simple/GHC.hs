@@ -973,7 +973,7 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
   when (has_code && hasLib) $ do
     -- Bytecode libraries are installed in bytecodelibdir and are copied
     -- without stripping; see doc/internal/bytecode-libraries.md.
-    whenBytecodeLib $ installOrdinaryNoStrip builtDir bytecodeTargetDir bytecodeLibName
+    whenBytecodeLib $ installOrdinaryNoStrip builtDir bytecodeTargetDir (Text.unpack bytecodeLibName)
 
     forM_ libWays $ \case
       StaticWay -> do
@@ -981,21 +981,21 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
           [ installOrdinary
             builtDir
             targetDir
-            (mkGenericStaticLibName (Text.unpack $ l <> f))
+            (Text.unpack (mkGenericStaticLibName (l <> f)))
           | l <-
-              Text.pack (getHSLibraryName (componentUnitId clbi))
+              getHSLibraryName (componentUnitId clbi)
                 : extraBundledLibs (libBuildInfo lib)
           , f <- mempty : extraLibFlavours (libBuildInfo lib)
           ]
-        whenGHCi $ installOrdinary builtDir targetDir ghciLibName
+        whenGHCi $ installOrdinary builtDir targetDir (Text.unpack ghciLibName)
       ProfWay -> do
-        installOrdinary builtDir targetDir profileLibName
-        whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
+        installOrdinary builtDir targetDir (Text.unpack profileLibName)
+        whenGHCi $ installOrdinary builtDir targetDir (Text.unpack ghciProfLibName)
       ProfDynWay -> do
         installShared
           builtDir
           dynlibTargetDir
-          (mkProfSharedLibName platform compiler_id uid)
+          (Text.unpack (mkProfSharedLibName platform compiler_id uid))
       DynWay -> do
         if
             -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
@@ -1005,8 +1005,8 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
                   [ installShared
                     builtDir
                     dynlibTargetDir
-                    (mkGenericSharedLibName platform compiler_id (Text.unpack $ l <> f))
-                  | l <- Text.pack (getHSLibraryName uid) : extraBundledLibs (libBuildInfo lib)
+                    (Text.unpack (mkGenericSharedLibName platform compiler_id (l <> f)))
+                  | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
                   , f <- mempty : extraDynLibFlavours (libBuildInfo lib)
                   ]
             | otherwise -> do
@@ -1014,10 +1014,12 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
                   [ installShared
                     builtDir
                     dynlibTargetDir
-                    ( mkGenericSharedLibName
-                        platform
-                        compiler_id
-                        (getHSLibraryName uid ++ Text.unpack f)
+                    ( Text.unpack
+                        ( mkGenericSharedLibName
+                            platform
+                            compiler_id
+                            (getHSLibraryName uid <> f)
+                        )
                     )
                   | f <- mempty : extraDynLibFlavours (libBuildInfo lib)
                   ]
@@ -1028,9 +1030,9 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
                           mkGenericSharedBundledLibName
                             platform
                             compiler_id
-                            (Text.unpack $ l <> f)
+                            (l <> f)
                     forM_ files $ \file ->
-                      when (l' `isPrefixOf` file) $ do
+                      when (l' `Text.isPrefixOf` Text.pack file) $ do
                         isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
                         when isFile $ do
                           installShared

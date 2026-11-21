@@ -19,6 +19,8 @@ module Distribution.Solver.Modular.Flag
     ) where
 
 import Data.Map as M
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Prelude hiding (pi)
 
 import qualified Distribution.PackageDescription as P -- from Cabal
@@ -37,11 +39,11 @@ type Flag = P.FlagName
 -- | Stanza identifier.
 type Stanza = OptionalStanza
 
-unFlag :: Flag -> String
+unFlag :: Flag -> Text
 unFlag = P.unFlagName
 
-mkFlag :: String -> Flag
-mkFlag = P.mkFlagName
+mkFlag :: Text -> Flag
+mkFlag = P.mkFlagNameText
 
 -- | Flag info. Default value, whether the flag is manual, and
 -- whether the flag is weak. Manual flags can only be set explicitly.
@@ -88,20 +90,20 @@ showQSNBool :: QSN -> Bool -> String
 showQSNBool (SN qpn s) b = showQPN qpn ++ ":" ++ showSBool s b
 
 showFBool :: FN qpn -> Bool -> String
-showFBool (FN _ f) v = P.showFlagValue (f, v)
+showFBool (FN _ f) v = Text.unpack (P.showFlagValue (f, v))
 
 -- | String representation of a flag-value pair.
-showFlagValue :: P.FlagName -> FlagValue -> String
-showFlagValue f FlagTrue  = '+' : unFlag f
-showFlagValue f FlagFalse = '-' : unFlag f
-showFlagValue f FlagBoth  = "+/-" ++ unFlag f
+showFlagValue :: P.FlagName -> FlagValue -> Text
+showFlagValue f FlagTrue  = Text.cons '+' (unFlag f)
+showFlagValue f FlagFalse = Text.cons '-' (unFlag f)
+showFlagValue f FlagBoth  = Text.pack "+/-" <> unFlag f
 
 showSBool :: Stanza -> Bool -> String
 showSBool s True  = "*" ++ showStanza s
 showSBool s False = "!" ++ showStanza s
 
 showQFN :: QFN -> String
-showQFN (FN qpn f) = showQPN qpn ++ ":" ++ unFlag f
+showQFN (FN qpn f) = showQPN qpn ++ ":" ++ Text.unpack (unFlag f)
 
 showQSN :: QSN -> String
 showQSN (SN qpn s) = showQPN qpn ++ ":" ++ showStanza s

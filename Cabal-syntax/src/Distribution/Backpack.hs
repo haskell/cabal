@@ -47,6 +47,7 @@ import Distribution.Utils.Base62
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 -----------------------------------------------------------------------
 -- OpenUnitId
@@ -142,8 +143,8 @@ mkOpenUnitId uid cid insts =
 mkDefUnitId :: ComponentId -> Map ModuleName Module -> DefUnitId
 mkDefUnitId cid insts =
   unsafeMkDefUnitId
-    ( mkUnitId
-        (unComponentId cid ++ maybe "" ("+" ++) (hashModuleSubst insts))
+    ( mkUnitIdText
+        (unComponentId cid <> maybe mempty (Text.cons '+' . Text.pack) (hashModuleSubst insts))
     )
 
 -- impose invariant!

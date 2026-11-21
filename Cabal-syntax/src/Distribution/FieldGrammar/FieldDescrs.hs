@@ -108,12 +108,12 @@ instance FieldGrammar ParsecPretty FieldDescrs where
 
   freeTextField fn l = singletonF fn f g
     where
-      f s = maybe mempty (showFreeText . T.unpack) (aview l s)
+      f s = maybe mempty showFreeText (aview l s)
       g s = cloneLens l (const (Just . T.pack <$> parsecFreeText)) s
 
   freeTextFieldDef fn l = singletonF fn f g
     where
-      f s = showFreeText (T.unpack (aview l s))
+      f s = showFreeText (aview l s)
       g s = cloneLens l (const (T.pack <$> parsecFreeText)) s
 
   monoidalFieldAla

@@ -25,6 +25,9 @@ import Distribution.Pretty
   ( prettyShow
   )
 
+import Data.Text (Text)
+import qualified Data.Text as Text
+
 -- | This method computes a default, "good enough" 'ComponentId'
 -- for a package.  The intent is that cabal-install (or the user) will
 -- specify a more detailed IPID via the @--ipid@ flag if necessary.
@@ -73,11 +76,11 @@ computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
    in case mb_cid of
         Flag cid -> cid
         NoFlag ->
-          mkComponentId $
-            actual_base
-              ++ ( case componentNameString cname of
-                    Nothing -> ""
-                    Just s -> "-" ++ unUnqualComponentName s
+          mkComponentIdText $
+            Text.pack actual_base
+              <> ( case componentNameString cname of
+                    Nothing -> mempty
+                    Just s -> Text.cons '-' (unUnqualComponentNameST s)
                  )
 
 -- | In GHC 8.0, the string we pass to GHC to use for symbol
@@ -131,24 +134,25 @@ computeCompatPackageKey
   -> MungedPackageName
   -> Version
   -> UnitId
-  -> String
+  -> Text
 computeCompatPackageKey comp pkg_name pkg_version uid
   | not (packageKeySupported comp || unitIdSupported comp) =
-      prettyShow pkg_name ++ "-" ++ prettyShow pkg_version
+      Text.pack $ prettyShow pkg_name ++ "-" ++ prettyShow pkg_version
   | not (unifiedIPIDRequired comp) =
       let str = unUnitId uid -- assume no Backpack support
+          str' = Text.unpack str
           mb_verbatim_key =
-            case simpleParsec str :: Maybe PackageId of
+            case simpleParsec str' :: Maybe PackageId of
               -- Something like 'foo-0.1', use it verbatim.
               -- (NB: hash tags look like tags, so they are parsed,
               -- so the extra equality check tests if a tag was dropped.)
-              Just pid0 | prettyShow pid0 == str -> Just str
+              Just pid0 | prettyShow pid0 == str' -> Just str
               _ -> Nothing
           mb_truncated_key =
-            let cand = reverse (takeWhile isAlphaNum (reverse str))
-             in if length cand == 22 && all isAlphaNum cand
+            let cand = Text.takeWhileEnd isAlphaNum str
+             in if Text.length cand == 22
                   then Just cand
                   else Nothing
-          rehashed_key = hashToBase62 str
+          rehashed_key = Text.pack $ hashToBase62 str'
        in fromMaybe rehashed_key (mb_verbatim_key `mplus` mb_truncated_key)
-  | otherwise = prettyShow uid
+  | otherwise = Text.pack $ prettyShow uid

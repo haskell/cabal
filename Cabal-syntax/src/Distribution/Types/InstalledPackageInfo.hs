@@ -80,7 +80,7 @@ data InstalledPackageInfo = InstalledPackageInfo
   , extraLibrariesStatic :: [Text]
   , extraGHCiLibraries :: [Text] -- overrides extraLibraries for GHCi
   , includeDirs :: [FilePath]
-  , includes :: [Text]
+  , includes :: [FilePath]
   , -- INVARIANT: if the package is definite, UnitId is NOT
     -- a ComponentId of an indefinite package
     depends :: [UnitId]

@@ -36,6 +36,7 @@ library
     , filepath
     , optparse-applicative
     , process
+    , text
     , time
     , statistics >= 0.14 && < 0.17
     , vector

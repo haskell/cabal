@@ -42,6 +42,7 @@ import Distribution.Client.Compat.Prelude hiding (getLine, head, last, putStr, p
 import Prelude ()
 
 import qualified Data.List.NonEmpty as NEL
+import qualified Data.Text as Text
 
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Client.Init.Defaults
@@ -49,7 +50,7 @@ import Distribution.Client.Init.FlagExtractors
 import Distribution.Client.Init.NonInteractive.Heuristics
 import Distribution.Client.Init.Utils
 import Distribution.Client.Types (SourcePackageDb (..))
-import Distribution.ModuleName (ModuleName, components)
+import Distribution.ModuleName (ModuleName, componentsText)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Setup (fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
@@ -398,7 +399,7 @@ libOtherModulesHeuristics :: Interactive m => InitFlags -> m [ModuleName]
 libOtherModulesHeuristics flags = case otherModules flags of
   Flag x -> return x
   NoFlag -> do
-    let otherCandidates = ["Internal", "Utils"]
+    let otherCandidates = map Text.pack ["Internal", "Utils"]
         srcDir = case sourceDirs flags of
           Flag x -> fromMaybe defaultSourceDir $ safeHead x
           NoFlag -> defaultSourceDir
@@ -412,7 +413,7 @@ libOtherModulesHeuristics flags = case otherModules flags of
     if exists
       then do
         otherModules' <- filter isHaskell <$> listFilesRecursive libDir
-        filter (maybe False (`elem` otherCandidates) . safeLast . components)
+        filter (maybe False (`elem` otherCandidates) . safeLast . componentsText)
           . catMaybes
           <$> traverse retrieveModuleName otherModules'
       else return []

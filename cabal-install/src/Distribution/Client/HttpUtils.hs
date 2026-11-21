@@ -119,6 +119,8 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS8
 import qualified Data.Char as Char
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.Client.Errors
 import qualified Distribution.Compat.CharParsing as P
 
@@ -276,7 +278,7 @@ requiresHttpsErrorMessage =
     ++ "support are "
     ++ intercalate
       ", "
-      [name | (name, _, True, _) <- supportedTransports]
+      [Text.unpack name | (name, _, True, _) <- supportedTransports]
     ++ ". One of these will be selected automatically if the corresponding "
     ++ "external program is available, or one can be selected specifically "
     ++ "with the global flag --http-transport="
@@ -372,7 +374,7 @@ noPostYet
 noPostYet verbosity _ _ _ = dieWithException verbosity NoPostYet
 
 supportedTransports
-  :: [ ( String
+  :: [ ( Text
        , Maybe Program
        , Bool
        , ProgramDb -> Maybe HttpTransport
@@ -380,32 +382,32 @@ supportedTransports
      ]
 supportedTransports =
   [ let prog = simpleProgram "curl"
-     in ( "curl"
+     in ( Text.pack "curl"
         , Just prog
         , True
         , \db -> curlTransport <$> lookupProgram prog db
         )
   , let prog = simpleProgram "wget"
-     in ( "wget"
+     in ( Text.pack "wget"
         , Just prog
         , True
         , \db -> wgetTransport <$> lookupProgram prog db
         )
   , let prog = simpleProgram "powershell"
-     in ( "powershell"
+     in ( Text.pack "powershell"
         , Just prog
         , True
         , \db -> powershellTransport <$> lookupProgram prog db
         )
   ,
-    ( "plain-http"
+    ( Text.pack "plain-http"
     , Nothing
     , False
     , \_ -> Just plainHttpTransport
     )
   ]
 
-configureTransport :: Verbosity -> [FilePath] -> Maybe String -> IO HttpTransport
+configureTransport :: Verbosity -> [FilePath] -> Maybe Text -> IO HttpTransport
 configureTransport verbosity extraPath (Just name) =
   -- the user specifically selected a transport by name so we'll try and
   -- configure that one
@@ -441,8 +443,8 @@ configureTransport verbosity extraPath Nothing = do
         , transport <- maybeToList (mkTrans progdb)
         ]
   let (name, transport) =
-        fromMaybe ("plain-http", plainHttpTransport) (safeHead availableTransports)
-  debug verbosity $ "Selected http transport implementation: " ++ name
+        fromMaybe (Text.pack "plain-http", plainHttpTransport) (safeHead availableTransports)
+  debug verbosity $ "Selected http transport implementation: " ++ Text.unpack name
 
   return transport{transportManuallySelected = False}
 

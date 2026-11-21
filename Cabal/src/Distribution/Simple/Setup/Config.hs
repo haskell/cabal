@@ -68,6 +68,7 @@ import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
 
+import qualified Data.Text as Text
 import qualified Text.PrettyPrint as Disp
 
 -- ------------------------------------------------------------
@@ -693,7 +694,7 @@ configureOptions showOrParseArgs =
           ( reqArg
               "FLAGS"
               (parsecToReadE (\err -> "Invalid flag assignment: " ++ err) legacyParsecFlagAssignment)
-              legacyShowFlagAssignment'
+              (map Text.unpack . legacyShowFlagAssignment')
           )
        , option
           ""
@@ -918,7 +919,7 @@ parsecPromisedComponent = do
     _ <- P.char ':'
     ucn <- parsec
     return $
-      if unUnqualComponentName ucn == unPackageName (pkgName pn)
+      if unUnqualComponentNameST ucn == unPackageNameST (pkgName pn)
         then LMainLibName
         else LSubLibName ucn
   _ <- P.char '='
@@ -940,7 +941,7 @@ parsecGivenComponent = do
     _ <- P.char ':'
     ucn <- parsec
     return $
-      if unUnqualComponentName ucn == unPackageName pn
+      if unUnqualComponentNameST ucn == unPackageNameST pn
         then LMainLibName
         else LSubLibName ucn
   _ <- P.char '='
