@@ -2719,7 +2719,6 @@ testConfigOptionComments = do
   "  -- runghc-location" `assertHasCommentLine` "runghc-location"
   "  -- strip-location" `assertHasCommentLine` "strip-location"
   "  -- tar-location" `assertHasCommentLine` "tar-location"
-  "  -- uhc-location" `assertHasCommentLine` "uhc-location"
 
   "  -- alex-options" `assertHasCommentLine` "alex-options"
   "  -- ar-options" `assertHasCommentLine` "ar-options"
@@ -2740,7 +2739,6 @@ testConfigOptionComments = do
   "  -- runghc-options" `assertHasCommentLine` "runghc-options"
   "  -- strip-options" `assertHasCommentLine` "strip-options"
   "  -- tar-options" `assertHasCommentLine` "tar-options"
-  "  -- uhc-options" `assertHasCommentLine` "uhc-options"
 
 testIgnoreProjectFlag :: Assertion
 testIgnoreProjectFlag = do
