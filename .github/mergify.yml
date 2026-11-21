@@ -132,6 +132,18 @@ pull_request_rules:
       - '#changes-requested-reviews-by=0'
       - '-label~=^blocked:'
 
+  # label PRs with review threads nobody has resolved yet
+  - actions:
+      label:
+        toggle:
+          - ':thread: loose review threads'
+    name: Flag PRs with unresolved review threads
+    conditions:
+      - base=master
+      - -draft
+      - -closed
+      - '#review-threads-unresolved>0'
+
   # rebase+merge strategy
   - actions:
       queue:

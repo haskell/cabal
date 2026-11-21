@@ -465,6 +465,20 @@ If your pull request consists of several commits, consider using `squash+merge
 me` instead of `merge me`: the Mergify bot will squash all the commits into one
 and concatenate the commit messages of the commits before merging.
 
+The Mergify bot also sets three status labels on open pull requests and removes
+them when they no longer apply:
+
+* "👻 haunting the review queue", marks a stale pull request that has had no
+  reviews. These pull requests are [where help is most needed][label-ghost].
+* "1️⃣ more approval needed", marks a pull request with one of the two required
+  approvals and no changes requested. These are [the quickest to get over the
+  line][label-one].
+* "🧵 loose review threads", marks a pull request with review threads that are
+  not yet resolved.
+
+[label-ghost]: https://github.com/haskell/cabal/pulls?q=is%3Apr+is%3Aopen+label%3A%22%3Aghost%3A+haunting+the+review+queue%22
+[label-one]: https://github.com/haskell/cabal/pulls?q=is%3Apr+is%3Aopen+label%3A%22%3Aone%3A+more+approval+needed%22
+
 
 ### Pull Requests & Issues
 
