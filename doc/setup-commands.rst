@@ -1,7 +1,7 @@
 .. _setup-commands:
 
-Low-level Setup.hs Reference
-============================
+Low-level Setup Scripts
+=======================
 
 .. highlight:: console
 

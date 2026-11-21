@@ -1,7 +1,7 @@
 .. _cabal-project-file:
 
-Project Description — cabal.project File
-========================================
+Project Description
+===================
 
 ``cabal.project`` files support a variety of options which configure the
 details of your build. The general syntax of a ``cabal.project`` file is
