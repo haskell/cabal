@@ -21,3 +21,14 @@ library
   exposed-modules:
     Test.QuickCheck.GenericArbitrary
     Test.QuickCheck.Instances.Cabal
+
+test-suite spec-version-check
+  type: exitcode-stdio-1.0
+  default-language: GHC2021
+  hs-source-dirs: tests
+  main-is: SpecVersion.hs
+  autogen-modules: Paths_Cabal_QuickCheck
+  other-modules: Paths_Cabal_QuickCheck
+  build-depends:
+    , base         >= 4.17 && < 5
+    , Cabal-syntax ^>= 3.19

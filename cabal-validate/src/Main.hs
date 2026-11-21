@@ -258,6 +258,18 @@ doctest opts = do
     , "Cabal/Language"
     ]
 
+-- | Packages whose @spec-version-check@ test-suite should be run to ensure
+-- @cabalSpecLatest@ is not behind any released package version.
+specVersionCheckPackages :: [String]
+specVersionCheckPackages =
+  [ "Cabal"
+  , "Cabal-syntax"
+  , "Cabal-hooks"
+  , "Cabal-described"
+  , "Cabal-QuickCheck"
+  , "Cabal-tree-diff"
+  ]
+
 -- | Run tests for the @Cabal@ library, and also `runHackageTests` if those are
 -- enabled.
 libTests :: Opts -> IO ()
@@ -279,6 +291,9 @@ libTests opts = do
   runCabalTests "parser-tests"
   runCabalTests "rpmvercmp"
   runCabalTests "no-thunks-test"
+
+  forM_ specVersionCheckPackages $ \pkg ->
+    timedCabalBin opts pkg "test:spec-version-check" []
 
   runHackageTests opts
 
@@ -388,6 +403,8 @@ cliTests opts = do
         ++ tastyArgs opts
     )
 
+  timedCabalBin opts "cabal-install" "test:spec-version-check" []
+
 -- | Run @cabal-testsuite@ with the @cabal-install@ executable.
 cliSuite :: Opts -> IO ()
 cliSuite opts = do
@@ -420,6 +437,8 @@ solverTests opts = do
     "cabal-install-solver"
     command
     []
+
+  timedCabalBin opts "cabal-install-solver" "test:spec-version-check" []
 
 -- | Run the @solver-benchmarks@ unit tests.
 solverBenchmarksTests :: Opts -> IO ()
