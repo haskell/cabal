@@ -513,52 +513,54 @@ ppHsc2hs bi lbi clbi =
       where
         ldflags =
           map ("--lflag=" ++) $
-            ordNub $
-              concat
-                [ programDefaultArgs gccProg ++ programOverrideArgs gccProg
-                , osxFrameworkDirs
-                , [ arg
-                  | isOSX
-                  , opt <- map getSymbolicPath (PD.frameworks bi) ++ concatMap (map T.unpack . Installed.frameworks) pkgs
-                  , arg <- ["-framework", opt]
-                  ]
-                , -- Note that on ELF systems, wherever we use -L, we must also use -R
-                  -- because presumably that -L dir is not on the normal path for the
-                  -- system's dynamic linker. This is needed because hsc2hs works by
-                  -- compiling a C program and then running it.
-
-                  -- Options from the current package:
-                  [ "-L" ++ u opt
-                  | opt <-
-                      if withFullyStaticExe lbi
-                        then PD.extraLibDirsStatic bi
-                        else PD.extraLibDirs bi
-                  ]
-                , [ "-Wl,-R," ++ u opt
-                  | isELF
-                  , opt <-
-                      if withFullyStaticExe lbi
-                        then PD.extraLibDirsStatic bi
-                        else PD.extraLibDirs bi
-                  ]
-                , ["-l" ++ T.unpack opt | opt <- PD.extraLibs bi]
-                , map T.unpack (PD.ldOptions bi)
-                , -- Options from dependent packages
-                  [ opt
-                  | pkg <- pkgs
-                  , opt <-
-                      ["-L" ++ opt | opt <- Installed.libraryDirs pkg]
-                        ++ [ "-Wl,-R," ++ opt | isELF, opt <- Installed.libraryDirs pkg
-                           ]
-                        ++ [ "-l" ++ T.unpack opt
-                           | opt <-
-                              if withFullyStaticExe lbi
-                                then Installed.extraLibrariesStatic pkg
-                                else Installed.extraLibraries pkg
-                           ]
-                        ++ map T.unpack (Installed.ldOptions pkg)
-                  ]
+            concat
+              [ osxFrameworkDirs
+              , [ arg
+                | isOSX
+                , opt <- ordNub $ map getSymbolicPath (PD.frameworks bi) ++ concatMap (map T.unpack . Installed.frameworks) pkgs
+                , arg <- ["-framework", opt]
                 ]
+              , ordNub $
+                  concat
+                    [ programDefaultArgs gccProg ++ programOverrideArgs gccProg
+                    , -- Note that on ELF systems, wherever we use -L, we must also use -R
+                      -- because presumably that -L dir is not on the normal path for the
+                      -- system's dynamic linker. This is needed because hsc2hs works by
+                      -- compiling a C program and then running it.
+
+                      -- Options from the current package:
+                      [ "-L" ++ u opt
+                      | opt <-
+                          if withFullyStaticExe lbi
+                            then PD.extraLibDirsStatic bi
+                            else PD.extraLibDirs bi
+                      ]
+                    , [ "-Wl,-R," ++ u opt
+                      | isELF
+                      , opt <-
+                          if withFullyStaticExe lbi
+                            then PD.extraLibDirsStatic bi
+                            else PD.extraLibDirs bi
+                      ]
+                    , ["-l" ++ T.unpack opt | opt <- PD.extraLibs bi]
+                    , map T.unpack (PD.ldOptions bi)
+                    , -- Options from dependent packages
+                      [ opt
+                      | pkg <- pkgs
+                      , opt <-
+                          ["-L" ++ opt | opt <- Installed.libraryDirs pkg]
+                            ++ [ "-Wl,-R," ++ opt | isELF, opt <- Installed.libraryDirs pkg
+                               ]
+                            ++ [ "-l" ++ T.unpack opt
+                               | opt <-
+                                  if withFullyStaticExe lbi
+                                    then Installed.extraLibrariesStatic pkg
+                                    else Installed.extraLibraries pkg
+                               ]
+                            ++ map T.unpack (Installed.ldOptions pkg)
+                      ]
+                    ]
+              ]
 
         cflags =
           map ("--cflag=" ++) $
@@ -594,10 +596,11 @@ ppHsc2hs bi lbi clbi =
                 ]
 
         osxFrameworkDirs =
-          [ "-F" ++ opt
-          | isOSX
-          , opt <- ordNub (concatMap Installed.frameworkDirs pkgs)
-          ]
+          ordNub
+            [ "-F" ++ opt
+            | isOSX
+            , opt <- ordNub (concatMap Installed.frameworkDirs pkgs)
+            ]
 
         -- hsc2hs flag parsing was wrong
         -- (see -- https://github.com/haskell/hsc2hs/issues/35)
