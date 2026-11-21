@@ -1,0 +1,12 @@
+# cabal v2-build
+Error: cabal: invalid argument to option `--index-state': index-state must be
+a unix-timestamps (e.g. '@1474732068'), a ISO8601 UTC timestamp (e.g.
+'2016-09-24T17:47:48Z'), or 'HEAD'
+# cabal v2-build
+Error: cabal: invalid argument to option `--index-state': index-state must be
+a unix-timestamps (e.g. '@1474732068'), a ISO8601 UTC timestamp (e.g.
+'2016-09-24T17:47:48Z'), or 'HEAD'
+# cabal v2-build
+Error: cabal: invalid argument to option `--index-state': index-state must be
+a unix-timestamps (e.g. '@1474732068'), a ISO8601 UTC timestamp (e.g.
+'2016-09-24T17:47:48Z'), or 'HEAD'
