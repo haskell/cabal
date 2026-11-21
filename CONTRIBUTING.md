@@ -600,7 +600,7 @@ add an entry in `doc/file-format-changelog.rst`.
 ### Is my change `significant`?
 
 Use your best judgement and if unsure ask the
-[maintainers](https://github.com/haskell/cabal-CABAL-MAINTAINERS.md).
+[maintainers](MAINTAINERS.md).
 If your PR fixes a specific ticket, how busy was the discussion there?
 A new command or option most likely warrants a `significance: significant`
 tag, as do command line changes that disrupt the workflow of many users or
