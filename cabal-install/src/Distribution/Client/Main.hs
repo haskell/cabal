@@ -197,12 +197,15 @@ import Distribution.Simple.Command
   , CommandSpec (..)
   , CommandType (..)
   , CommandUI (..)
+  , ShowOrParseArgs (..)
   , commandAddAction
   , commandFromSpec
+  , commandOptionsUsageInfo
   , commandShowOptions
   , commandsRunWithFallback
   , defaultCommandFallback
   , hiddenCommand
+  , optionName
   )
 import Distribution.Simple.Compiler (PackageDBStack, interpretPackageDBStack)
 import Distribution.Simple.Configure
@@ -265,6 +268,7 @@ import Distribution.Version
   )
 
 import Control.Exception (AssertionFailed, assert, try)
+import Data.List (isInfixOf)
 import Data.Monoid (Any (..))
 import Distribution.Client.Types
 import System.Directory
@@ -323,6 +327,53 @@ main args = do
   let (args0, args1) = break (== "--") args
 
   mainWorker . (++ args1) =<< expandResponse args0
+
+-- | The section listing the global flags, appended to the help text of
+-- every v2 command, so that global options such as @--store-dir@ can be
+-- discovered there (see issue #7587).
+globalFlagsSectionFor :: String -> String
+globalFlagsSectionFor commandHelpText =
+  "\n"
+    ++ commandOptionsUsageInfo
+      "Global flags (must be given before the COMMAND):"
+      (filter applicable (commandOptions (globalCommand []) ShowArgs))
+  where
+    applicable opt =
+      not isVersionFlag
+        && not (renderedFlag `isInfixOf` commandHelpText)
+      where
+        isVersionFlag = "version" `isSuffixOf` optionName opt
+        renderedFlag = "--" ++ optionName opt
+
+-- | The name of the command the help text belongs to, extracted from the
+-- @Flags for COMMAND:@ header that 'commandHelp' renders. 'Nothing' for
+-- the help of the @cabal@ program itself, which lists the global flags
+-- natively.
+commandNameFromHelp :: String -> Maybe String
+commandNameFromHelp txt =
+  listToMaybe
+    [ name
+    | l <- lines txt
+    , "Flags for " `isPrefixOf` l
+    , (name, ':' : _) <- [span (/= ':') (drop (length flagsHeader) l)]
+    ]
+  where
+    flagsHeader = "Flags for "
+
+shouldSkipGlobalFlags :: String -> Bool
+shouldSkipGlobalFlags commandName =
+  commandName `elem` ["act-as-setup", "format", "man"]
+    || "v1-" `isPrefixOf` commandName
+
+-- | Append the global flags section to the given help text, unless the
+-- text is the help of the @cabal@ program itself.
+putStrWithGlobalFlagsSection :: String -> IO ()
+putStrWithGlobalFlagsSection txt =
+  case commandNameFromHelp txt of
+    Just commandName
+      | not (shouldSkipGlobalFlags commandName) ->
+          putStr (globalFlagsSectionFor txt)
+    _ -> pure ()
 
 -- | Check whether assertions are enabled and print a warning in that case.
 warnIfAssertionsAreEnabled :: IO ()
@@ -404,11 +455,17 @@ mainWorker args = do
 
     printCommandHelp help = do
       pname <- getProgName
-      putStr (help pname)
+      let txt = help pname
+      putStr txt
+      putStrWithGlobalFlagsSection txt
     printGlobalHelp help = do
       pname <- getProgName
       configFile <- defaultConfigFile
-      putStr (help pname)
+      let txt = help pname
+      putStr txt
+      -- `cabal help COMMAND` also lands here; it shows the command's help
+      -- text (plus the global flags section) followed by the epilogue.
+      putStrWithGlobalFlagsSection txt
       -- Andreas Abel, 2024-01-28: https://github.com/haskell/cabal/pull/9614
       -- See cabal-testsuite/PackageTests/Help/HelpPrintsConfigFile/
       -- Third-party tools may rely on the specific wording
