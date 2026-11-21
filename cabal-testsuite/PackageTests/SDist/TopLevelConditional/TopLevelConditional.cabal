@@ -1,0 +1,15 @@
+cabal-version: 3.18
+name: tlc
+version: 0.1
+
+data-files:
+    src/runtime/*.c
+if impl(ghc)
+    data-files:
+        lib/**/*.hs
+elif os(windows)
+    data-files:
+        docs/*.md
+else
+    extra-source-files:
+        changelog

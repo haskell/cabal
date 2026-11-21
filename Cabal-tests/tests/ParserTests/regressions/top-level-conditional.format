@@ -1,0 +1,11 @@
+top-level-conditional.cabal:17:1: Ignoring trailing fields after sections: "x-custom"
+cabal-version:      3.18
+name:               tlc
+version:            0.1
+data-files:
+    src/runtime/*.c
+    lib/**/*.hs
+
+data-dir:           lib
+extra-source-files: changelog
+extra-doc-files:    docs/*.md
