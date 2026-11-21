@@ -13,7 +13,9 @@ module Distribution.Client.CmdHaddock
   , selectComponentTarget
   ) where
 
-import Distribution.Client.Compat.Prelude
+import Data.Bifunctor (bimap, first)
+import qualified Data.Text as T
+import Distribution.Client.Compat.Prelude hiding (first)
 import System.Directory (makeAbsolute)
 import Prelude ()
 
@@ -195,8 +197,8 @@ haddockAction relFlags targetStrings globalFlags = do
   progs <-
     reconfigurePrograms
       verbosity
-      (haddockProgramPaths haddockFlags)
-      (haddockProgramArgs haddockFlags)
+      (map (first T.unpack) (haddockProgramPaths haddockFlags))
+      (map (bimap T.unpack (map T.unpack)) (haddockProgramArgs haddockFlags))
       -- we need to insert 'haddockProgram' before we reconfigure it,
       -- otherwise 'set
       . addKnownProgram haddockProgram

@@ -1,5 +1,6 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -45,6 +46,7 @@ module Distribution.Client.Config
   , postProcessRepo
   ) where
 
+import Data.Text (Text)
 import Distribution.Client.Compat.Prelude
 import Distribution.Compat.Environment
   ( getEnvironment
@@ -1887,18 +1889,18 @@ initFlagsFields =
       ]
 
 -- | Fields for the 'program-locations' section.
-withProgramsFields :: [FieldDescr [(String, FilePath)]]
+withProgramsFields :: [FieldDescr [(Text, FilePath)]]
 withProgramsFields =
   map viewAsFieldDescr $
     programDbPaths'
-      (++ "-location")
+      (<> "-location")
       defaultProgramDb
       ParseArgs
       id
       (++)
 
 -- | Fields for the 'program-default-options' section.
-withProgramOptionsFields :: [FieldDescr [(String, [String])]]
+withProgramOptionsFields :: [FieldDescr [(Text, [Text])]]
 withProgramOptionsFields =
   map viewAsFieldDescr $
     programDbOptions defaultProgramDb ParseArgs id (++)

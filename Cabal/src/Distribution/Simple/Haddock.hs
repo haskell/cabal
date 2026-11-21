@@ -83,10 +83,12 @@ import Distribution.Version
 
 import Data.Bool (bool)
 import Data.Either (lefts, rights)
+import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (isAbsolute, joinPath, normalise, splitDirectories)
-import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
+import System.IO (hClose, hSetEncoding, utf8)
 
 -- ------------------------------------------------------------------------------
 -- Types
@@ -98,7 +100,7 @@ data HaddockArgs = HaddockArgs
   -- ^ Path to the interface file, relative to argOutputDir, required.
   , argPackageName :: Flag PackageIdentifier
   -- ^ Package name, required.
-  , argComponentName :: Flag String
+  , argComponentName :: Flag Text
   -- ^ Optional name used to construct haddock's `--package-name` option for
   -- various components (tests suites, sublibriaries, etc).
   , argHideModules :: (All, [ModuleName.ModuleName])
@@ -113,26 +115,26 @@ data HaddockArgs = HaddockArgs
   -- ^ Generate quickjump index
   , argCssFile :: Flag FilePath
   -- ^ Optional custom CSS file.
-  , argContents :: Flag String
+  , argContents :: Flag FilePath
   -- ^ Optional URL to contents page.
   , argGenContents :: Flag Bool
   -- ^ Generate contents
-  , argIndex :: Flag String
+  , argIndex :: Flag FilePath
   -- ^ Optional URL to index page.
   , argGenIndex :: Flag Bool
   -- ^ Generate index
-  , argBaseUrl :: Flag String
+  , argBaseUrl :: Flag FilePath
   -- ^ Optional base url from which static files will be loaded.
   , argVerbose :: Any
   , argOutput :: Flag [Output]
   -- ^ HTML or Hoogle doc or both? Required.
-  , argInterfaces :: [(FilePath, Maybe String, Maybe String, Visibility)]
+  , argInterfaces :: [(FilePath, Maybe FilePath, Maybe FilePath, Visibility)]
   -- ^ [(Interface file, URL to the HTML docs and hyperlinked-source for links)].
   , argOutputDir :: Directory
   -- ^ Where to generate the documentation.
-  , argTitle :: Flag String
+  , argTitle :: Flag Text
   -- ^ Page title, required.
-  , argPrologue :: Flag String
+  , argPrologue :: Flag Text
   -- ^ Prologue text, required for 'haddock', ignored by 'haddocks'.
   , argPrologueFile :: Flag FilePath
   -- ^ Prologue file name, ignored by 'haddock', optional for 'haddocks'.
@@ -144,7 +146,7 @@ data HaddockArgs = HaddockArgs
   -- ^ Re-exported modules
   , argTargets :: [FilePath]
   -- ^ Modules to process.
-  , argResourcesDir :: Flag String
+  , argResourcesDir :: Flag FilePath
   -- ^ haddock's static \/ auxiliary files.
   , argUseUnicode :: Flag Bool
   -- ^ haddock's `--use-unicode` flag
@@ -160,7 +162,7 @@ newtype Directory = Dir {unDir' :: FilePath} deriving (Read, Show, Eq, Ord)
 unDir :: Directory -> SymbolicPath Pkg (Path.Dir Artifacts)
 unDir = makeSymbolicPath . normalise . unDir'
 
-type Template = String
+type Template = Text
 
 data Output = Html | Hoogle
   deriving (Eq)
@@ -605,7 +607,7 @@ fromFlags env flags =
           [] -> [Html]
           os -> os
     , argOutputDir = maybe mempty (Dir . getSymbolicPath) . flagToMaybe $ setupDistPref commonFlags
-    , argGhcOptions = mempty{ghcOptExtra = map T.pack ghcArgs}
+    , argGhcOptions = mempty{ghcOptExtra = ghcArgs}
     , argUseUnicode = haddockUseUnicode flags
     }
   where
@@ -634,18 +636,17 @@ fromPackageDescription _haddockTarget pkg_descr =
     , argOutputDir = Dir $ ("doc" :: String) </> "html"
     , argPrologue =
         Flag $
-          T.unpack $
-            if T.null desc
-              then synopsis pkg_descr
-              else desc
-    , argTitle = Flag $ showPkg <> subtitle
+          if T.null desc
+            then synopsis pkg_descr
+            else desc
+    , argTitle = Flag (T.pack showPkg <> subtitle)
     }
   where
     desc = description pkg_descr
     showPkg = prettyShow (packageId pkg_descr)
     subtitle
       | T.null (synopsis pkg_descr) = ""
-      | otherwise = ": " ++ T.unpack (synopsis pkg_descr)
+      | otherwise = ": " <> synopsis pkg_descr
 
 componentGhcOptions
   :: VerbosityLevel
@@ -778,8 +779,8 @@ fromLibrary verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget p
       args'' =
         args'
           { argHideModules = (mempty, otherModules (libBuildInfo lib))
-          , argTitle = Flag $ haddockPackageLibraryName pkg_descr lib
-          , argComponentName = toFlag (haddockPackageLibraryName' (pkgName (package pkg_descr)) (libName lib))
+          , argTitle = Flag $ T.pack (haddockPackageLibraryName pkg_descr lib)
+          , argComponentName = toFlag (T.pack (haddockPackageLibraryName' (pkgName (package pkg_descr)) (libName lib)))
           , -- we need to accommodate for `argOutputDir`, see `haddockLibraryPath`
             argBaseUrl = case (libName lib, argBaseUrl args') of
               (LSubLibName _, Flag url) -> Flag $ ".." </> url
@@ -829,7 +830,7 @@ fromExecutable verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarge
             }
   return
     args'
-      { argTitle = Flag $ unUnqualComponentName $ exeName exe
+      { argTitle = Flag $ T.pack (unUnqualComponentName $ exeName exe)
       , -- we need to accommodate `argOutputDir`
         argBaseUrl = case argBaseUrl args' of
           Flag url -> Flag $ ".." </> url
@@ -878,8 +879,12 @@ fromTest verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget pkg_
             }
   return
     args'
-      { argTitle = Flag $ prettyShow (packageName pkg_descr)
-      , argComponentName = Flag $ prettyShow (packageName pkg_descr) ++ ":" ++ unUnqualComponentName (testName test)
+      { argTitle = Flag $ T.pack (prettyShow (packageName pkg_descr))
+      , argComponentName =
+          Flag $
+            T.pack (prettyShow (packageName pkg_descr))
+              <> ":"
+              <> T.pack (unUnqualComponentName (testName test))
       , -- we need to accommodate `argOutputDir`
         argBaseUrl = case argBaseUrl args' of
           Flag url -> Flag $ ".." </> url
@@ -928,8 +933,12 @@ fromBenchmark verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget
             }
   return
     args'
-      { argTitle = Flag $ prettyShow (packageName pkg_descr)
-      , argComponentName = Flag $ prettyShow (packageName pkg_descr) ++ ":" ++ unUnqualComponentName (benchmarkName bench)
+      { argTitle = Flag $ T.pack (prettyShow (packageName pkg_descr))
+      , argComponentName =
+          Flag $
+            T.pack (prettyShow (packageName pkg_descr))
+              <> ":"
+              <> T.pack (unUnqualComponentName (benchmarkName bench))
       , -- we need to accommodate `argOutputDir`
         argBaseUrl = case argBaseUrl args' of
           Flag url -> Flag $ ".." </> url
@@ -978,7 +987,7 @@ fromForeignLib verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarge
             }
   return
     args'
-      { argTitle = Flag $ unUnqualComponentName $ foreignLibName flib
+      { argTitle = Flag $ T.pack (unUnqualComponentName $ foreignLibName flib)
       , -- we need to accommodate `argOutputDir`
         argBaseUrl = case argBaseUrl args' of
           Flag url -> Flag $ ".." </> url
@@ -1022,7 +1031,7 @@ getInterfaces
   -> IO HaddockArgs
 getInterfaces verbosity lbi clbi htmlTemplate = do
   (packageFlags, warnings) <- haddockPackageFlags verbosity lbi clbi htmlTemplate
-  traverse_ (warn (modifyVerbosityFlags verboseUnmarkOutput verbosity)) warnings
+  traverse_ (warn (modifyVerbosityFlags verboseUnmarkOutput verbosity) . T.unpack) warnings
   return $
     mempty
       { argInterfaces = packageFlags
@@ -1143,19 +1152,19 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
                   tmpFileOpts
                   "haddock-response.txt"
                   (if haddockSupportsUTF8 then Just utf8 else Nothing)
-                  renderedArgs
+                  (map T.unpack renderedArgs)
                   (\responseFileName -> k ["@" ++ responseFileName] result)
-              else k renderedArgs result
+              else k (map T.unpack renderedArgs) result
   case (argPrologueFile args, argPrologue args) of
     (Flag pfile, _) ->
-      withPrologueArgs ["--prologue=" ++ pfile]
+      withPrologueArgs ["--prologue=" <> T.pack pfile]
     (_, Flag prologueText) ->
       withTempFileEx tmpFileOpts "haddock-prologue.txt" $
         \prologueFileName h -> do
           when haddockSupportsUTF8 (hSetEncoding h utf8)
-          hPutStrLn h prologueText
+          T.hPutStrLn h prologueText
           hClose h
-          withPrologueArgs ["--prologue=" ++ u prologueFileName]
+          withPrologueArgs ["--prologue=" <> T.pack (u prologueFileName)]
     (NoFlag, NoFlag) ->
       withPrologueArgs []
   where
@@ -1194,10 +1203,10 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
         pkgid = arg argPackageName
     arg f = fromFlag $ f args
 
-renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
+renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [Text]
 renderPureArgs version comp platform args =
   concat
-    [ map (\f -> "--dump-interface=" ++ u (unDir (argOutputDir args)) </> f)
+    [ map (\f -> "--dump-interface=" <> T.pack (u (unDir (argOutputDir args)) </> f))
         . flagToList
         . argInterfaceFile
         $ args
@@ -1207,10 +1216,10 @@ renderPureArgs version comp platform args =
             []
             ( \pkg ->
                 [ "--package-name="
-                    ++ case argComponentName args of
+                    <> case argComponentName args of
                       Flag name -> name
-                      _ -> prettyShow (pkgName pkg)
-                , "--package-version=" ++ prettyShow (pkgVersion pkg)
+                      _ -> T.pack (prettyShow (pkgName pkg))
+                , "--package-version=" <> T.pack (prettyShow (pkgVersion pkg))
                 ]
             )
             . flagToMaybe
@@ -1221,7 +1230,7 @@ renderPureArgs version comp platform args =
     , [ "--quickjump" | isVersion 2 19, True <- flagToList . argQuickJump $ args
       ]
     , ["--hyperlinked-source" | isHyperlinkedSource]
-    , (\(All b, xs) -> bool [] (map (("--hide=" ++) . prettyShow) xs) b)
+    , (\(All b, xs) -> bool [] (map (("--hide=" <>) . T.pack . prettyShow) xs) b)
         . argHideModules
         $ args
     , bool [] ["--ignore-all-exports"] . getAny . argIgnoreExports $ args
@@ -1236,52 +1245,52 @@ renderPureArgs version comp platform args =
           maybe
             []
             ( \(m, e, l) ->
-                [ "--source-module=" ++ m
-                , "--source-entity=" ++ e
+                [ "--source-module=" <> m
+                , "--source-entity=" <> e
                 ]
-                  ++ ["--source-entity-line=" ++ l | isVersion 2 14]
+                  ++ ["--source-entity-line=" <> l | isVersion 2 14]
             )
             . flagToMaybe
             . argLinkSource
             $ args
-    , maybe [] ((: []) . ("--css=" ++)) . flagToMaybe . argCssFile $ args
-    , maybe [] ((: []) . ("--use-contents=" ++)) . flagToMaybe . argContents $ args
+    , maybe [] ((: []) . ("--css=" <>) . T.pack) . flagToMaybe . argCssFile $ args
+    , maybe [] ((: []) . ("--use-contents=" <>) . T.pack) . flagToMaybe . argContents $ args
     , bool [] ["--gen-contents"] . fromFlagOrDefault False . argGenContents $ args
-    , maybe [] ((: []) . ("--use-index=" ++)) . flagToMaybe . argIndex $ args
+    , maybe [] ((: []) . ("--use-index=" <>) . T.pack) . flagToMaybe . argIndex $ args
     , bool [] ["--gen-index"] . fromFlagOrDefault False . argGenIndex $ args
-    , maybe [] ((: []) . ("--base-url=" ++)) . flagToMaybe . argBaseUrl $ args
+    , maybe [] ((: []) . ("--base-url=" <>) . T.pack) . flagToMaybe . argBaseUrl $ args
     , bool [verbosityFlag] [] . getAny . argVerbose $ args
     , map (\case Hoogle -> "--hoogle"; Html -> "--html")
         . fromFlagOrDefault []
         . argOutput
         $ args
     , renderInterfaces . argInterfaces $ args
-    , (: []) . ("--odir=" ++) . u . unDir . argOutputDir $ args
+    , (: []) . ("--odir=" <>) . T.pack . u . unDir . argOutputDir $ args
     , maybe
         []
         ( (: [])
-            . ("--title=" ++)
+            . ("--title=" <>)
             . bool
               id
-              (++ " (internal documentation)")
+              (<> " (internal documentation)")
               (getAny $ argIgnoreExports args)
         )
         . flagToMaybe
         . argTitle
         $ args
-    , [ "--optghc=" ++ T.unpack opt
+    , [ "--optghc=" <> opt
       | let opts = argGhcOptions args
       , opt <- renderGhcOptions comp platform opts
       ]
-    , maybe [] (\l -> ["-B" ++ l]) $
+    , maybe [] (\l -> ["-B" <> T.pack l]) $
         flagToMaybe (argGhcLibDir args) -- error if Nothing?
     , -- https://github.com/haskell/haddock/pull/547
-      [ "--reexport=" ++ prettyShow r
+      [ "--reexport=" <> T.pack (prettyShow r)
       | isVersion 2 19
       , r <- argReexports args
       ]
-    , argTargets args
-    , maybe [] ((: []) . (resourcesDirFlag ++)) . flagToMaybe . argResourcesDir $ args
+    , map T.pack (argTargets args)
+    , maybe [] ((: []) . (resourcesDirFlag <>) . T.pack) . flagToMaybe . argResourcesDir $ args
     , -- Do not re-direct compilation output to a temporary directory (--no-tmp-comp-dir)
       -- We pass this option by default to haddock to avoid recompilation
       -- See Note [Hi Haddock Recompilation Avoidance]
@@ -1293,13 +1302,13 @@ renderPureArgs version comp platform args =
     u = interpretSymbolicPathCWD
     renderInterfaces = map renderInterface
 
-    renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath, Visibility) -> String
+    renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath, Visibility) -> Text
     renderInterface (i, html, hypsrc, visibility) =
       "--read-interface="
-        ++ intercalate
+        <> T.intercalate
           ","
           ( concat
-              [ [fromMaybe "" html]
+              [ [maybe "" T.pack html]
               , -- only render hypsrc path if html path
                 -- is given and hyperlinked-source is
                 -- enabled
@@ -1310,12 +1319,12 @@ renderPureArgs version comp platform args =
                     (_, Just x)
                       | isVersion 2 17
                       , fromFlagOrDefault False . argLinkedSource $ args ->
-                          x
+                          T.pack x
                       | otherwise ->
                           ""
                 ]
               , [case visibility of Visible -> "visible"; Hidden -> "hidden" | haddockSupportsVisibility]
-              , [i]
+              , [T.pack i]
               ]
           )
 
@@ -1350,7 +1359,7 @@ haddockPackagePaths
           , Visibility
           )
         ]
-      , Maybe String -- warning about
+      , Maybe Text -- warning about
       -- missing documentation
       )
 haddockPackagePaths ipkgs mkHtmlPath = do
@@ -1399,9 +1408,10 @@ haddockPackagePaths ipkgs mkHtmlPath = do
 
   let missing = lefts interfaces
       warning =
-        "The following packages have no Haddock documentation "
-          ++ "installed. No links will be generated to these packages: "
-          ++ intercalate ", " (map prettyShow missing)
+        T.pack $
+          "The following packages have no Haddock documentation "
+            ++ "installed. No links will be generated to these packages: "
+            ++ intercalate ", " (map prettyShow missing)
       flags = rights interfaces
 
   return (flags, if null missing then Nothing else Just warning)
@@ -1472,7 +1482,7 @@ haddockPackageFlags
           , Visibility
           )
         ]
-      , Maybe String -- warning about
+      , Maybe Text -- warning about
       -- missing documentation
       )
 haddockPackageFlags verbosity lbi clbi htmlTemplate = do

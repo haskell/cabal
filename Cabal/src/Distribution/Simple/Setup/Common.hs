@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -51,6 +52,8 @@ module Distribution.Simple.Setup.Common
   , optionNumJobs
   ) where
 
+import Data.Text (Text)
+import qualified Data.Text as T
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
@@ -210,19 +213,19 @@ programFlagsDescription progDb =
 programDbPaths
   :: ProgramDb
   -> ShowOrParseArgs
-  -> (flags -> [(String, FilePath)])
-  -> ([(String, FilePath)] -> (flags -> flags))
+  -> (flags -> [(Text, FilePath)])
+  -> ([(Text, FilePath)] -> (flags -> flags))
   -> [OptionField flags]
 programDbPaths progDb showOrParseArgs get set =
-  programDbPaths' ("with-" ++) progDb showOrParseArgs get set
+  programDbPaths' ("with-" <>) progDb showOrParseArgs get set
 
 -- | Like 'programDbPaths', but allows to customise the option name.
 programDbPaths'
-  :: (String -> String)
+  :: (Text -> Text)
   -> ProgramDb
   -> ShowOrParseArgs
-  -> (flags -> [(String, FilePath)])
-  -> ([(String, FilePath)] -> (flags -> flags))
+  -> (flags -> [(Text, FilePath)])
+  -> ([(Text, FilePath)] -> (flags -> flags))
   -> [OptionField flags]
 programDbPaths' mkName progDb showOrParseArgs get set =
   case showOrParseArgs of
@@ -230,14 +233,14 @@ programDbPaths' mkName progDb showOrParseArgs get set =
     ShowArgs -> [withProgramPath "PROG"]
     ParseArgs ->
       map
-        (withProgramPath . programName . fst)
+        (withProgramPath . T.pack . programName . fst)
         (knownPrograms progDb)
   where
     withProgramPath prog =
-      option
+      optionText
         ""
         [mkName prog]
-        ("Give the path to " ++ prog)
+        ("Give the path to " <> prog)
         get
         set
         ( reqArg'
@@ -251,8 +254,8 @@ programDbPaths' mkName progDb showOrParseArgs get set =
 programDbOption
   :: ProgramDb
   -> ShowOrParseArgs
-  -> (flags -> [(String, [String])])
-  -> ([(String, [String])] -> (flags -> flags))
+  -> (flags -> [(Text, [Text])])
+  -> ([(Text, [Text])] -> flags -> flags)
   -> [OptionField flags]
 programDbOption progDb showOrParseArgs get set =
   case showOrParseArgs of
@@ -260,30 +263,30 @@ programDbOption progDb showOrParseArgs get set =
     ShowArgs -> [programOption "PROG"]
     ParseArgs ->
       map
-        (programOption . programName . fst)
+        (programOption . T.pack . programName . fst)
         (knownPrograms progDb)
   where
     programOption prog =
-      option
+      optionText
         ""
-        [prog ++ "-option"]
+        [prog <> "-option"]
         ( "Give an extra option to "
-            ++ prog
-            ++ " (passed directly to "
-            ++ prog
-            ++ " as a single argument)"
+            <> prog
+            <> " (passed directly to "
+            <> prog
+            <> " as a single argument)"
         )
         get
         set
-        ( reqArg'
+        ( reqArgText'
             "OPT"
             (\arg -> [(prog, [arg])])
             ( \progArgs ->
-                concat
-                  [ args
-                  | (prog', args) <- progArgs
-                  , prog == prog'
-                  ]
+                [ arg
+                | (prog', args) <- progArgs
+                , prog == prog'
+                , arg <- args
+                ]
             )
         )
 
@@ -292,8 +295,8 @@ programDbOption progDb showOrParseArgs get set =
 programDbOptions
   :: ProgramDb
   -> ShowOrParseArgs
-  -> (flags -> [(String, [String])])
-  -> ([(String, [String])] -> (flags -> flags))
+  -> (flags -> [(Text, [Text])])
+  -> ([(Text, [Text])] -> flags -> flags)
   -> [OptionField flags]
 programDbOptions progDb showOrParseArgs get set =
   case showOrParseArgs of
@@ -301,20 +304,24 @@ programDbOptions progDb showOrParseArgs get set =
     ShowArgs -> [programOptions "PROG"]
     ParseArgs ->
       map
-        (programOptions . programName . fst)
+        (programOptions . T.pack . programName . fst)
         (knownPrograms progDb)
   where
     programOptions prog =
-      option
+      optionText
         ""
-        [prog ++ "-options"]
+        [prog <> "-options"]
         ( "Give extra options to "
-            ++ prog
-            ++ " (split on spaces, use \"\" to prevent splitting)"
+            <> prog
+            <> " (split on spaces, use \"\" to prevent splitting)"
         )
         get
         set
-        (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
+        ( reqArgText'
+            "OPTS"
+            (\args -> [(prog, splitArgs args)])
+            (const [])
+        )
 
 -- ------------------------------------------------------------
 
@@ -465,26 +472,31 @@ configureProg verbosity programDb prog = do
 --
 -- > splitArgs "\"-DMSGSTR=\\\"foo bar\\\"\" --baz"
 -- >   = ["-DMSGSTR=\"foo bar\"","--baz"]
-splitArgs :: String -> [String]
-splitArgs = space []
+splitArgs :: Text -> [Text]
+splitArgs = unquoted []
   where
-    space :: String -> String -> [String]
-    space w [] = word w []
-    space w (c : s)
-      | isSpace c = word w (space [] s)
-    space w ('"' : s) = string w s
-    space w s = nonstring w s
+    unquoted parts input =
+      let (prefix, rest) = T.break (\c -> isSpace c || c == '"') input
+          parts' = addPart prefix parts
+       in case T.uncons rest of
+            Nothing -> emit parts' []
+            Just ('"', suffix) -> quoted parts' suffix
+            Just (_, suffix) -> emit parts' (unquoted [] (T.dropWhile isSpace suffix))
 
-    string :: String -> String -> [String]
-    string w [] = word w []
-    string w ('"' : s) = space w s
-    string w ('\\' : '"' : s) = string ('"' : w) s
-    string w (c : s) = string (c : w) s
+    quoted parts input =
+      let (prefix, rest) = T.break (\c -> c == '"' || c == '\\') input
+          parts' = addPart prefix parts
+       in case T.uncons rest of
+            Nothing -> emit parts' []
+            Just ('"', suffix) -> unquoted parts' suffix
+            Just (_, suffix)
+              | Just ('"', afterQuote) <- T.uncons suffix ->
+                  quoted ("\"" : parts') afterQuote
+              | otherwise -> quoted ("\\" : parts') suffix
 
-    nonstring :: String -> String -> [String]
-    nonstring w [] = word w []
-    nonstring w ('"' : s) = string w s
-    nonstring w (c : s) = space (c : w) s
+    addPart part parts
+      | T.null part = parts
+      | otherwise = part : parts
 
-    word [] s = s
-    word w s = reverse w : s
+    emit [] rest = rest
+    emit parts rest = T.concat (reverse parts) : rest

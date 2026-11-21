@@ -72,7 +72,8 @@ module Distribution.Simple.Configure
   ) where
 
 import Control.Monad
-import Distribution.Compat.Prelude
+import Data.Bifunctor (bimap, first)
+import Distribution.Compat.Prelude hiding (first)
 import Prelude ()
 
 import Distribution.Backpack.Configure
@@ -1607,8 +1608,8 @@ mkProgramDb verbHandles cfg initialProgramDb = do
     modifyProgramSearchPath (getProgramSearchPath initialProgramDb ++) -- We need to have the paths to programs installed by build-tool-depends before all other paths
       <$> prependProgramSearchPath verbosity searchpath [] initialProgramDb
   pure
-    . userSpecifyArgss (configProgramArgs cfg)
-    . userSpecifyPaths (configProgramPaths cfg)
+    . userSpecifyArgss (map (bimap Text.unpack (map Text.unpack)) (configProgramArgs cfg))
+    . userSpecifyPaths (map (first Text.unpack) (configProgramPaths cfg))
     $ programDb
   where
     verbosity = mkVerbosity verbHandles $ fromFlagOrDefault normal (configVerbosity cfg)

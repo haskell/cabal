@@ -50,6 +50,7 @@ import Text.Parsec.Prim hiding (many, (<|>))
 import Prelude ()
 
 #ifdef CABAL_PARSEC_DEBUG
+import Data.Text (Text)
 import qualified Data.Text                as T
 import qualified Data.Text.Encoding       as T
 import qualified Data.Text.Encoding.Error as T
@@ -439,7 +440,7 @@ formatError input perr =
                                   (errorMessages perr)
 
 -- | Handles windows/osx/unix line breaks uniformly
-lines' :: T.Text -> [T.Text]
+lines' :: Text -> [Text]
 lines' s1
   | T.null s1 = []
   | otherwise = case T.break (\c -> c == '\r' || c == '\n') s1 of

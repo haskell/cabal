@@ -16,6 +16,8 @@
 -- @since 3.10.0.0
 module Distribution.Client.Main (main) where
 
+import Data.Bifunctor (bimap, first)
+import qualified Data.Text as T
 import Distribution.Client.Setup
   ( ActAsSetupFlags (..)
   , BuildFlags (..)
@@ -92,7 +94,7 @@ import Distribution.Simple.Setup
   , pattern NoFlag
   )
 
-import Distribution.Client.Compat.Prelude hiding (get)
+import Distribution.Client.Compat.Prelude hiding (first, get)
 import Prelude ()
 
 import Distribution.Client.Config
@@ -794,8 +796,8 @@ replAction replFlags extraArgs globalFlags = do
       programDb' <-
         reconfigurePrograms
           verbosity
-          (replProgramPaths replFlags)
-          (replProgramArgs replFlags)
+          (map (first T.unpack) (replProgramPaths replFlags))
+          (map (bimap T.unpack (map T.unpack)) (replProgramArgs replFlags))
           programDb
 
       startInterpreter

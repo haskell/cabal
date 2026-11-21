@@ -31,6 +31,7 @@ module Distribution.Simple.Setup.Build
   , buildOptions
   ) where
 
+import Data.Text (Text)
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
@@ -51,8 +52,8 @@ import Distribution.Verbosity
 
 data BuildFlags = BuildFlags
   { buildCommonFlags :: !CommonSetupFlags
-  , buildProgramPaths :: [(String, FilePath)]
-  , buildProgramArgs :: [(String, [String])]
+  , buildProgramPaths :: [(Text, FilePath)]
+  , buildProgramArgs :: [(Text, [Text])]
   , buildNumJobs :: Flag (Maybe Int)
   , buildUseSemaphore :: Flag String
   }

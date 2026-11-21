@@ -1,7 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module UnitTests.Distribution.Client.Configure (tests) where
 
+import qualified Data.Text as T
 import Distribution.Client.CmdConfigure
 
 import qualified Data.Map as Map
@@ -123,7 +125,7 @@ configureTests =
                     mempty
                       { configCommonFlags =
                           mempty{setupVerbosity = Flag silent}
-                      , configProgramArgs = [("ghc", ghcFlags)]
+                      , configProgramArgs = [("ghc", map T.pack ghcFlags)]
                       }
                 }
         (_, ProjectConfig{..}) <- configureAction' flags [] defaultGlobalFlags

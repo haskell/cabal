@@ -97,7 +97,8 @@ module Distribution.Client.ProjectPlanning
   , storePackageInstallDirs'
   ) where
 
-import Distribution.Client.Compat.Prelude
+import Data.Bifunctor (bimap, first)
+import Distribution.Client.Compat.Prelude hiding (first)
 import Text.PrettyPrint
   ( colon
   , comma
@@ -4198,8 +4199,8 @@ setupHsConfigureFlags
         ElabPackage _ -> mempty
         ElabComponent _ -> toFlag elabComponentId
 
-      configProgramPaths = Map.toList elabProgramPaths
-      configProgramArgs = Map.toList elabProgramArgs
+      configProgramPaths = map (first Text.pack) (Map.toList elabProgramPaths)
+      configProgramArgs = map (bimap Text.pack (map Text.pack)) (Map.toList elabProgramArgs)
       configProgramPathExtra = toNubList elabProgramPathExtra
       configHcFlavor = toFlag (compilerFlavor pkgConfigCompiler)
       configHcPath = mempty -- we use configProgramPaths instead
@@ -4445,7 +4446,7 @@ setupHsHaddockFlags
             Nothing -> mempty
             Just prg ->
               [
-                ( programName haddockProgram
+                ( Text.pack (programName haddockProgram)
                 , locationPath (programLocation prg)
                 )
               ]
