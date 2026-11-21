@@ -26,6 +26,7 @@ import qualified UnitTests.Distribution.Utils.Path
 import qualified UnitTests.Distribution.Utils.Structured
 import qualified UnitTests.Distribution.Version (versionTests)
 import qualified UnitTests.Distribution.PkgconfigVersion (pkgconfigVersionTests)
+import qualified UnitTests.Distribution.Parsec
 import qualified UnitTests.Distribution.SPDX (spdxTests)
 import qualified UnitTests.Distribution.Described
 import qualified UnitTests.Distribution.CabalSpecVersion
@@ -69,6 +70,8 @@ tests =
         UnitTests.Distribution.Version.versionTests
     , testGroup "Distribution.Types.PkgconfigVersion(Range)"
         UnitTests.Distribution.PkgconfigVersion.pkgconfigVersionTests
+    , testGroup "Distribution.Parsec"
+        UnitTests.Distribution.Parsec.tests
     , testGroup "Distribution.SPDX"
         UnitTests.Distribution.SPDX.spdxTests
     , UnitTests.Distribution.Utils.CharSet.tests
