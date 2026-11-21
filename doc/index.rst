@@ -33,9 +33,9 @@ Welcome to the Cabal User Guide
    config
    cabal-commands
    external-commands
-   setup-commands
    file-format-changelog
    buildinfo-fields-reference
+   setup-commands
 
 .. toctree::
    :caption: Cabal Explanation
