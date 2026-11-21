@@ -81,11 +81,14 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Setup.Build (BuildFlags)
 import Distribution.Simple.Utils (cabalVersion)
-import Distribution.Text
+import Distribution.Text (display)
 import Distribution.Types.TargetInfo
 import Distribution.Utils.Json
 import Distribution.Utils.Path
 import Distribution.Verbosity
+
+import Data.Text (Text)
+import qualified Data.Text as T
 
 -- | Construct a JSON document describing the build information for a
 -- package.
@@ -103,7 +106,7 @@ mkBuildInfo
   -- Needs to be passed explicitly, as we can't extract that information here
   -- without some partial function.
   -> [TargetInfo]
-  -> ([String], Json)
+  -> ([Text], Json)
   -- ^ Json representation of buildinfo alongside generated warnings
 mkBuildInfo wdir pkg_descr lbi _flags compilerInfo targetsToBuild = (warnings, JsonObject buildInfoFields)
   where
@@ -138,7 +141,7 @@ mkCompilerInfo compilerProgram compilerInfo =
     , "path" .= JsonString (programPath compilerProgram)
     ]
 
-mkComponentInfo :: AbsolutePath (Dir Pkg) -> PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> ([String], Json)
+mkComponentInfo :: AbsolutePath (Dir Pkg) -> PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> ([Text], Json)
 mkComponentInfo wdir pkg_descr lbi clbi =
   ( warnings
   , JsonObject $
@@ -197,15 +200,15 @@ getCompilerArgs
   :: BuildInfo
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
-  -> ([String], [String])
+  -> ([Text], [String])
 getCompilerArgs bi lbi clbi =
   case compilerFlavor $ compiler lbi of
-    GHC -> ([], ghcArgs)
+    GHC -> (mempty, map T.unpack ghcArgs)
     c ->
       (
         [ "ShowBuildInfo.getCompilerArgs: Don't know how to get build "
-            ++ " arguments for compiler "
-            ++ show c
+            <> " arguments for compiler "
+            <> T.pack (show c)
         ]
       , []
       )

@@ -1,7 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
 module UnitTests.Distribution.Simple.Program.GHC (tests) where
 
 import qualified Data.Map as Map
 import Data.Algorithm.Diff (PolyDiff (..), getDiff)
+import Data.Text (Text)
 import Test.Tasty          (TestTree, testGroup)
 import Test.Tasty.HUnit
 
@@ -45,7 +47,7 @@ tests = testGroup "Distribution.Simple.Program.GHC"
         ]
     , testGroup "renderGhcOptions"
       [ testCase "options" $ do
-            let flags :: [String]
+            let flags :: [Text]
                 flags = renderGhcOptions
                   (Compiler
                       { compilerId = CompilerId GHC (mkVersion [9,8,1])
