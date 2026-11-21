@@ -18,6 +18,7 @@
 module Distribution.Client.Tar
   ( -- * @tar.gz@ operations
     TarComp.createTarGzFile
+  , TarComp.createTarGzFileMulti
   , TarComp.extractTarGzFile
 
     -- * Other local utils
