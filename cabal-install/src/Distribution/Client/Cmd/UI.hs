@@ -1,0 +1,405 @@
+{-# LANGUAGE LambdaCase #-}
+
+-- | Parsing the command line of a command with
+-- <https://hackage.haskell.org/package/optparse-applicative optparse-applicative>, by
+-- translating the command's 'OptionField's into @optparse-applicative@ parsers.
+--
+-- Only parsing is affected: help, the list of options and the command registry
+-- keep using "Distribution.Simple.Command".
+--
+-- The same things go by different names in "Distribution.Simple.Command", in
+-- @optparse-applicative@ and here:
+--
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | "Distribution.Simple.Command"     | @optparse-applicative@                               | this module                                                             |
+-- +===================================+======================================================+=========================================================================+
+-- | 'CommandUI'                       | 'ParserInfo'                                         | 'parserInfo', 'NamedCommandParser'                                      |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | @Command@ in the command registry | subcommand                                           | 'NamedCommandParser', matched by 'commandNames'                         |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | @commandsRun@                     | @execParser@                                         | 'parseCommands'                                                         |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'commandParseArgs'                | 'execParserPure'                                     | 'parseCommand'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'OptionField'                     | a group of parsers                                   | 'fieldParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'OptDescr'                        | 'O.Parser'                                           | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'ReqArg'                          | 'O.option'                                           | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'OptArg'                          | 'O.option', given @""@ by 'supplyDefaults' when bare | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'ChoiceOpt'                       | one @flag'@ per choice                               | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | 'BoolOpt'                         | two @flag'@, one per spelling                        | 'descrParsers'                                                          |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | a setter, @flags -> flags@        | the parser's result                                  | 'Endo', 'CmdItemFlag'                                                   |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | a non-option argument             | 'strArgument'                                        | 'CmdItemTarget', 'parsedTargets'                                        |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | @--list-options@                  | @flag'@                                              | 'CmdItemListOptions', rendered by "Distribution.Simple.Command"         |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | @--help@                          | 'helper'                                             | 'Failure' with 'ExitSuccess', rendered by "Distribution.Simple.Command" |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+-- | an abbreviated long option        | the @disambiguate@ preference                        | 'expandAbbreviations'                                                   |
+-- +-----------------------------------+------------------------------------------------------+-------------------------------------------------------------------------+
+module Distribution.Client.Cmd.UI
+  ( -- * Parsing a command with @optparse-applicative@
+    NamedCommandParser (..)
+  , commandParserByName
+  , parseCommands
+  , parseCommand
+  , commandNames
+
+    -- * Converting CommandUI options to @optparse-applicative@ parsers
+  , CmdItem (..)
+  , ParsedCommand (..)
+  , commandParser
+  , itemParser
+  , optionParsers
+  , flagEditParsers
+  , fieldParsers
+  , descrParsers
+  , supplyDefaults
+  ) where
+
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
+import Data.List (stripPrefix)
+import Data.Monoid (Endo (..))
+
+import Distribution.ReadE (runReadE)
+import Distribution.Simple.Command
+  ( CommandParse (..)
+  , CommandUI (..)
+  , OptDescr (..)
+  , OptionField (..)
+  , ShowOrParseArgs (..)
+  , commandParseArgs
+  )
+
+import Options.Applicative
+  ( ParserInfo
+  , ParserResult (..)
+  , asum
+  , defaultPrefs
+  , execParserPure
+  , flag'
+  , fullDesc
+  , help
+  , helper
+  , info
+  , long
+  , metavar
+  , progDesc
+  , renderFailure
+  , strArgument
+  , (<**>)
+  )
+import qualified Options.Applicative as O
+
+-- | A parser for a command under any of its names.
+data NamedCommandParser action = NamedCommandParser
+  { namedCommandNames :: [String]
+  -- ^ The command name and its aliases.
+  , namedCommandParser :: String -> [String] -> CommandParse action
+  -- ^ Parse the arguments of the command, given the name it was invoked by.
+  }
+
+-- | Wrap a command's optparse parser together with the names it should match.
+commandParserByName
+  :: CommandUI flags
+  -> (flags -> [String] -> action)
+  -> NamedCommandParser action
+commandParserByName command action =
+  NamedCommandParser
+    { namedCommandNames = commandNames command
+    , namedCommandParser = parseCommand command action
+    }
+
+-- | Parse the global flags with "Distribution.Simple.Command", then the
+-- command with the first parser whose names include the command name.
+-- Returns 'Nothing' when no parser matches, so the caller can fall back to
+-- the command registry.
+parseCommands
+  :: CommandUI globalFlags
+  -> [NamedCommandParser action]
+  -- ^ The commands parsed with @optparse-applicative@.
+  -> [String]
+  -> Maybe (CommandParse (globalFlags, CommandParse action))
+parseCommands globalCommand parsers argv =
+  case commandParseArgs globalCommand True argv of
+    CommandReadyToGo (mkGlobalFlags, cmdArgs0) -> do
+      cmdName : cmdArgs <- pure cmdArgs0
+      parser <- find ((cmdName `elem`) . namedCommandNames) parsers
+      let globalFlags = mkGlobalFlags (commandDefaultFlags globalCommand)
+      pure $ CommandReadyToGo (globalFlags, namedCommandParser parser cmdName cmdArgs)
+    _ -> Nothing
+
+-- | Assuming a v2- prefix for the 'commandName' of the given command, the
+-- bare name, the new- prefixed name and the v2- prefixed name, in that order.
+commandNames :: CommandUI flags -> [String]
+commandNames command = [stripVersionPrefix name, affixVersionPrefix "new-" name, name]
+  where
+    name = commandName command
+
+-- | Puts a prefix before a bare command name.
+affixVersionPrefix :: String -> String -> String
+affixVersionPrefix = replaceText "v2-"
+
+-- | Removes the v2- prefix from a command name, leaving the bare command name.
+stripVersionPrefix :: String -> String
+stripVersionPrefix = affixVersionPrefix ""
+
+replaceText :: String -> String -> String -> String
+replaceText needle replacement = go
+  where
+    go [] = []
+    go input@(char : rest)
+      | Just remainder <- stripPrefix needle input = replacement ++ go remainder
+      | otherwise = char : go rest
+
+-- | The command as it presents itself under the given name. As
+-- "Distribution.Client.CmdLegacy" does, every @v2-@ prefix in its usage,
+-- description and notes is rewritten to the prefix of that name, so that
+-- references to other commands follow the invoked spelling too.
+renameCommand :: String -> CommandUI flags -> CommandUI flags
+renameCommand name command =
+  command
+    { commandName = name
+    , commandUsage = rename . commandUsage command
+    , commandDescription = (rename .) <$> commandDescription command
+    , commandNotes = (rename .) <$> commandNotes command
+    }
+  where
+    rename = replaceText "v2-" prefix
+    prefix = take (length name - length (stripVersionPrefix (commandName command))) name
+
+-- | Parse a command's arguments with @optparse-applicative@. Help and the list
+-- of options come from "Distribution.Simple.Command", so they are the same as
+-- for commands that are not parsed this way.
+parseCommand
+  :: CommandUI flags
+  -> (flags -> [String] -> action)
+  -> String
+  -- ^ The name the command was invoked by.
+  -> [String]
+  -> CommandParse action
+parseCommand cmdui action invokedName cmdArgs =
+  case expandAbbreviations (longNames optionFields) cmdArgs of
+    Left ambiguous -> CommandErrors [ambiguous]
+    Right expanded -> parseExpanded expanded
+  where
+    pInfo = parserInfo invokedName itemParsers cmdui
+    optionFields = commandOptions cmdui ParseArgs
+    itemParsers = optionParsers optionFields
+
+    parseExpanded args = case execParserPure defaultPrefs pInfo (supplyDefaults optionFields args) of
+      Success parsed
+        | parsedListOptions parsed -> legacy ["--list-options"]
+        | otherwise ->
+            let flags = appEndo (parsedFlagEdits parsed) (commandDefaultFlags cmdui)
+             in CommandReadyToGo (action flags (parsedTargets parsed))
+      Failure failure ->
+        let (msg, exitCode) = renderFailure failure ("cabal " ++ invokedName)
+         in if exitCode == ExitSuccess
+              then legacy ["--help"]
+              else CommandErrors [msg]
+      CompletionInvoked _ ->
+        CommandErrors ["Shell completion is not supported by this parser path."]
+
+    -- Help and the options list, rendered by "Distribution.Simple.Command"
+    -- for the command under the name it was invoked by.
+    legacy args =
+      case commandParseArgs (renameCommand invokedName cmdui) False args of
+        CommandHelp helpText -> CommandHelp helpText
+        CommandList options -> CommandList options
+        _ -> CommandErrors ["Unexpected result from the command parser."]
+
+-- | The long names of all the options, plus the common @--help@ and
+-- @--list-options@.
+longNames :: [OptionField flags] -> [String]
+longNames fields =
+  ["help", "list-options"]
+    ++ [ name
+       | OptionField _ descrs <- fields
+       , descr <- descrs
+       , (_, longs) <- optFlagsOf descr
+       , name <- longs
+       ]
+  where
+    optFlagsOf = \case
+      ReqArg _ optFlags _ _ _ -> [optFlags]
+      OptArg _ optFlags _ _ _ _ -> [optFlags]
+      ChoiceOpt choices -> [optFlags | (_, optFlags, _, _) <- choices]
+      BoolOpt _ trueFlags falseFlags _ _ -> [trueFlags, falseFlags]
+
+-- | Expand each abbreviated long option to its full name, as
+-- "Distribution.GetOpt" does: an exact name wins, otherwise a unique prefix
+-- is accepted, and an ambiguous prefix is an error naming the candidates.
+-- @optparse-applicative@'s own @disambiguate@ preference gives no precedence
+-- to an exact name, so @--lib@ would be ambiguous with @--libdir@; upstream
+-- considers that correct and will not change it, see
+-- <https://github.com/pcapriotti/optparse-applicative/issues/419>.
+-- Everything after @--@ is left alone, as are unknown names, which
+-- @optparse-applicative@ reports.
+expandAbbreviations :: [String] -> [String] -> Either String [String]
+expandAbbreviations names = go
+  where
+    go [] = Right []
+    go ("--" : rest) = Right ("--" : rest)
+    go (arg : rest)
+      | Just body <- stripPrefix "--" arg
+      , not (null body) =
+          let (name, value) = break (== '=') body
+           in do
+                name' <- expand name
+                (("--" ++ name' ++ value) :) <$> go rest
+      | otherwise = (arg :) <$> go rest
+
+    expand name
+      | name `elem` names = Right name
+      | otherwise = case filter (name `isPrefixOf`) names of
+          [full] -> Right full
+          [] -> Right name
+          candidates ->
+            Left $
+              unlines $
+                ("option `--" ++ name ++ "' is ambiguous; could be one of:")
+                  : map ("  --" ++) candidates
+
+-- | Insert an empty argument after each bare occurrence of an
+-- optional-argument option, so that @--allow-newer@ and @-j@ keep their
+-- GetOpt meaning: the option's default, with the next word left as a
+-- positional argument. Attached forms such as @--allow-newer=base@ and
+-- @-j4@ are left alone, as is everything after @--@.
+supplyDefaults :: [OptionField flags] -> [String] -> [String]
+supplyDefaults fields = go
+  where
+    go [] = []
+    go ("--" : rest) = "--" : rest
+    go (arg : rest)
+      | arg `elem` bareForms = arg : "" : go rest
+      | otherwise = arg : go rest
+
+    bareForms =
+      [ form
+      | OptionField _ descrs <- fields
+      , OptArg _ (shortFlags, longFlags) _ _ _ _ <- descrs
+      , form <- map (\c -> ['-', c]) shortFlags ++ map ("--" ++) longFlags
+      ]
+
+parserInfo :: String -> [O.Parser (CmdItem flags)] -> CommandUI flags -> ParserInfo (ParsedCommand flags)
+parserInfo invokedName itemParsers cmdui =
+  info
+    (commandParser itemParsers <**> helper)
+    (fullDesc <> progDesc (commandSynopsis cmdui) <> O.header ("cabal " ++ invokedName))
+
+-- | One item of a command line: a flag, a target, or the request to list
+-- the options.
+data CmdItem flags
+  = CmdItemFlag (Endo flags)
+  | CmdItemTarget String
+  | CmdItemListOptions
+
+-- | A command line's items, sorted by kind.
+data ParsedCommand flags = ParsedCommand
+  { parsedFlagEdits :: Endo flags
+  -- ^ The edits from every option, combined in command-line order.
+  , parsedTargets :: [String]
+  -- ^ The targets, in command-line order.
+  , parsedListOptions :: Bool
+  -- ^ Whether @--list-options@ was given.
+  }
+
+-- | Parse a whole command line as any number of items, in any order, and
+-- sort them by kind.
+commandParser :: [O.Parser (CmdItem flags)] -> O.Parser (ParsedCommand flags)
+commandParser itemParsers = toParsed <$> many (itemParser itemParsers)
+  where
+    toParsed items =
+      let edits = [e | CmdItemFlag e <- items]
+          targets = [t | CmdItemTarget t <- items]
+          listOptionsSeen = any isListOptions items
+       in ParsedCommand
+            { -- Apply edits in command-line order, first to last, so that a
+              -- later option overrides an earlier one and list options
+              -- accumulate in the order given. @Endo f <> Endo g@ applies
+              -- @g@ first, so the list is reversed before being combined.
+              -- This matches @accum@ in 'commandParseArgs'.
+              parsedFlagEdits = mconcat (reverse edits)
+            , parsedTargets = targets
+            , parsedListOptions = listOptionsSeen
+            }
+
+    isListOptions CmdItemListOptions = True
+    isListOptions _ = False
+
+-- | Parse one item: one of the given option parsers, @--list-options@, or
+-- failing those a target.
+itemParser :: [O.Parser (CmdItem flags)] -> O.Parser (CmdItem flags)
+itemParser flags =
+  asum
+    ( flags
+        ++ [ CmdItemListOptions
+              <$ flag' () (long "list-options" <> help "Print a list of command line flags")
+           , CmdItemTarget <$> strArgument (metavar "TARGET")
+           ]
+    )
+
+-- | The parsers of a command's options, as items.
+optionParsers :: [OptionField flags] -> [O.Parser (CmdItem flags)]
+optionParsers fields = (fmap . fmap) CmdItemFlag (flagEditParsers fields)
+
+-- | The parsers of a command's options, each producing an edit of the flags.
+flagEditParsers :: [OptionField flags] -> [O.Parser (Endo flags)]
+flagEditParsers = concatMap fieldParsers
+
+-- | The parsers of one 'OptionField', one or more per 'OptDescr' it holds.
+fieldParsers :: OptionField flags -> [O.Parser (Endo flags)]
+fieldParsers (OptionField _ descrs) = concatMap descrParsers descrs
+
+-- | The parsers of one 'OptDescr': one for a 'ReqArg' or 'OptArg', one per
+-- choice of a 'ChoiceOpt', and one per spelling of a 'BoolOpt'.
+descrParsers :: OptDescr flags -> [O.Parser (Endo flags)]
+descrParsers = \case
+  ReqArg desc optFlags placeHolder reader _show ->
+    [ Endo
+        <$> O.option
+          (O.eitherReader (runReadE reader))
+          (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
+    ]
+  OptArg desc optFlags placeHolder reader defaultFn _show ->
+    -- optparse-applicative has no optional-argument options: an option
+    -- either always takes an argument or never does, and a bare @-j@ would
+    -- swallow the next word as its value. 'supplyDefaults' gives each
+    -- bare occurrence an empty argument instead, which the reader maps to the
+    -- option's default. An explicit @--jobs=@ therefore also means the default.
+    [ Endo
+        <$> O.option
+          (O.eitherReader readOrDefault)
+          (optionMods optFlags <> O.metavar placeHolder <> O.help desc)
+    ]
+    where
+      readOrDefault "" = Right defaultFn
+      readOrDefault s = runReadE reader s
+  ChoiceOpt choices ->
+    [ Endo setFn
+      <$ O.flag' () (flagMods optFlags <> O.help desc)
+    | (desc, optFlags, setFn, _get) <- choices
+    ]
+  BoolOpt desc trueFlags falseFlags setFn _get ->
+    [ Endo (setFn True)
+        <$ O.flag' () (flagMods trueFlags <> O.help desc)
+    , Endo (setFn False)
+        <$ O.flag' () (flagMods falseFlags <> O.help desc)
+    ]
+
+optionMods :: (String, [String]) -> O.Mod O.OptionFields a
+optionMods (shortFlags, longFlags) =
+  mconcat (map O.short shortFlags) <> mconcat (map O.long longFlags)
+
+flagMods :: (String, [String]) -> O.Mod O.FlagFields a
+flagMods (shortFlags, longFlags) =
+  mconcat (map O.short shortFlags) <> mconcat (map O.long longFlags)
