@@ -148,7 +148,7 @@ repositories, and ``cabal`` will combine them and be able to download
 packages from any of them.
 
 Older ways of specifying a repository are listed in
-:ref:`project-config-history`.
+:ref:`configuration-history`.
 
 Using secure repositories
 ^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,7 +1,7 @@
-.. _project-config-history:
+.. _configuration-history:
 
-Project and Configuration History
-=================================
+Configuration History
+=====================
 
 Unlike a package description, with its :pkg-field:`cabal-version`, a project
 and the configuration file don't say which version of their format they are

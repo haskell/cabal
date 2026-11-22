@@ -34,7 +34,7 @@ Welcome to the Cabal User Guide
    external-commands
    setup-commands
    file-format-changelog
-   project-config-history
+   configuration-history
    buildinfo-fields-reference
 
 .. toctree::
