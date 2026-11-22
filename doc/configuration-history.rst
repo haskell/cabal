@@ -24,47 +24,37 @@ field that replaces them.
 
     * - Older field
       - Use
-      - Accepted in
     * - ``remote-repo: NAME:URL``
       - A ``repository NAME`` section with that ``url``. See
         :ref:`repository-specification`. For Hackage alone, the URL
         ``http://hackage.haskell.org/packages/archive`` is read as
         ``http://hackage.haskell.org/``.
-      - Configuration file
     * - ``repos``
       - ``repository`` sections
-      - Configuration file
     * - ``cachedir``
       - :cfg-field:`remote-repo-cache`
-      - Configuration file
     * - ``hackage-username``
       - ``username``
-      - Configuration file
     * - ``hackage-password``
       - ``password``
-      - Configuration file
     * - ``hackage-password-command``
       - ``password-command``
-      - Configuration file
     * - ``hackage-token``
       - ``token``
-      - Configuration file
     * - ``user-prefix``, ``user-bindir`` and the other ``user-`` fields
       - ``prefix``, ``bindir`` and so on in an ``install-dirs user`` section
-      - Configuration file
     * - ``global-prefix``, ``global-bindir`` and the other ``global-`` fields
       - ``prefix``, ``bindir`` and so on in an ``install-dirs global`` section
-      - Configuration file
-    * - :cfg-field:`library-coverage`
+    * - :cfg-field:`library-coverage` [#both]_
       - :cfg-field:`coverage`
-      - Both
-    * - :cfg-field:`prefer-oldest`
+    * - :cfg-field:`prefer-oldest` [#both]_
       - :cfg-field:`prefer-version` with the value ``oldest``, since
         ``cabal-install-3.20``
-      - Both
-    * - :cfg-field:`symlink-bindir`
+    * - :cfg-field:`symlink-bindir` [#both]_
       - :cfg-field:`installdir`
-      - Both
+
+.. [#both] Accepted in a project too. The other fields are accepted in the
+   configuration file only.
 
 Removed fields
 --------------
@@ -73,26 +63,22 @@ Removed fields
     :header-rows: 1
 
     * - Removed field
-      - Removed in
-      - What happens now
-      - Use
+      - Removed in ``cabal-install``
     * - ``local-repo``
-      - ``cabal-install-3.4``
-      - Ignored with a warning that the field is unrecognised
-      - A no-index repository or a secure repository at a ``file:`` URL. See
-        :ref:`repository-specification`.
+      - 3.4
     * - ``require-sandbox`` and ``ignore-sandbox``
-      - ``cabal-install-3.4``, along with sandboxes
-      - Ignored with a warning that the field is unrecognised
-      - Nothing. Every project build is now kept apart from the others.
+      - 3.4, along with sandboxes
     * - ``world-file``
-      - ``cabal-install-3.8``
-      - Ignored without a warning
-      - Nothing
+      - 3.8
     * - ``nix``
-      - ``cabal-install-3.18``, along with the Nix integration
-      - Ignored with a warning that the field is unrecognised
-      - Nothing
+      - 3.18, along with the Nix integration
+
+A removed field is ignored with a warning that the field is unrecognised,
+except for ``world-file``, which is ignored without one.
+
+In place of ``local-repo``, use a no-index repository or a secure repository at
+a ``file:`` URL. See :ref:`repository-specification`. The other removed fields
+have no replacement.
 
 The project file parser
 -----------------------
