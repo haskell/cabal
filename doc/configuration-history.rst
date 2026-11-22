@@ -8,10 +8,11 @@ Configuration History
 :ref:`project <cabal-project-file>` applies to the packages of that project.
 Most fields can be used in either.
 
-Unlike a package description, with its :pkg-field:`cabal-version`, neither says
-which version of its format it is written in. ``cabal`` reads them with
-whatever fields it has at the time. This page lists the fields that have been
-renamed, replaced or removed, to help with reading and updating older files.
+A package description gives the version of its format with
+:pkg-field:`cabal-version`. The configuration file and a project have no such
+field, so ``cabal`` reads them with whatever fields it has at the time. This
+page lists the fields that have been renamed, replaced or removed, to help with
+reading and updating older files.
 
 Fields with a newer name
 ------------------------
