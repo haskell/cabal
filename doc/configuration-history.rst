@@ -25,11 +25,8 @@ field that replaces them.
 
     * - Older field
       - Use
-    * - ``remote-repo: NAME:URL``
-      - A ``repository NAME`` section with that ``url``. See
-        :ref:`repository-specification`. For Hackage alone, the URL
-        ``http://hackage.haskell.org/packages/archive`` is read as
-        ``http://hackage.haskell.org/``.
+    * - ``remote-repo``
+      - A :ref:`repository <repository-specification>` section
     * - ``repos``
       - ``repository`` sections
     * - ``cachedir``
@@ -56,6 +53,24 @@ field that replaces them.
 
 .. [#both] Accepted in a project too. The other fields are accepted in the
    configuration file only.
+
+.. note::
+    The ``remote-repo`` field is an older way of specifying a repository. This
+    field,
+
+    ::
+
+        remote-repo: packages.example.org:http://packages.example.org/
+
+    is the same as this section:
+
+    ::
+
+        repository packages.example.org
+          url: http://packages.example.org/
+
+    For Hackage alone, the URL ``http://hackage.haskell.org/packages/archive``
+    is read as ``http://hackage.haskell.org/``.
 
 Removed fields
 --------------
