@@ -34,15 +34,21 @@ main = defaultMainWithHooks
     myCustomPreprocessor :: BuildInfo -> LocalBuildInfo -> PreProcessor
     myCustomPreprocessor _bi lbi =
 #endif
-      PreProcessor {
-        platformIndependent = True,
-        runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-          do info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)
-#if MIN_VERSION_Cabal(3,7,0)
-             callProcess progPath [inFile, outFile],
-        ppOrdering = unsorted
+      PreProcessor
+        { platformIndependent = True
+#if MIN_VERSION_Cabal(3,17,0)
+        , getPreProcessor = \_verbosity inFile' outFile' -> do
+            pure . mkSimplePreProcessor inFile' outFile' $ \inFile outFile verbosity -> do
+                info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)
+                callProcess progPath [inFile, outFile]
 #else
-             callProcess progPath [inFile, outFile]
+        , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+            do info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)
+               callProcess progPath [inFile, outFile]
+#endif
+#if MIN_VERSION_Cabal(3,7,0)
+        , ppOrdering = unsorted
+#else
 #endif
         }
       where

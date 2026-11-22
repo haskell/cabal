@@ -24,7 +24,6 @@ import Distribution.Simple.Glob.Internal
   , GlobPieces
   )
 
-import System.Directory
 import System.FilePath
 
 --------------------------------------------------------------------------------
@@ -52,19 +51,6 @@ isTrivialRootedGlob (RootedGlob root pathglob) =
             (joinPath (reverse paths))
         )
     go _ _ = Nothing
-
--- | Get the 'FilePath' corresponding to a 'FilePathRoot'.
---
--- The 'FilePath' argument is required to supply the path for the
--- 'FilePathRelative' case.
-getFilePathRootDirectory
-  :: FilePathRoot
-  -> FilePath
-  -- ^ root for relative paths
-  -> IO FilePath
-getFilePathRootDirectory FilePathRelative root = return root
-getFilePathRootDirectory (FilePathRoot root) _ = return root
-getFilePathRootDirectory FilePathHomeDir _ = getHomeDirectory
 
 ------------------------------------------------------------------------------
 -- Matching
