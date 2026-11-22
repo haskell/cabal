@@ -147,6 +147,9 @@ you can change the prefix by changing the value of
 repositories, and ``cabal`` will combine them and be able to download
 packages from any of them.
 
+Older ways of specifying a repository are listed in
+:ref:`project-config-history`.
+
 Using secure repositories
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -266,27 +269,6 @@ thus, looks similar to a ``package-name.cabal``'s ``build-depends`` section.
     where the directory contains your custom
     ``preferred-versions``. After running ``cabal update``, all ``cabal`` operations will honour the
     configuration.
-
-Legacy repositories
-^^^^^^^^^^^^^^^^^^^
-
-Currently ``cabal`` supports single kind of “legacy” repositories.
-It is specified using
-
-::
-
-    remote-repo: hackage.haskell.org:http://hackage.haskell.org/packages/archive
-
-This is just syntactic sugar for
-
-::
-
-    repository hackage.haskell.org
-      url: http://hackage.haskell.org/packages/archive
-
-although, in (and only in) the specific case of Hackage, the URL
-``http://hackage.haskell.org/packages/archive`` will be silently
-translated to ``http://hackage.haskell.org/``.
 
 Secure local repositories
 ^^^^^^^^^^^^^^^^^^^^^^^^^
