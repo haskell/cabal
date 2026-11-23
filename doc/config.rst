@@ -81,24 +81,26 @@ Configuration file discovery
 .. The rules below are tested, by number, in
    cabal-testsuite/PackageTests/ConfigFile/Discovery/cabal.test.hs.
 
-``cabal`` reads one configuration file. Its location is determined as follows:
+``cabal`` reads one configuration file. It uses the first of these that
+applies:
 
-1. If option ``--config-file`` is given, use it;
-2. otherwise, if ``$CABAL_CONFIG`` is set use it;
-3. otherwise, if ``$CABAL_DIR`` is set use ``$CABAL_DIR/config``;
-4. otherwise, if ``~/.cabal`` exists, and is a directory, and there is no
-   ``config`` file in ``$XDG_CONFIG_HOME/cabal``, use ``~/.cabal/config``;
-5. otherwise use ``config`` in ``$XDG_CONFIG_HOME/cabal``, which
-   defaults to ``~/.config/cabal`` on Unix and ``%APPDATA%/cabal`` on
-   Windows.
+1. the file given by the ``--config-file`` option;
+2. the file given by ``$CABAL_CONFIG``, if it is set;
+3. ``$CABAL_DIR/config``, if ``$CABAL_DIR`` is set;
+4. ``$XDG_CONFIG_HOME/cabal/config``, if that file exists;
+5. ``~/.cabal/config``, if ``~/.cabal`` exists and is a directory;
+6. ``$XDG_CONFIG_HOME/cabal/config``.
 
-A configuration file at any of the other locations is not read.
+``$XDG_CONFIG_HOME`` defaults to ``~/.config`` on Unix and ``%APPDATA%`` on
+Windows. A configuration file at any of the other locations is not read.
 
-.. warning::
-    When both ``~/.cabal`` and ``$XDG_CONFIG_HOME/cabal/config`` exist,
-    ``cabal`` ignores ``~/.cabal``, so a ``~/.cabal/config`` is not read.
-    ``cabal`` says that it is ignoring ``~/.cabal`` and advises removing one of
-    them.
+.. admonition:: When both locations exist
+    :class: warning
+
+    When both ``~/.cabal`` and ``$XDG_CONFIG_HOME/cabal/config`` exist, rule 4
+    applies before rule 5. ``cabal`` ignores ``~/.cabal``, so a
+    ``~/.cabal/config`` is not read. ``cabal`` says that it is ignoring
+    ``~/.cabal`` and advises removing one of them.
 
 If the configuration file does not exist, and it was not given
 explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
