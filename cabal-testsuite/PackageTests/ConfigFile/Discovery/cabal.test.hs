@@ -83,7 +83,22 @@ main = do
       assertOutputContains (".cabal" </> "config") r
       shouldExist (home </> ".cabal" </> "config")
 
+    discovery "xdg-empty" "Rule 6: an XDG directory with no config in it does not stop ~/.cabal being used" $ \home -> do
+      liftIO $ createDirectoryIfMissing True (home </> ".cabal")
+      liftIO $ createDirectoryIfMissing True (home </> "xdg-config" </> "cabal")
+      r <- discover home Nothing
+      assertOutputContains (".cabal" </> "config") r
+      shouldExist (home </> ".cabal" </> "config")
+      shouldNotExist (home </> "xdg-config" </> "cabal" </> "config")
+
     discovery "neither" "Rule 7: neither exists, so the XDG config is created and used" $ \home -> do
+      r <- discover home Nothing
+      assertOutputContains ("xdg-config" </> "cabal" </> "config") r
+      shouldExist (home </> "xdg-config" </> "cabal" </> "config")
+
+    discovery "old-is-file" "Rule 7: a ~/.cabal that is a file and not a directory does not count" $ \home -> do
+      liftIO $ createDirectoryIfMissing True home
+      liftIO $ writeFile (home </> ".cabal") ""
       r <- discover home Nothing
       assertOutputContains ("xdg-config" </> "cabal" </> "config") r
       shouldExist (home </> "xdg-config" </> "cabal" </> "config")

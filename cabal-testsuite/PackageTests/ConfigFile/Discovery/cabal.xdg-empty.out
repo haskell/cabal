@@ -1,0 +1,6 @@
+# Rule 6: an XDG directory with no config in it does not stop ~/.cabal being used
+# cabal path
+Config file path source is default config file.
+Config file not found: <ROOT>/cabal.xdg-empty.dist/discovery/.cabal/config
+Writing default configuration to <ROOT>/cabal.xdg-empty.dist/discovery/.cabal/config
+<ROOT>/cabal.xdg-empty.dist/discovery/.cabal/config
