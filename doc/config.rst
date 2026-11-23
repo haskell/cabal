@@ -98,6 +98,14 @@ Failing those, a new file that ``cabal`` creates:
 6. ``~/.cabal/config``, if there is a ``~/.cabal`` directory;
 7. ``$XDG_CONFIG_HOME/cabal/config``.
 
+.. admonition:: When ~/.cabal is ignored
+    :class: warning
+
+    When both ``~/.cabal`` and ``$XDG_CONFIG_HOME/cabal/config`` exist, rule 4
+    applies and rules 5 and 6 are not reached. ``cabal`` ignores ``~/.cabal``,
+    so a ``~/.cabal/config`` is not read. ``cabal`` says that it is ignoring
+    ``~/.cabal`` and advises removing one of them.
+
 ``$XDG_CONFIG_HOME`` defaults to ``~/.config`` on Unix and ``%APPDATA%`` on
 Windows.
 
@@ -107,14 +115,6 @@ Windows.
     Read ``%APPDATA%\cabal`` for ``~/.cabal``. Unless ``$XDG_CONFIG_HOME`` is
     set, that is the same directory as ``$XDG_CONFIG_HOME/cabal``, so rules 4
     to 7 all give ``%APPDATA%\cabal\config``.
-
-.. admonition:: When both locations exist
-    :class: warning
-
-    When both ``~/.cabal`` and ``$XDG_CONFIG_HOME/cabal/config`` exist, rule 4
-    applies before rule 5. ``cabal`` ignores ``~/.cabal``, so a
-    ``~/.cabal/config`` is not read. ``cabal`` says that it is ignoring
-    ``~/.cabal`` and advises removing one of them.
 
 If the configuration file does not exist, and it was not given
 explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
