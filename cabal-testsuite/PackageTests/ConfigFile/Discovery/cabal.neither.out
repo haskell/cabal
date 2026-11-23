@@ -1,4 +1,4 @@
-# Rule 6: neither exists, so the XDG config is used, and created
+# Rule 7: neither exists, so the XDG config is created and used
 # cabal path
 Config file path source is default config file.
 Config file not found: <ROOT>/cabal.neither.dist/discovery/xdg-config/cabal/config
