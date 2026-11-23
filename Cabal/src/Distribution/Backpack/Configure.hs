@@ -230,12 +230,13 @@ toComponentLocalBuildInfos
       -- Only the installed packages reachable from the components can be in
       -- the closure below, so we take their closure in the installed package
       -- index rather than building a graph of every installed package
-      -- (#12546). Installed packages with the same 'UnitId' as a component
-      -- are left out, as 'Graph.unionRight' would replace them. Missing
-      -- dependencies are reported by 'Graph.broken' below.
+      -- (#12546). Missing dependencies are reported by 'Graph.broken' below.
+      -- An installed package with the same 'UnitId' as a component is
+      -- replaced by it in 'Graph.unionRight', so what it alone depends on is
+      -- not in the closure.
       (reachable_installed, _missing) =
         PackageIndex.dependencyClosureAndMissing
-          (foldr (PackageIndex.deleteUnitId . nodeKey) installedPackageSet graph)
+          installedPackageSet
           (concatMap nodeNeighbors graph)
       external_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
       external_graph =
