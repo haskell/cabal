@@ -228,24 +228,20 @@ toComponentLocalBuildInfos
     -- are.
     let
       -- Only the installed packages reachable from the components can be in
-      -- the closure below, so we look those up rather than building a graph
-      -- of every installed package (#12546). Installed packages with the
-      -- same 'UnitId' as a component are skipped, as 'Graph.unionRight'
-      -- would replace them.
-      internal_keys = Set.fromList (map nodeKey graph)
-      reachable_installed = go Map.empty (concatMap nodeNeighbors graph)
-        where
-          go seen [] = Map.elems seen
-          go seen (uid : uids)
-            | uid `Set.member` internal_keys || uid `Map.member` seen = go seen uids
-            | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid =
-                go (Map.insert uid pkg seen) (nodeNeighbors pkg ++ uids)
-            | otherwise = go seen uids
+      -- the closure below, so we take their closure in the installed package
+      -- index rather than building a graph of every installed package
+      -- (#12546). Installed packages with the same 'UnitId' as a component
+      -- are left out, as 'Graph.unionRight' would replace them. Missing
+      -- dependencies are reported by 'Graph.broken' below.
+      (reachable_installed, _missing) =
+        PackageIndex.dependencyClosureAndMissing
+          (foldr (PackageIndex.deleteUnitId . nodeKey) installedPackageSet graph)
+          (concatMap nodeNeighbors graph)
       external_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
       external_graph =
         Graph.fromDistinctList
           . map Left
-          $ reachable_installed
+          $ PackageIndex.allPackages reachable_installed
       internal_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
       internal_graph =
         Graph.fromDistinctList

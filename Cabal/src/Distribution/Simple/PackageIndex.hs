@@ -80,6 +80,7 @@ module Distribution.Simple.PackageIndex
     -- ** Special queries
   , brokenPackages
   , dependencyClosure
+  , dependencyClosureAndMissing
   , reverseDependencyClosure
   , topologicalOrder
   , reverseTopologicalOrder
@@ -658,9 +659,17 @@ dependencyClosure
   -> Either
       InstalledPackageIndex
       [(IPI.InstalledPackageInfo, [UnitId])]
-dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
+dependencyClosure index pkgids0 = case dependencyClosureAndMissing index pkgids0 of
   (completed, []) -> Left completed
   (completed, _) -> Right (brokenPackages completed)
+
+-- | Takes the transitive closure of the package dependencies, and returns it
+-- together with the 'UnitId's that do not occur in the index.
+dependencyClosureAndMissing
+  :: InstalledPackageIndex
+  -> [UnitId]
+  -> (InstalledPackageIndex, [UnitId])
+dependencyClosureAndMissing index = closure mempty []
   where
     closure completed failed [] = (completed, failed)
     closure completed failed (pkgid : pkgids) = case lookupUnitId index pkgid of
