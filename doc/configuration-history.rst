@@ -84,7 +84,9 @@ Removed fields
       - 3.4
     * - ``require-sandbox`` and ``ignore-sandbox``
       - 3.4, along with sandboxes
-    * - ``world-file``
+    * - ``project-file`` and ``ignore-project``
+      - 3.4
+    * - ``world-file`` and ``one-shot``
       - 3.8
     * - ``nix``
       - 3.18, along with the Nix integration
@@ -95,6 +97,49 @@ except for ``world-file``, which is ignored without one.
 In place of ``local-repo``, use a no-index repository or a secure repository at
 a ``file:`` URL. See :ref:`repository-specification`. The other removed fields
 have no replacement.
+
+Project-related field gotchas
+-----------------------------
+
+``cabal`` makes most configuration fields from the options of its commands,
+which is why ``--jobs`` on the command line is ``jobs`` in the configuration
+file. An option added to one of those commands becomes a field of the
+configuration file too. Two options to do with projects became fields this way.
+
+Those two and a third are now accepted in a project, where they have no effect:
+``cabal`` has found the project file, and decided not to ignore it, before
+reading it. All three are still :ref:`options <cmdoption-project-file>` on the
+command line.
+
+project-file
+^^^^^^^^^^^^
+
+The ``--project-file`` option was added among the options of ``cabal install``,
+all of which are fields, so up to ``cabal-install-3.2`` this line was accepted
+in the configuration file:
+
+::
+
+    project-file: other.project
+
+It made ``cabal`` look for ``other.project`` in place of ``cabal.project`` in
+every project on the machine. In ``cabal-install-3.4`` the project options were
+moved to a group of their own, one that is not made into fields of the
+configuration file, and the field went with them. Since that release it has
+been accepted in a project.
+
+ignore-project
+^^^^^^^^^^^^^^
+
+The ``--ignore-project`` option was a field of the configuration file in
+``cabal-install-3.2`` only. Since that release it has been accepted in a
+project.
+
+project-dir
+^^^^^^^^^^^
+
+The ``--project-dir`` option has never been a field of the configuration file.
+Since ``cabal-install-3.12`` it has been accepted in a project.
 
 The project file parser
 -----------------------
