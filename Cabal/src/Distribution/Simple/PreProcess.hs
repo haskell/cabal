@@ -461,7 +461,7 @@ preprocessFileWith mbDirCache mbWorkDir searchLoc buildLoc forSDist baseFile ver
 -- | Cached listings of source directories. The key is the directory path,
 -- the value the case-folded names it contains, or 'Nothing' if it is not
 -- cached (see Note [Source directory listing cache]).
-newtype SourceDirCache = SourceDirCache (IORef (Map.Map FilePath (Maybe (Set.Set String))))
+newtype SourceDirCache = SourceDirCache (IORef (Map.Map FilePath (Maybe (Set.Set FilePath))))
 
 -- | Create an empty 'SourceDirCache'.
 newSourceDirCache :: IO SourceDirCache
