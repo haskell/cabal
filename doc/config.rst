@@ -101,6 +101,13 @@ Failing those, a new file that ``cabal`` creates:
 ``$XDG_CONFIG_HOME`` defaults to ``~/.config`` on Unix and ``%APPDATA%`` on
 Windows.
 
+.. admonition:: On Windows
+    :class: tip
+
+    Read ``%APPDATA%\cabal`` for ``~/.cabal``. Unless ``$XDG_CONFIG_HOME`` is
+    set, that is the same directory as ``$XDG_CONFIG_HOME/cabal``, so rules 4
+    to 7 all give ``%APPDATA%\cabal\config``.
+
 .. admonition:: When both locations exist
     :class: warning
 
