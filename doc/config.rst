@@ -65,7 +65,9 @@ Various environment variables affect ``cabal-install``.
        Unix or ``%APPDATA%\cabal`` on Windows exists, and
        ``$XDG_CONFIG_HOME/cabal/config`` does not exist, and
        ``CABAL_DIR`` is unset, ``cabal-install`` will behave as if
-       ``CABAL_DIR`` was set to point at this directory.
+       ``CABAL_DIR`` was set to point at this directory. See
+       :ref:`config-file-discovery` for which configuration file this
+       gives.
 
 ``CABAL_BUILDDIR``
 
@@ -103,7 +105,8 @@ Failing those, a new file that ``cabal`` creates:
 
     When both ``~/.cabal`` and ``$XDG_CONFIG_HOME/cabal/config`` exist, rule 4
     applies and rules 5 and 6 are not reached. ``cabal`` ignores ``~/.cabal``,
-    so a ``~/.cabal/config`` is not read. ``cabal`` says that it is ignoring
+    so a ``~/.cabal/config`` is not read and the store, packages and installed
+    programs in ``~/.cabal`` are not used. ``cabal`` says that it is ignoring
     ``~/.cabal`` and advises removing one of them.
 
 ``$XDG_CONFIG_HOME`` defaults to ``~/.config`` on Unix and ``%APPDATA%`` on
@@ -121,8 +124,9 @@ Windows.
 Directories
 -----------
 
-Unless the ``CABAL_DIR`` environment variable is set or a ``~/.cabal``
-directory exists, Cabal will by default store data in directories
+Unless the ``CABAL_DIR`` environment variable is set, or a ``~/.cabal``
+directory exists and :ref:`is not ignored <config-file-discovery>`, Cabal
+will by default store data in directories
 according to the XDG Base Directory Specification.  The following
 directories are used unless otherwise specified in the configuration
 file:
