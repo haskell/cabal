@@ -141,6 +141,46 @@ project-dir
 The ``--project-dir`` option has never been a field of the configuration file.
 Since ``cabal-install-3.12`` it has been accepted in a project.
 
+Relative imports
+----------------
+
+A project can :ref:`import <conditionals and imports>` other files since
+``cabal-install-3.8``. What a relative path in an ``import`` is relative to has
+changed since then.
+
+.. list-table::
+    :header-rows: 1
+
+    * - ``cabal-install``
+      - A relative ``import`` path is relative to
+    * - 3.8
+      - The directory ``cabal`` is run from
+    * - 3.10
+      - The directory of the importing file. An import in an imported file is
+        only found when ``cabal`` is run from the project's directory.
+    * - 3.12 and later
+      - The directory of the importing file
+
+The change shows in a file that is imported and has an import of its own. With
+these files, ``one.config`` has to say where ``two.config`` is.
+
+.. code-block:: text
+
+    cabal.project
+    configs/
+        one.config
+        two.config
+
+In ``cabal-install-3.8``, run from the project's directory, that is
+``import: configs/two.config``. From ``cabal-install-3.10`` it is
+``import: two.config``. Neither line works in both versions.
+
+Only the path of an ``import`` changed. A path in another field of an imported
+file, such as ``packages``, is relative to the project's directory in all of
+these releases.
+
+The configuration file has no ``import``.
+
 The project file parser
 -----------------------
 
