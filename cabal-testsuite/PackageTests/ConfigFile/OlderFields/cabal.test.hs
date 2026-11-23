@@ -126,6 +126,40 @@ main = do
     assertFileDoesContain configFile "url: http://packages.example.org/"
     assertFileDoesNotContain configFile "remote-repo:"
 
+  fields "configure-writes" $ \_ _ -> do
+    env <- getTestEnv
+    let dir = testCurrentDir env
+    liftIO $ writeFile (dir </> "other.project") "packages: .\n"
+    introduce "configure writes project-file and ignore-project to the .local file"
+    -- Not recorded, as it lists what would be built.
+    recordMode DoNotRecord $ cabal "v2-configure" ["--project-file=other.project"]
+    assertFileDoesContain (dir </> "other.project.local") "project-file: other.project"
+    assertFileDoesContain (dir </> "other.project.local") "ignore-project: False"
+
+  -- The project selects other-package. Were any of these fields to have an
+  -- effect, the package listed would be older-fields, from this directory or
+  -- from other.project, or there would be no project to list from.
+  fields "no-effect" $ \_ _ -> do
+    env <- getTestEnv
+    let dir = testCurrentDir env
+        listed file field = do
+          introduce (name field ++ " has no effect in " ++ file)
+          liftIO $ writeFile (dir </> "cabal.project") "packages: other-package\n"
+          liftIO $ writeFile (dir </> "cabal.project.local") ""
+          liftIO $ appendFile (dir </> file) (field ++ "\n")
+          r <- cabal' "v2-sdist" ["--list-only", "all"]
+          assertOutputContains "other-package.cabal" r
+          assertOutputDoesNotContain "older-fields.cabal" r
+    liftIO $ writeFile (dir </> "other.project") "packages: .\n"
+    forM_ ["cabal.project", "cabal.project.local"] $ \file ->
+      forM_
+        [ "project-file: other.project"
+        , "ignore-project: True"
+        , "project-dir: no-such-directory"
+        ]
+        (listed file)
+    liftIO $ writeFile (dir </> "cabal.project.local") ""
+
 -- A named group of cases with expected output of its own. The group is given
 -- two ways of running @cabal path@, with a field added to the configuration
 -- file and with a field added to the project.

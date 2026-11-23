@@ -1,0 +1,18 @@
+# project-file has no effect in cabal.project
+# cabal v2-sdist
+other-package/other-package.cabal
+# ignore-project has no effect in cabal.project
+# cabal v2-sdist
+other-package/other-package.cabal
+# project-dir has no effect in cabal.project
+# cabal v2-sdist
+other-package/other-package.cabal
+# project-file has no effect in cabal.project.local
+# cabal v2-sdist
+other-package/other-package.cabal
+# ignore-project has no effect in cabal.project.local
+# cabal v2-sdist
+other-package/other-package.cabal
+# project-dir has no effect in cabal.project.local
+# cabal v2-sdist
+other-package/other-package.cabal
