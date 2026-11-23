@@ -110,6 +110,21 @@ Those two and a third are now accepted in a project, where they have no effect:
 reading it. All three are still :ref:`options <cmdoption-project-file>` on the
 command line.
 
+.. admonition:: Don't add project-inception fields
+    :class: warning
+
+    ``cabal configure`` should not be writing these fields, and you should
+    definitely not be adding them to a project yourself:
+
+    .. code-block:: console
+
+        $ cabal configure --project-file=other.project
+        $ cat other.project.local
+        project-file: other.project
+        ignore-project: False
+
+    They have no effect in the ``.local`` file either.
+
 project-file
 ^^^^^^^^^^^^
 
