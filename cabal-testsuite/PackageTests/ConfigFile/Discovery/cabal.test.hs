@@ -20,6 +20,8 @@ import System.Directory (createDirectoryIfMissing)
 -- When rule 5 applies and ~/.cabal also exists, cabal warns that it is ignoring
 -- ~/.cabal.
 --
+-- When rule 3, 4 or 5 picks a file that does not exist, cabal creates it.
+--
 -- Rules 1 and 2 are tested by UserConfig and ConfigFile/T7705, the rest here.
 -- Rules 4 and 5 are not tested on Windows, where the old and new locations are
 -- the same directory and neither comes from HOME.
@@ -34,6 +36,13 @@ main = do
     writeConfig (home </> "xdg-config" </> "cabal")
     r <- discover home (Just cabalDir)
     assertOutputContains "chosen-dir" r
+
+  discovery "created" "A missing configuration file is created by a command that reads it" $ \home -> do
+    let cabalDir = home </> "empty-dir"
+    liftIO $ createDirectoryIfMissing True cabalDir
+    shouldNotExist (cabalDir </> "config")
+    _ <- discover home (Just cabalDir)
+    shouldExist (cabalDir </> "config")
 
   unless isWindows $ do
     discovery "old-only" "Rule 4: only ~/.cabal exists, so ~/.cabal/config is used" $ \home -> do

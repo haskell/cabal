@@ -1,0 +1,6 @@
+# A missing configuration file is created by a command that reads it
+# cabal path
+Config file path source is default config file.
+Config file not found: <ROOT>/cabal.created.dist/discovery/empty-dir/config
+Writing default configuration to <ROOT>/cabal.created.dist/discovery/empty-dir/config
+<ROOT>/cabal.created.dist/discovery/empty-dir/config
