@@ -4,7 +4,7 @@ import Control.Exception (evaluate)
 import System.Directory (createDirectoryIfMissing)
 
 -- Which configuration file is used. The rules are numbered as they are under
--- "Configuration file discovery" in doc/config.rst. Keep the two in step.
+-- "Configuration file discovery" in doc/config.rst.
 --
 --  +---+--------------------------------------+-------------------------------+
 --  | # | When                                 | Configuration file            |
