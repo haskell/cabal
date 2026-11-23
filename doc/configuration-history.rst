@@ -123,7 +123,7 @@ command line.
         project-file: other.project
         ignore-project: False
 
-    They have no effect in the ``.local`` file either.
+    They have no effect in the ``.local`` file either. See :issue:`8411`.
 
 project-file
 ^^^^^^^^^^^^
