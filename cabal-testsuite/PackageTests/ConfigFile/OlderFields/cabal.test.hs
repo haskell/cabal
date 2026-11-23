@@ -124,3 +124,13 @@ main = cabalTest $ do
   mapM_
     unknownInProject
     ["local-repo", "require-sandbox", "ignore-sandbox", "one-shot", "world-file", "nix"]
+
+  -- The remote-repo field is equivalent to a repository section with a url
+  -- field: user-config update writes it back as one.
+  liftIO $
+    writeFile configFile $
+      config ++ "remote-repo: packages.example.org:http://packages.example.org/\n"
+  recordMode DoNotRecord $ cabal "user-config" ["update", "-f"]
+  assertFileDoesContain configFile "repository packages.example.org"
+  assertFileDoesContain configFile "url: http://packages.example.org/"
+  assertFileDoesNotContain configFile "remote-repo:"
