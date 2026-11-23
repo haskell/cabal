@@ -86,12 +86,17 @@ applies:
 
 1. the file given by the ``--config-file`` option;
 2. the file given by ``$CABAL_CONFIG``, if it is set;
-3. ``$CABAL_DIR/config``, if ``$CABAL_DIR`` is set;
-4. ``$XDG_CONFIG_HOME/cabal/config``, if that file exists;
-5. ``~/.cabal/config``, if that file exists;
-6. a new ``~/.cabal/config``, which ``cabal`` creates, if there is a
-   ``~/.cabal`` directory;
-7. a new ``$XDG_CONFIG_HOME/cabal/config``, which ``cabal`` creates.
+3. ``$CABAL_DIR/config``, if ``$CABAL_DIR`` is set, created if missing.
+
+Failing those, a file that exists:
+
+4. ``$XDG_CONFIG_HOME/cabal/config``;
+5. ``~/.cabal/config``.
+
+Failing those, a new file that ``cabal`` creates:
+
+6. ``~/.cabal/config``, if there is a ``~/.cabal`` directory;
+7. ``$XDG_CONFIG_HOME/cabal/config``.
 
 ``$XDG_CONFIG_HOME`` defaults to ``~/.config`` on Unix and ``%APPDATA%`` on
 Windows.
