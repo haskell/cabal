@@ -1,0 +1,40 @@
+#!/bin/sh
+
+set -eu
+
+# Resolve the directory containing this shim so we can point pkg-config's
+# --cflags at the header shipped next to it.
+dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
+case "$*" in
+  '--version')
+    echo 0.29.2
+    ;;
+
+  '--variable pc_path pkg-config')
+    echo '.'
+    ;;
+
+  '--list-all')
+    printf 'mypkg  mypkg - my test package\n'
+    ;;
+
+  '--modversion mypkg')
+    echo 1.0
+    ;;
+
+  '--cflags mypkg')
+    echo "-I$dir/include"
+    ;;
+
+  '--libs mypkg')
+    ;;
+
+  '--libs --static mypkg')
+    ;;
+
+  *)
+    echo >&2 "pkg-config: unrecognised arguments $* (this is an incomplete shim)"
+    exit 1
+    ;;
+esac
