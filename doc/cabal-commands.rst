@@ -286,7 +286,8 @@ cabal preferences. It is very useful when you are e.g. first configuring
 
   .. option:: --config-file=PATH
 
-      Specify config file path. (default: ``~/.cabal/config``).
+      Specify config file path. The default is the location given by
+      :ref:`config-file-discovery`.
 
   .. option:: -f, --force
 
