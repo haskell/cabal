@@ -92,9 +92,13 @@ Configuration file discovery
    defaults to ``~/.config/cabal`` on Unix and ``%APPDATA%/cabal`` on
    Windows.
 
-A configuration file at any of the other locations is not read. When both
-``~/.cabal`` and ``$XDG_CONFIG_HOME/cabal/config`` exist, ``cabal`` warns that
-it is ignoring ``~/.cabal`` and advises removing one of them.
+A configuration file at any of the other locations is not read.
+
+.. warning::
+    When both ``~/.cabal`` and ``$XDG_CONFIG_HOME/cabal/config`` exist,
+    ``cabal`` ignores ``~/.cabal``, so a ``~/.cabal/config`` is not read.
+    ``cabal`` says that it is ignoring ``~/.cabal`` and advises removing one of
+    them.
 
 If the configuration file does not exist, and it was not given
 explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
