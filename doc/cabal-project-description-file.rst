@@ -1935,8 +1935,7 @@ Advanced global options
 
     Since Cabal 3.0, defaults to ``never``. Before that, defaulted to
     creating them only when compiling with GHC 8.4.4 and later (GHC
-    8.4.4 `is the first version
-    <https://gitlab.haskell.org/ghc/ghc/-/issues/13753>`_ that supports
+    8.4.4 :ghc-ticket:`is the first version <13753>` that supports
     the ``-package-env -`` option that allows ignoring the package
     environment files).
 
