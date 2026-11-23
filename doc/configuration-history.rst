@@ -54,17 +54,15 @@ field that replaces them.
 .. [#both] Accepted in a project too. The other fields are accepted in the
    configuration file only.
 
-.. note::
-    The ``remote-repo`` field is an older way of specifying a repository. This
-    field,
+.. admonition:: The remote-repo field
+    :class: note
+
+    This older, one-line field is equivalent to the newer ``repository``
+    section with a ``url`` field:
 
     ::
 
         remote-repo: packages.example.org:http://packages.example.org/
-
-    is the same as this section:
-
-    ::
 
         repository packages.example.org
           url: http://packages.example.org/
