@@ -128,6 +128,7 @@ import Language.Haskell.Extension
 
 -- Base
 import Data.List (unionBy, (\\))
+import qualified Data.Map as Map
 import System.Directory (removePathForcibly)
 import System.Environment (getArgs, getProgName)
 import System.IO (hPutStr, hPutStrLn)
@@ -991,12 +992,14 @@ autoconfUserHooks =
         let common = configCommonFlags flags
             verbosity = mkVerbosity defaultVerbosityHandles (fromFlag $ setupVerbosity common)
             mbWorkDir = flagToMaybe $ setupWorkingDir common
+            compilerTargetTriple = Map.lookup "Target platform" (compilerProperties (compiler lbi))
         runConfigureScript
           defaultVerbosityHandles
           flags
           (flagAssignment lbi)
           (withPrograms lbi)
           (hostPlatform lbi)
+          compilerTargetTriple
         pbi <- getHookedBuildInfo verbosity mbWorkDir (buildDir lbi)
         sanityCheckHookedBuildInfo verbosity pkg_descr pbi
         let pkg_descr' = updatePackageDescription pbi pkg_descr
@@ -1065,9 +1068,12 @@ autoconfSetupHooks =
               { LBC.configFlags = cfg
               , LBC.flagAssignment = flags
               , LBC.hostPlatform = plat
+              , LBC.compiler = compiler'
               }
           }
-        ) = runConfigureScript defaultVerbosityHandles cfg flags progs plat
+        ) =
+        let compilerTargetTriple = Map.lookup "Target platform" (compilerProperties compiler')
+         in runConfigureScript defaultVerbosityHandles cfg flags progs plat compilerTargetTriple
 
     pre_conf_comp
       :: SetupHooks.PreConfComponentInputs
