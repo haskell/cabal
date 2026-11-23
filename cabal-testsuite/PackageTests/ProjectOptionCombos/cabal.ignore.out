@@ -1,0 +1,3 @@
+# --ignore-project
+# cabal v2-sdist
+./no-project.cabal

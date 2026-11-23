@@ -1,0 +1,4 @@
+# --ignore-project --project-dir* (* = ignored)
+# BUG: the users guide says --ignore-project is the one ignored
+# cabal v2-sdist
+./no-project.cabal
