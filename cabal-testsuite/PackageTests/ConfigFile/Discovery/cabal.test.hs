@@ -6,24 +6,24 @@ import System.Directory (createDirectoryIfMissing)
 -- Which configuration file is used. The rules are numbered as they are under
 -- "Configuration file discovery" in doc/config.rst. Keep the two in step.
 --
---  +---+-------------------------------------+-------------------------------+
---  | # | When                                | Configuration file            |
---  +---+-------------------------------------+-------------------------------+
---  | 1 | --config-file is given              | That file                     |
---  | 2 | CABAL_CONFIG is set                 | That file                     |
---  | 3 | CABAL_DIR is set                    | $CABAL_DIR/config             |
---  | 4 | ~/.cabal is a directory and there   | ~/.cabal/config               |
---  |   | is no $XDG_CONFIG_HOME/cabal/config |                               |
---  | 5 | Otherwise                           | $XDG_CONFIG_HOME/cabal/config |
---  +---+-------------------------------------+-------------------------------+
+--  +---+--------------------------------------+-------------------------------+
+--  | # | When                                 | Configuration file            |
+--  +---+--------------------------------------+-------------------------------+
+--  | 1 | --config-file is given               | That file                     |
+--  | 2 | CABAL_CONFIG is set                  | That file                     |
+--  | 3 | CABAL_DIR is set                     | $CABAL_DIR/config             |
+--  | 4 | $XDG_CONFIG_HOME/cabal/config exists | $XDG_CONFIG_HOME/cabal/config |
+--  | 5 | ~/.cabal is a directory              | ~/.cabal/config               |
+--  | 6 | Otherwise                            | $XDG_CONFIG_HOME/cabal/config |
+--  +---+--------------------------------------+-------------------------------+
 --
--- When rule 5 applies and ~/.cabal also exists, cabal warns that it is ignoring
--- ~/.cabal.
+-- The first rule that applies is used. When rule 4 applies and ~/.cabal also
+-- exists, cabal warns that it is ignoring ~/.cabal.
 --
--- When rule 3, 4 or 5 picks a file that does not exist, cabal creates it.
+-- When rule 3, 5 or 6 picks a file that does not exist, cabal creates it.
 --
 -- Rules 1 and 2 are tested by UserConfig and ConfigFile/T7705, the rest here.
--- Rules 4 and 5 are not tested on Windows, where the old and new locations are
+-- Rules 4 to 6 are not tested on Windows, where the old and new locations are
 -- the same directory and neither comes from HOME.
 --
 -- The test harness sets CABAL_CONFIG and CABAL_DIR for every test, so each case
@@ -37,7 +37,7 @@ main = do
     r <- discover home (Just cabalDir)
     assertOutputContains "chosen-dir" r
 
-  discovery "created" "A missing configuration file is created by a command that reads it" $ \home -> do
+  discovery "created" "Rule 3: a missing configuration file is created by a command that reads it" $ \home -> do
     let cabalDir = home </> "empty-dir"
     liftIO $ createDirectoryIfMissing True cabalDir
     shouldNotExist (cabalDir </> "config")
@@ -45,22 +45,27 @@ main = do
     shouldExist (cabalDir </> "config")
 
   unless isWindows $ do
-    discovery "old-only" "Rule 4: only ~/.cabal exists, so ~/.cabal/config is used" $ \home -> do
-      writeConfig (home </> ".cabal")
-      r <- discover home Nothing
-      assertOutputContains (".cabal" </> "config") r
-
-    discovery "xdg-only" "Rule 5: only the XDG config exists, so it is used" $ \home -> do
+    discovery "xdg-only" "Rule 4: only the XDG config exists, so it is used" $ \home -> do
       writeConfig (home </> "xdg-config" </> "cabal")
       r <- discover home Nothing
       assertOutputContains ("xdg-config" </> "cabal" </> "config") r
 
-    discovery "both" "Rule 5: both exist, so the XDG config is used and ~/.cabal is ignored with a warning" $ \home -> do
+    discovery "both" "Rule 4: both exist, so the XDG config is used and ~/.cabal is ignored with a warning" $ \home -> do
       writeConfig (home </> ".cabal")
       writeConfig (home </> "xdg-config" </> "cabal")
       r <- discover home Nothing
       assertOutputContains ("xdg-config" </> "cabal" </> "config") r
       assertOutputContains "ignoring the former" r
+
+    discovery "old-only" "Rule 5: only ~/.cabal exists, so ~/.cabal/config is used" $ \home -> do
+      writeConfig (home </> ".cabal")
+      r <- discover home Nothing
+      assertOutputContains (".cabal" </> "config") r
+
+    discovery "neither" "Rule 6: neither exists, so the XDG config is used, and created" $ \home -> do
+      r <- discover home Nothing
+      assertOutputContains ("xdg-config" </> "cabal" </> "config") r
+      shouldExist (home </> "xdg-config" </> "cabal" </> "config")
 
 -- A named case with expected output of its own, introduced there by its rule
 -- and given a home directory of its own. The harness has a home directory
