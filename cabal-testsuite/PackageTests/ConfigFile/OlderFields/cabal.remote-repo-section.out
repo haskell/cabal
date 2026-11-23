@@ -1,0 +1,4 @@
+# user-config update writes a remote-repo field back as a repository section with a url field
+# cabal user-config
+Renaming <ROOT>/cabal.remote-repo-section.dist/home/.cabal/config to <ROOT>/cabal.remote-repo-section.dist/home/.cabal/config.backup.
+Writing merged config to <ROOT>/cabal.remote-repo-section.dist/home/.cabal/config.

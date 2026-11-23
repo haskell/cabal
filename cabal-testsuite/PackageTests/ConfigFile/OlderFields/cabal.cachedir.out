@@ -1,0 +1,6 @@
+# cachedir sets a directory
+# cabal path
+<ROOT>/older-cache
+# remote-repo-cache sets the same directory
+# cabal path
+<ROOT>/older-cache

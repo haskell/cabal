@@ -7,12 +7,138 @@ import Control.Exception (evaluate)
 -- Each field is put in the configuration file or in the project and @cabal
 -- path@ is run, as it reads both and does nothing else. With
 -- @--remote-repo-cache@ it prints one line, which shows what @cachedir@ sets.
-main = cabalTest $ do
+--
+-- Each group of fields has expected output of its own, in which each field is
+-- introduced by name.
+main = do
+  fields "newer-name" $ \inConfig _ ->
+    forM_
+      [ "remote-repo: packages.example.org:http://packages.example.org/"
+      , "repos: packages.example.org:http://packages.example.org/"
+      , "hackage-username: someone"
+      , "hackage-password: secret"
+      , "hackage-password-command: echo secret"
+      , "hackage-token: secret"
+      , "user-prefix: older-prefix"
+      , "user-bindir: older-bindir"
+      , "global-prefix: older-prefix"
+      , "global-bindir: older-bindir"
+      , "library-coverage: True"
+      , "prefer-oldest: True"
+      , "symlink-bindir: older-bindir"
+      ]
+      $ \field -> do
+        introduce (name field ++ " has a newer name but is accepted in the configuration file")
+        accepted =<< inConfig field
+
+  fields "cachedir" $ \inConfig _ -> do
+    env <- getTestEnv
+    let olderCache = testCurrentDir env </> "older-cache"
+
+    introduce "cachedir sets a directory"
+    byOlderName <- inConfig ("cachedir: " ++ olderCache)
+    accepted byOlderName
+    assertOutputContains "older-cache" byOlderName
+
+    introduce "remote-repo-cache sets the same directory"
+    byNewerName <- inConfig ("remote-repo-cache: " ++ olderCache)
+    assertOutputContains "older-cache" byNewerName
+
+  fields "removed" $ \inConfig _ -> do
+    forM_
+      [ "local-repo"
+      , "require-sandbox"
+      , "ignore-sandbox"
+      , "project-file"
+      , "ignore-project"
+      , "one-shot"
+      , "nix"
+      ]
+      $ \field -> do
+        introduce (field ++ " was removed and is ignored with a warning")
+        assertOutputContains ("Unrecognized field " ++ field)
+          =<< inConfig (field ++ ": removed")
+
+    introduce "world-file was removed and is ignored without a warning"
+    accepted =<< inConfig "world-file: removed"
+
+    introduce "project-dir has never been a field of the configuration file"
+    assertOutputContains "Unrecognized field project-dir"
+      =<< inConfig "project-dir: other-dir"
+
+  fields "in-project" $ \_ inProject -> do
+    forM_
+      [ "library-coverage: True"
+      , "prefer-oldest: True"
+      , "symlink-bindir: older-bindir"
+      ]
+      $ \field -> do
+        introduce (name field ++ " has a newer name but is accepted in a project")
+        accepted =<< inProject field
+
+    forM_
+      [ "project-file: other.project"
+      , "ignore-project: True"
+      , "project-dir: other-dir"
+      ]
+      $ \field -> do
+        introduce (name field ++ " is an option that is accepted in a project")
+        accepted =<< inProject field
+
+  fields "not-in-project" $ \_ inProject -> do
+    forM_
+      [ "remote-repo"
+      , "repos"
+      , "cachedir"
+      , "hackage-username"
+      , "hackage-password"
+      , "hackage-password-command"
+      , "hackage-token"
+      , "user-prefix"
+      , "user-bindir"
+      , "global-prefix"
+      , "global-bindir"
+      ]
+      $ \field -> do
+        introduce (field ++ " is for the configuration file only")
+        unknownIn inProject field
+
+    forM_
+      [ "local-repo"
+      , "require-sandbox"
+      , "ignore-sandbox"
+      , "one-shot"
+      , "world-file"
+      , "nix"
+      ]
+      $ \field -> do
+        introduce (field ++ " was removed and is unknown in a project")
+        unknownIn inProject field
+
+  fields "remote-repo-section" $ \_ _ -> do
+    env <- getTestEnv
+    let configFile = testUserCabalConfigFile env
+    introduce "user-config update writes a remote-repo field back as a repository section with a url field"
+    liftIO $
+      appendFile configFile "remote-repo: packages.example.org:http://packages.example.org/\n"
+    cabal "user-config" ["update", "-f"]
+    assertFileDoesContain configFile "repository packages.example.org"
+    assertFileDoesContain configFile "url: http://packages.example.org/"
+    assertFileDoesNotContain configFile "remote-repo:"
+
+-- A named group of cases with expected output of its own. The group is given
+-- two ways of running @cabal path@, with a field added to the configuration
+-- file and with a field added to the project.
+fields
+  :: String
+  -> ((String -> TestM Result) -> (String -> TestM Result) -> TestM ())
+  -> IO ()
+fields group m = cabalTest' group . recordMode RecordMarked $ do
   env <- getTestEnv
   let configFile = testUserCabalConfigFile env
       projectFile = testCurrentDir env </> "cabal.project"
-      olderCache = testCurrentDir env </> "older-cache"
 
+  -- The configuration the harness wrote, with the path to the compiler.
   config <- liftIO $ do
     s <- readFile configFile
     _ <- evaluate (length s)
@@ -27,110 +153,24 @@ main = cabalTest $ do
         liftIO $ writeFile projectFile (unlines ["packages: .", field])
         cabal' "path" ["--remote-repo-cache"]
 
-      -- Not recorded, as each of these prints the same one line.
-      accepted m = recordMode DoNotRecord $ do
-        r <- m
-        assertOutputDoesNotContain "Unrecognized field" r
-        assertOutputDoesNotContain "Unknown field" r
+  m inConfig inProject
 
-  -- Fields with a newer name are accepted in the configuration file without a
-  -- warning.
-  mapM_
-    (accepted . inConfig)
-    [ "remote-repo: packages.example.org:http://packages.example.org/"
-    , "repos: packages.example.org:http://packages.example.org/"
-    , "hackage-username: someone"
-    , "hackage-password: secret"
-    , "hackage-password-command: echo secret"
-    , "hackage-token: secret"
-    , "user-prefix: older-prefix"
-    , "user-bindir: older-bindir"
-    , "global-prefix: older-prefix"
-    , "global-bindir: older-bindir"
-    , "library-coverage: True"
-    , "prefer-oldest: True"
-    , "symlink-bindir: older-bindir"
-    ]
+-- Introduce a case in the expected output.
+introduce :: String -> TestM ()
+introduce = recordHeader . pure
 
-  -- The cachedir field sets the same directory as remote-repo-cache.
-  byOlderName <- inConfig ("cachedir: " ++ olderCache)
-  assertOutputDoesNotContain "Unrecognized field" byOlderName
-  assertOutputContains "older-cache" byOlderName
-  byNewerName <- inConfig ("remote-repo-cache: " ++ olderCache)
-  assertOutputContains "older-cache" byNewerName
+-- The name of a field, from a line that sets it.
+name :: String -> String
+name = takeWhile (/= ':')
 
-  -- Removed fields are ignored with a warning.
-  let removed =
-        [ "local-repo"
-        , "require-sandbox"
-        , "ignore-sandbox"
-        , "project-file"
-        , "ignore-project"
-        , "one-shot"
-        , "nix"
-        ]
-  forM_ removed $ \field ->
-    assertOutputContains ("Unrecognized field " ++ field)
-      =<< inConfig (field ++ ": removed")
+-- The field was read without complaint.
+accepted :: Result -> TestM ()
+accepted r = do
+  assertOutputDoesNotContain "Unrecognized field" r
+  assertOutputDoesNotContain "Unknown field" r
 
-  -- Except for world-file, which is ignored without one.
-  accepted $ inConfig "world-file: removed"
-
-  -- The project-dir option has never been a field of the configuration file.
-  assertOutputContains "Unrecognized field project-dir"
-    =<< inConfig "project-dir: other-dir"
-
-  -- Three of the fields with a newer name are accepted in a project too.
-  mapM_
-    (accepted . inProject)
-    [ "library-coverage: True"
-    , "prefer-oldest: True"
-    , "symlink-bindir: older-bindir"
-    ]
-
-  -- So are three options to do with projects, though none is a field of the
-  -- configuration file.
-  mapM_
-    (accepted . inProject)
-    [ "project-file: other.project"
-    , "ignore-project: True"
-    , "project-dir: other-dir"
-    ]
-
-  -- The rest are for the configuration file only.
-  assertOutputContains "Unknown field: \"remote-repo\""
-    =<< inProject "remote-repo: packages.example.org:http://packages.example.org/"
-
-  -- Not recorded, as each of these prints the same warning but for the name.
-  let unknownInProject field =
-        recordMode DoNotRecord $
-          assertOutputContains ("Unknown field: \"" ++ field ++ "\"")
-            =<< inProject (field ++ ": unknown")
-  mapM_
-    unknownInProject
-    [ "repos"
-    , "cachedir"
-    , "hackage-username"
-    , "hackage-password"
-    , "hackage-password-command"
-    , "hackage-token"
-    , "user-prefix"
-    , "user-bindir"
-    , "global-prefix"
-    , "global-bindir"
-    ]
-
-  -- Removed fields are unknown in a project too, world-file among them.
-  mapM_
-    unknownInProject
-    ["local-repo", "require-sandbox", "ignore-sandbox", "one-shot", "world-file", "nix"]
-
-  -- The remote-repo field is equivalent to a repository section with a url
-  -- field: user-config update writes it back as one.
-  liftIO $
-    writeFile configFile $
-      config ++ "remote-repo: packages.example.org:http://packages.example.org/\n"
-  recordMode DoNotRecord $ cabal "user-config" ["update", "-f"]
-  assertFileDoesContain configFile "repository packages.example.org"
-  assertFileDoesContain configFile "url: http://packages.example.org/"
-  assertFileDoesNotContain configFile "remote-repo:"
+-- The field is not one a project has.
+unknownIn :: (String -> TestM Result) -> String -> TestM ()
+unknownIn inProject field =
+  assertOutputContains ("Unknown field: \"" ++ field ++ "\"")
+    =<< inProject (field ++ ": unknown")
