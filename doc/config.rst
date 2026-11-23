@@ -88,11 +88,13 @@ applies:
 2. the file given by ``$CABAL_CONFIG``, if it is set;
 3. ``$CABAL_DIR/config``, if ``$CABAL_DIR`` is set;
 4. ``$XDG_CONFIG_HOME/cabal/config``, if that file exists;
-5. ``~/.cabal/config``, if ``~/.cabal`` exists and is a directory;
-6. ``$XDG_CONFIG_HOME/cabal/config``.
+5. ``~/.cabal/config``, if that file exists;
+6. a new ``~/.cabal/config``, which ``cabal`` creates, if there is a
+   ``~/.cabal`` directory;
+7. a new ``$XDG_CONFIG_HOME/cabal/config``, which ``cabal`` creates.
 
 ``$XDG_CONFIG_HOME`` defaults to ``~/.config`` on Unix and ``%APPDATA%`` on
-Windows. A configuration file at any of the other locations is not read.
+Windows.
 
 .. admonition:: When both locations exist
     :class: warning
