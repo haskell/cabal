@@ -594,13 +594,13 @@ configureOptions showOrParseArgs =
               ( \case
                   Flag NoDebugInfo -> []
                   Flag MinimalDebugInfo -> [Just "1"]
-                  Flag NormalDebugInfo -> [Nothing]
+                  Flag NormalDebugInfo -> [Just "2"]
                   Flag MaximalDebugInfo -> [Just "3"]
                   _ -> []
               )
               "g"
               ["enable-debug-info"]
-              "Emit debug info (n is 0--3, default is 2)"
+              "Emit debug info (n is 0--3, default is 0)"
           , noArg
               (Flag NoDebugInfo)
               []
