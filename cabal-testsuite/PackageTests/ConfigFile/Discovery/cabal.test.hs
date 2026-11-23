@@ -40,10 +40,9 @@ main = do
     r <- discover home (Just cabalDir)
     assertOutputContains "chosen-dir" r
 
-  discovery "created" "Rule 3: a missing configuration file is created by a command that reads it" $ \home -> do
-    let cabalDir = home </> "empty-dir"
-    liftIO $ createDirectoryIfMissing True cabalDir
-    shouldNotExist (cabalDir </> "config")
+  discovery "created" "Rule 3: a missing CABAL_DIR and its config are created by a command that reads the configuration" $ \home -> do
+    let cabalDir = home </> "missing" </> "dir"
+    shouldDirectoryNotExist cabalDir
     _ <- discover home (Just cabalDir)
     shouldExist (cabalDir </> "config")
 

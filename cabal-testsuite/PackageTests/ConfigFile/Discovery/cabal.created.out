@@ -1,6 +1,6 @@
-# Rule 3: a missing configuration file is created by a command that reads it
+# Rule 3: a missing CABAL_DIR and its config are created by a command that reads the configuration
 # cabal path
 Config file path source is default config file.
-Config file not found: <ROOT>/cabal.created.dist/discovery/empty-dir/config
-Writing default configuration to <ROOT>/cabal.created.dist/discovery/empty-dir/config
-<ROOT>/cabal.created.dist/discovery/empty-dir/config
+Config file not found: <ROOT>/cabal.created.dist/discovery/missing/dir/config
+Writing default configuration to <ROOT>/cabal.created.dist/discovery/missing/dir/config
+<ROOT>/cabal.created.dist/discovery/missing/dir/config
