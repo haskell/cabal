@@ -67,8 +67,9 @@ field that replaces them.
         repository packages.example.org
           url: http://packages.example.org/
 
-    For Hackage alone, the URL ``http://hackage.haskell.org/packages/archive``
-    is read as ``http://hackage.haskell.org/``.
+    Configuration files old enough to have this field often give Hackage's
+    URL as ``http://hackage.haskell.org/packages/archive``. ``cabal`` reads
+    that as ``http://hackage.haskell.org/``.
 
 Removed fields
 --------------
