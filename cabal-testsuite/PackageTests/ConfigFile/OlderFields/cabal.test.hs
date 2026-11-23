@@ -60,12 +60,25 @@ main = cabalTest $ do
   assertOutputContains "older-cache" byNewerName
 
   -- Removed fields are ignored with a warning.
-  forM_ ["local-repo", "require-sandbox", "ignore-sandbox", "nix"] $ \field ->
+  let removed =
+        [ "local-repo"
+        , "require-sandbox"
+        , "ignore-sandbox"
+        , "project-file"
+        , "ignore-project"
+        , "one-shot"
+        , "nix"
+        ]
+  forM_ removed $ \field ->
     assertOutputContains ("Unrecognized field " ++ field)
       =<< inConfig (field ++ ": removed")
 
   -- Except for world-file, which is ignored without one.
   accepted $ inConfig "world-file: removed"
+
+  -- The project-dir option has never been a field of the configuration file.
+  assertOutputContains "Unrecognized field project-dir"
+    =<< inConfig "project-dir: other-dir"
 
   -- Three of the fields with a newer name are accepted in a project too.
   mapM_
@@ -75,6 +88,39 @@ main = cabalTest $ do
     , "symlink-bindir: older-bindir"
     ]
 
+  -- So are three options to do with projects, though none is a field of the
+  -- configuration file.
+  mapM_
+    (accepted . inProject)
+    [ "project-file: other.project"
+    , "ignore-project: True"
+    , "project-dir: other-dir"
+    ]
+
   -- The rest are for the configuration file only.
   assertOutputContains "Unknown field: \"remote-repo\""
     =<< inProject "remote-repo: packages.example.org:http://packages.example.org/"
+
+  -- Not recorded, as each of these prints the same warning but for the name.
+  let unknownInProject field =
+        recordMode DoNotRecord $
+          assertOutputContains ("Unknown field: \"" ++ field ++ "\"")
+            =<< inProject (field ++ ": unknown")
+  mapM_
+    unknownInProject
+    [ "repos"
+    , "cachedir"
+    , "hackage-username"
+    , "hackage-password"
+    , "hackage-password-command"
+    , "hackage-token"
+    , "user-prefix"
+    , "user-bindir"
+    , "global-prefix"
+    , "global-bindir"
+    ]
+
+  -- Removed fields are unknown in a project too, world-file among them.
+  mapM_
+    unknownInProject
+    ["local-repo", "require-sandbox", "ignore-sandbox", "one-shot", "world-file", "nix"]

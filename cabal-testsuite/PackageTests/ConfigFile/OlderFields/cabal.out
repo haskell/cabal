@@ -12,7 +12,19 @@ Warning: <ROOT>/cabal.dist/home/.cabal/config: Unrecognized field require-sandbo
 Warning: <ROOT>/cabal.dist/home/.cabal/config: Unrecognized field ignore-sandbox on line 2
 <ROOT>/cabal.dist/home/.cabal/packages
 # cabal path
+Warning: <ROOT>/cabal.dist/home/.cabal/config: Unrecognized field project-file on line 2
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+Warning: <ROOT>/cabal.dist/home/.cabal/config: Unrecognized field ignore-project on line 2
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+Warning: <ROOT>/cabal.dist/home/.cabal/config: Unrecognized field one-shot on line 2
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
 Warning: <ROOT>/cabal.dist/home/.cabal/config: Unrecognized field nix on line 2
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+Warning: <ROOT>/cabal.dist/home/.cabal/config: Unrecognized field project-dir on line 2
 <ROOT>/cabal.dist/home/.cabal/packages
 # cabal path
 Warnings found while parsing the project file, cabal.project:
