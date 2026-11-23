@@ -1,0 +1,5 @@
+import: cabal.project
+reject-unconstrained-dependencies: all
+constraints:
+    some-exe -any
+  , some-lib -any

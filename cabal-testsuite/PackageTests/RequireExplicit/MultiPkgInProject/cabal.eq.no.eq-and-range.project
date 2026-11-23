@@ -1,0 +1,6 @@
+import: cabal.project
+reject-unconstrained-dependencies: eq
+constraints:
+    some-lib >0
+  , some-lib <=2
+  , some-lib ==1.0
