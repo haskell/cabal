@@ -8,7 +8,8 @@ Overview
 
 The global configuration file for ``cabal-install`` is by default
 ``$XDG_CONFIG_HOME/cabal/config``. If you do not have this file, ``cabal`` will create
-it for you on the first call to ``cabal update``
+it for you the first time a command reads the configuration, as ``cabal update``
+and ``cabal build`` do
 (details see `configuration file discovery`_).
 Alternatively, you can explicitly ask ``cabal`` to create it for you using
 
