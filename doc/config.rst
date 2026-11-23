@@ -84,8 +84,8 @@ Configuration file discovery
 ``cabal`` reads one configuration file. It uses the first of these that
 applies:
 
-1. the file given by the ``--config-file`` option;
-2. the file given by ``$CABAL_CONFIG``, if it is set;
+1. the file given by the ``--config-file`` option, an error if missing;
+2. the file given by ``$CABAL_CONFIG``, if it is set, an error if missing;
 3. ``$CABAL_DIR/config``, if ``$CABAL_DIR`` is set, created if missing.
 
 Failing those, a file that exists:
@@ -115,12 +115,6 @@ Windows.
     Read ``%APPDATA%\cabal`` for ``~/.cabal``. Unless ``$XDG_CONFIG_HOME`` is
     set, that is the same directory as ``$XDG_CONFIG_HOME/cabal``, so rules 4
     to 7 all give ``%APPDATA%\cabal\config``.
-
-If the configuration file does not exist, and it was not given
-explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
-``cabal-install`` will generate the default one, with directories
-based on ``$CABAL_DIR`` (if set) or according to the XDG Base
-Directory Specification, as listed below.
 
 .. _directories:
 
