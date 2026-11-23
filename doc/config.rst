@@ -77,6 +77,9 @@ Various environment variables affect ``cabal-install``.
 Configuration file discovery
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. The rules below are tested, by number, in
+   cabal-testsuite/PackageTests/ConfigFile/Discovery/cabal.test.hs.
+
 ``cabal`` reads one configuration file. Its location is determined as follows:
 
 1. If option ``--config-file`` is given, use it;
