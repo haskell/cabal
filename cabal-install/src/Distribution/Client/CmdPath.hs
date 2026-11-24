@@ -74,8 +74,7 @@ import Distribution.Simple.Flag
   )
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
-  ( die'
-  , dieWithException
+  ( dieWithException
   , withOutputMarker
   , wrapText
   )
@@ -245,14 +244,12 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
     if not $ fromFlagOrDefault False (pathCompiler pathFlags)
       then pure Nothing
       else do
-        (compiler, _, progDb) <-
+        (compiler, compilerProgs, _, _) <-
           runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
             configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
-        compilerProg <- requireCompilerProg verbosity compiler
-        (configuredCompilerProg, _) <- requireProgram verbosity compilerProg progDb
 
         let compilerInfo' =
-              mkCompilerInfo configuredCompilerProg compiler $
+              mkCompilerInfo compilerProgs compiler $
                 cabalStoreDirLayout (cabalDirLayout baseCtx)
 
         pure $ Just compilerInfo'
@@ -299,19 +296,6 @@ getPathLocation _ baseCtx ConfigPathInstallDir =
     (pure <$> cinstInstalldir (projectConfigClientInstallFlags $ projectConfigBuildOnly (projectConfig baseCtx)))
 
 -- ----------------------------------------------------------------------------
--- Helpers for determining compiler information
--- ----------------------------------------------------------------------------
-
-requireCompilerProg :: Verbosity -> Compiler -> IO Program
-requireCompilerProg verbosity compiler =
-  case compilerFlavor compiler of
-    GHC -> pure ghcProgram
-    flavour ->
-      die' verbosity $
-        "path: Unsupported compiler flavour: "
-          <> prettyShow flavour
-
--- ----------------------------------------------------------------------------
 -- Output
 -- ----------------------------------------------------------------------------
 
@@ -330,13 +314,13 @@ data PathCompilerInfo = PathCompilerInfo
   }
   deriving (Show, Eq, Ord)
 
-mkCompilerInfo :: ConfiguredProgram -> Compiler -> StoreDirLayout -> PathCompilerInfo
-mkCompilerInfo compilerProgram compiler storeLayout =
+mkCompilerInfo :: CompilerPrograms -> Compiler -> StoreDirLayout -> PathCompilerInfo
+mkCompilerInfo compilerProgs compiler storeLayout =
   PathCompilerInfo
     { pathCompilerInfoFlavour = compilerFlavor compiler
     , pathCompilerInfoId = compilerId compiler
     , pathCompilerInfoAbiTag = showCompilerIdWithAbi compiler
-    , pathCompilerInfoPath = programPath compilerProgram
+    , pathCompilerInfoPath = compilerPath compilerProgs
     , pathCompilerInfoStorePath = storeDirectory storeLayout compiler
     }
 

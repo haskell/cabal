@@ -100,6 +100,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex, lookupUnitId)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
+import Distribution.Simple.Program.Compiler (mkCompilerPrograms)
 import Distribution.Simple.Program.Db
   ( ProgramDb (..)
   , lookupProgramByName
@@ -487,7 +488,7 @@ configure_setupHooks
   (g_pkg_descr, hookedBuildInfo)
   verbHandles
   cfg = do
-    (lbc0, comp, platform, enabledComps) <- preConfigurePackage verbHandles cfg g_pkg_descr
+    (lbc0, comp, hcProgs, platform, enabledComps) <- preConfigurePackage verbHandles cfg g_pkg_descr
 
     -- Package-wide pre-configure hook
     lbc1 <-
@@ -520,6 +521,7 @@ configure_setupHooks
       flags
       enabledComps
       comp
+      hcProgs
       platform
       packageDbs
       pkgInfo
@@ -534,6 +536,8 @@ configureFinal
   -> FlagAssignment
   -> ComponentRequestedSpec
   -> Compiler
+  -> CompilerPrograms
+  -- ^ the compiler's programs, as returned by 'configCompilerEx'
   -> Platform
   -> PackageDBStack
   -> PackageInfo
@@ -548,6 +552,7 @@ configureFinal
   flags
   enabledComps
   comp
+  hcProgs
   platform
   packageDbs
   pkgInfo@PackageInfo
@@ -566,7 +571,7 @@ configureFinal
 
       -- Cabal package-wide configure
       (lbc2, pbd2) <-
-        configurePackage verbHandles cfg lbc1 pkgDescr0 flags enabledComps comp platform packageDbs
+        configurePackage verbHandles cfg lbc1 pkgDescr0 flags enabledComps comp hcProgs platform packageDbs
 
       -- Package-wide post-configure hook
       for_ postConfPackageHook $ runPostConfPackageHook lbc2 pbd2
@@ -692,7 +697,7 @@ preConfigurePackage
   :: VerbosityHandles
   -> ConfigFlags
   -> GenericPackageDescription
-  -> IO (LBC.LocalBuildConfig, Compiler, Platform, ComponentRequestedSpec)
+  -> IO (LBC.LocalBuildConfig, Compiler, CompilerPrograms, Platform, ComponentRequestedSpec)
 preConfigurePackage verbHandles cfg g_pkg_descr = do
   let verbosity = mkVerbosity verbHandles (fromFlag $ configVerbosity cfg)
 
@@ -760,6 +765,7 @@ preConfigurePackage verbHandles cfg g_pkg_descr = do
   -- programDb:  location and args of all programs we're
   --                  building with
   ( comp :: Compiler
+    , hcProgs :: CompilerPrograms
     , compPlatform :: Platform
     , programDb00 :: ProgramDb
     ) <-
@@ -781,7 +787,7 @@ preConfigurePackage verbHandles cfg g_pkg_descr = do
     interpretSymbolicPath mbWorkDir builddir
 
   lbc <- computeLocalBuildConfig verbHandles cfg comp programDb00
-  return (lbc, comp, compPlatform, enabled)
+  return (lbc, comp, hcProgs, compPlatform, enabled)
 
 computeLocalBuildConfig
   :: VerbosityHandles
@@ -1073,10 +1079,11 @@ configurePackage
   -> FlagAssignment
   -> ComponentRequestedSpec
   -> Compiler
+  -> CompilerPrograms
   -> Platform
   -> PackageDBStack
   -> IO (LBC.LocalBuildConfig, LBC.PackageBuildDescr)
-configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform packageDbs = do
+configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp hcProgs platform packageDbs = do
   let common = configCommonFlags cfg
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       programDb0 = LBC.withPrograms lbc0
@@ -1154,6 +1161,7 @@ configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform pa
         , flagAssignment = flags
         , componentEnabledSpec = enabled
         , compiler = comp
+        , compilerPrograms = hcProgs
         , hostPlatform = platform
         , localPkgDescr = pkg_descr2
         , installDirTemplates = installDirs
@@ -2676,15 +2684,18 @@ configCompilerAuxEx verbHandles cfg = do
   programDb <- mkProgramDb verbHandles cfg defaultProgramDb
   let common = configCommonFlags cfg
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-  configCompilerEx
-    (flagToMaybe $ configHcFlavor cfg)
-    (flagToMaybe $ configHcPath cfg)
-    (flagToMaybe $ configHcPkg cfg)
-    programDb
-    verbosity
+  (comp, _, platform, progdb) <-
+    configCompilerEx
+      (flagToMaybe $ configHcFlavor cfg)
+      (flagToMaybe $ configHcPath cfg)
+      (flagToMaybe $ configHcPkg cfg)
+      programDb
+      verbosity
+  return (comp, platform, progdb)
 
 -- | Configure the compiler and associated programs such as @hc-pkg@, @haddock@
--- and toolchain program such as @ar@, @ld@.
+-- and toolchain program such as @ar@, @ld@. Also returns the executables
+-- found for the compiler and its @hc-pkg@.
 configCompilerEx
   :: Maybe CompilerFlavor
   -> Maybe FilePath
@@ -2693,26 +2704,29 @@ configCompilerEx
   -- ^ user-specified @hc-pkg@ path (optional)
   -> ProgramDb
   -> Verbosity
-  -> IO (Compiler, Platform, ProgramDb)
+  -> IO (Compiler, CompilerPrograms, Platform, ProgramDb)
 configCompilerEx Nothing _ _ _ verbosity = dieWithException verbosity UnknownCompilerException
 configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
-  (comp, maybePlatform, programDb) <- case hcFlavor of
+  (comp, hcProgs, maybePlatform, programDb) <- case hcFlavor of
     GHC -> GHC.configure verbosity hcPath hcPkg progdb
-    UHC -> UHC.configure verbosity hcPath progdb
+    UHC -> do
+      (comp, uhcProg, maybePlatform, programDb) <- UHC.configure verbosity hcPath progdb
+      return (comp, mkCompilerPrograms uhcProg Nothing, maybePlatform, programDb)
     GHCJS -> dieWithException verbosity GHCJSNotSupported
     _ -> dieWithException verbosity UnknownCompilerException
-  return (comp, fromMaybe buildPlatform maybePlatform, programDb)
+  return (comp, hcProgs, fromMaybe buildPlatform maybePlatform, programDb)
 
--- | Configure the compiler ONLY.
+-- | Configure the compiler ONLY. Also returns the configured compiler
+-- program, which is in the returned 'ProgramDb' too.
 configCompiler
   :: Maybe CompilerFlavor
   -> Maybe FilePath
   -- ^ user-specified @hc@ path (optional)
   -> ProgramDb
   -> Verbosity
-  -> IO (Compiler, Platform, ProgramDb)
+  -> IO (Compiler, ConfiguredProgram, Platform, ProgramDb)
 configCompiler mbFlavor hcPath progdb verbosity = do
-  (comp, maybePlatform, programDb) <-
+  (comp, hcProg, maybePlatform, programDb) <-
     case mbFlavor of
       Nothing -> dieWithException verbosity UnknownCompilerException
       Just hcFlavor ->
@@ -2721,22 +2735,27 @@ configCompiler mbFlavor hcPath progdb verbosity = do
           UHC -> UHC.configure verbosity hcPath progdb
           GHCJS -> dieWithException verbosity GHCJSNotSupported
           _ -> dieWithException verbosity UnknownCompilerException
-  return (comp, fromMaybe buildPlatform maybePlatform, programDb)
+  return (comp, hcProg, fromMaybe buildPlatform maybePlatform, programDb)
 
 -- | Configure programs associated to the compiler, such as @hc-pkg@, @haddock@
--- and toolchain program such as @ar@, @ld@.
+-- and toolchain program such as @ar@, @ld@. Also returns the executables
+-- found for the compiler and its @hc-pkg@.
 configCompilerProgDb
   :: Verbosity
   -> Compiler
+  -> ConfiguredProgram
+  -- ^ the configured compiler program, as returned by 'configCompiler'
   -> ProgramDb
   -- ^ program database containing the compiler
   -> Maybe FilePath
   -- ^ user-specified @hc-pkg@ path (optional)
-  -> IO ProgramDb
-configCompilerProgDb verbosity comp hcProgDb hcPkgPath = do
+  -> IO (CompilerPrograms, ProgramDb)
+configCompilerProgDb verbosity comp hcProg hcProgDb hcPkgPath = do
   case compilerFlavor comp of
-    GHC -> GHC.compilerProgramDb verbosity comp hcProgDb hcPkgPath
-    _ -> return hcProgDb
+    GHC -> do
+      (ghcPkgProg, progdb) <- GHC.compilerProgramDb verbosity comp hcProg hcProgDb hcPkgPath
+      return (mkCompilerPrograms hcProg (Just ghcPkgProg), progdb)
+    _ -> return (mkCompilerPrograms hcProg Nothing, hcProgDb)
 
 -- -----------------------------------------------------------------------------
 -- Testing C lib and header dependencies

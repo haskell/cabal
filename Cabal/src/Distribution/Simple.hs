@@ -995,6 +995,8 @@ autoconfUserHooks =
           defaultVerbosityHandles
           flags
           (flagAssignment lbi)
+          (compiler lbi)
+          (compilerPrograms lbi)
           (withPrograms lbi)
           (hostPlatform lbi)
         pbi <- getHookedBuildInfo verbosity mbWorkDir (buildDir lbi)
@@ -1064,10 +1066,12 @@ autoconfSetupHooks =
             LBC.PackageBuildDescr
               { LBC.configFlags = cfg
               , LBC.flagAssignment = flags
+              , LBC.compiler = comp
+              , LBC.compilerPrograms = hcProgs
               , LBC.hostPlatform = plat
               }
           }
-        ) = runConfigureScript defaultVerbosityHandles cfg flags progs plat
+        ) = runConfigureScript defaultVerbosityHandles cfg flags comp hcProgs progs plat
 
     pre_conf_comp
       :: SetupHooks.PreConfComponentInputs

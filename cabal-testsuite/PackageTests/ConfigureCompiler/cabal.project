@@ -1,0 +1,4 @@
+packages: .
+
+package configure-compiler
+  configure-options: --user-option

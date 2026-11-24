@@ -285,12 +285,8 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
               activeTargets
           )
 
-    (compilerProg, _) <- case flavorToProgram (compilerFlavor (compiler lbi)) of
-      Nothing ->
-        dieWithException verbosity $ UnknownCompilerFlavor (compilerFlavor (compiler lbi))
-      Just program -> requireProgram verbosity program (withPrograms lbi)
-
     wdir <- absoluteWorkingDirLBI lbi
+    compilerProg <- compilerProgramToRun verbosity (compilerPrograms lbi) (withPrograms lbi)
     let (warns, json) = mkBuildInfo wdir pkg_descr lbi flags (compilerProg, compiler lbi) activeTargets
         buildInfoText = renderJson json
     unless (null warns) $
@@ -305,14 +301,6 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
   where
     buildInfoFile = interpretSymbolicPathLBI lbi $ buildInfoPref distPref
     shouldDumpBuildInfo = fromFlagOrDefault NoDumpBuildInfo dumpBuildInfoFlag == DumpBuildInfo
-
-    -- \| Given the flavor of the compiler, try to find out
-    -- which program we need.
-    flavorToProgram :: CompilerFlavor -> Maybe Program
-    flavorToProgram GHC = Just ghcProgram
-    flavorToProgram UHC = Just uhcProgram
-    flavorToProgram JHC = Just jhcProgram
-    flavorToProgram _ = Nothing
 
 repl
   :: PackageDescription

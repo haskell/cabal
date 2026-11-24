@@ -104,6 +104,7 @@ import Distribution.Simple.Compiler
   , PackageDBX (..)
   , compilerCompatVersion
   )
+import Distribution.Simple.Program.Compiler (compilerProgramToRun)
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
   ( Flag
@@ -185,8 +186,6 @@ import Distribution.Client.ReplFlags
   )
 import Distribution.Compat.Binary (decode)
 import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
-import Distribution.Simple.Program.Builtin (ghcProgram)
-import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Program.Types
 import Distribution.Types.PackageName.Magic (fakePackageId)
 import System.Directory
@@ -544,7 +543,8 @@ targetedRepl
         -- HACK: Just combine together all env overrides, placing the most common things last
 
         -- ghc program with overridden PATH
-        (ghcProg, _) <- requireProgram verbosity ghcProgram (pkgConfigCompilerProgs (elaboratedShared buildCtx'))
+        let shared = elaboratedShared buildCtx'
+        ghcProg <- compilerProgramToRun verbosity (pkgConfigCompilerPrograms shared) (pkgConfigCompilerProgs shared)
         let ghcProg' = ghcProg{programOverrideEnv = [("PATH", Just sp)]}
 
         -- Find what the unit files are, and start a repl based on all the response

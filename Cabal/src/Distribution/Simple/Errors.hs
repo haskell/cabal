@@ -72,7 +72,6 @@ data CabalException
   | HaddockAndGHCVersionDoesntMatch Version Version
   | MustHaveSharedLibraries
   | HaddockPackageFlags [(InstalledPackageInfo, [UnitId])]
-  | UnknownCompilerFlavor CompilerFlavor
   | FailedToDetermineTarget
   | NoMultipleTargets
   | REPLNotSupported
@@ -216,7 +215,7 @@ exceptionCode e = case e of
   HaddockAndGHCVersionDoesntMatch{} -> 1998
   MustHaveSharedLibraries{} -> 6032
   HaddockPackageFlags{} -> 4569
-  UnknownCompilerFlavor{} -> 3102
+  -- Retired: UnknownCompilerFlavor{} -> 3102
   FailedToDetermineTarget{} -> 5049
   NoMultipleTargets{} -> 6091
   REPLNotSupported{} -> 1098
@@ -371,7 +370,6 @@ exceptionMessage e = case e of
     "internal error when calculating transitive "
       ++ "package dependencies.\nDebug info: "
       ++ show inf
-  UnknownCompilerFlavor compilerFlavor -> "dumpBuildInfo: Unknown compiler flavor: " ++ show compilerFlavor
   FailedToDetermineTarget -> "Failed to determine target."
   NoMultipleTargets -> "The 'repl' command does not support multiple targets at once."
   REPLNotSupported -> "A REPL is not supported with this compiler."
