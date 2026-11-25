@@ -51,7 +51,6 @@ Various environment variables affect ``cabal-install``.
    The variable to find global configuration file.
 
 ``CABAL_DIR``
-
    If set, *all* ``cabal-install`` content files will be stored as
    subdirectories of this directory, including the configuration file
    if ``CABAL_CONFIG`` is unset.  If ``CABAL_DIR`` is unset, Cabal
@@ -67,10 +66,9 @@ Various environment variables affect ``cabal-install``.
        ``CABAL_DIR`` was set to point at this directory.
 
 ``CABAL_BUILDDIR``
-
-    The override for default ``dist`` build directory.
-    Note, the nix-style builds build directory (``dist-newstyle``)
-    is not affected by this environment variable.
+   The override for default ``dist`` build directory.
+   Note, the nix-style builds build directory (``dist-newstyle``)
+   is not affected by this environment variable.
 
 .. _config-file-discovery:
 
