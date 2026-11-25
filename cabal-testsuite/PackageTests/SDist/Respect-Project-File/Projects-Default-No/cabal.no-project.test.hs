@@ -5,5 +5,5 @@ import Test.Cabal.Prelude
 -- alternative and reasonable expectation (but not the behaviour seen) is that
 -- project probing would not occur and "cabal sdist" would work on the local
 -- uv.cabal package.
-main = cabalTest $ do
+main = cabalTest $ expectBroken 12501 $ do
     cabal "sdist" ["all"]

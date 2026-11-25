@@ -417,11 +417,10 @@ partitionTests testPattern paths =
 
     go ts ms [] = (keepPatternMatches ts, keepPatternMatches ms)
     go ts ms (f:fs) =
-        -- NB: Keep this synchronized with isTestFile
-        case takeExtensions f of
-            ".test.hs"      -> go (f:ts) ms fs
-            ".multitest.hs" -> go ts (f:ms) fs
-            _               -> go ts ms     fs
+        case testFileKind f of
+            Just SingleTest -> go (f:ts) ms fs
+            Just MultiTest  -> go ts (f:ms) fs
+            Nothing         -> go ts ms     fs
 
 outputThread :: Verbosity -> Chan ServerLogMsg -> Handle -> IO ()
 outputThread verbosity chan log_handle = go ""

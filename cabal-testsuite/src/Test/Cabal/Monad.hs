@@ -13,6 +13,10 @@ module Test.Cabal.Monad
   , TestM
   , runTestM
 
+    -- * Test scripts
+  , TestFileKind (..)
+  , testFileKind
+
     -- * Helper functions
   , programPathM
   , requireProgramM
@@ -601,13 +605,20 @@ withSourceCopy m = do
         else copyFile (curdir </> f) (dest </> f)
   m
 
--- NB: Keep this synchronized with partitionTests
+-- | How the harness treats a file, judged by its name alone.
+data TestFileKind = SingleTest | MultiTest
+
+-- | A test script is any file ending in @.test.hs@ or @.multitest.hs@. The
+-- name may contain further dots, e.g. @cabal.no-project.test.hs@; the part
+-- before the suffix names the test's @.out@ and @.dist@ files.
+testFileKind :: FilePath -> Maybe TestFileKind
+testFileKind f
+  | ".multitest.hs" `isExtensionOf` f = Just MultiTest
+  | ".test.hs" `isExtensionOf` f = Just SingleTest
+  | otherwise = Nothing
+
 isTestFile :: FilePath -> Bool
-isTestFile f =
-  case takeExtensions f of
-    ".test.hs" -> True
-    ".multitest.hs" -> True
-    _ -> False
+isTestFile = isJust . testFileKind
 
 initWorkDir :: TestM ()
 initWorkDir = do

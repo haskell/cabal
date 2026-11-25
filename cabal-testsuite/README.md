@@ -125,7 +125,9 @@ Otherwise, here is a walkthrough:
    with the exception of one test stored in `tests`.)
 
 2. Create one or more `.test.hs` scripts in your directory, using
-   the template:
+   the template below. The name may contain further dots, as in
+   `cabal.no-project.test.hs`; the part before `.test.hs` names the
+   test's `.out` and `.dist` files.
    ```haskell
    import Test.Cabal.Prelude
    main = setupAndCabalTest $ do
