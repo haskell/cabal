@@ -721,32 +721,127 @@ The following settings control the behavior of the dependency solver:
     bare ``--allow-older`` is equivalent to ``--allow-older=all``.
 
 
-.. cfg-field:: index-state: HEAD, unix-timestamp, ISO8601 UTC timestamp.
+.. cfg-field:: index-state: [reponame] timestamp
+               --index-state=TIMESTAMP
    :synopsis: Use source package index state as it existed at a previous time.
    :since: 2.0
 
    :default: ``HEAD``
 
-   This allows to change the source package index state the solver uses
-   to compute install-plans. This is particularly useful in
-   combination with freeze-files in order to also freeze the state the
-   package index was in at the time the install-plan was frozen.
+   A repository's index is a log. Each new package version, each revision and
+   each change to a package's preferred versions is added to the end with the
+   time it was added. These are the entries Hackage's index has for
+   ``megaparsec`` from one week of June 2026: a new version, a revision of it,
+   another new version and a change of preferred versions.
+
+   .. code-block:: text
+
+      2026-06-18T19:19:46Z megaparsec/9.8.0/package.json
+      2026-06-18T19:19:46Z megaparsec/9.8.0/megaparsec.cabal
+      2026-06-19T08:16:51Z megaparsec/9.8.0/megaparsec.cabal
+      2026-06-23T16:03:40Z megaparsec/9.8.1/package.json
+      2026-06-23T16:03:40Z megaparsec/9.8.1/megaparsec.cabal
+      2026-06-23T16:04:47Z megaparsec/preferred-versions
+
+   A new version adds two entries, its package description and a
+   ``package.json`` with the size and hashes of its source archive. A revision
+   adds a package description only. The source archives themselves are not in
+   the index.
+
+   The value is a timestamp or ``HEAD``, which stands for a time later than
+   every entry. ``cabal`` cuts the log off at that time, and the solver sees
+   nothing added after it. With a timestamp of ``2026-06-19T00:00:00Z`` it
+   sees ``megaparsec-9.8.0`` without its revision.
+
+   The ``configure`` and ``freeze`` commands both write an index state, as an
+   ISO8601 UTC timestamp. ``cabal configure`` writes the timestamp it was
+   given and ``cabal freeze`` writes the time of the last entry it read.
+
+   .. code-block:: console
+
+      $ cabal configure --index-state=2026-06-01T00:00:00Z
+      $ grep index-state cabal.project.local
+      index-state: 2026-06-01T00:00:00Z
+
+      $ cabal freeze
+      $ grep index-state cabal.project.freeze
+      index-state: hackage.haskell.org 2026-05-31T23:08:56Z
+
+   An ISO8601 timestamp has to be written in full, as
+   ``YYYY-MM-DDThh:mm:ssZ``. A date on its own, a time without seconds and a
+   time with a UTC offset are all rejected. A time can also be given as a UNIX
+   timestamp.
 
    ::
 
-      -- UNIX timestamp format example
+      -- A UNIX timestamp is prefixed with '@'.
       index-state: @1474739268
 
-      -- ISO8601 UTC timestamp format example
-      -- This format is used by 'cabal configure'
-      -- for storing `--index-state` values.
-      index-state: 2016-09-24T17:47:48Z
+      -- HEAD is later than every entry and is the default.
+      index-state: HEAD
 
-      -- Specify different index-states per package repository
-      -- Supported since 3.4
+   A timestamp is scoped to a repository by writing the repository name before
+   it. An unscoped timestamp has no name before it and is for all
+   repositories. When every timestamp given is scoped, any repository not
+   named is read at ``HEAD``. Scoping a timestamp to a repository is supported
+   since 3.4.
+
+   ::
+
+      -- Each timestamp is scoped to a repository.
       index-state:
         , hackage.haskell.org 2020-05-06T22:33:27Z
         , head.hackage 2020-04-29T04:11:05Z
+
+   The two forms can be combined in a comma-separated list, as an unscoped
+   timestamp followed by scoped ones. On the command line, a value with more
+   than one part needs quoting, as in
+   ``--index-state="2020-05-06T22:33:27Z, head.hackage HEAD"``.
+
+   ::
+
+      -- Every repository is read as it was on 6 May 2020, except head.hackage.
+      index-state:
+        , 2020-05-06T22:33:27Z
+        , head.hackage HEAD
+
+   .. warning::
+
+      A scoped timestamp is lost if an unscoped timestamp comes after it.
+
+      The field does not accumulate. When ``index-state`` is given more than
+      once, the one read last replaces the others whole. ``cabal`` reads its
+      global configuration, then the project from top to bottom, with each
+      import read at the line it is on, then the ``.freeze`` file, then the
+      ``.local`` file and then the command line.
+
+   ``cabal configure`` writes to the ``.local`` file, which is read after the
+   ``.freeze`` file. Here the freeze file was updated by someone else and
+   pulled from version control, while the ``.local`` file still has an index
+   state from a ``cabal configure`` a year ago. The build uses the older one.
+
+   .. code-block:: console
+
+      $ grep index-state cabal.project.freeze cabal.project.local
+      cabal.project.freeze:index-state: hackage.haskell.org 2026-06-15T10:43:26Z
+      cabal.project.local:index-state: 2025-06-15T12:00:00Z
+
+      $ cabal build --dry-run -v2 | grep -A1 'historical state'
+      Using historical state as of 2025-06-15T12:00:00Z as explicitly requested (via
+      command line / project configuration)
+
+   .. warning::
+
+      An ``index-state`` left over in ``cabal.project.local`` from an earlier
+      ``cabal configure`` keeps overriding the freeze file. A plain ``cabal
+      freeze`` also takes its index state from that line. Remove the line, or
+      the file, when it is no longer wanted.
+
+   .. note::
+
+      An index state only applies to secure repositories, such as Hackage. For
+      other :ref:`kinds of repository <repository-specification>`, ``cabal``
+      warns that the index state is ignored.
 
 .. cfg-field:: active-repositories: reponame1, reponame2
 

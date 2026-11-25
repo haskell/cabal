@@ -221,11 +221,14 @@ Flags for haddock:
  --only-dependencies          # Install only the dependencies necessary to
                                 build the given packages
  --dependencies-only          # A synonym for --only-dependencies
- --index-state=STATE          # Use source package index state as it existed
-                                at a previous time. Accepts unix-timestamps
-                                (e.g. '@1474732068'), ISO8601 UTC timestamps
-                                (e.g. '2016-09-24T17:47:48Z'), or 'HEAD'
-                                (default: 'HEAD').
+ --index-state=TIMESTAMP      # Use source package index state as it existed
+                                at a previous time. Accepts ISO8601 UTC
+                                timestamps written in full (e.g.
+                                '2016-09-24T17:47:48Z'), unix timestamps (e.g.
+                                '@1474732068'), or 'HEAD' (default: 'HEAD'). A
+                                timestamp can be scoped to a repository by
+                                writing the repository name before it (e.g.
+                                'hackage.haskell.org 2016-09-24T17:47:48Z').
  --build-summary=TEMPLATE     # Save build summaries to file (name template
                                 can use $pkgid, $compiler, $os, $arch)
  --build-log=TEMPLATE         # Log all builds to file (name template can use

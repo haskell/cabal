@@ -1887,6 +1887,24 @@ reportCommand =
         ]
     }
 
+-- | The description of the @--index-state@ option, shared by the commands
+-- that take it.
+indexStateDescription :: String
+indexStateDescription =
+  "Use source package index state as it existed at a previous time. "
+    ++ "Accepts ISO8601 UTC timestamps written in full "
+    ++ "(e.g. '2016-09-24T17:47:48Z'), unix timestamps (e.g. '@1474732068'), "
+    ++ "or 'HEAD' (default: 'HEAD'). A timestamp can be scoped to a repository "
+    ++ "by writing the repository name before it "
+    ++ "(e.g. 'hackage.haskell.org 2016-09-24T17:47:48Z')."
+
+-- | The error for an @--index-state@ argument that does not parse.
+indexStateError :: String
+indexStateError =
+  "index-state must be an ISO8601 UTC timestamp written in full "
+    ++ "(e.g. '2016-09-24T17:47:48Z'), a unix timestamp (e.g. '@1474732068') "
+    ++ "or 'HEAD', optionally after a repository name"
+
 -- ------------------------------------------------------------
 
 -- * Get flags
@@ -1955,25 +1973,15 @@ getCommand =
         , option
             []
             ["index-state"]
-            ( "Use source package index state as it existed at a previous time. "
-                ++ "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps "
-                ++ "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD'). "
-                ++ "This determines which package versions are available as well as "
-                ++ ".cabal file revision is selected (unless --pristine is used)."
+            ( indexStateDescription
+                ++ " This determines which package versions are available as well as "
+                ++ "which .cabal file revision is selected (unless --pristine is used)."
             )
             getIndexState
             (\v flags -> flags{getIndexState = v})
             ( reqArg
-                "STATE"
-                ( parsecToReadE
-                    ( const $
-                        "index-state must be a  "
-                          ++ "unix-timestamps (e.g. '@1474732068'), "
-                          ++ "a ISO8601 UTC timestamp "
-                          ++ "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'"
-                    )
-                    (toFlag `fmap` parsec)
-                )
+                "TIMESTAMP"
+                (parsecToReadE (const indexStateError) (toFlag `fmap` parsec))
                 (flagToList . fmap prettyShow)
             )
         , option
@@ -2685,23 +2693,12 @@ installOptions showOrParseArgs =
        , option
           []
           ["index-state"]
-          ( "Use source package index state as it existed at a previous time. "
-              ++ "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps "
-              ++ "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD')."
-          )
+          indexStateDescription
           installIndexState
           (\v flags -> flags{installIndexState = v})
           ( reqArg
-              "STATE"
-              ( parsecToReadE
-                  ( const $
-                      "index-state must be a  "
-                        ++ "unix-timestamps (e.g. '@1474732068'), "
-                        ++ "a ISO8601 UTC timestamp "
-                        ++ "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'"
-                  )
-                  (toFlag `fmap` parsec)
-              )
+              "TIMESTAMP"
+              (parsecToReadE (const indexStateError) (toFlag `fmap` parsec))
               (flagToList . fmap prettyShow)
           )
        , option
