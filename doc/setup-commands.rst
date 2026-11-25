@@ -167,12 +167,9 @@ The following options govern the programs used to process the source
 files of a package:
 
 .. option:: --ghc
-            --uhc
 
-    Specify which Haskell implementation to use to build the package. At
-    most one of these flags may be given. If none is given, the
-    implementation under which the setup script was compiled or
-    interpreted is used.
+    Build the package with GHC. If not given, the implementation under
+    which the setup script was compiled or interpreted is used.
 
 .. option:: -w PATH or -wPATH, --with-compiler=PATH
 
@@ -202,7 +199,7 @@ files of a package:
     programs is as follows:
     ``alex``, ``ar``, ``c2hs``, ``cpphs``, ``doctest``, ``gcc``, ``ghc``,
     ``ghc-pkg``, ``haddock``, ``happy``, ``hpc``, ``hsc2hs``, ``hscolour``,
-    ``jhc``, ``ld``, ``pkg-config``, ``runghc``, ``strip``, ``tar``, ``uhc``.
+    ``jhc``, ``ld``, ``pkg-config``, ``runghc``, ``strip``, ``tar``.
 
 .. option:: --PROG-options=OPTS
 

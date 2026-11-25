@@ -13,7 +13,6 @@ Flags for outdated:
                                 files (default dist)
  --keep-temp-files            # Keep temporary files.
  --ghc                        # Compile with GHC
- --uhc                        # Compile with UHC
  -w PATH or -wPATH, --with-compiler=PATH
                               # Give the path to a particular compiler
  --with-hc-pkg=PATH           # Give the path to the package tool

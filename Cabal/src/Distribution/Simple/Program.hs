@@ -106,7 +106,6 @@ module Distribution.Simple.Program
   , ghcProgram
   , ghcPkgProgram
   , jhcProgram
-  , uhcProgram
   , gccProgram
   , gppProgram
   , arProgram
