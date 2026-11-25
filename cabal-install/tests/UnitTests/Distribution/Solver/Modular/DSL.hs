@@ -69,7 +69,11 @@ module UnitTests.Distribution.Solver.Modular.DSL
     -- * Names and versions
   , ExamplePkgName
   , ExamplePkgVersion
+  , ExamplePkgHash
   , ExampleFlagName
+  , ExampleSubLibName
+  , ExampleTestName
+  , ExampleExeName
   , ExampleVersionRange
   , mkSimpleVersion
   , mkVersionRange
