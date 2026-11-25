@@ -306,7 +306,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabInstallDirs :: InstallDirs.InstallDirs FilePath
   , elabHaddockHoogle :: Bool
   , elabHaddockHtml :: Bool
-  , elabHaddockHtmlLocation :: Maybe String
+  , elabHaddockHtmlLocation :: Maybe FilePath
   , elabHaddockForeignLibs :: Bool
   , elabHaddockForHackage :: HaddockTarget
   , elabHaddockExecutables :: Bool
@@ -319,8 +319,8 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabHaddockHscolourCss :: Maybe FilePath
   , elabHaddockContents :: Maybe PathTemplate
   , elabHaddockIndex :: Maybe PathTemplate
-  , elabHaddockBaseUrl :: Maybe String
-  , elabHaddockResourcesDir :: Maybe String
+  , elabHaddockBaseUrl :: Maybe FilePath
+  , elabHaddockResourcesDir :: Maybe FilePath
   , elabHaddockOutputDir :: Maybe FilePath
   , elabHaddockUseUnicode :: Bool
   , elabTestMachineLog :: Maybe PathTemplate

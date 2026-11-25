@@ -224,7 +224,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs
     pkgHashDocumentation :: Bool
   , pkgHashHaddockHoogle :: Bool
   , pkgHashHaddockHtml :: Bool
-  , pkgHashHaddockHtmlLocation :: Maybe String
+  , pkgHashHaddockHtmlLocation :: Maybe FilePath
   , pkgHashHaddockForeignLibs :: Bool
   , pkgHashHaddockExecutables :: Bool
   , pkgHashHaddockTestSuites :: Bool
@@ -235,8 +235,8 @@ data PackageHashConfigInputs = PackageHashConfigInputs
   , pkgHashHaddockQuickJump :: Bool
   , pkgHashHaddockContents :: Maybe PathTemplate
   , pkgHashHaddockIndex :: Maybe PathTemplate
-  , pkgHashHaddockBaseUrl :: Maybe String
-  , pkgHashHaddockResourcesDir :: Maybe String
+  , pkgHashHaddockBaseUrl :: Maybe FilePath
+  , pkgHashHaddockResourcesDir :: Maybe FilePath
   , pkgHashHaddockOutputDir :: Maybe FilePath
   , pkgHashHaddockUseUnicode :: Bool
   --     TODO: [required eventually] pkgHashToolsVersions     ?

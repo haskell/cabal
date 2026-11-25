@@ -30,6 +30,7 @@ module Distribution.Simple.Setup.Repl
   , replOptions
   ) where
 
+import Data.Text (Text)
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
@@ -89,8 +90,8 @@ instance Monoid ReplOptions where
 
 data ReplFlags = ReplFlags
   { replCommonFlags :: !CommonSetupFlags
-  , replProgramPaths :: [(String, FilePath)]
-  , replProgramArgs :: [(String, [String])]
+  , replProgramPaths :: [(Text, FilePath)]
+  , replProgramArgs :: [(Text, [Text])]
   , replReload :: Flag Bool
   , replReplOptions :: ReplOptions
   }

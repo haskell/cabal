@@ -20,6 +20,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Data.List (maximumBy)
+import qualified Data.Text as T
 import Distribution.InstalledPackageInfo as InstalledPackageInfo
   ( InstalledPackageInfo (exposed)
   )
@@ -55,7 +56,7 @@ regenerateHaddockIndex
 regenerateHaddockIndex verbosity pkgs progdb index = do
   (paths, warns) <- haddockPackagePaths pkgs' Nothing
   let paths' = [(interface, html) | (interface, Just html, _, _) <- paths]
-  for_ warns (debug verbosity)
+  for_ warns (debug verbosity . T.unpack)
 
   (confHaddock, _, _) <-
     requireProgramVersion

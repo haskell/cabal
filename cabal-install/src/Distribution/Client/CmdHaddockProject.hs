@@ -7,7 +7,9 @@ module Distribution.Client.CmdHaddockProject
   ) where
 
 import Control.Monad (mapM)
-import Distribution.Client.Compat.Prelude hiding (get)
+import Data.Bifunctor (bimap, first)
+import qualified Data.Text as T
+import Distribution.Client.Compat.Prelude hiding (first, get)
 import Prelude ()
 
 import qualified Distribution.Client.CmdBuild as CmdBuild
@@ -176,8 +178,8 @@ haddockProjectAction flags _extraArgs globalFlags = do
       progs <-
         reconfigurePrograms
           verbosity
-          (haddockProjectProgramPaths flags)
-          (haddockProjectProgramArgs flags)
+          (map (first T.unpack) (haddockProjectProgramPaths flags))
+          (map (bimap T.unpack (map T.unpack)) (haddockProjectProgramArgs flags))
           -- we need to insert 'haddockProgram' before we reconfigure it,
           -- otherwise 'set
           . addKnownProgram haddockProgram
@@ -254,7 +256,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                   if a
                     then do
                       copyDirectoryRecursive verbosity docDir destDir
-                      let infos :: [(String, FilePath, Visibility)]
+                      let infos :: [(FilePath, FilePath, Visibility)]
                           infos =
                             (unPackageName packageName, interfacePath, Visible)
                               : [ (sublibDirPath, sublibInterfacePath, Visible)

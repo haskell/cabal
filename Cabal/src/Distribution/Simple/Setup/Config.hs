@@ -39,6 +39,7 @@ module Distribution.Simple.Setup.Config
   , installDirsOptions
   ) where
 
+import Data.Text (Text)
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
@@ -90,9 +91,9 @@ data ConfigFlags = ConfigFlags
     configPrograms_ :: Maybe (Last ProgramDb)
   -- ^ All programs that
   --  @cabal@ may run
-  , configProgramPaths :: [(String, FilePath)]
+  , configProgramPaths :: [(Text, FilePath)]
   -- ^ user specified programs paths
-  , configProgramArgs :: [(String, [String])]
+  , configProgramArgs :: [(Text, [Text])]
   -- ^ user specified programs args
   , configProgramPathExtra :: NubList FilePath
   -- ^ Extend the $PATH

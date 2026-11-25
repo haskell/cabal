@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -30,6 +31,7 @@ module Distribution.Simple.Setup.Benchmark
   , benchmarkOptions'
   ) where
 
+import qualified Data.Text as T
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
@@ -123,9 +125,9 @@ benchmarkOptions' showOrParseArgs =
         )
         benchmarkOptions
         (\v flags -> flags{benchmarkOptions = v})
-        ( reqArg'
+        ( reqArgText'
             "TEMPLATES"
-            (map toPathTemplate . splitArgs)
+            (map (toPathTemplate . T.unpack) . splitArgs)
             (const [])
         )
     , option

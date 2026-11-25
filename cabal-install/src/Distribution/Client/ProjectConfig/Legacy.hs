@@ -1,5 +1,6 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -33,7 +34,8 @@ module Distribution.Client.ProjectConfig.Legacy
   , renderPackageLocationToken
   ) where
 
-import Distribution.Client.Compat.Prelude
+import Data.Bifunctor (bimap, first)
+import Distribution.Client.Compat.Prelude hiding (first)
 
 import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
 
@@ -180,8 +182,8 @@ import Distribution.Simple.Command
   ( CommandUI (commandOptions)
   , OptionField (..)
   , ShowOrParseArgs (..)
-  , option
-  , reqArg'
+  , optionText
+  , reqArgText'
   )
 import Distribution.System (Arch, OS, buildOS)
 import Distribution.Types.PackageVersionConstraint
@@ -784,8 +786,8 @@ convertLegacyPerPackageFlags
       packageConfigExtraLibDirsStatic = getSymbolicPath <$> configExtraLibDirsStatic configFlags
       packageConfigExtraFrameworkDirs = getSymbolicPath <$> configExtraFrameworkDirs configFlags
       packageConfigExtraIncludeDirs = getSymbolicPath <$> configExtraIncludeDirs configFlags
-      packageConfigProgramPaths = MapLast (Map.fromList configProgramPaths)
-      packageConfigProgramArgs = MapMappend (Map.fromListWith (++) configProgramArgs)
+      packageConfigProgramPaths = MapLast (Map.fromList (map (first Text.unpack) configProgramPaths))
+      packageConfigProgramArgs = MapMappend (Map.fromListWith (++) (map (bimap Text.unpack (map Text.unpack)) configProgramArgs))
 
       packageConfigCoverage = coverage <> libcoverage
       -- TODO: defer this merging to the resolve phase
@@ -1128,8 +1130,8 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
       ConfigFlags
         { configCommonFlags = commonFlags
         , configPrograms_ = configPrograms_ mempty
-        , configProgramPaths = Map.toList (getMapLast packageConfigProgramPaths)
-        , configProgramArgs = Map.toList (getMapMappend packageConfigProgramArgs)
+        , configProgramPaths = map (first Text.pack) (Map.toList (getMapLast packageConfigProgramPaths))
+        , configProgramArgs = map (bimap Text.pack (map Text.pack)) (Map.toList (getMapMappend packageConfigProgramArgs))
         , configProgramPathExtra = packageConfigProgramPathExtra
         , configHcFlavor = mempty
         , configHcPath = mempty
@@ -1879,8 +1881,8 @@ packageSpecificOptionsSectionDescr =
     }
 
 programOptionsFieldDescrs
-  :: (a -> [(String, [String])])
-  -> ([(String, [String])] -> a -> a)
+  :: (a -> [(Text, [Text])])
+  -> ([(Text, [Text])] -> a -> a)
   -> [FieldDescr a]
 programOptionsFieldDescrs get' set =
   commandOptionsToFields $
@@ -1917,7 +1919,7 @@ programLocationsFieldDescrs :: [FieldDescr ConfigFlags]
 programLocationsFieldDescrs =
   commandOptionsToFields $
     programDbPaths'
-      (++ "-location")
+      (<> "-location")
       defaultProgramDb
       ParseArgs
       configProgramPaths
@@ -1948,8 +1950,8 @@ programLocationsSectionDescr =
 programDbOptions
   :: ProgramDb
   -> ShowOrParseArgs
-  -> (flags -> [(String, [String])])
-  -> ([(String, [String])] -> (flags -> flags))
+  -> (flags -> [(Text, [Text])])
+  -> ([(Text, [Text])] -> (flags -> flags))
   -> [OptionField flags]
 programDbOptions progDb showOrParseArgs get' set =
   case showOrParseArgs of
@@ -1957,17 +1959,17 @@ programDbOptions progDb showOrParseArgs get' set =
     ShowArgs -> [programOptions "PROG"]
     ParseArgs ->
       map
-        (programOptions . programName . fst)
+        (programOptions . Text.pack . programName . fst)
         (knownPrograms progDb)
   where
     programOptions prog =
-      option
+      optionText
         ""
-        [prog ++ "-options"]
-        ("Give extra options to " ++ prog)
+        [prog <> "-options"]
+        ("Give extra options to " <> prog)
         get'
         set
-        ( reqArg'
+        ( reqArgText'
             "OPTS"
             (\args -> [(prog, splitArgs args)])
             ( \progArgs ->
@@ -1978,9 +1980,9 @@ programDbOptions progDb showOrParseArgs get' set =
             )
         )
 
-    joinsArgs = unwords . map escape
+    joinsArgs = Text.unwords . map escape
     escape arg
-      | any isSpace arg = "\"" ++ arg ++ "\""
+      | Text.any isSpace arg = "\"" <> arg <> "\""
       | otherwise = arg
 
 -- The implementation is slight hack: we parse all as remote repository

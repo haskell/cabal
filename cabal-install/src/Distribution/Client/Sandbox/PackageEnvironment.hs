@@ -18,6 +18,7 @@ module Distribution.Client.Sandbox.PackageEnvironment
   , userPackageEnvironmentFile
   ) where
 
+import Data.Text (Text)
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
@@ -322,8 +323,8 @@ parsePackageEnvironment src initial str = do
 type SectionsAccum =
   ( HaddockFlags
   , InstallDirs (Flag PathTemplate)
-  , [(String, FilePath)]
-  , [(String, [String])]
+  , [(Text, FilePath)]
+  , [(Text, [Text])]
   )
 
 -- | Pretty-print the package environment.

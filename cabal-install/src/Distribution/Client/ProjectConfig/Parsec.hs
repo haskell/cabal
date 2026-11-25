@@ -11,6 +11,10 @@ module Distribution.Client.ProjectConfig.Parsec
   , runParseResult
   ) where
 
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Encoding.Error as T
 import Distribution.CabalSpecVersion
 import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.FieldGrammar (packageConfigFieldGrammar, projectConfigFieldGrammar)
@@ -27,7 +31,7 @@ import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec (NamelessField (..), namelessFieldAnn)
 import Distribution.Fields (Field (..), FieldLine (..), FieldName, Name (..), SectionArg (..), readFields')
 import Distribution.Fields.ConfVar (parseConditionConfVar)
-import Distribution.Fields.Field (fieldLinesToString, sectionArgAnn)
+import Distribution.Fields.Field (sectionArgAnn)
 import Distribution.Fields.LexerMonad (toPWarnings)
 import Distribution.Fields.ParseResult
 import Distribution.Parsec (ParsecParser, eitherParsec, parsec, parsecFilePath, runParsecParser)
@@ -353,7 +357,7 @@ parseProgramArgs programDb warnUnknown fields = foldM parseField mempty (filter 
           return programArgs
         Just program -> do
           args <- parseProgramArgsField $ reverse fieldLines
-          return $ programArgs <> MapMappend (Map.singleton program args)
+          return $ programArgs <> MapMappend (Map.singleton program (map T.unpack args))
     hasOptionsSuffix (fieldName, _) = BS.isSuffixOf "-options" fieldName
 
 -- | Parse fields of a program-locations stanza.
@@ -375,15 +379,15 @@ parseProgramPaths programDb warnUnknown fields = foldM parseField mempty (filter
 
 -- | Parse all arguments to a single program in program-options stanza.
 -- By processing '[NamelessField Position]', we support multiple occurrences of the field, concatenating the arguments.
-parseProgramArgsField :: [NamelessField Position] -> ParseResult src [String]
+parseProgramArgsField :: [NamelessField Position] -> ParseResult src [Text]
 parseProgramArgsField fieldLines =
   concat <$> mapM (\(MkNamelessField _ lines') -> parseProgramArgsFieldLines lines') fieldLines
 
 -- | Parse all fieldLines of a single field occurrence in a program-options stanza.
-parseProgramArgsFieldLines :: [FieldLine Position] -> ParseResult src [String]
-parseProgramArgsFieldLines lines' = return $ splitArgs strLines
+parseProgramArgsFieldLines :: [FieldLine Position] -> ParseResult src [Text]
+parseProgramArgsFieldLines lines' = pure $ splitArgs (T.intercalate "\n" (map decodeLine lines'))
   where
-    strLines = fieldLinesToString lines'
+    decodeLine (FieldLine _ bytes) = T.decodeUtf8With T.lenientDecode bytes
 
 type FieldSuffix = String
 
