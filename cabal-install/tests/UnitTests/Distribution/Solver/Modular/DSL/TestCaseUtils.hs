@@ -1,34 +1,49 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Utilities for creating HUnit test cases with the solver DSL.
+--
+-- A test case is a package database, the targets to solve for and the result
+-- to expect. Settings for the solver are applied to the test case before it is
+-- run:
+--
+-- > runTest $
+-- >   preferOldest $
+-- >     mkTest db "prefers the oldest version" ["A"] (solverSuccess [("A", 1)])
 module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
-  ( SolverTest
-  , SolverResult (..)
-  , maxBackjumps
-  , disableFineGrainedConflicts
-  , minimizeConflictSet
-  , independentGoals
-  , preferOldest
-  , preferLatest
-  , allowBootLibInstalls
-  , onlyConstrained
-  , disableBackjumping
-  , disableSolveExecutables
-  , goalOrder
-  , constraints
-  , preferences
-  , setVerbose
-  , enableAllTests
-  , wiredInUnitIds
-  , solverSuccess
-  , solverFailure
-  , anySolverFailure
+  ( -- * Test cases
+    SolverTest
   , mkTest
   , mkTestExts
   , mkTestLangs
   , mkTestPCDepends
   , mkTestExtLangPC
   , runTest
+
+    -- * Expected results
+  , SolverResult (..)
+  , solverSuccess
+  , solverFailure
+  , anySolverFailure
+
+    -- * Solver settings
+  , constraints
+  , preferences
+  , goalOrder
+  , independentGoals
+  , preferOldest
+  , preferLatest
+  , onlyConstrained
+  , allowBootLibInstalls
+  , enableAllTests
+  , disableSolveExecutables
+  , wiredInUnitIds
+
+    -- * Backjumping and the log
+  , maxBackjumps
+  , disableBackjumping
+  , disableFineGrainedConflicts
+  , minimizeConflictSet
+  , setVerbose
   ) where
 
 import Distribution.Solver.Compat.Prelude
@@ -57,13 +72,19 @@ import Distribution.Types.UnitId (UnitId, mkUnitId)
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Options
 
+-- | Sets the most backjumps that the solver may make before it gives up, or
+-- 'Nothing' for no limit, which is the default.
 maxBackjumps :: Maybe Int -> SolverTest -> SolverTest
 maxBackjumps mbj test = test{testMaxBackjumps = mbj}
 
+-- | Stops the solver from skipping a version of a package when it can tell
+-- that the version has the same conflicts as the previous one.
 disableFineGrainedConflicts :: SolverTest -> SolverTest
 disableFineGrainedConflicts test =
   test{testFineGrainedConflicts = FineGrainedConflicts False}
 
+-- | Makes the solver try to remove variables from the final conflict set,
+-- when it fails, to give a shorter error message.
 minimizeConflictSet :: SolverTest -> SolverTest
 minimizeConflictSet test =
   test{testMinimizeConflictSet = MinimizeConflictSet True}
@@ -81,28 +102,40 @@ preferOldest test = test{testPreferVersion = PreferOldest}
 preferLatest :: SolverTest -> SolverTest
 preferLatest test = test{testPreferVersion = PreferLatest}
 
+-- | Lets the solver choose source packages for libraries that normally come
+-- only with the compiler, such as @base@.
 allowBootLibInstalls :: SolverTest -> SolverTest
 allowBootLibInstalls test =
   test{testAllowBootLibInstalls = AllowBootLibInstalls True}
 
+-- | Makes the solver reject any package that is neither a target nor named
+-- in a constraint.
 onlyConstrained :: SolverTest -> SolverTest
 onlyConstrained test =
   test{testOnlyConstrained = OnlyConstrainedAll}
 
+-- | Makes the solver backtrack one choice at a time, without using conflict
+-- sets to jump back further.
 disableBackjumping :: SolverTest -> SolverTest
 disableBackjumping test =
   test{testEnableBackjumping = EnableBackjumping False}
 
+-- | Stops the solver from solving for executables that are used as build
+-- tools.
 disableSolveExecutables :: SolverTest -> SolverTest
 disableSolveExecutables test =
   test{testSolveExecutables = SolveExecutables False}
 
+-- | Makes the solver choose values for these variables first, in this order,
+-- and for any others after them.
 goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
 goalOrder order test = test{testGoalOrder = Just order}
 
+-- | Sets constraints that the solver must satisfy.
 constraints :: [ExConstraint] -> SolverTest -> SolverTest
 constraints cs test = test{testConstraints = cs}
 
+-- | Sets preferences that the solver satisfies when it can.
 preferences :: [ExPreference] -> SolverTest -> SolverTest
 preferences prefs test = test{testSoftConstraints = prefs}
 
@@ -111,9 +144,12 @@ preferences prefs test = test{testSoftConstraints = prefs}
 setVerbose :: SolverTest -> SolverTest
 setVerbose test = test{testVerbosity = verbose}
 
+-- | Requires the test suites of every package in the database to be enabled.
 enableAllTests :: SolverTest -> SolverTest
 enableAllTests test = test{testEnableAllTests = EnableAllTests True}
 
+-- | Tells the solver that the compiler has wired-in units @ghc-internal-1@ and
+-- @ghc-1@ for the packages @ghc-internal@ and @ghc@.
 wiredInUnitIds :: SolverTest -> SolverTest
 wiredInUnitIds test =
   test
@@ -128,6 +164,8 @@ wiredInUnitIds test =
   Solver tests
 -------------------------------------------------------------------------------}
 
+-- | A package database, the targets to solve for, the settings for the solver
+-- and the result to expect. Make one with 'mkTest' and run it with 'runTest'.
 data SolverTest = SolverTest
   { testLabel :: String
   , testTargets :: [String]
@@ -163,9 +201,13 @@ data SolverResult = SolverResult
   -- the given plan.
   }
 
+-- | Expects the solver to succeed with a plan that builds these packages at
+-- these versions.
 solverSuccess :: [(String, Int)] -> SolverResult
 solverSuccess = SolverResult (const True) . Right
 
+-- | Expects the solver to fail with an error message that satisfies the
+-- predicate.
 solverFailure :: (String -> Bool) -> SolverResult
 solverFailure = SolverResult (const True) . Left
 
@@ -195,6 +237,7 @@ mkTest
   -> SolverTest
 mkTest = mkTestExtLangPC Nothing Nothing (Just [])
 
+-- | As 'mkTest', with the language extensions that the compiler supports.
 mkTestExts
   :: [Extension]
   -> ExampleDb
@@ -204,6 +247,7 @@ mkTestExts
   -> SolverTest
 mkTestExts exts = mkTestExtLangPC (Just exts) Nothing (Just [])
 
+-- | As 'mkTest', with the languages that the compiler supports.
 mkTestLangs
   :: [Language]
   -> ExampleDb
@@ -213,6 +257,8 @@ mkTestLangs
   -> SolverTest
 mkTestLangs langs = mkTestExtLangPC Nothing (Just langs) (Just [])
 
+-- | As 'mkTest', with the names and versions of the pkg-config packages that
+-- are installed, or 'Nothing' when those are unknown.
 mkTestPCDepends
   :: Maybe [(String, String)]
   -> ExampleDb
@@ -222,6 +268,10 @@ mkTestPCDepends
   -> SolverTest
 mkTestPCDepends mPkgConfigDb = mkTestExtLangPC Nothing Nothing mPkgConfigDb
 
+-- | As 'mkTest', with the extensions and languages that the compiler supports
+-- and the pkg-config packages that are installed. Each is 'Nothing' when it is
+-- unknown. 'mkTest' leaves the first two unknown and has no pkg-config
+-- packages.
 mkTestExtLangPC
   :: Maybe [Extension]
   -> Maybe [Language]
@@ -257,6 +307,8 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     , testEnableAllTests = EnableAllTests False
     }
 
+-- | Makes a test that runs the solver and checks its log and its result. The
+-- test prints the solver's log when run with @--show-solver-log@.
 runTest :: SolverTest -> TF.TestTree
 runTest SolverTest{..} = withFrozenCallStack $ askOption $ \(OptionShowSolverLog showSolverLog) ->
   testCase testLabel $ do

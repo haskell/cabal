@@ -1,47 +1,76 @@
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | DSL for testing the modular solver
+-- | A DSL for writing package databases and running the modular solver on
+-- them in tests.
+--
+-- A database is a list of installed packages ('Left') and available packages
+-- ('Right'). Package versions are single numbers:
+--
+-- > db :: ExampleDb
+-- > db =
+-- >   [ Left $ exInst "base" 1 "base-1" []
+-- >   , Right $ exAv "A" 1 [ExAny "base"]
+-- >   , Right $ exAv "A" 2 [ExFix "B" 1] `withTest` exTest "test" [ExAny "C"]
+-- >   , Right $ exAv "B" 1 []
+-- >   , Right $ exAv "C" 1 []
+-- >   ]
+--
+-- "UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils" makes a test case
+-- from a database.
 module UnitTests.Distribution.Solver.Modular.DSL
-  ( ExampleDependency (..)
-  , Dependencies (..)
-  , ExSubLib (..)
-  , ExTest (..)
-  , ExExe (..)
-  , ExConstraint (..)
-  , ExPreference (..)
-  , ExampleDb
-  , ExampleVersionRange
-  , ExamplePkgVersion
-  , ExamplePkgName
-  , ExampleFlagName
-  , ExFlag (..)
+  ( -- * Package databases
+    ExampleDb
   , ExampleAvailable (..)
   , ExampleInstalled (..)
-  , ExampleQualifier (..)
-  , ExampleVar (..)
-  , EnableAllTests (..)
-  , dependencies
-  , publicDependencies
-  , unbuildableDependencies
   , exAv
   , exAvNoLibrary
   , exInst
+
+    -- * Dependencies
+  , ExampleDependency (..)
+  , exFlagged
+  , Dependencies (..)
+  , dependencies
+  , publicDependencies
+  , unbuildableDependencies
+
+    -- * Components
+  , ExSubLib (..)
+  , ExTest (..)
+  , ExExe (..)
   , exSubLib
   , exTest
   , exExe
-  , exFlagged
-  , exResolve
-  , extractInstallPlan
-  , declareFlags
   , withSubLibrary
   , withSubLibraries
-  , withSetupDeps
   , withTest
   , withTests
   , withExe
   , withExes
+  , withSetupDeps
+
+    -- * Flags
+  , ExFlag (..)
+  , declareFlags
+
+    -- * Constraints, preferences and goals
+  , ExConstraint (..)
+  , ExPreference (..)
+  , ExampleVar (..)
+  , ExampleQualifier (..)
+  , EnableAllTests (..)
+
+    -- * Running the solver
+  , exResolve
+  , extractInstallPlan
   , runProgress
+
+    -- * Names and versions
+  , ExamplePkgName
+  , ExamplePkgVersion
+  , ExampleFlagName
+  , ExampleVersionRange
   , mkSimpleVersion
   , mkVersionRange
   ) where
@@ -142,18 +171,47 @@ import Distribution.Types.UnitId (UnitId)
     optional.
 -------------------------------------------------------------------------------}
 
+-- | The name of a package.
 type ExamplePkgName = String
+
+-- | The version of a package, which 'mkSimpleVersion' makes into a version
+-- with one component.
 type ExamplePkgVersion = Int
-type ExamplePkgHash = String -- for example "installed" packages
+
+-- | The identifier of an installed package, which is any string that is unique
+-- in the database.
+type ExamplePkgHash = String
+
+-- | The name of a flag of a package.
 type ExampleFlagName = String
+
+-- | The name of a sub-library of a package.
 type ExampleSubLibName = String
+
+-- | The name of a test suite of a package.
 type ExampleTestName = String
+
+-- | The name of an executable of a package.
 type ExampleExeName = String
+
+-- | A version range for a constraint or preference. Make one with
+-- 'mkVersionRange'.
 type ExampleVersionRange = C.VersionRange
 
+-- | The dependencies of a component, with whether the component is buildable
+-- and, for a sub-library, whether it is visible to other packages. A component can
+-- have these under a flag, see 'ExFlagged'.
+--
+-- The dependencies of the setup script of a package are held in one of these
+-- too, see 'withSetupDeps', where only the list of dependencies has a meaning.
+--
+-- Combining two with '<>' joins their dependencies. The result is buildable
+-- if both are, and public if either is.
 data Dependencies = Dependencies
   { depsVisibility :: C.LibraryVisibility
+  -- ^ Private unless set, as with 'publicDependencies'.
   , depsIsBuildable :: Bool
+  -- ^ Buildable unless unset, as with 'unbuildableDependencies'.
   , depsExampleDependencies :: [ExampleDependency]
   }
   deriving (Show)
@@ -174,15 +232,32 @@ instance Monoid Dependencies where
       , depsExampleDependencies = []
       }
 
+-- | The dependencies of a component that is buildable and, for a sub-library,
+-- private. This also makes the dependencies of a setup script.
 dependencies :: [ExampleDependency] -> Dependencies
 dependencies deps = mempty{depsExampleDependencies = deps}
 
+-- | An empty list of dependencies, for a sub-library that is visible to other
+-- packages.
 publicDependencies :: Dependencies
 publicDependencies = mempty{depsVisibility = C.LibraryVisibilityPublic}
 
+-- | An empty list of dependencies, for a component that is not buildable.
 unbuildableDependencies :: Dependencies
 unbuildableDependencies = mempty{depsIsBuildable = False}
 
+-- | Something that a package requires: another package, a build tool, a
+-- language extension, a language or a pkg-config package. The solver calls all
+-- of these dependencies.
+--
+-- It is usually a dependency of one component of the package. It can also be a
+-- dependency of the setup script, see 'withSetupDeps', where it must not be
+-- under a flag.
+--
+-- A dependency on a package or a build tool gives the solver another package to
+-- choose a version for. An extension, a language or a pkg-config package is
+-- checked against the compiler or the pkg-config database, and rules a package
+-- version out when it is not met.
 data ExampleDependency
   = -- | Simple dependency on any version
     ExAny ExamplePkgName
@@ -203,13 +278,14 @@ data ExampleDependency
     ExLegacyBuildToolAny ExamplePkgName
   | -- | Legacy build-tools dependency on a fixed version
     ExLegacyBuildToolFix ExamplePkgName ExamplePkgVersion
-  | -- | Dependencies indexed by a flag
+  | -- | Dependencies indexed by a flag: the first when the flag is true and
+    -- the second when it is false. See 'exFlagged'.
     ExFlagged ExampleFlagName Dependencies Dependencies
   | -- | Dependency on a language extension
     ExExt Extension
   | -- | Dependency on a language version
     ExLang Language
-  | -- | Dependency on a pkg-config package
+  | -- | Dependency on a fixed version of a pkg-config package
     ExPkg (ExamplePkgName, ExamplePkgVersion)
   deriving (Show)
 
@@ -222,21 +298,29 @@ data ExFlag = ExFlag
   }
   deriving (Show)
 
+-- | A sub-library to add to a package with 'withSubLibrary'.
 data ExSubLib = ExSubLib ExampleSubLibName Dependencies
 
+-- | A test suite to add to a package with 'withTest'.
 data ExTest = ExTest ExampleTestName Dependencies
 
+-- | An executable to add to a package with 'withExe'.
 data ExExe = ExExe ExampleExeName Dependencies
 
+-- | A buildable, private sub-library with the given dependencies.
 exSubLib :: ExampleSubLibName -> [ExampleDependency] -> ExSubLib
 exSubLib name deps = ExSubLib name (dependencies deps)
 
+-- | A buildable test suite with the given dependencies.
 exTest :: ExampleTestName -> [ExampleDependency] -> ExTest
 exTest name deps = ExTest name (dependencies deps)
 
+-- | A buildable executable with the given dependencies.
 exExe :: ExampleExeName -> [ExampleDependency] -> ExExe
 exExe name deps = ExExe name (dependencies deps)
 
+-- | Dependencies under a flag: the first list when the flag is true and the
+-- second when it is false.
 exFlagged
   :: ExampleFlagName
   -> [ExampleDependency]
@@ -244,41 +328,68 @@ exFlagged
   -> ExampleDependency
 exFlagged n t e = ExFlagged n (dependencies t) (dependencies e)
 
+-- | A constraint that the solver must satisfy, on the packages in a scope.
 data ExConstraint
-  = ExVersionConstraint ConstraintScope ExampleVersionRange
-  | ExFlagConstraint ConstraintScope ExampleFlagName Bool
-  | ExStanzaConstraint ConstraintScope [OptionalStanza]
+  = -- | The version of a package must be in the range.
+    ExVersionConstraint ConstraintScope ExampleVersionRange
+  | -- | A flag of a package must have the value.
+    ExFlagConstraint ConstraintScope ExampleFlagName Bool
+  | -- | The stanzas of a package, such as its tests, must be enabled.
+    ExStanzaConstraint ConstraintScope [OptionalStanza]
   deriving (Show)
 
+-- | A preference that the solver satisfies when it can.
 data ExPreference
-  = ExPkgPref ExamplePkgName ExampleVersionRange
-  | ExStanzaPref ExamplePkgName [OptionalStanza]
+  = -- | Prefer versions of a package that are in the range.
+    ExPkgPref ExamplePkgName ExampleVersionRange
+  | -- | Prefer to enable the stanzas of a package, such as its tests.
+    ExStanzaPref ExamplePkgName [OptionalStanza]
   deriving (Show)
 
+-- | A source package in an 'ExampleDb': one that is available to be built, as
+-- opposed to an installed package ('ExampleInstalled'). Make one with 'exAv'
+-- or 'exAvNoLibrary', then add to it with functions such as 'withTest' and
+-- 'declareFlags'.
 data ExampleAvailable = ExAv
   { exAvName :: ExamplePkgName
   , exAvVersion :: ExamplePkgVersion
   , exAvDeps :: ComponentDeps Dependencies
-  , -- Setting flags here is only necessary to override the default values of
-    -- the fields in C.Flag.
-    exAvFlags :: [ExFlag]
+  -- ^ The dependencies of each component, which also says which components
+  -- the package has.
+  , exAvFlags :: [ExFlag]
+  -- ^ Setting flags here is only necessary to override the default values of
+  -- the fields in C.Flag.
   }
   deriving (Show)
 
+-- | A variable that the solver chooses a value for, used to give the order in
+-- which it should choose them.
 data ExampleVar
-  = P ExampleQualifier ExamplePkgName
-  | F ExampleQualifier ExamplePkgName ExampleFlagName
-  | S ExampleQualifier ExamplePkgName OptionalStanza
+  = -- | The version of a package.
+    P ExampleQualifier ExamplePkgName
+  | -- | The value of a flag of a package.
+    F ExampleQualifier ExamplePkgName ExampleFlagName
+  | -- | Whether a stanza of a package, such as its tests, is enabled.
+    S ExampleQualifier ExamplePkgName OptionalStanza
 
+-- | Which of the solver's goals for a package an 'ExampleVar' is about. The
+-- solver can have several goals for one package, each with its own qualifier,
+-- and may choose a different version for each.
 data ExampleQualifier
-  = QualNone
-  | QualIndep ExamplePkgName
-  | QualSetup ExamplePkgName
-  | -- The two package names are the build target and the package containing the
+  = -- | The package as a dependency of the targets.
+    QualNone
+  | -- | The package as a dependency of the named target, when the targets are
+    -- solved as independent goals.
+    QualIndep ExamplePkgName
+  | -- | The package as a dependency of the setup script of the named package.
+    QualSetup ExamplePkgName
+  | -- | As 'QualSetup', when the targets are solved as independent goals. The
+    -- two package names are the build target and the package containing the
     -- setup script.
     QualIndepSetup ExamplePkgName ExamplePkgName
-  | -- The two package names are the package depending on the exe and the
-    -- package containing the exe.
+  | -- | The package as a dependency of an executable that is used as a build
+    -- tool. The two package names are the package depending on the exe and
+    -- the package containing the exe.
     QualExe ExamplePkgName ExamplePkgName
 
 -- | Whether to enable tests in all packages in a test case.
@@ -319,9 +430,11 @@ declareFlags flags ex =
     { exAvFlags = flags
     }
 
+-- | Adds a sub-library to a package.
 withSubLibrary :: ExampleAvailable -> ExSubLib -> ExampleAvailable
 withSubLibrary ex lib = withSubLibraries ex [lib]
 
+-- | Adds sub-libraries to a package.
 withSubLibraries :: ExampleAvailable -> [ExSubLib] -> ExampleAvailable
 withSubLibraries ex libs =
   let subLibCDs =
@@ -331,15 +444,19 @@ withSubLibraries ex libs =
           ]
    in ex{exAvDeps = exAvDeps ex <> subLibCDs}
 
+-- | Adds dependencies for the setup script of a package, which also gives the
+-- package the @Custom@ build type.
 withSetupDeps :: ExampleAvailable -> [ExampleDependency] -> ExampleAvailable
 withSetupDeps ex setupDeps =
   ex
     { exAvDeps = exAvDeps ex <> CD.fromSetupDeps (dependencies setupDeps)
     }
 
+-- | Adds a test suite to a package.
 withTest :: ExampleAvailable -> ExTest -> ExampleAvailable
 withTest ex test = withTests ex [test]
 
+-- | Adds test suites to a package.
 withTests :: ExampleAvailable -> [ExTest] -> ExampleAvailable
 withTests ex tests =
   let testCDs =
@@ -349,9 +466,11 @@ withTests ex tests =
           ]
    in ex{exAvDeps = exAvDeps ex <> testCDs}
 
+-- | Adds an executable to a package.
 withExe :: ExampleAvailable -> ExExe -> ExampleAvailable
 withExe ex exe = withExes ex [exe]
 
+-- | Adds executables to a package.
 withExes :: ExampleAvailable -> [ExExe] -> ExampleAvailable
 withExes ex exes =
   let exeCDs =
@@ -717,12 +836,14 @@ exAvSrcPkg ex =
       C.MissingUpperBounds{} -> True
       _ -> False
 
+-- | The version with the number as its only component.
 mkSimpleVersion :: ExamplePkgVersion -> C.Version
 mkSimpleVersion n = C.mkVersion [n]
 
 mkSimplePkgconfigVersion :: ExamplePkgVersion -> C.PkgconfigVersion
 mkSimplePkgconfigVersion = C.versionToPkgconfigVersion . mkSimpleVersion
 
+-- | The range of versions from the first, inclusive, to the second, exclusive.
 mkVersionRange :: ExamplePkgVersion -> ExamplePkgVersion -> C.VersionRange
 mkVersionRange v1 v2 =
   C.intersectVersionRanges
@@ -778,17 +899,26 @@ exAvIdx = CI.PackageIndex.fromList . map exAvSrcPkg
 exInstIdx :: [ExampleInstalled] -> C.PackageIndex.InstalledPackageIndex
 exInstIdx = C.PackageIndex.fromList . map exInstInfo
 
+-- | Runs the solver on a database. The steps of the result are the lines of
+-- the solver's log, and it ends with an error message or an install plan.
+--
+-- Tests usually make a @SolverTest@ with
+-- "UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils" and don't call
+-- this.
 exResolve
   :: ExampleDb
-  -- List of extensions supported by the compiler, or Nothing if unknown.
   -> Maybe [Extension]
-  -- List of languages supported by the compiler, or Nothing if unknown.
+  -- ^ List of extensions supported by the compiler, or Nothing if unknown.
   -> Maybe [Language]
+  -- ^ List of languages supported by the compiler, or Nothing if unknown.
   -> Maybe [(C.PackageName, UnitId)]
   -- ^ List of units that are wired in to the compiler
   -> Maybe PC.PkgConfigDb
+  -- ^ The pkg-config packages that are installed, or Nothing if unknown.
   -> [ExamplePkgName]
+  -- ^ The targets to solve for.
   -> Maybe Int
+  -- ^ The most backjumps to allow, or Nothing for no limit.
   -> CountConflicts
   -> FineGrainedConflicts
   -> MinimizeConflictSet
@@ -800,6 +930,7 @@ exResolve
   -> EnableBackjumping
   -> SolveExecutables
   -> Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
+  -- ^ The order in which to choose goals, or Nothing for the solver's order.
   -> [ExConstraint]
   -> [ExPreference]
   -> C.Verbosity
@@ -889,6 +1020,8 @@ exResolve
       toPref (ExPkgPref n v) = PackageVersionPreference (C.mkPackageName n) v
       toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
 
+-- | The source packages that an install plan builds, with their versions.
+-- Installed packages that the plan uses are left out.
 extractInstallPlan
   :: CI.SolverInstallPlan.SolverInstallPlan
   -> [(ExamplePkgName, ExamplePkgVersion)]
@@ -907,7 +1040,7 @@ extractInstallPlan = mapMaybe confPkg . CI.SolverInstallPlan.toList
   Auxiliary
 -------------------------------------------------------------------------------}
 
--- | Run Progress computation
+-- | Runs a computation to its end, collecting its steps and its result.
 runProgress :: Progress step e a -> ([step], Either e a)
 runProgress = go
   where
