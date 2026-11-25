@@ -123,6 +123,7 @@ library
         Distribution.Client.CmdTarget
         Distribution.Client.CmdTest
         Distribution.Client.CmdUpdate
+        Distribution.Client.CmdVendor
         Distribution.Client.CmdGenBounds
         Distribution.Client.Compat.Orphans
         Distribution.Client.Compat.Prelude
