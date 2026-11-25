@@ -1,0 +1,4 @@
+# cabal v2-test
+Resolving dependencies...
+Error: [Cabal-7043]
+Cannot run tests for the target 'q' which refers to the package q-0.1 because it does not contain any test suites.

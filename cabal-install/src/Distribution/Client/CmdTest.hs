@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -11,6 +12,7 @@ module Distribution.Client.CmdTest
   , isSubComponentProblem
   , notTestProblem
   , noTestsProblem
+  , resolveSkippingNoTests
   , selectPackageTargets
   , selectComponentTarget
   ) where
@@ -57,6 +59,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( dieWithException
   , notice
+  , ordNub
   , warn
   , wrapText
   )
@@ -142,14 +145,18 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
 
       -- Interpret the targets on the command line as test targets
       -- (as opposed to say build or haddock targets).
+      let resolveTargets =
+            resolveTargetsFromSolver
+              selectPackageTargets
+              selectComponentTarget
+              elaboratedPlan
+              Nothing
       targets <-
-        either (reportTargetProblems verbosity failWhenNoTestSuites) return $
-          resolveTargetsFromSolver
-            selectPackageTargets
-            selectComponentTarget
-            elaboratedPlan
-            Nothing
-            targetSelectors
+        resolveSkippingNoTests
+          verbosity
+          failWhenNoTestSuites
+          resolveTargets
+          targetSelectors
 
       let elaboratedPlan' =
             pruneInstallPlanToTargets
@@ -178,16 +185,22 @@ selectPackageTargets
   -> [AvailableTarget k]
   -> Either TestTargetProblem [k]
 selectPackageTargets targetSelector targets
-  -- If there are any buildable test-suite targets then we select those
+  -- If there are any buildable test-suite targets then we select those.
   | not (null targetsTestsBuildable) =
       Right targetsTestsBuildable
-  -- If there are test-suites but none are buildable then we report those
+  -- If there are test-suites but none are buildable then we report those.
   | not (null targetsTests) =
       Left (TargetProblemNoneEnabled targetSelector targetsTests)
-  -- If there are no test-suite but some other targets then we report that
+  -- If there are no test-suite but some other targets then we report that.
   | not (null targets) =
       Left (noTestsProblem targetSelector)
-  -- If there are no targets at all then we report that
+  -- If pkg:tests comes up empty we report no tests.
+  | TargetPackage _ _ (Just TestKind) <- targetSelector =
+      Left (noTestsProblem targetSelector)
+  -- If all:tests comes up empty we report no tests.
+  | TargetAllPackages (Just TestKind) <- targetSelector =
+      Left (noTestsProblem targetSelector)
+  -- If there are no targets at all then we report that.
   | otherwise =
       Left (TargetProblemNoTargets targetSelector)
   where
@@ -255,22 +268,54 @@ isSubComponentProblem pkgid name subcomponent =
   CustomTargetProblem $
     TargetProblemIsSubComponent pkgid name subcomponent
 
-reportTargetProblems :: Verbosity -> Flag Bool -> [TestTargetProblem] -> IO a
-reportTargetProblems verbosity failWhenNoTestSuites problems =
-  case (failWhenNoTestSuites, problems) of
-    (Flag True, [CustomTargetProblem (TargetProblemNoTests _)]) ->
-      dieWithException verbosity $ ReportTargetProblems problemsMessage
-    (_, [CustomTargetProblem (TargetProblemNoTests selector)]) -> do
-      notice verbosity (renderAllowedNoTestsProblem selector)
-      System.Exit.exitSuccess
-    (_, _) -> dieWithException verbosity $ ReportTargetProblems problemsMessage
+-- | Resolve the requested targets, skipping those without test suites.
+--
+-- Targets that do not contain any test suites do not abort the command
+-- (unless @--test-fail-when-no-test-suites@ is given): they are skipped with
+-- a notice, and the remaining requested targets are resolved and tested. If
+-- no targets remain, the command exits successfully. Any other target
+-- problem is an error.
+resolveSkippingNoTests
+  :: Verbosity
+  -> Flag Bool
+  -- ^ @--test-fail-when-no-test-suites@
+  -> ([TargetSelector] -> Either [TestTargetProblem] TargetsMap)
+  -- ^ how to resolve (a subset of) the requested targets
+  -> [TargetSelector]
+  -- ^ the target selectors requested on the command line
+  -> IO TargetsMap
+resolveSkippingNoTests verbosity failWhenNoTestSuites resolveTargets = go
   where
-    problemsMessage = unlines . map renderTestTargetProblem $ problems
+    go selectors = case resolveTargets selectors of
+      Right targets -> return targets
+      Left problems
+        | failWhenNoTestSuites /= Flag True
+        , null otherProblems
+        , not (null noTestsSelectors) -> do
+            for_ noTestsSelectors $ notice verbosity . renderAllowedNoTestsProblem
+            case filter (`notElem` noTestsSelectors) selectors of
+              [] -> System.Exit.exitSuccess
+              remaining -> go remaining
+        | otherwise -> reportTargetProblems verbosity problems
+        where
+          (noTestsProblems, otherProblems) =
+            flip partition problems $ \case
+              CustomTargetProblem (TargetProblemNoTests _) -> True
+              _ -> False
 
--- | Unless @--test-fail-when-no-test-suites@ flag is passed, we don't
---   @die@ when the target problem is 'TargetProblemNoTests'.
---   Instead, we display a notice saying that no tests have run and
---   indicate how this behaviour was enabled.
+          noTestsSelectors =
+            ordNub [selector | CustomTargetProblem (TargetProblemNoTests selector) <- noTestsProblems]
+
+-- | Render the target problems and die.
+reportTargetProblems :: Verbosity -> [TestTargetProblem] -> IO a
+reportTargetProblems verbosity =
+  dieWithException verbosity
+    . ReportTargetProblems
+    . unlines
+    . map renderTestTargetProblem
+
+-- | The message displayed for each skipped target that does not contain
+--   any test suites.
 renderAllowedNoTestsProblem :: TargetSelector -> String
 renderAllowedNoTestsProblem selector =
   "No tests to run for " ++ renderTargetSelector selector
