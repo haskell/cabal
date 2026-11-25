@@ -2,6 +2,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 {- HLINT ignore "Use curry" -}
 
@@ -38,7 +39,7 @@ import System.FilePath
 import Distribution.Compat.Prelude
 import qualified Distribution.Compat.Binary as Binary
 import Distribution.Simple
-  ( autoconfSetupHooks )
+  ( autoconfSetupHooksWithHandles )
 import Distribution.Simple.Build
   ( builtinPreBuildHooks )
 import Distribution.Simple.BuildPaths
@@ -60,7 +61,7 @@ import Distribution.Utils.Path
   , interpretSymbolicPath
   )
 import Distribution.Verbosity
-  ( Verbosity, VerbosityHandles, mkVerbosity )
+  ( Verbosity, VerbosityHandles(..), mkVerbosity, verbosityHandles )
 
 -- hooks-cli
 import Distribution.Client.SetupHooks.CallHooksExe.Errors
@@ -85,6 +86,7 @@ callHooksExe
   -> inputs   -- ^ argument to the hook
   -> IO outputs
 callHooksExe verb hooksExe hookName input = do
+  let VerbosityHandles { vStdoutHandle, vStderrHandle } = verbosityHandles verb
   (ex, output) <-
     -- The arguments to the external hooks executable are:
     --
@@ -95,8 +97,16 @@ callHooksExe verb hooksExe hookName input = do
     -- The hooks executable will read input from the input handle, decode it,
     -- run the necessary hook, producing a result which it encodes and writes
     -- to the output handle.
+    --
+    -- The hooks executable inherits its logging handles from this process:
+    -- see (LH2) in Note [Logging handles] in Distribution.Verbosity.
     readCreateProcessWithExitCodeCommunicationHandle
-      ( \(theyRead, theyWrite) -> P.proc hooksExe [show theyRead, show theyWrite, hookName] )
+      ( \(theyRead, theyWrite) ->
+          ( P.proc hooksExe [show theyRead, show theyWrite, hookName] )
+            { P.std_out = P.UseHandle vStdoutHandle
+            , P.std_err = P.UseHandle vStderrHandle
+            }
+      )
       ( \ hWeRead -> hGetContents hWeRead )
       ( \ hWeWrite -> do
         let i = Binary.encode input
@@ -169,7 +179,9 @@ buildTypeSetupHooks
   -> SetupHooks
 buildTypeSetupHooks verb mbWorkDir distPref = \case
   Hooks -> externalSetupHooks verb $ hooksProgFilePath mbWorkDir distPref
-  Configure -> autoconfSetupHooks
+  -- The built-in Configure hooks run in-process:
+  -- see (LH1) in Note [Logging handles] in Distribution.Verbosity.
+  Configure -> autoconfSetupHooksWithHandles (verbosityHandles verb)
   _ -> noSetupHooks
     -- Note: if any built-in functionality is implemented using SetupHooks,
     -- we would also need to include those.

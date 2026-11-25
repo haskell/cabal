@@ -14,6 +14,7 @@ module Distribution.Client.Utils
   , determineNumJobs
   , numberOfProcessors
   , withTempFileName
+  , withLogFile
   , makeAbsoluteToCwd
   , makeRelativeToCwd
   , makeRelativeToDir
@@ -90,15 +91,18 @@ import System.Directory
   , listDirectory
   )
 import qualified System.Directory as Directory
+import qualified System.File.OsPath as File (withFile)
 import System.FilePath
 import System.IO
   ( Handle
+  , IOMode (AppendMode)
   , hClose
   , hGetEncoding
   , hSetEncoding
   , openTempFile
   )
 import System.IO.Unsafe (unsafePerformIO)
+import qualified System.OsPath as OsPath (encodeFS)
 
 import qualified Data.Set as Set
 import Data.Time (utcToLocalTime)
@@ -160,6 +164,19 @@ withTempFileName tmpDir template action =
     (openTempFile tmpDir template)
     (\(name, _) -> removeFileForcibly name)
     (\(name, h) -> hClose h >> action name)
+
+-- | Run an action with a handle to the given log file (if any), opened in
+-- 'AppendMode'.
+withLogFile :: Maybe FilePath -> (Maybe Handle -> IO r) -> IO r
+withLogFile Nothing action = action Nothing
+withLogFile (Just logFile) action = do
+  -- We use file-io's 'withFile' here: at the time of writing, on Windows,
+  -- base's 'AppendMode' only appends writes made through the Haskell 'Handle',
+  -- leaving the OS file pointer at the start of the file.
+  -- A child process inheriting the handle thus writes from the start of the
+  -- file, overwriting what is already there. (See GHC ticket #28108.)
+  logFileOsPath <- OsPath.encodeFS logFile
+  File.withFile logFileOsPath AppendMode (action . Just)
 
 -- | Executes the action with an environment variable set to some
 -- value.

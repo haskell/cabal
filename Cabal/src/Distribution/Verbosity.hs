@@ -101,7 +101,9 @@ import qualified Type.Reflection as Typeable
 -- | Rich verbosity, used for the Cabal library interface.
 data Verbosity = Verbosity
   { verbosityFlags :: VerbosityFlags
+  -- ^ How much to log.
   , verbosityHandles :: VerbosityHandles
+  -- ^ Where to log.
   }
   deriving (Generic)
 
@@ -111,12 +113,56 @@ data VerbosityHandles = VerbosityHandles
   , vStderrHandle :: Handle
   }
 
+-- | Log to the stdout and stderr of the current process.
+--
+-- Only use these for process entry points: see (LH2) in Note [Logging handles].
 defaultVerbosityHandles :: VerbosityHandles
 defaultVerbosityHandles =
   VerbosityHandles
     { vStdoutHandle = stdout
     , vStderrHandle = stderr
     }
+
+{- Note [Logging handles]
+~~~~~~~~~~~~~~~~~~~~~~~~~
+'Verbosity' stores two separate pieces of information:
+
+  - 'VerbosityFlags'. These are passed on the command line and control the
+    verbosity level.
+
+  - 'VerbosityHandles'. These specify where output goes (e.g. to the terminal
+    or to a file), and are not serialisable (because 'Handle' isn't).
+
+The key subtlety about 'VerbosityHandles' is that there are two competing
+mechanisms that control where log output goes to:
+
+  - Whenever a subprocess is spawned, we can set the logging handles of the
+    subprocess.
+
+  - Within a single process, we can override the process's logging handles
+    with 'VerbosityHandles'.
+
+Thus follows our 'VerbosityHandles' discipline:
+
+  (LH1)
+    Library functions that may be called in-process must be passed their logging
+    handles via 'VerbosityHandles', and use those when deciding where to log.
+
+    For example, when cabal-install calls Cabal in-library to build a package,
+    we want to override the logging handles for per-package output (to avoid
+    interleaving when building multiple packages concurrently).
+
+  (LH2)
+    Process entry points, such as 'defaultMain' etc, don't take
+    'VerbosityHandles'. The logging handles are inherited from the process.
+
+    This includes user-written Custom Setup code as well as user-written
+    SetupHooks, as those are always invoked via an external process.
+    (In the future we could imagine invoking SetupHooks in-library, but today we
+    go via an external hooks executable.)
+    Note that Cabal's built-in SetupHooks for build-type: Configure go via the
+    in-library path, so fall under (LH1) instead.
+-}
 
 -- | Verbosity information which can be passed by the CLI.
 data VerbosityFlags = VerbosityFlags

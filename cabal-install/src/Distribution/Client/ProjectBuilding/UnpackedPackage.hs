@@ -66,6 +66,7 @@ import Distribution.Client.Types hiding
 import Distribution.Client.Utils
   ( ProgressPhase (..)
   , progressMessage
+  , withLogFile
   )
 
 import Distribution.Compat.Lens
@@ -117,7 +118,7 @@ import Data.IORef (newIORef, readIORef, writeIORef)
 import GHC.Clock (getMonotonicTime)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
-import System.IO (Handle, IOMode (AppendMode), withFile)
+import System.IO (Handle)
 import System.Semaphore (SemaphoreIdentifier)
 import Text.Printf (printf)
 
@@ -510,10 +511,7 @@ buildAndRegisterUnpackedPackage
               (InLibraryArgs $ InLibraryPostConfigureArgs SRegisterPhase mbLBI)
 
       withLogging :: (Maybe Handle -> IO r) -> IO r
-      withLogging action =
-        case mlogFile of
-          Nothing -> action Nothing
-          Just logFile -> withFile logFile AppendMode (action . Just)
+      withLogging = withLogFile mlogFile
 
 --------------------------------------------------------------------------------
 

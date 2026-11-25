@@ -1577,10 +1577,7 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
    in case bt of
         Simple -> Simple.defaultMainArgs args
         Configure ->
-          Simple.defaultMainWithSetupHooksArgs
-            Simple.autoconfSetupHooks
-            defaultVerbosityHandles
-            args
+          Simple.defaultMainWithSetupHooksArgs Simple.autoconfSetupHooks args
         Make -> unsupportedBuildType
         Hooks -> unsupportedBuildType
         Custom -> unsupportedBuildType
