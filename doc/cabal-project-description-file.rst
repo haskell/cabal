@@ -1919,6 +1919,31 @@ built. On the other hand, the following snippet:
 
 will apply ``-Werror`` to all packages, local and remote.
 
+Program locations
+^^^^^^^^^^^^^^^^^
+
+.. cfg-section:: program-locations
+
+A ``<prog>-location: PATH`` field in the ``program-locations`` stanza is the
+strongest way to say which program ``cabal`` should run: ``cabal`` uses that
+exact path and ignores every other way it would otherwise have found the
+program. Any program from the :ref:`list of known programs<program_options>`
+can be given a location. For example:
+
+::
+
+    program-locations
+        gcc-location: /usr/bin/clang
+        happy-location: /opt/happy-2.0/bin/happy
+
+A ``<prog>-location: PATH`` field does the same as passing ``--with-PROG=PATH``
+on the command line, so the ``gcc-location`` above is equivalent to
+``--with-gcc=/usr/bin/clang``. The stanza can also be used in the global
+configuration file.
+
+The C compiler set with ``gcc-location`` is passed on to GHC (as ``-pgmc``), so
+it is used for the C sources of your local packages and of their dependencies.
+
 Advanced global options
 -----------------------
 
