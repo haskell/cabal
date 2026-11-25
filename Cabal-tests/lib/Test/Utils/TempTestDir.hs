@@ -5,19 +5,21 @@ module Test.Utils.TempTestDir
   ) where
 
 import Distribution.Compat.Internal.TempFile (createTempDirectory)
-import Distribution.Simple.Utils (warn, TempFileOptions (..), defaultTempFileOptions)
+import Distribution.Simple.Utils (TempFileOptions (..), defaultTempFileOptions, warn)
 import Distribution.Verbosity
 
 import Control.Concurrent (threadDelay)
 import Control.Exception (throwIO, try)
 import Control.Monad (unless, when)
-import Control.Monad.Catch ( bracket, MonadMask)
+import Control.Monad.Catch (MonadMask, bracket)
 import Control.Monad.IO.Class
 
+import qualified GHC.IO.Encoding as Encoding
 import System.Directory
-import System.IO.Error
 import System.FilePath ((</>))
+import System.IO.Error
 import qualified System.Info (os)
+import Distribution.System
 
 -- | Much like 'withTemporaryDirectory' but with a number of hacks to make
 -- sure on windows that we can clean up the directory at the end.
@@ -26,6 +28,12 @@ withTestDir verbosity template action = withTestDir' verbosity defaultTempFileOp
 
 withTestDir' :: (MonadIO m, MonadMask m) => Verbosity -> TempFileOptions -> String -> (FilePath -> m a) -> m a
 withTestDir' verbosity tempFileOpts template action = do
+  supported <- supportsUnicodeCharacters
+  let
+    real_template =
+      if supported
+        then template ++ ['-', '文', '档']
+        else template
   systmpdir <-
     -- MacOS returns /var/folders/... which is a symlink (/var -> /private/var),
     -- so the test-suite struggles to make the build cwd-agnostic in particular
@@ -33,16 +41,33 @@ withTestDir' verbosity tempFileOpts template action = do
     -- /private/var/folders/... which will work.
     liftIO $ canonicalizePath =<< getTemporaryDirectory
   bracket
-    ( do { tmpRelDir <- liftIO $ createTempDirectory systmpdir template
-         ; return $ systmpdir </> tmpRelDir } )
-    (liftIO
-      -- This ensures that the temp files are not deleted at the end of the test.
-      -- It replicates the behavior of @withTempDirectoryEx@.
-      . unless (optKeepTempFiles tempFileOpts)
-      -- This is the bit that helps with Windows deleting all files.
-      . removeDirectoryRecursiveHack verbosity
-      )
+    ( do
+        tmpRelDir <- liftIO $ createTempDirectory systmpdir real_template
+        return $ systmpdir </> tmpRelDir
+    )
+    ( liftIO
+        -- This ensures that the temp files are not deleted at the end of the test.
+        -- It replicates the behavior of @withTempDirectoryEx@.
+        . unless (optKeepTempFiles tempFileOpts)
+        -- This is the bit that helps with Windows deleting all files.
+        . removeDirectoryRecursiveHack verbosity
+    )
     action
+
+-- | Check whether the system uses an encoding that supports unicode characters.
+--
+-- We ignore windows for now, as well, mostly for simplicity.
+supportsUnicodeCharacters :: MonadIO m => m Bool
+supportsUnicodeCharacters = do
+  enc <- liftIO Encoding.getFileSystemEncoding
+  pure $
+    buildOS /= Windows
+      && Encoding.textEncodingName enc
+        `elem` map
+          Encoding.textEncodingName
+          [ Encoding.utf8
+          , Encoding.utf8_bom
+          ]
 
 -- | On Windows, file locks held by programs we run (in this case VCSs)
 -- are not always released prior to completing process termination!

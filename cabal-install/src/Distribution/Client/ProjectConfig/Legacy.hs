@@ -39,7 +39,7 @@ import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
-import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo, normaliseFileNoIndexURI)
+import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo, normaliseFileNoIndexURI, urlEncode)
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
 import Distribution.Client.Types.SourceRepo (SourceRepoList, sourceRepositoryPackageGrammar)
 
@@ -2024,7 +2024,7 @@ remoteRepoSectionDescr =
               URI
                 "file+noindex:"
                 (Just nullURIAuth)
-                path
+                (urlEncode path)
                 ""
                 (if sharedCache then "#shared-cache" else "")
         }

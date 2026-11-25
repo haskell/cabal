@@ -121,7 +121,7 @@ preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = l
         -- Autogen dir is relative in a typical scenarios, but may be absolute
         -- when the module is built out-of-tree. This log ensures that both
         -- scenarios are covered.
-        warn verbosity (show $ getSymbolicPath genDir)
+        warn verbosity (getSymbolicPath genDir)
         rewriteFileEx verbosity (getSymbolicPath genDir </> "Gen2.c") $ unlines
           [ "int is_needed(int x) { return (x+ 999000); };"
           ]

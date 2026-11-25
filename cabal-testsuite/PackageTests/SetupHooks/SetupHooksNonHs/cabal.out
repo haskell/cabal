@@ -7,7 +7,7 @@ Configuring setup-hooks-non-hs-rules-test-0.1.0.0...
 Warning: Running DynMyPpDependency5
 Warning: Running MyPp4
 Warning: Running MyPp3
-Warning: "cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/setup-hooks-non-hs-rules-test-0.1.0.0/build/NonHs/autogen"
+Warning: cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/setup-hooks-non-hs-rules-test-0.1.0.0/build/NonHs/autogen
 Warning: Running MyPp1
 Warning: Running MyPp2
 Warning: Running DynMyPp5
@@ -22,7 +22,7 @@ Configuring setup-hooks-non-hs-rules-test-0.1.0.0...
 Warning: Running DynMyPpDependency5
 Warning: Running MyPp4
 Warning: Running MyPp3
-Warning: "<ROOT>/cabal.dist/work/./inner/dist/build/<ARCH>/ghc-<GHCVER>/setup-hooks-non-hs-rules-test-0.1.0.0/build/NonHs/autogen"
+Warning: <ROOT>/cabal.dist/work/./inner/dist/build/<ARCH>/ghc-<GHCVER>/setup-hooks-non-hs-rules-test-0.1.0.0/build/NonHs/autogen
 Warning: Running MyPp1
 Warning: Running MyPp2
 Warning: Running DynMyPp5
