@@ -1349,8 +1349,7 @@ package executable block, and the project metadata block is optional and
 contains fields that would be in the cabal.project file in a regular project.
 
 Only some fields are supported in the metadata blocks, and these fields are
-currently not validated. See
-`#8024 <https://github.com/haskell/cabal/issues/8024>`__ for details.
+currently not validated. See :issue:`8024` for details.
 
 A script can either be executed directly using `cabal` as an interpreter or
 with the command:

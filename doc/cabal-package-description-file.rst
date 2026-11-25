@@ -675,7 +675,7 @@ describe the package as a whole:
           GHC == 9.6.5
 
     However, this alternative might
-    `disappear <https://github.com/haskell/cabal/issues/4894#issuecomment-909008657>`__
+    :issue:`disappear <4894#issuecomment-909008657>`
     in the future.
 
     Starting with :pkg-field:`cabal-version` 3.0,
@@ -753,7 +753,7 @@ describe the package as a whole:
     their own folder.
 
     ``**`` wildcards are available starting in Cabal 2.4
-    and `bug-free since Cabal 3.0 <https://github.com/haskell/cabal/issues/6125#issuecomment-1379878419>`_.
+    and :issue:`bug-free since Cabal 3.0 <6125#issuecomment-1379878419>`.
 
 .. pkg-field:: data-dir: directory
 
