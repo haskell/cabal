@@ -29,6 +29,9 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
   , mkTestPCDepends
   , mkTestExtLangPC
   , runTest
+  , solverTestProgress
+  , solverTestIndexes
+  , solverTestProgressWith
   ) where
 
 import Distribution.Solver.Compat.Prelude
@@ -48,7 +51,8 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 
 -- cabal-install
 
-import Distribution.Client.Dependency (foldProgress)
+import Distribution.Client.Dependency (Progress, foldProgress)
+import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
 import qualified Distribution.Solver.Types.PackagePath as P
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
@@ -258,32 +262,9 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     }
 
 runTest :: SolverTest -> TF.TestTree
-runTest SolverTest{..} = withFrozenCallStack $ askOption $ \(OptionShowSolverLog showSolverLog) ->
+runTest test@SolverTest{..} = withFrozenCallStack $ askOption $ \(OptionShowSolverLog showSolverLog) ->
   testCase testLabel $ do
-    let progress =
-          exResolve
-            testDb
-            testSupportedExts
-            testSupportedLangs
-            testWiredInUnitIds
-            testPkgConfigDb
-            testTargets
-            testMaxBackjumps
-            (CountConflicts True)
-            testFineGrainedConflicts
-            testMinimizeConflictSet
-            testIndepGoals
-            testPreferVersion
-            (ReorderGoals False)
-            testAllowBootLibInstalls
-            testOnlyConstrained
-            testEnableBackjumping
-            testSolveExecutables
-            (sortGoals <$> testGoalOrder)
-            testConstraints
-            testSoftConstraints
-            (mkVerbosity defaultVerbosityHandles testVerbosity)
-            testEnableAllTests
+    let progress = solverTestProgress test
         printMsg msg = when showSolverLog $ putStrLn msg
         msgs = foldProgress (:) (const []) (const []) progress
     assertBool ("Unexpected solver log:\n" ++ unlines msgs) $
@@ -306,6 +287,48 @@ runTest SolverTest{..} = withFrozenCallStack $ askOption $ \(OptionShowSolverLog
         Left f -> f msg
         Right _ -> False
 
+-- | Runs the solver on a test case without checking the result. The steps are
+-- the lines of the solver log, and the result is an error message or a plan.
+solverTestProgress
+  :: SolverTest
+  -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
+solverTestProgress test = solverTestProgressWith (solverTestIndexes test) test
+
+-- | The package indexes for the package database of a test case.
+solverTestIndexes :: SolverTest -> ExampleIndexes
+solverTestIndexes = exIndexes . testDb
+
+-- | As 'solverTestProgress', with package indexes that have already been made
+-- from the test case, so that making them can be left out of a timing.
+solverTestProgressWith
+  :: ExampleIndexes
+  -> SolverTest
+  -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
+solverTestProgressWith idxs SolverTest{..} =
+  exResolveIndexes
+    idxs
+    testSupportedExts
+    testSupportedLangs
+    testWiredInUnitIds
+    testPkgConfigDb
+    testTargets
+    testMaxBackjumps
+    (CountConflicts True)
+    testFineGrainedConflicts
+    testMinimizeConflictSet
+    testIndepGoals
+    testPreferVersion
+    (ReorderGoals False)
+    testAllowBootLibInstalls
+    testOnlyConstrained
+    testEnableBackjumping
+    testSolveExecutables
+    (sortGoals <$> testGoalOrder)
+    testConstraints
+    testSoftConstraints
+    (mkVerbosity defaultVerbosityHandles testVerbosity)
+    testEnableAllTests
+  where
     sortGoals
       :: [ExampleVar]
       -> Variable P.QPN
