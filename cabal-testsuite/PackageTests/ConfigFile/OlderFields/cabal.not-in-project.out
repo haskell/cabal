@@ -1,0 +1,85 @@
+# remote-repo is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "remote-repo"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# repos is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "repos"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# cachedir is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "cachedir"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# hackage-username is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "hackage-username"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# hackage-password is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "hackage-password"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# hackage-password-command is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "hackage-password-command"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# hackage-token is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "hackage-token"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# user-prefix is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "user-prefix"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# user-bindir is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "user-bindir"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# global-prefix is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "global-prefix"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# global-bindir is for the configuration file only
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "global-bindir"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# local-repo was removed and is unknown in a project
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "local-repo"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# require-sandbox was removed and is unknown in a project
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "require-sandbox"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# ignore-sandbox was removed and is unknown in a project
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "ignore-sandbox"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# one-shot was removed and is unknown in a project
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "one-shot"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# world-file was removed and is unknown in a project
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "world-file"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages
+# nix was removed and is unknown in a project
+# cabal path
+Warnings found while parsing the project file, cabal.project:
+ - cabal.project:2:1: Unknown field: "nix"
+<ROOT>/cabal.not-in-project.dist/home/.cabal/packages

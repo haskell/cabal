@@ -1,0 +1,39 @@
+# remote-repo has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# repos has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# hackage-username has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# hackage-password has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# hackage-password-command has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# hackage-token has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# user-prefix has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# user-bindir has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# global-prefix has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# global-bindir has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# library-coverage has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# prefer-oldest has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages
+# symlink-bindir has a newer name but is accepted in the configuration file
+# cabal path
+<ROOT>/cabal.newer-name.dist/home/.cabal/packages

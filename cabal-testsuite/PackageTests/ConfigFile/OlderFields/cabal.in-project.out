@@ -1,0 +1,18 @@
+# library-coverage has a newer name but is accepted in a project
+# cabal path
+<ROOT>/cabal.in-project.dist/home/.cabal/packages
+# prefer-oldest has a newer name but is accepted in a project
+# cabal path
+<ROOT>/cabal.in-project.dist/home/.cabal/packages
+# symlink-bindir has a newer name but is accepted in a project
+# cabal path
+<ROOT>/cabal.in-project.dist/home/.cabal/packages
+# project-file is an option that is accepted in a project
+# cabal path
+<ROOT>/cabal.in-project.dist/home/.cabal/packages
+# ignore-project is an option that is accepted in a project
+# cabal path
+<ROOT>/cabal.in-project.dist/home/.cabal/packages
+# project-dir is an option that is accepted in a project
+# cabal path
+<ROOT>/cabal.in-project.dist/home/.cabal/packages

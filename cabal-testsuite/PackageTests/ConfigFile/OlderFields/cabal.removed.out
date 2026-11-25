@@ -1,0 +1,35 @@
+# local-repo was removed and is ignored with a warning
+# cabal path
+Warning: <ROOT>/cabal.removed.dist/home/.cabal/config: Unrecognized field local-repo on line 2
+<ROOT>/cabal.removed.dist/home/.cabal/packages
+# require-sandbox was removed and is ignored with a warning
+# cabal path
+Warning: <ROOT>/cabal.removed.dist/home/.cabal/config: Unrecognized field require-sandbox on line 2
+<ROOT>/cabal.removed.dist/home/.cabal/packages
+# ignore-sandbox was removed and is ignored with a warning
+# cabal path
+Warning: <ROOT>/cabal.removed.dist/home/.cabal/config: Unrecognized field ignore-sandbox on line 2
+<ROOT>/cabal.removed.dist/home/.cabal/packages
+# project-file was removed and is ignored with a warning
+# cabal path
+Warning: <ROOT>/cabal.removed.dist/home/.cabal/config: Unrecognized field project-file on line 2
+<ROOT>/cabal.removed.dist/home/.cabal/packages
+# ignore-project was removed and is ignored with a warning
+# cabal path
+Warning: <ROOT>/cabal.removed.dist/home/.cabal/config: Unrecognized field ignore-project on line 2
+<ROOT>/cabal.removed.dist/home/.cabal/packages
+# one-shot was removed and is ignored with a warning
+# cabal path
+Warning: <ROOT>/cabal.removed.dist/home/.cabal/config: Unrecognized field one-shot on line 2
+<ROOT>/cabal.removed.dist/home/.cabal/packages
+# nix was removed and is ignored with a warning
+# cabal path
+Warning: <ROOT>/cabal.removed.dist/home/.cabal/config: Unrecognized field nix on line 2
+<ROOT>/cabal.removed.dist/home/.cabal/packages
+# world-file was removed and is ignored without a warning
+# cabal path
+<ROOT>/cabal.removed.dist/home/.cabal/packages
+# project-dir has never been a field of the configuration file
+# cabal path
+Warning: <ROOT>/cabal.removed.dist/home/.cabal/config: Unrecognized field project-dir on line 2
+<ROOT>/cabal.removed.dist/home/.cabal/packages
