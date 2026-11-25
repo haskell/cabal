@@ -1,0 +1,3 @@
+# Rule 5: only ~/.cabal/config exists, so it is used
+# cabal path
+<ROOT>/cabal.old-only.dist/discovery/.cabal/config

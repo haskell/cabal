@@ -1,0 +1,3 @@
+# Rule 3: CABAL_DIR is set, so its config is used, not the XDG one
+# cabal path
+<ROOT>/cabal.cabal-dir.dist/discovery/chosen-dir/config

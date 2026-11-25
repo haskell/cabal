@@ -1,0 +1,9 @@
+# Rule 4: both exist, so the XDG config is used and ~/.cabal is ignored with a warning
+# cabal path
+Warning: Both <ROOT>/cabal.both.dist/discovery/.cabal and <ROOT>/cabal.both.dist/discovery/xdg-config/cabal/config exist - ignoring the former.
+It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set).
+Warning: Both <ROOT>/cabal.both.dist/discovery/.cabal and <ROOT>/cabal.both.dist/discovery/xdg-config/cabal/config exist - ignoring the former.
+It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set).
+Warning: Both <ROOT>/cabal.both.dist/discovery/.cabal and <ROOT>/cabal.both.dist/discovery/xdg-config/cabal/config exist - ignoring the former.
+It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set).
+<ROOT>/cabal.both.dist/discovery/xdg-config/cabal/config

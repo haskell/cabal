@@ -8,7 +8,8 @@ Overview
 
 The global configuration file for ``cabal-install`` is by default
 ``$XDG_CONFIG_HOME/cabal/config``. If you do not have this file, ``cabal`` will create
-it for you on the first call to ``cabal update``
+it for you the first time a command reads the configuration, as ``cabal update``
+and ``cabal build`` do
 (details see `configuration file discovery`_).
 Alternatively, you can explicitly ask ``cabal`` to create it for you using
 
@@ -64,7 +65,9 @@ Various environment variables affect ``cabal-install``.
        Unix or ``%APPDATA%\cabal`` on Windows exists, and
        ``$XDG_CONFIG_HOME/cabal/config`` does not exist, and
        ``CABAL_DIR`` is unset, ``cabal-install`` will behave as if
-       ``CABAL_DIR`` was set to point at this directory.
+       ``CABAL_DIR`` was set to point at this directory. See
+       :ref:`config-file-discovery` for which configuration file this
+       gives.
 
 ``CABAL_BUILDDIR``
 
@@ -77,29 +80,53 @@ Various environment variables affect ``cabal-install``.
 Configuration file discovery
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The configuration file location is determined as follows:
+.. The rules below are tested, by number, in
+   cabal-testsuite/PackageTests/ConfigFile/Discovery/cabal.test.hs.
 
-1. If option ``--config-file`` is given, use it;
-2. otherwise, if ``$CABAL_CONFIG`` is set use it;
-3. otherwise, if ``$CABAL_DIR`` is set use ``$CABAL_DIR/config``;
-4. otherwise, if ``~/.cabal`` exists, and is a directory, use
-   ``~/.cabal/config``;
-5. otherwise use ``config`` in ``$XDG_CONFIG_HOME/cabal``, which
-   defaults to ``~/.config/cabal`` on Unix.
+``cabal`` reads one configuration file. It uses the first of these that
+applies:
 
-If the configuration file does not exist, and it was not given
-explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
-``cabal-install`` will generate the default one, with directories
-based on ``$CABAL_DIR`` (if set) or according to the XDG Base
-Directory Specification, as listed below.
+1. the file given by the ``--config-file`` option, an error if missing;
+2. the file given by ``$CABAL_CONFIG``, if it is set, an error if missing;
+3. ``$CABAL_DIR/config``, if ``$CABAL_DIR`` is set, created if missing.
+
+Failing those, a file that exists:
+
+4. ``$XDG_CONFIG_HOME/cabal/config``;
+5. ``~/.cabal/config``.
+
+Failing those, a new file that ``cabal`` creates:
+
+6. ``~/.cabal/config``, if there is a ``~/.cabal`` directory;
+7. ``$XDG_CONFIG_HOME/cabal/config``.
+
+.. admonition:: When ~/.cabal is ignored
+    :class: warning
+
+    When both ``~/.cabal`` and ``$XDG_CONFIG_HOME/cabal/config`` exist, rule 4
+    applies and rules 5 and 6 are not reached. ``cabal`` ignores ``~/.cabal``,
+    so a ``~/.cabal/config`` is not read and the store, packages and installed
+    programs in ``~/.cabal`` are not used. ``cabal`` says that it is ignoring
+    ``~/.cabal`` and advises removing one of them.
+
+``$XDG_CONFIG_HOME`` defaults to ``~/.config`` on Unix and ``%APPDATA%`` on
+Windows.
+
+.. admonition:: On Windows
+    :class: tip
+
+    Read ``%APPDATA%\cabal`` for ``~/.cabal``. Unless ``$XDG_CONFIG_HOME`` is
+    set, that is the same directory as ``$XDG_CONFIG_HOME/cabal``, so rules 4
+    to 7 all give ``%APPDATA%\cabal\config``.
 
 .. _directories:
 
 Directories
 -----------
 
-Unless the ``CABAL_DIR`` environment variable is set or a ``~/.cabal``
-directory exists, Cabal will by default store data in directories
+Unless the ``CABAL_DIR`` environment variable is set, or a ``~/.cabal``
+directory exists and :ref:`is not ignored <config-file-discovery>`, Cabal
+will by default store data in directories
 according to the XDG Base Directory Specification.  The following
 directories are used unless otherwise specified in the configuration
 file:

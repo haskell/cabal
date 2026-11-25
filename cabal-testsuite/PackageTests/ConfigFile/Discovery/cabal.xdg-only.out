@@ -1,0 +1,3 @@
+# Rule 4: only the XDG config exists, so it is used
+# cabal path
+<ROOT>/cabal.xdg-only.dist/discovery/xdg-config/cabal/config
