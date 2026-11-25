@@ -11,7 +11,7 @@
 module Main (main) where
 
 import Control.Exception (evaluate)
-import Control.Monad (forM, forM_, unless)
+import Control.Monad (forM_, replicateM, unless)
 import Data.IORef (newIORef, readIORef)
 import Data.List (intercalate, isInfixOf, sort)
 import Data.Word (Word64)
@@ -81,7 +81,7 @@ run runs s sizes = do
   let idxs = solverTestIndexes test
   () <- evaluate (forceExIndexes idxs)
   ref <- newIORef (idxs, test)
-  results <- forM [1 .. runs] $ \_ -> do
+  results <- replicateM runs $ do
     (idxs', test') <- readIORef ref
     performGC
     alloc0 <- getAllocationCounter
