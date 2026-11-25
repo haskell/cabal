@@ -46,6 +46,7 @@ instance ToExpr CountConflicts
 instance ToExpr FineGrainedConflicts
 instance ToExpr IndependentGoals
 instance ToExpr InstallMethod
+instance ToExpr IndexStateSource
 instance ToExpr InstallOutcome
 instance ToExpr LocalRepo
 instance ToExpr MinimizeConflictSet

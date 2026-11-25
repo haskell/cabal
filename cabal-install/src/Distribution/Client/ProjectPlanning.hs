@@ -857,6 +857,9 @@ rebuildInstallPlan
                   verbosity
                   withRepoCtx
                   (solverSettingIndexState solverSettings)
+                  [ (describeIndexStateSource source, indexState)
+                  | (source, indexState) <- solverSettingIndexStateSources solverSettings
+                  ]
                   (solverSettingActiveRepos solverSettings)
               pkgConfigDB <- getPkgConfigDb verbosity progdb
 
@@ -1143,19 +1146,36 @@ getSourcePackages
   :: Verbosity
   -> (forall a. (RepoContext -> IO a) -> IO a)
   -> Maybe IndexUtils.TotalIndexState
+  -> [(String, IndexUtils.TotalIndexState)]
+  -- ^ Every @index-state@ that was given and where it came from, to warn when
+  -- they disagree.
   -> Maybe IndexUtils.ActiveRepos
   -> Rebuild (SourcePackageDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
-getSourcePackages verbosity withRepoCtx idxState activeRepos = do
+getSourcePackages verbosity withRepoCtx idxState idxStateCandidates activeRepos = do
+  -- The candidates are in merge order, so the last one is the one that won.
+  let idxStateSource = case reverse idxStateCandidates of
+        (source, _) : _ -> Just source
+        [] -> Nothing
   (sourcePkgDbWithTIS, repos) <-
     liftIO $
       withRepoCtx $ \repoctx -> do
-        sourcePkgDbWithTIS <- IndexUtils.getSourcePackagesAtIndexState verbosity repoctx idxState activeRepos
+        sourcePkgDbWithTIS <-
+          IndexUtils.getSourcePackagesAtIndexStateFrom verbosity repoctx idxStateSource idxState activeRepos
+        IndexUtils.warnOnConflictingIndexStates verbosity repoctx idxStateCandidates
         return (sourcePkgDbWithTIS, repoContextRepos repoctx)
 
   traverse_ needIfExists
     . IndexUtils.getSourcePackagesMonitorFiles
     $ repos
   return sourcePkgDbWithTIS
+
+-- | A short description of where an @index-state@ was set, for messages.
+describeIndexStateSource :: IndexStateSource -> String
+describeIndexStateSource IndexStateFromCommandLine = "the command line"
+describeIndexStateSource (IndexStateFromProjectFile path) =
+  case unconsProjectConfigPath path of
+    (file, Nothing) -> file
+    (file, Just importer) -> file ++ " (imported by " ++ currentProjectConfigPath importer ++ ")"
 
 getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild (Maybe PkgConfigDb)
 getPkgConfigDb verbosity progdb = do

@@ -12,6 +12,7 @@ module Distribution.Client.ProjectConfig
   , ProjectConfigShared (..)
   , ProjectConfigSkeleton
   , ProjectConfigProvenance (..)
+  , IndexStateSource (..)
   , PackageConfig (..)
   , MapLast (..)
   , MapMappend (..)
@@ -367,6 +368,7 @@ resolveSolverSettings
       solverSettingAllowBootLibInstalls = fromFlag projectConfigAllowBootLibInstalls
       solverSettingOnlyConstrained = fromFlag projectConfigOnlyConstrained
       solverSettingIndexState = flagToMaybe projectConfigIndexState
+      solverSettingIndexStateSources = projectConfigIndexStateSources
       solverSettingActiveRepos = flagToMaybe projectConfigActiveRepos
       solverSettingIndependentGoals = fromFlag projectConfigIndependentGoals
       solverSettingPreferVersion = fromFlag projectConfigPreferVersion
