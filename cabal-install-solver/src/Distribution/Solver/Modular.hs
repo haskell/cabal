@@ -16,10 +16,12 @@ import Distribution.Solver.Compat.Prelude
 
 import qualified Data.Map as M
 import Data.Set (isSubsetOf)
+import qualified Data.Set as S
 import Distribution.Compat.Graph
          ( IsNode(..) )
 import Distribution.Compiler
-         ( CompilerInfo )
+         ( CompilerFlavor(GHC), CompilerId(..), CompilerInfo(..) )
+import Distribution.Pretty ( prettyShow )
 import Distribution.Solver.Modular.Assignment
          ( Assignment, toCPs )
 import Distribution.Solver.Modular.ConfiguredConversion
@@ -39,7 +41,7 @@ import Distribution.Solver.Modular.IndexConversion
 import Distribution.Solver.Modular.Log
          ( SolverFailure(..), displayLogMessages )
 import Distribution.Solver.Modular.Package
-         ( PN )
+         ( I(..), Loc(..), PN )
 import Distribution.Solver.Modular.RetryLog
     ( RetryLog,
       toProgress,
@@ -51,11 +53,13 @@ import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), PruneAfterFirstSuccess(..), solve )
 import Distribution.Solver.Types.DependencyResolver
     ( DependencyResolver )
+import Distribution.Solver.Types.ConstraintSource
+    ( ConstraintSource(..) )
 import Distribution.Solver.Types.LabeledPackageConstraint
-    ( LabeledPackageConstraint, unlabelPackageConstraint )
+    ( LabeledPackageConstraint(..), unlabelPackageConstraint )
 import Distribution.Solver.Types.PackageConstraint
-    ( PackageConstraint(..), scopeToPackageName )
-import Distribution.Solver.Types.PackagePath ( QPN )
+    ( PackageConstraint(..), PackageProperty(..), scopeToPackageName )
+import Distribution.Solver.Types.PackagePath ( QPN, Qualified(..) )
 import Distribution.Solver.Types.PackagePreferences
     ( PackagePreferences )
 import Distribution.Solver.Types.PkgConfigDb
@@ -162,6 +166,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
                       fromProgress $ Fail $
                           rerunSolverForErrorMsg cs'
                        ++ finalErrorMsg sc (ExhaustiveSearch cs' cm')
+                       ++ nonReinstallableNote cs'
                   BackjumpLimitReached ->
                       fromProgress $ Fail $
                           "Reached backjump limit while trying to minimize the "
@@ -169,8 +174,9 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
                        ++ "Original error message:\n"
                        ++ rerunSolverForErrorMsg cs
                        ++ finalErrorMsg sc failure
+                       ++ nonReinstallableNote cs
       else fromProgress $ Fail $
-           rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
+           rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure ++ nonReinstallableNote cs
     createErrorMsg failure@BackjumpLimitReached     =
         continueWith
              (mkStringMsg $ "Backjump limit reached. Rerunning dependency solver to generate "
@@ -180,13 +186,76 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
             \case
                ExhaustiveSearch cs _ ->
                    fromProgress $ Fail $
-                   rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
+                   rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure ++ nonReinstallableNote cs
                BackjumpLimitReached  ->
                    -- This case is possible when the number of goals involved in
                    -- conflicts is greater than the backjump limit.
                    fromProgress $ Fail $ finalErrorMsg sc failure
                     ++ "Failed to generate a summarized dependency solver "
                     ++ "log due to low backjump limit."
+
+    -- When the conflict involves packages that come with the compiler and
+    -- can't be reinstalled, such as base, it isn't obvious from the solver
+    -- log that a different compiler would let other versions be used (#7993).
+    nonReinstallableNote :: ConflictSet -> String
+    nonReinstallableNote cs =
+      case S.toList (S.fromList [pn | P (Q _ pn) <- CS.toList cs, pn `S.member` nonReinstallable]) of
+        [] -> ""
+        names ->
+          let one = length names == 1
+              pkgs = renderListCommaAnd (map prettyShow names)
+              CompilerId flavour _ = compilerInfoId cinfo
+              -- With GHC before 9.14, cabal-install falls back to a fixed list
+              -- of packages it won't reinstall. From GHC 9.14 on, GHC reports
+              -- the units that really can't be reinstalled (ghc and
+              -- ghc-internal), so packages like base can be reinstalled.
+              onlyBefore914 =
+                flavour == GHC
+                  && isNothing (compilerInfoWiredInUnitIds cinfo)
+                  && all ((`notElem` ["ghc", "ghc-internal"]) . prettyShow) names
+           in "\nNote: "
+                ++ pkgs
+                ++ (if one then " comes" else " come")
+                ++ " with the compiler ("
+                ++ prettyShow (compilerInfoId cinfo)
+                ++ ") and can't be reinstalled"
+                ++ (if onlyBefore914 then " with GHC versions before 9.14" else "")
+                ++ ", so only the "
+                ++ (if one then "version" else "versions")
+                ++ " that the compiler provides can be used. To use a different "
+                ++ (if one then "version" else "versions")
+                ++ ", build with a different compiler (see --with-compiler), "
+                ++ "or relax the version bounds on "
+                ++ pkgs
+                ++ " in the packages that depend on "
+                ++ (if one then "it." else "them.")
+
+    -- Packages that the solver is only allowed to use as installed, because
+    -- they come with the compiler, and that do have an installed instance.
+    -- Version constraints from the same source (like base >= 4.22 with
+    -- GHC >= 9.14) don't count, since other versions can be installed then.
+    -- Without an installed instance the problem is a missing package (e.g.
+    -- because of the package databases in use), which a different compiler
+    -- wouldn't fix.
+    nonReinstallable :: S.Set PN
+    nonReinstallable =
+      M.keysSet (M.filterWithKey (\pn lpcs -> any pinsToInstalled lpcs && isInstalled pn) gcs)
+      where
+        pinsToInstalled (LabeledPackageConstraint (PackageConstraint _ prop) ConstraintSourceNonReinstallablePackage) =
+          case prop of
+            PackagePropertyInstalled -> True
+            PackagePropertyInstalledSpecificUnitId _ -> True
+            _ -> False
+        pinsToInstalled _ = False
+        isInstalled pn = any (\(I _ loc) -> loc /= InRepo) (maybe [] M.keys (M.lookup pn idx))
+
+    -- A copy of renderListCommaAnd from Distribution.Client.CmdErrorMessages,
+    -- which the solver can't import because cabal-install depends on it.
+    renderListCommaAnd :: [String] -> String
+    renderListCommaAnd [] = ""
+    renderListCommaAnd [x] = x
+    renderListCommaAnd [x, x'] = x ++ " and " ++ x'
+    renderListCommaAnd (x : xs) = x ++ ", " ++ renderListCommaAnd xs
 
     rerunSolverForErrorMsg :: ConflictSet -> String
     rerunSolverForErrorMsg cs =
