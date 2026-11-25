@@ -1,8 +1,8 @@
 .. _spec-history:
 
-==================================================
- Package Description Format Specification History
-==================================================
+========================
+ Package Format History
+========================
 
 :ref:`pkg-desc` need to specify the version of the
 specification they need to be interpreted in via the

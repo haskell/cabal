@@ -1,5 +1,5 @@
-Version Control System Fields
-=============================
+Version Control
+===============
 
 .. _vcs-fields:
 
