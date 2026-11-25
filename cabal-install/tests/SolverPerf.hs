@@ -8,14 +8,15 @@
 -- > solver-perf [--runs N] [SCENARIO [--SIZE N[,N...] ...]]
 --
 -- Without a scenario, it runs them all with their default sizes. A size can
--- take several values, to compare the timings between them. See @--help@ for
+-- take several values, to compare the timings between them. With @--log@ it
+-- prints the solver's log for each scenario and doesn't time it. See @--help@ for
 -- the scenarios, and @SCENARIO --help@ for the sizes of one.
 module Main (main) where
 
 import Control.Exception (evaluate)
-import Control.Monad (forM_, replicateM, unless)
+import Control.Monad ((<=<), forM_, replicateM, unless)
 import Data.IORef (newIORef, readIORef)
-import Data.List (intercalate, isInfixOf, sort)
+import Data.List (intercalate, isInfixOf, isPrefixOf, sort)
 import Data.Word (Word64)
 import GHC.Clock (getMonotonicTimeNSec)
 import System.Exit (die)
@@ -32,9 +33,10 @@ import UnitTests.Distribution.Solver.Modular.DSL (ExampleIndexes, extractInstall
 import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 import UnitTests.Distribution.Solver.Modular.Performance
 
--- | The number of timed runs of each scenario, and the scenario to run, if one
--- was named, with the values to try for each of its sizes.
-data Options = Options Int (Maybe (Scenario, [[Int]]))
+-- | The number of timed runs of each scenario, whether to print the solver's
+-- log in place of timing it, and the scenario to run, if one was named, with
+-- the values to try for each of its sizes.
+data Options = Options Int Bool (Maybe (Scenario, [[Int]]))
 
 options :: Parser Options
 options =
@@ -46,6 +48,10 @@ options =
           <> value 5
           <> showDefault
           <> help "Timed runs of each scenario"
+      )
+    <*> switch
+      ( long "log"
+          <> help "Print the solver's log and its error for each scenario, without timing it"
       )
     <*> optional (hsubparser (foldMap scenarioCommand scenarios <> metavar "SCENARIO"))
   where
@@ -85,7 +91,7 @@ options =
 main :: IO ()
 main = do
   hSetBuffering stdout LineBuffering
-  Options runs chosen <-
+  opts <-
     -- Inline the scenario's options, so that --runs can come anywhere.
     customExecParser (prefs subparserInline) $
       info
@@ -96,6 +102,23 @@ main = do
               \parts of it. Without a scenario, run them all with their default \
               \sizes."
         )
+  dispatch opts
+
+dispatch :: Options -> IO ()
+dispatch (Options _ True chosen) =
+  forM_ selected $ \(s, sizes) -> do
+    let test = scenarioTest s sizes
+    putStrLn $ title s sizes
+    -- Leave out the solver's settings, which come before the log of its search.
+    mapM_ putStrLn . dropWhile (not . isPrefixOf "[") $
+      foldProgress (:) (const []) (const []) (solverTestProgress $ setVerbose test)
+    putStrLn $ foldProgress (\_ r -> r) id (const "Solved") (solverTestProgress test)
+  where
+    selected :: [(Scenario, [Int])]
+    selected = case chosen of
+      Nothing -> [(s, map sizeDefault $ scenarioSizes s) | s <- scenarios]
+      Just (s, values) -> [(s, sizes) | sizes <- sequence values]
+dispatch (Options runs False chosen) =
   case chosen of
     Nothing -> forM_ scenarios $ \s -> report s =<< measure runs s (map sizeDefault $ scenarioSizes s)
     Just (s, values) ->
@@ -172,10 +195,7 @@ measure runs s sizes = do
 -- | Prints a measurement in full.
 report :: Scenario -> Measurement -> IO ()
 report s m = do
-  printf
-    "%s (%s)\n"
-    (scenarioName s)
-    (intercalate ", " [sizeName size ++ " = " ++ show x | (size, x) <- zip (scenarioSizes s) (mSizes m)])
+  putStrLn $ title s (mSizes m)
   printf "  log: %d lines, %d skipping, %d backjumps\n" (mLogLines m) (mSkips m) (mBackjumps m)
   printf "  result: %s\n" (show $ mOutcome m)
   printf
@@ -184,6 +204,14 @@ report s m = do
     (mMedianMs m)
     (mAllocatedMb m)
     (mRuns m)
+
+-- | The name of a scenario with its sizes.
+title :: Scenario -> [Int] -> String
+title s sizes =
+  printf
+    "%s (%s)"
+    (scenarioName s)
+    (intercalate ", " [sizeName size ++ " = " ++ show x | (size, x) <- zip (scenarioSizes s) sizes])
 
 -- | Prints the heading for the rows of 'tableRow'.
 tableHeader :: Scenario -> IO ()
