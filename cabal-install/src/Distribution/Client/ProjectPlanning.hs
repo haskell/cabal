@@ -718,51 +718,54 @@ rebuildInstallPlan
       progsearchpath <- liftIO getSystemSearchPath
       let projectConfigMonitored = projectConfig{projectConfigBuildOnly = mempty}
 
-      -- The overall improved plan is cached
-      rerunIfChanged
-        verbosity
-        fileMonitorImprovedPlan
-        -- react to changes in the project config,
-        -- the package .cabal files and the path
-        (projectConfigMonitored, localPackages, progsearchpath)
-        $ do
-          -- And so is the elaborated plan that the improved plan based on
-          (elaboratedPlan, elaboratedShared, totalIndexState, activeRepos) <-
-            rerunIfChanged
-              verbosity
-              fileMonitorElaboratedPlan
-              ( projectConfigMonitored
-              , localPackages
-              , progsearchpath
-              )
-              $ do
-                compilerEtc <- phaseConfigureCompiler projectConfig
-                _ <- phaseConfigurePrograms projectConfig compilerEtc
-                (solverPlan, pkgConfigDB, totalIndexState, activeRepos) <-
-                  phaseRunSolver
-                    projectConfig
-                    compilerEtc
-                    localPackages
-                    (fromMaybe mempty mbInstalledPackages)
-                ( elaboratedPlan
-                  , elaboratedShared
-                  ) <-
-                  phaseElaboratePlan
-                    projectConfig
-                    compilerEtc
-                    pkgConfigDB
-                    solverPlan
-                    localPackages
+      -- The elaborated plan is cached
+      (elaboratedPlan, elaboratedShared, totalIndexState, activeRepos) <-
+        rerunIfChanged
+          verbosity
+          fileMonitorElaboratedPlan
+          -- react to changes in the project config,
+          -- the package .cabal files and the path
+          ( projectConfigMonitored
+          , localPackages
+          , progsearchpath
+          )
+          $ do
+            compilerEtc <- phaseConfigureCompiler projectConfig
+            _ <- phaseConfigurePrograms projectConfig compilerEtc
+            (solverPlan, pkgConfigDB, totalIndexState, activeRepos) <-
+              phaseRunSolver
+                projectConfig
+                compilerEtc
+                localPackages
+                (fromMaybe mempty mbInstalledPackages)
+            ( elaboratedPlan
+              , elaboratedShared
+              ) <-
+              phaseElaboratePlan
+                projectConfig
+                compilerEtc
+                pkgConfigDB
+                solverPlan
+                localPackages
 
-                phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
-                return (elaboratedPlan, elaboratedShared, totalIndexState, activeRepos)
+            phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
+            return (elaboratedPlan, elaboratedShared, totalIndexState, activeRepos)
 
-          -- The improved plan changes each time we install something, whereas
-          -- the underlying elaborated plan only changes when input config
-          -- changes, so it's worth caching them separately.
-          improvedPlan <- phaseImprovePlan elaboratedPlan elaboratedShared
+      -- The improved plan changes each time we install something, whereas
+      -- the underlying elaborated plan only changes when input config
+      -- changes. So what is cached for the improved plan is only which of
+      -- the plan's units are in the store, not a second copy of the plan.
+      let planUnits =
+            Set.fromList
+              [ installedUnitId pkg
+              | InstallPlan.Configured pkg <- InstallPlan.toList elaboratedPlan
+              ]
+      storeUnits <-
+        rerunIfChanged verbosity fileMonitorImprovedPlan planUnits $
+          phaseImprovePlan elaboratedPlan elaboratedShared planUnits
+      let improvedPlan = improveInstallPlanWithInstalledPackages storeUnits elaboratedPlan
 
-          return (improvedPlan, elaboratedPlan, elaboratedShared, totalIndexState, activeRepos)
+      return (improvedPlan, elaboratedPlan, elaboratedShared, totalIndexState, activeRepos)
     where
       fileMonitorSolverPlan = newFileMonitorInCacheDir "solver-plan"
       fileMonitorSourceHashes = newFileMonitorInCacheDir "source-hashes"
@@ -1012,23 +1015,25 @@ rebuildInstallPlan
       -- this improvement phase when the db changes -- including as a result of
       -- executing a plan and installing things.
       --
+      -- The result is the plan's units that are in the store.
       phaseImprovePlan
         :: ElaboratedInstallPlan
         -> ElaboratedSharedConfig
-        -> Rebuild ElaboratedInstallPlan
-      phaseImprovePlan elaboratedPlan elaboratedShared = do
+        -> Set UnitId
+        -> Rebuild (Set UnitId)
+      phaseImprovePlan elaboratedPlan elaboratedShared planUnits = do
         liftIO $ debug verbosity "Improving the install plan..."
         storePkgIdSet <- getStoreEntries cabalStoreDirLayout compiler
-        let improvedPlan =
-              improveInstallPlanWithInstalledPackages
-                storePkgIdSet
-                elaboratedPlan
-        liftIO $ debugNoWrap verbosity (showElaboratedInstallPlan improvedPlan)
+        let storeUnits = Set.intersection planUnits storePkgIdSet
+        liftIO $
+          debugNoWrap verbosity $
+            showElaboratedInstallPlan $
+              improveInstallPlanWithInstalledPackages storeUnits elaboratedPlan
         -- TODO: [nice to have] having checked which packages from the store
         -- we're using, it may be sensible to sanity check those packages
         -- by loading up the compiler package db and checking everything
         -- matches up as expected, e.g. no dangling deps, files deleted.
-        return improvedPlan
+        return storeUnits
         where
           compiler = pkgConfigCompiler elaboratedShared
 
