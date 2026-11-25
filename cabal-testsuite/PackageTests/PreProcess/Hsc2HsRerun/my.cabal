@@ -1,0 +1,13 @@
+cabal-version: 3.6
+name:          Hsc2HsRerun
+version:       0.1
+license:       BSD-3-Clause
+stability:     stable
+category:      PackageTests
+build-type:    Simple
+description:   Check that preprocessors are re-run when their input changes.
+
+executable my-executable
+  main-is:        Main.hs
+  other-modules:  Foo
+  build-depends:  base
