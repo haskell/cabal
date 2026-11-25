@@ -179,6 +179,25 @@ Once you have defined all the hooks you need, finish by populating the
             }
         }
 
+.. _setup-hooks-working-directory:
+
+Paths and the working directory
+-------------------------------
+
+SetupHooks must not rely on the current working directory being the package
+directory. All paths relative to the package must be interpreted with respect
+to the working directory of the package, which is passed to the hooks
+(e.g. through ``mbWorkDirLBI`` for the hooks that receive a ``LocalBuildInfo``).
+For example:
+
+.. code-block:: haskell
+
+    -- Wrong: reads "data/table.txt" relative to the current working directory
+    contents <- readFile "data/table.txt"
+    -- Correct: reads "data/table.txt" relative to the package directory
+    let mbWorkDir = mbWorkDirLBI lbi
+    contents <- readFile $ interpretSymbolicPath mbWorkDir $ makeRelativePathEx "data/table.txt"
+
 .. _setup-hooks-pre-build-rules:
 
 Pre-build rules

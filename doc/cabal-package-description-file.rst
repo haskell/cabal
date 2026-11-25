@@ -2922,6 +2922,20 @@ for response files. Custom ``Setup.hs`` files that do not use one of these
 main functions are required to implement their own support, such as by using
 ``GHC.ResponseFile.getArgsWithResponseFiles``.
 
+``cabal-install`` invokes custom ``Setup`` scripts in the package directory,
+and does not pass them the ``--working-dir`` flag. This is a courtesy to existing
+``Setup`` scripts which rely on the current working directory being the package
+directory. Authors of custom ``Setup`` scripts are encouraged to avoid relying
+on the current working directory by interpreting paths relative to the passed
+in working directory:
+
+.. code-block:: haskell
+
+    -- Wrong: reads "data/table.txt" relative to the current working directory
+    contents <- readFile "data/table.txt"
+    -- Correct: reads "data/table.txt" relative to the package directory
+    contents <- readFile $ interpretSymbolicPathLBI lbi $ makeRelativePathEx "data/table.txt"
+
 Declaring a ``custom-setup`` stanza also enables the generation of
 ``MIN_VERSION_package_(A,B,C)`` CPP macros for the Setup component.
 
