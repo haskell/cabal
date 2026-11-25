@@ -1,0 +1,4 @@
+# --project-dir
+# cabal v2-sdist
+Configuration is affected by cabal.project at '<ROOT>/sub'.
+sub-cabal-project/sub-cabal-project.cabal

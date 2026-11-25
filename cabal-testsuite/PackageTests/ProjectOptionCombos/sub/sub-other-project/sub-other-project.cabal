@@ -1,0 +1,7 @@
+cabal-version: 2.4
+name: sub-other-project
+version: 0
+
+library
+  build-depends: base
+  default-language: Haskell2010

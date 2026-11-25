@@ -1,0 +1,3 @@
+# --project-file --ignore-project* (* = ignored)
+# cabal v2-sdist
+other-project/other-project.cabal

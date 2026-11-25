@@ -1,0 +1,4 @@
+# --ignore-project --project-file* (* = ignored)
+# BUG: the users guide says --ignore-project is the one ignored, which would make the missing project file an error
+# cabal v2-sdist
+./no-project.cabal

@@ -1,0 +1,3 @@
+# --project-file
+# An error, as the project file does not exist
+# cabal v2-sdist
