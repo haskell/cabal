@@ -2933,7 +2933,9 @@ checkPackageProblems
   -> PackageDescription
   -> IO ()
 checkPackageProblems verbosity dir gpkg pkg = do
-  ioChecks <- checkPackageFiles verbosity pkg dir
+  -- The pre-distribution checks of 'checkPackageFiles' only produce
+  -- 'PackageDistSuspiciousWarn's, which 'classEW' discards, so skip them.
+  ioChecks <- checkPackageContentFiles pkg dir
   let pureChecks = checkPackage gpkg
       (errors, warnings) =
         partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
