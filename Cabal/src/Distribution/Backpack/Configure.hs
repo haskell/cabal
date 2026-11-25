@@ -227,15 +227,22 @@ toComponentLocalBuildInfos
     -- we don't actually know what the full set of 'UnitId's we need
     -- are.
     let
-      -- TODO: This is actually a bit questionable performance-wise,
-      -- since we will pay for the ALL installed packages even if
-      -- they are not related to what we are building.  This was true
-      -- in the old configure code.
+      -- Only the installed packages reachable from the components can be in
+      -- the closure below, so we take their closure in the installed package
+      -- index rather than building a graph of every installed package
+      -- (#12546). Missing dependencies are reported by 'Graph.broken' below.
+      -- An installed package with the same 'UnitId' as a component is
+      -- replaced by it in 'Graph.unionRight', so what it alone depends on is
+      -- not in the closure.
+      (reachable_installed, _missing) =
+        PackageIndex.dependencyClosureAndMissing
+          installedPackageSet
+          (concatMap nodeNeighbors graph)
       external_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
       external_graph =
         Graph.fromDistinctList
           . map Left
-          $ PackageIndex.allPackages installedPackageSet
+          $ PackageIndex.allPackages reachable_installed
       internal_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
       internal_graph =
         Graph.fromDistinctList
