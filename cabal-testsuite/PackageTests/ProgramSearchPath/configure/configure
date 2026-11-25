@@ -1,0 +1,12 @@
+#!/bin/sh
+# Check the environment the configure script runs in.
+out=$(tool)
+if [ "$out" != build-tool-depends ]; then
+  echo "configure ran the wrong tool: $out" >&2
+  exit 1
+fi
+order=$(echo "$PATH" | tr ':' '\n' | sed 's|/*$||' | grep -E '/scripts-(extra|path)$' | sed 's|.*/||' | tr '\n' ' ')
+if [ "$order" != "scripts-extra scripts-path " ]; then
+  echo "unexpected PATH: $PATH" >&2
+  exit 1
+fi

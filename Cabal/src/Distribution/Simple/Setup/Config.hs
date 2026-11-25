@@ -95,7 +95,10 @@ data ConfigFlags = ConfigFlags
   , configProgramArgs :: [(String, [String])]
   -- ^ user specified programs args
   , configProgramPathExtra :: NubList FilePath
-  -- ^ Extend the $PATH
+  -- ^ Extra program search paths, to search before falling back to @PATH@.
+  --
+  -- This consists of (B) followed by (E) from Note [Program search paths]
+  -- in "Distribution.Simple.Configure".
   , configHcFlavor :: Flag CompilerFlavor
   -- ^ The \"flavor\" of the
   --  compiler, e.g. GHC.
