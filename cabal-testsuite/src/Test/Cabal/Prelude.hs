@@ -76,9 +76,7 @@ import Distribution.Utils.Path
   , makeSymbolicPath
   , relativeSymbolicPath
   )
-import Distribution.Verbosity
 import Distribution.Version
-import Test.Utils.TempTestDir (withTestDir)
 
 import Distribution.Compat.Stack
 
@@ -99,6 +97,7 @@ import Data.ByteString.Lazy qualified as BSL
 import Data.Char qualified as Char
 import Data.List (isPrefixOf, stripPrefix)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Network.URI (escapeURIString, isAllowedInURI)
 import Network.Wait (waitTcpVerbose)
 import System.Directory
 import System.Environment
@@ -177,9 +176,9 @@ withDirectory f =
   withReaderT
     (\env -> env{testRelativeCurrentDir = testRelativeCurrentDir env </> f})
 
-withStoreDir :: FilePath -> TestM a -> TestM a
-withStoreDir fp =
-  withReaderT (\env -> env{testMaybeStoreDir = Just fp})
+withStoreDir :: TestM a -> TestM a
+withStoreDir =
+  withReaderT (\env -> env{testMaybeStoreDir = Just (testGeneratedStoreDir env)})
 
 -- We append to the environment list, as per 'getEffectiveEnvironment'
 -- which prefers the latest override.
@@ -688,12 +687,13 @@ withRepoNoUpdate repo_dir m = do
   -- TODO: libify this
   let package_cache = testCabalDir env </> "packages"
   liftIO $
-    appendFile (testUserCabalConfigFile env) $
-      unlines
-        [ "repository test-local-repo"
-        , "  url: " ++ repoUri env
-        , "remote-repo-cache: " ++ package_cache
-        ]
+    BSL.appendFile (testUserCabalConfigFile env) $
+      toUTF8LBS $
+        unlines
+          [ "repository test-local-repo"
+          , "  url: " ++ repoUri env
+          , "remote-repo-cache: " ++ package_cache
+          ]
   liftIO $ print $ testUserCabalConfigFile env
   liftIO $ print =<< readFile (testUserCabalConfigFile env)
 
@@ -714,7 +714,7 @@ withRepoNoUpdate repo_dir m = do
                   )
               else ("//" ++)
            )
-          (testRepoDir env)
+          (escapeURIString isAllowedInURI $ testRepoDir env)
 
 -- | Given a directory (relative to the 'testCurrentDir') containing
 -- a series of directories representing packages, generate an
@@ -1459,11 +1459,7 @@ copySourceFileTo src dest = do
 -- function creates a directory immediately under the current drive on Windows.
 -- The directory must be passed to new- commands with --store-dir.
 withShorterPathForNewBuildStore :: TestM a -> TestM a
-withShorterPathForNewBuildStore test =
-  withTestDir
-    (mkVerbosity defaultVerbosityHandles normal)
-    "cabal-test-store"
-    (`withStoreDir` test)
+withShorterPathForNewBuildStore = withStoreDir
 
 -- | Find where a package locates in the store dir. This works only if there is exactly one 1 ghc version
 -- and exactly 1 directory for the given package in the store dir.

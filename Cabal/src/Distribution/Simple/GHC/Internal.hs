@@ -51,7 +51,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Data.Bool (bool)
-import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Text (Text)
@@ -825,7 +824,7 @@ writeGhcEnvironmentFile
   -- ^ the content
   -> IO FilePath
 writeGhcEnvironmentFile directory platform ghcversion entries = do
-  writeFileAtomic envfile . BS.pack . renderGhcEnvironmentFile $ entries
+  writeFileAtomic envfile . toUTF8LBS . renderGhcEnvironmentFile $ entries
   return envfile
   where
     envfile = directory </> ghcEnvironmentFileName platform ghcversion

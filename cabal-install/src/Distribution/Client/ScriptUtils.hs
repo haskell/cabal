@@ -142,6 +142,7 @@ import Distribution.Simple.Utils
   , createTempDirectory
   , dieWithException
   , readUTF8File
+  , toUTF8LBS
   , warn
   , writeUTF8File
   )
@@ -241,7 +242,7 @@ getScriptHash script =
   showHashValue
     . truncateHash 26
     . hashValue
-    . fromString
+    . toUTF8LBS
     <$> canonicalizePath script
 
 -- | Get the directory for caching a script build.
