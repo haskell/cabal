@@ -20,10 +20,10 @@ tests =
   , testCase "parse examples" testParseCases
   , testGroup
       "Structured hashes"
-      [ testCase "GlobPiece" $ structureHash (Proxy :: Proxy GlobPiece) @?= Fingerprint 0xd5e5361866a30ea2 0x31fbfe7b58864782
-      , testCase "Glob" $ structureHash (Proxy :: Proxy Glob) @?= Fingerprint 0x3a5af41e8194eaa3 0xd8e461fdfdb0e07b
-      , testCase "FilePathRoot" $ structureHash (Proxy :: Proxy FilePathRoot) @?= Fingerprint 0x713373d51426ec64 0xda7376a38ecee5a5
-      , testCase "RootedGlob" $ structureHash (Proxy :: Proxy RootedGlob) @?= Fingerprint 0x0031d198379cd1bf 0x7246ab9b6c6e0e7d
+      [ testCase "GlobPiece" $ structureHash (Proxy :: Proxy GlobPiece) @?= Fingerprint 0x7cd6657c30b525da 0x1566aae929ba38ff
+      , testCase "Glob" $ structureHash (Proxy :: Proxy Glob) @?= Fingerprint 0x61e37abfb606d902 0x7a7f760092e71d94
+      , testCase "FilePathRoot" $ structureHash (Proxy :: Proxy FilePathRoot) @?= Fingerprint 0x298a077474c23cf9 0x4fc71c704dba6c5d
+      , testCase "RootedGlob" $ structureHash (Proxy :: Proxy RootedGlob) @?= Fingerprint 0x7e542e5dccb3536c 0xda5d0840a2c6086a
       ]
   ]
 
