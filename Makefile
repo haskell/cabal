@@ -76,6 +76,36 @@ style-commit: ## Run the code styler on the previous commit.
 	@git diff --name-only HEAD $(COMMIT) -- $(FORMAT_DIRS) \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
+RUFF_VERSION := 0.17.3
+RUFF ?= uvx ruff@$(RUFF_VERSION)
+PYTHON_FILES := doc/cabaldomain.py doc/conf.py bootstrap/bootstrap.py
+
+.PHONY: ruff-version-check
+ruff-version-check:
+	@found=$$($(RUFF) --version 2>/dev/null | awk '{print $$2}'); \
+		if [ "$$found" != "$(RUFF_VERSION)" ]; then \
+			echo "ruff $(RUFF_VERSION) is required but '$(RUFF)' gave '$${found:-nothing}'." >&2; \
+			echo "Use the default (uvx fetches the pinned version) or install ruff $(RUFF_VERSION)." >&2; \
+			exit 1; \
+		fi
+
+# Ruff applies safe fixes. Unsafe ones must be fixed by hand.
+# SEE: https://docs.astral.sh/ruff/linter/#fix-safety
+.PHONY: style-python
+style-python: ruff-version-check ## Format and lint the Python files with ruff.
+	@$(RUFF) format $(PYTHON_FILES) && $(RUFF) check --fix $(PYTHON_FILES)
+
+.PHONY: style-python-format-check
+style-python-format-check: ruff-version-check ## Check Python formatting without changing files.
+	@$(RUFF) format --check $(PYTHON_FILES)
+
+.PHONY: style-python-lint-check
+style-python-lint-check: ruff-version-check ## Lint the Python files without changing them.
+	@$(RUFF) check $(PYTHON_FILES)
+
+.PHONY: style-python-check
+style-python-check: style-python-format-check style-python-lint-check ## Check Python formatting and lint without changing files.
+
 .PHONY: whitespace
 whitespace: ## Run fix-whitespace in check mode.
 	fix-whitespace --check --verbose

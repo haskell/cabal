@@ -1,3 +1,10 @@
+# 2026
+########################################
+
+# Format Python files with ruff (formatting only; other lint fixes that follow
+# change behaviour, so are not listed)
+bf5b3c254894a03537a1268987115f4885add3e4
+
 # 2025
 ########################################
 # make *.cabal build-depends consistently formatted
