@@ -5,6 +5,7 @@
 -- parameters, so that the cost of that path can be scaled up until it shows.
 module UnitTests.Distribution.Solver.Modular.Performance
   ( Scenario (..)
+  , Size (..)
   , scenarios
   ) where
 
@@ -15,10 +16,16 @@ import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 data Scenario = Scenario
   { scenarioName :: String
   , scenarioSummary :: String
-  , scenarioSizes :: [(String, Int)]
-  -- ^ Names of the size parameters, with their default values.
+  , scenarioSizes :: [Size]
   , scenarioTest :: [Int] -> SolverTest
-  -- ^ Builds the test from one value for each size parameter.
+  -- ^ Builds the test from one value for each size.
+  }
+
+-- | One of the sizes of a scenario.
+data Size = Size
+  { sizeName :: String
+  , sizeDefault :: Int
+  , sizeSummary :: String
   }
 
 scenarios :: [Scenario]
@@ -26,7 +33,11 @@ scenarios =
   [ Scenario
       { scenarioName = "skip-wide"
       , scenarioSummary = "skip versions of a package with many dependencies and many conflicts"
-      , scenarioSizes = [("versions", 200), ("conflicts", 1000), ("deps", 200)]
+      , scenarioSizes =
+          [ Size "versions" 200 "versions of the package that the solver skips"
+          , Size "conflicts" 1000 "conflicts against that package"
+          , Size "deps" 200 "dependencies of each version of that package"
+          ]
       , scenarioTest = \case
           [v, k, d] -> skipWide v k d
           _ -> error "skip-wide takes versions, conflicts and deps"
@@ -34,7 +45,10 @@ scenarios =
   , Scenario
       { scenarioName = "skip-ranges"
       , scenarioSummary = "skip versions that each add a different version range to a conflict set"
-      , scenarioSizes = [("versions", 1000), ("range-parts", 8)]
+      , scenarioSizes =
+          [ Size "versions" 1000 "versions of the package that the solver skips"
+          , Size "range-parts" 8 "version ranges that each version puts on its dependency"
+          ]
       , scenarioTest = \case
           [v, m] -> skipRanges v m
           _ -> error "skip-ranges takes versions and range-parts"
