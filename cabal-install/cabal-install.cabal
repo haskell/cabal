@@ -438,6 +438,34 @@ test-suite mem-use-tests
     , tasty-hunit >= 0.10
 
 
+-- Timings of the dependency solver on package databases built to stress
+-- particular parts of it. This reports numbers and never fails on them. It is
+-- a test suite, like the other benchmarks in this repository, so that it is
+-- built wherever tests are.
+test-suite solver-perf
+  import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
+  type: exitcode-stdio-1.0
+  main-is: SolverPerf.hs
+  hs-source-dirs: tests
+  default-language: GHC2021
+  -- Disabling ImportQualifiedPost, otherwise fourmolu jumps ahead to apply it everywhere
+  default-extensions: NoImportQualifiedPost
+
+  ghc-options: -rtsopts
+
+  other-modules:
+    UnitTests.Distribution.Solver.Modular.DSL
+    UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
+    UnitTests.Distribution.Solver.Modular.Performance
+    UnitTests.Options
+
+  build-depends:
+    , cabal-install
+    , containers
+    , optparse-applicative >=0.13.2.0 && <0.20
+    , tasty >= 1.2.3 && <1.6
+    , tasty-hunit >= 0.10
+
 -- Integration tests that use the cabal-install code directly
 -- but still build whole projects
 test-suite integration-tests2

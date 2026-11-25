@@ -32,6 +32,10 @@ module UnitTests.Distribution.Solver.Modular.DSL
   , exExe
   , exFlagged
   , exResolve
+  , ExampleIndexes
+  , exIndexes
+  , forceExIndexes
+  , exResolveIndexes
   , extractInstallPlan
   , declareFlags
   , withSubLibrary
@@ -805,8 +809,62 @@ exResolve
   -> C.Verbosity
   -> EnableAllTests
   -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
-exResolve
-  db
+exResolve db = exResolveIndexes (exIndexes db)
+
+-- | The package indexes that the solver takes, made from an 'ExampleDb'.
+data ExampleIndexes = ExampleIndexes
+  { exIndexesInstalled :: C.PackageIndex.InstalledPackageIndex
+  , exIndexesAvailable :: CI.PackageIndex.PackageIndex UnresolvedSourcePackage
+  , exIndexesPkgNames :: [ExamplePkgName]
+  }
+
+exIndexes :: ExampleDb -> ExampleIndexes
+exIndexes db =
+  ExampleIndexes
+    { exIndexesInstalled = exInstIdx inst
+    , exIndexesAvailable = exAvIdx avai
+    , exIndexesPkgNames = exDbPkgs db
+    }
+  where
+    (inst, avai) = partitionEithers db
+
+-- | Builds every package in the indexes, which includes checking each source
+-- package for errors. This is for timing the solver without that work.
+forceExIndexes :: ExampleIndexes -> ()
+forceExIndexes idxs =
+  foldl' (flip seq) () (C.PackageIndex.allPackages (exIndexesInstalled idxs)) `seq`
+    foldl' (flip seq) () (CI.PackageIndex.allPackages (exIndexesAvailable idxs))
+
+-- | As 'exResolve', for indexes that have already been made.
+exResolveIndexes
+  :: ExampleIndexes
+  -- List of extensions supported by the compiler, or Nothing if unknown.
+  -> Maybe [Extension]
+  -- List of languages supported by the compiler, or Nothing if unknown.
+  -> Maybe [Language]
+  -> Maybe [(C.PackageName, UnitId)]
+  -- ^ List of units that are wired in to the compiler
+  -> Maybe PC.PkgConfigDb
+  -> [ExamplePkgName]
+  -> Maybe Int
+  -> CountConflicts
+  -> FineGrainedConflicts
+  -> MinimizeConflictSet
+  -> IndependentGoals
+  -> PreferVersion
+  -> ReorderGoals
+  -> AllowBootLibInstalls
+  -> OnlyConstrained
+  -> EnableBackjumping
+  -> SolveExecutables
+  -> Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
+  -> [ExConstraint]
+  -> [ExPreference]
+  -> C.Verbosity
+  -> EnableAllTests
+  -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
+exResolveIndexes
+  idxs
   exts
   langs
   wiredInUnitIds
@@ -837,11 +895,10 @@ exResolve
           , C.compilerInfoLanguages = langs
           , C.compilerInfoWiredInUnitIds = wiredInUnitIds
           }
-      (inst, avai) = partitionEithers db
-      instIdx = exInstIdx inst
+      instIdx = exIndexesInstalled idxs
       avaiIdx =
         SourcePackageDb
-          { packageIndex = exAvIdx avai
+          { packageIndex = exIndexesAvailable idxs
           , packagePreferences = Map.empty
           }
       enableTests
@@ -852,7 +909,7 @@ exResolve
                     (scopeToplevel (C.mkPackageName p))
                     (PackagePropertyStanzas [TestStanzas])
               )
-              (exDbPkgs db)
+              (exIndexesPkgNames idxs)
         | otherwise = []
       targets' = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
       params =
