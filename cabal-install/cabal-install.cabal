@@ -336,6 +336,7 @@ test-suite unit-tests
       UnitTests.Distribution.Client.GZipUtils
       UnitTests.Distribution.Client.IndexUtils
       UnitTests.Distribution.Client.IndexUtils.ActiveRepos
+      UnitTests.Distribution.Client.IndexUtils.IndexState
       UnitTests.Distribution.Client.IndexUtils.Timestamp
       UnitTests.Distribution.Client.Init
       UnitTests.Distribution.Client.Init.Golden
