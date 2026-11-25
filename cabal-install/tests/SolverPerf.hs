@@ -14,7 +14,7 @@
 module Main (main) where
 
 import Control.Exception (evaluate)
-import Control.Monad ((<=<), forM_, replicateM, unless)
+import Control.Monad (forM_, replicateM, unless, (<=<))
 import Data.IORef (newIORef, readIORef)
 import Data.List (intercalate, isInfixOf, isPrefixOf, sort)
 import Data.Word (Word64)
@@ -126,7 +126,7 @@ dispatch (Options runs False chosen) =
         [sizes] -> report s =<< measure runs s sizes
         combinations -> do
           tableHeader s
-          forM_ combinations $ \sizes -> tableRow =<< measure runs s sizes
+          forM_ combinations (tableRow <=< measure runs s)
 
 -- | What a solver run produced, in a form that can be compared between runs.
 data Outcome = Failed Int | Solved Int
