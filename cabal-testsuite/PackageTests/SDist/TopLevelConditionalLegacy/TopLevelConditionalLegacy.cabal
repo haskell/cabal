@@ -1,0 +1,9 @@
+cabal-version: 3.0
+name: tlc
+version: 0.1
+
+data-files:
+    src/runtime/*.c
+if impl(ghc)
+    data-files:
+        lib/**/*.hs
