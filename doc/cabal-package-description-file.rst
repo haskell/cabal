@@ -39,8 +39,9 @@ Creating a package
 ------------------
 
 Suppose you have a directory hierarchy containing the source files that
-make up your package. You will need to add two more files to the root
-directory of the package:
+make up your package. You will need to add one more file to the root
+directory of the package, and, depending on the package's
+:pkg-field:`build-type`, a second one:
 
 :file:`{package-name}.cabal`
     a Unicode UTF-8 text file containing a package description. For
@@ -55,6 +56,12 @@ directory of the package:
     this file is determined by the :pkg-field:`build-type` setting in the
     ``.cabal`` file. In most cases it will be trivial, calling on the Cabal
     library to do most of the work.
+
+    This file is optional if the :pkg-field:`build-type` is ``Simple``:
+    ``cabal`` does not need it to build such a package, and ``cabal check``
+    does not require it. It is required for the other build types, and
+    for any use of the package that relies on the ``Setup`` interface
+    directly, such as ``runhaskell Setup.hs``.
 
 Once you have these, you can create a source bundle of this directory
 for distribution. Building of the package is demonstrated in the section
@@ -442,14 +449,17 @@ describe the package as a whole:
      - For lower :pkg-field:`cabal-version` values, the default is
        ``Custom`` unconditionally.
 
-    If the build type is anything other than ``Custom``, then the
-    ``Setup.hs`` file *must* be exactly the standardized content
+    If the build type is anything other than ``Custom``, then a
+    ``Setup.hs`` file, if present, *must* be exactly the standardized content
     discussed below. This is because in these cases, ``cabal`` will
     ignore the ``Setup.hs`` file completely, whereas other methods of
     package management, such as ``runhaskell Setup.hs [CMD]``, still
     rely on the ``Setup.hs`` file.
 
-    For build type ``Simple``, the contents of ``Setup.hs`` must be:
+    A ``Setup.hs`` file is optional for build type ``Simple``, but
+    required for build types ``Hooks``, ``Configure`` and ``Custom``.
+
+    For build type ``Simple``, the contents of ``Setup.hs``, if present, must be:
 
     .. code-block:: haskell
 
