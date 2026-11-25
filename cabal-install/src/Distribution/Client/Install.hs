@@ -168,12 +168,10 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.BuildPaths (exeExtension)
 import Distribution.Simple.Compiler
   ( Compiler (compilerId)
-  , CompilerId (..)
   , CompilerInfo (..)
   , PackageDBCWD
   , PackageDBStackCWD
   , PackageDBX (..)
-  , compilerFlavor
   , compilerInfo
   )
 import Distribution.Simple.Configure (interpretPackageDbFlags)
@@ -1238,7 +1236,6 @@ regenerateHaddockIndex
     | haddockIndexFileIsRequested && shouldRegenerateHaddockIndex = do
         defaultDirs <-
           InstallDirs.defaultInstallDirs
-            (compilerFlavor comp)
             (fromFlagOrDefault defaultUserInstall (configUserInstall configFlags))
             True
         let indexFileTemplate = fromFlag (installHaddockIndex installFlags)
@@ -1986,7 +1983,7 @@ installUnpackedPackage
 
       addDefaultInstallDirs :: ConfigFlags -> IO ConfigFlags
       addDefaultInstallDirs configFlags' = do
-        defInstallDirs <- InstallDirs.defaultInstallDirs flavor userInstall False
+        defInstallDirs <- InstallDirs.defaultInstallDirs userInstall False
         return $
           configFlags'
             { configInstallDirs =
@@ -1998,7 +1995,6 @@ installUnpackedPackage
                     (configInstallDirs configFlags)
             }
         where
-          CompilerId flavor _ = compilerInfoId cinfo
           env = initialPathTemplateEnv pkgid uid cinfo platform
           userInstall =
             fromFlagOrDefault
@@ -2112,7 +2108,6 @@ withWin32SelfUpgrade _ _ _ _ _ _ action | buildOS /= Windows = action
 withWin32SelfUpgrade verbosity uid configFlags cinfo platform pkg action = do
   defaultDirs <-
     InstallDirs.defaultInstallDirs
-      compFlavor
       (fromFlagOrDefault defaultUserInstall (configUserInstall configFlags))
       (PackageDescription.hasLibs pkg)
 
@@ -2122,7 +2117,6 @@ withWin32SelfUpgrade verbosity uid configFlags cinfo platform pkg action = do
     action
   where
     pkgid = packageId pkg
-    (CompilerId compFlavor _) = compilerInfoId cinfo
 
     exeInstallPaths defaultDirs =
       [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension buildPlatform

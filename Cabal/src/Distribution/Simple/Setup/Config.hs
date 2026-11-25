@@ -435,7 +435,6 @@ configureOptions showOrParseArgs =
         (\v flags -> flags{configHcFlavor = v})
         ( choiceOpt
             [ (Flag GHC, ([], ["ghc"]), "Compile with GHC")
-            , (Flag UHC, ([], ["uhc"]), "Compile with UHC")
             ]
         )
     , option

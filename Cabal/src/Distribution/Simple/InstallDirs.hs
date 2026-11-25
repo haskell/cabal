@@ -174,24 +174,23 @@ type InstallDirTemplates = InstallDirs PathTemplate
 -- ---------------------------------------------------------------------------
 -- Default installation directories
 
-defaultInstallDirs :: CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
+defaultInstallDirs :: Bool -> Bool -> IO InstallDirTemplates
 defaultInstallDirs = defaultInstallDirs' False
 
 defaultInstallDirs'
   :: Bool {- use external internal deps -}
-  -> CompilerFlavor
   -> Bool
   -> Bool
   -> IO InstallDirTemplates
-defaultInstallDirs' True comp userInstall hasLibs = do
-  dflt <- defaultInstallDirs' False comp userInstall hasLibs
+defaultInstallDirs' True userInstall hasLibs = do
+  dflt <- defaultInstallDirs' False userInstall hasLibs
   -- Be a bit more hermetic about per-component installs
   return
     dflt
       { datasubdir = toPathTemplate $ "$abi" </> "$libname"
       , docdir = toPathTemplate $ "$datadir" </> "doc" </> "$abi" </> "$libname"
       }
-defaultInstallDirs' False comp userInstall _hasLibs = do
+defaultInstallDirs' False userInstall _hasLibs = do
   installPrefix <-
     if userInstall
       then do
@@ -215,13 +214,8 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
           { prefix = installPrefix
           , bindir = "$prefix" </> "bin"
           , libdir = installLibDir
-          , libsubdir = case comp of
-              UHC -> "$pkgid"
-              _other -> "$abi" </> "$libname"
-          , dynlibdir =
-              "$libdir" </> case comp of
-                UHC -> "$pkgid"
-                _other -> "$abi"
+          , libsubdir = "$abi" </> "$libname"
+          , dynlibdir = "$libdir" </> "$abi"
           , bytecodelibdir = "$libdir" </> "$libsubdir"
           , libexecsubdir = "$abi" </> "$pkgid"
           , flibdir = "$libdir"
