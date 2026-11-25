@@ -26,7 +26,7 @@ Very Stable Command-line interfaces
 -  ``./setup configure``
 -  ``--prefix``
 -  ``--user``
--  ``--ghc``, ``--uhc``
+-  ``--ghc``
 -  ``--verbose``
 -  ``--prefix``
 

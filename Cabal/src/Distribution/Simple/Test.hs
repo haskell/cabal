@@ -77,7 +77,7 @@ test args verbHandles pkg_descr lbi0 flags = do
       enabledTests = LBI.enabledTestLBIs pkg_descr lbi
       -- We must add the internalPkgDB to the package database stack to lookup
       -- the path to HPC dirs of libraries local to this package
-      internalPkgDb = internalPackageDBPath lbi0 distPref
+      internalPkgDb = internalPackageDBPath distPref
       lbi = lbi0{withPackageDB = withPackageDB lbi0 ++ [SpecificPackageDB internalPkgDb]}
 
       doTest

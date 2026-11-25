@@ -142,7 +142,7 @@ run verbosity lbi exe@Executable{exeName} exeArgs = do
       pkg_descr = localPkgDescr lbi
       i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
       mbWorkDir = mbWorkDirLBI lbi
-      internalPkgDb = internalPackageDBPath lbi distPref
+      internalPkgDb = internalPackageDBPath distPref
       lbiForExe =
         lbi
           { withPackageDB = withPackageDB lbi ++ [SpecificPackageDB internalPkgDb]

@@ -1074,8 +1074,8 @@ feature was added.
 
     Specify the path to a particular compiler to be used. If not an
     absolute path, it will be resolved according to the ``PATH``
-    environment. The type of the compiler (GHC, UHC, etc) must be
-    consistent with the setting of the :cfg-field:`compiler` field.
+    environment. The type of the compiler must be consistent with the
+    setting of the :cfg-field:`compiler` field.
 
     The most common use of this option is to specify a different version
     of your compiler to be used; e.g., if you have ``ghc-7.8`` in your
@@ -1157,7 +1157,7 @@ feature was added.
     The command line variant of this flag is ``--configure-option=arg``,
     which can be specified multiple times to pass multiple options.
 
-.. cfg-field:: compiler: ghc, jhc, lhc, or uhc
+.. cfg-field:: compiler: ghc
                --compiler=compiler
     :synopsis: Compiler to build with.
 
