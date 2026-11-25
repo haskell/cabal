@@ -1,0 +1,4 @@
+if ! test -f "$0"; then
+  echo "configure cannot find itself at $0" >&2
+  exit 1
+fi
