@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       cabal_build: >-
-        cabal build --builddir=dist-newstyle-meta --project-file=cabal.meta.project
+        cabal build --project-dir=cabal-dev-scripts
         gen-cabal-macros
         gen-paths-module
         gen-spdx
@@ -52,7 +52,7 @@ jobs:
         id: cache
         with:
           path: ~/.local/state/cabal
-          key: ${{ steps.get-osver.outputs.osver }}-store-meta-${{ hashfiles('dist-newstyle-meta/cache/plan.json') }}
+          key: ${{ steps.get-osver.outputs.osver }}-store-meta-${{ hashfiles('cabal-dev-scripts/dist-newstyle/cache/plan.json') }}
           restore-keys: ${{ steps.get-osver.outputs.osver }}-store-meta-
       - name: Build tools
         run: ${{ env.cabal_build }}
