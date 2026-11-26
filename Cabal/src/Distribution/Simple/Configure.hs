@@ -2964,7 +2964,7 @@ checkSharedExes verbosity lbi =
   where
     (Platform _ os) = hostPlatform lbi
 
--- | Preform checks if a relocatable build is allowed
+-- | Perform checks if a relocatable build is allowed
 checkRelocatable
   :: Verbosity
   -> PackageDescription

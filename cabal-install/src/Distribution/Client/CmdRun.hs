@@ -193,7 +193,7 @@ runCommand =
 -- | The @run@ command runs a specified executable-like component, building it
 -- first if necessary. The component can be either an executable, a test,
 -- or a benchmark. This is particularly useful for passing arguments to
--- exes/tests/benchs by simply appending them after a @--@.
+-- exes/tests/benches by simply appending them after a @--@.
 --
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
