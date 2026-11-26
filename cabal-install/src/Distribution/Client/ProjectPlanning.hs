@@ -338,7 +338,7 @@ sanityCheckElaboratedPackage
 -- *Important:* You can notice how some project config options are needed to read the
 -- project config! This is evident by the fact that "rebuildProjectConfig"
 -- takes "HttpTransport" and "DistDirLayout" as parameters. Two arguments are
--- infact determined from the CLI alone (in "establishProjectBaseContext").
+-- in fact determined from the CLI alone (in "establishProjectBaseContext").
 -- Consequently, project files (including global configuration) cannot
 -- affect those parameters!
 --

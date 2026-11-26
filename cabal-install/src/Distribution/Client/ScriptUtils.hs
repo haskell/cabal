@@ -414,7 +414,7 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
     -- We return an (IO Filepath) instead of a FilePath for two reasons:
     -- 1) To give the consumer the discretion to not create the tmpDir,
     --    but still grantee that it's deleted if they do create it
-    -- 2) Because the path returned by createTempDirectory is not predicable
+    -- 2) Because the path returned by createTempDirectory is not predictable
     getMkTmp m = return $ do
       tmpBaseDir <- getTemporaryDirectory
       tmpRelDir <- createTempDirectory tmpBaseDir "cabal-repl."
