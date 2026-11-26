@@ -299,7 +299,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
 
     unless (idxState == IndexStateHead) $
       case r of
-        RepoLocalNoIndex{} -> warn verbosity "index-state ignored for file+noindex repositories"
+        RepoLocalNoIndex{} -> warn verbosity ("index-state ignored for file+noindex repository '" ++ unRepoName rname ++ "'")
         RepoRemote{} -> warn verbosity ("index-state ignored for old-format (remote repository '" ++ unRepoName rname ++ "')")
         RepoSecure{} -> pure ()
 

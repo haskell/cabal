@@ -1,0 +1,7 @@
+packages: .
+
+repository local-a
+  url: file+noindex:repo
+
+repository local-b
+  url: file+noindex:repo
