@@ -1487,22 +1487,48 @@ Create a system- and compiler-independent source distribution in a file
 distribution to package builders. When unpacked, the commands listed in
 this section will be available.
 
-The files placed in this distribution are the package description file,
-the setup script, the sources of the modules named in the package
-description file, and files named in the ``license-file``, ``main-is``,
-``c-sources``, ``asm-sources``, ``cmm-sources``, ``js-sources``,
-``data-files``, ``extra-source-files``, ``extra-doc-files``, and
-``extra-files`` fields.
+The files placed in this distribution are the package description file, the
+``Setup.hs`` or ``Setup.lhs`` file (if any) in the package directory, the
+sources of the modules named in the package description file, and files named in
+the ``license-file``, ``main-is``, ``c-sources``, ``asm-sources``,
+``cmm-sources``, ``js-sources``, ``data-files``, ``extra-source-files``,
+``extra-doc-files``, and ``extra-files`` fields.
 
-This command takes the following option:
+If the package's build type is ``Simple`` and no ``Setup.hs`` or ``Setup.lhs``
+file is present in the package directory, a ``Setup.hs`` file will be created
+and included in the ``.tar.gz`` file.
+
+This command takes the following options:
 
 .. program:: runhaskell Setup.hs sdist
+
+.. option:: --builddir=DIR
+
+    Specify the directory where Cabal puts the ``.tar.gz`` file created.
+
+.. option:: --list-sources=FILE
+
+    Write a list of the package's sources to the specified file and do not
+    create a source distribution.
+
+    If a ``Setup.hs`` or ``Setup.lhs`` file is present in the package directory,
+    it will be included in the list. If it is absent, it will not be included in
+    the list, even if ``sdist`` would create a ``Setup.hs`` file and add it to
+    to the ``.tar.gz`` file created.
 
 .. option:: --snapshot
 
     Append today's date (in "YYYYMMDD" format) to the version number for
     the generated source package. The original package is unaffected.
 
+.. option:: --output-directory=DIR
+
+    Specify a directory where Cabal puts the contents of the ``.tar.gz`` file
+    and do not create a ``.tar.gz`` file.
+
+    If the package's build type is ``Simple`` and no ``Setup.hs`` or
+    ``Setup.lhs`` file is present in the package directory, a ``Setup.hs`` file
+    will be created and included in the specified directory.
 
 .. include:: references.inc
 
