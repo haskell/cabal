@@ -135,6 +135,20 @@ test-suite custom-setup-tests
 
   default-language: GHC2021
 
+-- A test suite using the detailed-0.9 interface, compiled against the in-tree
+-- Cabal so that changes to Distribution.TestSuite that break such test suites
+-- are caught. It is Haskell2010 with no extensions on purpose.
+test-suite detailed-tests
+  type:             detailed-0.9
+  hs-source-dirs:   tests/detailed
+  test-module:      DetailedTests
+  build-depends:
+    , base
+    , Cabal
+
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
 test-suite hackage-tests
   type:               exitcode-stdio-1.0
   main-is:            HackageTests.hs
