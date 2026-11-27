@@ -836,6 +836,7 @@ and fully-qualified.
     Fully qualified target forms:
      - Cabal-tests:test:check-tests
      - Cabal-tests:test:custom-setup-tests
+     - Cabal-tests:test:detailed-tests
      - Cabal-tests:test:hackage-tests
      - Cabal-tests:test:no-thunks-test
      - Cabal-tests:test:parser-tests
