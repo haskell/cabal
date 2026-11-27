@@ -134,7 +134,7 @@ import Distribution.Client.Utils
   )
 import Distribution.Compat.Time (getFileAge, getModTime)
 import Distribution.Utils.Generic (fstOf3)
-import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredDecodeFileOrFail, structuredEncodeFile)
+import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredDecodeFileOrFail, structuredDecodeOrFailIO, structuredEncodeFile)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath
   ( normalise
@@ -1287,8 +1287,12 @@ readIndexCache' index
 readNoIndexCache' :: Verbosity -> Index -> IO (Either String NoIndexCache)
 readNoIndexCache' verbosity index = do
   exists <- doesFileExist (cacheFile index)
+  -- Read the file strictly, so that it is closed before we decode it. A lazy
+  -- read keeps the file open until it is read to the end, which decoding
+  -- doesn't do. Regenerating a stale cache would then fail, because the file
+  -- can't be written while it is still open for reading.
   if exists
-    then structuredDecodeFileOrFail (cacheFile index)
+    then structuredDecodeOrFailIO . BS.fromStrict =<< BSS.readFile (cacheFile index)
     else updatePackageIndexCacheFile verbosity index >> readNoIndexCache' verbosity index
 
 -- | Write the 'Index' cache to the filesystem
