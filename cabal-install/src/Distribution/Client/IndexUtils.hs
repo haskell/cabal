@@ -134,7 +134,7 @@ import Distribution.Client.Utils
   )
 import Distribution.Compat.Time (getFileAge, getModTime)
 import Distribution.Utils.Generic (fstOf3)
-import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredDecodeFileOrFail, structuredEncodeFile)
+import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredDecodeFileOrFail, structuredDecodeOrFailIO, structuredEncodeFile)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath
   ( normalise
@@ -896,7 +896,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
   let contentSet = Set.fromList dirContents
 
   entries <- handle handler $ fmap catMaybes $ for dirContents $ \file -> do
-    case isTarGz file of
+    case noIndexTarballPackageId file of
       Nothing
         | isPreferredVersions file -> do
             contents <- BS.readFile (localDir </> file)
@@ -960,13 +960,6 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
   where
     handler :: IOException -> IO a
     handler e = dieWithException verbosity $ ErrorUpdatingIndex (unRepoName name) e
-
-    isTarGz :: FilePath -> Maybe PackageIdentifier
-    isTarGz fp = do
-      pfx <- stripSuffix ".tar.gz" fp
-      simpleParsec pfx
-
-    stripSuffix sfx str = fmap reverse (stripPrefix (reverse sfx) (reverse str))
 
     handleTarFormatError :: FilePath -> Tar.FormatError -> IO (Maybe NoIndexCacheEntry)
     handleTarFormatError tarFile formatError = do
@@ -1227,9 +1220,60 @@ readNoIndexCache verbosity index = do
       either (dieWithException verbosity . CorruptedIndexCache) return =<< readNoIndexCache' verbosity index
 
     -- we don't hash cons local repository cache, they are hopefully small
-    Right res -> return res
+    Right res -> do
+      stale <- isNoIndexCacheStale index res
+      if not stale
+        then return res
+        else do
+          -- Only at verbose level, so that the normal output doesn't change.
+          info verbosity $
+            "The index cache for repo \""
+              ++ unRepoName (repoName repo)
+              ++ "\" is out of date, regenerating it..."
+          updatePackageIndexCacheFile verbosity index
+          either (dieWithException verbosity . CorruptedIndexCache) return =<< readNoIndexCache' verbosity index
   where
     RepoIndex _ctxt repo = index
+
+-- | Whether the cache of a @file+noindex@ repository no longer matches the
+-- repository directory, because packages were added or removed, or because
+-- one of the files the cache is built from was modified after the cache was
+-- written. Without this check, the old cache would keep being used until it
+-- was deleted by hand.
+isNoIndexCacheStale :: Index -> NoIndexCache -> IO Bool
+isNoIndexCacheStale index@(RepoIndex _ (RepoLocalNoIndex (LocalRepo _ localDir _) _)) cache = do
+  dirContents <- listDirectory localDir
+  let inDirectory = Set.fromList (mapMaybe noIndexTarballPackageId dirContents)
+      inCache =
+        Set.fromList
+          [ package (Distribution.PackageDescription.packageDescription gpd)
+          | CacheGPD gpd _ <- noIndexCacheEntries cache
+          ]
+      -- the files the cache is built from: tarballs, .cabal files that
+      -- override a tarball's description, and the preferred-versions file
+      sources =
+        [ localDir </> file
+        | file <- dirContents
+        , isJust (noIndexTarballPackageId file)
+            || ".cabal" `isSuffixOf` file
+            || isPreferredVersions file
+        ]
+  if inDirectory /= inCache
+    then return True
+    else do
+      cacheTime <- getModTime (cacheFile index)
+      sourceTimes <- traverse getModTime sources
+      return (any (> cacheTime) sourceTimes)
+isNoIndexCacheStale _ _ = return False
+
+-- | The package a file in a @file+noindex@ repository is the source tarball of,
+-- if any, e.g. @foo-1.0.tar.gz@ for @foo-1.0@.
+noIndexTarballPackageId :: FilePath -> Maybe PackageIdentifier
+noIndexTarballPackageId fp = do
+  pfx <- stripSuffix ".tar.gz" fp
+  simpleParsec pfx
+  where
+    stripSuffix sfx str = fmap reverse (stripPrefix (reverse sfx) (reverse str))
 
 -- | Read the 'Index' cache from the filesystem. Throws IO exceptions
 -- if any arise and returns Left on invalid input.
@@ -1243,8 +1287,12 @@ readIndexCache' index
 readNoIndexCache' :: Verbosity -> Index -> IO (Either String NoIndexCache)
 readNoIndexCache' verbosity index = do
   exists <- doesFileExist (cacheFile index)
+  -- Read the file strictly, so that it is closed before we decode it. A lazy
+  -- read keeps the file open until it is read to the end, which decoding
+  -- doesn't do. Regenerating a stale cache would then fail, because the file
+  -- can't be written while it is still open for reading.
   if exists
-    then structuredDecodeFileOrFail (cacheFile index)
+    then structuredDecodeOrFailIO . BS.fromStrict =<< BSS.readFile (cacheFile index)
     else updatePackageIndexCacheFile verbosity index >> readNoIndexCache' verbosity index
 
 -- | Write the 'Index' cache to the filesystem

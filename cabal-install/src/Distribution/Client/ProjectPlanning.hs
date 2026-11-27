@@ -1155,6 +1155,10 @@ getSourcePackages verbosity withRepoCtx idxState activeRepos = do
   traverse_ needIfExists
     . IndexUtils.getSourcePackagesMonitorFiles
     $ repos
+  -- The cache of a file+noindex repository is only brought up to date when it
+  -- is read, so also watch the repository directory itself, to notice when
+  -- packages are added or removed.
+  traverse_ monitorDirectoryStatus [dir | RepoLocalNoIndex (LocalRepo _ dir _) _ <- repos]
   return sourcePkgDbWithTIS
 
 getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild (Maybe PkgConfigDb)
