@@ -18,10 +18,14 @@ jobs:
   bootstrap:
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        # ubuntu-22.04 rather than ubuntu-latest: GHC up to 9.4 links with
+        # gold, which the Ubuntu 26.04 image no longer ships (#12525).
+        os: [ubuntu-22.04]
         ghc: ["9.0.2", "9.2.8", "9.4.8", "9.6.4", "9.8.2"]
         include:
-          - os: macos-latest
+          # macos-15 rather than macos-latest, as on master
+          # (actions/runner-images#14940)
+          - os: macos-15
             ghc: "9.2.8"
     name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
