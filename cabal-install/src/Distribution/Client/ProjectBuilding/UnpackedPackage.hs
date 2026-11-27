@@ -252,12 +252,7 @@ buildAndRegisterUnpackedPackage
       uid = installedUnitId rpkg
 
       comp_par_strat = case maybe_semaphore of
-
-#if MIN_VERSION_semaphore_compat(2,0,0)
-        Just sem_name -> Cabal.toFlag (semaphoreIdentifier sem_name)
-#else
-        Just sem_name -> Cabal.toFlag (getSemaphoreName sem_name)
-#endif
+        Just sem_name -> Cabal.toFlag (semaphoreNameString sem_name)
         _ -> Cabal.NoFlag
 
       whenTest action
@@ -898,6 +893,15 @@ annotateFailure mlogFile annotate action =
 --------------------------------------------------------------------------------
 -- * Other Utils
 --------------------------------------------------------------------------------
+
+-- | The name of a semaphore as it is passed to @Setup build --semaphore@.
+#if MIN_VERSION_semaphore_compat(2,0,0)
+semaphoreNameString :: SemaphoreName -> String
+semaphoreNameString = semaphoreIdentifier
+#else
+semaphoreNameString :: SemaphoreName -> String
+semaphoreNameString = getSemaphoreName
+#endif
 
 hasValidHaddockTargets :: ElaboratedConfiguredPackage -> Bool
 hasValidHaddockTargets ElaboratedConfiguredPackage{..}

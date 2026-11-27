@@ -359,14 +359,14 @@ rebuildTargets
         mkJobControl <- case buildSettingNumJobs of
           Serial -> newSerialJobControl
           NumJobs n -> newParallelJobControl (fromMaybe numberOfProcessors n)
-          UseSem n ->
-            if jsemSupported compiler
-              then do
-                warn verbosity "Semaphore version mismatch (Cabal does not report semaphore version); not using -jsem, GHC will be invoked without semaphore-based parallelism."
-                newParallelJobControl n
-              else do
+          UseSem n
+            | not (jsemSupported compiler) -> do
                 warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
                 newParallelJobControl n
+            | not (isJsemCompatible compiler) -> do
+                warn verbosity "The selected compiler and this cabal-install use different versions of the semaphore protocol; not using -jsem, falling back to normal parallelism control."
+                newParallelJobControl n
+            | otherwise -> newSemaphoreJobControl verbosity n
         registerLock <- newLock -- serialise registration
         cacheLock <- newLock -- serialise access to setup exe cache
         -- TODO: [code cleanup] eliminate setup exe cache

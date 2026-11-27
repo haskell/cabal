@@ -20,6 +20,7 @@ module Distribution.Client.JobControl
   , newSerialJobControl
   , newParallelJobControl
   , newSemaphoreJobControl
+  , isJsemCompatible
   , spawnJob
   , collectJob
   , remainingJobs
@@ -41,16 +42,15 @@ import Control.Concurrent (forkIO, forkIOWithUnmask, threadDelay)
 import Control.Concurrent.MVar
 import Control.Concurrent.STM (STM, TVar, atomically, modifyTVar', newTVarIO, readTVar)
 import Control.Concurrent.STM.TChan
-#if MIN_VERSION_semaphore_compat(2,0,0)
 import Control.Exception (bracket_, finally, mask_, try)
-#else
-import Control.Exception (bracket_, mask_, try)
-#endif
 import Control.Monad (forever, replicateM_)
 import Distribution.Client.Compat.Semaphore
 import Distribution.Compat.Stack
+import Distribution.Simple.Compiler (Compiler, compilerProperties)
 import Distribution.Simple.Utils
 import System.Semaphore
+
+import qualified Data.Map as Map
 
 -- | A simple concurrency abstraction. Jobs can be spawned and can complete
 -- in any order. This allows both serial and parallel implementations.
@@ -180,22 +180,20 @@ newSemaphoreJobControl _ n
   | n < 1 || n > 1000 =
       error $ "newParallelJobControl: not a sensible number of jobs: " ++ show n
 newSemaphoreJobControl verbosity maxJobLimit = do
-#if MIN_VERSION_semaphore_compat(2,0,0)
-  mbServer <- freshSemaphore "cabal_semaphore" maxJobLimit
-  case mbServer of
+  mbSem <- newJobSemaphore maxJobLimit
+  case mbSem of
     Left err -> do
       warn verbosity $
         "Failed to create semaphore: "
-          ++ show err
+          ++ err
           ++ "; falling back to -j"
           ++ show maxJobLimit
           ++ "."
       newParallelJobControl maxJobLimit
-    Right server -> do
-      let sem = serverClientSemaphore server
-      info verbosity $
+    Right sem -> do
+      notice verbosity $
         "Created semaphore called "
-          ++ semaphoreIdentifier (clientSemaphoreName sem)
+          ++ jobSemaphoreIdentifier sem
           ++ " with "
           ++ show maxJobLimit
           ++ " slots."
@@ -209,37 +207,11 @@ newSemaphoreJobControl verbosity maxJobLimit = do
           , collectJob = collect outqVar countVar
           , remainingJobs = remaining countVar
           , cancelJobs = cancel inqVar countVar
-          , cleanupJobControl = destroyServerSemaphore server
-          , jobControlSemaphore = Just (clientSemaphoreName sem)
+          , cleanupJobControl = destroyJobSemaphore sem
+          , jobControlSemaphore = Just (jobSemaphoreName sem)
           }
-#else
-  sem <- freshSemaphore "cabal_semaphore" maxJobLimit
-  notice verbosity $
-    "Created semaphore called "
-      ++ getSemaphoreName (semaphoreName sem)
-      ++ " with "
-      ++ show maxJobLimit
-      ++ " slots."
-  outqVar <- newTChanIO
-  inqVar <- newTChanIO
-  countVar <- newTVarIO 0
-  void (forkIO (worker sem inqVar outqVar))
-  return
-    JobControl
-      { spawnJob = spawn inqVar countVar
-      , collectJob = collect outqVar countVar
-      , remainingJobs = remaining countVar
-      , cancelJobs = cancel inqVar countVar
-      , cleanupJobControl = destroySemaphore sem
-      , jobControlSemaphore = Just (semaphoreName sem)
-      }
-#endif
   where
-#if MIN_VERSION_semaphore_compat(2,0,0)
-    worker :: ClientSemaphore -> TChan (IO a) -> TChan (Either SomeException a) -> IO ()
-#else
-    worker :: Semaphore -> TChan (IO a) -> TChan (Either SomeException a) -> IO ()
-#endif
+    worker :: JobSemaphore -> TChan (IO a) -> TChan (Either SomeException a) -> IO ()
     worker sem inqVar outqVar =
       forever $ do
         job <- atomically $ readTChan inqVar
@@ -248,18 +220,9 @@ newSemaphoreJobControl verbosity maxJobLimit = do
         -- async exception is thrown between the semaphore being taken and the
         -- thread being spawned.
         mask_ $ do
-#if MIN_VERSION_semaphore_compat(2,0,0)
-          tok <- waitOnSemaphore sem
-#else
-          waitOnSemaphore sem
-#endif
+          release <- acquireJobSlot sem
           void $ forkIOWithUnmask $ \unmask -> do
-#if MIN_VERSION_semaphore_compat(2,0,0)
-            res <- try (unmask job) `finally` releaseSemaphoreToken tok
-#else
-            res <- try (unmask job)
-            releaseSemaphore sem 1
-#endif
+            res <- try (unmask job) `finally` release
             atomically $ writeTChan outqVar res
         -- Try to give GHC enough time to compute the module graph and then
         -- request some additional capabilities if it can make use of them. The
@@ -291,6 +254,61 @@ newSemaphoreJobControl verbosity maxJobLimit = do
       atomically $ do
         xs <- readAllTChan inqVar
         modifyTVar' countVar (subtract (length xs))
+
+-- | What the job control needs of a semaphore, whichever version of
+-- semaphore-compat provides it.
+data JobSemaphore = JobSemaphore
+  { jobSemaphoreName :: SemaphoreName
+  , jobSemaphoreIdentifier :: String
+  -- ^ The name as it is passed to @ghc -jsem@.
+  , acquireJobSlot :: IO (IO ())
+  -- ^ Wait for a slot; the result gives the slot back.
+  , destroyJobSemaphore :: IO ()
+  }
+
+-- | Whether the compiler speaks the version of the semaphore protocol that
+-- the semaphore-compat we are built with does. GHC reports its version in
+-- @ghc --info@ since it moved to version 2; without the field, it is 1.
+isJsemCompatible :: Compiler -> Bool
+isJsemCompatible compiler = ghcVersion == cabalJsemVersion
+  where
+    ghcVersion :: Int
+    ghcVersion = fromMaybe 1 (Map.lookup "Semaphore version" (compilerProperties compiler) >>= readMaybe)
+
+#if MIN_VERSION_semaphore_compat(2,0,0)
+cabalJsemVersion :: Int
+cabalJsemVersion = 2
+
+newJobSemaphore :: Int -> IO (Either String JobSemaphore)
+newJobSemaphore slots = do
+  mbServer <- freshSemaphore "cabal_semaphore" slots
+  return $ case mbServer of
+    Left err -> Left (show err)
+    Right server ->
+      let sem = serverClientSemaphore server
+       in Right
+            JobSemaphore
+              { jobSemaphoreName = clientSemaphoreName sem
+              , jobSemaphoreIdentifier = semaphoreIdentifier (clientSemaphoreName sem)
+              , acquireJobSlot = releaseSemaphoreToken <$> waitOnSemaphore sem
+              , destroyJobSemaphore = destroyServerSemaphore server
+              }
+#else
+cabalJsemVersion :: Int
+cabalJsemVersion = 1
+
+newJobSemaphore :: Int -> IO (Either String JobSemaphore)
+newJobSemaphore slots = do
+  sem <- freshSemaphore "cabal_semaphore" slots
+  return $
+    Right
+      JobSemaphore
+        { jobSemaphoreName = semaphoreName sem
+        , jobSemaphoreIdentifier = getSemaphoreName (semaphoreName sem)
+        , acquireJobSlot = releaseSemaphore sem 1 <$ waitOnSemaphore sem
+        , destroyJobSemaphore = destroySemaphore sem
+        }
+#endif
 
 -------------------------
 -- Job limits and locks
