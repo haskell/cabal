@@ -326,8 +326,8 @@ jobs:
       - name: Manually supplied constraints/allow-newer
         if: github.event_name == 'workflow_dispatch'
         run: |
-          echo "allow-newer: ${ALLOWNEWER}"  >> cabal.validate.project
-          echo "constraints: ${CONSTRAINTS}" >> cabal.validate.project
+          if [ -n "${ALLOWNEWER}" ]; then echo "allow-newer: ${ALLOWNEWER}" >> cabal.validate.project; fi
+          if [ -n "${CONSTRAINTS}" ]; then echo "constraints: ${CONSTRAINTS}" >> cabal.validate.project; fi
 
       - uses: haskell-actions/setup@v2
         id: setup-haskell
