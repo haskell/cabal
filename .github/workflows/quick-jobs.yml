@@ -13,6 +13,7 @@ on:
   release:
     types:
       - created
+  workflow_dispatch:
 
 env:
   GHC_FOR_QUICK_JOBS: 9.6.5
