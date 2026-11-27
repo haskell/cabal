@@ -139,6 +139,13 @@ jobs:
       - name: "Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)"
         run: git config --global protocol.file.allow always
 
+      # After a commit, git tidies up the repository in the background, and
+      # the next command can find objects gone: the VCS tests of long-tests
+      # then fail with "fatal: failed to copy file to ..." from git clone,
+      # and QuickCheck spends hours shrinking the repositories.
+      - name: "Keep git's background maintenance out of the tests"
+        run: git config --global maintenance.auto false
+
       # The tool is not essential to the rest of the test suite. If
       # hackage-repo-tool is not present, any test that requires it will
       # be skipped.
