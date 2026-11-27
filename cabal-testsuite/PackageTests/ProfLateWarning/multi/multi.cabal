@@ -1,0 +1,19 @@
+Cabal-Version: 3.8
+Name: multi
+Version: 0.1
+Build-Type: Simple
+
+Library
+    Exposed-modules: Lib
+    Build-Depends: base
+
+Executable multi-exe
+    Main-is: Main.hs
+    Build-Depends: base, multi
+    -- Only this component sets -fprof-late, so only it should warn.
+    ghc-prof-options: -fprof-late
+
+Test-Suite multi-test
+    Type: exitcode-stdio-1.0
+    Main-is: Test.hs
+    Build-Depends: base, multi

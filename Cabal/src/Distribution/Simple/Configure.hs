@@ -563,7 +563,7 @@ configureFinal
         opts' <- adjustBuildOptionsAndWarn verbosity comp (LBC.withPrograms lbc0) opts
         return lbc0{LBC.withBuildOptions = opts'}
 
-      warnProfLateWithDefaultDetail verbosity cfg pkgDescr0 (LBC.withBuildOptions lbc1)
+      warnProfLateWithDefaultDetail verbosity cfg pkgDescr0 enabledComps (LBC.withBuildOptions lbc1)
 
       -- Cabal package-wide configure
       (lbc2, pbd2) <-
@@ -989,13 +989,17 @@ adjustBuildOptions comp programDb opts =
 -- This looks at the effective detail level rather than whether the flag was
 -- set, because cabal-install always passes an explicit level. It runs from
 -- 'configureFinal', which both @Setup configure@ and cabal-install go through.
+-- It only looks at the options of the components being configured, so that
+-- when cabal-install configures one component at a time, a component doesn't
+-- warn about the options of another one.
 warnProfLateWithDefaultDetail
   :: Verbosity
   -> ConfigFlags
   -> PackageDescription
+  -> ComponentRequestedSpec
   -> LBC.BuildOptions
   -> IO ()
-warnProfLateWithDefaultDetail verbosity cfg pkgDescr opts =
+warnProfLateWithDefaultDetail verbosity cfg pkgDescr enabledComps opts =
   when ("-fprof-late" `elem` ghcArgs && usesDefaultDetail) $
     warn
       verbosity
@@ -1008,7 +1012,10 @@ warnProfLateWithDefaultDetail verbosity cfg pkgDescr opts =
   where
     ghcArgs =
       concat [args | ("ghc", args) <- configProgramArgs cfg]
-        ++ map Text.unpack (concatMap (hcOptions GHC) (allBuildInfo pkgDescr))
+        ++ map Text.unpack (concatMap componentGhcOptions (enabledBuildInfos pkgDescr enabledComps))
+    -- ghc-prof-options are only used when profiling, which is the only case
+    -- this warns about.
+    componentGhcOptions bi = hcOptions GHC bi ++ hcProfOptions GHC bi
     usesDefaultDetail =
       (LBC.withProfExe opts && LBC.withProfExeDetail opts == ProfDetailDefault)
         || ( (LBC.withProfLib opts || LBC.withProfLibShared opts)
