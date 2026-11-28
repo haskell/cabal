@@ -153,11 +153,6 @@ isFreestanding flags =
     Just False -> False
     Nothing -> False
 
-#if !(MIN_VERSION_Cabal(2,0,0))
-mkFlagName :: String -> FlagName
-mkFlagName = FlagName
-#endif
-
 mkVerbosity
   ::
 #if MIN_VERSION_Cabal(3,17,0)

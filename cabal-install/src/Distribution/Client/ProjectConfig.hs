@@ -272,7 +272,7 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
     buildSettingRemoteRepos
     buildSettingLocalNoIndexRepos
     buildSettingCacheDir
-    (fmap Text.unpack buildSettingHttpTransport)
+    buildSettingHttpTransport
     (Just buildSettingIgnoreExpiry)
     buildSettingProgPathExtra
 
@@ -300,7 +300,7 @@ projectConfigWithSolverRepoContext
           )
           projectConfigCacheDir
       )
-      (Text.unpack <$> flagToMaybe projectConfigHttpTransport)
+      (flagToMaybe projectConfigHttpTransport)
       (flagToMaybe projectConfigIgnoreExpiry)
       (fromNubList projectConfigProgPathExtra)
 
@@ -1434,7 +1434,7 @@ fetchAndReadSourcePackages
           configureTransport
             verbosity
             progPathExtra
-            (fmap Text.unpack preferredHttpTransport)
+            preferredHttpTransport
       sequenceA
         [ fetchAndReadSourcePackageRemoteTarball
           verbosity

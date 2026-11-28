@@ -172,6 +172,7 @@ import Data.List
   )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 -- ------------------------------------------------------------
 
@@ -1070,11 +1071,11 @@ data PackageProblem
 
 showPackageProblem :: PackageProblem -> String
 showPackageProblem (DuplicateFlag flag) =
-  "duplicate flag in the flag assignment: " ++ PD.unFlagName flag
+  "duplicate flag in the flag assignment: " ++ Text.unpack (PD.unFlagName flag)
 showPackageProblem (MissingFlag flag) =
-  "missing an assignment for the flag: " ++ PD.unFlagName flag
+  "missing an assignment for the flag: " ++ Text.unpack (PD.unFlagName flag)
 showPackageProblem (ExtraFlag flag) =
-  "extra flag given that is not used by the package: " ++ PD.unFlagName flag
+  "extra flag given that is not used by the package: " ++ Text.unpack (PD.unFlagName flag)
 showPackageProblem (DuplicateDeps pkgids) =
   "duplicate packages specified as selected dependencies: "
     ++ intercalate ", " (map prettyShow pkgids)

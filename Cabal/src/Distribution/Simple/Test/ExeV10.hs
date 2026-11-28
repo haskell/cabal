@@ -38,6 +38,7 @@ import Distribution.Verbosity
 import Distribution.Utils.Path
 
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Text as Text
 import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI)
 import System.Directory
   ( createDirectoryIfMissing
@@ -62,8 +63,8 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
 
   let cmd =
         i (LBI.buildDir lbi)
-          </> testName'
-          </> testName' <.> exeExtension (LBI.hostPlatform lbi)
+          </> Text.unpack testName'
+          </> Text.unpack testName' <.> exeExtension (LBI.hostPlatform lbi)
   -- Check that the test executable exists.
   exists <- doesFileExist cmd
   unless exists $
@@ -89,7 +90,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         map
           (testOption pkg_descr lbi suite)
           (testOptions flags)
-      tixFile = i $ tixFilePath distPref way testName'
+      tixFile = i $ tixFilePath distPref way (Text.unpack testName')
 
   shellEnv <-
     getFullEnvironment
@@ -198,7 +199,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
     i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
     commonFlags = testCommonFlags flags
 
-    testName' = unUnqualComponentName $ PD.testName suite
+    testName' = unUnqualComponentNameST $ PD.testName suite
 
     distPref = fromFlag $ setupDistPref commonFlags
     verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonFlags)
@@ -209,7 +210,6 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       let r = case exit of
             ExitSuccess -> Pass
             ExitFailure c -> Fail $ "exit code: " ++ show c
-          -- n = unUnqualComponentName $ PD.testName suite
           l =
             TestLog
               { testName = testName'

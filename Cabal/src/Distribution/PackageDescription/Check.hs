@@ -370,8 +370,9 @@ checkGenericPackageDescription
       checkFlagName pf =
         let fn = unFlagName . flagName $ pf
 
-            invalidFlagName ('-' : _) = True -- starts with dash
-            invalidFlagName cs = any (not . isAscii) cs -- non ASCII
+            invalidFlagName cs = case Text.uncons cs of
+              Just ('-', _) -> True -- starts with dash
+              _ -> Text.any (not . isAscii) cs -- non ASCII
          in checkP
               (invalidFlagName fn)
               (PackageDistInexcusable $ SuspiciousFlagName [fn])
@@ -430,7 +431,7 @@ checkPackageDescription
     -- TODO `name` is caught at parse level, remove this test.
     let pn = packageName package_
     checkP
-      (null . unPackageName $ pn)
+      (Text.null . unPackageNameST $ pn)
       (PackageBuildImpossible NoNameField)
     -- TODO `version` is caught at parse level, remove this test.
     checkP

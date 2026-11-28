@@ -82,11 +82,9 @@ import Distribution.Pretty (Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
-import Data.Bifunctor
 import qualified Data.ByteString.Char8 as BS8
 import Data.Coerce (coerce)
 import Data.Text (Text)
-import qualified Data.Text as T
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
@@ -126,7 +124,7 @@ packageDescriptionFieldGrammar = do
   synopsis <- freeTextFieldDef "synopsis" L.synopsis
   description <- freeTextFieldDef "description" L.description
   category <- freeTextFieldDef "category" L.category
-  customFieldsPD <- map (bimap T.unpack T.unpack) <$> prefixedFields "x-" L.customFieldsPDText
+  customFieldsPD <- prefixedFields "x-" L.customFieldsPD
   buildTypeRaw <- optionalField "build-type" L.buildTypeRaw
   let setupBuildInfo = Nothing
       -- components
@@ -810,7 +808,7 @@ flagFieldGrammar
   => FlagName
   -> g PackageFlag PackageFlag
 flagFieldGrammar flagName = do
-  flagDescription <- T.unpack <$> freeTextFieldDef "description" L.flagDescription
+  flagDescription <- freeTextFieldDef "description" L.flagDescription
   flagDefault <- booleanFieldDef "default" L.flagDefault True
   flagManual <- booleanFieldDef "manual" L.flagManual False
   pure MkPackageFlag{..}

@@ -51,6 +51,7 @@ import Distribution.Package
   , mkPackageName
   , packageName
   , unPackageName
+  , unPackageNameST
   )
 
 import Distribution.Solver.Types.OptionalStanza
@@ -77,7 +78,6 @@ import Distribution.PackageDescription
   )
 import Distribution.Simple.Utils
   ( dieWithException
-  , lowercase
   , ordNub
   )
 import Distribution.Types.Flag
@@ -93,6 +93,7 @@ import Distribution.PackageDescription.Parsec
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 import Distribution.Client.Errors
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Compat.CharParsing as P
@@ -569,16 +570,16 @@ indexPackageNameEnv :: PackageIndex pkg -> PackageNameEnv
 indexPackageNameEnv pkgIndex = PackageNameEnv pkgNameLookup
   where
     pkgNameLookup pname =
-      map fst (PackageIndex.searchByName pkgIndex $ unPackageName pname)
+      map fst (PackageIndex.searchByName pkgIndex $ unPackageNameST pname)
 
 extraPackageNameEnv :: [PackageName] -> PackageNameEnv
 extraPackageNameEnv names = PackageNameEnv pkgNameLookup
   where
     pkgNameLookup pname =
       [ pname'
-      | let lname = lowercase (unPackageName pname)
+      | let lname = Text.toLower (unPackageNameST pname)
       , pname' <- names
-      , lowercase (unPackageName pname') == lname
+      , Text.toLower (unPackageNameST pname') == lname
       ]
 
 -- ------------------------------------------------------------

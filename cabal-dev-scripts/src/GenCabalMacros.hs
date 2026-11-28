@@ -4,6 +4,7 @@
 module Main (main) where
 
 import Control.Exception              (SomeException (..), catch, displayException)
+import Data.Text                      (Text)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Types.Version     (Version)
 import GHC.Generics                   (Generic)
@@ -23,11 +24,11 @@ $(capture "decls" [d|
     data Z = Z
         { zPackages        :: [ZPackage]
         , zTools           :: [ZTool]
-        , zPackageKey      :: String
-        , zComponentId     :: String
+        , zPackageKey      :: Text
+        , zComponentId     :: Text
         , zPackageVersion  :: Version
-        , zNotNull         :: String -> Bool
-        , zManglePkgName   :: PackageName -> String
+        , zNotNull         :: Text -> Bool
+        , zManglePkgName   :: PackageName -> Text
         , zMangleStr       :: String -> String
         }
       deriving (Generic)
@@ -79,6 +80,8 @@ config = ModuleConfig
         , "{-# LANGUAGE DeriveGeneric #-}"
         , "module Distribution.Simple.Build.Macros.Z (render, Z(..), ZPackage (..), ZTool (..)) where"
         , "import Distribution.ZinzaPrelude"
+        , "import Data.Text (Text)"
+        , "import qualified Data.Text as T"
         , decls
         , "render :: Z -> String"
         ]

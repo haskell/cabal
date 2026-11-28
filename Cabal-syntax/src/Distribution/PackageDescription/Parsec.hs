@@ -60,6 +60,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as Text
+import qualified Data.Text.Encoding as Text
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.Executable.Lens as L
@@ -128,14 +129,14 @@ type SectionParser src = StateT SectionS (ParseResult src)
 -- | State of section parser
 data SectionS = SectionS
   { _stateGpd :: !GenericPackageDescription
-  , _stateCommonStanzas :: !(Map String CondTreeBuildInfo)
+  , _stateCommonStanzas :: !(Map Text CondTreeBuildInfo)
   }
 
 stateGpd :: Lens' SectionS GenericPackageDescription
 stateGpd f (SectionS gpd cs) = (`SectionS` cs) <$> f gpd
 {-# INLINE stateGpd #-}
 
-stateCommonStanzas :: Lens' SectionS (Map String CondTreeBuildInfo)
+stateCommonStanzas :: Lens' SectionS (Map Text CondTreeBuildInfo)
 stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 {-# INLINE stateCommonStanzas #-}
 
@@ -259,7 +260,7 @@ goSections specVer = traverse_ process
       => ParsecFieldGrammar' a
       -- \^ grammar
       -> (BuildInfo -> a)
-      -> Map String CondTreeBuildInfo
+      -> Map Text CondTreeBuildInfo
       -- \^ common stanzas
       -> [Field Position]
       -> ParseResult src (CondTree ConfVar a)
@@ -280,7 +281,7 @@ goSections specVer = traverse_ process
             Just _ ->
               lift $
                 parseFailure pos $
-                  "Duplicate common stanza: " ++ name'
+                  "Duplicate common stanza: " ++ Text.unpack name'
       | name == "library" && null args = do
           prev <- use $ stateGpd . L.condLibrary
           when (isJust prev) $
@@ -413,8 +414,8 @@ goSections specVer = traverse_ process
             parseWarning pos PWTUnknownSection $
               "Ignoring section: " ++ show name
 
-parseName :: Position -> [SectionArg Position] -> SectionParser src String
-parseName pos args = fromUTF8BS <$> parseNameBS pos args
+parseName :: Position -> [SectionArg Position] -> SectionParser src Text
+parseName pos args = Text.decodeUtf8Lenient <$> parseNameBS pos args
 
 parseNameBS :: Position -> [SectionArg Position] -> SectionParser src BS.ByteString
 -- TODO: use strict parser
@@ -431,12 +432,12 @@ parseNameBS pos args = case args of
     lift $ parseFailure pos $ "Invalid name " ++ show args
     pure ""
 
-parseCommonName :: Position -> [SectionArg Position] -> ParseResult src String
+parseCommonName :: Position -> [SectionArg Position] -> ParseResult src Text
 parseCommonName pos args = case args of
   [SecArgName _pos secName] ->
-    pure $ fromUTF8BS secName
+    pure $ Text.decodeUtf8Lenient secName
   [SecArgStr _pos secName] ->
-    pure $ fromUTF8BS secName
+    pure $ Text.decodeUtf8Lenient secName
   [] -> do
     parseFailure pos "name required"
     pure ""
@@ -447,7 +448,7 @@ parseCommonName pos args = case args of
 
 -- TODO: avoid conversion to 'String'.
 parseUnqualComponentName :: Position -> [SectionArg Position] -> SectionParser src UnqualComponentName
-parseUnqualComponentName pos args = mkUnqualComponentName <$> parseName pos args
+parseUnqualComponentName pos args = mkUnqualComponentNameText <$> parseName pos args
 
 -- | Parse a non-recursive list of fields.
 parseFields
@@ -473,7 +474,7 @@ parseCondTree
   -- ^ accept @elif@
   -> ParsecFieldGrammar' a
   -- ^ grammar
-  -> Map String CondTreeBuildInfo
+  -> Map Text CondTreeBuildInfo
   -- ^ common stanzas
   -> (BuildInfo -> a)
   -- ^ constructor from buildInfo
@@ -629,7 +630,7 @@ parseCondTreeWithCommonStanzas
   -- ^ grammar
   -> (BuildInfo -> a)
   -- ^ construct fromBuildInfo
-  -> Map String CondTreeBuildInfo
+  -> Map Text CondTreeBuildInfo
   -- ^ common stanzas
   -> [Field Position]
   -> ParseResult src (CondTree ConfVar a)
@@ -646,7 +647,7 @@ processImports
   => CabalSpecVersion
   -> (BuildInfo -> a)
   -- ^ construct fromBuildInfo
-  -> Map String CondTreeBuildInfo
+  -> Map Text CondTreeBuildInfo
   -- ^ common stanzas
   -> [Field Position]
   -> ParseResult src ([Field Position], CondTree ConfVar a -> CondTree ConfVar a)
@@ -666,7 +667,7 @@ processImports v fromBuildInfo commonStanzas = go []
     go acc (Field (Name pos name) fls : fields) | name == "import" = do
       names <- getList' <$> runFieldParser pos parsec v fls
       names' <- for names $ \commonName ->
-        case Map.lookup (Text.unpack commonName) commonStanzas of
+        case Map.lookup commonName commonStanzas of
           Nothing -> do
             parseFailure pos $ "Undefined common stanza imported: " ++ Text.unpack commonName
             pure Nothing
@@ -745,7 +746,7 @@ checkForUndefinedFlags gpd = do
   unless (usedFlags `Set.isSubsetOf` definedFlags) $
     parseFailure zeroPos $
       "These flags are used without having been defined: "
-        ++ intercalate ", " [unFlagName fn | fn <- Set.toList $ usedFlags `Set.difference` definedFlags]
+        ++ intercalate ", " [Text.unpack (unFlagName fn) | fn <- Set.toList $ usedFlags `Set.difference` definedFlags]
   where
     f :: CondTree ConfVar a -> Const (Set.Set FlagName) (CondTree ConfVar a)
     f ct = Const (Set.fromList (freeVars ct))

@@ -51,6 +51,7 @@ import Distribution.Simple.Utils
 import Distribution.System (Platform (..))
 import Distribution.Types.UnqualComponentName
 
+import qualified Data.Text as Text
 import Distribution.Client.Errors
 import Distribution.Utils.Path
 
@@ -87,7 +88,7 @@ splitRunArgs verbosity lbi args =
       ([], _) -> Left "Couldn't find any enabled executables."
       ([exe], []) -> return (False, exe, [])
       ([exe], x : xs)
-        | x == unUnqualComponentName (exeName exe) -> return (True, exe, xs)
+        | Text.pack x == unUnqualComponentNameST (exeName exe) -> return (True, exe, xs)
         | otherwise -> return (False, exe, args)
       (_, []) ->
         Left $
@@ -95,7 +96,7 @@ splitRunArgs verbosity lbi args =
             ++ "You must pass the executable name as the first argument "
             ++ "to 'cabal run'."
       (_, x : xs) ->
-        case find (\exe -> unUnqualComponentName (exeName exe) == x) enabledExes of
+        case find (\exe -> unUnqualComponentNameST (exeName exe) == Text.pack x) enabledExes of
           Nothing -> Left $ "No executable named '" ++ x ++ "'."
           Just exe -> return (True, exe, xs)
       where

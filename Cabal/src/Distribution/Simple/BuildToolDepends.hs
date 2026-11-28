@@ -9,6 +9,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -24,20 +25,22 @@ desugarBuildToolSimple pname exeNames (LegacyExeDependency name reqVer)
   | foundLocal = Just $ ExeDependency pname toolName reqVer
   | otherwise = Map.lookup name allowMap
   where
-    toolName = mkUnqualComponentName name
+    toolName = mkUnqualComponentNameText name
     foundLocal = toolName `elem` exeNames
     allowlist =
-      [ "hscolour"
-      , "haddock"
-      , "happy"
-      , "alex"
-      , "hsc2hs"
-      , "c2hs"
-      , "cpphs"
-      , "hspec-discover"
-      ]
+      map
+        Text.pack
+        [ "hscolour"
+        , "haddock"
+        , "happy"
+        , "alex"
+        , "hsc2hs"
+        , "c2hs"
+        , "cpphs"
+        , "hspec-discover"
+        ]
     allowMap = Map.fromList $ flip map allowlist $ \n ->
-      (n, ExeDependency (mkPackageName n) (mkUnqualComponentName n) reqVer)
+      (n, ExeDependency (mkPackageNameST n) (mkUnqualComponentNameText n) reqVer)
 
 -- | Desugar a "build-tools" entry into a proper executable dependency if
 -- possible.

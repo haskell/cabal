@@ -112,6 +112,7 @@ import Distribution.Verbosity as Verbosity
   , normal
   )
 
+import qualified Data.Text as Text
 import Distribution.Client.Errors
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (normalise, takeDirectory, (</>))
@@ -296,7 +297,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                       warn
                         verbosity
                         ( "haddocks of "
-                            ++ unUnitId unitId
+                            ++ Text.unpack (unUnitId unitId)
                             ++ " not found in the store"
                         )
                       return []
@@ -321,9 +322,9 @@ haddockProjectAction flags _extraArgs globalFlags = do
                       copyDirectoryRecursive verbosity docDir destDir
                       -- non local packages will be hidden in haddock's
                       -- generated contents page
-                      return [Right (unitId, interfacePath, Hidden)]
+                      return [Right (Text.unpack unitId, interfacePath, Hidden)]
                     False -> do
-                      return [Left unitId]
+                      return [Left $ Text.unpack unitId]
 
       --
       -- generate index, content, etc.

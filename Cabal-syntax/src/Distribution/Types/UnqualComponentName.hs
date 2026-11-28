@@ -3,6 +3,7 @@ module Distribution.Types.UnqualComponentName
   , unUnqualComponentName
   , unUnqualComponentNameST
   , mkUnqualComponentName
+  , mkUnqualComponentNameText
   , packageNameToUnqualComponentName
   , unqualComponentNameToPackageName
   , combineNames
@@ -57,6 +58,9 @@ unUnqualComponentNameST (UnqualComponentName s) = s
 mkUnqualComponentName :: String -> UnqualComponentName
 mkUnqualComponentName = UnqualComponentName . Text.pack
 
+mkUnqualComponentNameText :: Text -> UnqualComponentName
+mkUnqualComponentNameText = UnqualComponentName
+
 -- | 'mkUnqualComponentName'
 --
 -- @since 2.0.0.2
@@ -70,13 +74,10 @@ instance Pretty UnqualComponentName where
   pretty = showToken . unUnqualComponentName
 
 instance Parsec UnqualComponentName where
-  parsec = mkUnqualComponentName <$> parsecUnqualComponentName
+  parsec = mkUnqualComponentNameText <$> parsecUnqualComponentName
 
 instance NFData UnqualComponentName where
   rnf (UnqualComponentName pkg) = rnf pkg
-
--- TODO avoid String round trip with these PackageName <->
--- UnqualComponentName converters.
 
 -- | Converts a package name to an unqualified component name
 --

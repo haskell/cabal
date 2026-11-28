@@ -56,6 +56,7 @@ import Distribution.Version
   )
 
 import qualified Data.Set as S
+import qualified Data.Text as Text
 import Distribution.Client.NixStyleOptions
 import System.Directory
   ( getCurrentDirectory
@@ -334,7 +335,7 @@ showResult verbosity outdatedDeps simpleOutput =
     -- Extract component name from the source
     extractComponentName :: OutdatedDependencySource -> String
     extractComponentName (ConfigSource src) = showConstraintSource src
-    extractComponentName (ComponentSource pkgId ctarget) = showComponentTarget pkgId ctarget
+    extractComponentName (ComponentSource pkgId ctarget) = Text.unpack $ showComponentTarget pkgId ctarget
 
     getConstraintPackageName :: PackageVersionConstraint -> PackageName
     getConstraintPackageName (PackageVersionConstraint pn _) = pn
@@ -382,7 +383,7 @@ data OutdatedDependencySource = ConfigSource ConstraintSource | ComponentSource 
 -- | Pretty print an 'OutdatedDependencySource'.
 prettyOutdatedDependencySource :: OutdatedDependencySource -> String
 prettyOutdatedDependencySource (ConfigSource src) = showConstraintSource src
-prettyOutdatedDependencySource (ComponentSource pkgId ctarget) = prettyShow pkgId ++ ":" ++ showComponentTarget pkgId ctarget
+prettyOutdatedDependencySource (ComponentSource pkgId ctarget) = prettyShow pkgId ++ ":" ++ Text.unpack (showComponentTarget pkgId ctarget)
 
 type CandidateOutdatedDependency = OutdatedDependencyX ()
 

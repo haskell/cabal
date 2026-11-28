@@ -3,8 +3,8 @@ module Distribution.Solver.Modular.Package
   , Loc(..)
   , PackageId
   , PackageIdentifier(..)
-  , PackageName, mkPackageName, unPackageName
-  , PkgconfigName, mkPkgconfigName, unPkgconfigName
+  , PackageName, mkPackageNameST, unPackageName, unPackageNameST
+  , PkgconfigName, mkPkgconfigNameText, unPkgconfigName
   , PI(..)
   , PN
   , QPV

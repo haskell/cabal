@@ -130,7 +130,7 @@ wiredInUnitIds test =
 
 data SolverTest = SolverTest
   { testLabel :: String
-  , testTargets :: [String]
+  , testTargets :: [ExamplePkgName]
   , testResult :: SolverResult
   , testMaxBackjumps :: Maybe Int
   , testFineGrainedConflicts :: FineGrainedConflicts
@@ -158,12 +158,12 @@ data SolverResult = SolverResult
   { resultLogPredicate :: [String] -> Bool
   -- ^ The solver's log should satisfy this predicate. Note that we also print
   -- the log, so evaluating a large log here can cause a space leak.
-  , resultErrorMsgPredicateOrPlan :: Either (String -> Bool) [(String, Int)]
+  , resultErrorMsgPredicateOrPlan :: Either (String -> Bool) [(ExamplePkgName, ExamplePkgVersion)]
   -- ^ Fails with an error message satisfying the predicate, or succeeds with
   -- the given plan.
   }
 
-solverSuccess :: [(String, Int)] -> SolverResult
+solverSuccess :: [(ExamplePkgName, ExamplePkgVersion)] -> SolverResult
 solverSuccess = SolverResult (const True) . Right
 
 solverFailure :: (String -> Bool) -> SolverResult
@@ -190,7 +190,7 @@ anySolverFailure = solverFailure (const True)
 mkTest
   :: ExampleDb
   -> String
-  -> [String]
+  -> [ExamplePkgName]
   -> SolverResult
   -> SolverTest
 mkTest = mkTestExtLangPC Nothing Nothing (Just [])
@@ -199,7 +199,7 @@ mkTestExts
   :: [Extension]
   -> ExampleDb
   -> String
-  -> [String]
+  -> [ExamplePkgName]
   -> SolverResult
   -> SolverTest
 mkTestExts exts = mkTestExtLangPC (Just exts) Nothing (Just [])
@@ -208,7 +208,7 @@ mkTestLangs
   :: [Language]
   -> ExampleDb
   -> String
-  -> [String]
+  -> [ExamplePkgName]
   -> SolverResult
   -> SolverTest
 mkTestLangs langs = mkTestExtLangPC Nothing (Just langs) (Just [])
@@ -217,7 +217,7 @@ mkTestPCDepends
   :: Maybe [(String, String)]
   -> ExampleDb
   -> String
-  -> [String]
+  -> [ExamplePkgName]
   -> SolverResult
   -> SolverTest
 mkTestPCDepends mPkgConfigDb = mkTestExtLangPC Nothing Nothing mPkgConfigDb
@@ -228,7 +228,7 @@ mkTestExtLangPC
   -> Maybe [(String, String)]
   -> ExampleDb
   -> String
-  -> [String]
+  -> [ExamplePkgName]
   -> SolverResult
   -> SolverTest
 mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
@@ -297,7 +297,7 @@ runTest SolverTest{..} = withFrozenCallStack $ askOption $ \(OptionShowSolverLog
           (checkErrorMsg testResult err)
       Right plan -> assertEqual "" (toMaybe testResult) (Just (extractInstallPlan plan))
   where
-    toMaybe :: SolverResult -> Maybe [(String, Int)]
+    toMaybe :: SolverResult -> Maybe [(ExamplePkgName, ExamplePkgVersion)]
     toMaybe = either (const Nothing) Just . resultErrorMsgPredicateOrPlan
 
     checkErrorMsg :: SolverResult -> String -> Bool
@@ -321,27 +321,27 @@ runTest SolverTest{..} = withFrozenCallStack $ askOption $ \(OptionShowSolverLog
 
     toVariable :: ExampleVar -> Variable P.QPN
     toVariable (P q pn) = PackageVar (toQPN q pn)
-    toVariable (F q pn fn) = FlagVar (toQPN q pn) (C.mkFlagName fn)
+    toVariable (F q pn fn) = FlagVar (toQPN q pn) (C.mkFlagNameText fn)
     toVariable (S q pn stanza) = StanzaVar (toQPN q pn) stanza
 
     toQPN :: ExampleQualifier -> ExamplePkgName -> P.QPN
-    toQPN q pn = P.Q pp (C.mkPackageName pn)
+    toQPN q pn = P.Q pp (C.mkPackageNameST pn)
       where
         pp = case q of
           QualNone -> P.PackagePath P.DefaultNamespace P.QualToplevel
           QualIndep p ->
             P.PackagePath
-              (P.Independent $ C.mkPackageName p)
+              (P.Independent $ C.mkPackageNameST p)
               P.QualToplevel
           QualSetup s ->
             P.PackagePath
               P.DefaultNamespace
-              (P.QualSetup (C.mkPackageName s))
+              (P.QualSetup (C.mkPackageNameST s))
           QualIndepSetup p s ->
             P.PackagePath
-              (P.Independent $ C.mkPackageName p)
-              (P.QualSetup (C.mkPackageName s))
+              (P.Independent $ C.mkPackageNameST p)
+              (P.QualSetup (C.mkPackageNameST s))
           QualExe p1 p2 ->
             P.PackagePath
               P.DefaultNamespace
-              (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))
+              (P.QualExe (C.mkPackageNameST p1) (C.mkPackageNameST p2))

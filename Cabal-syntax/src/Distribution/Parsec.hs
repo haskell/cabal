@@ -69,6 +69,8 @@ import Numeric (showIntAtBase)
 import Prelude ()
 
 import qualified Control.Monad.Fail as Fail
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
 import qualified Text.Parsec as Parsec
@@ -375,8 +377,8 @@ parsecQuoted = P.between (P.char '"') (P.char '"')
 parsecMaybeQuoted :: CabalParsing m => m a -> m a
 parsecMaybeQuoted p = parsecQuoted p <|> p
 
-parsecUnqualComponentName :: forall m. CabalParsing m => m String
-parsecUnqualComponentName = state0 DList.empty
+parsecUnqualComponentName :: forall m. CabalParsing m => m Text
+parsecUnqualComponentName = Text.pack <$> state0 DList.empty
   where
     --
     -- using @kleene@ package we can easily see that

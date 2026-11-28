@@ -17,6 +17,8 @@ module Distribution.Client.GenBounds
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Distribution.Client.Freeze
   ( getFreezePkgs
   )
@@ -34,6 +36,7 @@ import Distribution.Package
   , packageName
   , packageVersion
   , unPackageName
+  , unPackageNameST
   )
 import Distribution.PackageDescription
   ( enabledBuildDepends
@@ -157,10 +160,10 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
           globalFlags
           freezeFlags
 
-      let isNeeded = hasElem needBounds . unPackageName . packageName
+      let isNeeded = hasElem needBounds . unPackageNameST . packageName
       let thePkgs = filter isNeeded pkgs
 
-      let padTo = maximum $ map (length . unPackageName . packageName) pkgs
+      let padTo = maximum $ map (Text.length . unPackageNameST . packageName) pkgs
 
       if null thePkgs
         then
@@ -171,8 +174,8 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
           notice verbosity boundsNeededMsg
           traverse_ (notice verbosity . (++ ",") . showBounds padTo) thePkgs
 
-depName :: Dependency -> String
-depName (Dependency pn _ _) = unPackageName pn
+depName :: Dependency -> Text
+depName (Dependency pn _ _) = unPackageNameST pn
 
 depVersion :: Dependency -> VersionRange
 depVersion (Dependency _ vr _) = vr

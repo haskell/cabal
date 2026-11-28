@@ -122,6 +122,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable (fold)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
+import Data.Text (Text)
 import Distribution.Verbosity
 import System.FilePath ((</>))
 import Text.PrettyPrint (hsep, parens, text)
@@ -881,7 +882,7 @@ componentTargetName (ComponentTarget cname _) = cname
 
 -- | Unambiguously render a 'ComponentTarget', e.g., to pass
 -- to a Cabal Setup script.
-showComponentTarget :: PackageId -> ComponentTarget -> String
+showComponentTarget :: PackageId -> ComponentTarget -> Text
 showComponentTarget pkgid =
   Cabal.showBuildTarget pkgid . toBuildTarget
   where

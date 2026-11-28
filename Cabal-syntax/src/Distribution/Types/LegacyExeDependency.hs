@@ -9,6 +9,8 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version (VersionRange, anyVersion)
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -21,7 +23,7 @@ import qualified Text.PrettyPrint as Disp
 -- @since 2.0.0.2
 data LegacyExeDependency
   = LegacyExeDependency
-      String
+      Text
       VersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
@@ -31,14 +33,14 @@ instance NFData LegacyExeDependency
 
 instance Pretty LegacyExeDependency where
   pretty (LegacyExeDependency name ver) =
-    Disp.text name <+> pretty ver
+    Disp.text (Text.unpack name) <+> pretty ver
 
 instance Parsec LegacyExeDependency where
   parsec = do
     name <- parsecMaybeQuoted nameP
     P.spaces
     verRange <- parsecMaybeQuoted parsec <|> pure anyVersion
-    pure $ LegacyExeDependency name verRange
+    pure $ LegacyExeDependency (Text.pack name) verRange
     where
       nameP = intercalate "-" . toList <$> P.sepByNonEmpty component (P.char '-')
       component = do

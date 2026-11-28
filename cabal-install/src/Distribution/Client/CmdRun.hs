@@ -105,6 +105,7 @@ import Distribution.Simple.Utils
   , wrapText
   )
 
+import qualified Data.Text as Text
 import Distribution.Types.ComponentName
   ( componentNameRaw
   )
@@ -121,6 +122,7 @@ import Distribution.Types.UnitId
 import Distribution.Types.UnqualComponentName
   ( UnqualComponentName
   , unUnqualComponentName
+  , unUnqualComponentNameST
   )
 import Distribution.Utils.NubList
   ( fromNubList
@@ -269,7 +271,7 @@ runAction flags targetAndArgs globalFlags = do
             selectedUnitId
             elaboratedPlan
 
-    let exeName = unUnqualComponentName selectedComponent
+    let exeName = unUnqualComponentNameST selectedComponent
 
     -- In the common case, we expect @matchingElaboratedConfiguredPackages@
     -- to consist of a single element that provides a single way of building
@@ -290,7 +292,7 @@ runAction flags targetAndArgs globalFlags = do
           "Selecting "
             ++ prettyShow selectedUnitId
             ++ " to supply "
-            ++ exeName
+            ++ Text.unpack exeName
         return elabPkg
       elabPkgs ->
         dieWithException verbosity $
@@ -301,8 +303,8 @@ runAction flags targetAndArgs globalFlags = do
             (distDirLayout baseCtx)
             (elaboratedShared buildCtx)
             pkg
-            exeName
-            </> exeName
+            (Text.unpack exeName)
+            </> Text.unpack exeName
         exePath = fromMaybe defaultExePath (movedExePath selectedComponent (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg)
 
     let dryRun =
@@ -318,7 +320,7 @@ runAction flags targetAndArgs globalFlags = do
       internalToolDepsOfThisExe
         | ElabPackage{} <- elabPkgOrComp pkg
         , let pkg_descr = elabPkgDescription pkg
-        , thisExe : _ <- filter ((== exeName) . unUnqualComponentName . PD.exeName) $ PD.executables pkg_descr
+        , thisExe : _ <- filter ((== exeName) . unUnqualComponentNameST . PD.exeName) $ PD.executables pkg_descr
         , let thisExeBI = PD.buildInfo thisExe =
             [ binDirectoryFor (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg depExeNm
             | depExe <- getAllInternalToolDependencies pkg_descr thisExeBI

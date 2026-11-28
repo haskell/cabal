@@ -42,7 +42,7 @@ import Language.Haskell.Extension
 import System.FilePath (takeExtension)
 
 import Control.Monad
-import Data.Bifunctor
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Distribution.Types.BuildInfo.Lens as L
 
@@ -360,7 +360,7 @@ checkBuildInfo cet ams ads bi = do
     (checkPVPs (checkDependencyVersionRange hasGTLowerBound) gtlck ds)
 
   -- Custom fields well-formedness (ASCII).
-  mapM_ (checkCustomField . bimap T.unpack T.unpack) (customFieldsBI bi)
+  mapM_ checkCustomField (customFieldsBI bi)
 
   -- Content.
   mapM_ (checkLocalPathExist "extra-lib-dirs" . getSymbolicPath) (extraLibDirs bi)
@@ -527,7 +527,7 @@ checkBuildInfoFeatures bi sv = do
   checkSpecVer
     CabalSpecV3_0
     (not . null $ extraDynLibFlavours bi)
-    (PackageDistInexcusable $ CVExtraDynamic [map T.unpack (extraDynLibFlavours bi)])
+    (PackageDistInexcusable $ CVExtraDynamic [extraDynLibFlavours bi])
   -- virtual-modules requires ≥ 2.2
   checkSpecVer CabalSpecV2_2 (not . null $ virtualModules bi) (PackageDistInexcusable CVVirtualModules)
   -- Check use of thinning and renaming.
@@ -761,8 +761,8 @@ mergeDependencies l@(d : _) =
           (depLibraries d)
    in merged : mergeDependencies diffs
   where
-    depName :: Dependency -> String
-    depName wd = unPackageName . depPkgName $ wd
+    depName :: Dependency -> Text
+    depName wd = unPackageNameST . depPkgName $ wd
 
 -- Is this an internal target? We do not perform PVP checks on those,
 -- see https://github.com/haskell/cabal/pull/8361#issuecomment-1577547091

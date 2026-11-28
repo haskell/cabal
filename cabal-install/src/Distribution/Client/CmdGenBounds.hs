@@ -10,6 +10,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import qualified Data.Map as Map
+import qualified Data.Text as Text
 
 import Control.Monad (mapM_)
 
@@ -165,11 +166,11 @@ renderBoundsResult verbosity (GenBoundsResult pid tgt bounds) =
     Nothing ->
       notice
         verbosity
-        ("Congratulations, all dependencies for " ++ prettyShow (packageName pid) ++ ":" ++ showComponentTarget pid tgt ++ " have upper bounds!")
+        ("Congratulations, all dependencies for " ++ prettyShow (packageName pid) ++ ":" ++ Text.unpack (showComponentTarget pid tgt) ++ " have upper bounds!")
     Just pkgBounds -> do
       notice verbosity $
-        "For component " ++ prettyShow (pkgName pid) ++ ":" ++ showComponentTarget pid tgt ++ ":"
-      let padTo = maximum $ map (length . unPackageName . packageName) pkgBounds
+        "For component " ++ prettyShow (pkgName pid) ++ ":" ++ Text.unpack (showComponentTarget pid tgt) ++ ":"
+      let padTo = maximum $ map (Text.length . unPackageNameST . packageName) pkgBounds
       traverse_ (notice verbosity . (++ ",") . showBounds padTo) pkgBounds
 
 -- | Process a single BuildInfo to identify and report missing upper bounds

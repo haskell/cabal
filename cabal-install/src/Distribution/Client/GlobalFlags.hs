@@ -49,6 +49,7 @@ import Control.Concurrent
   , newMVar
   )
 import qualified Data.Map as Map
+import Data.Text (Text)
 import qualified Data.Text as Text
 import Network.URI
   ( URI
@@ -90,7 +91,7 @@ data GlobalFlags = GlobalFlags
   , globalLogsDir :: Flag FilePath
   , globalIgnoreExpiry :: Flag Bool
   -- ^ Ignore security expiry dates
-  , globalHttpTransport :: Flag String
+  , globalHttpTransport :: Flag Text
   , globalStoreDir :: Flag FilePath
   , globalProgPathExtra :: NubList FilePath
   -- ^ Extra program path used for packagedb lookups in a global context (i.e. for http transports)
@@ -169,7 +170,7 @@ withRepoContext'
   -> [RemoteRepo]
   -> [LocalRepo]
   -> FilePath
-  -> Maybe String
+  -> Maybe Text
   -> Maybe Bool
   -> [FilePath]
   -> (RepoContext -> IO a)

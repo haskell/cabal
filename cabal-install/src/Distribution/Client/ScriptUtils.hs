@@ -383,7 +383,7 @@ withContextAndSelectors verbosity noTargets kind flags@NixStyleFlags{..} targetS
             configureTransport
               verbosity
               (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
-              (fmap T.unpack . flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
+              (flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
 
           projectCfgSkeleton <- readProjectBlockFromScript verbosity httpTransport (distDirLayout ctx) (takeFileName script) scriptContents
 

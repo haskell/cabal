@@ -13,6 +13,7 @@ import Prelude hiding (pi)
 import Data.Map (Map)
 import qualified Data.List as L
 import qualified Data.Map as M
+import qualified Data.Text as Text
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
@@ -71,4 +72,4 @@ defaultQualifyOptions idx = QO {
     , qoSetupIndependent = True
     }
   where
-    base = mkPackageName "base"
+    base = mkPackageNameST $ Text.pack "base"

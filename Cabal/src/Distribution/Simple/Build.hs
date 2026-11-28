@@ -481,7 +481,7 @@ buildComponent
             testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 inplaceDir distPref
       preprocessComponent pkg_descr comp lbi clbi False verbosity suffixHandlers
       extras <- preprocessExtras verbosity comp lbi -- TODO find cpphs processed files
-      (genDir, generatedExtras) <- generateCode (map Text.unpack $ testCodeGenerators test) (testName test) pkg_descr (testBuildInfo test) lbi clbi verbosity
+      (genDir, generatedExtras) <- generateCode (testCodeGenerators test) (testName test) pkg_descr (testBuildInfo test) lbi clbi verbosity
       setupMessage'
         verbosity
         "Building"
@@ -593,7 +593,7 @@ buildComponent
           return Nothing
         CTest test@TestSuite{testInterface = TestSuiteExeV10{}} -> do
           let exe = testSuiteExeV10AsExe test
-          (genDir, generatedExtras) <- generateCode (map Text.unpack $ testCodeGenerators test) (testName test) pkg_descr (testBuildInfo test) lbi clbi verbosity
+          (genDir, generatedExtras) <- generateCode (testCodeGenerators test) (testName test) pkg_descr (testBuildInfo test) lbi clbi verbosity
           let ebi = buildInfo exe
               exe' = exe{buildInfo = addSrcDir (addExtraOtherModules (addExtraCSources ebi extras) generatedExtras) genDir} -- todo extend hssrcdirs
           buildExe verbosity numJobs pkg_descr lbi exe' clbi
@@ -606,7 +606,7 @@ buildComponent
           return Nothing
 
 generateCode
-  :: [String]
+  :: [Text]
   -> UnqualComponentName
   -> PackageDescription
   -> BuildInfo
@@ -626,13 +626,13 @@ generateCode codeGens nm pdesc bi lbi clbi verbosity = do
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     tgtDir = buildDir lbi </> makeRelativePathEx (nm' </> nm' ++ "-gen")
     verbLevel = verbosityLevel verbosity
-    go :: String -> IO [ModuleName.ModuleName]
+    go :: Text -> IO [ModuleName.ModuleName]
     go codeGenProg =
       fmap fromString . lines
         <$> getDbProgramOutputCwd
           verbosity
           mbWorkDir
-          (simpleProgram codeGenProg)
+          (simpleProgram $ Text.unpack codeGenProg)
           (withPrograms lbi)
           ( map interpretSymbolicPathCWD (tgtDir : srcDirs)
               ++ ( "--"

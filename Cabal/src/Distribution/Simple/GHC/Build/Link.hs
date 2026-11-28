@@ -264,20 +264,20 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
     implInfo = getImplInfo comp
     uid = componentUnitId clbi
     libBi = libBuildInfo lib
-    vanillaLibFilePath = buildTargetDir </> makeRelativePathEx (mkLibName uid)
-    profileLibFilePath = buildTargetDir </> makeRelativePathEx (mkProfLibName uid)
+    vanillaLibFilePath = buildTargetDir </> makeRelativePathEx (Text.unpack (mkLibName uid))
+    profileLibFilePath = buildTargetDir </> makeRelativePathEx (Text.unpack (mkProfLibName uid))
     sharedLibFilePath =
       buildTargetDir
-        </> makeRelativePathEx (mkSharedLibName (hostPlatform lbi) compiler_id uid)
+        </> makeRelativePathEx (Text.unpack (mkSharedLibName (hostPlatform lbi) compiler_id uid))
     profSharedLibFilePath =
       buildTargetDir
-        </> makeRelativePathEx (mkProfSharedLibName (hostPlatform lbi) compiler_id uid)
+        </> makeRelativePathEx (Text.unpack (mkProfSharedLibName (hostPlatform lbi) compiler_id uid))
     staticLibFilePath =
       buildTargetDir
-        </> makeRelativePathEx (mkStaticLibName (hostPlatform lbi) compiler_id uid)
+        </> makeRelativePathEx (Text.unpack (mkStaticLibName (hostPlatform lbi) compiler_id uid))
     bytecodeLibFilePath =
       buildTargetDir
-        </> makeRelativePathEx (mkBytecodeLibName compiler_id uid)
+        </> makeRelativePathEx (Text.unpack (mkBytecodeLibName compiler_id uid))
     -- Merge the object files into a GHCi library. GHC >= 9.4 exposes its own
     -- object merging as @ghc --merge-objs@, which uses the merge tool GHC was
     -- configured with; with older GHCs we have to run @ld -r@ ourselves.
@@ -295,8 +295,8 @@ linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi
           (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
           Ld.combineObjectFiles verbosity lbi ldProg target files
 
-    ghciLibFilePath = buildTargetDir </> makeRelativePathEx (Internal.mkGHCiLibName uid)
-    ghciProfLibFilePath = buildTargetDir </> makeRelativePathEx (Internal.mkGHCiProfLibName uid)
+    ghciLibFilePath = buildTargetDir </> makeRelativePathEx (Text.unpack (Internal.mkGHCiLibName uid))
+    ghciProfLibFilePath = buildTargetDir </> makeRelativePathEx (Text.unpack (Internal.mkGHCiProfLibName uid))
 
     getObjWayFiles :: BuildWay -> IO [SymbolicPath Pkg File]
     getObjWayFiles w = getObjFiles (buildWayObjectExtension objExtension w) (buildWayObjectExtension objExtension w)

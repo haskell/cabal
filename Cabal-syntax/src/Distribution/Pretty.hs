@@ -21,6 +21,8 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Text.PrettyPrint as PP
 
 class Pretty a where
@@ -99,27 +101,30 @@ showTokenStr str
 
 -- | Pretty-print free-format text, ensuring that it is vertically aligned,
 -- and with blank lines replaced by dots for correct re-parsing.
-showFreeText :: String -> PP.Doc
-showFreeText "" = mempty
-showFreeText s = PP.vcat [PP.text (if null l then "." else l) | l <- lines_ s]
+showFreeText :: Text -> PP.Doc
+showFreeText s
+  | Text.null s = mempty
+  | otherwise = PP.vcat [PP.text (if Text.null l then "." else Text.unpack l) | l <- lines_ s]
 
 -- | Pretty-print free-format text.
 -- Since @cabal-version: 3.0@ we don't replace blank lines with dots.
 --
 -- @since 3.0.0.0
-showFreeTextV3 :: String -> PP.Doc
-showFreeTextV3 "" = mempty
-showFreeTextV3 s = PP.vcat [PP.text l | l <- lines_ s]
+showFreeTextV3 :: Text -> PP.Doc
+showFreeTextV3 s
+  | Text.null s = mempty
+  | otherwise = PP.vcat [PP.text (Text.unpack l) | l <- lines_ s]
 
 -- | 'lines_' breaks a string up into a list of strings at newline
 -- characters.  The resulting strings do not contain newlines.
-lines_ :: String -> [String]
-lines_ [] = [""]
-lines_ s =
-  let (l, s') = break (== '\n') s
-   in l : case s' of
-        [] -> []
-        (_ : s'') -> lines_ s''
+lines_ :: Text -> [Text]
+lines_ s
+  | Text.null s = [mempty]
+  | otherwise =
+      let (l, s') = Text.break (== '\n') s
+       in l : case Text.uncons s' of
+            Nothing -> []
+            Just (_, s'') -> lines_ s''
 
 -- | Separate a list of documents by commas and spaces.
 commaSpaceSep :: Pretty a => [a] -> PP.Doc
