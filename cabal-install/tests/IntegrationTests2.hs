@@ -223,16 +223,27 @@ tests config =
       , testCase "hyperlinked source" (testHyperlinkedSourceArtifacts config)
       , testCase "Haddock output settings" (testHaddockOutputSettings config)
       , testCase "documenting packages" (testHaddockBuildCache config)
+      , testCase "documenting an executable" (testHaddockExecutableArtifacts config)
+      ]
+  , dependentTestGroup
+      "Documentation output directory"
+      AllFinish
+      [ testCase "links to dependencies" (testHaddockOutputDirLinks config)
+      , testCase "documentation of another unit" (testHaddockOutputDirOtherUnit config)
       ]
   , dependentTestGroup
       "haddock-project"
       AllFinish
       [ testCase "dependencies" (testHaddockProjectDependencies config)
+      , testCase "documenting once" (testHaddockProjectDocumentsOnce config)
       , testCase "repeated runs" (testHaddockProjectBuildCache config)
+      , testCase "output directory" (testHaddockProjectOutputDir config)
       , localOption (QC.QuickCheckTests 5) $
           QC.testProperty "custom build directory" (propHaddockProjectBuildDir config)
       , localOption (QC.QuickCheckTests 10) $
           QC.testProperty "dependency documentation settings are preserved" (propHaddockProjectDependencyCache config)
+      , localOption (QC.QuickCheckTests 4) $
+          QC.testProperty "configured compiler arguments and plugins are preserved" (propHaddockCompilerArguments config)
       ]
   ]
 
@@ -2931,6 +2942,24 @@ testHaddockProjectDependencies config = do
   where
     testdir = "haddock-project/dependencies"
 
+-- | Without documentation enabled, haddock-project compiles the packages with
+-- the flags that let Haddock reuse their compilation artifacts, but runs
+-- Haddock only once for each, into its output directory, and leaves a build up
+-- to date.
+testHaddockProjectDocumentsOnce :: ProjectConfig -> Assertion
+testHaddockProjectDocumentsOnce config = withDocumentationProject "documentation-cache/library" config $ \buildDir -> do
+  (output, ()) <-
+    hCapture [stdout, stderr] $
+      CmdHaddockProject.haddockProjectAction
+        defaultHaddockProjectFlags{haddockProjectCommonFlags = documentationCommonFlags}
+        ["all"]
+        defaultGlobalFlags{globalStoreDir = Flag "store"}
+  let runs = filter ("Running Haddock on library for p-0.1" `isInfixOf`) (lines output)
+  assertEqual output 1 (length runs)
+  doesDirectoryExist (buildDir </> "doc") >>= assertEqual "documentation in the build directory" False
+  build <- buildAllPackages
+  assertBool build ("Up to date" `isInfixOf` build)
+
 -- | Run a test on a documentation build cache test project, from its
 -- directory, unless the compiler predates the documentation artifacts these
 -- tests rely on. The test receives the build directory of the main library of
@@ -3128,13 +3157,18 @@ testHaddockOutputSettings config = withDocumentationProject testdir config $ \bu
 -- | Document all packages of the project in the current directory, returning
 -- the output.
 documentAllPackages :: IO String
-documentAllPackages =
+documentAllPackages = documentPackages ["all"]
+
+-- | Document the given targets of the project in the current directory,
+-- returning the output.
+documentPackages :: [String] -> IO String
+documentPackages targets =
   fst
     <$> hCapture
       [stdout, stderr]
       ( CmdHaddock.haddockAction
           (NixStyleOptions.updNixStyleCommonSetupFlags (const documentationCommonFlags) (commandDefaultFlags CmdHaddock.haddockCommand))
-          ["all"]
+          targets
           defaultGlobalFlags{globalStoreDir = Flag "store"}
       )
 
@@ -3162,6 +3196,61 @@ testHaddockBuildCache config = withDocumentationProject "documentation-cache/lib
   reverted <- buildAllPackages
   assertBool reverted ("Compiling P" `isInfixOf` reverted)
 
+-- | Haddock must use the compilation artifacts of an executable from the
+-- directory GHC compiled it in, which is a subdirectory of its build
+-- directory, rather than write HIE files into the build directory itself.
+testHaddockExecutableArtifacts :: ProjectConfig -> Assertion
+testHaddockExecutableArtifacts config = withDocumentationProject "documentation-cache/executable" config $ \buildDir -> do
+  let exeDir = buildDir </> "x" </> "e" </> "build" </> "e"
+  writeLocalConfig ["documentation: True", "package p", "  haddock-executables: True"]
+  _ <- buildAllPackages
+  _ <- documentAllPackages
+  doesFileExist (exeDir </> "e-tmp" </> "extra-compilation-artifacts" </> "hie" </> "Main.hie")
+    >>= assertBool "HIE file of the executable"
+  doesDirectoryExist (exeDir </> "extra-compilation-artifacts")
+    >>= assertEqual "artifacts outside the executable's compilation directory" False
+
+-- | Assert that an HTML page links to each of the given files.
+assertLinksTo :: FilePath -> [FilePath] -> Assertion
+assertLinksTo page targets = do
+  html <- backslashToSlash <$> readFile page
+  for_ targets $ \target ->
+    assertBool (page ++ " must link to " ++ target) (backslashToSlash target `isInfixOf` html)
+  where
+    -- Links may be joined with the native path separator.
+    backslashToSlash = map (\c -> if c == '\\' then '/' else c)
+
+-- | Packages documented into the same output directory link to their
+-- documentation there, including that of a sublibrary, with relative links.
+testHaddockOutputDirLinks :: ProjectConfig -> Assertion
+testHaddockOutputDirLinks config = withDocumentationProject "haddock-output-dir" config $ \_ -> do
+  writeLocalConfig ["haddock-output-dir: haddocks"]
+  _ <- documentAllPackages
+  assertLinksTo
+    ("haddocks" </> "q" </> "Q.html")
+    ["../p/P.html#t:Value", "../p/helper/Helper.html#t:Helper"]
+  assertLinksTo
+    ("haddocks" </> "p" </> "helper" </> "Helper.html")
+    ["../../p/P.html#t:Value"]
+
+-- | Documentation in the output directory that was generated for another unit,
+-- e.g. an earlier version of a dependency, is not linked to.
+testHaddockOutputDirOtherUnit :: ProjectConfig -> Assertion
+testHaddockOutputDirOtherUnit config = withDocumentationProject "haddock-output-dir" config $ \_ -> do
+  let unitIdFile = "haddocks" </> "p" </> "p.haddock.unit-id"
+  writeLocalConfig ["haddock-output-dir: haddocks"]
+  _ <- documentAllPackages
+  doesFileExist unitIdFile >>= assertBool "unit of the documentation of p"
+  -- The first run for q alone documents p again, for its own targets.
+  _ <- documentPackages ["q"]
+  writeFile unitIdFile "p-0.0-other"
+  output <- documentPackages ["q"]
+  assertBool output ("Running Haddock on library for q-0.1" `isInfixOf` output)
+  assertBool output (not ("Running Haddock on library for p-0.1" `isInfixOf` output))
+  html <- readFile' ("haddocks" </> "q" </> "Q.html")
+  assertBool "Q.html links to documentation of another unit" (not ("href=\"../p/P.html" `isInfixOf` html))
+  assertLinksTo ("haddocks" </> "q" </> "Q.html") ["../p/helper/Helper.html#t:Helper"]
+
 -- | Repeating haddock-project has no build work, and leaves a normal build up
 -- to date. Its build phase prints a plan only when it has work to do, so each
 -- run prints just the Haddock plan.
@@ -3182,8 +3271,38 @@ testHaddockProjectBuildCache config = withDocumentationProject "documentation-ca
     output <- buildAllPackages
     assertBool output ("Up to date" `isInfixOf` output)
 
+-- | haddock-project documents local packages directly into its output
+-- directory, where their hyperlinked sources link to each other with relative
+-- links, and leaves the documentation of a build as it is.
+testHaddockProjectOutputDir :: ProjectConfig -> Assertion
+testHaddockProjectOutputDir config = withDocumentationProject "haddock-output-dir" config $ \buildDir -> do
+  writeLocalConfig ["documentation: True"]
+  _ <- buildAllPackages
+  let buildDocs = buildDir </> "doc" </> "html" </> "p" </> "P.html"
+  original <- BS.readFile buildDocs
+  (haddockOutput, ()) <-
+    hCapture [stdout, stderr] $
+      CmdHaddockProject.haddockProjectAction
+        defaultHaddockProjectFlags{haddockProjectCommonFlags = documentationCommonFlags}
+        ["all"]
+        defaultGlobalFlags{globalStoreDir = Flag "store"}
+  BS.readFile buildDocs >>= assertEqual (haddockOutput ++ "documentation of the build") original
+  assertLinksTo
+    ("haddocks" </> "q" </> "src" </> "Q.html")
+    ["../../p/src/P.html", "../../p/helper/src/Helper.html"]
+  assertLinksTo
+    ("haddocks" </> "p" </> "helper" </> "src" </> "Helper.html")
+    ["../../../p/src/P.html"]
+  -- What the local packages link to is in the output directory.
+  for_ ["haddocks" </> "q" </> "Q.html", "haddocks" </> "q" </> "src" </> "Q.html"] $ \page -> do
+    html <- readFile page
+    assertBool (page ++ " must not link to local files") (not ("href=\"file://" `isInfixOf` html))
+  output <- buildAllPackages
+  assertBool output ("Up to date" `isInfixOf` output)
+
 -- | Check the generated index, including a sublibrary, with an arbitrary custom
 -- build directory and no pre-existing documentation in the default directory.
+-- A repeated invocation must also reuse the sublibrary's compilation artifacts.
 propHaddockProjectBuildDir :: ProjectConfig -> QC.Positive Int -> QC.Property
 propHaddockProjectBuildDir config (QC.Positive suffix) = QC.ioProperty $ do
   (_, _, sharedConfig) <- planProject testdir config
@@ -3212,9 +3331,15 @@ propHaddockProjectBuildDir config (QC.Positive suffix) = QC.ioProperty $ do
         mainInterface <- doesFileExist ("haddocks" </> "index-probe" </> "index-probe.haddock")
         subInterface <- doesFileExist ("haddocks" </> "index-probe" </> "helper" </> "helper.haddock")
         defaultDir <- doesDirectoryExist "dist-newstyle"
+        -- Compilation artifact reuse requires Haddock >= 2.28 (GHC >= 9.6).
+        (repeatedOutput, ()) <-
+          if compilerVersion (pkgConfigCompiler sharedConfig) >= mkVersion [9, 6]
+            then hCapture [stdout, stderr] run
+            else return ("", ())
         return $
-          (mainInterface, subInterface, "MainModule.html" `BS.isInfixOf` index, "HelperModule.html" `BS.isInfixOf` index, defaultDir)
-            QC.=== (True, True, True, True, False)
+          QC.counterexample repeatedOutput $
+            (mainInterface, subInterface, "MainModule.html" `BS.isInfixOf` index, "HelperModule.html" `BS.isInfixOf` index, defaultDir, "Compiling " `isInfixOf` repeatedOutput)
+              QC.=== (True, True, True, True, False, False)
   where
     testdir = "haddock-project/custom-builddir"
 
@@ -3301,3 +3426,74 @@ propHaddockProjectDependencyCache config settings@(DependencyHaddockSettings doc
                   QC.=== (1, True, documentation, True)
   where
     testdir = "regression/program-options"
+
+-- | Haddock must use the build's configured compiler arguments, including
+-- plugins, and preserve component options in vanilla and shared-only builds.
+propHaddockCompilerArguments :: ProjectConfig -> QC.Positive Int -> Bool -> QC.Property
+propHaddockCompilerArguments config (QC.Positive value) requestSharedOnly = QC.ioProperty $ do
+  let dir = basedir </> testdir
+      localConfig = dir </> "cabal.project.local"
+      clean = cleanHaddockProject testdir >> removeFileForcibly localConfig
+      compilerArgs =
+        [ "-UPROGRAM_OPTION_VALUE"
+        , "-DPROGRAM_OPTION_VALUE=" ++ show (1 + value `mod` 1000)
+        , "-plugin-package=haddock-probe-plugin"
+        , "-fplugin=HaddockProbePlugin"
+        ]
+  clean
+  flip finally clean $ do
+    (_, _, shared) <- planProject testdir config
+    let compiler = pkgConfigCompiler shared
+        safeMinor = if buildOS == Windows then 10 else 4
+        supportsShared = dynamicSupported compiler /= Just False
+        sharedOnly = requestSharedOnly && supportsShared
+        clientConfig =
+          mempty
+            { packageConfigProgramArgs = MapMappend (Map.singleton "ghc" compilerArgs)
+            , packageConfigVanillaLib = Flag (not sharedOnly)
+            , packageConfigSharedLib = Flag supportsShared
+            }
+    if compilerVersion compiler <= mkVersion [9, safeMinor]
+      then return (QC.property True)
+      else do
+        writeProjectConfigFile localConfig $
+          mempty
+            { projectConfigLocalPackages = mempty{packageConfigDocumentation = Flag True}
+            , projectConfigSpecificPackage = MapMappend (Map.singleton (mkPackageName "plugin-client") clientConfig)
+            }
+        let commonFlags = defaultCommonSetupFlags{setupVerbosity = Flag normal}
+            globals = defaultGlobalFlags{globalStoreDir = Flag "store"}
+            buildFlags =
+              NixStyleOptions.updNixStyleCommonSetupFlags (const commonFlags) (commandDefaultFlags CmdBuild.buildCommand)
+            haddockFlags =
+              defaultHaddockProjectFlags
+                { haddockProjectCommonFlags = commonFlags{setupVerbosity = Flag deafening}
+                }
+        withCurrentDirectory dir $ do
+          _ <- hCapture [stdout, stderr] $ CmdBuild.buildAction buildFlags ["all"] globals
+          (output, ()) <-
+            hCapture [stdout, stderr] $
+              CmdHaddockProject.haddockProjectAction haddockFlags ["all"] globals
+          interface <- doesFileExist ("haddocks" </> "plugin-client" </> "plugin-client.haddock")
+          let supportsReuse = compilerVersion compiler >= mkVersion [9, 6]
+              -- Read the actual response-file arguments, independently of
+              -- whether GHC initializes plugins when reusing interfaces.
+              haddockCompilerArgs =
+                [ arg
+                | line <- lines output
+                , [arg] <- [words line]
+                , "--optghc=" `isPrefixOf` arg
+                ]
+              expectedArgs = map ("--optghc=" ++) compilerArgs
+              recompiled =
+                any (\line -> "[" `isPrefixOf` line && "] Compiling " `isInfixOf` line) (lines output)
+          return $
+            QC.label (if sharedOnly then "shared only" else "vanilla") $
+              QC.counterexample (unlines haddockCompilerArgs) $
+                ( interface
+                , expectedArgs `isInfixOf` haddockCompilerArgs
+                , supportsReuse && recompiled
+                )
+                  QC.=== (True, True, False)
+  where
+    testdir = "haddock-project/compiler-arguments"

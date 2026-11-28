@@ -40,6 +40,7 @@ module Distribution.Simple.LocalBuildInfo
   , componentNameString
   , ComponentLocalBuildInfo (..)
   , componentBuildDir
+  , componentArtifactsDir
   , foldComponent
   , componentName
   , componentBuildInfo
@@ -131,6 +132,25 @@ componentBuildDir lbi clbi =
         CExeName s -> unUnqualComponentName s
         CTestName s -> unUnqualComponentName s
         CBenchName s -> unUnqualComponentName s
+
+-- | The directory in which GHC writes a component's compilation artifacts
+-- (interface, object, stub and HIE files).
+--
+-- Libraries are compiled directly into their 'componentBuildDir'. Other
+-- components are compiled into a @<name>-tmp@ subdirectory of it, so that
+-- the linked executable or foreign library does not share a directory with
+-- the intermediate files.
+componentArtifactsDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> SymbolicPath Pkg (Dir Artifacts)
+componentArtifactsDir lbi clbi =
+  case componentLocalName clbi of
+    CLibName _ -> coerceSymbolicPath targetDir
+    CFLibName s -> tmpDir s
+    CExeName s -> tmpDir s
+    CTestName s -> tmpDir s
+    CBenchName s -> tmpDir s
+  where
+    targetDir = componentBuildDir lbi clbi
+    tmpDir s = coerceSymbolicPath targetDir </> makeRelativePathEx (unUnqualComponentName s ++ "-tmp")
 
 -- | Interpret a symbolic path with respect to the working directory
 -- stored in 'LocalBuildInfo'.

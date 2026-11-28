@@ -23,6 +23,7 @@ module Distribution.Simple.Program.GHC
   , runReplProgram
   , packageDbArgsDb
   , normaliseGhcArgs
+  , splitRTSArgs
   ) where
 
 import Distribution.Compat.Prelude
