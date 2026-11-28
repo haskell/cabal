@@ -250,8 +250,9 @@ build
   -> [String]
   -> IO [MonitorFilePath]
 build verbHandles flags lbi _args =
-  build_setupHooks (preBuildHook, postBuildHook) verbHandles pkgDescr lbi flags Cabal.knownSuffixHandlers
+  build_setupHooks (preBuildHook, postBuildHook) verbHandles pkgDescr lbi' flags Cabal.knownSuffixHandlers
   where
+    lbi' = lbi{withPrograms = prependProgramArgs (Cabal.buildProgramPrependArgs flags) (withPrograms lbi)}
     verb = mkVerbosity verbHandles $ Cabal.fromFlag $ Cabal.buildVerbosity flags
     hooks = ExternalHooksExe.buildTypeSetupHooks verb mbWorkDir distPref bt
     -- (Recall that pre-build hooks are treated specially;
@@ -277,8 +278,9 @@ haddock
   -> [String]
   -> IO [MonitorFilePath]
 haddock verbHandles flags lbi _args =
-  haddock_setupHooks preBuildHook verbHandles pkgDescr lbi Cabal.knownSuffixHandlers flags
+  haddock_setupHooks preBuildHook verbHandles pkgDescr lbi' Cabal.knownSuffixHandlers flags
   where
+    lbi' = lbi{withPrograms = prependProgramArgs (Cabal.haddockProgramPrependArgs flags) (withPrograms lbi)}
     preBuildHook = ExternalHooksExe.buildTypePreBuildHooks verbHandles mbWorkDir distPref bt
     pkgDescr = localPkgDescr lbi
     bt = PD.buildType pkgDescr
@@ -295,8 +297,9 @@ repl
   -> [String]
   -> IO [MonitorFilePath]
 repl verbHandles flags lbi _args =
-  repl_setupHooks preBuildHook verbHandles pkgDescr lbi flags Cabal.knownSuffixHandlers []
+  repl_setupHooks preBuildHook verbHandles pkgDescr lbi' flags Cabal.knownSuffixHandlers []
   where
+    lbi' = lbi{withPrograms = prependProgramArgs (Cabal.replProgramPrependArgs flags) (withPrograms lbi)}
     preBuildHook = ExternalHooksExe.buildTypePreBuildHooks verbHandles mbWorkDir distPref bt
     pkgDescr = localPkgDescr lbi
     bt = PD.buildType pkgDescr

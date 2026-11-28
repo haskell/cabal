@@ -1072,6 +1072,20 @@ This command takes the following options:
     specified at the build step are in addition not in replacement of
     any options specified at the configure step.
 
+.. option:: --PROG-prepend-option=OPT
+
+    :since: 3.20
+
+    Specify a single additional option to the program *prog* for this
+    invocation only. Unlike :option:`--PROG-option`, the option is placed
+    before the options specified at the configure step, rather than after
+    them, so that options specified at the configure step take precedence. It
+    is passed to *prog* as a single argument, without any splitting. Repeated
+    options are passed in the order they were specified.
+
+    This is meant for tools driving ``Setup.hs``, such as ``cabal-install``, to
+    supply defaults that the package's own configuration can override.
+
 .. option:: -j[NUM], --jobs[=NUM]
 
     :default: ``$ncpus`` (the number of CPUs)
@@ -1198,6 +1212,14 @@ This command takes the following options:
     :option:`--html-location` equal to ``/package/$pkg-$version/docs``,
     :option:`--contents-location` equal to ``/package/$pkg-$version``,
     :option:`--hyperlink-source`, and :option:`--quickjump`.
+
+.. option:: --PROG-prepend-option=OPT
+
+    :since: 3.20
+
+    Specify a single additional option to the program *prog* for this
+    invocation only, placed before its configured options. See the same option
+    of :ref:`setup-build`.
 
 .. _setup-hscolour:
 
@@ -1554,6 +1576,14 @@ Flags for repl:
 .. option:: --PROG-options=OPTS
 
     Give extra options to PROG (split on spaces, use "" to prevent splitting).
+
+.. option:: --PROG-prepend-option=OPT
+
+    :since: 3.20
+
+    Give an extra option to PROG for this invocation only, placed before its
+    configured options (passed directly to PROG as a single argument). See the
+    same option of :ref:`setup-build`.
 
 .. option:: --repl-no-load
 

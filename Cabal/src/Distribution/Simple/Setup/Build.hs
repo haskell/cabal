@@ -53,6 +53,7 @@ data BuildFlags = BuildFlags
   { buildCommonFlags :: !CommonSetupFlags
   , buildProgramPaths :: [(String, FilePath)]
   , buildProgramArgs :: [(String, [String])]
+  , buildProgramPrependArgs :: [(String, [String])]
   , buildNumJobs :: Flag (Maybe Int)
   , buildUseSemaphore :: Flag String
   }
@@ -92,6 +93,7 @@ defaultBuildFlags =
     { buildCommonFlags = defaultCommonSetupFlags
     , buildProgramPaths = mempty
     , buildProgramArgs = []
+    , buildProgramPrependArgs = []
     , buildNumJobs = mempty
     , buildUseSemaphore = NoFlag
     }
@@ -171,6 +173,11 @@ buildOptions progDb showOrParseArgs =
       showOrParseArgs
       buildProgramArgs
       (\v flags -> flags{buildProgramArgs = v})
+    ++ programDbPrependOption
+      progDb
+      showOrParseArgs
+      buildProgramPrependArgs
+      (\v flags -> flags{buildProgramPrependArgs = v})
 
 emptyBuildFlags :: BuildFlags
 emptyBuildFlags = mempty

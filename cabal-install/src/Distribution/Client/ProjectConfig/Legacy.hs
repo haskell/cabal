@@ -533,7 +533,8 @@ convertLegacyGlobalConfig
       configExFlags' = defaultConfigExFlags <> configExFlags
       installFlags' = defaultInstallFlags <> installFlags
       clientInstallFlags' = defaultClientInstallFlags <> clientInstallFlags
-      haddockFlags' = defaultHaddockFlags <> haddockFlags
+      -- Resolve the linked-source default after per-package documentation settings.
+      haddockFlags' = defaultHaddockFlags{haddockLinkedSource = NoFlag} <> haddockFlags
       testFlags' = defaultTestFlags <> testFlags
       benchmarkFlags' = defaultBenchmarkFlags <> benchmarkFlags
       projectFlags' = defaultProjectFlags <> projectFlags
@@ -1197,6 +1198,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         { haddockCommonFlags = commonFlags
         , haddockProgramPaths = mempty
         , haddockProgramArgs = mempty
+        , haddockProgramPrependArgs = mempty
         , haddockHoogle = packageConfigHaddockHoogle
         , haddockHtml = packageConfigHaddockHtml
         , haddockHtmlLocation = fmap Text.unpack packageConfigHaddockHtmlLocation

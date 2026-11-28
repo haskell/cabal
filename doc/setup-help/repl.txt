@@ -31,6 +31,10 @@ Flags for repl:
                                 to PROG as a single argument)
  --PROG-options=OPTS          # Give extra options to PROG (split on spaces,
                                 use "" to prevent splitting)
+ --PROG-prepend-option=OPT    # Give an extra option to PROG for this
+                                invocation only, placed before its configured
+                                options (passed directly to PROG as a single
+                                argument)
  --repl-no-load               # Disable loading of project modules at REPL
                                 startup.
  --repl-options=FLAG          # Use the option(s) for the repl

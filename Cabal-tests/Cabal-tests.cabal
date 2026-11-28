@@ -74,6 +74,7 @@ test-suite unit-tests
     , tasty-quickcheck    <0.12
     , temporary
     , text
+    , time
 
   ghc-options:      -Wall
   default-language: GHC2021

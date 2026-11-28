@@ -30,6 +30,10 @@ Flags for v1-test:
                                 to PROG as a single argument)
  --PROG-options=OPTS          # Give extra options to PROG (split on spaces,
                                 use "" to prevent splitting)
+ --PROG-prepend-option=OPT    # Give an extra option to PROG for this
+                                invocation only, placed before its configured
+                                options (passed directly to PROG as a single
+                                argument)
  -v[n], --verbose[=n]         # Control verbosity (n is 0--3, default
                                 verbosity level is 1)
  --builddir=DIR               # The directory where Cabal puts generated build

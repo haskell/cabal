@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 -- | This module exposes functions to build and register unpacked packages.
@@ -68,7 +67,6 @@ import Distribution.Client.Utils
   , progressMessage
   )
 
-import Distribution.Compat.Lens
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
@@ -81,10 +79,6 @@ import Distribution.Simple.Compiler
   )
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Simple.LocalBuildInfo
-  ( ComponentName (..)
-  , LibraryName (..)
-  )
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -92,7 +86,6 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Types.BuildType
-import Distribution.Types.PackageDescription.Lens (componentModules)
 
 import Distribution.Client.Errors
 import Distribution.Simple.Utils
@@ -112,10 +105,11 @@ import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.List.NonEmpty as NE
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar)
-import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
+import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, finally, onException)
 import Data.IORef (newIORef, readIORef, writeIORef)
+import Data.Time (UTCTime)
 import GHC.Clock (getMonotonicTime)
-import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
+import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, getModificationTime, listDirectory)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreIdentifier)
@@ -589,10 +583,16 @@ buildInplaceUnpackedPackage
               return mbLBI
           PBBuildPhase{runBuild} ->
             whenRebuild $ withFileMonitor runBuild
-          PBReplPhase{runRepl} ->
-            withFileMonitor runRepl
+          PBReplPhase{runRepl} -> do
+            -- A repl does not complete a normal build, but GHCi can write
+            -- over the compilation artifacts of the build, e.g. with
+            -- -fobject-code. Do not keep a previous successful cache valid
+            -- if it did, but keep it if the repl only interpreted the code.
+            artifactsBefore <- buildArtifacts
+            withoutBuildMonitor runRepl `finally` invalidateIfChanged artifactsBefore
           PBHaddockPhase{runHaddock} -> do
-            withFileMonitor runHaddock
+            withoutBuildMonitor runHaddock
+            updatePackageDocsFileMonitor packageFileMonitor (getSymbolicPath srcdir) pkg
             let haddockTarget = elabHaddockForHackage pkg
             when (haddockTarget == Cabal.ForHackage) $ do
               let dest = distDirectory </> name <.> "tar.gz"
@@ -656,6 +656,28 @@ buildInplaceUnpackedPackage
       dparams = elabDistDirParams pkgshared pkg
 
       packageFileMonitor = newPackageFileMonitor pkgshared distDirLayout dparams
+
+      -- The files in the directory in which the package's components are
+      -- compiled, with their modification times.
+      buildArtifacts :: IO [(FilePath, UTCTime)]
+      buildArtifacts = do
+        let dir = distBuildDirectory distDirLayout dparams </> "build"
+        exists <- doesDirectoryExist dir
+        if not exists
+          then return []
+          else do
+            files <- getDirectoryContentsRecursive dir
+            for (sort files) $ \file -> (,) file <$> getModificationTime (dir </> file)
+
+      invalidateIfChanged :: [(FilePath, UTCTime)] -> IO ()
+      invalidateIfChanged artifactsBefore = do
+        artifactsAfter <- buildArtifacts
+        when (artifactsAfter /= artifactsBefore) $
+          invalidatePackageBuildFileMonitor packageFileMonitor
+
+      withoutBuildMonitor :: IO [MonitorFilePath] -> IO ()
+      withoutBuildMonitor runAction =
+        void runAction `onException` invalidatePackageRegFileMonitor packageFileMonitor
 
       withFileMonitor :: IO [MonitorFilePath] -> IO ()
       withFileMonitor runAction = do
@@ -1065,31 +1087,6 @@ buildPhaseName PBReplPhase{} = "repl"
 buildPhaseName PBInstallPhase{} = "install"
 buildPhaseName PBTestPhase{} = "test"
 buildPhaseName PBBenchPhase{} = "bench"
-
-hasValidHaddockTargets :: ElaboratedConfiguredPackage -> Bool
-hasValidHaddockTargets ElaboratedConfiguredPackage{..}
-  | not elabBuildHaddocks = False
-  | otherwise = any componentHasHaddocks components
-  where
-    components :: [ComponentTarget]
-    components =
-      elabBuildTargets
-        ++ elabTestTargets
-        ++ elabBenchTargets
-        ++ elabReplTarget
-        ++ elabHaddockTargets
-
-    componentHasHaddocks :: ComponentTarget -> Bool
-    componentHasHaddocks (ComponentTarget name _) =
-      case name of
-        CLibName LMainLibName -> hasHaddocks
-        CLibName (LSubLibName _) -> elabHaddockInternal && hasHaddocks
-        CFLibName _ -> elabHaddockForeignLibs && hasHaddocks
-        CExeName _ -> elabHaddockExecutables && hasHaddocks
-        CTestName _ -> elabHaddockTestSuites && hasHaddocks
-        CBenchName _ -> elabHaddockBenchmarks && hasHaddocks
-      where
-        hasHaddocks = not (null (elabPkgDescription ^. componentModules name))
 
 withTempInstalledPackageInfoFile
   :: Verbosity

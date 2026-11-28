@@ -13,6 +13,7 @@ import Prelude ()
 import qualified Distribution.Client.CmdBuild as CmdBuild
 import qualified Distribution.Client.CmdHaddock as CmdHaddock
 
+import qualified Data.Map as Map
 import Distribution.Client.DistDirLayout
   ( CabalDirLayout (..)
   , StoreDirLayout (..)
@@ -21,15 +22,22 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.InstallPlan (foldPlanPackage)
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.NixStyleOptions as NixStyleOptions
+import Distribution.Client.ProjectConfig.Types
+  ( MapLast (..)
+  , MapMappend (..)
+  , PackageConfig (..)
+  , ProjectConfig (..)
+  )
 import Distribution.Client.ProjectOrchestration
-  ( AvailableTarget (..)
-  , AvailableTargetStatus (..)
-  , CurrentCommand (..)
+  ( CurrentCommand (..)
   , ProjectBaseContext (..)
   , ProjectBuildContext (..)
-  , TargetSelector (..)
+  , commandLineFlagsToProjectConfig
+  , printPlan
   , pruneInstallPlanToTargets
   , resolveTargetsFromSolver
+  , runProjectBuildPhase
+  , runProjectPostBuildPhase
   , runProjectPreBuildPhase
   , selectComponentTargetBasic
   )
@@ -50,10 +58,8 @@ import Distribution.Client.ScriptUtils
   )
 import Distribution.Client.Setup
   ( CommonSetupFlags (setupVerbosity)
-  , ConfigFlags (..)
   , GlobalFlags (..)
   )
-import Distribution.Client.TargetProblem (TargetProblem (..))
 
 import Distribution.Simple.BuildPaths
   ( haddockBenchmarkDirPath
@@ -113,16 +119,47 @@ import Distribution.Verbosity as Verbosity
   )
 
 import Distribution.Client.Errors
-import System.Directory (doesDirectoryExist, doesFileExist)
-import System.FilePath (normalise, takeDirectory, (</>))
+import System.Directory (doesDirectoryExist, doesFileExist, makeAbsolute)
+import System.FilePath (takeDirectory, (</>))
 
+-- | 'haddockProjectAction' builds the project with the same settings as
+-- @cabal build@, so that either can reuse the builds of the other, copies the
+-- documentation of the dependencies into the output directory, documents the
+-- local packages directly into it, and generates the contents and index pages
+-- there. The extra arguments are ignored.
 haddockProjectAction :: HaddockProjectFlags -> [String] -> GlobalFlags -> IO ()
-haddockProjectAction flags _extraArgs globalFlags = do
+haddockProjectAction flags extraArgs globalFlags = do
+  haddockProjectHscolourCss <- traverse makeAbsolute (haddockProjectHscolourCss flags)
+  haddockProjectResourcesDir <- traverse makeAbsolute (haddockProjectResourcesDir flags)
+  haddockProjectDir <- traverse makeAbsolute (haddockProjectDir flags)
+  haddockProjectAction'
+    flags
+      { haddockProjectHscolourCss
+      , haddockProjectResourcesDir
+      , haddockProjectDir
+      }
+    extraArgs
+    globalFlags
+
+-- | The implementation of 'haddockProjectAction', which expects the output,
+-- resources and HsColour CSS paths in the flags to be absolute.
+haddockProjectAction' :: HaddockProjectFlags -> [String] -> GlobalFlags -> IO ()
+haddockProjectAction' flags _extraArgs globalFlags = do
   -- create destination directory if it does not exist
-  let outputDir = normalise $ fromFlag (haddockProjectDir flags)
+  let outputDir = fromFlag (haddockProjectDir flags)
   createDirectoryIfMissingVerbose verbosity True outputDir
 
   warn verbosity "haddock-project command is experimental, it might break in the future"
+
+  -- Resolve CLI paths before Setup changes the working directory.
+  absoluteCss <- traverse makeAbsolute (haddockCss haddockFlags)
+  let projectHaddockFlags = haddockFlags{haddockCss = absoluteCss}
+      localOverrides =
+        projectConfigLocalPackages $
+          commandLineFlagsToProjectConfig
+            globalFlags
+            (buildFlags{NixStyleOptions.haddockFlags = projectHaddockFlags})
+            mempty
 
   --
   -- Construct the build plan and infer the list of packages which haddocks
@@ -133,25 +170,62 @@ haddockProjectAction flags _extraArgs globalFlags = do
     verbosity
     RejectNoTargets
     Nothing
-    (commandDefaultFlags CmdBuild.buildCommand)
+    buildFlags
     ["all"]
     globalFlags
     HaddockCommand
     $ \targetCtx ctx targetSelectors -> do
-      baseCtx <- case targetCtx of
+      initialCtx <- case targetCtx of
         ProjectContext -> return ctx
         GlobalContext -> return ctx
         ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
-      let distLayout = distDirLayout baseCtx
-          cabalLayout = cabalDirLayout baseCtx
+      let config = projectConfig initialCtx
+          -- Inject documentation: True only when not already set (in local or
+          -- global package config), so that projects with documentation: True
+          -- in cabal.project don't see a solver-plan change when switching
+          -- between build and haddock-project. When documentation: True is
+          -- set globally, cabal build also passes -haddock to GHC, so
+          -- haddock-project requires no recompilations either.
+          docOverride
+            | fromFlagOrDefault False (packageConfigDocumentation (projectConfigLocalPackages config)) = mempty
+            | fromFlagOrDefault False (packageConfigDocumentation (projectConfigAllPackages config)) = mempty
+            | otherwise = mempty{packageConfigDocumentation = Flag True}
+          -- Build context for Plan 1 (the compilation phase): do NOT apply
+          -- haddock output settings (haddockHtml, haddockLinkedSource, etc.)
+          -- from localOverrides.  Those settings flow into haddockDocSettings
+          -- and are written to pkgFileMonitorDocs; if they differ from a
+          -- regular 'cabal build', the next build triggers a spurious
+          -- BuildReasonEphemeralTargets rebuild.  Only cliProgramConfig (tool
+          -- paths/args that affect the build) and docOverride (documentation:
+          -- True so -haddock is passed to GHC) belong here.
+          buildBaseCtx =
+            initialCtx
+              { projectConfig =
+                  config
+                    { projectConfigLocalPackages =
+                        projectConfigLocalPackages config <> cliProgramConfig <> docOverride
+                    }
+              }
+          -- Haddock context for Plan 2: includes the full haddock output
+          -- settings so haddockActionWithContext generates the right output.
+          baseCtx =
+            initialCtx
+              { projectConfig =
+                  config
+                    { projectConfigLocalPackages =
+                        projectConfigLocalPackages config <> localOverrides <> cliProgramConfig <> docOverride
+                    }
+              }
+          distLayout = distDirLayout buildBaseCtx
+          cabalLayout = cabalDirLayout buildBaseCtx
       buildCtx <-
-        runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+        runProjectPreBuildPhase verbosity buildBaseCtx $ \elaboratedPlan -> do
           -- Interpret the targets on the command line as build targets
           -- (as opposed to say repl or haddock targets).
           targets <-
             either reportTargetProblems return $
               resolveTargetsFromSolver
-                selectPackageTargets
+                CmdBuild.selectPackageTargets
                 selectComponentTargetBasic
                 elaboratedPlan
                 Nothing
@@ -197,20 +271,24 @@ haddockProjectAction flags _extraArgs globalFlags = do
       -- Issue #8958.
       --
 
-      when localStyle $
-        CmdBuild.buildAction
-          (commandDefaultFlags CmdBuild.buildCommand)
-          ["all"]
-          globalFlags
+      when localStyle $ do
+        printPlan verbosity buildBaseCtx buildCtx
+        buildOutcomes <- runProjectBuildPhase verbosity buildBaseCtx buildCtx
+        runProjectPostBuildPhase verbosity buildBaseCtx buildCtx buildOutcomes
 
       --
       -- Build haddocks of each components
       --
 
-      CmdHaddock.haddockAction
-        nixFlags
-        ["all"]
-        globalFlags
+      -- All program arguments are supplied via cliProgramConfig already;
+      -- non-idempotent options (e.g. -fplugin-opt) would otherwise be passed
+      -- to GHC twice.
+      let haddockFlags' = projectHaddockFlags{haddockProgramArgs = []}
+      CmdHaddock.haddockActionWithContext
+        verbosity
+        haddockFlags'
+        baseCtx
+        targetSelectors
 
       --
       -- Copy haddocks to the destination folder
@@ -363,6 +441,17 @@ haddockProjectAction flags _extraArgs globalFlags = do
     -- build all packages with appropriate haddock flags
     commonFlags = haddockProjectCommonFlags flags
 
+    -- CLI program paths/args injected into the project config so they affect
+    -- both the build and haddock phases and invalidate the configuration cache.
+    cliProgramConfig :: PackageConfig
+    cliProgramConfig =
+      mempty
+        { packageConfigProgramPaths =
+            MapLast (Map.fromList (haddockProjectProgramPaths flags))
+        , packageConfigProgramArgs =
+            MapMappend (Map.fromListWith (flip (++)) (haddockProjectProgramArgs flags))
+        }
+
     verbosity =
       mkVerbosity defaultVerbosityHandles $
         fromFlagOrDefault normal (setupVerbosity commonFlags)
@@ -409,14 +498,11 @@ haddockProjectAction flags _extraArgs globalFlags = do
         -- `dist-newstyle` directory and copy it to the output directory.
         }
 
-    nixFlags =
-      (commandDefaultFlags CmdHaddock.haddockCommand)
-        { NixStyleOptions.haddockFlags = haddockFlags
-        , NixStyleOptions.configFlags =
-            (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
-              { configCommonFlags = commonFlags
-              }
-        }
+    -- Discover the project without adding documentation options to dependencies.
+    buildFlags =
+      NixStyleOptions.updNixStyleCommonSetupFlags
+        (const commonFlags)
+        (commandDefaultFlags CmdBuild.buildCommand)
 
     -- Build a self contained directory which contains haddocks of all
     -- transitive dependencies; or depend on `--haddocks-html-location` to
@@ -429,22 +515,6 @@ haddockProjectAction flags _extraArgs globalFlags = do
     reportTargetProblems :: Show x => [x] -> IO a
     reportTargetProblems =
       dieWithException verbosity . CmdHaddockReportTargetProblems . map show
-
-    -- TODO: this is just a sketch
-    selectPackageTargets
-      :: TargetSelector
-      -> [AvailableTarget k]
-      -> Either (TargetProblem ()) [k]
-    selectPackageTargets _ ts =
-      Right $
-        mapMaybe
-          ( \t -> case availableTargetStatus t of
-              TargetBuildable k _
-                | availableTargetLocalToProject t ->
-                    Just k
-              _ -> Nothing
-          )
-          ts
 
     matchingPackages
       :: ElaboratedInstallPlan
